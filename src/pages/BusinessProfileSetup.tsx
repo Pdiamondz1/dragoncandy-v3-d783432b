@@ -11,6 +11,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
 import { Upload, Sparkles } from 'lucide-react';
+import type { Database } from '@/integrations/supabase/types';
+
+type IndustryType = Database['public']['Enums']['industry_type'];
 
 const BusinessProfileSetup = () => {
   const { user } = useAuth();
@@ -21,7 +24,7 @@ const BusinessProfileSetup = () => {
   
   const [formData, setFormData] = useState({
     business_name: '',
-    industry: '',
+    industry: '' as IndustryType | '',
     website_url: '',
     location: '',
     description: '',
@@ -82,7 +85,18 @@ const BusinessProfileSetup = () => {
         .from('business_profiles')
         .upsert({
           user_id: user.id,
-          ...formData,
+          business_name: formData.business_name,
+          industry: formData.industry as IndustryType,
+          website_url: formData.website_url,
+          location: formData.location,
+          description: formData.description,
+          instagram_url: formData.instagram_url,
+          tiktok_url: formData.tiktok_url,
+          youtube_url: formData.youtube_url,
+          facebook_url: formData.facebook_url,
+          linkedin_url: formData.linkedin_url,
+          x_url: formData.x_url,
+          other_social_url: formData.other_social_url,
           logo_url: logoUrl,
           sample_content_urls: sampleContentUrls,
           is_completed: true

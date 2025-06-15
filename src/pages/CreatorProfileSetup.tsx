@@ -11,8 +11,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from '@/hooks/use-toast';
 import { Upload, Sparkles } from 'lucide-react';
+import type { Database } from '@/integrations/supabase/types';
 
-const skills = [
+type CreatorSkill = Database['public']['Enums']['creator_skill'];
+
+const skills: { id: CreatorSkill; label: string }[] = [
   { id: 'video_editing', label: 'Video Editing' },
   { id: 'ugc_creation', label: 'UGC Creation' },
   { id: 'illustration', label: 'Illustration' },
@@ -49,7 +52,7 @@ const CreatorProfileSetup = () => {
     website_url: ''
   });
 
-  const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
+  const [selectedSkills, setSelectedSkills] = useState<CreatorSkill[]>([]);
 
   useEffect(() => {
     if (!user) {
@@ -61,7 +64,7 @@ const CreatorProfileSetup = () => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleSkillChange = (skillId: string, checked: boolean) => {
+  const handleSkillChange = (skillId: CreatorSkill, checked: boolean) => {
     if (checked) {
       setSelectedSkills(prev => [...prev, skillId]);
     } else {
@@ -107,8 +110,19 @@ const CreatorProfileSetup = () => {
         .from('creator_profiles')
         .upsert({
           user_id: user.id,
-          ...formData,
+          creator_name: formData.creator_name,
+          bio: formData.bio,
+          location: formData.location,
+          availability: formData.availability,
           base_rate_per_hour: formData.base_rate_per_hour ? parseFloat(formData.base_rate_per_hour) : null,
+          instagram_url: formData.instagram_url,
+          tiktok_url: formData.tiktok_url,
+          youtube_url: formData.youtube_url,
+          facebook_url: formData.facebook_url,
+          linkedin_url: formData.linkedin_url,
+          x_url: formData.x_url,
+          other_social_url: formData.other_social_url,
+          website_url: formData.website_url,
           avatar_url: avatarUrl,
           portfolio_urls: portfolioUrls,
           skills: selectedSkills,
