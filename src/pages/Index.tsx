@@ -2,6 +2,7 @@
 import { Button } from "@/components/ui/button";
 import { Youtube } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 
 const features = [
   {
@@ -23,6 +24,21 @@ const features = [
 
 export default function Index() {
   const navigate = useNavigate();
+  const { user, signOut, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-pink-600"></div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    navigate('/auth', { replace: true });
+    return null;
+  }
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Navbar */}
@@ -34,20 +50,16 @@ export default function Index() {
           </div>
           <span className="text-xl font-extrabold text-pink-600 tracking-tight">DragonCandy</span>
         </div>
-        <div className="flex gap-2">
-          <Button
-            variant="ghost"
-            className="text-muted-foreground px-4"
-            onClick={() => navigate("/auth")}
-          >
-            Log in
-          </Button>
+        <div className="flex items-center gap-4">
+          <span className="text-sm text-muted-foreground">
+            Welcome, {user.email}
+          </span>
           <Button
             variant="outline"
             className="border-pink-500 text-pink-600 hover:bg-pink-50 hover:text-pink-700 px-4"
-            onClick={() => navigate("/auth")}
+            onClick={signOut}
           >
-            Sign up
+            Sign out
           </Button>
         </div>
       </nav>
@@ -58,28 +70,12 @@ export default function Index() {
           🚀 AI-Powered Content Creation Platform
         </span>
         <h1 className="text-4xl md:text-6xl font-bold text-center mb-4 leading-tight">
-          Create Amazing Content<br />
-          with <span className="text-pink-600">DragonCandy</span>
+          Welcome to <span className="text-pink-600">DragonCandy</span>
         </h1>
         <p className="text-lg md:text-xl text-muted-foreground text-center mb-8 max-w-2xl">
-          Connect with top creators, harness AI editing tools, and build campaigns that drive real results.
-          DragonCandy makes professional content creation accessible to everyone.
+          You're now logged in! Start creating amazing content with our AI-powered tools and connect with top creators.
         </p>
-        <div className="flex flex-col md:flex-row gap-3 mb-12">
-          <Button
-            className="bg-pink-600 hover:bg-pink-700 text-white font-semibold px-8 text-lg py-4 shadow-sm animate-fade-in"
-            onClick={() => navigate("/auth")}
-          >
-            Get Started Free
-          </Button>
-          <Button
-            variant="outline"
-            className="border-pink-400 text-pink-600 font-semibold px-8 text-lg py-4 hover:bg-pink-50 animate-fade-in"
-            onClick={() => window.scrollTo({ top: 700, behavior: 'smooth' })}
-          >
-            Learn More
-          </Button>
-        </div>
+        
         {/* Features Row */}
         <div className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-3 gap-8 mt-2 mb-4">
           {features.map((f, i) => (
