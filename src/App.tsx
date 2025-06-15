@@ -5,12 +5,17 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import ProtectedRoute from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import AuthPage from "./pages/AuthPage";
 import ProfileOnboarding from "./pages/ProfileOnboarding";
 import BusinessProfileSetup from "./pages/BusinessProfileSetup";
 import CreatorProfileSetup from "./pages/CreatorProfileSetup";
+import BusinessDashboard from "./pages/BusinessDashboard";
+import CreatorDashboard from "./pages/CreatorDashboard";
+import BusinessSettings from "./pages/BusinessSettings";
+import CreatorSettings from "./pages/CreatorSettings";
 
 const queryClient = new QueryClient();
 
@@ -27,6 +32,29 @@ const App = () => (
             <Route path="/profile/onboarding" element={<ProfileOnboarding />} />
             <Route path="/profile/business" element={<BusinessProfileSetup />} />
             <Route path="/profile/creator" element={<CreatorProfileSetup />} />
+            
+            {/* Protected Dashboard Routes */}
+            <Route path="/dashboard/business" element={
+              <ProtectedRoute>
+                <BusinessDashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/dashboard/creator" element={
+              <ProtectedRoute>
+                <CreatorDashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/dashboard/business/settings" element={
+              <ProtectedRoute>
+                <BusinessSettings />
+              </ProtectedRoute>
+            } />
+            <Route path="/dashboard/creator/settings" element={
+              <ProtectedRoute>
+                <CreatorSettings />
+              </ProtectedRoute>
+            } />
+            
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
