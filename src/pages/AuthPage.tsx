@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { toast } from "@/hooks/use-toast";
 import { Youtube } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
 type Role = "business_client" | "content_creator";
 
@@ -20,25 +21,15 @@ const AuthPage = () => {
   const [error, setError] = useState<string | null>(null);
 
   const navigate = useNavigate();
+  const { user, isAuthenticated } = useAuth();
 
-  // Check for auth session on mount
+  // Redirect if already authenticated
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        navigate("/", { replace: true });
-      }
-    });
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        if (session) {
-          navigate("/", { replace: true });
-        }
-      }
-    );
-    return () => subscription.unsubscribe();
-  }, [navigate]);
+    if (isAuthenticated) {
+      console.log('User is authenticated, redirecting to home');
+      navigate("/", { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
 
   // Handle Auth Form Submit
   const handleSubmit = async (e: React.FormEvent) => {
@@ -110,6 +101,7 @@ const AuthPage = () => {
           setLoading(false);
           return;
         }
+        // The AuthContext will handle the redirect automatically
       }
     } catch (err: any) {
       setError("Something went wrong. Please try again.");
