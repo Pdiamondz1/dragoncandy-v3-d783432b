@@ -9,6 +9,144 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      business_profiles: {
+        Row: {
+          business_name: string
+          created_at: string | null
+          description: string | null
+          facebook_url: string | null
+          id: string
+          industry: Database["public"]["Enums"]["industry_type"] | null
+          instagram_url: string | null
+          is_completed: boolean | null
+          linkedin_url: string | null
+          location: string | null
+          logo_url: string | null
+          other_social_url: string | null
+          sample_content_urls: string[] | null
+          tiktok_url: string | null
+          updated_at: string | null
+          user_id: string
+          website_url: string | null
+          x_url: string | null
+          youtube_url: string | null
+        }
+        Insert: {
+          business_name: string
+          created_at?: string | null
+          description?: string | null
+          facebook_url?: string | null
+          id?: string
+          industry?: Database["public"]["Enums"]["industry_type"] | null
+          instagram_url?: string | null
+          is_completed?: boolean | null
+          linkedin_url?: string | null
+          location?: string | null
+          logo_url?: string | null
+          other_social_url?: string | null
+          sample_content_urls?: string[] | null
+          tiktok_url?: string | null
+          updated_at?: string | null
+          user_id: string
+          website_url?: string | null
+          x_url?: string | null
+          youtube_url?: string | null
+        }
+        Update: {
+          business_name?: string
+          created_at?: string | null
+          description?: string | null
+          facebook_url?: string | null
+          id?: string
+          industry?: Database["public"]["Enums"]["industry_type"] | null
+          instagram_url?: string | null
+          is_completed?: boolean | null
+          linkedin_url?: string | null
+          location?: string | null
+          logo_url?: string | null
+          other_social_url?: string | null
+          sample_content_urls?: string[] | null
+          tiktok_url?: string | null
+          updated_at?: string | null
+          user_id?: string
+          website_url?: string | null
+          x_url?: string | null
+          youtube_url?: string | null
+        }
+        Relationships: []
+      }
+      creator_profiles: {
+        Row: {
+          availability: string | null
+          avatar_url: string | null
+          base_rate_per_hour: number | null
+          bio: string | null
+          created_at: string | null
+          creator_name: string
+          facebook_url: string | null
+          id: string
+          instagram_url: string | null
+          is_completed: boolean | null
+          linkedin_url: string | null
+          location: string | null
+          other_social_url: string | null
+          portfolio_urls: string[] | null
+          skills: Database["public"]["Enums"]["creator_skill"][] | null
+          tiktok_url: string | null
+          updated_at: string | null
+          user_id: string
+          website_url: string | null
+          x_url: string | null
+          youtube_url: string | null
+        }
+        Insert: {
+          availability?: string | null
+          avatar_url?: string | null
+          base_rate_per_hour?: number | null
+          bio?: string | null
+          created_at?: string | null
+          creator_name: string
+          facebook_url?: string | null
+          id?: string
+          instagram_url?: string | null
+          is_completed?: boolean | null
+          linkedin_url?: string | null
+          location?: string | null
+          other_social_url?: string | null
+          portfolio_urls?: string[] | null
+          skills?: Database["public"]["Enums"]["creator_skill"][] | null
+          tiktok_url?: string | null
+          updated_at?: string | null
+          user_id: string
+          website_url?: string | null
+          x_url?: string | null
+          youtube_url?: string | null
+        }
+        Update: {
+          availability?: string | null
+          avatar_url?: string | null
+          base_rate_per_hour?: number | null
+          bio?: string | null
+          created_at?: string | null
+          creator_name?: string
+          facebook_url?: string | null
+          id?: string
+          instagram_url?: string | null
+          is_completed?: boolean | null
+          linkedin_url?: string | null
+          location?: string | null
+          other_social_url?: string | null
+          portfolio_urls?: string[] | null
+          skills?: Database["public"]["Enums"]["creator_skill"][] | null
+          tiktok_url?: string | null
+          updated_at?: string | null
+          user_id?: string
+          website_url?: string | null
+          x_url?: string | null
+          youtube_url?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -47,6 +185,34 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
+      creator_skill:
+        | "video_editing"
+        | "ugc_creation"
+        | "illustration"
+        | "photography"
+        | "copywriting"
+        | "social_media_management"
+        | "graphic_design"
+        | "animation"
+        | "influencer_marketing"
+        | "content_strategy"
+        | "other"
+      industry_type:
+        | "technology"
+        | "fashion"
+        | "beauty"
+        | "fitness"
+        | "food"
+        | "travel"
+        | "lifestyle"
+        | "business"
+        | "education"
+        | "entertainment"
+        | "health"
+        | "automotive"
+        | "real_estate"
+        | "finance"
+        | "other"
       user_role: "business_client" | "content_creator"
     }
     CompositeTypes: {
@@ -163,6 +329,36 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      creator_skill: [
+        "video_editing",
+        "ugc_creation",
+        "illustration",
+        "photography",
+        "copywriting",
+        "social_media_management",
+        "graphic_design",
+        "animation",
+        "influencer_marketing",
+        "content_strategy",
+        "other",
+      ],
+      industry_type: [
+        "technology",
+        "fashion",
+        "beauty",
+        "fitness",
+        "food",
+        "travel",
+        "lifestyle",
+        "business",
+        "education",
+        "entertainment",
+        "health",
+        "automotive",
+        "real_estate",
+        "finance",
+        "other",
+      ],
       user_role: ["business_client", "content_creator"],
     },
   },

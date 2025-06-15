@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -26,10 +25,58 @@ const AuthPage = () => {
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      console.log('User is authenticated, redirecting to home');
-      navigate("/", { replace: true });
+      console.log('User is authenticated, checking profile completion');
+      checkProfileCompletion();
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated]);
+
+  const checkProfileCompletion = async () => {
+    if (!user) return;
+
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single();
+
+      if (!profile) {
+        navigate('/profile/onboarding');
+        return;
+      }
+
+      // Check if they have completed their specific profile
+      if (profile.role === 'business_client') {
+        const { data: businessProfile } = await supabase
+          .from('business_profiles')
+          .select('is_completed')
+          .eq('user_id', user.id)
+          .single();
+
+        if (!businessProfile?.is_completed) {
+          navigate('/profile/business');
+          return;
+        }
+      } else if (profile.role === 'content_creator') {
+        const { data: creatorProfile } = await supabase
+          .from('creator_profiles')
+          .select('is_completed')
+          .eq('user_id', user.id)
+          .single();
+
+        if (!creatorProfile?.is_completed) {
+          navigate('/profile/creator');
+          return;
+        }
+      }
+
+      // If profile is completed, go to home
+      navigate('/', { replace: true });
+    } catch (error) {
+      console.error('Error checking profile completion:', error);
+      navigate('/', { replace: true });
+    }
+  };
 
   // Handle Auth Form Submit
   const handleSubmit = async (e: React.FormEvent) => {
@@ -45,7 +92,7 @@ const AuthPage = () => {
 
     try {
       if (mode === "signup") {
-        const redirectUrl = `${window.location.origin}/`;
+        const redirectUrl = `${window.location.origin}/profile/onboarding`;
         const { data, error: signupError } = await supabase.auth.signUp({
           email,
           password,
@@ -101,7 +148,7 @@ const AuthPage = () => {
           setLoading(false);
           return;
         }
-        // The AuthContext will handle the redirect automatically
+        // The AuthContext will handle the redirect automatically via useEffect
       }
     } catch (err: any) {
       setError("Something went wrong. Please try again.");
