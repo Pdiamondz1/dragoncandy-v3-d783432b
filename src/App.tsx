@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -17,6 +18,8 @@ import BusinessSettings from "./pages/BusinessSettings";
 import CreatorSettings from "./pages/CreatorSettings";
 import CampaignsPage from "./pages/CampaignsPage";
 import CampaignWizard from "./pages/CampaignWizard";
+import CampaignDetailsPage from "./pages/CampaignDetailsPage";
+import CampaignEditPage from "./pages/CampaignEditPage";
 
 const queryClient = new QueryClient();
 
@@ -65,6 +68,16 @@ const App = () => (
             <Route path="/dashboard/business/campaigns/create" element={
               <ProtectedRoute>
                 <CampaignWizard />
+              </ProtectedRoute>
+            } />
+            <Route path="/dashboard/business/campaigns/:id" element={
+              <ProtectedRoute>
+                <CampaignDetailsPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/dashboard/business/campaigns/:id/edit" element={
+              <ProtectedRoute>
+                <CampaignEditPage />
               </ProtectedRoute>
             } />
             
