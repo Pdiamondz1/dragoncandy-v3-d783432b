@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '@/components/DashboardLayout';
@@ -9,6 +10,7 @@ import { Lightbulb, Sparkles, Users, Clock, DollarSign, Target, Brain } from 'lu
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import CampaignAnalysisDisplay from '@/components/campaigns/CampaignAnalysisDisplay';
+import CampaignCustomizeForm from '@/components/campaigns/CampaignCustomizeForm';
 
 interface CampaignAnalysis {
   title: string;
@@ -29,6 +31,7 @@ const CampaignWizard: React.FC = () => {
   const [campaignGoal, setCampaignGoal] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [campaignAnalysis, setCampaignAnalysis] = useState<CampaignAnalysis | null>(null);
+  const [customizedCampaign, setCustomizedCampaign] = useState<CampaignAnalysis | null>(null);
 
   const steps = [
     { number: 1, title: 'Campaign Goal', active: true },
@@ -130,6 +133,19 @@ const CampaignWizard: React.FC = () => {
 
   const handleApproveAndCustomize = () => {
     setCurrentStep(3);
+  };
+
+  const handleBackToAnalysis = () => {
+    setCurrentStep(2);
+  };
+
+  const handleContinueFromCustomize = (customizedData: CampaignAnalysis) => {
+    setCustomizedCampaign(customizedData);
+    setCurrentStep(4);
+    toast({
+      title: 'Campaign customized!',
+      description: 'Ready to set timeline and budget.',
+    });
   };
 
   const handleNext = () => {
@@ -306,13 +322,62 @@ const CampaignWizard: React.FC = () => {
             </div>
           )}
 
+          {/* Step 3: Customize Campaign */}
+          {currentStep === 3 && campaignAnalysis && (
+            <CampaignCustomizeForm
+              initialData={campaignAnalysis}
+              onContinue={handleContinueFromCustomize}
+              onBackToAnalysis={handleBackToAnalysis}
+            />
+          )}
+
+          {/* Step 4: Timeline & Budget (Placeholder) */}
+          {currentStep === 4 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <div className="w-8 h-8 bg-gray-900 rounded-full flex items-center justify-center text-white text-sm font-semibold">
+                    4
+                  </div>
+                  Step 4: Timeline & Budget
+                </CardTitle>
+                <p className="text-gray-600 text-sm">
+                  Coming soon - Set your campaign timeline and budget details
+                </p>
+              </CardHeader>
+              <CardContent>
+                <p className="text-gray-600">Timeline and budget configuration will be implemented in the next step.</p>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Step 5: Finalize (Placeholder) */}
+          {currentStep === 5 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <div className="w-8 h-8 bg-gray-900 rounded-full flex items-center justify-center text-white text-sm font-semibold">
+                    5
+                  </div>
+                  Step 5: Finalize Campaign
+                </CardTitle>
+                <p className="text-gray-600 text-sm">
+                  Coming soon - Review and publish your campaign
+                </p>
+              </CardHeader>
+              <CardContent>
+                <p className="text-gray-600">Final review and campaign publishing will be implemented in the next step.</p>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Navigation */}
           <div className="flex justify-between mt-8">
             <Button variant="outline" onClick={handleBack}>
               {currentStep === 1 ? 'Back to Campaigns' : 'Previous Step'}
             </Button>
             
-            {currentStep > 2 && (
+            {currentStep > 2 && currentStep < 5 && (
               <Button onClick={handleNext} disabled={currentStep >= 5}>
                 {currentStep === 5 ? 'Create Campaign' : 'Next Step'}
               </Button>
