@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
@@ -6,28 +7,19 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { UserPlus, Send } from 'lucide-react';
 import ApplicationForm from './ApplicationForm';
 import { useCampaign } from '@/hooks/useCampaigns';
-import { Campaign } from '@/hooks/useCampaignQueries';
-
-interface CreatorMatch {
-  creator_id: string;
-  creator_name: string;
-  bio: string;
-  skills: string[];
-  match_score: number;
-  campaign_id: string;
-  avatar_url?: string;
-}
+import { CreatorMatch } from '@/hooks/useCampaignMatches';
 
 interface CreatorMatchCardProps {
   match: CreatorMatch;
+  isInvited?: boolean;
   onInvite?: (creatorId: string) => void;
 }
 
-const CreatorMatchCard: React.FC<CreatorMatchCardProps> = ({ match, onInvite }) => {
+const CreatorMatchCard: React.FC<CreatorMatchCardProps> = ({ match, isInvited, onInvite }) => {
   const [showApplicationForm, setShowApplicationForm] = useState(false);
   const { campaign } = useCampaign(match.campaign_id);
 
-  const skillBadges = match.skills.map((skill, index) => (
+  const skillBadges = match.creator_profile.skills.map((skill, index) => (
     <span key={index} className="inline-block bg-gray-200 rounded-full px-3 py-1 text-sm font-semibold text-gray-700 mr-2 mb-2">
       {skill}
     </span>
@@ -39,11 +31,11 @@ const CreatorMatchCard: React.FC<CreatorMatchCardProps> = ({ match, onInvite }) 
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <Avatar>
-              <AvatarImage src={match.avatar_url} alt={match.creator_name} />
-              <AvatarFallback>{match.creator_name.charAt(0)}</AvatarFallback>
+              <AvatarImage src={match.creator_profile.avatar_url || undefined} alt={match.creator_profile.creator_name} />
+              <AvatarFallback>{match.creator_profile.creator_name.charAt(0)}</AvatarFallback>
             </Avatar>
             <div>
-              <CardTitle>{match.creator_name}</CardTitle>
+              <CardTitle>{match.creator_profile.creator_name}</CardTitle>
               <p className="text-sm text-gray-500">Match Score: {match.match_score}</p>
             </div>
           </div>
@@ -53,7 +45,7 @@ const CreatorMatchCard: React.FC<CreatorMatchCardProps> = ({ match, onInvite }) 
       <CardContent className="space-y-4">
         <div>
           <h3 className="text-md font-semibold">About</h3>
-          <p className="text-sm text-gray-600">{match.bio}</p>
+          <p className="text-sm text-gray-600">{match.creator_profile.bio || 'No bio available'}</p>
         </div>
 
         <div>
@@ -62,20 +54,22 @@ const CreatorMatchCard: React.FC<CreatorMatchCardProps> = ({ match, onInvite }) 
         </div>
 
         <div className="flex gap-2 pt-4 border-t">
-          <Button 
-            onClick={() => onInvite?.(match.creator_id)}
-            variant="outline"
-            className="flex-1"
-          >
-            <UserPlus className="h-4 w-4 mr-2" />
-            Invite
-          </Button>
+          {!isInvited && onInvite && (
+            <Button 
+              onClick={() => onInvite(match.creator_id)}
+              variant="outline"
+              className="flex-1"
+            >
+              <UserPlus className="h-4 w-4 mr-2" />
+              Invite
+            </Button>
+          )}
           
           <Dialog open={showApplicationForm} onOpenChange={setShowApplicationForm}>
             <DialogTrigger asChild>
-              <Button className="flex-1">
+              <Button className="flex-1" disabled={isInvited}>
                 <Send className="h-4 w-4 mr-2" />
-                Apply Now
+                {isInvited ? 'Invited' : 'Apply Now'}
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">

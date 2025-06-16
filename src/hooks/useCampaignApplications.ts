@@ -38,11 +38,13 @@ export const useCampaignApplications = (campaignId: string) => {
         .from('campaign_applications')
         .select(`
           *,
-          creator_profile:creator_profiles!creator_id (
-            creator_name,
-            avatar_url,
-            bio,
-            skills
+          profiles!creator_id (
+            creator_profiles!user_id (
+              creator_name,
+              avatar_url,
+              bio,
+              skills
+            )
           )
         `)
         .eq('campaign_id', campaignId)
@@ -53,8 +55,21 @@ export const useCampaignApplications = (campaignId: string) => {
         throw error;
       }
 
-      console.log('Fetched campaign applications:', data);
-      return data as CampaignApplication[];
+      console.log('Raw campaign applications data:', data);
+
+      // Transform the data to match our interface
+      const transformedData = data?.map((app: any) => ({
+        ...app,
+        creator_profile: app.profiles?.creator_profiles ? {
+          creator_name: app.profiles.creator_profiles.creator_name || '',
+          avatar_url: app.profiles.creator_profiles.avatar_url || undefined,
+          bio: app.profiles.creator_profiles.bio || undefined,
+          skills: app.profiles.creator_profiles.skills || [],
+        } : undefined,
+      })) || [];
+
+      console.log('Transformed campaign applications:', transformedData);
+      return transformedData as CampaignApplication[];
     },
     enabled: !!campaignId && !!user,
   });
@@ -71,7 +86,7 @@ export const useCreatorApplications = () => {
         .from('campaign_applications')
         .select(`
           *,
-          campaign:campaigns!campaign_id (
+          campaigns!campaign_id (
             title,
             description,
             budget_min,
