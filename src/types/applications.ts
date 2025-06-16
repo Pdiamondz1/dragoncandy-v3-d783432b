@@ -1,0 +1,23 @@
+
+export interface CampaignApplication {
+  id: string;
+  campaign_id: string;
+  creator_id: string;
+  intro_message?: string;
+  proposed_timeline?: string;
+  proposed_rate?: number;
+  status: 'pending' | 'accepted' | 'rejected';
+  created_at: string;
+  updated_at: string;
+  // Joined data
+  creator_profile?: {
+    creator_name: string;
+    avatar_url?: string;
+    bio?: string;
+    skills?: string[];
+  };
+  campaign?: {
+    title: string;
+    description?: string;
+  };
+}

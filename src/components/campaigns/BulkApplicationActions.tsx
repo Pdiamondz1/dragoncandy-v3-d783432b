@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -15,7 +14,8 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Check, X, Trash2 } from 'lucide-react';
-import { CampaignApplication, useManageApplication } from '@/hooks/useCampaignApplications';
+import { useManageApplication } from '@/hooks/useManageApplication';
+import { CampaignApplication } from '@/types/applications';
 import { toast } from '@/hooks/use-toast';
 
 interface BulkApplicationActionsProps {

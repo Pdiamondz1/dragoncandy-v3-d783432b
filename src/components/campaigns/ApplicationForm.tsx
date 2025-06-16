@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,7 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { DollarSign, Clock, MessageSquare } from 'lucide-react';
-import { useCreateApplication } from '@/hooks/useCampaignApplications';
+import { useCreateApplication } from '@/hooks/useCreateApplication';
 import { Campaign } from '@/hooks/useCampaignQueries';
 
 interface ApplicationFormProps {

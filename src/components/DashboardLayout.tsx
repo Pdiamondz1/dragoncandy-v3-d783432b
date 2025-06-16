@@ -27,7 +27,7 @@ import NotificationDropdown from '@/components/notifications/NotificationDropdow
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
-  userRole: 'business_client' | 'creator';
+  userRole: 'business_client' | 'content_creator';
 }
 
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, userRole }) => {

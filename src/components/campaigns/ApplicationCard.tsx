@@ -1,11 +1,11 @@
-
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Check, X, Clock, DollarSign, User } from 'lucide-react';
-import { CampaignApplication, useManageApplication } from '@/hooks/useCampaignApplications';
+import { useManageApplication } from '@/hooks/useManageApplication';
+import { CampaignApplication } from '@/types/applications';
 import ApplicationStatusBadge from './ApplicationStatusBadge';
 
 interface ApplicationCardProps {

@@ -1,6 +1,5 @@
-
 import { useState, useMemo } from 'react';
-import { CampaignApplication } from '@/hooks/useCampaignApplications';
+import { CampaignApplication } from '@/types/applications';
 
 export interface ApplicationFilters {
   status: 'all' | 'pending' | 'accepted' | 'rejected';
