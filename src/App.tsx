@@ -21,6 +21,7 @@ import CampaignDetailsPage from "./pages/CampaignDetailsPage";
 import CampaignEditPage from "./pages/CampaignEditPage";
 import MessagesPage from "./pages/MessagesPage";
 import CampaignMessagesPage from "./pages/CampaignMessagesPage";
+import ProjectDetailsPage from "./pages/ProjectDetailsPage";
 
 const queryClient = new QueryClient();
 
@@ -91,6 +92,13 @@ const App = () => (
             <Route path="/messages/:campaignId" element={
               <ProtectedRoute>
                 <CampaignMessagesPage />
+              </ProtectedRoute>
+            } />
+            
+            {/* Project Management Routes */}
+            <Route path="/projects/:id" element={
+              <ProtectedRoute>
+                <ProjectDetailsPage />
               </ProtectedRoute>
             } />
             

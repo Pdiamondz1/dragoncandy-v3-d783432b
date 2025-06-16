@@ -10,6 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import CampaignDetailsOverview from '@/components/campaigns/CampaignDetailsOverview';
 import CreatorMatchingSection from '@/components/campaigns/CreatorMatchingSection';
 import MessageThread from '@/components/messages/MessageThread';
+import ApplicationsList from '@/components/campaigns/ApplicationsList';
 
 const CampaignDetailsPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -131,13 +132,11 @@ const CampaignDetailsPage: React.FC = () => {
                 <CardHeader>
                   <CardTitle>Creator Applications</CardTitle>
                   <p className="text-sm text-gray-600">
-                    View and manage applications from creators interested in your campaign
+                    Review and manage applications from creators interested in your campaign
                   </p>
                 </CardHeader>
-                <CardContent>
-                  <div className="text-center py-8 text-gray-500">
-                    Applications feature coming soon...
-                  </div>
+                <CardContent className="p-0">
+                  <ApplicationsList campaignId={campaign.id} />
                 </CardContent>
               </Card>
             </TabsContent>
