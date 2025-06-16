@@ -28,11 +28,11 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
     
     if (message.read_at) {
       return (
-        <CheckCheck className="h-3 w-3 text-blue-500" title="Read" />
+        <CheckCheck className="h-3 w-3 text-blue-500" />
       );
     } else {
       return (
-        <Check className="h-3 w-3 text-gray-400" title="Delivered" />
+        <Check className="h-3 w-3 text-gray-400" />
       );
     }
   };
