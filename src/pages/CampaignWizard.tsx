@@ -9,7 +9,6 @@ import CampaignWizardHeader from '@/components/campaigns/CampaignWizardHeader';
 import CampaignGoalStep from '@/components/campaigns/CampaignGoalStep';
 import CampaignWizardSidebar from '@/components/campaigns/CampaignWizardSidebar';
 import CampaignTimelineBudgetStep from '@/components/campaigns/CampaignTimelineBudgetStep';
-import CampaignWizardNavigation from '@/components/campaigns/CampaignWizardNavigation';
 import CampaignFinalizeStep from '@/components/campaigns/CampaignFinalizeStep';
 import { useCampaignWizard } from '@/hooks/useCampaignWizard';
 
@@ -21,6 +20,7 @@ const CampaignWizard: React.FC = () => {
     isGenerating,
     campaignAnalysis,
     customizedCampaign,
+    finalCampaignData,
     handleGenerateWithAI,
     handleEditCampaignIdea,
     handleApproveAndCustomize,
@@ -28,7 +28,7 @@ const CampaignWizard: React.FC = () => {
     handleContinueFromCustomize,
     handleBackToCustomize,
     handleContinueFromTimelineBudget,
-    handleNext,
+    handleBackToTimelineBudget,
     handleBack,
   } = useCampaignWizard();
 
@@ -111,15 +111,12 @@ const CampaignWizard: React.FC = () => {
           )}
 
           {/* Step 5: Finalize */}
-          {currentStep === 5 && <CampaignFinalizeStep />}
-
-          {/* Navigation */}
-          <CampaignWizardNavigation
-            currentStep={currentStep}
-            onBack={handleBack}
-            onNext={handleNext}
-            showCreateButton={currentStep === 5}
-          />
+          {currentStep === 5 && finalCampaignData && (
+            <CampaignFinalizeStep
+              campaignData={finalCampaignData}
+              onBack={handleBackToTimelineBudget}
+            />
+          )}
         </div>
       </div>
     </DashboardLayout>

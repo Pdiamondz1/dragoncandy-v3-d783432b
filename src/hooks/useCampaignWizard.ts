@@ -24,6 +24,19 @@ interface TimelineBudgetData {
   budgetMax: number;
 }
 
+interface FinalCampaignData {
+  title: string;
+  description: string;
+  goals: string;
+  deliverables: string[];
+  platforms: string[];
+  style: string;
+  tone: string;
+  budgetMin: number;
+  budgetMax: number;
+  deadline: Date;
+}
+
 export const useCampaignWizard = () => {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
@@ -32,6 +45,7 @@ export const useCampaignWizard = () => {
   const [campaignAnalysis, setCampaignAnalysis] = useState<CampaignAnalysis | null>(null);
   const [customizedCampaign, setCustomizedCampaign] = useState<CampaignAnalysis | null>(null);
   const [timelineBudgetData, setTimelineBudgetData] = useState<TimelineBudgetData | null>(null);
+  const [finalCampaignData, setFinalCampaignData] = useState<FinalCampaignData | null>(null);
 
   const handleGenerateWithAI = async () => {
     if (!campaignGoal.trim()) {
@@ -103,11 +117,33 @@ export const useCampaignWizard = () => {
 
   const handleContinueFromTimelineBudget = (data: TimelineBudgetData) => {
     setTimelineBudgetData(data);
+    
+    // Prepare final campaign data for Step 5
+    if (customizedCampaign) {
+      const finalData: FinalCampaignData = {
+        title: customizedCampaign.title,
+        description: customizedCampaign.description,
+        goals: data.goals,
+        deliverables: customizedCampaign.deliverables,
+        platforms: customizedCampaign.platforms,
+        style: customizedCampaign.style,
+        tone: customizedCampaign.tone,
+        budgetMin: data.budgetMin,
+        budgetMax: data.budgetMax,
+        deadline: data.deadline,
+      };
+      setFinalCampaignData(finalData);
+    }
+    
     setCurrentStep(5);
     toast({
       title: 'Timeline and budget set!',
       description: 'Ready to finalize your campaign.',
     });
+  };
+
+  const handleBackToTimelineBudget = () => {
+    setCurrentStep(4);
   };
 
   const handleNext = () => {
@@ -132,6 +168,7 @@ export const useCampaignWizard = () => {
     campaignAnalysis,
     customizedCampaign,
     timelineBudgetData,
+    finalCampaignData,
     handleGenerateWithAI,
     handleEditCampaignIdea,
     handleApproveAndCustomize,
@@ -139,6 +176,7 @@ export const useCampaignWizard = () => {
     handleContinueFromCustomize,
     handleBackToCustomize,
     handleContinueFromTimelineBudget,
+    handleBackToTimelineBudget,
     handleNext,
     handleBack,
   };
