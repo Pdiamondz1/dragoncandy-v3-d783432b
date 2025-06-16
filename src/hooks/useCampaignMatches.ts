@@ -38,18 +38,20 @@ export const useCampaignMatches = (campaignId: string) => {
         .from('campaign_matches')
         .select(`
           *,
-          creator_profile:creator_profiles!creator_id (
-            id,
-            creator_name,
-            avatar_url,
-            bio,
-            skills,
-            location,
-            base_rate_per_hour,
-            portfolio_urls,
-            instagram_url,
-            tiktok_url,
-            youtube_url
+          creator_profile:profiles!creator_id (
+            creator_profiles!user_id (
+              id,
+              creator_name,
+              avatar_url,
+              bio,
+              skills,
+              location,
+              base_rate_per_hour,
+              portfolio_urls,
+              instagram_url,
+              tiktok_url,
+              youtube_url
+            )
           )
         `)
         .eq('campaign_id', campaignId)
@@ -60,8 +62,34 @@ export const useCampaignMatches = (campaignId: string) => {
         throw error;
       }
 
-      console.log('Fetched campaign matches:', data);
-      return data as CreatorMatch[];
+      console.log('Raw campaign matches data:', data);
+
+      // Transform the data to match our interface
+      const transformedData = data?.map((match: any) => ({
+        id: match.id,
+        campaign_id: match.campaign_id,
+        creator_id: match.creator_id,
+        match_score: match.match_score,
+        match_reasons: match.match_reasons as { reasons: string[]; concerns: string[]; } || { reasons: [], concerns: [] },
+        ai_analysis: match.ai_analysis || '',
+        created_at: match.created_at,
+        creator_profile: {
+          id: match.creator_profile?.creator_profiles?.id || '',
+          creator_name: match.creator_profile?.creator_profiles?.creator_name || '',
+          avatar_url: match.creator_profile?.creator_profiles?.avatar_url || null,
+          bio: match.creator_profile?.creator_profiles?.bio || null,
+          skills: match.creator_profile?.creator_profiles?.skills || [],
+          location: match.creator_profile?.creator_profiles?.location || null,
+          base_rate_per_hour: match.creator_profile?.creator_profiles?.base_rate_per_hour || null,
+          portfolio_urls: match.creator_profile?.creator_profiles?.portfolio_urls || null,
+          instagram_url: match.creator_profile?.creator_profiles?.instagram_url || null,
+          tiktok_url: match.creator_profile?.creator_profiles?.tiktok_url || null,
+          youtube_url: match.creator_profile?.creator_profiles?.youtube_url || null,
+        }
+      })) || [];
+
+      console.log('Transformed campaign matches:', transformedData);
+      return transformedData as CreatorMatch[];
     },
     enabled: !!campaignId,
   });
