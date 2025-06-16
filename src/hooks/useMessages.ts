@@ -1,5 +1,6 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
@@ -19,7 +20,9 @@ export interface Message {
 }
 
 export const useMessages = (campaignId: string) => {
-  return useQuery({
+  const queryClient = useQueryClient();
+
+  const query = useQuery({
     queryKey: ['messages', campaignId],
     queryFn: async () => {
       console.log('Fetching messages for campaign:', campaignId);
@@ -45,6 +48,50 @@ export const useMessages = (campaignId: string) => {
     },
     enabled: !!campaignId,
   });
+
+  // Set up real-time subscription
+  useEffect(() => {
+    if (!campaignId) return;
+
+    console.log('Setting up real-time subscription for campaign:', campaignId);
+
+    const channel = supabase
+      .channel(`messages-${campaignId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+          filter: `campaign_id=eq.${campaignId}`
+        },
+        (payload) => {
+          console.log('New message received:', payload);
+          queryClient.invalidateQueries({ queryKey: ['messages', campaignId] });
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'messages',
+          filter: `campaign_id=eq.${campaignId}`
+        },
+        (payload) => {
+          console.log('Message updated:', payload);
+          queryClient.invalidateQueries({ queryKey: ['messages', campaignId] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      console.log('Cleaning up real-time subscription');
+      supabase.removeChannel(channel);
+    };
+  }, [campaignId, queryClient]);
+
+  return query;
 };
 
 export const useSendMessage = () => {

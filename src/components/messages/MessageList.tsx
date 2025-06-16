@@ -2,21 +2,25 @@
 import React, { useEffect, useRef } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import MessageBubble from './MessageBubble';
+import TypingIndicator from './TypingIndicator';
 import { Message } from '@/hooks/useMessages';
+import { useTypingIndicator } from '@/hooks/useTypingIndicator';
 
 interface MessageListProps {
+  campaignId: string;
   messages: Message[];
   isLoading?: boolean;
 }
 
-const MessageList: React.FC<MessageListProps> = ({ messages, isLoading }) => {
+const MessageList: React.FC<MessageListProps> = ({ campaignId, messages, isLoading }) => {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { typingUsers } = useTypingIndicator(campaignId);
 
-  // Auto-scroll to bottom when new messages arrive
+  // Auto-scroll to bottom when new messages arrive or typing indicators change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [messages, typingUsers]);
 
   if (isLoading) {
     return (
@@ -26,7 +30,7 @@ const MessageList: React.FC<MessageListProps> = ({ messages, isLoading }) => {
     );
   }
 
-  if (messages.length === 0) {
+  if (messages.length === 0 && typingUsers.length === 0) {
     return (
       <div className="flex-1 flex items-center justify-center">
         <div className="text-center text-gray-500">
@@ -43,6 +47,15 @@ const MessageList: React.FC<MessageListProps> = ({ messages, isLoading }) => {
         {messages.map((message) => (
           <MessageBubble key={message.id} message={message} />
         ))}
+        
+        {/* Show typing indicators */}
+        {typingUsers.map((typingUser) => (
+          <TypingIndicator 
+            key={typingUser.user_id} 
+            userName={typingUser.user_name} 
+          />
+        ))}
+        
         <div ref={messagesEndRef} />
       </div>
     </ScrollArea>

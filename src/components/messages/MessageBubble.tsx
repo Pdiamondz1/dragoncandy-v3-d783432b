@@ -4,6 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { Message } from '@/hooks/useMessages';
 import { useAuth } from '@/hooks/useAuth';
+import { Check, CheckCheck } from 'lucide-react';
 
 interface MessageBubbleProps {
   message: Message;
@@ -20,6 +21,20 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
       hour: '2-digit', 
       minute: '2-digit' 
     });
+  };
+
+  const getStatusIcon = () => {
+    if (!isOwn) return null;
+    
+    if (message.read_at) {
+      return (
+        <CheckCheck className="h-3 w-3 text-blue-500" title="Read" />
+      );
+    } else {
+      return (
+        <Check className="h-3 w-3 text-gray-400" title="Delivered" />
+      );
+    }
   };
 
   return (
@@ -52,11 +67,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
           isOwn ? "flex-row-reverse" : "flex-row"
         )}>
           <span>{formatTime(message.created_at)}</span>
-          {isOwn && (
-            <span className="text-xs">
-              {message.read_at ? '✓✓' : '✓'}
-            </span>
-          )}
+          {getStatusIcon()}
         </div>
       </div>
     </div>

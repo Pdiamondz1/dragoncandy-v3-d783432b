@@ -52,9 +52,14 @@ const MessageThread: React.FC<MessageThreadProps> = ({
         </div>
       )}
       
-      <MessageList messages={messages} isLoading={isLoading} />
+      <MessageList 
+        campaignId={campaignId}
+        messages={messages} 
+        isLoading={isLoading} 
+      />
       
       <MessageInput 
+        campaignId={campaignId}
         onSendMessage={handleSendMessage}
         disabled={sendMessage.isPending}
         placeholder="Type your message..."
