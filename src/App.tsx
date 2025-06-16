@@ -16,6 +16,7 @@ import BusinessDashboard from "./pages/BusinessDashboard";
 import CreatorDashboard from "./pages/CreatorDashboard";
 import BusinessSettings from "./pages/BusinessSettings";
 import CreatorSettings from "./pages/CreatorSettings";
+import CampaignsPage from "./pages/CampaignsPage";
 
 const queryClient = new QueryClient();
 
@@ -52,6 +53,13 @@ const App = () => (
             <Route path="/dashboard/creator/settings" element={
               <ProtectedRoute>
                 <CreatorSettings />
+              </ProtectedRoute>
+            } />
+            
+            {/* Campaign Routes */}
+            <Route path="/dashboard/business/campaigns" element={
+              <ProtectedRoute>
+                <CampaignsPage />
               </ProtectedRoute>
             } />
             

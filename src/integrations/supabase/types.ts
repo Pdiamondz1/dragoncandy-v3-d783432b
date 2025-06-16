@@ -75,6 +75,180 @@ export type Database = {
         }
         Relationships: []
       }
+      campaign_applications: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          creator_id: string
+          id: string
+          intro_message: string | null
+          proposed_rate: number | null
+          proposed_timeline: string | null
+          status: Database["public"]["Enums"]["application_status"]
+          updated_at: string
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          creator_id: string
+          id?: string
+          intro_message?: string | null
+          proposed_rate?: number | null
+          proposed_timeline?: string | null
+          status?: Database["public"]["Enums"]["application_status"]
+          updated_at?: string
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          creator_id?: string
+          id?: string
+          intro_message?: string | null
+          proposed_rate?: number | null
+          proposed_timeline?: string | null
+          status?: Database["public"]["Enums"]["application_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_applications_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_applications_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      campaign_collaborations: {
+        Row: {
+          application_id: string | null
+          campaign_id: string
+          contract_details: Json | null
+          created_at: string
+          creator_id: string
+          deliverables_status: Json | null
+          id: string
+          milestones: Json | null
+          status: Database["public"]["Enums"]["collaboration_status"]
+          updated_at: string
+        }
+        Insert: {
+          application_id?: string | null
+          campaign_id: string
+          contract_details?: Json | null
+          created_at?: string
+          creator_id: string
+          deliverables_status?: Json | null
+          id?: string
+          milestones?: Json | null
+          status?: Database["public"]["Enums"]["collaboration_status"]
+          updated_at?: string
+        }
+        Update: {
+          application_id?: string | null
+          campaign_id?: string
+          contract_details?: Json | null
+          created_at?: string
+          creator_id?: string
+          deliverables_status?: Json | null
+          id?: string
+          milestones?: Json | null
+          status?: Database["public"]["Enums"]["collaboration_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_collaborations_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_applications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_collaborations_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_collaborations_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      campaigns: {
+        Row: {
+          budget_max: number | null
+          budget_min: number | null
+          created_at: string
+          deadline: string | null
+          deliverables: string[] | null
+          description: string | null
+          goals: string | null
+          id: string
+          platforms: string[] | null
+          status: Database["public"]["Enums"]["campaign_status"]
+          style: string | null
+          title: string
+          tone: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          budget_max?: number | null
+          budget_min?: number | null
+          created_at?: string
+          deadline?: string | null
+          deliverables?: string[] | null
+          description?: string | null
+          goals?: string | null
+          id?: string
+          platforms?: string[] | null
+          status?: Database["public"]["Enums"]["campaign_status"]
+          style?: string | null
+          title: string
+          tone?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          budget_max?: number | null
+          budget_min?: number | null
+          created_at?: string
+          deadline?: string | null
+          deliverables?: string[] | null
+          description?: string | null
+          goals?: string | null
+          id?: string
+          platforms?: string[] | null
+          status?: Database["public"]["Enums"]["campaign_status"]
+          style?: string | null
+          title?: string
+          tone?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaigns_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       creator_profiles: {
         Row: {
           availability: string | null
@@ -147,6 +321,58 @@ export type Database = {
         }
         Relationships: []
       }
+      messages: {
+        Row: {
+          campaign_id: string
+          content: string
+          created_at: string
+          id: string
+          read_at: string | null
+          recipient_id: string
+          sender_id: string
+        }
+        Insert: {
+          campaign_id: string
+          content: string
+          created_at?: string
+          id?: string
+          read_at?: string | null
+          recipient_id: string
+          sender_id: string
+        }
+        Update: {
+          campaign_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          read_at?: string | null
+          recipient_id?: string
+          sender_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -185,6 +411,14 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
+      application_status: "pending" | "accepted" | "rejected"
+      campaign_status:
+        | "draft"
+        | "published"
+        | "active"
+        | "completed"
+        | "cancelled"
+      collaboration_status: "active" | "completed" | "cancelled"
       creator_skill:
         | "video_editing"
         | "ugc_creation"
@@ -329,6 +563,15 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      application_status: ["pending", "accepted", "rejected"],
+      campaign_status: [
+        "draft",
+        "published",
+        "active",
+        "completed",
+        "cancelled",
+      ],
+      collaboration_status: ["active", "completed", "cancelled"],
       creator_skill: [
         "video_editing",
         "ugc_creation",
