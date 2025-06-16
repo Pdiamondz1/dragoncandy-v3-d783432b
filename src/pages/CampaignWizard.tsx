@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '@/components/DashboardLayout';
@@ -12,6 +11,7 @@ import CampaignCustomizeForm from '@/components/campaigns/CampaignCustomizeForm'
 import CampaignWizardHeader from '@/components/campaigns/CampaignWizardHeader';
 import CampaignGoalStep from '@/components/campaigns/CampaignGoalStep';
 import CampaignWizardSidebar from '@/components/campaigns/CampaignWizardSidebar';
+import CampaignTimelineBudgetStep from '@/components/campaigns/CampaignTimelineBudgetStep';
 
 interface CampaignAnalysis {
   title: string;
@@ -26,6 +26,13 @@ interface CampaignAnalysis {
   budgetRecommendation: string;
 }
 
+interface TimelineBudgetData {
+  goals: string;
+  deadline: Date;
+  budgetMin: number;
+  budgetMax: number;
+}
+
 const CampaignWizard: React.FC = () => {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
@@ -33,6 +40,7 @@ const CampaignWizard: React.FC = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [campaignAnalysis, setCampaignAnalysis] = useState<CampaignAnalysis | null>(null);
   const [customizedCampaign, setCustomizedCampaign] = useState<CampaignAnalysis | null>(null);
+  const [timelineBudgetData, setTimelineBudgetData] = useState<TimelineBudgetData | null>(null);
 
   const steps = [
     { number: 1, title: 'Campaign Goal', active: true },
@@ -106,6 +114,19 @@ const CampaignWizard: React.FC = () => {
     });
   };
 
+  const handleBackToCustomize = () => {
+    setCurrentStep(3);
+  };
+
+  const handleContinueFromTimelineBudget = (data: TimelineBudgetData) => {
+    setTimelineBudgetData(data);
+    setCurrentStep(5);
+    toast({
+      title: 'Timeline and budget set!',
+      description: 'Ready to finalize your campaign.',
+    });
+  };
+
   const handleNext = () => {
     if (currentStep < 5) {
       setCurrentStep(currentStep + 1);
@@ -176,24 +197,18 @@ const CampaignWizard: React.FC = () => {
             />
           )}
 
-          {/* Step 4: Timeline & Budget (Placeholder) */}
-          {currentStep === 4 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <div className="w-8 h-8 bg-gray-900 rounded-full flex items-center justify-center text-white text-sm font-semibold">
-                    4
-                  </div>
-                  Step 4: Timeline & Budget
-                </CardTitle>
-                <p className="text-gray-600 text-sm">
-                  Coming soon - Set your campaign timeline and budget details
-                </p>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-600">Timeline and budget configuration will be implemented in the next step.</p>
-              </CardContent>
-            </Card>
+          {/* Step 4: Timeline & Budget */}
+          {currentStep === 4 && customizedCampaign && (
+            <CampaignTimelineBudgetStep
+              initialData={{
+                goals: customizedCampaign.goals,
+                deadline: undefined,
+                budget_min: undefined,
+                budget_max: undefined,
+              }}
+              onContinue={handleContinueFromTimelineBudget}
+              onBackToCustomize={handleBackToCustomize}
+            />
           )}
 
           {/* Step 5: Finalize (Placeholder) */}
@@ -222,9 +237,9 @@ const CampaignWizard: React.FC = () => {
               {currentStep === 1 ? 'Back to Campaigns' : 'Previous Step'}
             </Button>
             
-            {currentStep > 2 && currentStep < 5 && (
+            {currentStep === 5 && (
               <Button onClick={handleNext} disabled={currentStep >= 5}>
-                {currentStep === 5 ? 'Create Campaign' : 'Next Step'}
+                Create Campaign
               </Button>
             )}
           </div>
