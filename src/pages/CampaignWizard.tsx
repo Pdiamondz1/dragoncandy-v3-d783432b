@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '@/components/DashboardLayout';
@@ -6,13 +5,30 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Lightbulb, Sparkles, Users, Clock, DollarSign, Target } from 'lucide-react';
+import { Lightbulb, Sparkles, Users, Clock, DollarSign, Target, Brain } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
+import CampaignAnalysisDisplay from '@/components/campaigns/CampaignAnalysisDisplay';
+
+interface CampaignAnalysis {
+  title: string;
+  description: string;
+  goals: string;
+  targetAudience: string;
+  platforms: string[];
+  timeline: string;
+  style: string;
+  tone: string;
+  deliverables: string[];
+  budgetRecommendation: string;
+}
 
 const CampaignWizard: React.FC = () => {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
   const [campaignGoal, setCampaignGoal] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [campaignAnalysis, setCampaignAnalysis] = useState<CampaignAnalysis | null>(null);
 
   const steps = [
     { number: 1, title: 'Campaign Goal', active: true },
@@ -66,13 +82,54 @@ const CampaignWizard: React.FC = () => {
   ];
 
   const handleGenerateWithAI = async () => {
+    if (!campaignGoal.trim()) {
+      toast({
+        title: 'Campaign goal required',
+        description: 'Please describe your campaign goal before generating analysis.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setIsGenerating(true);
-    // TODO: Implement AI generation with OpenAI
-    setTimeout(() => {
-      setIsGenerating(false);
-      // Move to next step after AI generation
+    
+    try {
+      console.log('Calling generate-campaign-analysis function...');
+      const { data, error } = await supabase.functions.invoke('generate-campaign-analysis', {
+        body: { campaignGoal: campaignGoal.trim() }
+      });
+
+      if (error) {
+        console.error('Supabase function error:', error);
+        throw error;
+      }
+
+      console.log('Campaign analysis result:', data);
+      setCampaignAnalysis(data);
       setCurrentStep(2);
-    }, 2000);
+      
+      toast({
+        title: 'Campaign analysis complete!',
+        description: 'DragonCandy AI has analyzed your campaign goal.',
+      });
+    } catch (error) {
+      console.error('Error generating campaign analysis:', error);
+      toast({
+        title: 'Analysis failed',
+        description: 'Unable to generate campaign analysis. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleEditCampaignIdea = () => {
+    setCurrentStep(1);
+  };
+
+  const handleApproveAndCustomize = () => {
+    setCurrentStep(3);
   };
 
   const handleNext = () => {
@@ -223,13 +280,39 @@ const CampaignWizard: React.FC = () => {
             </div>
           )}
 
+          {/* Step 2: AI Analysis Results */}
+          {currentStep === 2 && campaignAnalysis && (
+            <div>
+              <Card className="mb-6">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <div className="w-8 h-8 bg-gray-900 rounded-full flex items-center justify-center text-white text-sm font-semibold">
+                      2
+                    </div>
+                    Step 2: AI Campaign Analysis
+                    <Brain className="h-5 w-5 text-blue-500 ml-2" />
+                  </CardTitle>
+                  <p className="text-gray-600 text-sm">
+                    DragonCandy AI has analyzed your campaign goal and generated a comprehensive strategy
+                  </p>
+                </CardHeader>
+              </Card>
+              
+              <CampaignAnalysisDisplay
+                analysis={campaignAnalysis}
+                onEditCampaignIdea={handleEditCampaignIdea}
+                onApproveAndCustomize={handleApproveAndCustomize}
+              />
+            </div>
+          )}
+
           {/* Navigation */}
           <div className="flex justify-between mt-8">
             <Button variant="outline" onClick={handleBack}>
               {currentStep === 1 ? 'Back to Campaigns' : 'Previous Step'}
             </Button>
             
-            {currentStep > 1 && (
+            {currentStep > 2 && (
               <Button onClick={handleNext} disabled={currentStep >= 5}>
                 {currentStep === 5 ? 'Create Campaign' : 'Next Step'}
               </Button>
