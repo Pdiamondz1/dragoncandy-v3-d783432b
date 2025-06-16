@@ -9,6 +9,7 @@ import { useCampaign } from '@/hooks/useCampaigns';
 import { Skeleton } from '@/components/ui/skeleton';
 import CampaignDetailsOverview from '@/components/campaigns/CampaignDetailsOverview';
 import CreatorMatchingSection from '@/components/campaigns/CreatorMatchingSection';
+import MessageThread from '@/components/messages/MessageThread';
 
 const CampaignDetailsPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -144,15 +145,17 @@ const CampaignDetailsPage: React.FC = () => {
             <TabsContent value="messages" className="space-y-6">
               <Card>
                 <CardHeader>
-                  <CardTitle>Messages</CardTitle>
+                  <CardTitle>Campaign Messages</CardTitle>
                   <p className="text-sm text-gray-600">
                     Communicate with creators about this campaign
                   </p>
                 </CardHeader>
-                <CardContent>
-                  <div className="text-center py-8 text-gray-500">
-                    Messaging feature coming soon...
-                  </div>
+                <CardContent className="p-0">
+                  <MessageThread 
+                    campaignId={campaign.id}
+                    recipientId="creator-placeholder" // This would be determined by actual collaborators
+                    campaignTitle={campaign.title}
+                  />
                 </CardContent>
               </Card>
             </TabsContent>

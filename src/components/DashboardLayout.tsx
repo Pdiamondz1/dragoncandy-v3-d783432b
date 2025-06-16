@@ -30,7 +30,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, userRole })
     { icon: Megaphone, label: 'Campaigns', path: '/dashboard/business/campaigns' },
     { icon: Store, label: 'Marketplace', path: '/dashboard/business/marketplace' },
     { icon: Image, label: 'Media', path: '/dashboard/business/media' },
-    { icon: MessageSquare, label: 'Messages', path: '/dashboard/business/messages' },
+    { icon: MessageSquare, label: 'Messages', path: '/messages' },
     { icon: Settings, label: 'Settings', path: '/dashboard/business/settings' },
   ];
 
@@ -39,7 +39,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, userRole })
     { icon: Store, label: 'Marketplace', path: '/dashboard/creator/marketplace' },
     { icon: Megaphone, label: 'My Projects', path: '/dashboard/creator/projects' },
     { icon: Image, label: 'Portfolio', path: '/dashboard/creator/portfolio' },
-    { icon: MessageSquare, label: 'Messages', path: '/dashboard/creator/messages' },
+    { icon: MessageSquare, label: 'Messages', path: '/messages' },
     { icon: Settings, label: 'Settings', path: '/dashboard/creator/settings' },
   ];
 
