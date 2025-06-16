@@ -28,7 +28,7 @@ const CampaignEditPage: React.FC = () => {
     budget_min: '',
     budget_max: '',
     deadline: '',
-    status: 'draft' as const,
+    status: 'draft' as 'draft' | 'published' | 'active' | 'completed' | 'cancelled',
     style: '',
     tone: '',
   });
