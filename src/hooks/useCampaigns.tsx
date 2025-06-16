@@ -1,9 +1,9 @@
-
 import { useCampaignsList, useCampaignById } from './useCampaignQueries';
 import { useCreateCampaign, useUpdateCampaign, useDeleteCampaign } from './useCampaignMutations';
 
 // Re-export types for backward compatibility
-export type { Campaign, CreateCampaignData } from './useCampaignQueries';
+export type { Campaign } from './useCampaignQueries';
+export type { CreateCampaignData } from './useCampaignMutations';
 
 export const useCampaigns = () => {
   const { data: campaigns, isLoading, error } = useCampaignsList();
