@@ -187,6 +187,106 @@ export type Database = {
           },
         ]
       }
+      campaign_invitations: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          creator_id: string
+          id: string
+          invitation_message: string | null
+          invited_by: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          creator_id: string
+          id?: string
+          invitation_message?: string | null
+          invited_by: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          creator_id?: string
+          id?: string
+          invitation_message?: string | null
+          invited_by?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_invitations_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_invitations_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_invitations_invited_by_fkey"
+            columns: ["invited_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      campaign_matches: {
+        Row: {
+          ai_analysis: string | null
+          campaign_id: string
+          created_at: string
+          creator_id: string
+          id: string
+          match_reasons: Json | null
+          match_score: number
+        }
+        Insert: {
+          ai_analysis?: string | null
+          campaign_id: string
+          created_at?: string
+          creator_id: string
+          id?: string
+          match_reasons?: Json | null
+          match_score: number
+        }
+        Update: {
+          ai_analysis?: string | null
+          campaign_id?: string
+          created_at?: string
+          creator_id?: string
+          id?: string
+          match_reasons?: Json | null
+          match_score?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_matches_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_matches_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       campaigns: {
         Row: {
           budget_max: number | null
@@ -408,7 +508,32 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_available_creators: {
+        Args: {
+          campaign_platforms?: string[]
+          required_skills?: Database["public"]["Enums"]["creator_skill"][]
+        }
+        Returns: {
+          id: string
+          user_id: string
+          creator_name: string
+          avatar_url: string
+          bio: string
+          skills: Database["public"]["Enums"]["creator_skill"][]
+          portfolio_urls: string[]
+          location: string
+          availability: string
+          base_rate_per_hour: number
+          instagram_url: string
+          tiktok_url: string
+          youtube_url: string
+          facebook_url: string
+          linkedin_url: string
+          x_url: string
+          other_social_url: string
+          website_url: string
+        }[]
+      }
     }
     Enums: {
       application_status: "pending" | "accepted" | "rejected"

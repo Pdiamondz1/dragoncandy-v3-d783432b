@@ -1,13 +1,14 @@
-
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import DashboardLayout from '@/components/DashboardLayout';
-import { useCampaign } from '@/hooks/useCampaigns';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Edit, Calendar, DollarSign, Users, Target, FileText, Palette, MessageSquare } from 'lucide-react';
-import { format } from 'date-fns';
+import { ArrowLeft, Edit2, Eye, MessageSquare, Users, Brain } from 'lucide-react';
+import { useCampaign } from '@/hooks/useCampaigns';
+import { Skeleton } from '@/components/ui/skeleton';
+import CampaignDetailsOverview from '@/components/campaigns/CampaignDetailsOverview';
+import CreatorMatchingSection from '@/components/campaigns/CreatorMatchingSection';
 
 const CampaignDetailsPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -18,11 +19,14 @@ const CampaignDetailsPage: React.FC = () => {
     return (
       <DashboardLayout userRole="business_client">
         <div className="flex-1 p-6">
-          <div className="max-w-4xl mx-auto">
-            <div className="animate-pulse space-y-6">
-              <div className="h-8 bg-gray-200 rounded w-1/3"></div>
-              <div className="h-64 bg-gray-200 rounded"></div>
-              <div className="h-32 bg-gray-200 rounded"></div>
+          <div className="max-w-7xl mx-auto space-y-6">
+            <div className="flex items-center gap-4">
+              <Skeleton className="h-10 w-10" />
+              <Skeleton className="h-8 w-64" />
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Skeleton className="h-64" />
+              <Skeleton className="h-64" />
             </div>
           </div>
         </div>
@@ -34,223 +38,125 @@ const CampaignDetailsPage: React.FC = () => {
     return (
       <DashboardLayout userRole="business_client">
         <div className="flex-1 p-6">
-          <div className="max-w-4xl mx-auto">
-            <div className="text-center py-12">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">Campaign Not Found</h2>
-              <p className="text-gray-600 mb-6">The campaign you're looking for doesn't exist or has been deleted.</p>
-              <Button onClick={() => navigate('/dashboard/business/campaigns')}>
-                Back to Campaigns
-              </Button>
-            </div>
+          <div className="max-w-7xl mx-auto">
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  Campaign not found
+                </h3>
+                <p className="text-gray-600 mb-4">
+                  The campaign you're looking for doesn't exist or you don't have access to it.
+                </p>
+                <Button onClick={() => navigate('/dashboard/business/campaigns')}>
+                  Back to Campaigns
+                </Button>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </DashboardLayout>
     );
   }
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'draft': return 'bg-gray-100 text-gray-800';
-      case 'published': return 'bg-blue-100 text-blue-800';
-      case 'active': return 'bg-green-100 text-green-800';
-      case 'completed': return 'bg-purple-100 text-purple-800';
-      case 'cancelled': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const formatBudget = () => {
-    if (campaign.budget_min && campaign.budget_max) {
-      return `$${campaign.budget_min} - $${campaign.budget_max}`;
-    }
-    if (campaign.budget_min) {
-      return `From $${campaign.budget_min}`;
-    }
-    if (campaign.budget_max) {
-      return `Up to $${campaign.budget_max}`;
-    }
-    return 'Budget TBD';
-  };
-
   return (
     <DashboardLayout userRole="business_client">
       <div className="flex-1 p-6">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-7xl mx-auto space-y-6">
           {/* Header */}
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <Button
-                variant="ghost"
+              <Button 
+                variant="ghost" 
                 size="sm"
                 onClick={() => navigate('/dashboard/business/campaigns')}
-                className="flex items-center gap-2"
               >
-                <ArrowLeft className="h-4 w-4" />
+                <ArrowLeft className="h-4 w-4 mr-2" />
                 Back to Campaigns
               </Button>
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">{campaign.title}</h1>
-                <div className="flex items-center gap-2 mt-2">
-                  <Badge className={getStatusColor(campaign.status)}>
-                    {campaign.status.charAt(0).toUpperCase() + campaign.status.slice(1)}
-                  </Badge>
-                  <span className="text-gray-500 text-sm">
-                    Created {format(new Date(campaign.created_at), 'MMM dd, yyyy')}
-                  </span>
-                </div>
+                <h1 className="text-2xl font-bold text-gray-900">{campaign.title}</h1>
+                <p className="text-gray-600">Campaign Details & Creator Matching</p>
               </div>
             </div>
-            <Button
-              onClick={() => navigate(`/dashboard/business/campaigns/${campaign.id}/edit`)}
-              className="flex items-center gap-2"
-            >
-              <Edit className="h-4 w-4" />
-              Edit Campaign
-            </Button>
+            
+            <div className="flex gap-2">
+              <Button 
+                variant="outline"
+                onClick={() => navigate(`/dashboard/business/campaigns/${id}/edit`)}
+              >
+                <Edit2 className="h-4 w-4 mr-2" />
+                Edit Campaign
+              </Button>
+              {campaign.status === 'published' && (
+                <Button>
+                  <Eye className="h-4 w-4 mr-2" />
+                  View Public
+                </Button>
+              )}
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Main Content */}
-            <div className="lg:col-span-2 space-y-6">
-              {/* Campaign Overview */}
+          {/* Main Content */}
+          <Tabs defaultValue="overview" className="space-y-6">
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="overview" className="flex items-center gap-2">
+                <Eye className="h-4 w-4" />
+                Overview
+              </TabsTrigger>
+              <TabsTrigger value="creators" className="flex items-center gap-2">
+                <Brain className="h-4 w-4" />
+                AI Matching
+              </TabsTrigger>
+              <TabsTrigger value="applications" className="flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                Applications
+              </TabsTrigger>
+              <TabsTrigger value="messages" className="flex items-center gap-2">
+                <MessageSquare className="h-4 w-4" />
+                Messages
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="overview" className="space-y-6">
+              <CampaignDetailsOverview campaign={campaign} />
+            </TabsContent>
+
+            <TabsContent value="creators" className="space-y-6">
+              <CreatorMatchingSection campaignId={campaign.id} />
+            </TabsContent>
+
+            <TabsContent value="applications" className="space-y-6">
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <FileText className="h-5 w-5" />
-                    Campaign Overview
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {campaign.description && (
-                    <div>
-                      <h4 className="font-medium mb-2">Description</h4>
-                      <p className="text-gray-600">{campaign.description}</p>
-                    </div>
-                  )}
-                  
-                  {campaign.goals && (
-                    <div>
-                      <h4 className="font-medium mb-2 flex items-center gap-2">
-                        <Target className="h-4 w-4" />
-                        Goals
-                      </h4>
-                      <p className="text-gray-600">{campaign.goals}</p>
-                    </div>
-                  )}
-
-                  {campaign.style && (
-                    <div>
-                      <h4 className="font-medium mb-2 flex items-center gap-2">
-                        <Palette className="h-4 w-4" />
-                        Style & Tone
-                      </h4>
-                      <div className="flex gap-2">
-                        <Badge variant="outline">{campaign.style}</Badge>
-                        {campaign.tone && <Badge variant="outline">{campaign.tone}</Badge>}
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Deliverables */}
-              {campaign.deliverables && campaign.deliverables.length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Deliverables ({campaign.deliverables.length})</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                      {campaign.deliverables.map((deliverable, index) => (
-                        <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded">
-                          <FileText className="h-4 w-4 text-gray-500" />
-                          <span className="text-sm">{deliverable}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Applications & Collaborations */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <MessageSquare className="h-5 w-5" />
-                    Applications & Collaborations
-                  </CardTitle>
+                  <CardTitle>Creator Applications</CardTitle>
+                  <p className="text-sm text-gray-600">
+                    View and manage applications from creators interested in your campaign
+                  </p>
                 </CardHeader>
                 <CardContent>
                   <div className="text-center py-8 text-gray-500">
-                    <MessageSquare className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                    <p>No applications received yet</p>
-                    <p className="text-sm">Applications will appear here when creators apply to your campaign</p>
+                    Applications feature coming soon...
                   </div>
                 </CardContent>
               </Card>
-            </div>
+            </TabsContent>
 
-            {/* Sidebar */}
-            <div className="space-y-6">
-              {/* Campaign Details */}
+            <TabsContent value="messages" className="space-y-6">
               <Card>
                 <CardHeader>
-                  <CardTitle>Campaign Details</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-center gap-2">
-                    <DollarSign className="h-4 w-4 text-gray-500" />
-                    <div>
-                      <p className="text-sm text-gray-600">Budget</p>
-                      <p className="font-medium">{formatBudget()}</p>
-                    </div>
-                  </div>
-
-                  {campaign.deadline && (
-                    <div className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4 text-gray-500" />
-                      <div>
-                        <p className="text-sm text-gray-600">Deadline</p>
-                        <p className="font-medium">{format(new Date(campaign.deadline), 'MMM dd, yyyy')}</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {campaign.platforms && campaign.platforms.length > 0 && (
-                    <div className="flex items-start gap-2">
-                      <Users className="h-4 w-4 text-gray-500 mt-1" />
-                      <div>
-                        <p className="text-sm text-gray-600 mb-2">Platforms</p>
-                        <div className="flex flex-wrap gap-1">
-                          {campaign.platforms.map((platform) => (
-                            <Badge key={platform} variant="secondary" className="text-xs">
-                              {platform}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Media & Assets */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Media & Assets</CardTitle>
+                  <CardTitle>Messages</CardTitle>
+                  <p className="text-sm text-gray-600">
+                    Communicate with creators about this campaign
+                  </p>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-center py-6 text-gray-500">
-                    <FileText className="h-8 w-8 mx-auto mb-2 text-gray-300" />
-                    <p className="text-sm">No media uploaded yet</p>
-                    <Button variant="outline" size="sm" className="mt-2">
-                      Upload Files
-                    </Button>
+                  <div className="text-center py-8 text-gray-500">
+                    Messaging feature coming soon...
                   </div>
                 </CardContent>
               </Card>
-            </div>
-          </div>
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
     </DashboardLayout>
