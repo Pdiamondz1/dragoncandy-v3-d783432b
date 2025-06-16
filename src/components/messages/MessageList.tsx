@@ -1,7 +1,7 @@
 
 import React, { useEffect, useRef } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import MessageBubble from './MessageBubble';
+import MessageBubbleEnhanced from './MessageBubbleEnhanced';
 import TypingIndicator from './TypingIndicator';
 import { Message } from '@/hooks/useMessages';
 import { useTypingIndicator } from '@/hooks/useTypingIndicator';
@@ -10,9 +10,15 @@ interface MessageListProps {
   campaignId: string;
   messages: Message[];
   isLoading?: boolean;
+  onReply?: (message: Message) => void;
 }
 
-const MessageList: React.FC<MessageListProps> = ({ campaignId, messages, isLoading }) => {
+const MessageList: React.FC<MessageListProps> = ({ 
+  campaignId, 
+  messages, 
+  isLoading,
+  onReply 
+}) => {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { typingUsers } = useTypingIndicator(campaignId);
@@ -45,7 +51,11 @@ const MessageList: React.FC<MessageListProps> = ({ campaignId, messages, isLoadi
     <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
       <div className="space-y-1">
         {messages.map((message) => (
-          <MessageBubble key={message.id} message={message} />
+          <MessageBubbleEnhanced 
+            key={message.id} 
+            message={message} 
+            onReply={onReply}
+          />
         ))}
         
         {/* Show typing indicators */}

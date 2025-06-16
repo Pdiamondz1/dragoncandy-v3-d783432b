@@ -2,7 +2,9 @@
 import React from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { useUnreadMessageCounts } from '@/hooks/useMessages';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { 
   Sparkles, 
@@ -24,13 +26,17 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, userRole })
   const { signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const { data: unreadCounts = [] } = useUnreadMessageCounts();
+
+  // Calculate total unread messages
+  const totalUnread = unreadCounts.reduce((total, count) => total + Number(count.unread_count), 0);
 
   const businessMenuItems = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard/business' },
     { icon: Megaphone, label: 'Campaigns', path: '/dashboard/business/campaigns' },
     { icon: Store, label: 'Marketplace', path: '/dashboard/business/marketplace' },
     { icon: Image, label: 'Media', path: '/dashboard/business/media' },
-    { icon: MessageSquare, label: 'Messages', path: '/messages' },
+    { icon: MessageSquare, label: 'Messages', path: '/messages', badge: totalUnread },
     { icon: Settings, label: 'Settings', path: '/dashboard/business/settings' },
   ];
 
@@ -39,7 +45,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, userRole })
     { icon: Store, label: 'Marketplace', path: '/dashboard/creator/marketplace' },
     { icon: Megaphone, label: 'My Projects', path: '/dashboard/creator/projects' },
     { icon: Image, label: 'Portfolio', path: '/dashboard/creator/portfolio' },
-    { icon: MessageSquare, label: 'Messages', path: '/messages' },
+    { icon: MessageSquare, label: 'Messages', path: '/messages', badge: totalUnread },
     { icon: Settings, label: 'Settings', path: '/dashboard/creator/settings' },
   ];
 
@@ -77,14 +83,19 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, userRole })
                 <li key={item.path}>
                   <Link
                     to={item.path}
-                    className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors relative ${
                       isActive
                         ? 'bg-blue-50 text-blue-700 border border-blue-200'
                         : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
                     }`}
                   >
                     <Icon className="h-5 w-5" />
-                    {item.label}
+                    <span className="flex-1">{item.label}</span>
+                    {item.badge && item.badge > 0 && (
+                      <Badge variant="default" className="h-5 min-w-[20px] px-1.5 text-xs">
+                        {item.badge > 99 ? '99+' : item.badge}
+                      </Badge>
+                    )}
                   </Link>
                 </li>
               );

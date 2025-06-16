@@ -423,31 +423,46 @@ export type Database = {
       }
       messages: {
         Row: {
+          attachment_name: string | null
+          attachment_size: number | null
+          attachment_url: string | null
           campaign_id: string
           content: string
           created_at: string
           id: string
+          parent_message_id: string | null
           read_at: string | null
           recipient_id: string
           sender_id: string
+          thread_id: string | null
         }
         Insert: {
+          attachment_name?: string | null
+          attachment_size?: number | null
+          attachment_url?: string | null
           campaign_id: string
           content: string
           created_at?: string
           id?: string
+          parent_message_id?: string | null
           read_at?: string | null
           recipient_id: string
           sender_id: string
+          thread_id?: string | null
         }
         Update: {
+          attachment_name?: string | null
+          attachment_size?: number | null
+          attachment_url?: string | null
           campaign_id?: string
           content?: string
           created_at?: string
           id?: string
+          parent_message_id?: string | null
           read_at?: string | null
           recipient_id?: string
           sender_id?: string
+          thread_id?: string | null
         }
         Relationships: [
           {
@@ -455,6 +470,13 @@ export type Database = {
             columns: ["campaign_id"]
             isOneToOne: false
             referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_parent_message_id_fkey"
+            columns: ["parent_message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
             referencedColumns: ["id"]
           },
           {
@@ -532,6 +554,13 @@ export type Database = {
           x_url: string
           other_social_url: string
           website_url: string
+        }[]
+      }
+      get_unread_message_counts: {
+        Args: { user_uuid: string }
+        Returns: {
+          campaign_id: string
+          unread_count: number
         }[]
       }
     }

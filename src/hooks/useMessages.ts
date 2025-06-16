@@ -13,6 +13,11 @@ export interface Message {
   content: string;
   created_at: string;
   read_at: string | null;
+  attachment_url: string | null;
+  attachment_name: string | null;
+  attachment_size: number | null;
+  parent_message_id: string | null;
+  thread_id: string | null;
   sender_profile?: {
     full_name: string | null;
     avatar_url: string | null;
@@ -68,6 +73,7 @@ export const useMessages = (campaignId: string) => {
         (payload) => {
           console.log('New message received:', payload);
           queryClient.invalidateQueries({ queryKey: ['messages', campaignId] });
+          queryClient.invalidateQueries({ queryKey: ['unread-counts'] });
         }
       )
       .on(
@@ -81,6 +87,7 @@ export const useMessages = (campaignId: string) => {
         (payload) => {
           console.log('Message updated:', payload);
           queryClient.invalidateQueries({ queryKey: ['messages', campaignId] });
+          queryClient.invalidateQueries({ queryKey: ['unread-counts'] });
         }
       )
       .subscribe();
@@ -102,11 +109,21 @@ export const useSendMessage = () => {
     mutationFn: async ({ 
       campaignId, 
       recipientId, 
-      content 
+      content,
+      attachmentUrl,
+      attachmentName,
+      attachmentSize,
+      parentMessageId,
+      threadId
     }: { 
       campaignId: string; 
       recipientId: string; 
-      content: string; 
+      content: string;
+      attachmentUrl?: string;
+      attachmentName?: string;
+      attachmentSize?: number;
+      parentMessageId?: string;
+      threadId?: string;
     }) => {
       console.log('Sending message:', { campaignId, recipientId, content });
       
@@ -117,6 +134,11 @@ export const useSendMessage = () => {
           sender_id: user!.id,
           recipient_id: recipientId,
           content: content.trim(),
+          attachment_url: attachmentUrl,
+          attachment_name: attachmentName,
+          attachment_size: attachmentSize,
+          parent_message_id: parentMessageId,
+          thread_id: threadId,
         })
         .select()
         .single();
@@ -131,6 +153,7 @@ export const useSendMessage = () => {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['messages', data.campaign_id] });
+      queryClient.invalidateQueries({ queryKey: ['unread-counts'] });
     },
     onError: (error) => {
       console.error('Failed to send message:', error);
@@ -170,7 +193,61 @@ export const useMarkMessageAsRead = () => {
     onSuccess: (data) => {
       if (data) {
         queryClient.invalidateQueries({ queryKey: ['messages', data.campaign_id] });
+        queryClient.invalidateQueries({ queryKey: ['unread-counts'] });
       }
     },
+  });
+};
+
+export const useUnreadMessageCounts = () => {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ['unread-counts'],
+    queryFn: async () => {
+      if (!user) return [];
+      
+      const { data, error } = await supabase.rpc('get_unread_message_counts', {
+        user_uuid: user.id
+      });
+
+      if (error) {
+        console.error('Error fetching unread counts:', error);
+        throw error;
+      }
+
+      return data || [];
+    },
+    enabled: !!user,
+  });
+};
+
+export const useSearchMessages = (campaignId: string, searchQuery: string) => {
+  return useQuery({
+    queryKey: ['messages-search', campaignId, searchQuery],
+    queryFn: async () => {
+      if (!searchQuery.trim()) return [];
+      
+      const { data, error } = await supabase
+        .from('messages')
+        .select(`
+          *,
+          sender_profile:profiles!sender_id (
+            full_name,
+            avatar_url
+          )
+        `)
+        .eq('campaign_id', campaignId)
+        .textSearch('content', searchQuery)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error searching messages:', error);
+        throw error;
+      }
+
+      return data as Message[];
+    },
+    enabled: !!campaignId && !!searchQuery.trim(),
   });
 };
