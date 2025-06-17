@@ -44,43 +44,55 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const fetchProfile = async (userId: string) => {
     try {
-      // First get the basic profile
+      console.log('Fetching profile for user:', userId);
+      
+      // Get the basic profile first
       const { data: basicProfile, error: profileError } = await supabase
         .from('profiles')
-        .select('*')
+        .select('id, email, role, full_name, avatar_url')
         .eq('id', userId)
         .single();
 
       if (profileError) {
-        console.error('Error fetching profile:', profileError);
+        console.error('Error fetching basic profile:', profileError);
         return null;
       }
 
-      let extendedProfile = { ...basicProfile };
+      console.log('Basic profile:', basicProfile);
 
-      // Then get role-specific profile data
+      // Start with the basic profile
+      let extendedProfile: Profile = {
+        id: basicProfile.id,
+        email: basicProfile.email,
+        role: basicProfile.role,
+        full_name: basicProfile.full_name,
+        avatar_url: basicProfile.avatar_url,
+      };
+
+      // Fetch role-specific data
       if (basicProfile.role === 'business_client') {
-        const { data: businessProfile } = await supabase
+        const { data: businessProfile, error: businessError } = await supabase
           .from('business_profiles')
           .select('business_name')
           .eq('user_id', userId)
           .single();
         
-        if (businessProfile) {
+        if (!businessError && businessProfile) {
           extendedProfile.business_name = businessProfile.business_name;
         }
       } else if (basicProfile.role === 'content_creator') {
-        const { data: creatorProfile } = await supabase
+        const { data: creatorProfile, error: creatorError } = await supabase
           .from('creator_profiles')
           .select('creator_name')
           .eq('user_id', userId)
           .single();
         
-        if (creatorProfile) {
+        if (!creatorError && creatorProfile) {
           extendedProfile.creator_name = creatorProfile.creator_name;
         }
       }
 
+      console.log('Extended profile:', extendedProfile);
       return extendedProfile;
     } catch (error) {
       console.error('Error fetching profile:', error);
