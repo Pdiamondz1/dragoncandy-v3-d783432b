@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import DashboardLayout from '@/components/DashboardLayout';
@@ -23,7 +22,7 @@ const BusinessProposals = () => {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [selectedApplicationIds, setSelectedApplicationIds] = useState<string[]>([]);
 
-  const { data: campaigns = [], isLoading: campaignLoading } = useCampaigns();
+  const { campaigns = [], isLoading: campaignLoading } = useCampaigns();
   const campaign = campaigns.find(c => c.id === campaignId);
   const { data: applications = [], isLoading, error } = useCampaignApplications(campaignId!);
   const { filters, filteredApplications, updateFilter, resetFilters } = useApplicationFilters(applications);
