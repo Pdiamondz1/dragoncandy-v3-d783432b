@@ -30,14 +30,15 @@ export const useCreatorProfileSubmit = () => {
     formData: CreatorProfileFormData,
     selectedSkills: CreatorSkill[],
     avatarFile: File | null,
-    portfolioFiles: File[]
+    portfolioFiles: File[],
+    isUpdate = false
   ) => {
-    if (!user) return;
+    if (!user) return false;
     
     setLoading(true);
     
     try {
-      let avatarUrl = '';
+      let avatarUrl = formData.avatar_url;
       let portfolioUrls: string[] = [];
 
       // Upload avatar if provided
@@ -56,47 +57,66 @@ export const useCreatorProfileSubmit = () => {
         ? formData.languages_spoken.split(',').map(lang => lang.trim()).filter(Boolean)
         : [];
 
+      // Prepare the data object
+      const profileData = {
+        user_id: user.id,
+        creator_name: formData.creator_name,
+        bio: formData.bio,
+        location: formData.location,
+        availability: formData.availability,
+        base_rate_per_hour: formData.base_rate_per_hour ? parseFloat(formData.base_rate_per_hour) : null,
+        years_of_experience: formData.years_of_experience ? parseInt(formData.years_of_experience) : null,
+        languages_spoken: languagesArray,
+        timezone: formData.timezone,
+        response_time: formData.response_time,
+        min_project_budget: formData.min_project_budget ? parseFloat(formData.min_project_budget) : null,
+        max_projects_per_month: formData.max_projects_per_month ? parseInt(formData.max_projects_per_month) : null,
+        preferred_project_duration: formData.preferred_project_duration,
+        collaboration_preferences: formData.collaboration_preferences,
+        profile_visibility: formData.profile_visibility,
+        instagram_url: formData.instagram_url,
+        tiktok_url: formData.tiktok_url,
+        youtube_url: formData.youtube_url,
+        facebook_url: formData.facebook_url,
+        linkedin_url: formData.linkedin_url,
+        x_url: formData.x_url,
+        other_social_url: formData.other_social_url,
+        website_url: formData.website_url,
+        avatar_url: avatarUrl,
+        skills: selectedSkills,
+        updated_at: new Date().toISOString()
+      };
+
+      // Add portfolio URLs and is_completed only for new profiles
+      if (!isUpdate) {
+        (profileData as any).portfolio_urls = portfolioUrls;
+        (profileData as any).is_completed = true;
+      }
+
       // Save profile data
-      const { error } = await supabase
-        .from('creator_profiles')
-        .upsert({
-          user_id: user.id,
-          creator_name: formData.creator_name,
-          bio: formData.bio,
-          location: formData.location,
-          availability: formData.availability,
-          base_rate_per_hour: formData.base_rate_per_hour ? parseFloat(formData.base_rate_per_hour) : null,
-          years_of_experience: formData.years_of_experience ? parseInt(formData.years_of_experience) : null,
-          languages_spoken: languagesArray,
-          timezone: formData.timezone,
-          response_time: formData.response_time,
-          min_project_budget: formData.min_project_budget ? parseFloat(formData.min_project_budget) : null,
-          max_projects_per_month: formData.max_projects_per_month ? parseInt(formData.max_projects_per_month) : null,
-          preferred_project_duration: formData.preferred_project_duration,
-          collaboration_preferences: formData.collaboration_preferences,
-          profile_visibility: formData.profile_visibility,
-          instagram_url: formData.instagram_url,
-          tiktok_url: formData.tiktok_url,
-          youtube_url: formData.youtube_url,
-          facebook_url: formData.facebook_url,
-          linkedin_url: formData.linkedin_url,
-          x_url: formData.x_url,
-          other_social_url: formData.other_social_url,
-          website_url: formData.website_url,
-          avatar_url: avatarUrl,
-          portfolio_urls: portfolioUrls,
-          skills: selectedSkills,
-          is_completed: true
-        });
+      const { error } = isUpdate
+        ? await supabase
+            .from('creator_profiles')
+            .update(profileData)
+            .eq('user_id', user.id)
+        : await supabase
+            .from('creator_profiles')
+            .upsert(profileData);
 
       if (error) throw error;
 
       toast({
-        title: "Profile created successfully!",
-        description: "Welcome to DragonCandy. You can now start browsing campaigns."
+        title: isUpdate ? "Profile updated successfully!" : "Profile created successfully!",
+        description: isUpdate 
+          ? "Your creator profile has been updated." 
+          : "Welcome to DragonCandy. You can now start browsing campaigns."
       });
 
-      navigate('/');
+      if (!isUpdate) {
+        navigate('/');
+      }
+      
+      return true;
     } catch (error: any) {
       console.error('Error saving profile:', error);
       toast({
@@ -104,10 +124,15 @@ export const useCreatorProfileSubmit = () => {
         description: error.message || "Please try again.",
         variant: "destructive"
       });
+      return false;
     } finally {
       setLoading(false);
     }
   };
 
-  return { submitProfile, loading };
+  return { 
+    submitProfile: (formData: CreatorProfileFormData, selectedSkills: CreatorSkill[], avatarFile: File | null, portfolioFiles: File[] = []) => 
+      submitProfile(formData, selectedSkills, avatarFile, portfolioFiles, true),
+    loading 
+  };
 };

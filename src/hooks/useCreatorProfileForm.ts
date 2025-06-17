@@ -27,6 +27,7 @@ export interface CreatorProfileFormData {
   x_url: string;
   other_social_url: string;
   website_url: string;
+  avatar_url: string;
 }
 
 export const useCreatorProfileForm = () => {
@@ -56,7 +57,8 @@ export const useCreatorProfileForm = () => {
     linkedin_url: '',
     x_url: '',
     other_social_url: '',
-    website_url: ''
+    website_url: '',
+    avatar_url: ''
   });
 
   const handleInputChange = (field: string, value: string) => {
@@ -69,6 +71,37 @@ export const useCreatorProfileForm = () => {
     } else {
       setSelectedSkills(prev => prev.filter(id => id !== skillId));
     }
+  };
+
+  const setFormDataFromProfile = (profile: any) => {
+    setFormData({
+      creator_name: profile.creator_name || '',
+      bio: profile.bio || '',
+      location: profile.location || '',
+      availability: profile.availability || '',
+      base_rate_per_hour: profile.base_rate_per_hour?.toString() || '',
+      years_of_experience: profile.years_of_experience?.toString() || '',
+      languages_spoken: Array.isArray(profile.languages_spoken) 
+        ? profile.languages_spoken.join(', ') 
+        : profile.languages_spoken || '',
+      timezone: profile.timezone || '',
+      response_time: profile.response_time || '',
+      min_project_budget: profile.min_project_budget?.toString() || '',
+      max_projects_per_month: profile.max_projects_per_month?.toString() || '',
+      preferred_project_duration: profile.preferred_project_duration || '',
+      collaboration_preferences: profile.collaboration_preferences || '',
+      profile_visibility: profile.profile_visibility || 'public',
+      instagram_url: profile.instagram_url || '',
+      tiktok_url: profile.tiktok_url || '',
+      youtube_url: profile.youtube_url || '',
+      facebook_url: profile.facebook_url || '',
+      linkedin_url: profile.linkedin_url || '',
+      x_url: profile.x_url || '',
+      other_social_url: profile.other_social_url || '',
+      website_url: profile.website_url || '',
+      avatar_url: profile.avatar_url || ''
+    });
+    setSelectedSkills(profile.skills as CreatorSkill[] || []);
   };
 
   const isFormValid = () => {
@@ -84,6 +117,8 @@ export const useCreatorProfileForm = () => {
     handleSkillChange,
     setAvatarFile,
     setPortfolioFiles,
+    setFormDataFromProfile,
+    setSelectedSkills,
     isFormValid
   };
 };
