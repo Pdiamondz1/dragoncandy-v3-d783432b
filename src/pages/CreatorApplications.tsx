@@ -15,7 +15,7 @@ const CreatorApplications: React.FC = () => {
   const [searchTerm, setSearchTerm] = React.useState('');
 
   const filteredApplications = applications.filter(application =>
-    application.campaigns?.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    application.campaign?.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     application.intro_message?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -198,7 +198,7 @@ const CreatorApplications: React.FC = () => {
                         <div className="flex items-start justify-between">
                           <div>
                             <CardTitle className="text-lg">
-                              {application.campaigns?.title || 'Campaign Title'}
+                              {application.campaign?.title || 'Campaign Title'}
                             </CardTitle>
                             <p className="text-sm text-gray-600">
                               Applied on {formatDate(application.created_at)}
