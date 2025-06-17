@@ -5,7 +5,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Input } from '@/components/ui/input';
 import { 
   Search, 
   MapPin, 
@@ -14,19 +13,12 @@ import {
   User, 
   MessageSquare,
   ExternalLink,
-  Filter,
   Users
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import AdvancedCreatorFilters from '@/components/creator-search/AdvancedCreatorFilters';
 
 interface CreatorProfile {
   id: string;
@@ -49,12 +41,29 @@ interface CreatorProfile {
   website_url?: string;
 }
 
+interface CreatorFilters {
+  searchTerm: string;
+  skills: string[];
+  location: string;
+  minRate: number;
+  maxRate: number;
+  platforms: string[];
+  availability: string;
+  experienceLevel: string;
+}
+
 const CreatorBrowse: React.FC = () => {
   const { user } = useAuth();
-  const [searchTerm, setSearchTerm] = React.useState('');
-  const [skillFilter, setSkillFilter] = React.useState('');
-  const [locationFilter, setLocationFilter] = React.useState('');
-  const [rateFilter, setRateFilter] = React.useState('');
+  const [filters, setFilters] = React.useState<CreatorFilters>({
+    searchTerm: '',
+    skills: [],
+    location: '',
+    minRate: 0,
+    maxRate: 500,
+    platforms: [],
+    availability: '',
+    experienceLevel: '',
+  });
 
   const { data: creators = [], isLoading, error } = useQuery({
     queryKey: ['available-creators'],
@@ -77,31 +86,58 @@ const CreatorBrowse: React.FC = () => {
     enabled: !!user,
   });
 
+  const handleFilterChange = (key: keyof CreatorFilters, value: any) => {
+    setFilters(prev => ({ ...prev, [key]: value }));
+  };
+
+  const resetFilters = () => {
+    setFilters({
+      searchTerm: '',
+      skills: [],
+      location: '',
+      minRate: 0,
+      maxRate: 500,
+      platforms: [],
+      availability: '',
+      experienceLevel: '',
+    });
+  };
+
   // Filter creators based on search criteria
   const filteredCreators = creators.filter(creator => {
     const matchesSearch = 
-      creator.creator_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      creator.bio?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      creator.skills?.some(skill => skill.toLowerCase().includes(searchTerm.toLowerCase()));
+      creator.creator_name.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
+      creator.bio?.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
+      creator.skills?.some(skill => skill.toLowerCase().includes(filters.searchTerm.toLowerCase()));
 
-    const matchesSkill = !skillFilter || 
-      creator.skills?.some(skill => skill.toLowerCase().includes(skillFilter.toLowerCase()));
+    const matchesSkills = filters.skills.length === 0 || 
+      creator.skills?.some(skill => filters.skills.includes(skill));
 
-    const matchesLocation = !locationFilter ||
-      creator.location?.toLowerCase().includes(locationFilter.toLowerCase());
+    const matchesLocation = !filters.location ||
+      creator.location?.toLowerCase().includes(filters.location.toLowerCase());
 
-    const matchesRate = !rateFilter || (() => {
+    const matchesRate = (() => {
       const rate = creator.base_rate_per_hour || 0;
-      switch (rateFilter) {
-        case 'under-50': return rate < 50;
-        case '50-100': return rate >= 50 && rate <= 100;
-        case '100-200': return rate >= 100 && rate <= 200;
-        case 'over-200': return rate > 200;
-        default: return true;
-      }
+      return rate >= filters.minRate && rate <= filters.maxRate;
     })();
 
-    return matchesSearch && matchesSkill && matchesLocation && matchesRate;
+    const matchesPlatforms = filters.platforms.length === 0 || (() => {
+      const creatorPlatforms = [];
+      if (creator.instagram_url) creatorPlatforms.push('Instagram');
+      if (creator.tiktok_url) creatorPlatforms.push('TikTok');
+      if (creator.youtube_url) creatorPlatforms.push('YouTube');
+      if (creator.facebook_url) creatorPlatforms.push('Facebook');
+      if (creator.linkedin_url) creatorPlatforms.push('LinkedIn');
+      if (creator.x_url) creatorPlatforms.push('X (Twitter)');
+      
+      return filters.platforms.some(platform => creatorPlatforms.includes(platform));
+    })();
+
+    const matchesAvailability = !filters.availability ||
+      creator.availability === filters.availability;
+
+    return matchesSearch && matchesSkills && matchesLocation && matchesRate && 
+           matchesPlatforms && matchesAvailability;
   });
 
   const formatRate = (rate?: number) => {
@@ -177,74 +213,13 @@ const CreatorBrowse: React.FC = () => {
             </div>
           </div>
 
-          {/* Search and Filters */}
-          <Card>
-            <CardContent className="p-6">
-              <div className="space-y-4">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <Input
-                    placeholder="Search creators by name, bio, or skills..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  <div>
-                    <label className="text-sm font-medium mb-2 block">Skills</label>
-                    <Input
-                      placeholder="Filter by skill..."
-                      value={skillFilter}
-                      onChange={(e) => setSkillFilter(e.target.value)}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-sm font-medium mb-2 block">Location</label>
-                    <Input
-                      placeholder="Filter by location..."
-                      value={locationFilter}
-                      onChange={(e) => setLocationFilter(e.target.value)}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-sm font-medium mb-2 block">Rate Range</label>
-                    <Select value={rateFilter} onValueChange={setRateFilter}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Any rate" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="">Any rate</SelectItem>
-                        <SelectItem value="under-50">Under $50/hr</SelectItem>
-                        <SelectItem value="50-100">$50-100/hr</SelectItem>
-                        <SelectItem value="100-200">$100-200/hr</SelectItem>
-                        <SelectItem value="over-200">Over $200/hr</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="flex items-end">
-                    <Button 
-                      variant="outline" 
-                      onClick={() => {
-                        setSearchTerm('');
-                        setSkillFilter('');
-                        setLocationFilter('');
-                        setRateFilter('');
-                      }}
-                      className="w-full"
-                    >
-                      <Filter className="h-4 w-4 mr-2" />
-                      Clear Filters
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          {/* Advanced Filters */}
+          <AdvancedCreatorFilters
+            filters={filters}
+            onFilterChange={handleFilterChange}
+            onResetFilters={resetFilters}
+            resultCount={filteredCreators.length}
+          />
 
           {/* Creators Grid */}
           {filteredCreators.length === 0 ? (
@@ -255,10 +230,7 @@ const CreatorBrowse: React.FC = () => {
                   No creators found
                 </h3>
                 <p className="text-gray-600">
-                  {searchTerm || skillFilter || locationFilter || rateFilter
-                    ? 'Try adjusting your search criteria.'
-                    : 'No creators have completed their profiles yet.'
-                  }
+                  Try adjusting your search criteria to find more creators.
                 </p>
               </CardContent>
             </Card>
