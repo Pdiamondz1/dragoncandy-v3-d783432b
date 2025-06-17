@@ -24,7 +24,7 @@ export const usePublicCampaigns = (userId?: string) => {
         .from('campaigns')
         .select(`
           *,
-          business_profiles!campaigns_user_id_fkey (
+          business_profiles!inner(
             business_name,
             logo_url,
             location
@@ -62,11 +62,9 @@ export const usePublicCampaigns = (userId?: string) => {
 
           return {
             ...campaign,
-            business_profile: campaign.business_profiles ? {
-              business_name: campaign.business_profiles.business_name,
-              logo_url: campaign.business_profiles.logo_url,
-              location: campaign.business_profiles.location,
-            } : undefined,
+            business_profile: Array.isArray(campaign.business_profiles) 
+              ? campaign.business_profiles[0] 
+              : campaign.business_profiles,
             application_count: count || 0,
             user_applied: userApplied,
           };
