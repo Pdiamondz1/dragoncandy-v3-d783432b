@@ -24,9 +24,9 @@ export const useReviews = (revieweeId?: string, reviewType?: string) => {
         .from('project_reviews')
         .select(`
           *,
-          reviewer:profiles!project_reviews_reviewer_id_fkey(full_name, avatar_url),
-          collaboration:campaign_collaborations!inner(
-            campaign:campaigns(title)
+          reviewer:profiles!reviewer_id(full_name, avatar_url),
+          collaboration:campaign_collaborations!collaboration_id(
+            campaign:campaigns!campaign_id(title)
           )
         `)
         .eq('is_public', true)
@@ -43,8 +43,21 @@ export const useReviews = (revieweeId?: string, reviewType?: string) => {
       const { data, error } = await query;
       if (error) throw error;
       
-      // Type assertion to ensure proper typing
-      return (data || []) as ReviewWithRelations[];
+      // Filter out any records where the joins failed and transform the data
+      const validReviews = (data || [])
+        .filter((item: any) => 
+          item.reviewer && 
+          typeof item.reviewer === 'object' && 
+          item.reviewer.full_name &&
+          item.collaboration &&
+          item.collaboration.campaign
+        )
+        .map((item: any) => ({
+          ...item,
+          review_type: item.review_type as 'business_to_creator' | 'creator_to_business'
+        })) as ReviewWithRelations[];
+      
+      return validReviews;
     },
     enabled: !!revieweeId,
   });
