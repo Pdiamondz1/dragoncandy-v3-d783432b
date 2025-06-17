@@ -29,7 +29,7 @@ export const useFeatureFlags = () => {
     const fetchFeatureFlags = async () => {
       try {
         const { data: flags, error } = await supabase
-          .from('feature_flags')
+          .from('feature_flags' as any)
           .select('*')
           .eq('is_enabled', true)
           .in('environment', ['production', 'beta']);

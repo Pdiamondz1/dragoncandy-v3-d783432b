@@ -45,6 +45,51 @@ export type Database = {
         }
         Relationships: []
       }
+      beta_feedback: {
+        Row: {
+          browser_info: string | null
+          created_at: string
+          description: string
+          feature_name: string
+          feedback_type: string
+          id: string
+          page_url: string | null
+          priority: string
+          title: string
+          updated_at: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          browser_info?: string | null
+          created_at?: string
+          description: string
+          feature_name: string
+          feedback_type: string
+          id?: string
+          page_url?: string | null
+          priority?: string
+          title: string
+          updated_at?: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          browser_info?: string | null
+          created_at?: string
+          description?: string
+          feature_name?: string
+          feedback_type?: string
+          id?: string
+          page_url?: string | null
+          priority?: string
+          title?: string
+          updated_at?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       business_profiles: {
         Row: {
           average_rating: number | null
@@ -591,6 +636,42 @@ export type Database = {
         }
         Relationships: []
       }
+      feature_flags: {
+        Row: {
+          created_at: string
+          description: string | null
+          environment: string
+          id: string
+          is_enabled: boolean
+          name: string
+          rollout_percentage: number
+          target_roles: string[] | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          environment?: string
+          id?: string
+          is_enabled?: boolean
+          name: string
+          rollout_percentage?: number
+          target_roles?: string[] | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          environment?: string
+          id?: string
+          is_enabled?: boolean
+          name?: string
+          rollout_percentage?: number
+          target_roles?: string[] | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       file_comments: {
         Row: {
           annotation_data: Json | null
@@ -1076,6 +1157,42 @@ export type Database = {
         }
         Relationships: []
       }
+      onboarding_steps: {
+        Row: {
+          component: string
+          created_at: string
+          description: string | null
+          id: string
+          is_optional: boolean
+          order: number
+          target_roles: string[] | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          component: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_optional?: boolean
+          order: number
+          target_roles?: string[] | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          component?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_optional?: boolean
+          order?: number
+          target_roles?: string[] | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profile_views: {
         Row: {
           id: string
@@ -1259,6 +1376,44 @@ export type Database = {
             columns: ["review_id"]
             isOneToOne: false
             referencedRelation: "project_reviews"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_onboarding_progress: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          id: string
+          skipped_at: string | null
+          step_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          skipped_at?: string | null
+          step_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          skipped_at?: string | null
+          step_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_onboarding_progress_step_id_fkey"
+            columns: ["step_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_steps"
             referencedColumns: ["id"]
           },
         ]

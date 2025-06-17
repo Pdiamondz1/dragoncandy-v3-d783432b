@@ -36,7 +36,7 @@ export const useBetaOnboarding = () => {
       try {
         // Fetch onboarding steps
         const { data: stepsData, error: stepsError } = await supabase
-          .from('onboarding_steps')
+          .from('onboarding_steps' as any)
           .select('*')
           .or(`target_roles.is.null,target_roles.cs.{${profile.role}}`)
           .order('order');
@@ -48,7 +48,7 @@ export const useBetaOnboarding = () => {
 
         // Fetch user progress
         const { data: progressData, error: progressError } = await supabase
-          .from('user_onboarding_progress')
+          .from('user_onboarding_progress' as any)
           .select('*')
           .eq('user_id', user.id);
 
@@ -86,7 +86,7 @@ export const useBetaOnboarding = () => {
 
     try {
       const { error } = await supabase
-        .from('user_onboarding_progress')
+        .from('user_onboarding_progress' as any)
         .upsert({
           user_id: user.id,
           step_id: stepId,
@@ -119,7 +119,7 @@ export const useBetaOnboarding = () => {
 
     try {
       const { error } = await supabase
-        .from('user_onboarding_progress')
+        .from('user_onboarding_progress' as any)
         .upsert({
           user_id: user.id,
           step_id: stepId,
