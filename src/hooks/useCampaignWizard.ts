@@ -1,30 +1,9 @@
-
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
-
-interface CampaignAnalysis {
-  title: string;
-  description: string;
-  target_audience: string;
-  goals: string[];
-  recommended_platforms: string[];
-  content_types: string[];
-  key_messages: string[];
-  success_metrics: string[];
-  budget_recommendations?: {
-    min: number;
-    max: number;
-    reasoning: string;
-  };
-  timeline_recommendations?: {
-    preparation: string;
-    execution: string;
-    analysis: string;
-  };
-}
+import { CampaignAnalysis } from '@/types/campaign';
 
 export const useCampaignWizard = () => {
   const { user } = useAuth();

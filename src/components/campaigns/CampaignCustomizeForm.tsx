@@ -1,59 +1,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { X, Plus } from 'lucide-react';
-
-interface CampaignAnalysis {
-  title: string;
-  description: string;
-  target_audience: string;
-  goals: string[];
-  recommended_platforms: string[];
-  content_types: string[];
-  key_messages: string[];
-  success_metrics: string[];
-  budget_recommendations?: {
-    min: number;
-    max: number;
-    reasoning: string;
-  };
-  timeline_recommendations?: {
-    preparation: string;
-    execution: string;
-    analysis: string;
-  };
-}
-
-interface CampaignData {
-  title: string;
-  description: string;
-  goals: string[];
-  target_audience: string;
-  platforms: string[];
-  content_types: string[];
-  key_messages: string[];
-  timeline_recommendations?: {
-    preparation: string;
-    execution: string;
-    analysis: string;
-  };
-  budget_recommendations?: {
-    min: number;
-    max: number;
-    reasoning: string;
-  };
-}
-
-interface CampaignCustomizeFormProps {
-  initialData: CampaignAnalysis;
-  onContinue: (data: CampaignData) => void;
-  onBackToAnalysis: () => void;
-}
+import { CampaignAnalysis, CampaignData, CampaignCustomizeFormProps } from '@/types/campaign';
+import CampaignBasicFields from './CampaignBasicFields';
+import PlatformSelector from './PlatformSelector';
+import ContentTypeSelector from './ContentTypeSelector';
 
 const CampaignCustomizeForm: React.FC<CampaignCustomizeFormProps> = ({
   initialData,
@@ -71,19 +23,6 @@ const CampaignCustomizeForm: React.FC<CampaignCustomizeFormProps> = ({
     timeline_recommendations: initialData.timeline_recommendations,
     budget_recommendations: initialData.budget_recommendations,
   });
-  
-  const [customPlatform, setCustomPlatform] = useState('');
-  const [customContentType, setCustomContentType] = useState('');
-
-  const availablePlatforms = [
-    'Instagram', 'TikTok', 'YouTube', 'Facebook', 'X (Twitter)', 
-    'LinkedIn', 'Pinterest', 'Snapchat', 'YouTube Shorts'
-  ];
-
-  const availableContentTypes = [
-    'Video', 'Image', 'Story', 'Reel', 'Post', 'Carousel', 
-    'Blog Content', 'User-Generated Content', 'Influencer Collaboration'
-  ];
 
   useEffect(() => {
     setFormData({
@@ -106,52 +45,6 @@ const CampaignCustomizeForm: React.FC<CampaignCustomizeFormProps> = ({
     }));
   };
 
-  const removePlatform = (platformToRemove: string) => {
-    setFormData(prev => ({
-      ...prev,
-      platforms: prev.platforms.filter(platform => platform !== platformToRemove)
-    }));
-  };
-
-  const addPlatform = (platform: string) => {
-    if (platform && !formData.platforms.includes(platform)) {
-      setFormData(prev => ({
-        ...prev,
-        platforms: [...prev.platforms, platform]
-      }));
-    }
-  };
-
-  const addCustomPlatform = () => {
-    if (customPlatform.trim() && !formData.platforms.includes(customPlatform.trim())) {
-      addPlatform(customPlatform.trim());
-      setCustomPlatform('');
-    }
-  };
-
-  const removeContentType = (typeToRemove: string) => {
-    setFormData(prev => ({
-      ...prev,
-      content_types: prev.content_types.filter(type => type !== typeToRemove)
-    }));
-  };
-
-  const addContentType = (type: string) => {
-    if (type && !formData.content_types.includes(type)) {
-      setFormData(prev => ({
-        ...prev,
-        content_types: [...prev.content_types, type]
-      }));
-    }
-  };
-
-  const addCustomContentType = () => {
-    if (customContentType.trim() && !formData.content_types.includes(customContentType.trim())) {
-      addContentType(customContentType.trim());
-      setCustomContentType('');
-    }
-  };
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onContinue(formData);
@@ -171,129 +64,24 @@ const CampaignCustomizeForm: React.FC<CampaignCustomizeFormProps> = ({
       </Card>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Campaign Name */}
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-gray-700">Campaign Name</label>
-          <Input
-            value={formData.title}
-            onChange={(e) => handleInputChange('title', e.target.value)}
-            placeholder="Enter campaign name"
-          />
-        </div>
+        <CampaignBasicFields
+          title={formData.title}
+          description={formData.description}
+          targetAudience={formData.target_audience}
+          onTitleChange={(value) => handleInputChange('title', value)}
+          onDescriptionChange={(value) => handleInputChange('description', value)}
+          onTargetAudienceChange={(value) => handleInputChange('target_audience', value)}
+        />
 
-        {/* Description */}
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-gray-700">Description</label>
-          <Textarea
-            value={formData.description}
-            onChange={(e) => handleInputChange('description', e.target.value)}
-            className="min-h-[120px] resize-none"
-            placeholder="Describe your campaign..."
-          />
-        </div>
+        <PlatformSelector
+          platforms={formData.platforms}
+          onPlatformsChange={(platforms) => handleInputChange('platforms', platforms)}
+        />
 
-        {/* Target Audience */}
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-gray-700">Target Audience</label>
-          <Textarea
-            value={formData.target_audience}
-            onChange={(e) => handleInputChange('target_audience', e.target.value)}
-            className="min-h-[80px] resize-none"
-            placeholder="Describe your target audience..."
-          />
-        </div>
-
-        {/* Platforms */}
-        <div className="space-y-3">
-          <label className="text-sm font-medium text-gray-700">Platforms</label>
-          <div className="flex flex-wrap gap-2 mb-3">
-            {formData.platforms.map((platform, index) => (
-              <Badge key={index} variant="secondary" className="flex items-center gap-1">
-                {platform}
-                <button
-                  type="button"
-                  onClick={() => removePlatform(platform)}
-                  className="ml-1 text-gray-500 hover:text-gray-700"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              </Badge>
-            ))}
-          </div>
-          <div className="space-y-2">
-            <Select onValueChange={addPlatform}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select a platform to add" />
-              </SelectTrigger>
-              <SelectContent>
-                {availablePlatforms
-                  .filter(platform => !formData.platforms.includes(platform))
-                  .map((platform) => (
-                    <SelectItem key={platform} value={platform}>
-                      {platform}
-                    </SelectItem>
-                  ))}
-              </SelectContent>
-            </Select>
-            <div className="flex gap-2">
-              <Input
-                value={customPlatform}
-                onChange={(e) => setCustomPlatform(e.target.value)}
-                placeholder="Add custom platform"
-                className="flex-1"
-              />
-              <Button type="button" onClick={addCustomPlatform} size="sm">
-                <Plus className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        </div>
-
-        {/* Content Types */}
-        <div className="space-y-3">
-          <label className="text-sm font-medium text-gray-700">Content Types</label>
-          <div className="flex flex-wrap gap-2 mb-3">
-            {formData.content_types.map((type, index) => (
-              <Badge key={index} variant="secondary" className="flex items-center gap-1">
-                {type}
-                <button
-                  type="button"
-                  onClick={() => removeContentType(type)}
-                  className="ml-1 text-gray-500 hover:text-gray-700"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              </Badge>
-            ))}
-          </div>
-          <div className="space-y-2">
-            <Select onValueChange={addContentType}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select a content type to add" />
-              </SelectTrigger>
-              <SelectContent>
-                {availableContentTypes
-                  .filter(type => !formData.content_types.includes(type))
-                  .map((type) => (
-                    <SelectItem key={type} value={type}>
-                      {type}
-                    </SelectItem>
-                  ))}
-              </SelectContent>
-            </Select>
-            <div className="flex gap-2">
-              <Input
-                value={customContentType}
-                onChange={(e) => setCustomContentType(e.target.value)}
-                placeholder="Add custom content type"
-                className="flex-1"
-              />
-              <Button type="button" onClick={addCustomContentType} size="sm">
-                <Plus className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        </div>
+        <ContentTypeSelector
+          contentTypes={formData.content_types}
+          onContentTypesChange={(contentTypes) => handleInputChange('content_types', contentTypes)}
+        />
 
         {/* Action Buttons */}
         <div className="flex justify-between pt-6">

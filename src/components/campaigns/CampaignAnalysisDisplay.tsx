@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -14,27 +13,7 @@ import {
   Edit,
   ArrowRight 
 } from 'lucide-react';
-
-interface CampaignAnalysis {
-  title: string;
-  description: string;
-  target_audience: string;
-  goals: string[];
-  recommended_platforms: string[];
-  content_types: string[];
-  key_messages: string[];
-  success_metrics: string[];
-  budget_recommendations?: {
-    min: number;
-    max: number;
-    reasoning: string;
-  };
-  timeline_recommendations?: {
-    preparation: string;
-    execution: string;
-    analysis: string;
-  };
-}
+import { CampaignAnalysis } from '@/types/campaign';
 
 interface CampaignAnalysisDisplayProps {
   analysis: CampaignAnalysis;
