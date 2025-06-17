@@ -23,7 +23,7 @@ const CreatorCampaignMarketplace = () => {
   const navigate = useNavigate();
   const { data: campaigns = [], isLoading, error } = usePublicCampaigns(user?.id);
   const { filters, filteredCampaigns, updateFilter, resetFilters } = useCampaignMarketplaceFilters(campaigns);
-  const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(null);
+  const [selectedCampaign, setSelectedCampaign] = useState<any>(null);
   const [showApplicationForm, setShowApplicationForm] = useState(false);
 
   if (isLoading) {
@@ -72,8 +72,11 @@ const CreatorCampaignMarketplace = () => {
   }
 
   const handleApply = (campaignId: string) => {
-    setSelectedCampaignId(campaignId);
-    setShowApplicationForm(true);
+    const campaign = campaigns.find(c => c.id === campaignId);
+    if (campaign) {
+      setSelectedCampaign(campaign);
+      setShowApplicationForm(true);
+    }
   };
 
   const handleViewDetails = (campaignId: string) => {
@@ -82,7 +85,7 @@ const CreatorCampaignMarketplace = () => {
 
   const handleApplicationSubmitted = () => {
     setShowApplicationForm(false);
-    setSelectedCampaignId(null);
+    setSelectedCampaign(null);
     // Refresh campaigns to update application status
     window.location.reload();
   };
@@ -192,10 +195,10 @@ const CreatorCampaignMarketplace = () => {
               <DialogHeader>
                 <DialogTitle>Apply to Campaign</DialogTitle>
               </DialogHeader>
-              {selectedCampaignId && (
+              {selectedCampaign && (
                 <ApplicationForm
-                  campaignId={selectedCampaignId}
-                  onSubmit={handleApplicationSubmitted}
+                  campaign={selectedCampaign}
+                  onSuccess={handleApplicationSubmitted}
                   onCancel={() => setShowApplicationForm(false)}
                 />
               )}
