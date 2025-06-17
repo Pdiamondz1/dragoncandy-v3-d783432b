@@ -19,28 +19,45 @@ export const usePublicCampaigns = (userId?: string) => {
     queryFn: async () => {
       console.log('Fetching public campaigns for user:', userId);
       
-      // First get published campaigns with business profile data
-      const { data: campaigns, error } = await supabase
+      // First, get published campaigns
+      const { data: campaigns, error: campaignsError } = await supabase
         .from('campaigns')
-        .select(`
-          *,
-          business_profiles!inner(
-            business_name,
-            logo_url,
-            location
-          )
-        `)
+        .select('*')
         .eq('status', 'published')
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Error fetching public campaigns:', error);
-        throw error;
+      if (campaignsError) {
+        console.error('Error fetching campaigns:', campaignsError);
+        throw campaignsError;
       }
+
+      if (!campaigns || campaigns.length === 0) {
+        console.log('No campaigns found');
+        return [];
+      }
+
+      // Get unique user IDs from campaigns
+      const userIds = [...new Set(campaigns.map(campaign => campaign.user_id))];
+
+      // Fetch business profiles for these users
+      const { data: businessProfiles, error: profilesError } = await supabase
+        .from('business_profiles')
+        .select('user_id, business_name, logo_url, location')
+        .in('user_id', userIds);
+
+      if (profilesError) {
+        console.error('Error fetching business profiles:', profilesError);
+        throw profilesError;
+      }
+
+      // Create a map of user_id to business profile for quick lookup
+      const businessProfileMap = new Map(
+        (businessProfiles || []).map(profile => [profile.user_id, profile])
+      );
 
       // Get application counts and user application status if user is provided
       const enrichedCampaigns = await Promise.all(
-        (campaigns || []).map(async (campaign) => {
+        campaigns.map(async (campaign) => {
           // Get application count
           const { count } = await supabase
             .from('campaign_applications')
@@ -60,11 +77,16 @@ export const usePublicCampaigns = (userId?: string) => {
             userApplied = !!userApplication;
           }
 
+          // Get business profile for this campaign
+          const businessProfile = businessProfileMap.get(campaign.user_id);
+
           return {
             ...campaign,
-            business_profile: Array.isArray(campaign.business_profiles) 
-              ? campaign.business_profiles[0] 
-              : campaign.business_profiles,
+            business_profile: businessProfile ? {
+              business_name: businessProfile.business_name,
+              logo_url: businessProfile.logo_url,
+              location: businessProfile.location,
+            } : undefined,
             application_count: count || 0,
             user_applied: userApplied,
           };
