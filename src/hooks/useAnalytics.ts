@@ -2,6 +2,7 @@
 import { useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import { useOptimizedAnalytics } from '@/hooks/useOptimizedAnalytics';
 
 interface AnalyticsEvent {
   event_type: string;
@@ -14,7 +15,9 @@ interface AnalyticsEvent {
 
 export const useAnalytics = () => {
   const { user, profile } = useAuth();
+  const { trackEventOptimized, trackPageViewOptimized, trackUserActionOptimized, trackCampaignEventOptimized } = useOptimizedAnalytics();
 
+  // Legacy direct tracking method (kept for backward compatibility)
   const trackEvent = async (eventType: string, eventData?: Record<string, any>) => {
     try {
       const analyticsEvent: AnalyticsEvent = {
@@ -40,31 +43,22 @@ export const useAnalytics = () => {
   };
 
   const trackPageView = (pageName: string) => {
-    trackEvent('page_view', { 
-      page_name: pageName,
-      user_role: profile?.role 
-    });
+    // Use optimized version for better performance
+    trackPageViewOptimized(pageName);
   };
 
   const trackUserAction = (action: string, context?: Record<string, any>) => {
-    trackEvent('user_action', { 
-      action,
-      user_role: profile?.role,
-      ...context 
-    });
+    // Use optimized version for better performance
+    trackUserActionOptimized(action, context);
   };
 
   const trackCampaignEvent = (eventType: string, campaignId: string, additionalData?: Record<string, any>) => {
-    trackEvent('campaign_event', {
-      campaign_event_type: eventType,
-      campaign_id: campaignId,
-      user_role: profile?.role,
-      ...additionalData
-    });
+    // Use optimized version for better performance
+    trackCampaignEventOptimized(eventType, campaignId, additionalData);
   };
 
   const trackPerformance = (metric: string, value: number, context?: Record<string, any>) => {
-    trackEvent('performance_metric', {
+    trackEventOptimized('performance_metric', {
       metric,
       value,
       ...context
@@ -94,6 +88,11 @@ export const useAnalytics = () => {
     trackPageView,
     trackUserAction,
     trackCampaignEvent,
-    trackPerformance
+    trackPerformance,
+    // Expose optimized methods
+    trackEventOptimized,
+    trackPageViewOptimized,
+    trackUserActionOptimized,
+    trackCampaignEventOptimized
   };
 };
