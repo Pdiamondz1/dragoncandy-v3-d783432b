@@ -10,7 +10,6 @@ interface AnalyticsEvent {
   session_id?: string;
   page_url?: string;
   user_agent?: string;
-  timestamp?: string;
 }
 
 export const useAnalytics = () => {
@@ -23,8 +22,7 @@ export const useAnalytics = () => {
         event_data: eventData || {},
         user_id: user?.id,
         page_url: window.location.href,
-        user_agent: navigator.userAgent,
-        timestamp: new Date().toISOString()
+        user_agent: navigator.userAgent
       };
 
       // Store in Supabase for analytics
