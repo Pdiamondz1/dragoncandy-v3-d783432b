@@ -2,6 +2,10 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import type { Database } from '@/integrations/supabase/types';
+
+type OnboardingStepRow = Database['public']['Tables']['onboarding_steps']['Row'];
+type UserProgressRow = Database['public']['Tables']['user_onboarding_progress']['Row'];
 
 interface OnboardingStep {
   id: string;
@@ -36,7 +40,7 @@ export const useBetaOnboarding = () => {
       try {
         // Fetch onboarding steps
         const { data: stepsData, error: stepsError } = await supabase
-          .from('onboarding_steps' as any)
+          .from('onboarding_steps')
           .select('*')
           .or(`target_roles.is.null,target_roles.cs.{${profile.role}}`)
           .order('order');
@@ -48,7 +52,7 @@ export const useBetaOnboarding = () => {
 
         // Fetch user progress
         const { data: progressData, error: progressError } = await supabase
-          .from('user_onboarding_progress' as any)
+          .from('user_onboarding_progress')
           .select('*')
           .eq('user_id', user.id);
 
@@ -57,19 +61,29 @@ export const useBetaOnboarding = () => {
           return;
         }
 
-        setSteps(stepsData || []);
+        if (stepsData && Array.isArray(stepsData)) {
+          setSteps(stepsData as OnboardingStep[]);
+        }
         
         const progressMap: Record<string, UserProgress> = {};
-        progressData?.forEach((progress: any) => {
-          progressMap[progress.step_id] = progress;
-        });
+        if (progressData && Array.isArray(progressData)) {
+          progressData.forEach((progress: UserProgressRow) => {
+            progressMap[progress.step_id] = {
+              step_id: progress.step_id,
+              completed_at: progress.completed_at,
+              skipped_at: progress.skipped_at
+            };
+          });
+        }
         setUserProgress(progressMap);
 
         // Find the first incomplete step
-        const firstIncompleteIndex = (stepsData || []).findIndex(step => 
-          !progressMap[step.id]?.completed_at
-        );
-        setCurrentStepIndex(firstIncompleteIndex >= 0 ? firstIncompleteIndex : 0);
+        if (stepsData && Array.isArray(stepsData)) {
+          const firstIncompleteIndex = stepsData.findIndex((step: OnboardingStepRow) => 
+            !progressMap[step.id]?.completed_at
+          );
+          setCurrentStepIndex(firstIncompleteIndex >= 0 ? firstIncompleteIndex : 0);
+        }
 
       } catch (error) {
         console.error('Error in fetchOnboardingData:', error);
@@ -86,7 +100,7 @@ export const useBetaOnboarding = () => {
 
     try {
       const { error } = await supabase
-        .from('user_onboarding_progress' as any)
+        .from('user_onboarding_progress')
         .upsert({
           user_id: user.id,
           step_id: stepId,
@@ -119,7 +133,7 @@ export const useBetaOnboarding = () => {
 
     try {
       const { error } = await supabase
-        .from('user_onboarding_progress' as any)
+        .from('user_onboarding_progress')
         .upsert({
           user_id: user.id,
           step_id: stepId,

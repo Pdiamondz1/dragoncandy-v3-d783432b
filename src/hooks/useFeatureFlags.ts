@@ -2,6 +2,9 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import type { Database } from '@/integrations/supabase/types';
+
+type FeatureFlagRow = Database['public']['Tables']['feature_flags']['Row'];
 
 interface FeatureFlag {
   id: string;
@@ -29,7 +32,7 @@ export const useFeatureFlags = () => {
     const fetchFeatureFlags = async () => {
       try {
         const { data: flags, error } = await supabase
-          .from('feature_flags' as any)
+          .from('feature_flags')
           .select('*')
           .eq('is_enabled', true)
           .in('environment', ['production', 'beta']);
@@ -41,25 +44,27 @@ export const useFeatureFlags = () => {
 
         const enabledFlags: Record<string, boolean> = {};
 
-        flags?.forEach((flag: FeatureFlag) => {
-          let shouldEnable = false;
+        if (flags && Array.isArray(flags)) {
+          flags.forEach((flag: FeatureFlagRow) => {
+            let shouldEnable = false;
 
-          // Check if flag is globally enabled
-          if (flag.rollout_percentage >= 100) {
-            shouldEnable = true;
-          } else if (flag.rollout_percentage > 0) {
-            // Use deterministic hash for consistent rollout
-            const userHash = hashCode(user.id) % 100;
-            shouldEnable = userHash < flag.rollout_percentage;
-          }
+            // Check if flag is globally enabled
+            if (flag.rollout_percentage >= 100) {
+              shouldEnable = true;
+            } else if (flag.rollout_percentage > 0) {
+              // Use deterministic hash for consistent rollout
+              const userHash = hashCode(user.id) % 100;
+              shouldEnable = userHash < flag.rollout_percentage;
+            }
 
-          // Check role targeting
-          if (flag.target_roles && profile?.role) {
-            shouldEnable = shouldEnable && flag.target_roles.includes(profile.role);
-          }
+            // Check role targeting
+            if (flag.target_roles && profile?.role) {
+              shouldEnable = shouldEnable && flag.target_roles.includes(profile.role);
+            }
 
-          enabledFlags[flag.name] = shouldEnable;
-        });
+            enabledFlags[flag.name] = shouldEnable;
+          });
+        }
 
         setFeatureFlags(enabledFlags);
       } catch (error) {
