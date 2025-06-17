@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -16,10 +15,9 @@ import {
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { formatDistanceToNow } from 'date-fns';
 import { useAuth } from '@/hooks/useAuth';
-import { useStarMessage } from '@/hooks/useMessages';
+import { useStarMessage, type Message } from '@/hooks/useMessages';
 import MessageReactions from './MessageReactions';
 import UserPresenceIndicator from './UserPresenceIndicator';
-import type { Message } from '@/hooks/useMessages';
 
 interface MessageBubbleEnhancedProps {
   message: Message;

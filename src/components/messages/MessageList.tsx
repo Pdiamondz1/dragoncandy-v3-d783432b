@@ -1,9 +1,8 @@
-
 import React from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import MessageBubbleEnhanced from './MessageBubbleEnhanced';
-import type { Message } from '@/hooks/useMessages';
+import { type Message } from '@/hooks/useMessages';
 
 interface MessageListProps {
   campaignId?: string;

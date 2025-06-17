@@ -6,7 +6,7 @@ import { Search } from 'lucide-react';
 import MessageList from './MessageList';
 import MessageInputEnhanced from './MessageInputEnhanced';
 import MessageSearch from './MessageSearch';
-import { useMessages, useSendMessage, useMarkMessageAsRead, Message } from '@/hooks/useMessages';
+import { useMessages, useSendMessage, useMarkMessageAsRead, type Message } from '@/hooks/useMessages';
 import { useAuth } from '@/hooks/useAuth';
 
 interface MessageThreadProps {
