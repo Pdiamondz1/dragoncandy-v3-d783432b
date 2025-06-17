@@ -373,6 +373,71 @@ export type Database = {
           },
         ]
       }
+      conversation_participants: {
+        Row: {
+          conversation_id: string
+          id: string
+          joined_at: string
+          left_at: string | null
+          role: string | null
+          user_id: string
+        }
+        Insert: {
+          conversation_id: string
+          id?: string
+          joined_at?: string
+          left_at?: string | null
+          role?: string | null
+          user_id: string
+        }
+        Update: {
+          conversation_id?: string
+          id?: string
+          joined_at?: string
+          left_at?: string | null
+          role?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversation_participants_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      conversations: {
+        Row: {
+          created_at: string
+          id: string
+          is_archived: boolean | null
+          last_message_at: string | null
+          title: string | null
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_archived?: boolean | null
+          last_message_at?: string | null
+          title?: string | null
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_archived?: boolean | null
+          last_message_at?: string | null
+          title?: string | null
+          type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       creator_profiles: {
         Row: {
           availability: string | null
@@ -475,15 +540,54 @@ export type Database = {
         }
         Relationships: []
       }
+      message_reactions: {
+        Row: {
+          created_at: string
+          emoji: string
+          id: string
+          message_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          emoji: string
+          id?: string
+          message_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          emoji?: string
+          id?: string
+          message_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_reactions_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       messages: {
         Row: {
           attachment_name: string | null
           attachment_size: number | null
           attachment_url: string | null
           campaign_id: string
+          category: string | null
           content: string
+          conversation_id: string | null
           created_at: string
+          delivery_status: string | null
+          edited_at: string | null
+          forwarded_from_message_id: string | null
           id: string
+          is_archived: boolean | null
+          is_starred: boolean | null
           parent_message_id: string | null
           read_at: string | null
           recipient_id: string
@@ -495,9 +599,16 @@ export type Database = {
           attachment_size?: number | null
           attachment_url?: string | null
           campaign_id: string
+          category?: string | null
           content: string
+          conversation_id?: string | null
           created_at?: string
+          delivery_status?: string | null
+          edited_at?: string | null
+          forwarded_from_message_id?: string | null
           id?: string
+          is_archived?: boolean | null
+          is_starred?: boolean | null
           parent_message_id?: string | null
           read_at?: string | null
           recipient_id: string
@@ -509,9 +620,16 @@ export type Database = {
           attachment_size?: number | null
           attachment_url?: string | null
           campaign_id?: string
+          category?: string | null
           content?: string
+          conversation_id?: string | null
           created_at?: string
+          delivery_status?: string | null
+          edited_at?: string | null
+          forwarded_from_message_id?: string | null
           id?: string
+          is_archived?: boolean | null
+          is_starred?: boolean | null
           parent_message_id?: string | null
           read_at?: string | null
           recipient_id?: string
@@ -524,6 +642,20 @@ export type Database = {
             columns: ["campaign_id"]
             isOneToOne: false
             referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_forwarded_from_message_id_fkey"
+            columns: ["forwarded_from_message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
             referencedColumns: ["id"]
           },
           {
@@ -548,6 +680,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      notification_preferences: {
+        Row: {
+          campaign_notifications: boolean | null
+          created_at: string
+          email_notifications: boolean | null
+          id: string
+          message_notifications: boolean | null
+          push_notifications: boolean | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          campaign_notifications?: boolean | null
+          created_at?: string
+          email_notifications?: boolean | null
+          id?: string
+          message_notifications?: boolean | null
+          push_notifications?: boolean | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          campaign_notifications?: boolean | null
+          created_at?: string
+          email_notifications?: boolean | null
+          id?: string
+          message_notifications?: boolean | null
+          push_notifications?: boolean | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       profile_views: {
         Row: {
@@ -609,11 +774,72 @@ export type Database = {
         }
         Relationships: []
       }
+      push_notifications: {
+        Row: {
+          body: string
+          created_at: string
+          data: Json | null
+          id: string
+          read_at: string | null
+          sent_at: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          data?: Json | null
+          id?: string
+          read_at?: string | null
+          sent_at?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          data?: Json | null
+          id?: string
+          read_at?: string | null
+          sent_at?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_presence: {
+        Row: {
+          id: string
+          last_seen: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          last_seen?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          last_seen?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      create_or_get_direct_conversation: {
+        Args: { user1_uuid: string; user2_uuid: string }
+        Returns: string
+      }
       generate_profile_slug: {
         Args: { name: string; profile_type: string }
         Returns: string
@@ -649,6 +875,18 @@ export type Database = {
         Returns: {
           campaign_id: string
           unread_count: number
+        }[]
+      }
+      get_user_conversations: {
+        Args: { user_uuid: string }
+        Returns: {
+          conversation_id: string
+          conversation_type: string
+          conversation_title: string
+          last_message_at: string
+          unread_count: number
+          other_participant_name: string
+          other_participant_avatar: string
         }[]
       }
     }
