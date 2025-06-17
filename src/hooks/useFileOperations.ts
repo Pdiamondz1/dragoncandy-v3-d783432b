@@ -18,30 +18,6 @@ export const useFileUploads = (campaignId?: string, category?: string) => {
           uploader_profile:profiles!uploaded_by (
             full_name,
             avatar_url
-          ),
-          versions:file_versions (
-            *,
-            creator_profile:profiles!created_by (
-              full_name,
-              avatar_url
-            )
-          ),
-          comments:file_comments (
-            *,
-            user_profile:profiles!user_id (
-              full_name,
-              avatar_url
-            )
-          ),
-          tags:file_tag_assignments (
-            file_tags (*)
-          ),
-          permissions:file_permissions (
-            *,
-            user_profile:profiles!user_id (
-              full_name,
-              avatar_url
-            )
           )
         `)
         .order('created_at', { ascending: false });
@@ -53,42 +29,73 @@ export const useFileUploads = (campaignId?: string, category?: string) => {
         query = query.eq('file_category', category);
       }
 
-      const { data, error } = await query;
+      const { data: filesData, error } = await query;
 
       if (error) {
         console.error('Error fetching file uploads:', error);
         throw error;
       }
 
-      // Transform the data to match our FileUpload interface
-      return (data || []).map(item => ({
-        ...item,
-        uploader_profile: item.uploader_profile ? {
-          full_name: item.uploader_profile.full_name || '',
-          avatar_url: item.uploader_profile.avatar_url || ''
-        } : undefined,
-        versions: item.versions?.map((version: any) => ({
-          ...version,
-          creator_profile: version.creator_profile ? {
-            full_name: version.creator_profile.full_name || '',
-            avatar_url: version.creator_profile.avatar_url || ''
-          } : undefined
-        })) || [],
-        comments: item.comments?.map((comment: any) => ({
-          ...comment,
-          user_profile: comment.user_profile ? {
-            full_name: comment.user_profile.full_name || '',
-            avatar_url: comment.user_profile.avatar_url || ''
-          } : undefined
-        })) || [],
-        tags: item.tags?.map((tagAssignment: any) => tagAssignment.file_tags).filter(Boolean) || [],
-        permissions: item.permissions?.map((permission: any) => ({
-          ...permission,
-          user_profile: permission.user_profile ? {
-            full_name: permission.user_profile.full_name || '',
-            avatar_url: permission.user_profile.avatar_url || ''
-          } : undefined
-        })) || []
+      if (!filesData || filesData.length === 0) {
+        return [];
+      }
+
+      // Fetch related data separately to avoid complex joins
+      const fileIds = filesData.map(file => file.id);
+
+      // Fetch versions
+      const { data: versionsData } = await supabase
+        .from('file_versions')
+        .select(`
+          *,
+          creator_profile:profiles!created_by (
+            full_name,
+            avatar_url
+          )
+        `)
+        .in('file_upload_id', fileIds);
+
+      // Fetch comments
+      const { data: commentsData } = await supabase
+        .from('file_comments')
+        .select(`
+          *,
+          user_profile:profiles!user_id (
+            full_name,
+            avatar_url
+          )
+        `)
+        .in('file_upload_id', fileIds);
+
+      // Fetch permissions
+      const { data: permissionsData } = await supabase
+        .from('file_permissions')
+        .select(`
+          *,
+          user_profile:profiles!user_id (
+            full_name,
+            avatar_url
+          )
+        `)
+        .in('file_upload_id', fileIds);
+
+      // Fetch tag assignments and tags
+      const { data: tagAssignmentsData } = await supabase
+        .from('file_tag_assignments')
+        .select(`
+          *,
+          file_tags (*)
+        `)
+        .in('file_upload_id', fileIds);
+
+      // Transform and combine the data
+      return filesData.map(file => ({
+        ...file,
+        uploader_profile: file.uploader_profile || undefined,
+        versions: versionsData?.filter(v => v.file_upload_id === file.id) || [],
+        comments: commentsData?.filter(c => c.file_upload_id === file.id) || [],
+        permissions: permissionsData?.filter(p => p.file_upload_id === file.id) || [],
+        tags: tagAssignmentsData?.filter(ta => ta.file_upload_id === file.id).map(ta => ta.file_tags).filter(Boolean) || []
       })) as FileUpload[];
     },
     enabled: !!user,
