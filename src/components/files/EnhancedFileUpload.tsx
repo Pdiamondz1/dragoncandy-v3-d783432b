@@ -103,19 +103,24 @@ const EnhancedFileUpload: React.FC<EnhancedFileUploadProps> = ({
         const filename = `${timestamp}-${randomString}.${extension}`;
         const filePath = user ? `${user.id}/${filename}` : filename;
         
+        // Simulate upload progress
+        let progress = 0;
+        const progressInterval = setInterval(() => {
+          progress += Math.random() * 30;
+          if (progress > 90) progress = 90;
+          setUploadQueue(prev => prev.map(item => 
+            item.fileId === queueItem.fileId 
+              ? { ...item, progress }
+              : item
+          ));
+        }, 100);
+        
         // Upload to Supabase Storage
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from(bucketName)
-          .upload(filePath, processedFile, {
-            onUploadProgress: (progress) => {
-              const percentage = (progress.loaded / progress.total) * 100;
-              setUploadQueue(prev => prev.map(item => 
-                item.fileId === queueItem.fileId 
-                  ? { ...item, progress: percentage }
-                  : item
-              ));
-            }
-          });
+          .upload(filePath, processedFile);
+        
+        clearInterval(progressInterval);
         
         if (uploadError) {
           throw uploadError;

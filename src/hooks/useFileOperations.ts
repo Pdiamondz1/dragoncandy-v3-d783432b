@@ -60,7 +60,36 @@ export const useFileUploads = (campaignId?: string, category?: string) => {
         throw error;
       }
 
-      return data as FileUpload[];
+      // Transform the data to match our FileUpload interface
+      return (data || []).map(item => ({
+        ...item,
+        uploader_profile: item.uploader_profile ? {
+          full_name: item.uploader_profile.full_name || '',
+          avatar_url: item.uploader_profile.avatar_url || ''
+        } : undefined,
+        versions: item.versions?.map((version: any) => ({
+          ...version,
+          creator_profile: version.creator_profile ? {
+            full_name: version.creator_profile.full_name || '',
+            avatar_url: version.creator_profile.avatar_url || ''
+          } : undefined
+        })) || [],
+        comments: item.comments?.map((comment: any) => ({
+          ...comment,
+          user_profile: comment.user_profile ? {
+            full_name: comment.user_profile.full_name || '',
+            avatar_url: comment.user_profile.avatar_url || ''
+          } : undefined
+        })) || [],
+        tags: item.tags?.map((tagAssignment: any) => tagAssignment.file_tags).filter(Boolean) || [],
+        permissions: item.permissions?.map((permission: any) => ({
+          ...permission,
+          user_profile: permission.user_profile ? {
+            full_name: permission.user_profile.full_name || '',
+            avatar_url: permission.user_profile.avatar_url || ''
+          } : undefined
+        })) || []
+      })) as FileUpload[];
     },
     enabled: !!user,
   });
