@@ -38,7 +38,17 @@ const RatingPromptManager: React.FC = () => {
       {pendingReviews.slice(0, 2).map((project) => {
         const isCreator = project.creator_id === user?.id;
         const revieweeId = isCreator ? project.campaigns.user_id : project.creator_id;
-        const revieweeName = isCreator ? project.business?.full_name : project.creator?.full_name;
+        
+        // Handle the nested profile data structure
+        let revieweeName = 'Unknown';
+        if (isCreator) {
+          // Business name from nested business profile
+          revieweeName = project.business?.[0]?.profiles?.full_name || 'Unknown Business';
+        } else {
+          // Creator name from creator profile
+          revieweeName = project.creator?.full_name || 'Unknown Creator';
+        }
+        
         const reviewType = isCreator ? 'creator_to_business' : 'business_to_creator';
 
         return (
@@ -46,7 +56,7 @@ const RatingPromptManager: React.FC = () => {
             key={project.id}
             collaborationId={project.id}
             revieweeId={revieweeId}
-            revieweeName={revieweeName || 'Unknown'}
+            revieweeName={revieweeName}
             reviewType={reviewType}
             onDismiss={() => handleDismiss(project.id)}
           />

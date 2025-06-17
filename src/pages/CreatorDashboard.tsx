@@ -1,17 +1,13 @@
+
 import React from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Grid, Row, Col } from '@/components/ui/grid';
 import { Badge } from '@/components/ui/badge';
-import { CalendarRange } from '@/components/ui/calendar';
-import { OverviewRevenue } from '@/components/OverviewRevenue';
-import { OverviewLatestOrders } from '@/components/OverviewLatestOrders';
-import { OverviewTotalRevenue } from '@/components/OverviewTotalRevenue';
-import { OverviewTasks } from '@/components/OverviewTasks';
+import { Calendar } from '@/components/ui/calendar';
 import { useAuth } from '@/hooks/useAuth';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Settings } from 'lucide-react';
+import { PlusCircle, Settings, DollarSign, Target, Star, Clock } from 'lucide-react';
 import RatingPromptManager from '@/components/reviews/RatingPromptManager';
 
 const CreatorDashboard = () => {
@@ -29,7 +25,7 @@ const CreatorDashboard = () => {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">
-                Welcome back, {profile.full_name}
+                Welcome back, {profile.creator_name || profile.full_name}
               </h1>
               <p className="text-gray-600 mt-2">
                 Here's what's happening with your creator account today.
@@ -55,70 +51,133 @@ const CreatorDashboard = () => {
           <RatingPromptManager />
 
           {/* Stats Grid */}
-          <Grid className="gap-6">
-            <Row>
-              <Col size={{ initial: 6, sm: 3 }}>
-                <OverviewTotalRevenue value="$23,456" percentageChange="+12%" />
-              </Col>
-              <Col size={{ initial: 6, sm: 3 }}>
-                <OverviewTotalRevenue value="143" title="Campaigns Applied" percentageChange="-8%" />
-              </Col>
-              <Col size={{ initial: 6, sm: 3 }}>
-                <OverviewTotalRevenue value="32" title="Projects Completed" percentageChange="+5%" />
-              </Col>
-              <Col size={{ initial: 6, sm: 3 }}>
-                <OverviewTotalRevenue value="4.8" title="Average Rating" percentageChange="+2%" />
-              </Col>
-            </Row>
-          </Grid>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
+                <DollarSign className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">$23,456</div>
+                <p className="text-xs text-muted-foreground">+12% from last month</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Campaigns Applied</CardTitle>
+                <Target className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">143</div>
+                <p className="text-xs text-muted-foreground">-8% from last month</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Projects Completed</CardTitle>
+                <Clock className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">32</div>
+                <p className="text-xs text-muted-foreground">+5% from last month</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Average Rating</CardTitle>
+                <Star className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">4.8</div>
+                <p className="text-xs text-muted-foreground">+2% from last month</p>
+              </CardContent>
+            </Card>
+          </div>
 
           {/* Main Content Grid */}
-          <Grid className="gap-6">
-            <Row>
-              <Col size={{ initial: 12, md: 6 }}>
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Revenue</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <OverviewRevenue />
-                  </CardContent>
-                </Card>
-              </Col>
-              <Col size={{ initial: 12, md: 6 }}>
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Latest Projects</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <OverviewLatestOrders />
-                  </CardContent>
-                </Card>
-              </Col>
-            </Row>
-            <Row>
-              <Col size={{ initial: 12, md: 8 }}>
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Tasks</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <OverviewTasks />
-                  </CardContent>
-                </Card>
-              </Col>
-              <Col size={{ initial: 12, md: 4 }}>
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Upcoming Events</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <CalendarRange />
-                  </CardContent>
-                </Card>
-              </Col>
-            </Row>
-          </Grid>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Recent Activity</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex items-center space-x-4">
+                    <Badge variant="outline">New</Badge>
+                    <span className="text-sm">Campaign application submitted</span>
+                  </div>
+                  <div className="flex items-center space-x-4">
+                    <Badge variant="secondary">Completed</Badge>
+                    <span className="text-sm">Project delivered successfully</span>
+                  </div>
+                  <div className="flex items-center space-x-4">
+                    <Badge variant="outline">Pending</Badge>
+                    <span className="text-sm">Awaiting client feedback</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Quick Actions</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Button className="w-full" variant="outline" asChild>
+                  <Link to="/dashboard/creator/campaigns">
+                    Browse New Campaigns
+                  </Link>
+                </Button>
+                <Button className="w-full" variant="outline" asChild>
+                  <Link to="/dashboard/creator/projects">
+                    View Active Projects
+                  </Link>
+                </Button>
+                <Button className="w-full" variant="outline" asChild>
+                  <Link to="/reviews">
+                    Manage Reviews
+                  </Link>
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Calendar and Tasks */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <Card className="lg:col-span-2">
+              <CardHeader>
+                <CardTitle>Upcoming Deadlines</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="border-l-4 border-blue-500 pl-4">
+                    <h4 className="font-medium">Social Media Campaign</h4>
+                    <p className="text-sm text-gray-600">Due in 3 days</p>
+                  </div>
+                  <div className="border-l-4 border-yellow-500 pl-4">
+                    <h4 className="font-medium">Product Photography</h4>
+                    <p className="text-sm text-gray-600">Due in 1 week</p>
+                  </div>
+                  <div className="border-l-4 border-green-500 pl-4">
+                    <h4 className="font-medium">Brand Video Content</h4>
+                    <p className="text-sm text-gray-600">Due in 2 weeks</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Calendar</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Calendar />
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
     </DashboardLayout>
