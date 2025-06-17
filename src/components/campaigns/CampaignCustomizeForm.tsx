@@ -8,6 +8,27 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { X, Plus } from 'lucide-react';
 
+interface CampaignAnalysis {
+  title: string;
+  description: string;
+  target_audience: string;
+  goals: string[];
+  recommended_platforms: string[];
+  content_types: string[];
+  key_messages: string[];
+  success_metrics: string[];
+  budget_recommendations?: {
+    min: number;
+    max: number;
+    reasoning: string;
+  };
+  timeline_recommendations?: {
+    preparation: string;
+    execution: string;
+    analysis: string;
+  };
+}
+
 interface CampaignData {
   title: string;
   description: string;
@@ -29,7 +50,7 @@ interface CampaignData {
 }
 
 interface CampaignCustomizeFormProps {
-  initialData: CampaignData;
+  initialData: CampaignAnalysis;
   onContinue: (data: CampaignData) => void;
   onBackToAnalysis: () => void;
 }
@@ -44,7 +65,7 @@ const CampaignCustomizeForm: React.FC<CampaignCustomizeFormProps> = ({
     description: initialData.description || '',
     goals: initialData.goals || [],
     target_audience: initialData.target_audience || '',
-    platforms: initialData.recommended_platforms || initialData.platforms || [],
+    platforms: initialData.recommended_platforms || [],
     content_types: initialData.content_types || [],
     key_messages: initialData.key_messages || [],
     timeline_recommendations: initialData.timeline_recommendations,
@@ -70,7 +91,7 @@ const CampaignCustomizeForm: React.FC<CampaignCustomizeFormProps> = ({
       description: initialData.description || '',
       goals: initialData.goals || [],
       target_audience: initialData.target_audience || '',
-      platforms: initialData.recommended_platforms || initialData.platforms || [],
+      platforms: initialData.recommended_platforms || [],
       content_types: initialData.content_types || [],
       key_messages: initialData.key_messages || [],
       timeline_recommendations: initialData.timeline_recommendations,
