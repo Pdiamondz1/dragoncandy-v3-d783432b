@@ -9,23 +9,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-interface CampaignAnalysisRequest {
-  campaignGoal: string;
-}
-
-interface CampaignAnalysisResponse {
-  title: string;
-  description: string;
-  goals: string;
-  targetAudience: string;
-  platforms: string[];
-  timeline: string;
-  style: string;
-  tone: string;
-  deliverables: string[];
-  budgetRecommendation: string;
-}
-
 serve(async (req) => {
   console.log('Campaign analysis function called');
   
@@ -35,24 +18,21 @@ serve(async (req) => {
   }
 
   try {
-    const { campaignGoal }: CampaignAnalysisRequest = await req.json();
-    console.log('Received campaign goal:', campaignGoal);
+    if (!openAIApiKey) {
+      console.error('OpenAI API key not found');
+      throw new Error('OpenAI API key not configured');
+    }
 
-    const systemPrompt = `You are DragonCandy AI, an expert campaign strategist specializing in social media marketing. Analyze the user's campaign goal and generate a comprehensive campaign strategy.
+    const requestBody = await req.json();
+    console.log('Request body:', requestBody);
+    
+    const { campaignGoal } = requestBody;
 
-Return your response as a JSON object with these exact keys:
-- title: A compelling, specific campaign title (max 60 characters)
-- description: Detailed campaign description (2-3 sentences)
-- goals: Specific, measurable campaign objectives
-- targetAudience: Detailed target audience description
-- platforms: Array of recommended social media platforms
-- timeline: Recommended campaign duration and key milestones
-- style: Visual and creative style recommendations
-- tone: Brand voice and messaging tone
-- deliverables: Array of specific content deliverables needed
-- budgetRecommendation: Suggested budget range and allocation
+    if (!campaignGoal || !campaignGoal.trim()) {
+      throw new Error('Campaign goal is required');
+    }
 
-Make recommendations specific, actionable, and tailored to the campaign goal provided.`;
+    console.log('Calling OpenAI API with goal:', campaignGoal);
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -61,41 +41,99 @@ Make recommendations specific, actionable, and tailored to the campaign goal pro
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o',
+        model: 'gpt-4.1-2025-04-14',
         messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: `Campaign Goal: ${campaignGoal}` }
+          {
+            role: 'system',
+            content: `You are a marketing expert AI that helps businesses create effective social media campaigns. 
+            
+            Analyze the user's campaign goal and provide a comprehensive campaign strategy in valid JSON format with this exact structure:
+            
+            {
+              "title": "Campaign title (max 60 chars)",
+              "description": "Detailed campaign description (2-3 paragraphs)",
+              "target_audience": "Primary target audience description",
+              "goals": ["goal1", "goal2", "goal3"],
+              "recommended_platforms": ["Instagram", "TikTok", "YouTube"],
+              "content_types": ["Video", "Image", "Story"],
+              "key_messages": ["message1", "message2", "message3"],
+              "success_metrics": ["metric1", "metric2", "metric3"],
+              "budget_recommendations": {
+                "min": 500,
+                "max": 2000,
+                "reasoning": "Budget explanation"
+              },
+              "timeline_recommendations": {
+                "preparation": "1-2 weeks",
+                "execution": "2-4 weeks",
+                "analysis": "1 week"
+              }
+            }
+            
+            Ensure all recommendations are practical, actionable, and tailored to the specific campaign goal.`
+          },
+          {
+            role: 'user',
+            content: `Please analyze this campaign goal and provide a comprehensive strategy: ${campaignGoal}`
+          }
         ],
         temperature: 0.7,
-        max_tokens: 1500,
+        max_tokens: 2000,
       }),
     });
 
     if (!response.ok) {
-      throw new Error(`OpenAI API error: ${response.status}`);
+      console.error('OpenAI API error:', response.status, response.statusText);
+      const errorText = await response.text();
+      console.error('OpenAI error response:', errorText);
+      throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`);
     }
 
     const data = await response.json();
-    console.log('OpenAI response received');
-    
-    const generatedContent = data.choices[0].message.content;
-    console.log('Generated content:', generatedContent);
-    
-    // Parse the JSON response from OpenAI
-    let analysisResult: CampaignAnalysisResponse;
-    try {
-      analysisResult = JSON.parse(generatedContent);
-    } catch (parseError) {
-      console.error('Failed to parse OpenAI response as JSON:', parseError);
-      throw new Error('Invalid response format from AI');
+    console.log('OpenAI response:', data);
+
+    if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+      throw new Error('Invalid response from OpenAI API');
     }
 
-    return new Response(JSON.stringify(analysisResult), {
+    const generatedContent = data.choices[0].message.content;
+    console.log('Generated content:', generatedContent);
+
+    // Parse the JSON response
+    let campaignAnalysis;
+    try {
+      campaignAnalysis = JSON.parse(generatedContent);
+    } catch (parseError) {
+      console.error('Failed to parse OpenAI response as JSON:', parseError);
+      console.error('Raw content:', generatedContent);
+      throw new Error('Failed to parse campaign analysis from AI response');
+    }
+
+    // Validate required fields
+    const requiredFields = ['title', 'description', 'target_audience', 'goals', 'recommended_platforms'];
+    for (const field of requiredFields) {
+      if (!campaignAnalysis[field]) {
+        throw new Error(`Missing required field in campaign analysis: ${field}`);
+      }
+    }
+
+    console.log('Campaign analysis generated successfully');
+    
+    return new Response(JSON.stringify({ 
+      success: true, 
+      analysis: campaignAnalysis 
+    }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
+
   } catch (error) {
     console.error('Error in generate-campaign-analysis function:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    
+    return new Response(JSON.stringify({ 
+      success: false, 
+      error: error.message || 'An unexpected error occurred',
+      details: error.stack
+    }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

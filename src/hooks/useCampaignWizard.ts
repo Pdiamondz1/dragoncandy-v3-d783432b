@@ -1,90 +1,82 @@
-
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
+import { toast } from 'sonner';
 
 interface CampaignAnalysis {
   title: string;
   description: string;
-  goals: string;
-  targetAudience: string;
-  platforms: string[];
-  timeline: string;
-  style: string;
-  tone: string;
-  deliverables: string[];
-  budgetRecommendation: string;
-}
-
-interface TimelineBudgetData {
-  goals: string;
-  deadline: Date;
-  budgetMin: number;
-  budgetMax: number;
-}
-
-interface FinalCampaignData {
-  title: string;
-  description: string;
-  goals: string;
-  deliverables: string[];
-  platforms: string[];
-  style: string;
-  tone: string;
-  budgetMin: number;
-  budgetMax: number;
-  deadline: Date;
+  target_audience: string;
+  goals: string[];
+  recommended_platforms: string[];
+  content_types: string[];
+  key_messages: string[];
+  success_metrics: string[];
+  budget_recommendations?: {
+    min: number;
+    max: number;
+    reasoning: string;
+  };
+  timeline_recommendations?: {
+    preparation: string;
+    execution: string;
+    analysis: string;
+  };
 }
 
 export const useCampaignWizard = () => {
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
   const [campaignGoal, setCampaignGoal] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [campaignAnalysis, setCampaignAnalysis] = useState<CampaignAnalysis | null>(null);
-  const [customizedCampaign, setCustomizedCampaign] = useState<CampaignAnalysis | null>(null);
-  const [timelineBudgetData, setTimelineBudgetData] = useState<TimelineBudgetData | null>(null);
-  const [finalCampaignData, setFinalCampaignData] = useState<FinalCampaignData | null>(null);
+  const [customizedCampaign, setCustomizedCampaign] = useState<any>(null);
+  const [finalCampaignData, setFinalCampaignData] = useState<any>(null);
 
   const handleGenerateWithAI = async () => {
     if (!campaignGoal.trim()) {
-      toast({
-        title: 'Campaign goal required',
-        description: 'Please describe your campaign goal before generating analysis.',
-        variant: 'destructive',
-      });
+      toast.error('Please enter your campaign goal');
       return;
     }
 
     setIsGenerating(true);
     
     try {
-      console.log('Calling generate-campaign-analysis function...');
+      console.log('Calling generate-campaign-analysis with goal:', campaignGoal);
+      
       const { data, error } = await supabase.functions.invoke('generate-campaign-analysis', {
-        body: { campaignGoal: campaignGoal.trim() }
+        body: { campaignGoal }
       });
+
+      console.log('Supabase function response:', { data, error });
 
       if (error) {
         console.error('Supabase function error:', error);
-        throw error;
+        throw new Error(error.message || 'Failed to generate campaign analysis');
       }
 
-      console.log('Campaign analysis result:', data);
-      setCampaignAnalysis(data);
+      if (!data) {
+        throw new Error('No data returned from campaign analysis');
+      }
+
+      if (!data.success) {
+        throw new Error(data.error || 'Campaign analysis generation failed');
+      }
+
+      if (!data.analysis) {
+        throw new Error('No analysis data in response');
+      }
+
+      console.log('Campaign analysis generated successfully:', data.analysis);
+      setCampaignAnalysis(data.analysis);
       setCurrentStep(2);
-      
-      toast({
-        title: 'Campaign analysis complete!',
-        description: 'DragonCandy AI has analyzed your campaign goal.',
-      });
+      toast.success('Campaign analysis generated successfully!');
+
     } catch (error) {
       console.error('Error generating campaign analysis:', error);
-      toast({
-        title: 'Analysis failed',
-        description: 'Unable to generate campaign analysis. Please try again.',
-        variant: 'destructive',
-      });
+      toast.error(error.message || 'Failed to generate campaign analysis. Please try again.');
     } finally {
       setIsGenerating(false);
     }
@@ -102,61 +94,27 @@ export const useCampaignWizard = () => {
     setCurrentStep(2);
   };
 
-  const handleContinueFromCustomize = (customizedData: CampaignAnalysis) => {
-    setCustomizedCampaign(customizedData);
+  const handleContinueFromCustomize = (data: any) => {
+    setCustomizedCampaign(data);
     setCurrentStep(4);
-    toast({
-      title: 'Campaign customized!',
-      description: 'Ready to set timeline and budget.',
-    });
   };
 
   const handleBackToCustomize = () => {
     setCurrentStep(3);
   };
 
-  const handleContinueFromTimelineBudget = (data: TimelineBudgetData) => {
-    setTimelineBudgetData(data);
-    
-    // Prepare final campaign data for Step 5
-    if (customizedCampaign) {
-      const finalData: FinalCampaignData = {
-        title: customizedCampaign.title,
-        description: customizedCampaign.description,
-        goals: data.goals,
-        deliverables: customizedCampaign.deliverables,
-        platforms: customizedCampaign.platforms,
-        style: customizedCampaign.style,
-        tone: customizedCampaign.tone,
-        budgetMin: data.budgetMin,
-        budgetMax: data.budgetMax,
-        deadline: data.deadline,
-      };
-      setFinalCampaignData(finalData);
-    }
-    
+  const handleContinueFromTimelineBudget = (data: any) => {
+    setFinalCampaignData(data);
     setCurrentStep(5);
-    toast({
-      title: 'Timeline and budget set!',
-      description: 'Ready to finalize your campaign.',
-    });
   };
 
   const handleBackToTimelineBudget = () => {
     setCurrentStep(4);
   };
 
-  const handleNext = () => {
-    if (currentStep < 5) {
-      setCurrentStep(currentStep + 1);
-    }
-  };
-
   const handleBack = () => {
     if (currentStep > 1) {
       setCurrentStep(currentStep - 1);
-    } else {
-      navigate('/dashboard/business/campaigns');
     }
   };
 
@@ -167,7 +125,6 @@ export const useCampaignWizard = () => {
     isGenerating,
     campaignAnalysis,
     customizedCampaign,
-    timelineBudgetData,
     finalCampaignData,
     handleGenerateWithAI,
     handleEditCampaignIdea,
@@ -177,7 +134,6 @@ export const useCampaignWizard = () => {
     handleBackToCustomize,
     handleContinueFromTimelineBudget,
     handleBackToTimelineBudget,
-    handleNext,
     handleBack,
   };
 };
