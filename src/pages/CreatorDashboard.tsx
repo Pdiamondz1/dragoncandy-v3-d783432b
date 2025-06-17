@@ -2,17 +2,21 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { usePublicCampaigns } from '@/hooks/usePublicCampaigns';
+import { useCreatorApplications } from '@/hooks/useCampaignApplications';
 import { supabase } from '@/integrations/supabase/client';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Sparkles, Briefcase, DollarSign, Star, Eye, Users, TrendingUp } from 'lucide-react';
+import { Sparkles, Briefcase, DollarSign, Star, Eye, Users, TrendingUp, Clock } from 'lucide-react';
 
 const CreatorDashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
+  const { data: availableCampaigns = [] } = usePublicCampaigns(user?.id);
+  const { data: applications = [] } = useCreatorApplications();
 
   useEffect(() => {
     if (!user) {
@@ -61,6 +65,11 @@ const CreatorDashboard = () => {
     );
   }
 
+  const pendingApplications = applications.filter(app => app.status === 'pending');
+  const acceptedApplications = applications.filter(app => app.status === 'accepted');
+  const totalEarnings = acceptedApplications.reduce((sum, app) => sum + (app.proposed_rate || 0), 0);
+  const featuredCampaigns = availableCampaigns.slice(0, 3);
+
   return (
     <DashboardLayout userRole="content_creator">
       <div className="flex-1 p-8">
@@ -98,7 +107,7 @@ const CreatorDashboard = () => {
                 </div>
                 <div className="ml-4">
                   <p className="text-sm text-gray-600">Active Projects</p>
-                  <p className="text-2xl font-bold">3</p>
+                  <p className="text-2xl font-bold">{acceptedApplications.length}</p>
                 </div>
               </div>
             </CardContent>
@@ -111,22 +120,8 @@ const CreatorDashboard = () => {
                   <DollarSign className="w-6 h-6 text-green-600" />
                 </div>
                 <div className="ml-4">
-                  <p className="text-sm text-gray-600">Earnings</p>
-                  <p className="text-2xl font-bold">$2,450</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center">
-                <div className="p-2 bg-purple-100 rounded-lg">
-                  <Star className="w-6 h-6 text-purple-600" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm text-gray-600">Rating</p>
-                  <p className="text-2xl font-bold">4.9</p>
+                  <p className="text-sm text-gray-600">Potential Earnings</p>
+                  <p className="text-2xl font-bold">${totalEarnings.toLocaleString()}</p>
                 </div>
               </div>
             </CardContent>
@@ -136,11 +131,25 @@ const CreatorDashboard = () => {
             <CardContent className="pt-6">
               <div className="flex items-center">
                 <div className="p-2 bg-orange-100 rounded-lg">
-                  <Briefcase className="w-6 h-6 text-orange-600" />
+                  <Clock className="w-6 h-6 text-orange-600" />
                 </div>
                 <div className="ml-4">
-                  <p className="text-sm text-gray-600">Completed</p>
-                  <p className="text-2xl font-bold">12</p>
+                  <p className="text-sm text-gray-600">Pending</p>
+                  <p className="text-2xl font-bold">{pendingApplications.length}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center">
+                <div className="p-2 bg-purple-100 rounded-lg">
+                  <TrendingUp className="w-6 h-6 text-purple-600" />
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm text-gray-600">Available</p>
+                  <p className="text-2xl font-bold">{availableCampaigns.length}</p>
                 </div>
               </div>
             </CardContent>
@@ -150,73 +159,62 @@ const CreatorDashboard = () => {
         {/* Available Campaigns */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-gray-900">Available Campaigns</h2>
+            <h2 className="text-2xl font-bold text-gray-900">Featured Campaigns</h2>
             <Button 
               variant="outline"
-              onClick={() => navigate('/dashboard/creator/marketplace')}
+              onClick={() => navigate('/dashboard/creator/campaigns')}
             >
-              View All
+              View All ({availableCampaigns.length})
             </Button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <Card className="hover:shadow-md transition-shadow">
-              <CardContent className="pt-6">
-                <div className="flex items-start justify-between mb-4">
-                  <Badge variant="secondary" className="bg-blue-100 text-blue-700">
-                    Video Editing
-                  </Badge>
-                  <span className="text-lg font-bold text-green-600">$500</span>
-                </div>
-                <h3 className="font-semibold mb-2">Product Launch Video</h3>
-                <p className="text-sm text-gray-600 mb-4">
-                  Create a 60-second product launch video for a tech startup...
+          {featuredCampaigns.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {featuredCampaigns.map((campaign) => (
+                <Card key={campaign.id} className="hover:shadow-md transition-shadow">
+                  <CardContent className="pt-6">
+                    <div className="flex items-start justify-between mb-4">
+                      <Badge variant="secondary" className="bg-blue-100 text-blue-700">
+                        {campaign.platforms?.[0] || 'Digital'}
+                      </Badge>
+                      <span className="text-lg font-bold text-green-600">
+                        {campaign.budget_max ? `$${campaign.budget_max.toLocaleString()}` : 'Budget TBD'}
+                      </span>
+                    </div>
+                    <h3 className="font-semibold mb-2 line-clamp-1">{campaign.title}</h3>
+                    <p className="text-sm text-gray-600 mb-4 line-clamp-2">
+                      {campaign.description || 'No description provided'}
+                    </p>
+                    <div className="flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-1 text-gray-500">
+                        <Users className="h-4 w-4" />
+                        <span>{campaign.application_count || 0} applied</span>
+                      </div>
+                      <Button 
+                        size="sm"
+                        onClick={() => navigate('/dashboard/creator/campaigns')}
+                        disabled={campaign.user_applied}
+                      >
+                        {campaign.user_applied ? 'Applied' : 'Apply'}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <Briefcase className="h-12 w-12 text-gray-400 mb-4" />
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  No campaigns available yet
+                </h3>
+                <p className="text-gray-600 text-center max-w-md">
+                  Check back later for new campaign opportunities from businesses.
                 </p>
-                <div className="flex items-center justify-between text-sm text-gray-500">
-                  <span>Due: 5 days</span>
-                  <Button size="sm">Apply</Button>
-                </div>
               </CardContent>
             </Card>
-
-            <Card className="hover:shadow-md transition-shadow">
-              <CardContent className="pt-6">
-                <div className="flex items-start justify-between mb-4">
-                  <Badge variant="secondary" className="bg-pink-100 text-pink-700">
-                    Photography
-                  </Badge>
-                  <span className="text-lg font-bold text-green-600">$300</span>
-                </div>
-                <h3 className="font-semibold mb-2">Fashion Brand Shoot</h3>
-                <p className="text-sm text-gray-600 mb-4">
-                  Product photography for new fashion collection...
-                </p>
-                <div className="flex items-center justify-between text-sm text-gray-500">
-                  <span>Due: 3 days</span>
-                  <Button size="sm">Apply</Button>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="hover:shadow-md transition-shadow">
-              <CardContent className="pt-6">
-                <div className="flex items-start justify-between mb-4">
-                  <Badge variant="secondary" className="bg-purple-100 text-purple-700">
-                    Content Strategy
-                  </Badge>
-                  <span className="text-lg font-bold text-green-600">$750</span>
-                </div>
-                <h3 className="font-semibold mb-2">Social Media Strategy</h3>
-                <p className="text-sm text-gray-600 mb-4">
-                  Develop comprehensive social media strategy...
-                </p>
-                <div className="flex items-center justify-between text-sm text-gray-500">
-                  <span>Due: 7 days</span>
-                  <Button size="sm">Apply</Button>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+          )}
         </div>
 
         {/* Quick Actions */}
@@ -224,30 +222,48 @@ const CreatorDashboard = () => {
           <h2 className="text-2xl font-bold text-gray-900 mb-6">Quick Actions</h2>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Card className="p-6 text-center hover:shadow-md transition-shadow cursor-pointer">
+            <Card 
+              className="p-6 text-center hover:shadow-md transition-shadow cursor-pointer"
+              onClick={() => navigate('/dashboard/creator/campaigns')}
+            >
               <CardContent className="pt-0">
-                <div className="mx-auto mb-4 w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
-                  <Eye className="text-gray-600 w-6 h-6" />
-                </div>
-                <h3 className="font-semibold mb-2">View Portfolio</h3>
-              </CardContent>
-            </Card>
-            
-            <Card className="p-6 text-center hover:shadow-md transition-shadow cursor-pointer">
-              <CardContent className="pt-0">
-                <div className="mx-auto mb-4 w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
-                  <Users className="text-gray-600 w-6 h-6" />
+                <div className="mx-auto mb-4 w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                  <Eye className="text-blue-600 w-6 h-6" />
                 </div>
                 <h3 className="font-semibold mb-2">Browse Campaigns</h3>
+                <p className="text-sm text-gray-600">
+                  Discover new opportunities and apply to campaigns
+                </p>
               </CardContent>
             </Card>
             
-            <Card className="p-6 text-center hover:shadow-md transition-shadow cursor-pointer">
+            <Card 
+              className="p-6 text-center hover:shadow-md transition-shadow cursor-pointer"
+              onClick={() => navigate('/dashboard/creator/applications')}
+            >
               <CardContent className="pt-0">
-                <div className="mx-auto mb-4 w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
-                  <TrendingUp className="text-gray-600 w-6 h-6" />
+                <div className="mx-auto mb-4 w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                  <Users className="text-green-600 w-6 h-6" />
                 </div>
-                <h3 className="font-semibold mb-2">View Analytics</h3>
+                <h3 className="font-semibold mb-2">My Applications</h3>
+                <p className="text-sm text-gray-600">
+                  Track your applications and project status
+                </p>
+              </CardContent>
+            </Card>
+            
+            <Card 
+              className="p-6 text-center hover:shadow-md transition-shadow cursor-pointer"
+              onClick={() => navigate('/profile/creator')}
+            >
+              <CardContent className="pt-0">
+                <div className="mx-auto mb-4 w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
+                  <TrendingUp className="text-purple-600 w-6 h-6" />
+                </div>
+                <h3 className="font-semibold mb-2">Update Profile</h3>
+                <p className="text-sm text-gray-600">
+                  Keep your portfolio and skills up to date
+                </p>
               </CardContent>
             </Card>
           </div>

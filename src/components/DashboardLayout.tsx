@@ -45,7 +45,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, userRole })
   const creatorNavItems = [
     { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard/creator' },
     { icon: Search, label: 'Browse Campaigns', href: '/dashboard/creator/campaigns' },
-    { icon: Briefcase, label: 'My Projects', href: '/dashboard/creator/projects' },
+    { icon: Briefcase, label: 'My Applications', href: '/dashboard/creator/applications' },
     { icon: MessageSquare, label: 'Messages', href: '/dashboard/creator/messages' },
     { icon: Settings, label: 'Settings', href: '/dashboard/creator/settings' },
   ];
