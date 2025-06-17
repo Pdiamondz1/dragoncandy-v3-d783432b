@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import LandingPage from "./LandingPage";
 
 export default function Index() {
   const navigate = useNavigate();
@@ -31,6 +30,9 @@ export default function Index() {
       };
       
       redirectToDashboard();
+    } else if (!loading && !user) {
+      // Redirect unauthenticated users to landing page
+      navigate('/landing');
     }
   }, [user, loading, navigate]);
 
@@ -42,6 +44,6 @@ export default function Index() {
     );
   }
 
-  // Show landing page for unauthenticated users
-  return <LandingPage />;
+  // This should not render anything as users will be redirected
+  return null;
 }
