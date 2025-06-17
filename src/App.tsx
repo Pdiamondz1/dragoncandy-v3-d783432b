@@ -23,6 +23,7 @@ import MessagesPage from "./pages/MessagesPage";
 import CampaignMessagesPage from "./pages/CampaignMessagesPage";
 import ProjectDetailsPage from "./pages/ProjectDetailsPage";
 import CreatorCampaignMarketplace from "./pages/CreatorCampaignMarketplace";
+import BusinessProposals from "./pages/BusinessProposals";
 
 const queryClient = new QueryClient();
 
@@ -81,6 +82,13 @@ const App = () => (
             <Route path="/dashboard/business/campaigns/:id/edit" element={
               <ProtectedRoute>
                 <CampaignEditPage />
+              </ProtectedRoute>
+            } />
+
+            {/* Business Proposals Route */}
+            <Route path="/dashboard/business/campaigns/:campaignId/proposals" element={
+              <ProtectedRoute>
+                <BusinessProposals />
               </ProtectedRoute>
             } />
 

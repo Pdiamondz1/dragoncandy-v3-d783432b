@@ -5,13 +5,16 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Users, BarChart3, Settings } from 'lucide-react';
+import { Users, BarChart3, Settings, Eye } from 'lucide-react';
 import { useCampaignApplications } from '@/hooks/useCampaignApplications';
 import { useApplicationFilters } from '@/hooks/useApplicationFilters';
 import ApplicationCard from './ApplicationCard';
 import ApplicationFiltersComponent from './ApplicationFilters';
 import BulkApplicationActions from './BulkApplicationActions';
 import ApplicationAnalytics from './ApplicationAnalytics';
+import CreatorProfileModal from './CreatorProfileModal';
+import { CampaignApplication } from '@/types/applications';
+import { useManageApplication } from '@/hooks/useManageApplication';
 
 interface ApplicationsListProps {
   campaignId: string;
@@ -21,6 +24,9 @@ const ApplicationsList: React.FC<ApplicationsListProps> = ({ campaignId }) => {
   const { data: applications = [], isLoading, error } = useCampaignApplications(campaignId);
   const { filters, filteredApplications, updateFilter, resetFilters } = useApplicationFilters(applications);
   const [selectedApplicationIds, setSelectedApplicationIds] = useState<string[]>([]);
+  const [selectedApplication, setSelectedApplication] = useState<CampaignApplication | null>(null);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const manageApplication = useManageApplication();
 
   if (isLoading) {
     return (
@@ -45,6 +51,33 @@ const ApplicationsList: React.FC<ApplicationsListProps> = ({ campaignId }) => {
   const pendingCount = applications.filter(app => app.status === 'pending').length;
   const acceptedCount = applications.filter(app => app.status === 'accepted').length;
   const rejectedCount = applications.filter(app => app.status === 'rejected').length;
+
+  const handleViewProfile = (application: CampaignApplication) => {
+    setSelectedApplication(application);
+    setShowProfileModal(true);
+  };
+
+  const handleAcceptFromModal = async () => {
+    if (selectedApplication) {
+      await manageApplication.mutateAsync({
+        applicationId: selectedApplication.id,
+        status: 'accepted',
+      });
+      setShowProfileModal(false);
+      setSelectedApplication(null);
+    }
+  };
+
+  const handleRejectFromModal = async () => {
+    if (selectedApplication) {
+      await manageApplication.mutateAsync({
+        applicationId: selectedApplication.id,
+        status: 'rejected',
+      });
+      setShowProfileModal(false);
+      setSelectedApplication(null);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -167,10 +200,24 @@ const ApplicationsList: React.FC<ApplicationsListProps> = ({ campaignId }) => {
                     className="mt-6"
                   />
                   <div className="flex-1">
-                    <ApplicationCard
-                      application={application}
-                      showActions={true}
-                    />
+                    <div className="flex gap-4">
+                      <div className="flex-1">
+                        <ApplicationCard
+                          application={application}
+                          showActions={true}
+                        />
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleViewProfile(application)}
+                        >
+                          <Eye className="h-4 w-4 mr-1" />
+                          View Profile
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -216,6 +263,19 @@ const ApplicationsList: React.FC<ApplicationsListProps> = ({ campaignId }) => {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Creator Profile Modal */}
+      <CreatorProfileModal
+        application={selectedApplication}
+        isOpen={showProfileModal}
+        onClose={() => {
+          setShowProfileModal(false);
+          setSelectedApplication(null);
+        }}
+        onAccept={handleAcceptFromModal}
+        onReject={handleRejectFromModal}
+        showActions={selectedApplication?.status === 'pending'}
+      />
     </div>
   );
 };
