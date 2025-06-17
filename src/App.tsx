@@ -24,6 +24,9 @@ import CampaignMessagesPage from "./pages/CampaignMessagesPage";
 import ProjectDetailsPage from "./pages/ProjectDetailsPage";
 import CreatorCampaignMarketplace from "./pages/CreatorCampaignMarketplace";
 import BusinessProposals from "./pages/BusinessProposals";
+import CreatorApplications from "./pages/CreatorApplications";
+import CreatorProjects from "./pages/CreatorProjects";
+import CreatorBrowse from "./pages/CreatorBrowse";
 
 const queryClient = new QueryClient();
 
@@ -92,10 +95,29 @@ const App = () => (
               </ProtectedRoute>
             } />
 
+            {/* Business Creator Browse Route */}
+            <Route path="/dashboard/business/creators" element={
+              <ProtectedRoute>
+                <CreatorBrowse />
+              </ProtectedRoute>
+            } />
+
             {/* Creator Campaign Routes */}
             <Route path="/dashboard/creator/campaigns" element={
               <ProtectedRoute>
                 <CreatorCampaignMarketplace />
+              </ProtectedRoute>
+            } />
+
+            {/* Creator Application and Project Routes */}
+            <Route path="/dashboard/creator/applications" element={
+              <ProtectedRoute>
+                <CreatorApplications />
+              </ProtectedRoute>
+            } />
+            <Route path="/dashboard/creator/projects" element={
+              <ProtectedRoute>
+                <CreatorProjects />
               </ProtectedRoute>
             } />
 

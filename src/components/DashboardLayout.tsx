@@ -37,6 +37,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, userRole })
   const businessNavItems = [
     { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard/business' },
     { icon: Target, label: 'Campaigns', href: '/dashboard/business/campaigns' },
+    { icon: Users, label: 'Browse Creators', href: '/dashboard/business/creators' },
     { icon: Briefcase, label: 'Projects', href: '/dashboard/business/projects' },
     { icon: MessageSquare, label: 'Messages', href: '/dashboard/business/messages' },
     { icon: Settings, label: 'Settings', href: '/dashboard/business/settings' },
@@ -46,6 +47,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, userRole })
     { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard/creator' },
     { icon: Search, label: 'Browse Campaigns', href: '/dashboard/creator/campaigns' },
     { icon: Briefcase, label: 'My Applications', href: '/dashboard/creator/applications' },
+    { icon: Target, label: 'My Projects', href: '/dashboard/creator/projects' },
     { icon: MessageSquare, label: 'Messages', href: '/dashboard/creator/messages' },
     { icon: Settings, label: 'Settings', href: '/dashboard/creator/settings' },
   ];
