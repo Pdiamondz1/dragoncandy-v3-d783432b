@@ -27,6 +27,9 @@ import BusinessProposals from "./pages/BusinessProposals";
 import CreatorApplications from "./pages/CreatorApplications";
 import CreatorProjects from "./pages/CreatorProjects";
 import CreatorBrowse from "./pages/CreatorBrowse";
+import PublicCreatorProfile from "./pages/PublicCreatorProfile";
+import PublicBusinessProfile from "./pages/PublicBusinessProfile";
+import ReviewsManagement from "./pages/ReviewsManagement";
 
 const queryClient = new QueryClient();
 
@@ -139,6 +142,17 @@ const App = () => (
                 <ProjectDetailsPage />
               </ProtectedRoute>
             } />
+            
+            {/* Reviews Management Route */}
+            <Route path="/reviews" element={
+              <ProtectedRoute>
+                <ReviewsManagement />
+              </ProtectedRoute>
+            } />
+
+            {/* Public Profile Routes */}
+            <Route path="/creator/:slug" element={<PublicCreatorProfile />} />
+            <Route path="/business/:slug" element={<PublicBusinessProfile />} />
             
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />

@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -27,6 +26,7 @@ import {
   Briefcase
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import PublicProfileReviews from '@/components/profiles/PublicProfileReviews';
 
 interface CreatorProfile {
   id: string;
@@ -358,6 +358,12 @@ const PublicCreatorProfile = () => {
             </CardContent>
           </Card>
         )}
+
+        {/* Reviews & Ratings Section */}
+        <PublicProfileReviews 
+          profileId={profile.user_id}
+          profileType="creator"
+        />
 
         {/* Social Links */}
         {getSocialLinks().length > 0 && (

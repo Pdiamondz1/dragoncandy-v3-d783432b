@@ -1,168 +1,176 @@
-
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import DashboardLayout from '@/components/DashboardLayout';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Sparkles, Target, Users, BarChart3, Eye, TrendingUp, Calendar } from 'lucide-react';
+import { Building2, Users, LayoutDashboard, MessageSquare } from 'lucide-react';
+import RatingPromptManager from '@/components/reviews/RatingPromptManager';
 
 const BusinessDashboard = () => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
+  const [campaignCount, setCampaignCount] = useState(0);
+  const [creatorCount, setCreatorCount] = useState(0);
+  const [projectCount, setProjectCount] = useState(0);
 
-  useEffect(() => {
-    if (!user) {
-      navigate('/auth');
-      return;
-    }
+  React.useEffect(() => {
+    const fetchDashboardData = async () => {
+      if (!user) return;
 
-    const checkProfile = async () => {
       try {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', user.id)
-          .single();
+        // Fetch campaign count
+        const { data: campaigns, error: campaignError } = await supabase
+          .from('campaigns')
+          .select('*', { count: 'exact' })
+          .eq('user_id', user.id);
 
-        if (profile?.role !== 'business_client') {
-          navigate('/dashboard/creator');
-          return;
+        if (campaignError) {
+          console.error("Error fetching campaigns:", campaignError);
+        } else if (campaigns) {
+          setCampaignCount(campaigns.length);
         }
 
-        const { data: businessProfile } = await supabase
-          .from('business_profiles')
-          .select('is_completed')
-          .eq('user_id', user.id)
-          .single();
+        // Fetch creator count (number of collaborations)
+        const { data: collaborations, error: collaborationError } = await supabase
+          .from('campaign_collaborations')
+          .select('*', { count: 'exact' })
+          .in('campaign_id', (campaigns || []).map(c => c.id));
 
-        if (!businessProfile?.is_completed) {
-          navigate('/profile/business');
-          return;
+        if (collaborationError) {
+          console.error("Error fetching collaborations:", collaborationError);
+        } else if (collaborations) {
+          // Assuming each collaboration is a unique creator
+          setCreatorCount(new Set(collaborations.map(c => c.creator_id)).size);
         }
+
+        // Fetch project count (number of completed collaborations)
+        const { data: completedCollaborations, error: completedError } = await supabase
+          .from('campaign_collaborations')
+          .select('*', { count: 'exact' })
+          .in('campaign_id', (campaigns || []).map(c => c.id))
+          .eq('status', 'completed');
+
+        if (completedError) {
+          console.error("Error fetching completed collaborations:", completedError);
+        } else if (completedCollaborations) {
+          setProjectCount(completedCollaborations.length);
+        }
+
       } catch (error) {
-        console.error('Error checking profile:', error);
-      } finally {
-        setLoading(false);
+        console.error("Unexpected error fetching dashboard data:", error);
       }
     };
 
-    checkProfile();
-  }, [user, navigate]);
+    fetchDashboardData();
+  }, [user]);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-pink-600"></div>
-      </div>
-    );
+  if (!user || !profile) {
+    return <div>Loading...</div>;
   }
 
   return (
     <DashboardLayout userRole="business_client">
       <div className="flex-1 p-8">
-        {/* Hero Section */}
-        <div className="bg-white rounded-2xl p-8 mb-8 text-center">
-          <div className="mx-auto mb-6 w-16 h-16 bg-pink-100 rounded-full flex items-center justify-center">
-            <Sparkles className="text-pink-600 w-8 h-8" />
-          </div>
-          
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">
-            Create Your Campaign
-          </h1>
-          
-          <p className="text-gray-600 mb-8 max-w-2xl mx-auto">
-            Launch a powerful marketing campaign in minutes. Our AI will help you find
-            the perfect creators and manage everything from start to finish.
-          </p>
-          
-          <Button 
-            className="bg-pink-600 hover:bg-pink-700 text-white px-8 py-3"
-            onClick={() => navigate('/dashboard/business/campaigns/create')}
-          >
-            <Sparkles className="w-5 h-5 mr-2" />
-            Start Creating Campaign
-          </Button>
-        </div>
-
-        {/* How It Works Section */}
-        <div className="mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">How It Works</h2>
-          
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <div className="text-center">
-              <div className="mx-auto mb-4 w-12 h-12 bg-pink-100 rounded-full flex items-center justify-center">
-                <Target className="text-pink-600 w-6 h-6" />
+        <div className="max-w-7xl mx-auto space-y-8">
+          {/* Header */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900">
+                  Welcome back, {profile.business_name}!
+                </h1>
+                <p className="text-gray-600">
+                  Here's an overview of your campaigns and activity.
+                </p>
               </div>
-              <h3 className="font-semibold mb-2">1. Describe Your Goal</h3>
-              <p className="text-sm text-gray-600">
-                Tell us what you want to promote and your target audience
-              </p>
-            </div>
-            
-            <div className="text-center">
-              <div className="mx-auto mb-4 w-12 h-12 bg-pink-100 rounded-full flex items-center justify-center">
-                <Sparkles className="text-pink-600 w-6 h-6" />
-              </div>
-              <h3 className="font-semibold mb-2">2. AI Creates Your Campaign</h3>
-              <p className="text-sm text-gray-600">
-                Our AI will generate a complete campaign strategy for you
-              </p>
-            </div>
-            
-            <div className="text-center">
-              <div className="mx-auto mb-4 w-12 h-12 bg-pink-100 rounded-full flex items-center justify-center">
-                <Users className="text-pink-600 w-6 h-6" />
-              </div>
-              <h3 className="font-semibold mb-2">3. Find Perfect Creators</h3>
-              <p className="text-sm text-gray-600">
-                We'll match you with top creators who fit your brand
-              </p>
-            </div>
-            
-            <div className="text-center">
-              <div className="mx-auto mb-4 w-12 h-12 bg-pink-100 rounded-full flex items-center justify-center">
-                <BarChart3 className="text-pink-600 w-6 h-6" />
-              </div>
-              <h3 className="font-semibold mb-2">4. Launch & Track</h3>
-              <p className="text-sm text-gray-600">
-                Manage content creation and track your campaign's success
-              </p>
+              <Button onClick={() => navigate('/dashboard/business/campaigns/create')}>
+                Create New Campaign
+              </Button>
             </div>
           </div>
-        </div>
 
-        {/* Quick Actions */}
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">Quick Actions</h2>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Card className="p-6 text-center hover:shadow-md transition-shadow cursor-pointer">
-              <CardContent className="pt-0">
-                <div className="mx-auto mb-4 w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
-                  <Eye className="text-gray-600 w-6 h-6" />
-                </div>
-                <h3 className="font-semibold mb-2">View All Campaigns</h3>
+          {/* Rating Prompts */}
+          <RatingPromptManager />
+
+          {/* Stats Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <LayoutDashboard className="h-4 w-4" />
+                  Total Campaigns
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold">{campaignCount}</div>
+                <p className="text-sm text-gray-500">Active and past campaigns</p>
               </CardContent>
             </Card>
-            
-            <Card className="p-6 text-center hover:shadow-md transition-shadow cursor-pointer">
-              <CardContent className="pt-0">
-                <div className="mx-auto mb-4 w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
-                  <Users className="text-gray-600 w-6 h-6" />
-                </div>
-                <h3 className="font-semibold mb-2">Browse Creators</h3>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="h-4 w-4" />
+                  Creators Collaborating
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold">{creatorCount}</div>
+                <p className="text-sm text-gray-500">Creators in your campaigns</p>
               </CardContent>
             </Card>
-            
-            <Card className="p-6 text-center hover:shadow-md transition-shadow cursor-pointer">
-              <CardContent className="pt-0">
-                <div className="mx-auto mb-4 w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
-                  <TrendingUp className="text-gray-600 w-6 h-6" />
-                </div>
-                <h3 className="font-semibold mb-2">View Analytics</h3>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Building2 className="h-4 w-4" />
+                  Projects Completed
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold">{projectCount}</div>
+                <p className="text-sm text-gray-500">Collaborations successfully completed</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Main Content Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Recent Campaigns</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p>
+                  Track the performance of your recent campaigns and manage ongoing collaborations.
+                </p>
+                <Button
+                  variant="secondary"
+                  className="mt-4"
+                  onClick={() => navigate('/dashboard/business/campaigns')}
+                >
+                  View All Campaigns
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Find New Creators</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p>
+                  Discover talented creators for your next campaign. Browse profiles and invite them to collaborate.
+                </p>
+                <Button
+                  variant="secondary"
+                  className="mt-4"
+                  onClick={() => navigate('/dashboard/business/creators')}
+                >
+                  Browse Creators
+                </Button>
               </CardContent>
             </Card>
           </div>

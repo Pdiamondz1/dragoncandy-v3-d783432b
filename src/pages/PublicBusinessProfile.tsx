@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -25,6 +24,7 @@ import {
   Twitter
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import PublicProfileReviews from '@/components/profiles/PublicProfileReviews';
 
 interface BusinessProfile {
   id: string;
@@ -286,6 +286,12 @@ const PublicBusinessProfile = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* Reviews & Ratings Section */}
+        <PublicProfileReviews 
+          profileId={profile.user_id}
+          profileType="business"
+        />
 
         {/* Social Links */}
         {getSocialLinks().length > 0 && (
