@@ -37,39 +37,18 @@ export const AuthForm = ({ mode, onError }: AuthFormProps) => {
         const { data, error: signupError } = await supabase.auth.signUp({
           email,
           password,
-          options: { emailRedirectTo: redirectUrl }
+          options: { 
+            emailRedirectTo: redirectUrl,
+            data: {
+              role: role // Pass the selected role in user metadata
+            }
+          }
         });
 
         if (signupError) {
           onError(signupError.message);
           setLoading(false);
           return;
-        }
-
-        // Update role in profiles table (may be delayed due to trigger timing)
-        let profileUpdated = false;
-        for (let i = 0; i < 5; i++) {
-          const { data: user } = await supabase.auth.getUser();
-          const userId = user?.user?.id;
-          if (userId) {
-            const { data: profile } = await supabase
-              .from("profiles")
-              .select("*")
-              .eq("id", userId)
-              .maybeSingle();
-
-            if (profile) {
-              const { error: updateErr } = await supabase
-                .from("profiles")
-                .update({ role })
-                .eq("id", userId);
-              if (!updateErr) {
-                profileUpdated = true;
-                break;
-              }
-            }
-          }
-          await new Promise((res) => setTimeout(res, 800));
         }
 
         toast({
