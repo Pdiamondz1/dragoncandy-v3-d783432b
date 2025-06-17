@@ -11,14 +11,21 @@ import { X, Plus } from 'lucide-react';
 interface CampaignData {
   title: string;
   description: string;
-  goals: string;
-  targetAudience: string;
+  goals: string[];
+  target_audience: string;
   platforms: string[];
-  timeline: string;
-  style: string;
-  tone: string;
-  deliverables: string[];
-  budgetRecommendation: string;
+  content_types: string[];
+  key_messages: string[];
+  timeline_recommendations?: {
+    preparation: string;
+    execution: string;
+    analysis: string;
+  };
+  budget_recommendations?: {
+    min: number;
+    max: number;
+    reasoning: string;
+  };
 }
 
 interface CampaignCustomizeFormProps {
@@ -32,32 +39,46 @@ const CampaignCustomizeForm: React.FC<CampaignCustomizeFormProps> = ({
   onContinue,
   onBackToAnalysis,
 }) => {
-  const [formData, setFormData] = useState<CampaignData>(initialData);
+  const [formData, setFormData] = useState<CampaignData>({
+    title: initialData.title || '',
+    description: initialData.description || '',
+    goals: initialData.goals || [],
+    target_audience: initialData.target_audience || '',
+    platforms: initialData.recommended_platforms || initialData.platforms || [],
+    content_types: initialData.content_types || [],
+    key_messages: initialData.key_messages || [],
+    timeline_recommendations: initialData.timeline_recommendations,
+    budget_recommendations: initialData.budget_recommendations,
+  });
+  
   const [customPlatform, setCustomPlatform] = useState('');
-  const [customDeliverable, setCustomDeliverable] = useState('');
+  const [customContentType, setCustomContentType] = useState('');
 
   const availablePlatforms = [
     'Instagram', 'TikTok', 'YouTube', 'Facebook', 'X (Twitter)', 
     'LinkedIn', 'Pinterest', 'Snapchat', 'YouTube Shorts'
   ];
 
-  const availableDeliverables = [
-    '10 Instagram posts (mix of carousel and single image)',
-    '5 Instagram Stories',
-    '3 Instagram Reels',
-    '5 TikTok videos',
-    '1 influencer collaboration on Instagram',
-    '1 influencer collaboration on TikTok',
-    'YouTube video content',
-    'Blog post content',
-    'User-generated content campaign'
+  const availableContentTypes = [
+    'Video', 'Image', 'Story', 'Reel', 'Post', 'Carousel', 
+    'Blog Content', 'User-Generated Content', 'Influencer Collaboration'
   ];
 
   useEffect(() => {
-    setFormData(initialData);
+    setFormData({
+      title: initialData.title || '',
+      description: initialData.description || '',
+      goals: initialData.goals || [],
+      target_audience: initialData.target_audience || '',
+      platforms: initialData.recommended_platforms || initialData.platforms || [],
+      content_types: initialData.content_types || [],
+      key_messages: initialData.key_messages || [],
+      timeline_recommendations: initialData.timeline_recommendations,
+      budget_recommendations: initialData.budget_recommendations,
+    });
   }, [initialData]);
 
-  const handleInputChange = (field: keyof CampaignData, value: string) => {
+  const handleInputChange = (field: keyof CampaignData, value: string | string[]) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
@@ -87,26 +108,26 @@ const CampaignCustomizeForm: React.FC<CampaignCustomizeFormProps> = ({
     }
   };
 
-  const removeDeliverable = (deliverableToRemove: string) => {
+  const removeContentType = (typeToRemove: string) => {
     setFormData(prev => ({
       ...prev,
-      deliverables: prev.deliverables.filter(deliverable => deliverable !== deliverableToRemove)
+      content_types: prev.content_types.filter(type => type !== typeToRemove)
     }));
   };
 
-  const addDeliverable = (deliverable: string) => {
-    if (deliverable && !formData.deliverables.includes(deliverable)) {
+  const addContentType = (type: string) => {
+    if (type && !formData.content_types.includes(type)) {
       setFormData(prev => ({
         ...prev,
-        deliverables: [...prev.deliverables, deliverable]
+        content_types: [...prev.content_types, type]
       }));
     }
   };
 
-  const addCustomDeliverable = () => {
-    if (customDeliverable.trim() && !formData.deliverables.includes(customDeliverable.trim())) {
-      addDeliverable(customDeliverable.trim());
-      setCustomDeliverable('');
+  const addCustomContentType = () => {
+    if (customContentType.trim() && !formData.content_types.includes(customContentType.trim())) {
+      addContentType(customContentType.trim());
+      setCustomContentType('');
     }
   };
 
@@ -129,24 +150,14 @@ const CampaignCustomizeForm: React.FC<CampaignCustomizeFormProps> = ({
       </Card>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Campaign Name and Tone */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700">Campaign Name</label>
-            <Input
-              value={formData.title}
-              onChange={(e) => handleInputChange('title', e.target.value)}
-              placeholder="Enter campaign name"
-            />
-          </div>
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700">Tone</label>
-            <Input
-              value={formData.tone}
-              onChange={(e) => handleInputChange('tone', e.target.value)}
-              placeholder="e.g., Authentic, engaging, and aspirational"
-            />
-          </div>
+        {/* Campaign Name */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-gray-700">Campaign Name</label>
+          <Input
+            value={formData.title}
+            onChange={(e) => handleInputChange('title', e.target.value)}
+            placeholder="Enter campaign name"
+          />
         </div>
 
         {/* Description */}
@@ -160,14 +171,14 @@ const CampaignCustomizeForm: React.FC<CampaignCustomizeFormProps> = ({
           />
         </div>
 
-        {/* Style */}
+        {/* Target Audience */}
         <div className="space-y-2">
-          <label className="text-sm font-medium text-gray-700">Style</label>
+          <label className="text-sm font-medium text-gray-700">Target Audience</label>
           <Textarea
-            value={formData.style}
-            onChange={(e) => handleInputChange('style', e.target.value)}
+            value={formData.target_audience}
+            onChange={(e) => handleInputChange('target_audience', e.target.value)}
             className="min-h-[80px] resize-none"
-            placeholder="Describe the visual style and aesthetic..."
+            placeholder="Describe your target audience..."
           />
         </div>
 
@@ -217,46 +228,46 @@ const CampaignCustomizeForm: React.FC<CampaignCustomizeFormProps> = ({
           </div>
         </div>
 
-        {/* Deliverables */}
+        {/* Content Types */}
         <div className="space-y-3">
-          <label className="text-sm font-medium text-gray-700">Deliverables</label>
-          <div className="space-y-2">
-            {formData.deliverables.map((deliverable, index) => (
-              <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <span className="text-sm text-gray-700">{deliverable}</span>
+          <label className="text-sm font-medium text-gray-700">Content Types</label>
+          <div className="flex flex-wrap gap-2 mb-3">
+            {formData.content_types.map((type, index) => (
+              <Badge key={index} variant="secondary" className="flex items-center gap-1">
+                {type}
                 <button
                   type="button"
-                  onClick={() => removeDeliverable(deliverable)}
-                  className="text-gray-400 hover:text-gray-600"
+                  onClick={() => removeContentType(type)}
+                  className="ml-1 text-gray-500 hover:text-gray-700"
                 >
-                  <X className="h-4 w-4" />
+                  <X className="h-3 w-3" />
                 </button>
-              </div>
+              </Badge>
             ))}
           </div>
           <div className="space-y-2">
-            <Select onValueChange={addDeliverable}>
+            <Select onValueChange={addContentType}>
               <SelectTrigger>
-                <SelectValue placeholder="Select a deliverable to add" />
+                <SelectValue placeholder="Select a content type to add" />
               </SelectTrigger>
               <SelectContent>
-                {availableDeliverables
-                  .filter(deliverable => !formData.deliverables.includes(deliverable))
-                  .map((deliverable) => (
-                    <SelectItem key={deliverable} value={deliverable}>
-                      {deliverable}
+                {availableContentTypes
+                  .filter(type => !formData.content_types.includes(type))
+                  .map((type) => (
+                    <SelectItem key={type} value={type}>
+                      {type}
                     </SelectItem>
                   ))}
               </SelectContent>
             </Select>
             <div className="flex gap-2">
               <Input
-                value={customDeliverable}
-                onChange={(e) => setCustomDeliverable(e.target.value)}
-                placeholder="Add custom deliverable"
+                value={customContentType}
+                onChange={(e) => setCustomContentType(e.target.value)}
+                placeholder="Add custom content type"
                 className="flex-1"
               />
-              <Button type="button" onClick={addCustomDeliverable} size="sm">
+              <Button type="button" onClick={addCustomContentType} size="sm">
                 <Plus className="h-4 w-4" />
               </Button>
             </div>

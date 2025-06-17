@@ -70,7 +70,7 @@ serve(async (req) => {
               }
             }
             
-            Ensure all recommendations are practical, actionable, and tailored to the specific campaign goal.`
+            Ensure all recommendations are practical, actionable, and tailored to the specific campaign goal. Use snake_case for field names to match the expected interface.`
           },
           {
             role: 'user',

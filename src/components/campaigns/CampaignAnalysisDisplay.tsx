@@ -18,14 +18,22 @@ import {
 interface CampaignAnalysis {
   title: string;
   description: string;
-  goals: string;
-  targetAudience: string;
-  platforms: string[];
-  timeline: string;
-  style: string;
-  tone: string;
-  deliverables: string[];
-  budgetRecommendation: string;
+  target_audience: string;
+  goals: string[];
+  recommended_platforms: string[];
+  content_types: string[];
+  key_messages: string[];
+  success_metrics: string[];
+  budget_recommendations?: {
+    min: number;
+    max: number;
+    reasoning: string;
+  };
+  timeline_recommendations?: {
+    preparation: string;
+    execution: string;
+    analysis: string;
+  };
 }
 
 interface CampaignAnalysisDisplayProps {
@@ -72,7 +80,14 @@ const CampaignAnalysisDisplay: React.FC<CampaignAnalysisDisplayProps> = ({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-gray-700">{analysis.goals}</p>
+            <div className="space-y-2">
+              {analysis.goals.map((goal, index) => (
+                <div key={index} className="flex items-center gap-2">
+                  <CheckSquare className="h-4 w-4 text-green-500" />
+                  <span className="text-gray-700">{goal}</span>
+                </div>
+              ))}
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -87,7 +102,7 @@ const CampaignAnalysisDisplay: React.FC<CampaignAnalysisDisplayProps> = ({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-gray-700">{analysis.targetAudience}</p>
+            <p className="text-gray-700">{analysis.target_audience}</p>
           </CardContent>
         </Card>
 
@@ -100,7 +115,7 @@ const CampaignAnalysisDisplay: React.FC<CampaignAnalysisDisplayProps> = ({
           </CardHeader>
           <CardContent>
             <div className="flex flex-wrap gap-2">
-              {analysis.platforms.map((platform, index) => (
+              {analysis.recommended_platforms.map((platform, index) => (
                 <Badge key={index} variant="secondary" className="text-sm">
                   {platform}
                 </Badge>
@@ -110,17 +125,23 @@ const CampaignAnalysisDisplay: React.FC<CampaignAnalysisDisplayProps> = ({
         </Card>
       </div>
 
-      {/* Style & Tone */}
+      {/* Content Types & Key Messages */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
               <Palette className="h-5 w-5 text-orange-500" />
-              Visual Style
+              Content Types
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-gray-700">{analysis.style}</p>
+            <div className="flex flex-wrap gap-2">
+              {analysis.content_types.map((type, index) => (
+                <Badge key={index} variant="outline" className="text-sm">
+                  {type}
+                </Badge>
+              ))}
+            </div>
           </CardContent>
         </Card>
 
@@ -128,56 +149,77 @@ const CampaignAnalysisDisplay: React.FC<CampaignAnalysisDisplayProps> = ({
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
               <MessageSquare className="h-5 w-5 text-indigo-500" />
-              Brand Tone
+              Key Messages
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-gray-700">{analysis.tone}</p>
+            <div className="space-y-2">
+              {analysis.key_messages.map((message, index) => (
+                <div key={index} className="text-sm text-gray-700">
+                  • {message}
+                </div>
+              ))}
+            </div>
           </CardContent>
         </Card>
       </div>
 
       {/* Timeline & Budget */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Calendar className="h-5 w-5 text-red-500" />
-              Timeline
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-gray-700">{analysis.timeline}</p>
-          </CardContent>
-        </Card>
+      {(analysis.timeline_recommendations || analysis.budget_recommendations) && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {analysis.timeline_recommendations && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Calendar className="h-5 w-5 text-red-500" />
+                  Timeline Recommendations
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <div><strong>Preparation:</strong> {analysis.timeline_recommendations.preparation}</div>
+                  <div><strong>Execution:</strong> {analysis.timeline_recommendations.execution}</div>
+                  <div><strong>Analysis:</strong> {analysis.timeline_recommendations.analysis}</div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <DollarSign className="h-5 w-5 text-green-500" />
-              Budget Recommendation
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-gray-700">{analysis.budgetRecommendation}</p>
-          </CardContent>
-        </Card>
-      </div>
+          {analysis.budget_recommendations && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <DollarSign className="h-5 w-5 text-green-500" />
+                  Budget Recommendations
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <div className="text-lg font-semibold">
+                    ${analysis.budget_recommendations.min} - ${analysis.budget_recommendations.max}
+                  </div>
+                  <p className="text-sm text-gray-600">{analysis.budget_recommendations.reasoning}</p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
 
-      {/* Deliverables */}
+      {/* Success Metrics */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
             <CheckSquare className="h-5 w-5 text-teal-500" />
-            Recommended Deliverables
+            Success Metrics
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-            {analysis.deliverables.map((deliverable, index) => (
+            {analysis.success_metrics.map((metric, index) => (
               <div key={index} className="flex items-center gap-2">
                 <CheckSquare className="h-4 w-4 text-teal-500" />
-                <span className="text-gray-700">{deliverable}</span>
+                <span className="text-gray-700">{metric}</span>
               </div>
             ))}
           </div>
