@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Users, Clock, CheckCircle, XCircle, Eye } from 'lucide-react';
 import { useCampaignApplications } from '@/hooks/useCampaignApplications';
 import { useManageApplication } from '@/hooks/useManageApplication';
-import { useCampaign } from '@/hooks/useCampaignQueries';
+import { useCampaigns } from '@/hooks/useCampaigns';
 import ApplicationCard from '@/components/campaigns/ApplicationCard';
 import CreatorProfileModal from '@/components/campaigns/CreatorProfileModal';
 import BulkApplicationActions from '@/components/campaigns/BulkApplicationActions';
@@ -23,7 +23,8 @@ const BusinessProposals = () => {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [selectedApplicationIds, setSelectedApplicationIds] = useState<string[]>([]);
 
-  const { data: campaign, isLoading: campaignLoading } = useCampaign(campaignId!);
+  const { data: campaigns = [], isLoading: campaignLoading } = useCampaigns();
+  const campaign = campaigns.find(c => c.id === campaignId);
   const { data: applications = [], isLoading, error } = useCampaignApplications(campaignId!);
   const { filters, filteredApplications, updateFilter, resetFilters } = useApplicationFilters(applications);
   const manageApplication = useManageApplication();
