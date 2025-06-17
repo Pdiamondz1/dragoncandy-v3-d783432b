@@ -98,9 +98,9 @@ export const useOptimizedAnalytics = () => {
     const cacheKey = `popular_pages_${timeRange}`;
     
     return getCachedData(cacheKey, async () => {
-      const { data } = await getAnalyticsData(timeRange);
+      const analyticsData = await getAnalyticsData(timeRange);
       
-      const pageViews = data.pageViews.reduce((acc: any, view: any) => {
+      const pageViews = analyticsData.pageViews.reduce((acc: any, view: any) => {
         const pageName = view.event_data?.page_name || 'Unknown';
         acc[pageName] = (acc[pageName] || 0) + 1;
         return acc;
@@ -117,9 +117,9 @@ export const useOptimizedAnalytics = () => {
     const cacheKey = `activity_trends_${timeRange}`;
     
     return getCachedData(cacheKey, async () => {
-      const { data } = await getAnalyticsData(timeRange);
+      const analyticsData = await getAnalyticsData(timeRange);
       
-      const dailyActivity = data.rawEvents.reduce((acc: any, event: any) => {
+      const dailyActivity = analyticsData.rawEvents.reduce((acc: any, event: any) => {
         const date = new Date(event.created_at).toLocaleDateString();
         acc[date] = (acc[date] || 0) + 1;
         return acc;

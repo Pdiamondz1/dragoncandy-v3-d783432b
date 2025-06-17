@@ -103,23 +103,17 @@ export const useAnalyticsBatch = () => {
     };
   }, [flushBatch]);
 
-  // Flush on page unload
+  // Flush on page unload using simplified approach
   useEffect(() => {
     const handleBeforeUnload = () => {
       if (batchQueue.current.length > 0) {
-        // Use navigator.sendBeacon for reliable delivery on page unload
+        // Use sendBeacon for reliable delivery on page unload
         const events = [...batchQueue.current];
         const data = JSON.stringify(events);
         
         try {
-          const url = `${supabase.supabaseUrl}/rest/v1/analytics_events`;
-          const headers = {
-            'Content-Type': 'application/json',
-            'apikey': supabase.supabaseKey,
-            'Authorization': `Bearer ${supabase.supabaseKey}`
-          };
-          
-          // Create a blob with the data and headers
+          // Use the Supabase REST endpoint directly
+          const url = `https://zocahiffooqdybdhguqv.supabase.co/rest/v1/analytics_events`;
           const blob = new Blob([data], { type: 'application/json' });
           navigator.sendBeacon(url, blob);
         } catch (error) {
