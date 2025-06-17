@@ -4,13 +4,11 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
 import { Sparkles } from 'lucide-react';
 import { SkillsSelection } from '@/components/creator-profile/SkillsSelection';
+import { EnhancedCreatorProfileForm } from '@/components/creator-profile/EnhancedCreatorProfileForm';
 import { CreatorSocialMediaLinks } from '@/components/creator-profile/CreatorSocialMediaLinks';
 import { PortfolioUpload } from '@/components/creator-profile/PortfolioUpload';
 import { AvatarUpload } from '@/components/creator-profile/AvatarUpload';
@@ -31,6 +29,15 @@ const CreatorProfileSetup = () => {
     location: '',
     availability: '',
     base_rate_per_hour: '',
+    years_of_experience: '',
+    languages_spoken: '',
+    timezone: '',
+    response_time: '',
+    min_project_budget: '',
+    max_projects_per_month: '',
+    preferred_project_duration: '',
+    collaboration_preferences: '',
+    profile_visibility: 'public',
     instagram_url: '',
     tiktok_url: '',
     youtube_url: '',
@@ -94,6 +101,11 @@ const CreatorProfileSetup = () => {
         portfolioUrls = await Promise.all(uploadPromises);
       }
 
+      // Process languages array
+      const languagesArray = formData.languages_spoken 
+        ? formData.languages_spoken.split(',').map(lang => lang.trim()).filter(Boolean)
+        : [];
+
       // Save profile data
       const { error } = await supabase
         .from('creator_profiles')
@@ -104,6 +116,15 @@ const CreatorProfileSetup = () => {
           location: formData.location,
           availability: formData.availability,
           base_rate_per_hour: formData.base_rate_per_hour ? parseFloat(formData.base_rate_per_hour) : null,
+          years_of_experience: formData.years_of_experience ? parseInt(formData.years_of_experience) : null,
+          languages_spoken: languagesArray,
+          timezone: formData.timezone,
+          response_time: formData.response_time,
+          min_project_budget: formData.min_project_budget ? parseFloat(formData.min_project_budget) : null,
+          max_projects_per_month: formData.max_projects_per_month ? parseInt(formData.max_projects_per_month) : null,
+          preferred_project_duration: formData.preferred_project_duration,
+          collaboration_preferences: formData.collaboration_preferences,
+          profile_visibility: formData.profile_visibility,
           instagram_url: formData.instagram_url,
           tiktok_url: formData.tiktok_url,
           youtube_url: formData.youtube_url,
@@ -160,17 +181,10 @@ const CreatorProfileSetup = () => {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Creator Name */}
-              <div>
-                <Label htmlFor="creator_name">Creator Name *</Label>
-                <Input
-                  id="creator_name"
-                  value={formData.creator_name}
-                  onChange={(e) => handleInputChange('creator_name', e.target.value)}
-                  placeholder="Your creative name or real name"
-                  required
-                />
-              </div>
+              <EnhancedCreatorProfileForm 
+                formData={formData}
+                onInputChange={handleInputChange}
+              />
 
               {/* Avatar Upload */}
               <AvatarUpload 
@@ -178,59 +192,11 @@ const CreatorProfileSetup = () => {
                 onAvatarFileChange={setAvatarFile}
               />
 
-              {/* Bio */}
-              <div>
-                <Label htmlFor="bio">Bio *</Label>
-                <Textarea
-                  id="bio"
-                  value={formData.bio}
-                  onChange={(e) => handleInputChange('bio', e.target.value)}
-                  placeholder="Tell brands about yourself, your experience, and what makes you unique..."
-                  rows={4}
-                  required
-                />
-              </div>
-
               {/* Skills */}
               <SkillsSelection 
                 selectedSkills={selectedSkills}
                 onSkillChange={handleSkillChange}
               />
-
-              {/* Location & Rate */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="location">Location</Label>
-                  <Input
-                    id="location"
-                    value={formData.location}
-                    onChange={(e) => handleInputChange('location', e.target.value)}
-                    placeholder="City, Country"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="base_rate_per_hour">Base Rate ($/hour)</Label>
-                  <Input
-                    id="base_rate_per_hour"
-                    type="number"
-                    value={formData.base_rate_per_hour}
-                    onChange={(e) => handleInputChange('base_rate_per_hour', e.target.value)}
-                    placeholder="50"
-                  />
-                </div>
-              </div>
-
-              {/* Availability */}
-              <div>
-                <Label htmlFor="availability">Availability</Label>
-                <Textarea
-                  id="availability"
-                  value={formData.availability}
-                  onChange={(e) => handleInputChange('availability', e.target.value)}
-                  placeholder="e.g., Available weekdays, 2-3 projects per month, etc."
-                  rows={2}
-                />
-              </div>
 
               {/* Social Media & Website */}
               <CreatorSocialMediaLinks 

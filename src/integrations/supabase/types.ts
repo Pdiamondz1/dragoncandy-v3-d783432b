@@ -11,10 +11,14 @@ export type Database = {
     Tables: {
       business_profiles: {
         Row: {
+          budget_range: string | null
           business_name: string
+          company_size: string | null
           created_at: string | null
           description: string | null
+          employee_count_range: string | null
           facebook_url: string | null
+          founded_year: number | null
           id: string
           industry: Database["public"]["Enums"]["industry_type"] | null
           instagram_url: string | null
@@ -23,8 +27,12 @@ export type Database = {
           location: string | null
           logo_url: string | null
           other_social_url: string | null
+          preferred_collaboration_style: string | null
+          profile_slug: string | null
+          profile_visibility: string | null
           sample_content_urls: string[] | null
           tiktok_url: string | null
+          timezone: string | null
           updated_at: string | null
           user_id: string
           website_url: string | null
@@ -32,10 +40,14 @@ export type Database = {
           youtube_url: string | null
         }
         Insert: {
+          budget_range?: string | null
           business_name: string
+          company_size?: string | null
           created_at?: string | null
           description?: string | null
+          employee_count_range?: string | null
           facebook_url?: string | null
+          founded_year?: number | null
           id?: string
           industry?: Database["public"]["Enums"]["industry_type"] | null
           instagram_url?: string | null
@@ -44,8 +56,12 @@ export type Database = {
           location?: string | null
           logo_url?: string | null
           other_social_url?: string | null
+          preferred_collaboration_style?: string | null
+          profile_slug?: string | null
+          profile_visibility?: string | null
           sample_content_urls?: string[] | null
           tiktok_url?: string | null
+          timezone?: string | null
           updated_at?: string | null
           user_id: string
           website_url?: string | null
@@ -53,10 +69,14 @@ export type Database = {
           youtube_url?: string | null
         }
         Update: {
+          budget_range?: string | null
           business_name?: string
+          company_size?: string | null
           created_at?: string | null
           description?: string | null
+          employee_count_range?: string | null
           facebook_url?: string | null
+          founded_year?: number | null
           id?: string
           industry?: Database["public"]["Enums"]["industry_type"] | null
           instagram_url?: string | null
@@ -65,8 +85,12 @@ export type Database = {
           location?: string | null
           logo_url?: string | null
           other_social_url?: string | null
+          preferred_collaboration_style?: string | null
+          profile_slug?: string | null
+          profile_visibility?: string | null
           sample_content_urls?: string[] | null
           tiktok_url?: string | null
+          timezone?: string | null
           updated_at?: string | null
           user_id?: string
           website_url?: string | null
@@ -355,22 +379,32 @@ export type Database = {
           avatar_url: string | null
           base_rate_per_hour: number | null
           bio: string | null
+          collaboration_preferences: string | null
           created_at: string | null
           creator_name: string
           facebook_url: string | null
           id: string
           instagram_url: string | null
           is_completed: boolean | null
+          languages_spoken: string[] | null
           linkedin_url: string | null
           location: string | null
+          max_projects_per_month: number | null
+          min_project_budget: number | null
           other_social_url: string | null
           portfolio_urls: string[] | null
+          preferred_project_duration: string | null
+          profile_slug: string | null
+          profile_visibility: string | null
+          response_time: string | null
           skills: Database["public"]["Enums"]["creator_skill"][] | null
           tiktok_url: string | null
+          timezone: string | null
           updated_at: string | null
           user_id: string
           website_url: string | null
           x_url: string | null
+          years_of_experience: number | null
           youtube_url: string | null
         }
         Insert: {
@@ -378,22 +412,32 @@ export type Database = {
           avatar_url?: string | null
           base_rate_per_hour?: number | null
           bio?: string | null
+          collaboration_preferences?: string | null
           created_at?: string | null
           creator_name: string
           facebook_url?: string | null
           id?: string
           instagram_url?: string | null
           is_completed?: boolean | null
+          languages_spoken?: string[] | null
           linkedin_url?: string | null
           location?: string | null
+          max_projects_per_month?: number | null
+          min_project_budget?: number | null
           other_social_url?: string | null
           portfolio_urls?: string[] | null
+          preferred_project_duration?: string | null
+          profile_slug?: string | null
+          profile_visibility?: string | null
+          response_time?: string | null
           skills?: Database["public"]["Enums"]["creator_skill"][] | null
           tiktok_url?: string | null
+          timezone?: string | null
           updated_at?: string | null
           user_id: string
           website_url?: string | null
           x_url?: string | null
+          years_of_experience?: number | null
           youtube_url?: string | null
         }
         Update: {
@@ -401,22 +445,32 @@ export type Database = {
           avatar_url?: string | null
           base_rate_per_hour?: number | null
           bio?: string | null
+          collaboration_preferences?: string | null
           created_at?: string | null
           creator_name?: string
           facebook_url?: string | null
           id?: string
           instagram_url?: string | null
           is_completed?: boolean | null
+          languages_spoken?: string[] | null
           linkedin_url?: string | null
           location?: string | null
+          max_projects_per_month?: number | null
+          min_project_budget?: number | null
           other_social_url?: string | null
           portfolio_urls?: string[] | null
+          preferred_project_duration?: string | null
+          profile_slug?: string | null
+          profile_visibility?: string | null
+          response_time?: string | null
           skills?: Database["public"]["Enums"]["creator_skill"][] | null
           tiktok_url?: string | null
+          timezone?: string | null
           updated_at?: string | null
           user_id?: string
           website_url?: string | null
           x_url?: string | null
+          years_of_experience?: number | null
           youtube_url?: string | null
         }
         Relationships: []
@@ -495,6 +549,36 @@ export type Database = {
           },
         ]
       }
+      profile_views: {
+        Row: {
+          id: string
+          ip_address: unknown | null
+          profile_id: string
+          profile_type: string
+          user_agent: string | null
+          viewed_at: string | null
+          viewer_id: string | null
+        }
+        Insert: {
+          id?: string
+          ip_address?: unknown | null
+          profile_id: string
+          profile_type: string
+          user_agent?: string | null
+          viewed_at?: string | null
+          viewer_id?: string | null
+        }
+        Update: {
+          id?: string
+          ip_address?: unknown | null
+          profile_id?: string
+          profile_type?: string
+          user_agent?: string | null
+          viewed_at?: string | null
+          viewer_id?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -530,6 +614,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      generate_profile_slug: {
+        Args: { name: string; profile_type: string }
+        Returns: string
+      }
       get_available_creators: {
         Args: {
           campaign_platforms?: string[]

@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from '@/hooks/use-toast';
 import { Sparkles } from 'lucide-react';
-import { BusinessProfileForm } from '@/components/business-profile/BusinessProfileForm';
+import { EnhancedBusinessProfileForm } from '@/components/business-profile/EnhancedBusinessProfileForm';
 import { FileUploadSection } from '@/components/business-profile/FileUploadSection';
 import { SocialMediaLinks } from '@/components/business-profile/SocialMediaLinks';
 import type { Database } from '@/integrations/supabase/types';
@@ -27,6 +27,13 @@ const BusinessProfileSetup = () => {
     website_url: '',
     location: '',
     description: '',
+    company_size: '',
+    founded_year: '',
+    employee_count_range: '',
+    budget_range: '',
+    preferred_collaboration_style: '',
+    timezone: '',
+    profile_visibility: 'public',
     instagram_url: '',
     tiktok_url: '',
     youtube_url: '',
@@ -89,6 +96,13 @@ const BusinessProfileSetup = () => {
           website_url: formData.website_url,
           location: formData.location,
           description: formData.description,
+          company_size: formData.company_size,
+          founded_year: formData.founded_year ? parseInt(formData.founded_year) : null,
+          employee_count_range: formData.employee_count_range,
+          budget_range: formData.budget_range,
+          preferred_collaboration_style: formData.preferred_collaboration_style,
+          timezone: formData.timezone,
+          profile_visibility: formData.profile_visibility,
           instagram_url: formData.instagram_url,
           tiktok_url: formData.tiktok_url,
           youtube_url: formData.youtube_url,
@@ -143,14 +157,8 @@ const BusinessProfileSetup = () => {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
-              <BusinessProfileForm 
-                formData={{
-                  business_name: formData.business_name,
-                  industry: formData.industry,
-                  website_url: formData.website_url,
-                  location: formData.location,
-                  description: formData.description
-                }}
+              <EnhancedBusinessProfileForm 
+                formData={formData}
                 onInputChange={handleInputChange}
               />
 
