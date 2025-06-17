@@ -11,6 +11,7 @@ export type Database = {
     Tables: {
       business_profiles: {
         Row: {
+          average_rating: number | null
           budget_range: string | null
           business_name: string
           company_size: string | null
@@ -33,6 +34,7 @@ export type Database = {
           sample_content_urls: string[] | null
           tiktok_url: string | null
           timezone: string | null
+          total_reviews: number | null
           updated_at: string | null
           user_id: string
           website_url: string | null
@@ -40,6 +42,7 @@ export type Database = {
           youtube_url: string | null
         }
         Insert: {
+          average_rating?: number | null
           budget_range?: string | null
           business_name: string
           company_size?: string | null
@@ -62,6 +65,7 @@ export type Database = {
           sample_content_urls?: string[] | null
           tiktok_url?: string | null
           timezone?: string | null
+          total_reviews?: number | null
           updated_at?: string | null
           user_id: string
           website_url?: string | null
@@ -69,6 +73,7 @@ export type Database = {
           youtube_url?: string | null
         }
         Update: {
+          average_rating?: number | null
           budget_range?: string | null
           business_name?: string
           company_size?: string | null
@@ -91,6 +96,7 @@ export type Database = {
           sample_content_urls?: string[] | null
           tiktok_url?: string | null
           timezone?: string | null
+          total_reviews?: number | null
           updated_at?: string | null
           user_id?: string
           website_url?: string | null
@@ -160,6 +166,7 @@ export type Database = {
           deliverables_status: Json | null
           id: string
           milestones: Json | null
+          review_status: string | null
           status: Database["public"]["Enums"]["collaboration_status"]
           updated_at: string
         }
@@ -172,6 +179,7 @@ export type Database = {
           deliverables_status?: Json | null
           id?: string
           milestones?: Json | null
+          review_status?: string | null
           status?: Database["public"]["Enums"]["collaboration_status"]
           updated_at?: string
         }
@@ -184,6 +192,7 @@ export type Database = {
           deliverables_status?: Json | null
           id?: string
           milestones?: Json | null
+          review_status?: string | null
           status?: Database["public"]["Enums"]["collaboration_status"]
           updated_at?: string
         }
@@ -442,6 +451,7 @@ export type Database = {
         Row: {
           availability: string | null
           avatar_url: string | null
+          average_rating: number | null
           base_rate_per_hour: number | null
           bio: string | null
           collaboration_preferences: string | null
@@ -465,6 +475,7 @@ export type Database = {
           skills: Database["public"]["Enums"]["creator_skill"][] | null
           tiktok_url: string | null
           timezone: string | null
+          total_reviews: number | null
           updated_at: string | null
           user_id: string
           website_url: string | null
@@ -475,6 +486,7 @@ export type Database = {
         Insert: {
           availability?: string | null
           avatar_url?: string | null
+          average_rating?: number | null
           base_rate_per_hour?: number | null
           bio?: string | null
           collaboration_preferences?: string | null
@@ -498,6 +510,7 @@ export type Database = {
           skills?: Database["public"]["Enums"]["creator_skill"][] | null
           tiktok_url?: string | null
           timezone?: string | null
+          total_reviews?: number | null
           updated_at?: string | null
           user_id: string
           website_url?: string | null
@@ -508,6 +521,7 @@ export type Database = {
         Update: {
           availability?: string | null
           avatar_url?: string | null
+          average_rating?: number | null
           base_rate_per_hour?: number | null
           bio?: string | null
           collaboration_preferences?: string | null
@@ -531,6 +545,7 @@ export type Database = {
           skills?: Database["public"]["Enums"]["creator_skill"][] | null
           tiktok_url?: string | null
           timezone?: string | null
+          total_reviews?: number | null
           updated_at?: string | null
           user_id?: string
           website_url?: string | null
@@ -1085,6 +1100,65 @@ export type Database = {
         }
         Relationships: []
       }
+      project_reviews: {
+        Row: {
+          collaboration_id: string
+          communication_rating: number | null
+          created_at: string | null
+          id: string
+          is_public: boolean | null
+          professionalism_rating: number | null
+          quality_rating: number | null
+          rating: number
+          review_text: string | null
+          review_type: string
+          reviewee_id: string
+          reviewer_id: string
+          timeliness_rating: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          collaboration_id: string
+          communication_rating?: number | null
+          created_at?: string | null
+          id?: string
+          is_public?: boolean | null
+          professionalism_rating?: number | null
+          quality_rating?: number | null
+          rating: number
+          review_text?: string | null
+          review_type: string
+          reviewee_id: string
+          reviewer_id: string
+          timeliness_rating?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          collaboration_id?: string
+          communication_rating?: number | null
+          created_at?: string | null
+          id?: string
+          is_public?: boolean | null
+          professionalism_rating?: number | null
+          quality_rating?: number | null
+          rating?: number
+          review_text?: string | null
+          review_type?: string
+          reviewee_id?: string
+          reviewer_id?: string
+          timeliness_rating?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_reviews_collaboration_id_fkey"
+            columns: ["collaboration_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_collaborations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       push_notifications: {
         Row: {
           body: string
@@ -1117,6 +1191,41 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      review_responses: {
+        Row: {
+          created_at: string | null
+          id: string
+          responder_id: string
+          response_text: string
+          review_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          responder_id: string
+          response_text: string
+          review_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          responder_id?: string
+          response_text?: string
+          review_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "review_responses_review_id_fkey"
+            columns: ["review_id"]
+            isOneToOne: false
+            referencedRelation: "project_reviews"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_presence: {
         Row: {
