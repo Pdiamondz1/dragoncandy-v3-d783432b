@@ -4,13 +4,10 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import StarRating from './StarRating';
 import { formatDistanceToNow } from 'date-fns';
-import { ProjectReview } from '@/types/reviews';
+import { ReviewWithRelations } from '@/hooks/useReviews';
 
 interface ReviewCardProps {
-  review: ProjectReview & {
-    reviewer: { full_name: string; avatar_url?: string };
-    collaboration: { campaign: { title: string } };
-  };
+  review: ReviewWithRelations;
 }
 
 const ReviewCard: React.FC<ReviewCardProps> = ({ review }) => {

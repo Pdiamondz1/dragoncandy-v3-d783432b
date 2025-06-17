@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { useReviews } from '@/hooks/useReviews';
+import { useReviews, ReviewWithRelations } from '@/hooks/useReviews';
 import ReviewCard from './ReviewCard';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -56,7 +56,7 @@ const ReviewsList: React.FC<ReviewsListProps> = ({
 
   return (
     <div className="space-y-4">
-      {displayedReviews.map((review) => (
+      {displayedReviews.map((review: ReviewWithRelations) => (
         <ReviewCard key={review.id} review={review} />
       ))}
     </div>

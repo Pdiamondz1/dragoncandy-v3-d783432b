@@ -1,11 +1,25 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { ProjectReview } from '@/types/reviews';
+
+// Define the extended review type with joined data
+export interface ReviewWithRelations extends ProjectReview {
+  reviewer: { 
+    full_name: string; 
+    avatar_url?: string;
+  };
+  collaboration: { 
+    campaign: { 
+      title: string;
+    };
+  };
+}
 
 export const useReviews = (revieweeId?: string, reviewType?: string) => {
   return useQuery({
     queryKey: ['reviews', revieweeId, reviewType],
-    queryFn: async () => {
+    queryFn: async (): Promise<ReviewWithRelations[]> => {
       let query = supabase
         .from('project_reviews')
         .select(`
@@ -28,7 +42,9 @@ export const useReviews = (revieweeId?: string, reviewType?: string) => {
 
       const { data, error } = await query;
       if (error) throw error;
-      return data || [];
+      
+      // Type assertion to ensure proper typing
+      return (data || []) as ReviewWithRelations[];
     },
     enabled: !!revieweeId,
   });
