@@ -540,6 +540,267 @@ export type Database = {
         }
         Relationships: []
       }
+      file_comments: {
+        Row: {
+          annotation_data: Json | null
+          comment_text: string
+          created_at: string
+          file_upload_id: string
+          id: string
+          parent_comment_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          annotation_data?: Json | null
+          comment_text: string
+          created_at?: string
+          file_upload_id: string
+          id?: string
+          parent_comment_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          annotation_data?: Json | null
+          comment_text?: string
+          created_at?: string
+          file_upload_id?: string
+          id?: string
+          parent_comment_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "file_comments_file_upload_id_fkey"
+            columns: ["file_upload_id"]
+            isOneToOne: false
+            referencedRelation: "file_uploads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "file_comments_parent_comment_id_fkey"
+            columns: ["parent_comment_id"]
+            isOneToOne: false
+            referencedRelation: "file_comments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      file_permissions: {
+        Row: {
+          created_at: string
+          expires_at: string | null
+          file_upload_id: string
+          granted_by: string
+          id: string
+          permission_type: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string | null
+          file_upload_id: string
+          granted_by: string
+          id?: string
+          permission_type: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string | null
+          file_upload_id?: string
+          granted_by?: string
+          id?: string
+          permission_type?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "file_permissions_file_upload_id_fkey"
+            columns: ["file_upload_id"]
+            isOneToOne: false
+            referencedRelation: "file_uploads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      file_tag_assignments: {
+        Row: {
+          assigned_at: string
+          assigned_by: string
+          file_upload_id: string
+          id: string
+          tag_id: string
+        }
+        Insert: {
+          assigned_at?: string
+          assigned_by: string
+          file_upload_id: string
+          id?: string
+          tag_id: string
+        }
+        Update: {
+          assigned_at?: string
+          assigned_by?: string
+          file_upload_id?: string
+          id?: string
+          tag_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "file_tag_assignments_file_upload_id_fkey"
+            columns: ["file_upload_id"]
+            isOneToOne: false
+            referencedRelation: "file_uploads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "file_tag_assignments_tag_id_fkey"
+            columns: ["tag_id"]
+            isOneToOne: false
+            referencedRelation: "file_tags"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      file_tags: {
+        Row: {
+          color: string | null
+          created_at: string
+          created_by: string
+          id: string
+          name: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          created_by: string
+          id?: string
+          name: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      file_uploads: {
+        Row: {
+          bucket_name: string
+          campaign_id: string | null
+          compression_ratio: number | null
+          created_at: string
+          file_category: string
+          file_hash: string | null
+          file_path: string
+          file_size: number
+          filename: string
+          id: string
+          is_compressed: boolean | null
+          is_public: boolean | null
+          metadata: Json | null
+          mime_type: string
+          original_filename: string
+          updated_at: string
+          upload_status: string
+          uploaded_by: string
+        }
+        Insert: {
+          bucket_name: string
+          campaign_id?: string | null
+          compression_ratio?: number | null
+          created_at?: string
+          file_category?: string
+          file_hash?: string | null
+          file_path: string
+          file_size: number
+          filename: string
+          id?: string
+          is_compressed?: boolean | null
+          is_public?: boolean | null
+          metadata?: Json | null
+          mime_type: string
+          original_filename: string
+          updated_at?: string
+          upload_status?: string
+          uploaded_by: string
+        }
+        Update: {
+          bucket_name?: string
+          campaign_id?: string | null
+          compression_ratio?: number | null
+          created_at?: string
+          file_category?: string
+          file_hash?: string | null
+          file_path?: string
+          file_size?: number
+          filename?: string
+          id?: string
+          is_compressed?: boolean | null
+          is_public?: boolean | null
+          metadata?: Json | null
+          mime_type?: string
+          original_filename?: string
+          updated_at?: string
+          upload_status?: string
+          uploaded_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "file_uploads_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      file_versions: {
+        Row: {
+          changes_description: string | null
+          created_at: string
+          created_by: string
+          file_path: string
+          file_size: number
+          file_upload_id: string
+          id: string
+          version_number: number
+        }
+        Insert: {
+          changes_description?: string | null
+          created_at?: string
+          created_by: string
+          file_path: string
+          file_size: number
+          file_upload_id: string
+          id?: string
+          version_number?: number
+        }
+        Update: {
+          changes_description?: string | null
+          created_at?: string
+          created_by?: string
+          file_path?: string
+          file_size?: number
+          file_upload_id?: string
+          id?: string
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "file_versions_file_upload_id_fkey"
+            columns: ["file_upload_id"]
+            isOneToOne: false
+            referencedRelation: "file_uploads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       message_reactions: {
         Row: {
           created_at: string

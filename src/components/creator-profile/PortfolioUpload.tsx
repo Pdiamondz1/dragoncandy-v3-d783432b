@@ -1,8 +1,7 @@
 
 import React from 'react';
 import { Label } from '@/components/ui/label';
-import { Button } from '@/components/ui/button';
-import { Upload } from 'lucide-react';
+import EnhancedFileUpload from '@/components/files/EnhancedFileUpload';
 
 interface PortfolioUploadProps {
   portfolioFiles: File[];
@@ -13,25 +12,18 @@ export const PortfolioUpload = ({ portfolioFiles, onPortfolioFilesChange }: Port
   return (
     <div>
       <Label>Portfolio</Label>
-      <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-        <Upload className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-        <div className="text-sm text-gray-600 mb-2">
-          {portfolioFiles.length > 0 ? `${portfolioFiles.length} files selected` : 'Upload your best work samples'}
-        </div>
-        <input
-          type="file"
-          multiple
-          accept="image/*,video/*"
-          onChange={(e) => onPortfolioFilesChange(Array.from(e.target.files || []))}
-          className="hidden"
-          id="portfolio-upload"
-        />
-        <Button type="button" variant="outline" asChild>
-          <label htmlFor="portfolio-upload" className="cursor-pointer">
-            Choose Files
-          </label>
-        </Button>
-      </div>
+      <EnhancedFileUpload
+        bucketName="profile-media"
+        category="portfolio"
+        maxFiles={20}
+        acceptedTypes={['image/*', 'video/*']}
+        onUploadComplete={(files) => {
+          // Convert to File objects for backward compatibility
+          const fileObjects = files.map(f => new File([], f.original_filename));
+          onPortfolioFilesChange(fileObjects);
+        }}
+        className="mt-2"
+      />
     </div>
   );
 };
