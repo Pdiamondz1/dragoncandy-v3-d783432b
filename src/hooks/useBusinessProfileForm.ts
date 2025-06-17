@@ -1,0 +1,92 @@
+
+import { useState } from 'react';
+import type { Database } from '@/integrations/supabase/types';
+
+type IndustryType = Database['public']['Enums']['industry_type'];
+
+export interface BusinessProfileFormData {
+  business_name: string;
+  industry: IndustryType | '';
+  website_url: string;
+  location: string;
+  description: string;
+  instagram_url: string;
+  tiktok_url: string;
+  youtube_url: string;
+  facebook_url: string;
+  linkedin_url: string;
+  x_url: string;
+  other_social_url: string;
+  logo_url: string;
+  company_size: string;
+  founded_year: string;
+  employee_count_range: string;
+  budget_range: string;
+  preferred_collaboration_style: string;
+  timezone: string;
+  profile_visibility: string;
+}
+
+export const useBusinessProfileForm = () => {
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  
+  const [formData, setFormData] = useState<BusinessProfileFormData>({
+    business_name: '',
+    industry: '',
+    website_url: '',
+    location: '',
+    description: '',
+    instagram_url: '',
+    tiktok_url: '',
+    youtube_url: '',
+    facebook_url: '',
+    linkedin_url: '',
+    x_url: '',
+    other_social_url: '',
+    logo_url: '',
+    company_size: '',
+    founded_year: '',
+    employee_count_range: '',
+    budget_range: '',
+    preferred_collaboration_style: '',
+    timezone: '',
+    profile_visibility: 'public'
+  });
+
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const setFormDataFromProfile = (businessProfile: any) => {
+    setFormData({
+      business_name: businessProfile.business_name || '',
+      industry: businessProfile.industry || '',
+      website_url: businessProfile.website_url || '',
+      location: businessProfile.location || '',
+      description: businessProfile.description || '',
+      instagram_url: businessProfile.instagram_url || '',
+      tiktok_url: businessProfile.tiktok_url || '',
+      youtube_url: businessProfile.youtube_url || '',
+      facebook_url: businessProfile.facebook_url || '',
+      linkedin_url: businessProfile.linkedin_url || '',
+      x_url: businessProfile.x_url || '',
+      other_social_url: businessProfile.other_social_url || '',
+      logo_url: businessProfile.logo_url || '',
+      company_size: businessProfile.company_size || '',
+      founded_year: businessProfile.founded_year?.toString() || '',
+      employee_count_range: businessProfile.employee_count_range || '',
+      budget_range: businessProfile.budget_range || '',
+      preferred_collaboration_style: businessProfile.preferred_collaboration_style || '',
+      timezone: businessProfile.timezone || '',
+      profile_visibility: businessProfile.profile_visibility || 'public'
+    });
+  };
+
+  return {
+    formData,
+    logoFile,
+    handleInputChange,
+    setLogoFile,
+    setFormDataFromProfile
+  };
+};
