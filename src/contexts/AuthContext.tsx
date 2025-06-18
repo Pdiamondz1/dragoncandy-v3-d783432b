@@ -58,6 +58,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return () => clearTimeout(timeout);
   }, [loading]);
 
+  const createProfileFromMetadata = (user: User): Profile | null => {
+    const role = user.user_metadata?.role;
+    if (!role || !user.email) {
+      console.warn('⚠️ AuthProvider: Missing role or email in user metadata');
+      return null;
+    }
+
+    console.log('📋 AuthProvider: Creating profile from user metadata:', { role, email: user.email });
+    
+    return {
+      id: user.id,
+      email: user.email,
+      role: role as 'business_client' | 'content_creator',
+      full_name: user.user_metadata?.full_name || null,
+      avatar_url: user.user_metadata?.avatar_url || null,
+    };
+  };
+
   const fetchProfile = async (userId: string) => {
     try {
       console.log('🔍 AuthProvider: Fetching profile for user:', userId);
@@ -81,7 +99,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         .from('profiles')
         .select('id, email, role, full_name, avatar_url')
         .eq('id', userId)
-        .single();
+        .maybeSingle();
 
       if (profileError) {
         console.error('❌ AuthProvider: Error fetching basic profile:', profileError);
@@ -93,6 +111,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
         
         throw new Error(`Profile fetch failed: ${profileError.message}`);
+      }
+
+      if (!basicProfile) {
+        console.log('ℹ️ AuthProvider: No profile found in database');
+        return null;
       }
 
       console.log('✅ AuthProvider: Basic profile fetched:', basicProfile);
@@ -165,15 +188,31 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           setError(null);
           
           if (session?.user) {
-            console.log('👤 AuthProvider: User authenticated, fetching profile...');
+            console.log('👤 AuthProvider: User authenticated, handling profile...');
+            
             // Use setTimeout to prevent potential deadlocks
             setTimeout(async () => {
               try {
-                const profileData = await fetchProfile(session.user.id);
+                let profileData = await fetchProfile(session.user.id);
+                
+                // If no profile in database but we have user metadata, create profile from metadata
+                if (!profileData && session.user.user_metadata?.role) {
+                  console.log('📋 AuthProvider: No database profile, using metadata');
+                  profileData = createProfileFromMetadata(session.user);
+                }
+                
                 setProfile(profileData);
               } catch (profileError) {
                 console.error('❌ AuthProvider: Deferred profile fetch failed:', profileError);
-                setError('Failed to load profile');
+                
+                // Try to create profile from metadata as fallback
+                if (session.user.user_metadata?.role) {
+                  console.log('🔄 AuthProvider: Fallback to metadata profile');
+                  const metadataProfile = createProfileFromMetadata(session.user);
+                  setProfile(metadataProfile);
+                } else {
+                  setError('Failed to load profile');
+                }
               } finally {
                 setLoading(false);
               }
@@ -209,12 +248,27 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         
         if (session?.user) {
           console.log('👤 AuthProvider: Initial session found, fetching profile...');
-          const profileData = await fetchProfile(session.user.id);
+          let profileData = await fetchProfile(session.user.id);
+          
+          // If no profile in database but we have user metadata, create profile from metadata
+          if (!profileData && session.user.user_metadata?.role) {
+            console.log('📋 AuthProvider: No database profile, using metadata');
+            profileData = createProfileFromMetadata(session.user);
+          }
+          
           setProfile(profileData);
         }
       } catch (error) {
         console.error('❌ AuthProvider: Initial session processing failed:', error);
-        setError('Initial authentication failed');
+        
+        // Try metadata fallback
+        if (session?.user?.user_metadata?.role) {
+          console.log('🔄 AuthProvider: Initial session error, trying metadata fallback');
+          const metadataProfile = createProfileFromMetadata(session.user);
+          setProfile(metadataProfile);
+        } else {
+          setError('Initial authentication failed');
+        }
       } finally {
         setLoading(false);
       }

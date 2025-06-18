@@ -25,52 +25,86 @@ export const AuthForm = ({ mode, onError }: AuthFormProps) => {
     onError(null);
     setLoading(true);
 
-    if (mode === "signup" && !role) {
-      onError("Please select a role.");
-      setLoading(false);
-      return;
-    }
+    console.log(`🔐 AuthForm: Starting ${mode} process for:`, email);
 
     try {
       if (mode === "signup") {
+        if (!role) {
+          onError("Please select a role.");
+          setLoading(false);
+          return;
+        }
+
+        console.log('📝 AuthForm: Signing up user with role:', role);
+        
         const redirectUrl = `${window.location.origin}/profile/onboarding`;
+        console.log('🔗 AuthForm: Redirect URL:', redirectUrl);
+        
         const { data, error: signupError } = await supabase.auth.signUp({
           email,
           password,
           options: { 
             emailRedirectTo: redirectUrl,
             data: {
-              role: role // Pass the selected role in user metadata
+              role: role, // Store role in user metadata
+              email: email // Also store email for reference
             }
           }
         });
 
         if (signupError) {
+          console.error('❌ AuthForm: Signup error:', signupError);
           onError(signupError.message);
           setLoading(false);
           return;
         }
 
-        toast({
-          title: "Check your inbox",
-          description:
-            "A confirmation email has been sent. Please check your email and follow the link to complete signup.",
-        });
+        console.log('✅ AuthForm: Signup successful:', data);
+
+        if (data.user && !data.session) {
+          // Email confirmation required
+          toast({
+            title: "Check your inbox",
+            description: "A confirmation email has been sent. Please check your email and follow the link to complete signup.",
+          });
+        } else if (data.session) {
+          // Immediate login (if email confirmation is disabled)
+          console.log('🚀 AuthForm: User logged in immediately, redirecting...');
+          toast({
+            title: "Welcome to DragonCandy!",
+            description: "Your account has been created successfully.",
+          });
+        }
 
         setLoading(false);
       } else {
+        // Login mode
+        console.log('🔑 AuthForm: Logging in user');
+        
         const { data, error: loginError } = await supabase.auth.signInWithPassword({
           email,
           password
         });
+        
         if (loginError) {
+          console.error('❌ AuthForm: Login error:', loginError);
           onError(loginError.message);
           setLoading(false);
           return;
         }
+
+        console.log('✅ AuthForm: Login successful:', data);
+        
+        // Success toast for login
+        toast({
+          title: "Welcome back!",
+          description: "You have been logged in successfully.",
+        });
+
         // The AuthContext will handle the redirect automatically via useEffect
       }
     } catch (err: any) {
+      console.error('❌ AuthForm: Unexpected error:', err);
       onError("Something went wrong. Please try again.");
       setLoading(false);
     }
