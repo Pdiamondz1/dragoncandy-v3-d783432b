@@ -8,7 +8,7 @@ import { Progress } from '@/components/ui/progress';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { useCreateFileUpload } from '@/hooks/useFileUploads';
+import { useCreateFileUpload } from '@/hooks/useFileUploadMutations';
 
 interface ProjectFileUploadProps {
   campaignId: string;
@@ -51,12 +51,24 @@ const ProjectFileUpload: React.FC<ProjectFileUploadProps> = ({
   };
 
   const handleUpload = async () => {
-    if (acceptedFiles.length === 0) return;
+    if (acceptedFiles.length === 0 || !user) return;
+    
+    console.log('Starting upload process...', { 
+      fileCount: acceptedFiles.length, 
+      userId: user.id, 
+      campaignId 
+    });
     
     setIsUploading(true);
     
     try {
       for (const file of acceptedFiles) {
+        console.log('Uploading file:', { 
+          name: file.name, 
+          size: file.size, 
+          type: file.type 
+        });
+        
         // Set initial progress
         setUploadProgress(prev => ({ ...prev, [file.name]: 10 }));
         
@@ -65,38 +77,48 @@ const ProjectFileUpload: React.FC<ProjectFileUploadProps> = ({
         const randomString = Math.random().toString(36).substring(2, 8);
         const extension = file.name.split('.').pop();
         const filename = `${timestamp}-${randomString}.${extension}`;
-        const filePath = `campaigns/${campaignId}/deliverables/${filename}`;
+        const filePath = `${user.id}/${filename}`;
+        
+        console.log('Generated file path:', filePath);
         
         // Update progress
         setUploadProgress(prev => ({ ...prev, [file.name]: 50 }));
         
-        // Upload to Supabase Storage
+        // Upload to Supabase Storage using campaign-deliverables bucket
+        console.log('Uploading to storage bucket: campaign-deliverables');
         const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('campaign-files')
+          .from('campaign-deliverables')
           .upload(filePath, file);
 
         if (uploadError) {
-          throw uploadError;
+          console.error('Storage upload error:', uploadError);
+          throw new Error(`Storage upload failed: ${uploadError.message}`);
         }
+
+        console.log('Storage upload successful:', uploadData);
 
         // Update progress
         setUploadProgress(prev => ({ ...prev, [file.name]: 80 }));
 
         // Create database record
+        console.log('Creating database record...');
         await createFileUpload.mutateAsync({
           filename,
           original_filename: file.name,
           file_path: uploadData.path,
-          bucket_name: 'campaign-files',
+          bucket_name: 'campaign-deliverables',
           file_size: file.size,
           mime_type: file.type,
           campaign_id: campaignId,
           file_category: 'deliverable',
           metadata: {
             campaign_title: campaignTitle,
-            upload_type: 'project_deliverable'
+            upload_type: 'project_deliverable',
+            campaign_id: campaignId
           }
         });
+
+        console.log('Database record created successfully');
 
         // Complete progress
         setUploadProgress(prev => ({ ...prev, [file.name]: 100 }));
@@ -114,7 +136,7 @@ const ProjectFileUpload: React.FC<ProjectFileUploadProps> = ({
       console.error('Upload error:', error);
       toast({
         title: 'Upload failed',
-        description: 'There was an error uploading your files. Please try again.',
+        description: error instanceof Error ? error.message : 'There was an error uploading your files. Please try again.',
         variant: 'destructive',
       });
     } finally {
