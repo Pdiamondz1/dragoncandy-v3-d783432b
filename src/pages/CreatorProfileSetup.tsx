@@ -33,7 +33,12 @@ const CreatorProfileSetup = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await submitProfile(formData, selectedSkills, avatarFile, portfolioFiles);
+    const success = await submitProfile(formData, selectedSkills, avatarFile, portfolioFiles);
+    
+    // Redirect to creator dashboard on successful profile creation
+    if (success) {
+      navigate('/dashboard/creator');
+    }
   };
 
   return (

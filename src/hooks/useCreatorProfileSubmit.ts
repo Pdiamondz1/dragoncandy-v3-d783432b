@@ -1,6 +1,5 @@
 
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -11,7 +10,6 @@ type CreatorSkill = Database['public']['Enums']['creator_skill'];
 
 export const useCreatorProfileSubmit = () => {
   const { user } = useAuth();
-  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
 
   const uploadFile = async (file: File, folder: string) => {
@@ -112,10 +110,6 @@ export const useCreatorProfileSubmit = () => {
           : "Welcome to DragonCandy. You can now start browsing campaigns."
       });
 
-      if (!isUpdate) {
-        navigate('/');
-      }
-      
       return true;
     } catch (error: any) {
       console.error('Error saving profile:', error);
@@ -131,8 +125,7 @@ export const useCreatorProfileSubmit = () => {
   };
 
   return { 
-    submitProfile: (formData: CreatorProfileFormData, selectedSkills: CreatorSkill[], avatarFile: File | null, portfolioFiles: File[] = []) => 
-      submitProfile(formData, selectedSkills, avatarFile, portfolioFiles, true),
+    submitProfile,
     loading 
   };
 };
