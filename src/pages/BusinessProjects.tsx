@@ -30,10 +30,10 @@ interface ProjectCollaboration {
     budget_max: number;
   };
   creator_profile: {
-    creator_name: string;
-    avatar_url: string;
-    bio: string;
-  };
+    creator_name?: string;
+    avatar_url?: string;
+    bio?: string;
+  } | null;
 }
 
 const BusinessProjects: React.FC = () => {
@@ -47,6 +47,8 @@ const BusinessProjects: React.FC = () => {
     queryFn: async () => {
       if (!user) return [];
 
+      console.log('Fetching business projects for user:', user.id);
+
       const { data, error } = await supabase
         .from('campaign_collaborations')
         .select(`
@@ -56,7 +58,7 @@ const BusinessProjects: React.FC = () => {
           status,
           created_at,
           updated_at,
-          campaigns!inner (
+          campaigns (
             id,
             title,
             description,
@@ -66,7 +68,7 @@ const BusinessProjects: React.FC = () => {
             budget_max,
             user_id
           ),
-          creator_profiles!inner (
+          creator_profiles (
             creator_name,
             avatar_url,
             bio
@@ -80,16 +82,19 @@ const BusinessProjects: React.FC = () => {
         throw error;
       }
 
-      return data.map(item => ({
+      console.log('Raw business projects data:', data);
+
+      // Transform the data to match our interface
+      return (data || []).map(item => ({
         id: item.id,
         campaign_id: item.campaign_id,
         creator_id: item.creator_id,
         status: item.status,
         created_at: item.created_at,
         updated_at: item.updated_at,
-        campaign: item.campaigns,
-        creator_profile: item.creator_profiles
-      })) as ProjectCollaboration[];
+        campaign: Array.isArray(item.campaigns) ? item.campaigns[0] : item.campaigns,
+        creator_profile: Array.isArray(item.creator_profiles) ? item.creator_profiles[0] : item.creator_profiles
+      })).filter(item => item.campaign) as ProjectCollaboration[];
     },
     enabled: !!user,
   });
@@ -131,7 +136,7 @@ const BusinessProjects: React.FC = () => {
 
   if (projectsLoading) {
     return (
-      <DashboardLayout>
+      <DashboardLayout userRole="business_client">
         <div className="space-y-6">
           <h1 className="text-3xl font-bold">My Projects</h1>
           <div className="grid gap-4">
@@ -151,7 +156,7 @@ const BusinessProjects: React.FC = () => {
   }
 
   return (
-    <DashboardLayout>
+    <DashboardLayout userRole="business_client">
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold">My Projects</h1>
@@ -190,7 +195,7 @@ const BusinessProjects: React.FC = () => {
                         <div className="flex items-center gap-4 text-sm text-gray-600">
                           <div className="flex items-center gap-2">
                             <User className="h-4 w-4" />
-                            {project.creator_profile.creator_name}
+                            {project.creator_profile?.creator_name || 'Creator'}
                           </div>
                           {project.campaign.deadline && (
                             <div className="flex items-center gap-2">
