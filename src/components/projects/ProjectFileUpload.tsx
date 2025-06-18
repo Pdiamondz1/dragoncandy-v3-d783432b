@@ -57,6 +57,9 @@ const ProjectFileUpload: React.FC<ProjectFileUploadProps> = ({
     
     try {
       for (const file of acceptedFiles) {
+        // Set initial progress
+        setUploadProgress(prev => ({ ...prev, [file.name]: 10 }));
+        
         // Generate unique filename
         const timestamp = Date.now();
         const randomString = Math.random().toString(36).substring(2, 8);
@@ -64,19 +67,20 @@ const ProjectFileUpload: React.FC<ProjectFileUploadProps> = ({
         const filename = `${timestamp}-${randomString}.${extension}`;
         const filePath = `campaigns/${campaignId}/deliverables/${filename}`;
         
+        // Update progress
+        setUploadProgress(prev => ({ ...prev, [file.name]: 50 }));
+        
         // Upload to Supabase Storage
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from('campaign-files')
-          .upload(filePath, file, {
-            onUploadProgress: (progress) => {
-              const percentage = (progress.loaded / progress.total) * 100;
-              setUploadProgress(prev => ({ ...prev, [file.name]: percentage }));
-            }
-          });
+          .upload(filePath, file);
 
         if (uploadError) {
           throw uploadError;
         }
+
+        // Update progress
+        setUploadProgress(prev => ({ ...prev, [file.name]: 80 }));
 
         // Create database record
         await createFileUpload.mutateAsync({
@@ -93,6 +97,9 @@ const ProjectFileUpload: React.FC<ProjectFileUploadProps> = ({
             upload_type: 'project_deliverable'
           }
         });
+
+        // Complete progress
+        setUploadProgress(prev => ({ ...prev, [file.name]: 100 }));
       }
 
       toast({
