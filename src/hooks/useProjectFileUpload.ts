@@ -34,7 +34,8 @@ export const useProjectFileUpload = ({
     console.log('Upload context:', { 
       fileCount: acceptedFiles.length, 
       userId: user.id, 
-      campaignId
+      campaignId,
+      userRole: user.user_metadata?.role || 'unknown'
     });
     
     setIsUploading(true);
@@ -68,7 +69,9 @@ export const useProjectFileUpload = ({
         
         console.log('Uploading to storage:', {
           filePath,
-          bucketName: 'campaign-deliverables'
+          bucketName: 'campaign-deliverables',
+          fileSize: file.size,
+          mimeType: file.type
         });
         
         // Update progress
@@ -90,28 +93,44 @@ export const useProjectFileUpload = ({
         console.log('Storage upload successful:', uploadData);
         setUploadProgress(prev => ({ ...prev, [file.name]: 70 }));
 
-        // Create database record
+        // Create database record with enhanced error handling
         console.log('Creating database record...');
-        const fileRecord = await createFileUpload.mutateAsync({
-          filename,
-          original_filename: file.name,
-          file_path: uploadData.path,
-          bucket_name: 'campaign-deliverables',
-          file_size: file.size,
-          mime_type: file.type,
-          campaign_id: campaignId,
-          file_category: 'deliverable',
-          metadata: {
-            campaign_title: campaignTitle,
-            upload_type: 'project_deliverable',
+        try {
+          const fileRecord = await createFileUpload.mutateAsync({
+            filename,
+            original_filename: file.name,
+            file_path: uploadData.path,
+            bucket_name: 'campaign-deliverables',
+            file_size: file.size,
+            mime_type: file.type,
             campaign_id: campaignId,
-            uploaded_at: new Date().toISOString()
-          }
-        });
+            file_category: 'deliverable',
+            metadata: {
+              campaign_title: campaignTitle,
+              upload_type: 'project_deliverable',
+              campaign_id: campaignId,
+              uploaded_at: new Date().toISOString()
+            }
+          });
 
-        console.log('Database record created successfully:', fileRecord);
-        uploadedFiles.push(fileRecord);
-        setUploadProgress(prev => ({ ...prev, [file.name]: 100 }));
+          console.log('Database record created successfully:', fileRecord);
+          uploadedFiles.push(fileRecord);
+          setUploadProgress(prev => ({ ...prev, [file.name]: 100 }));
+        } catch (dbError) {
+          console.error('Database record creation failed:', dbError);
+          
+          // Clean up the uploaded file from storage if database insert fails
+          try {
+            await supabase.storage
+              .from('campaign-deliverables')
+              .remove([uploadData.path]);
+            console.log('Cleaned up storage file after database error');
+          } catch (cleanupError) {
+            console.error('Failed to cleanup storage file:', cleanupError);
+          }
+          
+          throw new Error(`Database error: ${dbError instanceof Error ? dbError.message : 'Unknown database error'}`);
+        }
       }
 
       toast({
@@ -138,8 +157,10 @@ export const useProjectFileUpload = ({
           errorMessage = 'Permission denied. Please check your account permissions.';
         } else if (error.message.includes('duplicate key')) {
           errorMessage = 'A file with this name already exists. Please rename and try again.';
-        } else {
+        } else if (error.message.includes('Database error')) {
           errorMessage = error.message;
+        } else {
+          errorMessage = `Upload failed: ${error.message}`;
         }
       }
       

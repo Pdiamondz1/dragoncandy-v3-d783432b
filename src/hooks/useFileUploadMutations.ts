@@ -33,6 +33,12 @@ export const useCreateFileUpload = () => {
         uploaded_by: user.id
       });
 
+      // Test auth connection first
+      const { data: testAuth } = await supabase.auth.getUser();
+      if (!testAuth.user) {
+        throw new Error('Authentication session invalid');
+      }
+
       const { data, error } = await supabase
         .from('file_uploads')
         .insert({
@@ -45,7 +51,17 @@ export const useCreateFileUpload = () => {
 
       if (error) {
         console.error('Database error creating file upload:', error);
-        throw new Error(`Database error: ${error.message}`);
+        
+        // Enhanced error reporting
+        if (error.code === 'PGRST301') {
+          throw new Error('Row Level Security policy violation - user not authorized');
+        } else if (error.code === '23505') {
+          throw new Error('Duplicate file name - please try again');
+        } else if (error.message.includes('violates row-level security')) {
+          throw new Error('Permission denied - insufficient access rights');
+        } else {
+          throw new Error(`Database error: ${error.message} (Code: ${error.code})`);
+        }
       }
 
       console.log('File upload record created successfully:', data);
