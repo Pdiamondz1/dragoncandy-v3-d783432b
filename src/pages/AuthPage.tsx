@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { AuthHeader } from "@/components/auth/AuthHeader";
@@ -8,11 +8,21 @@ import { AuthForm } from "@/components/auth/AuthForm";
 import { AuthModeToggle } from "@/components/auth/AuthModeToggle";
 
 const AuthPage = () => {
-  const [mode, setMode] = useState<"login" | "signup">("signup");
+  const [searchParams] = useSearchParams();
+  const initialMode = searchParams.get('mode') === 'login' ? 'login' : 'signup';
+  const [mode, setMode] = useState<"login" | "signup">(initialMode);
   const [error, setError] = useState<string | null>(null);
 
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
+
+  // Update mode when URL params change
+  useEffect(() => {
+    const urlMode = searchParams.get('mode');
+    if (urlMode === 'login' || urlMode === 'signup') {
+      setMode(urlMode);
+    }
+  }, [searchParams]);
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -73,6 +83,8 @@ const AuthPage = () => {
   const handleModeChange = (newMode: "login" | "signup") => {
     setMode(newMode);
     setError(null);
+    // Update URL to reflect the mode change
+    navigate(`/auth?mode=${newMode}`, { replace: true });
   };
 
   return (

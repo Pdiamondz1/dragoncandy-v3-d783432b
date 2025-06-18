@@ -236,9 +236,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       await supabase.auth.signOut({ scope: 'global' });
       setProfile(null);
       setError(null);
+      
+      // Redirect to landing page after logout
+      window.location.href = '/landing';
     } catch (error) {
       console.error('❌ AuthProvider: Sign out failed:', error);
       setError('Sign out failed');
+      // Still redirect even if sign out fails
+      window.location.href = '/landing';
     }
   };
 

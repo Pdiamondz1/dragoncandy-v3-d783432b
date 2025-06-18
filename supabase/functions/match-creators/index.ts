@@ -43,6 +43,12 @@ serve(async (req) => {
 
     console.log('Campaign fetched:', campaign?.title);
 
+    // Clear existing matches for this campaign
+    await supabase
+      .from('campaign_matches')
+      .delete()
+      .eq('campaign_id', campaignId);
+
     // Fetch available creators
     const { data: creators, error: creatorsError } = await supabase
       .from('creator_profiles')
@@ -101,10 +107,12 @@ Platforms: ${[
 ].filter(Boolean).join(', ') || 'No platforms specified'}
 
 Provide a match analysis in JSON format with:
-- match_score: number between 0-100
+- match_score: number between 0-100 (be generous, even partial matches should score 30-70)
 - reasons: array of strings explaining why this is a good match
 - concerns: array of strings explaining potential issues
 - analysis: detailed text explanation
+
+Important: Even if the match isn't perfect, provide a meaningful score (minimum 25) if the creator could potentially work on this campaign. Focus on adaptability and transferable skills.
 
 Respond ONLY with valid JSON, no markdown formatting.`;
 
@@ -119,7 +127,7 @@ Respond ONLY with valid JSON, no markdown formatting.`;
             messages: [
               {
                 role: 'system',
-                content: 'You are an expert at matching creators with campaigns. Always respond with valid JSON only, no markdown formatting or code blocks.'
+                content: 'You are an expert at matching creators with campaigns. Always respond with valid JSON only, no markdown formatting or code blocks. Be generous with scoring - focus on potential and adaptability.'
               },
               {
                 role: 'user',
@@ -162,20 +170,20 @@ Respond ONLY with valid JSON, no markdown formatting.`;
           console.error('JSON parse error for creator', creator.creator_name, ':', parseError);
           console.error('Cleaned content was:', cleanedContent);
           
-          // Fallback: create a basic match result
+          // Fallback: create a generous match result
           analysisResult = {
-            match_score: 50,
-            reasons: ['Creator available for matching'],
-            concerns: ['Unable to perform detailed analysis'],
-            analysis: 'Basic match - detailed analysis unavailable due to parsing error'
+            match_score: 45,
+            reasons: ['Creator available for collaboration', 'Adaptable skill set'],
+            concerns: ['Detailed analysis unavailable', 'Requires manual review'],
+            analysis: 'This creator is available and may be suitable for your campaign. Manual review recommended to assess fit.'
           };
         }
 
-        // Validate the structure
-        const matchScore = Math.max(0, Math.min(100, analysisResult.match_score || 50));
-        const reasons = Array.isArray(analysisResult.reasons) ? analysisResult.reasons : ['Creator available'];
-        const concerns = Array.isArray(analysisResult.concerns) ? analysisResult.concerns : [];
-        const analysis = analysisResult.analysis || 'Match analysis performed';
+        // Validate and ensure minimum scoring
+        const matchScore = Math.max(25, Math.min(100, analysisResult.match_score || 45));
+        const reasons = Array.isArray(analysisResult.reasons) ? analysisResult.reasons : ['Creator available for collaboration'];
+        const concerns = Array.isArray(analysisResult.concerns) ? analysisResult.concerns : ['Manual review recommended'];
+        const analysis = analysisResult.analysis || 'Creator analysis completed - review details for compatibility assessment';
 
         // Store the match in database
         const { error: insertError } = await supabase
@@ -204,32 +212,35 @@ Respond ONLY with valid JSON, no markdown formatting.`;
       } catch (creatorError) {
         console.error('Error analyzing creator', creator.creator_name, ':', creatorError);
         
-        // Add a basic match even if AI analysis fails
-        const basicMatch = {
+        // Add a generous fallback match even if AI analysis fails
+        const fallbackMatch = {
           creator_id: creator.user_id,
           creator_name: creator.creator_name,
-          match_score: 25,
-          reasons: ['Creator available'],
-          concerns: ['Analysis failed - manual review recommended'],
-          analysis: 'Basic match due to analysis error'
+          match_score: 35,
+          reasons: ['Creator available for collaboration', 'Profile completed'],
+          concerns: ['AI analysis failed', 'Manual review required'],
+          analysis: 'Creator is available and has a completed profile. Manual assessment recommended to determine campaign fit.'
         };
 
-        // Try to insert basic match
+        // Try to insert fallback match
         const { error: insertError } = await supabase
           .from('campaign_matches')
           .insert({
             campaign_id: campaignId,
             creator_id: creator.user_id,
-            match_score: 25,
-            match_reasons: { reasons: basicMatch.reasons, concerns: basicMatch.concerns },
-            ai_analysis: basicMatch.analysis,
+            match_score: 35,
+            match_reasons: { reasons: fallbackMatch.reasons, concerns: fallbackMatch.concerns },
+            ai_analysis: fallbackMatch.analysis,
           });
 
         if (!insertError) {
-          matches.push(basicMatch);
+          matches.push(fallbackMatch);
         }
       }
     }
+
+    // Sort matches by score
+    matches.sort((a, b) => b.match_score - a.match_score);
 
     console.log('Generated matches:', matches.length);
 

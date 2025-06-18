@@ -1,4 +1,3 @@
-
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -17,40 +16,76 @@ export const useCampaignApplications = (campaignId: string) => {
         return [];
       }
 
-      const { data, error } = await supabase
+      // First, get the applications
+      const { data: applications, error: applicationsError } = await supabase
         .from('campaign_applications')
-        .select(`
-          *,
-          creator_profiles!creator_id (
-            creator_name,
-            avatar_url,
-            bio,
-            skills
-          )
-        `)
+        .select('*')
         .eq('campaign_id', campaignId)
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('❌ useCampaignApplications: Error fetching campaign applications:', error);
-        throw error;
+      if (applicationsError) {
+        console.error('❌ useCampaignApplications: Error fetching applications:', applicationsError);
+        throw applicationsError;
       }
 
-      console.log('📋 useCampaignApplications: Raw data received:', data);
+      console.log('📋 useCampaignApplications: Raw applications:', applications);
 
-      // Transform the data to match our interface
-      const transformedData = data?.map((app: any) => ({
-        ...app,
-        creator_profile: app.creator_profiles ? {
-          creator_name: app.creator_profiles.creator_name || '',
-          avatar_url: app.creator_profiles.avatar_url || undefined,
-          bio: app.creator_profiles.bio || undefined,
-          skills: app.creator_profiles.skills || [],
-        } : undefined,
-      })) || [];
+      if (!applications || applications.length === 0) {
+        console.log('📋 useCampaignApplications: No applications found');
+        return [];
+      }
 
-      console.log('✅ useCampaignApplications: Transformed applications:', transformedData);
-      return transformedData as CampaignApplication[];
+      // Get creator profile data for each application
+      const enrichedApplications = await Promise.all(
+        applications.map(async (app) => {
+          try {
+            const { data: creatorProfile, error: profileError } = await supabase
+              .from('creator_profiles')
+              .select('creator_name, avatar_url, bio, skills')
+              .eq('user_id', app.creator_id)
+              .single();
+
+            if (profileError) {
+              console.warn('⚠️ useCampaignApplications: Creator profile not found for:', app.creator_id, profileError);
+              // Return application without profile data
+              return {
+                ...app,
+                creator_profile: {
+                  creator_name: 'Unknown Creator',
+                  avatar_url: null,
+                  bio: 'Profile not available',
+                  skills: [],
+                }
+              };
+            }
+
+            return {
+              ...app,
+              creator_profile: {
+                creator_name: creatorProfile.creator_name || 'Unknown Creator',
+                avatar_url: creatorProfile.avatar_url || null,
+                bio: creatorProfile.bio || null,
+                skills: creatorProfile.skills || [],
+              }
+            };
+          } catch (error) {
+            console.error('❌ useCampaignApplications: Error enriching application:', error);
+            // Return basic application data as fallback
+            return {
+              ...app,
+              creator_profile: {
+                creator_name: 'Creator Profile Error',
+                avatar_url: null,
+                bio: 'Unable to load profile',
+                skills: [],
+              }
+            };
+          }
+        })
+      );
+
+      console.log('✅ useCampaignApplications: Enriched applications:', enrichedApplications);
+      return enrichedApplications as CampaignApplication[];
     },
     enabled: !!campaignId && !!user,
     refetchOnWindowFocus: true,

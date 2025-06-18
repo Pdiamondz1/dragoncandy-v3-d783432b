@@ -1,125 +1,225 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Brain, Sparkles, RefreshCw, Users } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Sparkles, Users, RefreshCw, AlertCircle } from 'lucide-react';
 import { useCampaignMatches, useGenerateMatches } from '@/hooks/useCampaignMatches';
-import { useCampaignInvitations } from '@/hooks/useCampaignInvitations';
 import CreatorMatchCard from './CreatorMatchCard';
-import { Skeleton } from '@/components/ui/skeleton';
+import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from '@tanstack/react-query';
 
 interface CreatorMatchingSectionProps {
   campaignId: string;
 }
 
 const CreatorMatchingSection: React.FC<CreatorMatchingSectionProps> = ({ campaignId }) => {
-  const { data: matches, isLoading: matchesLoading } = useCampaignMatches(campaignId);
-  const { data: invitations } = useCampaignInvitations(campaignId);
+  const { data: matches = [], isLoading: matchesLoading, refetch: refetchMatches } = useCampaignMatches(campaignId);
   const generateMatches = useGenerateMatches();
+  const [activeTab, setActiveTab] = useState('ai-matches');
 
-  const invitedCreatorIds = new Set(invitations?.map(inv => inv.creator_id) || []);
+  // Fetch all available creators as fallback
+  const { data: availableCreators = [], isLoading: creatorsLoading } = useQuery({
+    queryKey: ['available-creators'],
+    queryFn: async () => {
+      console.log('Fetching available creators...');
+      const { data, error } = await supabase
+        .from('creator_profiles')
+        .select('*')
+        .eq('is_completed', true);
 
-  const handleGenerateMatches = () => {
-    generateMatches.mutate(campaignId);
+      if (error) {
+        console.error('Error fetching creators:', error);
+        throw error;
+      }
+
+      console.log('Available creators:', data);
+      return data || [];
+    },
+  });
+
+  const handleGenerateMatches = async () => {
+    try {
+      await generateMatches.mutateAsync(campaignId);
+      await refetchMatches();
+    } catch (error) {
+      console.error('Failed to generate matches:', error);
+    }
   };
 
-  const hasMatches = matches && matches.length > 0;
+  const isLoading = matchesLoading || generateMatches.isPending;
+  const hasMatches = matches.length > 0;
+  const hasAvailableCreators = availableCreators.length > 0;
 
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Brain className="h-5 w-5 text-blue-500" />
-            AI Creator Matching
+            <Sparkles className="h-5 w-5 text-purple-600" />
+            AI-Powered Creator Matching
           </CardTitle>
           <p className="text-sm text-gray-600">
-            Our AI analyzes your campaign requirements and finds the best creators for your project
+            Find the perfect creators for your campaign using our AI matching algorithm
           </p>
         </CardHeader>
         <CardContent>
-          <div className="flex gap-3">
-            <Button 
-              onClick={handleGenerateMatches}
-              disabled={generateMatches.isPending}
-              className="flex items-center gap-2"
-            >
-              {generateMatches.isPending ? (
-                <RefreshCw className="h-4 w-4 animate-spin" />
-              ) : (
-                <Sparkles className="h-4 w-4" />
-              )}
-              {hasMatches ? 'Generate New Matches' : 'Find Perfect Creators'}
-            </Button>
-            
-            {hasMatches && (
-              <Button variant="outline" onClick={handleGenerateMatches} disabled={generateMatches.isPending}>
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Refresh Matches
-              </Button>
+          <Button 
+            onClick={handleGenerateMatches}
+            disabled={isLoading}
+            className="w-full"
+          >
+            {isLoading ? (
+              <>
+                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                Analyzing Creators...
+              </>
+            ) : (
+              <>
+                <Sparkles className="h-4 w-4 mr-2" />
+                Find Perfect Creators
+              </>
             )}
-          </div>
+          </Button>
         </CardContent>
       </Card>
 
-      {matchesLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[...Array(6)].map((_, i) => (
-            <Card key={i} className="h-[400px]">
-              <CardHeader>
-                <div className="flex items-center gap-3">
-                  <Skeleton className="h-12 w-12 rounded-full" />
-                  <div className="space-y-2">
-                    <Skeleton className="h-4 w-24" />
-                    <Skeleton className="h-3 w-32" />
-                  </div>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="ai-matches" className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4" />
+            AI Matches ({matches.length})
+          </TabsTrigger>
+          <TabsTrigger value="all-creators" className="flex items-center gap-2">
+            <Users className="h-4 w-4" />
+            Available Creators ({availableCreators.length})
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="ai-matches" className="space-y-4">
+          {isLoading ? (
+            <Card>
+              <CardContent className="flex items-center justify-center py-8">
+                <div className="flex items-center gap-2 text-gray-500">
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                  Generating AI matches...
                 </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-3/4" />
-                <div className="flex gap-2">
-                  <Skeleton className="h-6 w-16" />
-                  <Skeleton className="h-6 w-20" />
-                </div>
-                <Skeleton className="h-10 w-full" />
               </CardContent>
             </Card>
-          ))}
-        </div>
-      ) : hasMatches ? (
-        <div className="space-y-4">
-          <div className="flex items-center gap-2 text-lg font-semibold">
-            <Users className="h-5 w-5" />
-            Top Creator Matches ({matches.length})
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {matches.map((match) => (
-              <CreatorMatchCard
-                key={match.id}
-                match={match}
-                isInvited={invitedCreatorIds.has(match.creator_id)}
-              />
-            ))}
-          </div>
-        </div>
-      ) : (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <Brain className="h-12 w-12 text-gray-400 mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              No matches found yet
-            </h3>
-            <p className="text-gray-600 text-center mb-4">
-              Click "Find Perfect Creators" to discover amazing creators for your campaign
-            </p>
-            <Button onClick={handleGenerateMatches} disabled={generateMatches.isPending}>
-              <Sparkles className="h-4 w-4 mr-2" />
-              Find Perfect Creators
-            </Button>
-          </CardContent>
-        </Card>
-      )}
+          ) : hasMatches ? (
+            <div className="grid gap-4">
+              {matches.map((match) => (
+                <CreatorMatchCard key={match.id} match={match} />
+              ))}
+            </div>
+          ) : (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <AlertCircle className="h-12 w-12 text-gray-400 mb-4" />
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  No AI matches found
+                </h3>
+                <p className="text-gray-600 text-center max-w-md mb-4">
+                  Our AI couldn't find any perfect matches for your campaign. Try generating matches again or check out all available creators.
+                </p>
+                <div className="flex gap-2">
+                  <Button onClick={handleGenerateMatches} variant="outline">
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Try Again
+                  </Button>
+                  <Button onClick={() => setActiveTab('all-creators')}>
+                    <Users className="h-4 w-4 mr-2" />
+                    View All Creators
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        <TabsContent value="all-creators" className="space-y-4">
+          {creatorsLoading ? (
+            <Card>
+              <CardContent className="flex items-center justify-center py-8">
+                <div className="flex items-center gap-2 text-gray-500">
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                  Loading available creators...
+                </div>
+              </CardContent>
+            </Card>
+          ) : hasAvailableCreators ? (
+            <div className="grid gap-4">
+              {availableCreators.map((creator) => (
+                <Card key={creator.id} className="border border-gray-200">
+                  <CardContent className="p-6">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-4">
+                        {creator.avatar_url ? (
+                          <img 
+                            src={creator.avatar_url} 
+                            alt={creator.creator_name}
+                            className="w-12 h-12 rounded-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center">
+                            <Users className="h-6 w-6 text-gray-400" />
+                          </div>
+                        )}
+                        <div>
+                          <h3 className="font-semibold text-lg">{creator.creator_name}</h3>
+                          <p className="text-gray-600 text-sm">{creator.location || 'Location not specified'}</p>
+                          {creator.bio && (
+                            <p className="text-gray-700 mt-2 text-sm">{creator.bio}</p>
+                          )}
+                          {creator.skills && creator.skills.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-2">
+                              {creator.skills.slice(0, 3).map((skill, index) => (
+                                <span 
+                                  key={index}
+                                  className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full"
+                                >
+                                  {skill}
+                                </span>
+                              ))}
+                              {creator.skills.length > 3 && (
+                                <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
+                                  +{creator.skills.length - 3} more
+                                </span>
+                              )}
+                            </div>
+                          )}
+                          {creator.base_rate_per_hour && (
+                            <p className="text-sm text-gray-600 mt-1">
+                              Rate: ${creator.base_rate_per_hour}/hour
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                          Available
+                        </span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <Users className="h-12 w-12 text-gray-400 mb-4" />
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  No creators available
+                </h3>
+                <p className="text-gray-600 text-center max-w-md">
+                  There are currently no completed creator profiles available on the platform.
+                </p>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

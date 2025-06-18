@@ -23,13 +23,13 @@ export const Header = () => {
             <Button
               variant="ghost"
               className="text-gray-600 hover:text-pink-600"
-              onClick={() => navigate('/auth')}
+              onClick={() => navigate('/auth?mode=login')}
             >
               Log in
             </Button>
             <Button
               className="bg-pink-600 hover:bg-pink-700 text-white px-6"
-              onClick={() => navigate('/auth')}
+              onClick={() => navigate('/auth?mode=signup')}
             >
               Sign up
             </Button>
