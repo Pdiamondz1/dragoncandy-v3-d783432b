@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Upload, X, File, Image, Video, AlertCircle } from 'lucide-react';
@@ -16,13 +16,6 @@ interface ProjectFileUploadProps {
   onUploadComplete?: () => void;
 }
 
-interface DebugInfo {
-  user_id: string | null;
-  is_authenticated: boolean;
-  profile_exists: boolean;
-  profile_role: string | null;
-}
-
 const ProjectFileUpload: React.FC<ProjectFileUploadProps> = ({
   campaignId,
   campaignTitle,
@@ -32,8 +25,6 @@ const ProjectFileUpload: React.FC<ProjectFileUploadProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<{[key: string]: number}>({});
   const [isUploading, setIsUploading] = useState(false);
-  const [debugInfo, setDebugInfo] = useState<DebugInfo | null>(null);
-  const [authError, setAuthError] = useState<string | null>(null);
   const createFileUpload = useCreateFileUpload();
 
   const { getRootProps, getInputProps, acceptedFiles, isDragActive, fileRejections } = useDropzone({
@@ -44,66 +35,6 @@ const ProjectFileUpload: React.FC<ProjectFileUploadProps> = ({
     maxSize: 100 * 1024 * 1024, // 100MB
     maxFiles: 10
   });
-
-  // Debug user authentication and profile when component opens
-  useEffect(() => {
-    if (isOpen && user) {
-      debugUserPermissions();
-    }
-  }, [isOpen, user]);
-
-  const debugUserPermissions = async () => {
-    try {
-      console.log('=== DEBUGGING USER PERMISSIONS ===');
-      console.log('Current user from auth hook:', user);
-      
-      // Check current session
-      const { data: session, error: sessionError } = await supabase.auth.getSession();
-      console.log('Current session:', session);
-      if (sessionError) {
-        console.error('Session error:', sessionError);
-        setAuthError(`Session error: ${sessionError.message}`);
-        return;
-      }
-
-      // Call debug function
-      const { data: debugData, error: debugError } = await supabase
-        .rpc('debug_user_upload_permissions');
-      
-      if (debugError) {
-        console.error('Debug function error:', debugError);
-        setAuthError(`Debug error: ${debugError.message}`);
-        return;
-      }
-
-      console.log('Debug function result:', debugData);
-      if (debugData && debugData.length > 0) {
-        setDebugInfo(debugData[0]);
-        console.log('User debug info:', debugData[0]);
-      }
-
-      // Test storage access
-      const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
-      console.log('Available buckets:', buckets);
-      if (bucketsError) {
-        console.error('Buckets error:', bucketsError);
-      }
-
-      // Test bucket access
-      const { data: bucketFiles, error: bucketError } = await supabase.storage
-        .from('campaign-deliverables')
-        .list('', { limit: 1 });
-      console.log('Can access campaign-deliverables bucket:', !bucketError);
-      if (bucketError) {
-        console.error('Bucket access error:', bucketError);
-      }
-
-      setAuthError(null);
-    } catch (error) {
-      console.error('Debug error:', error);
-      setAuthError(error instanceof Error ? error.message : 'Unknown debug error');
-    }
-  };
 
   const getFileIcon = (file: File) => {
     if (file.type.startsWith('image/')) return <Image className="h-4 w-4" />;
@@ -132,8 +63,7 @@ const ProjectFileUpload: React.FC<ProjectFileUploadProps> = ({
     console.log('Upload context:', { 
       fileCount: acceptedFiles.length, 
       userId: user.id, 
-      campaignId,
-      debugInfo 
+      campaignId
     });
     
     setIsUploading(true);
@@ -142,10 +72,12 @@ const ProjectFileUpload: React.FC<ProjectFileUploadProps> = ({
       // Verify authentication before starting
       const { data: session } = await supabase.auth.getSession();
       if (!session?.session) {
-        throw new Error('User not authenticated. Please sign in again.');
+        throw new Error('Authentication required. Please sign in again.');
       }
-      console.log('Authentication verified for upload');
+      console.log('User authenticated successfully');
 
+      const uploadedFiles = [];
+      
       for (const file of acceptedFiles) {
         console.log('Processing file:', { 
           name: file.name, 
@@ -163,9 +95,7 @@ const ProjectFileUpload: React.FC<ProjectFileUploadProps> = ({
         const filename = `${timestamp}-${randomString}.${extension}`;
         const filePath = `${user.id}/${filename}`;
         
-        console.log('File upload details:', {
-          originalName: file.name,
-          generatedFilename: filename,
+        console.log('Uploading to storage:', {
           filePath,
           bucketName: 'campaign-deliverables'
         });
@@ -174,7 +104,6 @@ const ProjectFileUpload: React.FC<ProjectFileUploadProps> = ({
         setUploadProgress(prev => ({ ...prev, [file.name]: 30 }));
         
         // Upload to Supabase Storage
-        console.log('Initiating storage upload...');
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from('campaign-deliverables')
           .upload(filePath, file, {
@@ -183,12 +112,7 @@ const ProjectFileUpload: React.FC<ProjectFileUploadProps> = ({
           });
 
         if (uploadError) {
-          console.error('Storage upload failed:', {
-            error: uploadError,
-            errorMessage: uploadError.message,
-            filePath,
-            userId: user.id
-          });
+          console.error('Storage upload failed:', uploadError);
           throw new Error(`Storage upload failed: ${uploadError.message}`);
         }
 
@@ -197,7 +121,7 @@ const ProjectFileUpload: React.FC<ProjectFileUploadProps> = ({
 
         // Create database record
         console.log('Creating database record...');
-        await createFileUpload.mutateAsync({
+        const fileRecord = await createFileUpload.mutateAsync({
           filename,
           original_filename: file.name,
           file_path: uploadData.path,
@@ -214,7 +138,8 @@ const ProjectFileUpload: React.FC<ProjectFileUploadProps> = ({
           }
         });
 
-        console.log('Database record created successfully');
+        console.log('Database record created successfully:', fileRecord);
+        uploadedFiles.push(fileRecord);
         setUploadProgress(prev => ({ ...prev, [file.name]: 100 }));
       }
 
@@ -236,9 +161,13 @@ const ProjectFileUpload: React.FC<ProjectFileUploadProps> = ({
       
       if (error instanceof Error) {
         if (error.message.includes('Storage upload failed')) {
-          errorMessage = `Upload failed: ${error.message}. Please check your permissions and try again.`;
-        } else if (error.message.includes('not authenticated')) {
+          errorMessage = `Storage error: ${error.message}`;
+        } else if (error.message.includes('Authentication required')) {
           errorMessage = 'Please sign in again and try uploading.';
+        } else if (error.message.includes('violates row-level security')) {
+          errorMessage = 'Permission denied. Please check your account permissions.';
+        } else if (error.message.includes('duplicate key')) {
+          errorMessage = 'A file with this name already exists. Please rename and try again.';
         } else {
           errorMessage = error.message;
         }
@@ -269,30 +198,6 @@ const ProjectFileUpload: React.FC<ProjectFileUploadProps> = ({
         </DialogHeader>
         
         <div className="space-y-4">
-          {/* Debug Information (only show if there are auth issues) */}
-          {authError && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-              <div className="flex items-center gap-2">
-                <AlertCircle className="h-4 w-4 text-red-600" />
-                <h4 className="font-medium text-red-800">Authentication Issue</h4>
-              </div>
-              <p className="text-sm text-red-600 mt-1">{authError}</p>
-            </div>
-          )}
-
-          {/* User Debug Info (show in development) */}
-          {debugInfo && process.env.NODE_ENV === 'development' && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-              <h4 className="font-medium text-blue-800 text-sm mb-2">Debug Info:</h4>
-              <div className="text-xs text-blue-600 space-y-1">
-                <div>User ID: {debugInfo.user_id}</div>
-                <div>Authenticated: {debugInfo.is_authenticated ? 'Yes' : 'No'}</div>
-                <div>Profile Exists: {debugInfo.profile_exists ? 'Yes' : 'No'}</div>
-                <div>Profile Role: {debugInfo.profile_role || 'None'}</div>
-              </div>
-            </div>
-          )}
-
           {/* Dropzone */}
           <div
             {...getRootProps()}
@@ -318,7 +223,10 @@ const ProjectFileUpload: React.FC<ProjectFileUploadProps> = ({
           {/* File Rejections */}
           {fileRejections.length > 0 && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-              <h4 className="font-medium text-red-800 mb-2">Some files were rejected:</h4>
+              <div className="flex items-center gap-2 mb-2">
+                <AlertCircle className="h-4 w-4 text-red-600" />
+                <h4 className="font-medium text-red-800">Some files were rejected:</h4>
+              </div>
               <ul className="text-sm text-red-600 space-y-1">
                 {fileRejections.map(({ file, errors }) => (
                   <li key={file.name}>
@@ -361,7 +269,7 @@ const ProjectFileUpload: React.FC<ProjectFileUploadProps> = ({
             </Button>
             <Button
               onClick={handleUpload}
-              disabled={acceptedFiles.length === 0 || isUploading || !!authError}
+              disabled={acceptedFiles.length === 0 || isUploading || !user}
             >
               {isUploading ? 'Uploading...' : `Upload ${acceptedFiles.length} file(s)`}
             </Button>

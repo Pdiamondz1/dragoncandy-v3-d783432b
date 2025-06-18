@@ -24,37 +24,39 @@ export const useCreateFileUpload = () => {
       is_compressed?: boolean;
       compression_ratio?: number;
     }) => {
+      if (!user) {
+        throw new Error('User must be authenticated to upload files');
+      }
+
+      console.log('Creating file upload record:', {
+        ...fileData,
+        uploaded_by: user.id
+      });
+
       const { data, error } = await supabase
         .from('file_uploads')
         .insert({
           ...fileData,
-          uploaded_by: user!.id,
+          uploaded_by: user.id,
           upload_status: 'completed'
         })
         .select()
         .single();
 
       if (error) {
-        console.error('Error creating file upload:', error);
-        throw error;
+        console.error('Database error creating file upload:', error);
+        throw new Error(`Database error: ${error.message}`);
       }
 
+      console.log('File upload record created successfully:', data);
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['file-uploads'] });
-      toast({
-        title: 'File uploaded successfully',
-        description: 'Your file has been uploaded and is ready to use.',
-      });
     },
     onError: (error) => {
-      console.error('Failed to create file upload:', error);
-      toast({
-        title: 'Upload failed',
-        description: 'There was an error uploading your file. Please try again.',
-        variant: 'destructive',
-      });
+      console.error('Failed to create file upload record:', error);
+      // Don't show toast here as the component handles it
     },
   });
 };
