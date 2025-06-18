@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import DashboardLayout from '@/components/DashboardLayout';
@@ -5,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Users, Clock, CheckCircle, XCircle, Eye } from 'lucide-react';
+import { Users, Clock, CheckCircle, XCircle, Eye, AlertCircle } from 'lucide-react';
 import { useCampaignApplications } from '@/hooks/useCampaignApplications';
 import { useManageApplication } from '@/hooks/useManageApplication';
 import { useCampaigns } from '@/hooks/useCampaigns';
@@ -22,11 +23,28 @@ const BusinessProposals = () => {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [selectedApplicationIds, setSelectedApplicationIds] = useState<string[]>([]);
 
-  const { campaigns = [], isLoading: campaignLoading } = useCampaigns();
+  console.log('BusinessProposals: Rendering with campaignId:', campaignId);
+
+  const { campaigns = [], isLoading: campaignLoading, error: campaignError } = useCampaigns();
   const campaign = campaigns.find(c => c.id === campaignId);
-  const { data: applications = [], isLoading, error } = useCampaignApplications(campaignId!);
+  const { data: applications = [], isLoading, error, refetch } = useCampaignApplications(campaignId!);
   const { filters, filteredApplications, updateFilter, resetFilters } = useApplicationFilters(applications);
   const manageApplication = useManageApplication();
+
+  console.log('BusinessProposals: Data state:', {
+    campaignId,
+    campaign: !!campaign,
+    applications: applications.length,
+    isLoading,
+    error: error?.message,
+  });
+
+  // Add debugging for applications data
+  React.useEffect(() => {
+    if (applications.length > 0) {
+      console.log('BusinessProposals: Applications received:', applications);
+    }
+  }, [applications]);
 
   if (campaignLoading || isLoading) {
     return (
@@ -40,6 +58,7 @@ const BusinessProposals = () => {
                   <div key={i} className="h-24 bg-gray-200 rounded"></div>
                 ))}
               </div>
+              <div className="h-64 bg-gray-200 rounded"></div>
             </div>
           </div>
         </div>
@@ -47,14 +66,45 @@ const BusinessProposals = () => {
     );
   }
 
-  if (error) {
+  if (error || campaignError) {
     return (
       <DashboardLayout userRole="business_client">
         <div className="flex-1 p-8">
           <div className="max-w-7xl mx-auto">
             <Card>
               <CardContent className="flex items-center justify-center py-12">
-                <div className="text-red-500">Failed to load proposals</div>
+                <div className="text-center space-y-4">
+                  <AlertCircle className="h-12 w-12 text-red-500 mx-auto" />
+                  <div className="text-red-500">Failed to load proposals</div>
+                  <div className="text-sm text-gray-600">
+                    {error?.message || campaignError?.message || 'Unknown error occurred'}
+                  </div>
+                  <Button onClick={() => refetch()} variant="outline">
+                    Try Again
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (!campaign) {
+    return (
+      <DashboardLayout userRole="business_client">
+        <div className="flex-1 p-8">
+          <div className="max-w-7xl mx-auto">
+            <Card>
+              <CardContent className="flex items-center justify-center py-12">
+                <div className="text-center space-y-4">
+                  <AlertCircle className="h-12 w-12 text-yellow-500 mx-auto" />
+                  <div className="text-lg font-medium">Campaign not found</div>
+                  <div className="text-gray-600">
+                    The campaign you're looking for doesn't exist or you don't have access to it.
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </div>
@@ -151,128 +201,146 @@ const BusinessProposals = () => {
             </Card>
           </div>
 
-          <Tabs defaultValue="all" className="space-y-6">
-            <TabsList>
-              <TabsTrigger value="all">All Proposals ({applications.length})</TabsTrigger>
-              <TabsTrigger value="pending">Pending ({pendingApplications.length})</TabsTrigger>
-              <TabsTrigger value="accepted">Accepted ({acceptedApplications.length})</TabsTrigger>
-              <TabsTrigger value="rejected">Rejected ({rejectedApplications.length})</TabsTrigger>
-            </TabsList>
+          {/* Applications Content */}
+          {applications.length === 0 ? (
+            <Card>
+              <CardContent className="flex items-center justify-center py-12">
+                <div className="text-center space-y-4">
+                  <Users className="h-12 w-12 text-gray-400 mx-auto" />
+                  <div className="text-lg font-medium">No proposals yet</div>
+                  <div className="text-gray-600">
+                    When creators apply to your campaign, their proposals will appear here.
+                  </div>
+                  <Button onClick={() => refetch()} variant="outline">
+                    Refresh
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <Tabs defaultValue="all" className="space-y-6">
+              <TabsList>
+                <TabsTrigger value="all">All Proposals ({applications.length})</TabsTrigger>
+                <TabsTrigger value="pending">Pending ({pendingApplications.length})</TabsTrigger>
+                <TabsTrigger value="accepted">Accepted ({acceptedApplications.length})</TabsTrigger>
+                <TabsTrigger value="rejected">Rejected ({rejectedApplications.length})</TabsTrigger>
+              </TabsList>
 
-            <TabsContent value="all" className="space-y-6">
-              <ApplicationFiltersComponent
-                filters={filters}
-                onFilterChange={updateFilter}
-                onReset={resetFilters}
-                totalCount={applications.length}
-                filteredCount={filteredApplications.length}
-              />
+              <TabsContent value="all" className="space-y-6">
+                <ApplicationFiltersComponent
+                  filters={filters}
+                  onFilterChange={updateFilter}
+                  onReset={resetFilters}
+                  totalCount={applications.length}
+                  filteredCount={filteredApplications.length}
+                />
 
-              <BulkApplicationActions
-                applications={filteredApplications}
-                selectedIds={selectedApplicationIds}
-                onSelectionChange={setSelectedApplicationIds}
-              />
+                <BulkApplicationActions
+                  applications={filteredApplications}
+                  selectedIds={selectedApplicationIds}
+                  onSelectionChange={setSelectedApplicationIds}
+                />
 
-              <div className="grid grid-cols-1 gap-4">
-                {filteredApplications.map((application) => (
-                  <Card key={application.id}>
-                    <CardContent className="p-6">
-                      <div className="flex items-start justify-between">
-                        <ApplicationCard application={application} showActions={false} />
-                        <div className="flex gap-2 ml-4">
+                <div className="grid grid-cols-1 gap-4">
+                  {filteredApplications.map((application) => (
+                    <Card key={application.id}>
+                      <CardContent className="p-6">
+                        <div className="flex items-start justify-between">
+                          <ApplicationCard application={application} showActions={false} />
+                          <div className="flex gap-2 ml-4">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleViewProfile(application)}
+                            >
+                              <Eye className="h-4 w-4 mr-1" />
+                              View Profile
+                            </Button>
+                            {application.status === 'pending' && (
+                              <>
+                                <Button
+                                  size="sm"
+                                  onClick={async () => {
+                                    await manageApplication.mutateAsync({
+                                      applicationId: application.id,
+                                      status: 'accepted',
+                                    });
+                                  }}
+                                  disabled={manageApplication.isPending}
+                                >
+                                  Accept
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={async () => {
+                                    await manageApplication.mutateAsync({
+                                      applicationId: application.id,
+                                      status: 'rejected',
+                                    });
+                                  }}
+                                  disabled={manageApplication.isPending}
+                                >
+                                  Reject
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </TabsContent>
+
+              <TabsContent value="pending">
+                <div className="grid grid-cols-1 gap-4">
+                  {pendingApplications.map((application) => (
+                    <Card key={application.id}>
+                      <CardContent className="p-6">
+                        <div className="flex items-start justify-between">
+                          <ApplicationCard application={application} showActions={true} />
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() => handleViewProfile(application)}
+                            className="ml-4"
                           >
                             <Eye className="h-4 w-4 mr-1" />
                             View Profile
                           </Button>
-                          {application.status === 'pending' && (
-                            <>
-                              <Button
-                                size="sm"
-                                onClick={async () => {
-                                  await manageApplication.mutateAsync({
-                                    applicationId: application.id,
-                                    status: 'accepted',
-                                  });
-                                }}
-                                disabled={manageApplication.isPending}
-                              >
-                                Accept
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={async () => {
-                                  await manageApplication.mutateAsync({
-                                    applicationId: application.id,
-                                    status: 'rejected',
-                                  });
-                                }}
-                                disabled={manageApplication.isPending}
-                              >
-                                Reject
-                              </Button>
-                            </>
-                          )}
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </TabsContent>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </TabsContent>
 
-            <TabsContent value="pending">
-              <div className="grid grid-cols-1 gap-4">
-                {pendingApplications.map((application) => (
-                  <Card key={application.id}>
-                    <CardContent className="p-6">
-                      <div className="flex items-start justify-between">
-                        <ApplicationCard application={application} showActions={true} />
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleViewProfile(application)}
-                          className="ml-4"
-                        >
-                          <Eye className="h-4 w-4 mr-1" />
-                          View Profile
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </TabsContent>
+              <TabsContent value="accepted">
+                <div className="grid grid-cols-1 gap-4">
+                  {acceptedApplications.map((application) => (
+                    <Card key={application.id}>
+                      <CardContent className="p-6">
+                        <ApplicationCard application={application} showActions={false} />
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </TabsContent>
 
-            <TabsContent value="accepted">
-              <div className="grid grid-cols-1 gap-4">
-                {acceptedApplications.map((application) => (
-                  <Card key={application.id}>
-                    <CardContent className="p-6">
-                      <ApplicationCard application={application} showActions={false} />
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </TabsContent>
-
-            <TabsContent value="rejected">
-              <div className="grid grid-cols-1 gap-4">
-                {rejectedApplications.map((application) => (
-                  <Card key={application.id}>
-                    <CardContent className="p-6">
-                      <ApplicationCard application={application} showActions={false} />
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </TabsContent>
-          </Tabs>
+              <TabsContent value="rejected">
+                <div className="grid grid-cols-1 gap-4">
+                  {rejectedApplications.map((application) => (
+                    <Card key={application.id}>
+                      <CardContent className="p-6">
+                        <ApplicationCard application={application} showActions={false} />
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </TabsContent>
+            </Tabs>
+          )}
 
           {/* Creator Profile Modal */}
           <CreatorProfileModal

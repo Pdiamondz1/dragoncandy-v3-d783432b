@@ -10,7 +10,13 @@ export const useCampaignApplications = (campaignId: string) => {
   return useQuery({
     queryKey: ['campaign-applications', campaignId],
     queryFn: async () => {
-      console.log('Fetching applications for campaign:', campaignId);
+      console.log('📋 useCampaignApplications: Fetching applications for campaign:', campaignId);
+      
+      if (!campaignId) {
+        console.warn('📋 useCampaignApplications: No campaignId provided');
+        return [];
+      }
+
       const { data, error } = await supabase
         .from('campaign_applications')
         .select(`
@@ -26,11 +32,11 @@ export const useCampaignApplications = (campaignId: string) => {
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('Error fetching campaign applications:', error);
+        console.error('❌ useCampaignApplications: Error fetching campaign applications:', error);
         throw error;
       }
 
-      console.log('Raw campaign applications data:', data);
+      console.log('📋 useCampaignApplications: Raw data received:', data);
 
       // Transform the data to match our interface
       const transformedData = data?.map((app: any) => ({
@@ -43,10 +49,12 @@ export const useCampaignApplications = (campaignId: string) => {
         } : undefined,
       })) || [];
 
-      console.log('Transformed campaign applications:', transformedData);
+      console.log('✅ useCampaignApplications: Transformed applications:', transformedData);
       return transformedData as CampaignApplication[];
     },
     enabled: !!campaignId && !!user,
+    refetchOnWindowFocus: true,
+    refetchInterval: 30000, // Refetch every 30 seconds to catch new applications
   });
 };
 
@@ -56,7 +64,13 @@ export const useCreatorApplications = () => {
   return useQuery({
     queryKey: ['creator-applications', user?.id],
     queryFn: async () => {
-      console.log('Fetching applications for creator:', user?.id);
+      console.log('🎨 useCreatorApplications: Fetching applications for creator:', user?.id);
+      
+      if (!user?.id) {
+        console.warn('🎨 useCreatorApplications: No user ID provided');
+        return [];
+      }
+
       const { data, error } = await supabase
         .from('campaign_applications')
         .select(`
@@ -69,17 +83,18 @@ export const useCreatorApplications = () => {
             deadline
           )
         `)
-        .eq('creator_id', user!.id)
+        .eq('creator_id', user.id)
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('Error fetching creator applications:', error);
+        console.error('❌ useCreatorApplications: Error fetching creator applications:', error);
         throw error;
       }
 
-      console.log('Fetched creator applications:', data);
+      console.log('✅ useCreatorApplications: Fetched creator applications:', data);
       return data as CampaignApplication[];
     },
     enabled: !!user,
+    refetchOnWindowFocus: true,
   });
 };

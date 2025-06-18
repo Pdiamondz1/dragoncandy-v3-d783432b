@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -126,6 +127,13 @@ const App = () => {
                     </ProtectedRoute>
                   } />
 
+                  {/* Business Messages Route */}
+                  <Route path="/dashboard/business/messages" element={
+                    <ProtectedRoute>
+                      <MessagesPage />
+                    </ProtectedRoute>
+                  } />
+
                   {/* Creator Campaign Routes */}
                   <Route path="/dashboard/creator/campaigns" element={
                     <ProtectedRoute>
@@ -145,7 +153,14 @@ const App = () => {
                     </ProtectedRoute>
                   } />
 
-                  {/* Message Routes */}
+                  {/* Creator Messages Route */}
+                  <Route path="/dashboard/creator/messages" element={
+                    <ProtectedRoute>
+                      <MessagesPage />
+                    </ProtectedRoute>
+                  } />
+
+                  {/* General Message Routes */}
                   <Route path="/messages" element={
                     <ProtectedRoute>
                       <MessagesPage />

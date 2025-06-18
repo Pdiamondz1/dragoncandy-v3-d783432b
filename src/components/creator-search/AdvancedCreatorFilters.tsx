@@ -174,12 +174,12 @@ const AdvancedCreatorFilters: React.FC<AdvancedCreatorFiltersProps> = ({
 
           <div>
             <Label htmlFor="availability">Availability</Label>
-            <Select value={filters.availability} onValueChange={(value) => onFilterChange('availability', value)}>
+            <Select value={filters.availability || "any"} onValueChange={(value) => onFilterChange('availability', value === "any" ? "" : value)}>
               <SelectTrigger>
                 <SelectValue placeholder="Any availability" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Any availability</SelectItem>
+                <SelectItem value="any">Any availability</SelectItem>
                 <SelectItem value="Available">Available</SelectItem>
                 <SelectItem value="Busy">Busy</SelectItem>
                 <SelectItem value="Booked">Booked</SelectItem>
@@ -220,12 +220,12 @@ const AdvancedCreatorFilters: React.FC<AdvancedCreatorFiltersProps> = ({
         {/* Experience Level */}
         <div>
           <Label htmlFor="experience">Experience Level</Label>
-          <Select value={filters.experienceLevel} onValueChange={(value) => onFilterChange('experienceLevel', value)}>
+          <Select value={filters.experienceLevel || "any"} onValueChange={(value) => onFilterChange('experienceLevel', value === "any" ? "" : value)}>
             <SelectTrigger>
               <SelectValue placeholder="Any experience level" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Any experience level</SelectItem>
+              <SelectItem value="any">Any experience level</SelectItem>
               <SelectItem value="beginner">Beginner (0-1 years)</SelectItem>
               <SelectItem value="intermediate">Intermediate (2-4 years)</SelectItem>
               <SelectItem value="expert">Expert (5+ years)</SelectItem>

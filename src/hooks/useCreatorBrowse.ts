@@ -117,11 +117,13 @@ export const useCreatorBrowse = () => {
       return filters.platforms.some(platform => creatorPlatforms.includes(platform));
     })();
 
-    const matchesAvailability = !filters.availability ||
+    const matchesAvailability = !filters.availability || filters.availability === "any" ||
       creator.availability === filters.availability;
 
+    const matchesExperience = !filters.experienceLevel || filters.experienceLevel === "any";
+
     return matchesSearch && matchesSkills && matchesLocation && matchesRate && 
-           matchesPlatforms && matchesAvailability;
+           matchesPlatforms && matchesAvailability && matchesExperience;
   });
 
   return {
