@@ -1,16 +1,16 @@
+
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, Edit2, Eye, MessageSquare, Users, Brain } from 'lucide-react';
+import { ArrowLeft, Edit, Users, Target, AlertCircle } from 'lucide-react';
 import { useCampaign } from '@/hooks/useCampaigns';
-import { Skeleton } from '@/components/ui/skeleton';
 import CampaignDetailsOverview from '@/components/campaigns/CampaignDetailsOverview';
+import ApplicationsListFixed from '@/components/campaigns/ApplicationsListFixed';
 import CreatorMatchingSection from '@/components/campaigns/CreatorMatchingSection';
-import MessageThread from '@/components/messages/MessageThread';
-import ApplicationsList from '@/components/campaigns/ApplicationsList';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const CampaignDetailsPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -20,16 +20,13 @@ const CampaignDetailsPage: React.FC = () => {
   if (isLoading) {
     return (
       <DashboardLayout userRole="business_client">
-        <div className="flex-1 p-6">
+        <div className="flex-1 p-8">
           <div className="max-w-7xl mx-auto space-y-6">
             <div className="flex items-center gap-4">
               <Skeleton className="h-10 w-10" />
               <Skeleton className="h-8 w-64" />
             </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Skeleton className="h-64" />
-              <Skeleton className="h-64" />
-            </div>
+            <Skeleton className="h-64" />
           </div>
         </div>
       </DashboardLayout>
@@ -39,19 +36,20 @@ const CampaignDetailsPage: React.FC = () => {
   if (error || !campaign) {
     return (
       <DashboardLayout userRole="business_client">
-        <div className="flex-1 p-6">
+        <div className="flex-1 p-8">
           <div className="max-w-7xl mx-auto">
             <Card>
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  Campaign not found
-                </h3>
-                <p className="text-gray-600 mb-4">
-                  The campaign you're looking for doesn't exist or you don't have access to it.
-                </p>
-                <Button onClick={() => navigate('/dashboard/business/campaigns')}>
-                  Back to Campaigns
-                </Button>
+              <CardContent className="flex items-center justify-center py-12">
+                <div className="text-center space-y-4">
+                  <AlertCircle className="h-12 w-12 text-red-500 mx-auto" />
+                  <div className="text-lg font-medium">Campaign not found</div>
+                  <div className="text-gray-600">
+                    The campaign you're looking for doesn't exist or you don't have access to it.
+                  </div>
+                  <Button onClick={() => navigate('/dashboard/business/campaigns')}>
+                    Back to Campaigns
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           </div>
@@ -62,13 +60,13 @@ const CampaignDetailsPage: React.FC = () => {
 
   return (
     <DashboardLayout userRole="business_client">
-      <div className="flex-1 p-6">
+      <div className="flex-1 p-8">
         <div className="max-w-7xl mx-auto space-y-6">
           {/* Header */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <Button 
-                variant="ghost" 
+              <Button
+                variant="ghost"
                 size="sm"
                 onClick={() => navigate('/dashboard/business/campaigns')}
               >
@@ -76,87 +74,43 @@ const CampaignDetailsPage: React.FC = () => {
                 Back to Campaigns
               </Button>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">{campaign.title}</h1>
-                <p className="text-gray-600">Campaign Details & Creator Matching</p>
+                <h1 className="text-3xl font-bold text-gray-900">{campaign.title}</h1>
+                <p className="text-gray-600">Campaign Details & Management</p>
               </div>
             </div>
-            
-            <div className="flex gap-2">
-              <Button 
-                variant="outline"
-                onClick={() => navigate(`/dashboard/business/campaigns/${id}/edit`)}
-              >
-                <Edit2 className="h-4 w-4 mr-2" />
-                Edit Campaign
-              </Button>
-              {campaign.status === 'published' && (
-                <Button>
-                  <Eye className="h-4 w-4 mr-2" />
-                  View Public
-                </Button>
-              )}
-            </div>
+            <Button onClick={() => navigate(`/dashboard/business/campaigns/${campaign.id}/edit`)}>
+              <Edit className="h-4 w-4 mr-2" />
+              Edit Campaign
+            </Button>
           </div>
 
-          {/* Main Content */}
+          {/* Campaign Tabs */}
           <Tabs defaultValue="overview" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="overview" className="flex items-center gap-2">
-                <Eye className="h-4 w-4" />
+                <Target className="h-4 w-4" />
                 Overview
-              </TabsTrigger>
-              <TabsTrigger value="creators" className="flex items-center gap-2">
-                <Brain className="h-4 w-4" />
-                AI Matching
               </TabsTrigger>
               <TabsTrigger value="applications" className="flex items-center gap-2">
                 <Users className="h-4 w-4" />
                 Applications
               </TabsTrigger>
-              <TabsTrigger value="messages" className="flex items-center gap-2">
-                <MessageSquare className="h-4 w-4" />
-                Messages
+              <TabsTrigger value="matching" className="flex items-center gap-2">
+                <Target className="h-4 w-4" />
+                AI Match
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="overview" className="space-y-6">
+            <TabsContent value="overview">
               <CampaignDetailsOverview campaign={campaign} />
             </TabsContent>
 
-            <TabsContent value="creators" className="space-y-6">
+            <TabsContent value="applications">
+              <ApplicationsListFixed campaignId={campaign.id} />
+            </TabsContent>
+
+            <TabsContent value="matching">
               <CreatorMatchingSection campaignId={campaign.id} />
-            </TabsContent>
-
-            <TabsContent value="applications" className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Creator Applications</CardTitle>
-                  <p className="text-sm text-gray-600">
-                    Review and manage applications from creators interested in your campaign
-                  </p>
-                </CardHeader>
-                <CardContent className="p-0">
-                  <ApplicationsList campaignId={campaign.id} />
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="messages" className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Campaign Messages</CardTitle>
-                  <p className="text-sm text-gray-600">
-                    Communicate with creators about this campaign
-                  </p>
-                </CardHeader>
-                <CardContent className="p-0">
-                  <MessageThread 
-                    campaignId={campaign.id}
-                    recipientId="creator-placeholder" // This would be determined by actual collaborators
-                    campaignTitle={campaign.title}
-                  />
-                </CardContent>
-              </Card>
             </TabsContent>
           </Tabs>
         </div>

@@ -9,14 +9,32 @@ import { useCampaign } from '@/hooks/useCampaigns';
 import { useAuth } from '@/hooks/useAuth';
 import MessageThread from '@/components/messages/MessageThread';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useCampaignApplications } from '@/hooks/useFetchApplications';
 
 const CampaignMessagesPage: React.FC = () => {
   const { campaignId } = useParams<{ campaignId: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
   const { campaign, isLoading, error } = useCampaign(campaignId!);
+  const { data: applications = [] } = useCampaignApplications(campaignId!);
 
   const userRole = user?.user_metadata?.role || 'business_client';
+
+  // Find the correct recipient based on user role and campaign applications
+  const getRecipientId = () => {
+    if (!campaign || !user) return null;
+
+    if (userRole === 'business_client') {
+      // Business client messaging creators who applied
+      const acceptedApplication = applications.find(app => app.status === 'accepted');
+      return acceptedApplication?.creator_id || null;
+    } else {
+      // Creator messaging the campaign owner (business client)
+      return campaign.user_id;
+    }
+  };
+
+  const recipientId = getRecipientId();
 
   if (isLoading) {
     return (
@@ -58,11 +76,32 @@ const CampaignMessagesPage: React.FC = () => {
     );
   }
 
-  // For now, we'll determine the recipient as the other party in the campaign
-  // In a real scenario, this would be more sophisticated with multiple participants
-  const recipientId = campaign.user_id === user?.id 
-    ? 'creator-placeholder' // This would be determined by campaign collaborators
-    : campaign.user_id;
+  if (!recipientId) {
+    return (
+      <DashboardLayout userRole={userRole as 'business_client' | 'content_creator'}>
+        <div className="flex-1 p-6">
+          <div className="max-w-4xl mx-auto">
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  No conversation available
+                </h3>
+                <p className="text-gray-600 mb-4">
+                  {userRole === 'business_client' 
+                    ? 'No creators have been accepted for this campaign yet.'
+                    : 'Unable to find the campaign owner for messaging.'
+                  }
+                </p>
+                <Button onClick={() => navigate('/messages')}>
+                  Back to Messages
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout userRole={userRole as 'business_client' | 'content_creator'}>
