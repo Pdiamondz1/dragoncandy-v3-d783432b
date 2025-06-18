@@ -4,18 +4,21 @@ import { Upload, AlertCircle } from 'lucide-react';
 import { useDropzone, FileRejection } from 'react-dropzone';
 
 interface FileUploadDropzoneProps {
-  onDrop: (files: File[]) => void;
+  onDrop: (acceptedFiles: File[], fileRejections: FileRejection[]) => void;
   acceptedFiles: File[];
   fileRejections: FileRejection[];
 }
 
 const FileUploadDropzone: React.FC<FileUploadDropzoneProps> = ({
   onDrop,
-  acceptedFiles,
   fileRejections
 }) => {
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop,
+    onDrop: (acceptedFiles, fileRejections) => {
+      // Convert FileWithPath[] to File[] by spreading into new array
+      const files = [...acceptedFiles] as File[];
+      onDrop(files, fileRejections);
+    },
     accept: {
       'image/*': ['.jpeg', '.jpg', '.png', '.gif', '.webp'],
       'video/*': ['.mp4', '.webm', '.mov', '.avi']

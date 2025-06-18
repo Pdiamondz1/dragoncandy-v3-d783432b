@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Upload } from 'lucide-react';
-import { useDropzone } from 'react-dropzone';
+import { FileRejection } from 'react-dropzone';
 import { useAuth } from '@/hooks/useAuth';
 import { useProjectFileUpload } from '@/hooks/useProjectFileUpload';
 import FileUploadDropzone from './upload/FileUploadDropzone';
@@ -22,22 +22,35 @@ const ProjectFileUpload: React.FC<ProjectFileUploadProps> = ({
 }) => {
   const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [rejectedFiles, setRejectedFiles] = useState<FileRejection[]>([]);
+
   const { uploadProgress, isUploading, handleUpload } = useProjectFileUpload({
     campaignId,
     campaignTitle,
     onUploadComplete: () => {
       setIsOpen(false);
+      setSelectedFiles([]);
+      setRejectedFiles([]);
       if (onUploadComplete) onUploadComplete();
     }
   });
 
-  const { acceptedFiles, fileRejections, getRootProps, getInputProps } = useDropzone({
-    noClick: true,
-    noKeyboard: true
-  });
+  const handleFileDrop = (acceptedFiles: File[], fileRejections: FileRejection[]) => {
+    setSelectedFiles(acceptedFiles);
+    setRejectedFiles(fileRejections);
+  };
 
   const onUpload = () => {
-    handleUpload(acceptedFiles);
+    if (selectedFiles.length > 0) {
+      handleUpload(selectedFiles);
+    }
+  };
+
+  const handleClose = () => {
+    setIsOpen(false);
+    setSelectedFiles([]);
+    setRejectedFiles([]);
   };
 
   return (
@@ -55,17 +68,13 @@ const ProjectFileUpload: React.FC<ProjectFileUploadProps> = ({
         
         <div className="space-y-4">
           <FileUploadDropzone
-            onDrop={(files) => {
-              // Handle the dropped files by updating the dropzone state
-              acceptedFiles.length = 0;
-              acceptedFiles.push(...files);
-            }}
-            acceptedFiles={acceptedFiles}
-            fileRejections={fileRejections}
+            onDrop={handleFileDrop}
+            acceptedFiles={selectedFiles}
+            fileRejections={rejectedFiles}
           />
 
           <FileUploadPreview
-            files={acceptedFiles}
+            files={selectedFiles}
             uploadProgress={uploadProgress}
           />
 
@@ -73,16 +82,16 @@ const ProjectFileUpload: React.FC<ProjectFileUploadProps> = ({
           <div className="flex justify-end gap-3 pt-4 border-t">
             <Button
               variant="outline"
-              onClick={() => setIsOpen(false)}
+              onClick={handleClose}
               disabled={isUploading}
             >
               Cancel
             </Button>
             <Button
               onClick={onUpload}
-              disabled={acceptedFiles.length === 0 || isUploading || !user}
+              disabled={selectedFiles.length === 0 || isUploading || !user}
             >
-              {isUploading ? 'Uploading...' : `Upload ${acceptedFiles.length} file(s)`}
+              {isUploading ? 'Uploading...' : `Upload ${selectedFiles.length} file(s)`}
             </Button>
           </div>
         </div>
