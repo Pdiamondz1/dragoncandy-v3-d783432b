@@ -1,5 +1,5 @@
-
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -20,6 +20,7 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import ProjectFileUpload from '@/components/projects/ProjectFileUpload';
 
 interface ProjectCollaboration {
   id: string;
@@ -43,6 +44,7 @@ interface ProjectCollaboration {
 
 const CreatorProjects: React.FC = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   const { data: projects = [], isLoading, error } = useQuery({
     queryKey: ['creator-projects', user?.id],
@@ -103,6 +105,10 @@ const CreatorProjects: React.FC = () => {
     
     // Simple progress calculation based on days (assuming 30-day projects)
     return Math.min(Math.floor((daysSinceStart / 30) * 100), 90);
+  };
+
+  const handleMessageClick = (campaignId: string) => {
+    navigate(`/messages?campaign=${campaignId}`);
   };
 
   if (isLoading) {
@@ -221,15 +227,27 @@ const CreatorProjects: React.FC = () => {
             </TabsList>
 
             <TabsContent value="active" className="space-y-4">
-              <ProjectList projects={activeProjects} showProgress={true} />
+              <ProjectList 
+                projects={activeProjects} 
+                showProgress={true} 
+                onMessageClick={handleMessageClick}
+              />
             </TabsContent>
 
             <TabsContent value="completed" className="space-y-4">
-              <ProjectList projects={completedProjects} showProgress={false} />
+              <ProjectList 
+                projects={completedProjects} 
+                showProgress={false} 
+                onMessageClick={handleMessageClick}
+              />
             </TabsContent>
 
             <TabsContent value="all" className="space-y-4">
-              <ProjectList projects={projects} showProgress={true} />
+              <ProjectList 
+                projects={projects} 
+                showProgress={true} 
+                onMessageClick={handleMessageClick}
+              />
             </TabsContent>
           </Tabs>
         </div>
@@ -241,7 +259,8 @@ const CreatorProjects: React.FC = () => {
 const ProjectList: React.FC<{ 
   projects: ProjectCollaboration[]; 
   showProgress: boolean;
-}> = ({ projects, showProgress }) => {
+  onMessageClick: (campaignId: string) => void;
+}> = ({ projects, showProgress, onMessageClick }) => {
   const formatCurrency = (min?: number, max?: number) => {
     if (!min && !max) return 'Not specified';
     if (min && max && min !== max) {
@@ -367,11 +386,20 @@ const ProjectList: React.FC<{
 
             {project.status === 'active' && (
               <div className="flex gap-2 pt-4 border-t">
-                <Button size="sm" className="flex-1">
-                  <Upload className="h-4 w-4 mr-2" />
-                  Upload Work
-                </Button>
-                <Button size="sm" variant="outline" className="flex-1">
+                <ProjectFileUpload
+                  campaignId={project.campaign_id}
+                  campaignTitle={project.campaigns.title}
+                  onUploadComplete={() => {
+                    // Optionally refresh data or show success message
+                    console.log('Upload completed for campaign:', project.campaign_id);
+                  }}
+                />
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  className="flex-1"
+                  onClick={() => onMessageClick(project.campaign_id)}
+                >
                   <MessageSquare className="h-4 w-4 mr-2" />
                   Message
                 </Button>
