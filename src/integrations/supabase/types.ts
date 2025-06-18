@@ -1451,6 +1451,15 @@ export type Database = {
         Args: { user1_uuid: string; user2_uuid: string }
         Returns: string
       }
+      debug_user_upload_permissions: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          user_id: string
+          is_authenticated: boolean
+          profile_exists: boolean
+          profile_role: string
+        }[]
+      }
       generate_profile_slug: {
         Args: { name: string; profile_type: string }
         Returns: string
