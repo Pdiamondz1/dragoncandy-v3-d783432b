@@ -21,6 +21,10 @@ export default function Index() {
       console.log('🏠 Index: User authenticated, checking role...');
       const redirectToDashboard = async () => {
         try {
+          // First, check user metadata for role (set during signup)
+          const userRole = user.user_metadata?.role;
+          console.log('📋 Index: User metadata role:', userRole);
+
           console.log('🔍 Index: Fetching user profile for dashboard redirect...');
           const { data: profile, error: profileError } = await supabase
             .from('profiles')
@@ -30,26 +34,45 @@ export default function Index() {
 
           if (profileError) {
             console.error('❌ Index: Error checking user role:', profileError);
-            // If profile check fails, still try to redirect somewhere reasonable
+            // If user has metadata role but profile fetch failed, redirect to profile setup
+            if (userRole) {
+              console.log('🔧 Index: Profile check failed but user has metadata role, redirecting to profile setup...');
+              navigate('/profile/onboarding');
+              return;
+            }
+            // Otherwise redirect to landing
             console.log('🔧 Index: Profile check failed, redirecting to landing...');
             navigate('/landing');
             return;
           }
 
+          // If profile exists, redirect to appropriate dashboard
           if (profile?.role === 'business_client') {
             console.log('🏢 Index: Redirecting to business dashboard');
             navigate('/dashboard/business');
           } else if (profile?.role === 'content_creator') {
             console.log('🎨 Index: Redirecting to creator dashboard');
             navigate('/dashboard/creator');
+          } else if (userRole) {
+            // User is authenticated and has metadata role but no profile - redirect to profile setup
+            console.log('👤 Index: User has metadata role but no profile, redirecting to profile setup');
+            navigate('/profile/onboarding');
           } else {
-            console.log('❓ Index: Unknown role, redirecting to landing');
+            // No profile and no metadata role - something went wrong, redirect to landing
+            console.log('❓ Index: No profile and no metadata role, redirecting to landing');
             navigate('/landing');
           }
         } catch (error) {
           console.error('❌ Index: Dashboard redirect failed:', error);
-          // Fallback to landing page if anything goes wrong
-          navigate('/landing');
+          // Check if user has metadata role for fallback
+          const userRole = user.user_metadata?.role;
+          if (userRole) {
+            console.log('🔧 Index: Error occurred but user has metadata role, redirecting to profile setup');
+            navigate('/profile/onboarding');
+          } else {
+            // Fallback to landing page if anything goes wrong
+            navigate('/landing');
+          }
         }
       };
       
