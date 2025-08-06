@@ -4,7 +4,7 @@ import { Sparkles } from 'lucide-react';
 
 export const CreatorProfileSetupHeader = () => {
   return (
-    <div className="text-center mb-8">
+    <>
       <div className="rounded-full bg-pink-100 p-3 mx-auto mb-4 w-16 h-16 flex items-center justify-center">
         <Sparkles className="text-pink-600 w-8 h-8" />
       </div>
@@ -14,6 +14,6 @@ export const CreatorProfileSetupHeader = () => {
       <p className="text-gray-600">
         Showcase your skills and start getting discovered by brands
       </p>
-    </div>
+    </>
   );
 };
