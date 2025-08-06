@@ -86,6 +86,7 @@ export interface FileUploadProgress {
   progress: number;
   status: 'pending' | 'uploading' | 'processing' | 'completed' | 'failed';
   error?: string;
+  filename?: string;
 }
 
 export interface FileValidationResult {

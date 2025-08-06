@@ -50,7 +50,8 @@ export const useFileUploadLogic = ({
     const initialQueue = validFiles.map(file => ({
       fileId: `temp-${Date.now()}-${Math.random()}`,
       progress: 0,
-      status: 'pending' as const
+      status: 'pending' as const,
+      filename: file.name
     }));
     
     setUploadQueue(initialQueue);
@@ -152,10 +153,15 @@ export const useFileUploadLogic = ({
       }
     }
     
-    // Clear queue after 3 seconds
+    // Keep completed uploads visible for longer, clear failed ones
+    setTimeout(() => {
+      setUploadQueue(prev => prev.filter(item => item.status === 'completed'));
+    }, 1000);
+    
+    // Clear all after 10 seconds
     setTimeout(() => {
       setUploadQueue([]);
-    }, 3000);
+    }, 10000);
     
     if (onUploadComplete && uploadResults.length > 0) {
       onUploadComplete(uploadResults);
