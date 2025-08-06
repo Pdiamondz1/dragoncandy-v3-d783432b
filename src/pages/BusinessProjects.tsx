@@ -58,7 +58,7 @@ const BusinessProjects: React.FC = () => {
           status,
           created_at,
           updated_at,
-          campaigns (
+          campaigns!inner (
             id,
             title,
             description,
@@ -67,11 +67,6 @@ const BusinessProjects: React.FC = () => {
             budget_min,
             budget_max,
             user_id
-          ),
-          creator_profiles (
-            creator_name,
-            avatar_url,
-            bio
           )
         `)
         .eq('campaigns.user_id', user.id)
@@ -84,8 +79,19 @@ const BusinessProjects: React.FC = () => {
 
       console.log('Raw business projects data:', data);
 
+      if (!data || data.length === 0) {
+        return [];
+      }
+
+      // Get creator profiles for each collaboration
+      const creatorIds = data.map(item => item.creator_id).filter(Boolean);
+      const { data: creatorProfiles } = await supabase
+        .from('creator_profiles')
+        .select('user_id, creator_name, avatar_url, bio')
+        .in('user_id', creatorIds);
+
       // Transform the data to match our interface
-      return (data || []).map(item => ({
+      return data.map(item => ({
         id: item.id,
         campaign_id: item.campaign_id,
         creator_id: item.creator_id,
@@ -93,7 +99,7 @@ const BusinessProjects: React.FC = () => {
         created_at: item.created_at,
         updated_at: item.updated_at,
         campaign: Array.isArray(item.campaigns) ? item.campaigns[0] : item.campaigns,
-        creator_profile: Array.isArray(item.creator_profiles) ? item.creator_profiles[0] : item.creator_profiles
+        creator_profile: creatorProfiles?.find(cp => cp.user_id === item.creator_id) || null
       })).filter(item => item.campaign) as ProjectCollaboration[];
     },
     enabled: !!user,
