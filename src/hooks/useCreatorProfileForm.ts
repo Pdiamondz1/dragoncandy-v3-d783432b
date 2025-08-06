@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import type { Database } from '@/integrations/supabase/types';
 
 type CreatorSkill = Database['public']['Enums']['creator_skill'];
@@ -34,6 +34,7 @@ export const useCreatorProfileForm = () => {
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [portfolioFiles, setPortfolioFiles] = useState<File[]>([]);
   const [selectedSkills, setSelectedSkills] = useState<CreatorSkill[]>([]);
+  const [isLoaded, setIsLoaded] = useState(false);
   
   const [formData, setFormData] = useState<CreatorProfileFormData>({
     creator_name: '',
@@ -73,7 +74,9 @@ export const useCreatorProfileForm = () => {
     }
   };
 
-  const setFormDataFromProfile = (profile: any) => {
+  const setFormDataFromProfile = useCallback((profile: any) => {
+    if (isLoaded) return; // Prevent reloading if already loaded
+    
     setFormData({
       creator_name: profile.creator_name || '',
       bio: profile.bio || '',
@@ -102,7 +105,8 @@ export const useCreatorProfileForm = () => {
       avatar_url: profile.avatar_url || ''
     });
     setSelectedSkills(profile.skills as CreatorSkill[] || []);
-  };
+    setIsLoaded(true);
+  }, [isLoaded]);
 
   const isFormValid = () => {
     return formData.creator_name && formData.bio && selectedSkills.length > 0;
