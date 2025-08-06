@@ -23,6 +23,7 @@ import {
   Briefcase
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { useProfileData } from '@/hooks/useProfileData';
 import NotificationDropdown from '@/components/notifications/NotificationDropdown';
 
 interface DashboardLayoutProps {
@@ -33,6 +34,7 @@ interface DashboardLayoutProps {
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, userRole }) => {
   const location = useLocation();
   const { user, signOut } = useAuth();
+  const { avatarUrl, displayName } = useProfileData();
 
   const businessNavItems = [
     { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard/business' },
@@ -121,9 +123,9 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, userRole })
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                     <Avatar className="h-8 w-8">
-                      <AvatarImage src={user?.user_metadata?.avatar_url} alt="Avatar" />
+                      <AvatarImage src={avatarUrl} alt="Avatar" />
                       <AvatarFallback>
-                        {user?.email?.charAt(0).toUpperCase() || 'U'}
+                        {displayName?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || 'U'}
                       </AvatarFallback>
                     </Avatar>
                   </Button>
@@ -132,7 +134,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, userRole })
                   <DropdownMenuLabel className="font-normal">
                     <div className="flex flex-col space-y-1">
                       <p className="text-sm font-medium leading-none">
-                        {user?.user_metadata?.full_name || 'User'}
+                        {displayName || user?.user_metadata?.full_name || 'User'}
                       </p>
                       <p className="text-xs leading-none text-muted-foreground">
                         {user?.email}
