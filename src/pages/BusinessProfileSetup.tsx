@@ -15,7 +15,7 @@ import type { Database } from '@/integrations/supabase/types';
 type IndustryType = Database['public']['Enums']['industry_type'];
 
 const BusinessProfileSetup = () => {
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [logoFile, setLogoFile] = useState<File | null>(null);
@@ -143,10 +143,7 @@ const BusinessProfileSetup = () => {
         <div className="text-center mb-8 relative">
           <Button
             variant="outline"
-            onClick={async () => {
-              const { signOut } = useAuth();
-              await signOut();
-            }}
+            onClick={signOut}
             className="absolute top-0 right-0 text-gray-600 hover:text-gray-900"
           >
             Logout
