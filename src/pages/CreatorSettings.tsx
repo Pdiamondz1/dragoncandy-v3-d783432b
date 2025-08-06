@@ -26,7 +26,7 @@ const CreatorSettings = () => {
     e.preventDefault();
     if (!user) return;
     
-    const success = await submitProfile(formData, selectedSkills, avatarFile, []);
+    const success = await submitProfile(formData, selectedSkills, avatarFile, [], true);
     if (success) {
       setAvatarFile(null);
     }
