@@ -4,7 +4,11 @@ import DashboardLayout from '@/components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/hooks/useAuth';
+import { useCreatorDashboardStats } from '@/hooks/useCreatorDashboardStats';
+import { useCreatorRecentActivity } from '@/hooks/useCreatorRecentActivity';
+import { useCreatorUpcomingDeadlines } from '@/hooks/useCreatorUpcomingDeadlines';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { PlusCircle, Settings, DollarSign, Target, Star, Clock } from 'lucide-react';
@@ -12,10 +16,40 @@ import RatingPromptManager from '@/components/reviews/RatingPromptManager';
 
 const CreatorDashboard = () => {
   const { user, profile } = useAuth();
+  const { data: stats, isLoading: statsLoading } = useCreatorDashboardStats();
+  const { data: activities, isLoading: activitiesLoading } = useCreatorRecentActivity();
+  const { data: deadlines, isLoading: deadlinesLoading } = useCreatorUpcomingDeadlines();
 
   if (!profile) {
     return <div>Loading...</div>;
   }
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+    }).format(amount);
+  };
+
+  const getActivityBadgeVariant = (status: string) => {
+    switch (status) {
+      case 'accepted':
+      case 'completed':
+        return 'default';
+      case 'pending':
+        return 'outline';
+      case 'rejected':
+        return 'secondary';
+      default:
+        return 'outline';
+    }
+  };
+
+  const getDeadlineColor = (days: number) => {
+    if (days <= 3) return 'border-red-500';
+    if (days <= 7) return 'border-yellow-500';
+    return 'border-green-500';
+  };
 
   return (
     <DashboardLayout userRole="content_creator">
@@ -58,8 +92,12 @@ const CreatorDashboard = () => {
                 <DollarSign className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">$23,456</div>
-                <p className="text-xs text-muted-foreground">+12% from last month</p>
+                {statsLoading ? (
+                  <Skeleton className="h-8 w-24" />
+                ) : (
+                  <div className="text-2xl font-bold">{formatCurrency(stats?.totalRevenue || 0)}</div>
+                )}
+                <p className="text-xs text-muted-foreground">From completed projects</p>
               </CardContent>
             </Card>
 
@@ -69,8 +107,12 @@ const CreatorDashboard = () => {
                 <Target className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">143</div>
-                <p className="text-xs text-muted-foreground">-8% from last month</p>
+                {statsLoading ? (
+                  <Skeleton className="h-8 w-16" />
+                ) : (
+                  <div className="text-2xl font-bold">{stats?.campaignsApplied || 0}</div>
+                )}
+                <p className="text-xs text-muted-foreground">Total applications submitted</p>
               </CardContent>
             </Card>
 
@@ -80,8 +122,12 @@ const CreatorDashboard = () => {
                 <Clock className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">32</div>
-                <p className="text-xs text-muted-foreground">+5% from last month</p>
+                {statsLoading ? (
+                  <Skeleton className="h-8 w-12" />
+                ) : (
+                  <div className="text-2xl font-bold">{stats?.projectsCompleted || 0}</div>
+                )}
+                <p className="text-xs text-muted-foreground">Successfully delivered</p>
               </CardContent>
             </Card>
 
@@ -91,8 +137,14 @@ const CreatorDashboard = () => {
                 <Star className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">4.8</div>
-                <p className="text-xs text-muted-foreground">+2% from last month</p>
+                {statsLoading ? (
+                  <Skeleton className="h-8 w-16" />
+                ) : (
+                  <div className="text-2xl font-bold">
+                    {stats?.averageRating ? stats.averageRating.toFixed(1) : 'N/A'}
+                  </div>
+                )}
+                <p className="text-xs text-muted-foreground">Client feedback score</p>
               </CardContent>
             </Card>
           </div>
@@ -104,20 +156,32 @@ const CreatorDashboard = () => {
                 <CardTitle>Recent Activity</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-center space-x-4">
-                    <Badge variant="outline">New</Badge>
-                    <span className="text-sm">Campaign application submitted</span>
+                {activitiesLoading ? (
+                  <div className="space-y-4">
+                    {[...Array(3)].map((_, i) => (
+                      <div key={i} className="flex items-center space-x-4">
+                        <Skeleton className="h-6 w-16" />
+                        <Skeleton className="h-4 flex-1" />
+                      </div>
+                    ))}
                   </div>
-                  <div className="flex items-center space-x-4">
-                    <Badge variant="secondary">Completed</Badge>
-                    <span className="text-sm">Project delivered successfully</span>
+                ) : activities && activities.length > 0 ? (
+                  <div className="space-y-4">
+                    {activities.map((activity) => (
+                      <div key={activity.id} className="flex items-center space-x-4">
+                        <Badge variant={getActivityBadgeVariant(activity.status)}>
+                          {activity.status}
+                        </Badge>
+                        <span className="text-sm">{activity.description}</span>
+                      </div>
+                    ))}
                   </div>
-                  <div className="flex items-center space-x-4">
-                    <Badge variant="outline">Pending</Badge>
-                    <span className="text-sm">Awaiting client feedback</span>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <p className="text-sm">No recent activity yet</p>
+                    <p className="text-xs">Start applying to campaigns to see your activity here</p>
                   </div>
-                </div>
+                )}
               </CardContent>
             </Card>
 
@@ -152,20 +216,32 @@ const CreatorDashboard = () => {
                 <CardTitle>Upcoming Deadlines</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  <div className="border-l-4 border-blue-500 pl-4">
-                    <h4 className="font-medium">Social Media Campaign</h4>
-                    <p className="text-sm text-gray-600">Due in 3 days</p>
+                {deadlinesLoading ? (
+                  <div className="space-y-4">
+                    {[...Array(3)].map((_, i) => (
+                      <div key={i} className="border-l-4 border-gray-200 pl-4">
+                        <Skeleton className="h-5 w-48 mb-2" />
+                        <Skeleton className="h-4 w-24" />
+                      </div>
+                    ))}
                   </div>
-                  <div className="border-l-4 border-yellow-500 pl-4">
-                    <h4 className="font-medium">Product Photography</h4>
-                    <p className="text-sm text-gray-600">Due in 1 week</p>
+                ) : deadlines && deadlines.length > 0 ? (
+                  <div className="space-y-4">
+                    {deadlines.map((deadline) => (
+                      <div key={deadline.id} className={`border-l-4 ${getDeadlineColor(deadline.daysUntilDeadline)} pl-4`}>
+                        <h4 className="font-medium">{deadline.title}</h4>
+                        <p className="text-sm text-gray-600">
+                          Due in {deadline.daysUntilDeadline} {deadline.daysUntilDeadline === 1 ? 'day' : 'days'}
+                        </p>
+                      </div>
+                    ))}
                   </div>
-                  <div className="border-l-4 border-green-500 pl-4">
-                    <h4 className="font-medium">Brand Video Content</h4>
-                    <p className="text-sm text-gray-600">Due in 2 weeks</p>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <p className="text-sm">No upcoming deadlines</p>
+                    <p className="text-xs">Active projects with deadlines will appear here</p>
                   </div>
-                </div>
+                )}
               </CardContent>
             </Card>
 
