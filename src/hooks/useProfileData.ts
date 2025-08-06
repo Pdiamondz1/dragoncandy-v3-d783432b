@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -8,9 +8,23 @@ interface ProfileData {
   loading: boolean;
 }
 
+// Cache to prevent flickering between page navigations
+const profileCache = new Map<string, Omit<ProfileData, 'loading'>>();
+
 export const useProfileData = () => {
   const { user, profile } = useAuth();
-  const [profileData, setProfileData] = useState<ProfileData>({ loading: true });
+  const [profileData, setProfileData] = useState<ProfileData>(() => {
+    // Initialize with cached data if available to prevent flickering
+    if (user?.id) {
+      const cached = profileCache.get(user.id);
+      if (cached) {
+        return { ...cached, loading: false };
+      }
+    }
+    return { loading: true };
+  });
+  
+  const hasFetchedRef = useRef(false);
 
   const getPublicUrl = (filePath: string | null | undefined): string | undefined => {
     if (!filePath) return undefined;
@@ -23,14 +37,26 @@ export const useProfileData = () => {
     return data.publicUrl;
   };
 
-  const fetchProfileData = async () => {
+  const fetchProfileData = useCallback(async (forceRefresh = false) => {
     if (!user || !profile) {
       setProfileData({ loading: false });
       return;
     }
 
+    // Check cache first to prevent unnecessary fetches
+    const cacheKey = user.id;
+    const cached = profileCache.get(cacheKey);
+    
+    if (cached && !forceRefresh && hasFetchedRef.current) {
+      setProfileData({ ...cached, loading: false });
+      return;
+    }
+
     try {
-      setProfileData(prev => ({ ...prev, loading: true }));
+      // Only show loading if we don't have cached data
+      if (!cached) {
+        setProfileData(prev => ({ ...prev, loading: true }));
+      }
 
       if (profile.role === 'content_creator') {
         const { data: creatorProfile } = await supabase
@@ -40,13 +66,15 @@ export const useProfileData = () => {
           .single();
 
         const avatarUrl = getPublicUrl(creatorProfile?.avatar_url);
-        console.log('Creator avatar URL:', { raw: creatorProfile?.avatar_url, public: avatarUrl });
-
-        setProfileData({
+        const newData = {
           avatarUrl,
           displayName: creatorProfile?.creator_name || profile.full_name,
-          loading: false
-        });
+        };
+
+        // Cache the data
+        profileCache.set(cacheKey, newData);
+        setProfileData({ ...newData, loading: false });
+        
       } else if (profile.role === 'business_client') {
         const { data: businessProfile } = await supabase
           .from('business_profiles')
@@ -55,26 +83,30 @@ export const useProfileData = () => {
           .single();
 
         const avatarUrl = getPublicUrl(businessProfile?.logo_url);
-        console.log('Business logo URL:', { raw: businessProfile?.logo_url, public: avatarUrl });
-
-        setProfileData({
+        const newData = {
           avatarUrl,
           displayName: businessProfile?.business_name || profile.full_name,
-          loading: false
-        });
+        };
+
+        // Cache the data
+        profileCache.set(cacheKey, newData);
+        setProfileData({ ...newData, loading: false });
       }
+      
+      hasFetchedRef.current = true;
     } catch (error) {
       console.error('Error fetching profile data:', error);
-      setProfileData({ 
+      const fallbackData = { 
         displayName: profile.full_name,
-        loading: false 
-      });
+      };
+      profileCache.set(cacheKey, fallbackData);
+      setProfileData({ ...fallbackData, loading: false });
     }
-  };
+  }, [user, profile]);
 
   useEffect(() => {
     fetchProfileData();
-  }, [user, profile]);
+  }, [fetchProfileData]);
 
   // Set up real-time subscription for profile changes
   useEffect(() => {
@@ -92,8 +124,8 @@ export const useProfileData = () => {
           filter: `user_id=eq.${user.id}`
         }, 
         () => {
-          // Refetch profile data when changes occur
-          fetchProfileData();
+          // Refetch profile data when changes occur (force refresh to bypass cache)
+          fetchProfileData(true);
         }
       )
       .subscribe();
