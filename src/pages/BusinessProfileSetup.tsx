@@ -140,7 +140,17 @@ const BusinessProfileSetup = () => {
     <div className="min-h-screen bg-pink-50 py-8">
       <div className="max-w-2xl mx-auto px-4">
         {/* Header */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-8 relative">
+          <Button
+            variant="outline"
+            onClick={async () => {
+              const { signOut } = useAuth();
+              await signOut();
+            }}
+            className="absolute top-0 right-0 text-gray-600 hover:text-gray-900"
+          >
+            Logout
+          </Button>
           <div className="rounded-full bg-pink-100 p-3 mx-auto mb-4 w-16 h-16 flex items-center justify-center">
             <Sparkles className="text-pink-600 w-8 h-8" />
           </div>
