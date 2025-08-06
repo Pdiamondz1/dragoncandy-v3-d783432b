@@ -12,6 +12,17 @@ export const useProfileData = () => {
   const { user, profile } = useAuth();
   const [profileData, setProfileData] = useState<ProfileData>({ loading: true });
 
+  const getPublicUrl = (filePath: string | null | undefined): string | undefined => {
+    if (!filePath) return undefined;
+    
+    // If it's already a full URL, return as is
+    if (filePath.startsWith('http')) return filePath;
+    
+    // Convert storage path to public URL
+    const { data } = supabase.storage.from('profile-assets').getPublicUrl(filePath);
+    return data.publicUrl;
+  };
+
   const fetchProfileData = async () => {
     if (!user || !profile) {
       setProfileData({ loading: false });
@@ -28,8 +39,11 @@ export const useProfileData = () => {
           .eq('user_id', user.id)
           .single();
 
+        const avatarUrl = getPublicUrl(creatorProfile?.avatar_url);
+        console.log('Creator avatar URL:', { raw: creatorProfile?.avatar_url, public: avatarUrl });
+
         setProfileData({
-          avatarUrl: creatorProfile?.avatar_url,
+          avatarUrl,
           displayName: creatorProfile?.creator_name || profile.full_name,
           loading: false
         });
@@ -40,8 +54,11 @@ export const useProfileData = () => {
           .eq('user_id', user.id)
           .single();
 
+        const avatarUrl = getPublicUrl(businessProfile?.logo_url);
+        console.log('Business logo URL:', { raw: businessProfile?.logo_url, public: avatarUrl });
+
         setProfileData({
-          avatarUrl: businessProfile?.logo_url,
+          avatarUrl,
           displayName: businessProfile?.business_name || profile.full_name,
           loading: false
         });
