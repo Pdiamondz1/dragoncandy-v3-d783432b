@@ -18,71 +18,86 @@ export const useCreatorRecentActivity = () => {
     queryFn: async (): Promise<ActivityItem[]> => {
       if (!user?.id) return [];
 
-      const activities: ActivityItem[] = [];
+      try {
+        const activities: ActivityItem[] = [];
 
-      // Get recent applications
-      const { data: applications } = await supabase
-        .from('campaign_applications')
-        .select(`
-          id,
-          status,
-          created_at,
-          campaigns!inner(title)
-        `)
-        .eq('creator_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(5);
+        // Get recent applications
+        const { data: applications, error: applicationsError } = await supabase
+          .from('campaign_applications')
+          .select(`
+            id,
+            status,
+            created_at,
+            campaign_id,
+            campaigns(title)
+          `)
+          .eq('creator_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(5);
 
-      applications?.forEach(app => {
-        activities.push({
-          id: app.id,
-          type: 'application',
-          status: app.status,
-          description: `Applied to "${app.campaigns?.title}" campaign`,
-          created_at: app.created_at,
-        });
-      });
-
-      // Get recent collaborations
-      const { data: collaborations } = await supabase
-        .from('campaign_collaborations')
-        .select(`
-          id,
-          status,
-          created_at,
-          updated_at,
-          campaigns!inner(title)
-        `)
-        .eq('creator_id', user.id)
-        .order('updated_at', { ascending: false })
-        .limit(5);
-
-      collaborations?.forEach(collab => {
-        let description = '';
-        switch (collab.status) {
-          case 'active':
-            description = `Started working on "${collab.campaigns?.title}"`;
-            break;
-          case 'completed':
-            description = `Completed project "${collab.campaigns?.title}"`;
-            break;
-          default:
-            description = `Project "${collab.campaigns?.title}" status updated`;
+        if (applicationsError) {
+          console.error('Error fetching applications:', applicationsError);
+        } else {
+          applications?.forEach(app => {
+            activities.push({
+              id: app.id,
+              type: 'application',
+              status: app.status,
+              description: `Applied to "${app.campaigns?.title || 'Unknown Campaign'}" campaign`,
+              created_at: app.created_at,
+            });
+          });
         }
 
-        activities.push({
-          id: collab.id,
-          type: 'collaboration',
-          status: collab.status,
-          description,
-          created_at: collab.updated_at,
-        });
-      });
+        // Get recent collaborations
+        const { data: collaborations, error: collaborationsError } = await supabase
+          .from('campaign_collaborations')
+          .select(`
+            id,
+            status,
+            created_at,
+            updated_at,
+            campaign_id,
+            campaigns(title)
+          `)
+          .eq('creator_id', user.id)
+          .order('updated_at', { ascending: false })
+          .limit(5);
 
-      // Sort by date and return latest 6
-      return activities
-        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-        .slice(0, 6);
+        if (collaborationsError) {
+          console.error('Error fetching collaborations:', collaborationsError);
+        } else {
+          collaborations?.forEach(collab => {
+            let description = '';
+            switch (collab.status) {
+              case 'active':
+                description = `Started working on "${collab.campaigns?.title || 'Unknown Campaign'}"`;
+                break;
+              case 'completed':
+                description = `Completed project "${collab.campaigns?.title || 'Unknown Campaign'}"`;
+                break;
+              default:
+                description = `Project "${collab.campaigns?.title || 'Unknown Campaign'}" status updated`;
+            }
+
+            activities.push({
+              id: collab.id,
+              type: 'collaboration',
+              status: collab.status,
+              description,
+              created_at: collab.updated_at,
+            });
+          });
+        }
+
+        // Sort by date and return latest 6
+        return activities
+          .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+          .slice(0, 6);
+      } catch (error) {
+        console.error('Error in useCreatorRecentActivity:', error);
+        return [];
+      }
     },
     enabled: !!user?.id,
   });
