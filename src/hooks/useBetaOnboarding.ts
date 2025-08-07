@@ -42,7 +42,6 @@ export const useBetaOnboarding = () => {
         const { data: stepsData, error: stepsError } = await supabase
           .from('onboarding_steps')
           .select('*')
-          .or(`target_roles.is.null,target_roles.cs.{${profile.role}}`)
           .order('order');
 
         if (stepsError) {
