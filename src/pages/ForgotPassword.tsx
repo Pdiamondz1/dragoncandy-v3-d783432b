@@ -2,9 +2,9 @@ import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { AuthHeader } from "@/components/auth/AuthHeader";
 
 const setSEO = (title: string, description: string, canonical?: string) => {
   document.title = title;
@@ -67,18 +67,23 @@ const ForgotPassword: React.FC = () => {
   };
 
   return (
-    <main className="min-h-screen flex items-center justify-center py-10 px-4">
-      <Card className="w-full max-w-md shadow-lg">
-        <CardHeader>
-          <CardTitle>Forgot Password</CardTitle>
-          <CardDescription>
-            Enter your email address and we'll send you a link to reset your password.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+    <main className="min-h-screen bg-pink-50 dark:bg-zinc-950 flex items-center justify-center py-10 px-4">
+      <div className="w-full max-w-md">
+        <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-xl px-8 pt-8 pb-10 border border-pink-200 dark:border-zinc-800">
+          <AuthHeader />
+          
+          <div className="text-center mb-6">
+            <h1 className="text-2xl font-bold text-pink-700 dark:text-pink-300 mb-2">
+              Forgot Password
+            </h1>
+            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+              Enter your email address and we'll send you a link to reset your password.
+            </p>
+          </div>
+
           <form onSubmit={onSubmit} className="space-y-4">
             <div className="space-y-2">
-              <label htmlFor="email" className="text-sm font-medium">
+              <label htmlFor="email" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
                 Email address
               </label>
               <Input
@@ -88,21 +93,29 @@ const ForgotPassword: React.FC = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                className="transition-all duration-200 focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
               />
             </div>
 
-            <Button type="submit" disabled={loading} className="w-full">
+            <Button 
+              type="submit" 
+              disabled={loading} 
+              className="w-full bg-pink-600 hover:bg-pink-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200"
+            >
               {loading ? "Sending..." : "Send reset link"}
             </Button>
 
-            <div className="text-center text-sm">
-              <Link to="/auth?mode=login" className="underline">
+            <div className="text-center text-sm mt-4">
+              <Link 
+                to="/auth?mode=login" 
+                className="text-pink-600 hover:text-pink-700 font-semibold underline underline-offset-2"
+              >
                 Back to login
               </Link>
             </div>
           </form>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </main>
   );
 };
