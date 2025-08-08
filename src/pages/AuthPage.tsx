@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { AuthHeader } from "@/components/auth/AuthHeader";
@@ -101,6 +101,12 @@ const AuthPage = () => {
         {error && (
           <div className="text-sm text-red-600 bg-red-50 dark:bg-red-900/20 px-2 py-1 rounded mt-2">
             {error}
+          </div>
+        )}
+
+        {mode === "login" && (
+          <div className="mt-4 text-sm text-center">
+            <Link to="/auth/forgot" className="underline">Forgot your password?</Link>
           </div>
         )}
 

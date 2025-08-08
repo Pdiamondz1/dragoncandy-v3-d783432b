@@ -36,6 +36,8 @@ import CreatorBrowse from "./pages/CreatorBrowse";
 import PublicCreatorProfile from "./pages/PublicCreatorProfile";
 import PublicBusinessProfile from "./pages/PublicBusinessProfile";
 import ReviewsManagement from "./pages/ReviewsManagement";
+import ForgotPassword from "./pages/ForgotPassword";
+import UpdatePassword from "./pages/UpdatePassword";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -66,6 +68,8 @@ const App = () => {
                   <Route path="/" element={<Index />} />
                   <Route path="/landing" element={<LandingPage />} />
                   <Route path="/auth" element={<AuthPage />} />
+                  <Route path="/auth/forgot" element={<ForgotPassword />} />
+                  <Route path="/auth/update-password" element={<UpdatePassword />} />
                   <Route path="/profile/onboarding" element={<ProfileOnboarding />} />
                   <Route path="/profile/business" element={<BusinessProfileSetup />} />
                   <Route path="/profile/creator" element={<CreatorProfileSetup />} />
