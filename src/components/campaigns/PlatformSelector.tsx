@@ -21,6 +21,7 @@ const PlatformSelector: React.FC<PlatformSelectorProps> = ({
   onPlatformsChange,
 }) => {
   const [customPlatform, setCustomPlatform] = useState('');
+  const [selectValue, setSelectValue] = useState('');
 
   const removePlatform = (platformToRemove: string) => {
     onPlatformsChange(platforms.filter(platform => platform !== platformToRemove));
@@ -29,6 +30,7 @@ const PlatformSelector: React.FC<PlatformSelectorProps> = ({
   const addPlatform = (platform: string) => {
     if (platform && !platforms.includes(platform)) {
       onPlatformsChange([...platforms, platform]);
+      setSelectValue(''); // Reset select value after adding
     }
   };
 
@@ -57,15 +59,18 @@ const PlatformSelector: React.FC<PlatformSelectorProps> = ({
         ))}
       </div>
       <div className="space-y-2">
-        <Select onValueChange={addPlatform}>
-          <SelectTrigger>
+        <Select value={selectValue} onValueChange={(value) => {
+          addPlatform(value);
+          setSelectValue('');
+        }}>
+          <SelectTrigger className="bg-white">
             <SelectValue placeholder="Select a platform to add" />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="bg-white border shadow-lg z-50">
             {availablePlatforms
               .filter(platform => !platforms.includes(platform))
               .map((platform) => (
-                <SelectItem key={platform} value={platform}>
+                <SelectItem key={platform} value={platform} className="hover:bg-gray-100">
                   {platform}
                 </SelectItem>
               ))}

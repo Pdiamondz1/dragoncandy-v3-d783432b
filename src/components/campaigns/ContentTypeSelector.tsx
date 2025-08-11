@@ -21,6 +21,7 @@ const ContentTypeSelector: React.FC<ContentTypeSelectorProps> = ({
   onContentTypesChange,
 }) => {
   const [customContentType, setCustomContentType] = useState('');
+  const [selectValue, setSelectValue] = useState('');
 
   const removeContentType = (typeToRemove: string) => {
     onContentTypesChange(contentTypes.filter(type => type !== typeToRemove));
@@ -29,6 +30,7 @@ const ContentTypeSelector: React.FC<ContentTypeSelectorProps> = ({
   const addContentType = (type: string) => {
     if (type && !contentTypes.includes(type)) {
       onContentTypesChange([...contentTypes, type]);
+      setSelectValue(''); // Reset select value after adding
     }
   };
 
@@ -57,15 +59,18 @@ const ContentTypeSelector: React.FC<ContentTypeSelectorProps> = ({
         ))}
       </div>
       <div className="space-y-2">
-        <Select onValueChange={addContentType}>
-          <SelectTrigger>
+        <Select value={selectValue} onValueChange={(value) => {
+          addContentType(value);
+          setSelectValue('');
+        }}>
+          <SelectTrigger className="bg-white">
             <SelectValue placeholder="Select a content type to add" />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="bg-white border shadow-lg z-50">
             {availableContentTypes
               .filter(type => !contentTypes.includes(type))
               .map((type) => (
-                <SelectItem key={type} value={type}>
+                <SelectItem key={type} value={type} className="hover:bg-gray-100">
                   {type}
                 </SelectItem>
               ))}
