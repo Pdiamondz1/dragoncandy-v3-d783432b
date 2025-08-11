@@ -100,7 +100,9 @@ const CampaignWizard: React.FC = () => {
           {currentStep === 4 && customizedCampaign && (
             <CampaignTimelineBudgetStep
               initialData={{
-                goals: customizedCampaign.goals,
+                goals: Array.isArray(customizedCampaign.goals) 
+                  ? customizedCampaign.goals.join('. ') + '.'
+                  : customizedCampaign.goals || '',
                 deadline: undefined,
                 budget_min: undefined,
                 budget_max: undefined,
