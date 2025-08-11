@@ -3,7 +3,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Lightbulb, Sparkles } from 'lucide-react';
+import { Lightbulb, Sparkles, Loader2 } from 'lucide-react';
 
 interface CampaignGoalStepProps {
   campaignGoal: string;
@@ -51,7 +51,11 @@ const CampaignGoalStep: React.FC<CampaignGoalStepProps> = ({
           disabled={!campaignGoal.trim() || isGenerating}
           className="w-full bg-pink-500 hover:bg-pink-600 text-white"
         >
-          <Sparkles className="h-4 w-4 mr-2" />
+          {isGenerating ? (
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+          ) : (
+            <Sparkles className="h-4 w-4 mr-2" />
+          )}
           {isGenerating ? 'Generating Campaign with DragonCandy AI...' : 'Generate Campaign with DragonCandy AI'}
         </Button>
       </CardContent>
