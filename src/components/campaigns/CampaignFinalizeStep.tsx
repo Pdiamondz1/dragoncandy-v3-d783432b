@@ -10,6 +10,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Rocket, FileText, HelpCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { useCampaigns } from '@/hooks/useCampaigns';
 import { useNavigate } from 'react-router-dom';
@@ -66,11 +68,11 @@ const CampaignFinalizeStep: React.FC<CampaignFinalizeStepProps> = ({
     },
   });
 
-  const handleCreateCampaign = async (data: FinalizeFormData, isDraft: boolean = false) => {
+  const handleCreateCampaign = async (data: FinalizeFormData, forceStatus?: 'draft' | 'published') => {
     setIsCreating(true);
     
     try {
-      const status = isDraft ? 'draft' : (data.publishImmediately ? 'published' : 'draft');
+      const status = forceStatus || (data.publishImmediately ? 'published' : 'draft');
       
       await createCampaign.mutateAsync({
         title: data.title,
@@ -95,12 +97,12 @@ const CampaignFinalizeStep: React.FC<CampaignFinalizeStepProps> = ({
   };
 
   const onSubmit = (data: FinalizeFormData) => {
-    handleCreateCampaign(data, false);
+    handleCreateCampaign(data);
   };
 
   const handleSaveDraft = () => {
     const data = form.getValues();
-    handleCreateCampaign(data, true);
+    handleCreateCampaign(data, 'draft');
   };
 
   return (
@@ -231,25 +233,51 @@ const CampaignFinalizeStep: React.FC<CampaignFinalizeStepProps> = ({
                 />
               </div>
 
-              {/* Publish Immediately Option */}
+              {/* Publish to Marketplace Option */}
               <FormField
                 control={form.control}
                 name="publishImmediately"
                 render={({ field }) => (
-                  <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                    <FormControl>
-                      <Checkbox
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                    <div className="space-y-1 leading-none">
-                      <FormLabel className="text-sm font-medium">
-                        🎯 Publish campaign to creators immediately
-                      </FormLabel>
-                      <p className="text-sm text-gray-600">
-                        Save as draft - you can publish to creators later from your campaigns page.
-                      </p>
+                  <FormItem className="space-y-3 p-4 border rounded-lg bg-muted/30">
+                    <div className="flex items-center space-x-3">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                      <div className="flex items-center gap-2">
+                        <Rocket className="h-4 w-4 text-primary" />
+                        <FormLabel className="text-sm font-semibold cursor-pointer">
+                          Publish to marketplace immediately after creation
+                        </FormLabel>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <HelpCircle className="h-4 w-4 text-muted-foreground" />
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-sm">
+                              <p>
+                                <strong>Published:</strong> Visible to creators immediately. They can apply right away.<br/>
+                                <strong>Draft:</strong> Saved privately. You can review and publish later.
+                              </p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
+                    </div>
+                    <div className="ml-7">
+                      {field.value ? (
+                        <div className="flex items-center gap-2 text-sm text-green-700">
+                          <Rocket className="h-3 w-3" />
+                          <span>Campaign will be published to the marketplace and visible to creators immediately</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <FileText className="h-3 w-3" />
+                          <span>Campaign will be saved as a draft. You can publish it later from your campaigns page</span>
+                        </div>
+                      )}
                     </div>
                   </FormItem>
                 )}
@@ -269,15 +297,33 @@ const CampaignFinalizeStep: React.FC<CampaignFinalizeStepProps> = ({
                 variant="outline"
                 onClick={handleSaveDraft}
                 disabled={isCreating}
+                className="flex items-center gap-2"
               >
-                Save to Campaigns Only
+                <FileText className="h-4 w-4" />
+                Save as Draft
               </Button>
               <Button
                 type="submit"
-                className="bg-pink-500 hover:bg-pink-600 text-white"
                 disabled={isCreating}
+                className={`flex items-center gap-2 ${
+                  form.watch('publishImmediately') 
+                    ? 'bg-green-600 hover:bg-green-700' 
+                    : 'bg-muted hover:bg-muted/80 text-muted-foreground'
+                }`}
               >
-                {isCreating ? 'Creating...' : 'Create & Publish Campaign'}
+                {isCreating ? (
+                  'Creating...'
+                ) : form.watch('publishImmediately') ? (
+                  <>
+                    <Rocket className="h-4 w-4" />
+                    Create & Publish to Marketplace
+                  </>
+                ) : (
+                  <>
+                    <FileText className="h-4 w-4" />
+                    Create Campaign as Draft
+                  </>
+                )}
               </Button>
             </div>
           </div>
