@@ -1,10 +1,8 @@
-
 import React, { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { X, Plus } from 'lucide-react';
+import { ChevronDown, X, Plus } from 'lucide-react';
 
 interface PlatformSelectorProps {
   platforms: string[];
@@ -21,7 +19,7 @@ const PlatformSelector: React.FC<PlatformSelectorProps> = ({
   onPlatformsChange,
 }) => {
   const [customPlatform, setCustomPlatform] = useState('');
-  const [selectValue, setSelectValue] = useState('');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   const removePlatform = (platformToRemove: string) => {
     onPlatformsChange(platforms.filter(platform => platform !== platformToRemove));
@@ -30,7 +28,7 @@ const PlatformSelector: React.FC<PlatformSelectorProps> = ({
   const addPlatform = (platform: string) => {
     if (platform && !platforms.includes(platform)) {
       onPlatformsChange([...platforms, platform]);
-      setSelectValue(''); // Reset select value after adding
+      setIsDropdownOpen(false);
     }
   };
 
@@ -40,6 +38,8 @@ const PlatformSelector: React.FC<PlatformSelectorProps> = ({
       setCustomPlatform('');
     }
   };
+
+  const availableOptions = availablePlatforms.filter(platform => !platforms.includes(platform));
 
   return (
     <div className="space-y-3">
@@ -59,29 +59,47 @@ const PlatformSelector: React.FC<PlatformSelectorProps> = ({
         ))}
       </div>
       <div className="space-y-2">
-        <Select value={selectValue} onValueChange={(value) => {
-          addPlatform(value);
-          setSelectValue('');
-        }}>
-          <SelectTrigger className="bg-white">
-            <SelectValue placeholder="Select a platform to add" />
-          </SelectTrigger>
-          <SelectContent className="bg-white border shadow-lg z-50">
-            {availablePlatforms
-              .filter(platform => !platforms.includes(platform))
-              .map((platform) => (
-                <SelectItem key={platform} value={platform} className="hover:bg-gray-100">
-                  {platform}
-                </SelectItem>
-              ))}
-          </SelectContent>
-        </Select>
+        {/* Custom Dropdown */}
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+            className="flex h-10 w-full items-center justify-between rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 hover:border-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          >
+            <span className="text-gray-500">Select a platform to add</span>
+            <ChevronDown className={`h-4 w-4 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
+          </button>
+          
+          {isDropdownOpen && availableOptions.length > 0 && (
+            <div className="absolute z-50 mt-1 w-full rounded-md border border-gray-200 bg-white shadow-lg">
+              <div className="max-h-60 overflow-auto py-1">
+                {availableOptions.map((platform) => (
+                  <button
+                    key={platform}
+                    type="button"
+                    onClick={() => addPlatform(platform)}
+                    className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
+                  >
+                    {platform}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+        
         <div className="flex gap-2">
           <Input
             value={customPlatform}
             onChange={(e) => setCustomPlatform(e.target.value)}
             placeholder="Add custom platform"
             className="flex-1"
+            onKeyPress={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                addCustomPlatform();
+              }
+            }}
           />
           <Button type="button" onClick={addCustomPlatform} size="sm">
             <Plus className="h-4 w-4" />

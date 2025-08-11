@@ -1,10 +1,8 @@
-
 import React, { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { X, Plus } from 'lucide-react';
+import { ChevronDown, X, Plus } from 'lucide-react';
 
 interface ContentTypeSelectorProps {
   contentTypes: string[];
@@ -21,7 +19,7 @@ const ContentTypeSelector: React.FC<ContentTypeSelectorProps> = ({
   onContentTypesChange,
 }) => {
   const [customContentType, setCustomContentType] = useState('');
-  const [selectValue, setSelectValue] = useState('');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   const removeContentType = (typeToRemove: string) => {
     onContentTypesChange(contentTypes.filter(type => type !== typeToRemove));
@@ -30,7 +28,7 @@ const ContentTypeSelector: React.FC<ContentTypeSelectorProps> = ({
   const addContentType = (type: string) => {
     if (type && !contentTypes.includes(type)) {
       onContentTypesChange([...contentTypes, type]);
-      setSelectValue(''); // Reset select value after adding
+      setIsDropdownOpen(false);
     }
   };
 
@@ -40,6 +38,8 @@ const ContentTypeSelector: React.FC<ContentTypeSelectorProps> = ({
       setCustomContentType('');
     }
   };
+
+  const availableOptions = availableContentTypes.filter(type => !contentTypes.includes(type));
 
   return (
     <div className="space-y-3">
@@ -59,29 +59,47 @@ const ContentTypeSelector: React.FC<ContentTypeSelectorProps> = ({
         ))}
       </div>
       <div className="space-y-2">
-        <Select value={selectValue} onValueChange={(value) => {
-          addContentType(value);
-          setSelectValue('');
-        }}>
-          <SelectTrigger className="bg-white">
-            <SelectValue placeholder="Select a content type to add" />
-          </SelectTrigger>
-          <SelectContent className="bg-white border shadow-lg z-50">
-            {availableContentTypes
-              .filter(type => !contentTypes.includes(type))
-              .map((type) => (
-                <SelectItem key={type} value={type} className="hover:bg-gray-100">
-                  {type}
-                </SelectItem>
-              ))}
-          </SelectContent>
-        </Select>
+        {/* Custom Dropdown */}
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+            className="flex h-10 w-full items-center justify-between rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 hover:border-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          >
+            <span className="text-gray-500">Select a content type to add</span>
+            <ChevronDown className={`h-4 w-4 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
+          </button>
+          
+          {isDropdownOpen && availableOptions.length > 0 && (
+            <div className="absolute z-50 mt-1 w-full rounded-md border border-gray-200 bg-white shadow-lg">
+              <div className="max-h-60 overflow-auto py-1">
+                {availableOptions.map((type) => (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => addContentType(type)}
+                    className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
+                  >
+                    {type}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+        
         <div className="flex gap-2">
           <Input
             value={customContentType}
             onChange={(e) => setCustomContentType(e.target.value)}
             placeholder="Add custom content type"
             className="flex-1"
+            onKeyPress={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                addCustomContentType();
+              }
+            }}
           />
           <Button type="button" onClick={addCustomContentType} size="sm">
             <Plus className="h-4 w-4" />
