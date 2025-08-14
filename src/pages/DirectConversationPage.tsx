@@ -26,7 +26,10 @@ const DirectConversationPage: React.FC = () => {
         <div className="flex-1 p-6">
           <div className="text-center">
             <p>Conversation not found</p>
-            <Button onClick={() => navigate('/messages')} className="mt-4">
+            <Button onClick={() => {
+              const role = userRole === 'content_creator' ? 'creator' : 'business';
+              navigate(`/dashboard/${role}/messages`);
+            }} className="mt-4">
               Back to Messages
             </Button>
           </div>

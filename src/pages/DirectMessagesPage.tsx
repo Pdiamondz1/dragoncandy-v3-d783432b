@@ -12,7 +12,8 @@ const DirectMessagesPage: React.FC = () => {
   const navigate = useNavigate();
 
   const handleConversationSelect = (conversationId: string) => {
-    navigate(`/messages/direct/${conversationId}`);
+    const role = userRole === 'content_creator' ? 'creator' : 'business';
+    navigate(`/dashboard/${role}/messages/direct/${conversationId}`);
   };
 
   const userRole = user?.user_metadata?.role || 'business_client';
