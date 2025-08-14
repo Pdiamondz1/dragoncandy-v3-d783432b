@@ -2,11 +2,9 @@
 import { Button } from "@/components/ui/button";
 import { Sparkles } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/hooks/useAuth";
 
 export const Header = () => {
   const navigate = useNavigate();
-  const { signingOut } = useAuth();
 
   return (
     <header className="bg-white shadow-sm">
@@ -22,25 +20,19 @@ export const Header = () => {
           
           {/* Auth buttons */}
           <div className="flex items-center gap-3">
-            {signingOut ? (
-              <div className="text-gray-600 text-sm">Signing out...</div>
-            ) : (
-              <>
-                <Button
-                  variant="ghost"
-                  className="text-gray-600 hover:text-pink-600"
-                  onClick={() => navigate('/auth?mode=login')}
-                >
-                  Log in
-                </Button>
-                <Button
-                  className="bg-pink-600 hover:bg-pink-700 text-white px-6"
-                  onClick={() => navigate('/auth?mode=signup')}
-                >
-                  Sign up
-                </Button>
-              </>
-            )}
+            <Button
+              variant="ghost"
+              className="text-gray-600 hover:text-pink-600"
+              onClick={() => navigate('/auth?mode=login')}
+            >
+              Log in
+            </Button>
+            <Button
+              className="bg-pink-600 hover:bg-pink-700 text-white px-6"
+              onClick={() => navigate('/auth?mode=signup')}
+            >
+              Sign up
+            </Button>
           </div>
         </div>
       </div>

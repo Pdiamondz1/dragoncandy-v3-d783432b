@@ -2,7 +2,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
-import { cleanupAuthState } from '@/lib/authCleanup';
 
 interface Profile {
   id: string;
@@ -19,7 +18,6 @@ interface AuthContextType {
   session: Session | null;
   profile: Profile | null;
   loading: boolean;
-  signingOut: boolean;
   error: string | null;
   signOut: () => Promise<void>;
   isAuthenticated: boolean;
@@ -44,7 +42,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [signingOut, setSigningOut] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Timeout mechanism to prevent infinite loading
@@ -288,33 +285,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   const signOut = async () => {
-    setSigningOut(true);
     try {
-      console.log('🚪 AuthProvider: Starting sign out process');
-      
-      // Clean up auth state first
-      cleanupAuthState();
-      
-      // Clear local state
+      console.log('🚪 AuthProvider: Signing out user');
+      await supabase.auth.signOut({ scope: 'global' });
       setProfile(null);
-      setUser(null);
-      setSession(null);
       setError(null);
       
-      // Attempt to sign out from Supabase
-      try {
-        await supabase.auth.signOut({ scope: 'global' });
-        console.log('✅ AuthProvider: Sign out successful');
-      } catch (signOutError) {
-        console.warn('⚠️ AuthProvider: Sign out error (continuing anyway):', signOutError);
-      }
-      
-      // Force page refresh to ensure clean state
+      // Redirect to landing page after logout
       window.location.href = '/landing';
     } catch (error) {
       console.error('❌ AuthProvider: Sign out failed:', error);
       setError('Sign out failed');
-      setSigningOut(false);
       // Still redirect even if sign out fails
       window.location.href = '/landing';
     }
@@ -325,7 +306,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     session,
     profile,
     loading,
-    signingOut,
     error,
     signOut,
     isAuthenticated: !!user
