@@ -155,6 +155,11 @@ const App = () => {
                       <DirectConversationPage />
                     </ProtectedRoute>
                   } />
+                  <Route path="/dashboard/business/messages/campaign/:campaignId" element={
+                    <ProtectedRoute>
+                      <CampaignMessagesPage />
+                    </ProtectedRoute>
+                  } />
 
                   {/* Creator Campaign Routes */}
                   <Route path="/dashboard/creator/campaigns" element={
@@ -184,6 +189,11 @@ const App = () => {
                   <Route path="/dashboard/creator/messages/direct/:conversationId" element={
                     <ProtectedRoute>
                       <DirectConversationPage />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/dashboard/creator/messages/campaign/:campaignId" element={
+                    <ProtectedRoute>
+                      <CampaignMessagesPage />
                     </ProtectedRoute>
                   } />
 
