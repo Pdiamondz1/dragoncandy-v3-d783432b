@@ -3,9 +3,10 @@ import React from 'react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Calendar, DollarSign, Eye, Users, FileText, MessageSquare, Edit } from 'lucide-react';
+import { Calendar, DollarSign, Eye, Users, FileText, MessageSquare, Edit, UserCheck } from 'lucide-react';
 import { Campaign } from '@/hooks/useCampaigns';
 import { format } from 'date-fns';
+import { useCampaignApplicationsCount } from '@/hooks/useCampaignApplicationsCount';
 
 interface CampaignCardProps {
   campaign: Campaign;
@@ -18,6 +19,7 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
   onViewDetails, 
   onEdit 
 }) => {
+  const { data: applicationCounts } = useCampaignApplicationsCount(campaign.id);
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'draft': return 'bg-gray-100 text-gray-800 border-gray-200';
@@ -86,21 +88,34 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
         {/* Key Metrics */}
         <div className="grid grid-cols-2 gap-3">
           <div className="flex items-center gap-2 text-sm">
-            <DollarSign className="h-4 w-4 text-green-600" />
-            <span className="text-gray-600 truncate">{formatBudget()}</span>
+            <DollarSign className="h-4 w-4 text-emerald-600" />
+            <span className="text-muted-foreground truncate">{formatBudget()}</span>
           </div>
           
           <div className="flex items-center gap-2 text-sm">
             <FileText className="h-4 w-4 text-blue-600" />
-            <span className="text-gray-600">
+            <span className="text-muted-foreground">
               {getContentItemsCount()} item{getContentItemsCount() !== 1 ? 's' : ''}
             </span>
           </div>
 
+          {/* Applications Count */}
+          <div className="flex items-center gap-2 text-sm">
+            <UserCheck className="h-4 w-4 text-purple-600" />
+            <span className="text-muted-foreground">
+              {applicationCounts?.total || 0} application{(applicationCounts?.total || 0) !== 1 ? 's' : ''}
+            </span>
+            {applicationCounts && applicationCounts.pending > 0 && (
+              <Badge className="bg-destructive text-destructive-foreground text-xs px-1.5 py-0.5 h-5">
+                {applicationCounts.pending} new
+              </Badge>
+            )}
+          </div>
+
           {campaign.deadline && (
-            <div className="flex items-center gap-2 text-sm col-span-2">
+            <div className="flex items-center gap-2 text-sm">
               <Calendar className="h-4 w-4 text-orange-600" />
-              <span className="text-gray-600">
+              <span className="text-muted-foreground">
                 Due {format(new Date(campaign.deadline), 'MMM dd, yyyy')}
               </span>
             </div>
@@ -145,15 +160,24 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
         )}
       </CardContent>
 
-      <CardFooter className="flex gap-2 pt-4 border-t border-gray-100">
+      <CardFooter className="flex gap-2 pt-4 border-t border-border">
         <Button 
           variant="outline" 
           size="sm" 
           className="flex-1 text-xs"
           onClick={() => onViewDetails?.(campaign)}
         >
-          <Eye className="h-3 w-3 mr-1" />
-          View Details
+          {applicationCounts && applicationCounts.pending > 0 ? (
+            <>
+              <UserCheck className="h-3 w-3 mr-1" />
+              Review Applications
+            </>
+          ) : (
+            <>
+              <Eye className="h-3 w-3 mr-1" />
+              View Details
+            </>
+          )}
         </Button>
         {onEdit && (
           <Button 
