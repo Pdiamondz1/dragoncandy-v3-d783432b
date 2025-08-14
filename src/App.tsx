@@ -187,7 +187,17 @@ const App = () => {
                     </ProtectedRoute>
                   } />
 
-                  {/* Campaign Messages Routes */}
+                  {/* General Message Routes */}
+                  <Route path="/messages" element={
+                    <ProtectedRoute>
+                      <DirectMessagesPage />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/messages/direct/:conversationId" element={
+                    <ProtectedRoute>
+                      <DirectConversationPage />
+                    </ProtectedRoute>
+                  } />
                   <Route path="/messages/:campaignId" element={
                     <ProtectedRoute>
                       <CampaignMessagesPage />

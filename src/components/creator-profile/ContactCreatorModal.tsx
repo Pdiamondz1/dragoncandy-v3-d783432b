@@ -86,9 +86,7 @@ const ContactCreatorModal: React.FC<ContactCreatorModalProps> = ({
       setOpen(false);
       
       // Navigate to the specific conversation to see the message
-      const userRole = user.user_metadata?.role || 'business_client';
-      const role = userRole === 'content_creator' ? 'creator' : 'business';
-      navigate(`/dashboard/${role}/messages/direct/${conversationId}`);
+      navigate(`/messages/direct/${conversationId}`);
       
     } catch (error) {
       console.error('Error sending message:', error);
