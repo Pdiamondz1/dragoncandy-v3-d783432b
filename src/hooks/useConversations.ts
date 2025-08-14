@@ -35,6 +35,9 @@ export const useConversations = () => {
         throw error;
       }
 
+      console.log('Raw conversations data:', data);
+      console.log('Number of conversations found:', data?.length || 0);
+      
       return data as Conversation[];
     },
     enabled: !!user,
