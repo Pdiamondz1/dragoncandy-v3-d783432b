@@ -86,7 +86,7 @@ const ApplicationForm: React.FC<ApplicationFormProps> = ({
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
+            <div className="space-y-2">
               <Label htmlFor="intro-message" className="flex items-center gap-2">
                 <MessageSquare className="h-4 w-4" />
                 Introduction Message *
@@ -101,7 +101,7 @@ const ApplicationForm: React.FC<ApplicationFormProps> = ({
               />
             </div>
 
-            <div>
+            <div className="space-y-2">
               <Label htmlFor="proposed-timeline" className="flex items-center gap-2">
                 <Clock className="h-4 w-4" />
                 Proposed Timeline (Optional)
@@ -114,7 +114,7 @@ const ApplicationForm: React.FC<ApplicationFormProps> = ({
               />
             </div>
 
-            <div>
+            <div className="space-y-2">
               <Label htmlFor="proposed-rate" className="flex items-center gap-2">
                 <DollarSign className="h-4 w-4" />
                 Proposed Rate (Optional)
