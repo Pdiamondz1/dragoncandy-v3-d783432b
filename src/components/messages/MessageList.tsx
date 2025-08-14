@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import MessageBubbleEnhanced from './MessageBubbleEnhanced';
@@ -21,6 +21,19 @@ const MessageList: React.FC<MessageListProps> = ({
   onForward,
   onEdit,
 }) => {
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    if (messages.length > 0) {
+      scrollToBottom();
+    }
+  }, [messages.length]);
   if (isLoading) {
     return (
       <ScrollArea className="flex-1 p-4">
@@ -51,8 +64,8 @@ const MessageList: React.FC<MessageListProps> = ({
   }
 
   return (
-    <ScrollArea className="flex-1">
-      <div className="space-y-2">
+    <ScrollArea className="flex-1" ref={scrollAreaRef}>
+      <div className="space-y-2 p-4">
         {messages.map((message) => (
           <MessageBubbleEnhanced
             key={message.id}
@@ -62,6 +75,7 @@ const MessageList: React.FC<MessageListProps> = ({
             onEdit={onEdit}
           />
         ))}
+        <div ref={messagesEndRef} />
       </div>
     </ScrollArea>
   );

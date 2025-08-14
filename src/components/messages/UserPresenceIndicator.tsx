@@ -7,6 +7,7 @@ import { useCurrentUserPresence } from '@/hooks/useUserPresence';
 interface UserPresenceIndicatorProps {
   userId: string;
   userName?: string;
+  userEmail?: string;
   avatarUrl?: string;
   showLabel?: boolean;
   size?: 'sm' | 'md' | 'lg';
@@ -15,12 +16,24 @@ interface UserPresenceIndicatorProps {
 const UserPresenceIndicator: React.FC<UserPresenceIndicatorProps> = ({
   userId,
   userName,
+  userEmail,
   avatarUrl,
   showLabel = false,
   size = 'md'
 }) => {
   // Temporarily disable presence functionality to fix the crash
   const presence = null; // useCurrentUserPresence(userId);
+
+  const getDisplayName = () => {
+    if (userName && userName.trim() !== '') return userName;
+    if (userEmail) {
+      return userEmail.split('@')[0].replace(/[._]/g, ' ')
+        .split(' ')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+    }
+    return 'Unknown User';
+  };
 
   const getStatusColor = (status?: string) => {
     switch (status) {
@@ -73,7 +86,7 @@ const UserPresenceIndicator: React.FC<UserPresenceIndicatorProps> = ({
       </div>
       {showLabel && (
         <div className="flex flex-col">
-          {userName && <span className="text-sm font-medium">{userName}</span>}
+          <span className="text-sm font-medium">{getDisplayName()}</span>
           <Badge variant="outline" className="text-xs">
             {getStatusLabel(presence?.status)}
           </Badge>

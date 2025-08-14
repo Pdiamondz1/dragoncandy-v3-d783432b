@@ -18,6 +18,7 @@ export const useMessages = (campaignId?: string, conversationId?: string) => {
           *,
           sender_profile:profiles!sender_id (
             full_name,
+            email,
             avatar_url
           )
         `)
@@ -108,6 +109,7 @@ export const useSearchMessages = (campaignId: string, searchQuery: string) => {
           *,
           sender_profile:profiles!sender_id (
             full_name,
+            email,
             avatar_url
           )
         `)

@@ -1514,6 +1514,10 @@ export type Database = {
           unread_count: number
         }[]
       }
+      get_user_display_name: {
+        Args: { user_uuid: string }
+        Returns: string
+      }
       is_conversation_participant: {
         Args: { conversation_uuid: string; user_uuid: string }
         Returns: boolean

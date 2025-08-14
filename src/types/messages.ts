@@ -21,6 +21,7 @@ export interface Message {
   edited_at: string | null;
   sender_profile?: {
     full_name: string | null;
+    email: string | null;
     avatar_url: string | null;
   };
 }
