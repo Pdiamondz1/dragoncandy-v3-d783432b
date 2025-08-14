@@ -78,13 +78,13 @@ export default function Index() {
       
       redirectToDashboard();
     } else if (!loading && !user) {
-      // Redirect unauthenticated users to landing page
+      // Redirect unauthenticated users to landing page (with a small delay to avoid race condition)
       console.log('🚫 Index: No user, redirecting to landing page');
-      navigate('/landing');
-    } else if (error) {
+      setTimeout(() => navigate('/landing'), 100);
+    } else if (error && !loading) {
       // If there's an authentication error, still redirect to landing
       console.error('❌ Index: Authentication error, redirecting to landing:', error);
-      navigate('/landing');
+      setTimeout(() => navigate('/landing'), 100);
     }
   }, [user, loading, error, navigate]);
 
