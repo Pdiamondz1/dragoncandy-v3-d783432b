@@ -1,5 +1,4 @@
 
-import { useAnalytics } from '@/hooks/useAnalytics';
 import { useAnalyticsBatch } from '@/hooks/useAnalyticsBatch';
 import { useAnalyticsCache } from '@/hooks/useAnalyticsCache';
 import { useAuth } from '@/hooks/useAuth';
