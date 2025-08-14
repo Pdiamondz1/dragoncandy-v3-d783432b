@@ -65,6 +65,7 @@ const PublicCreatorProfile = () => {
   const [profile, setProfile] = useState<CreatorProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [portfolioUrls, setPortfolioUrls] = useState<string[]>([]);
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -107,6 +108,38 @@ const PublicCreatorProfile = () => {
 
     loadProfile();
   }, [slug, user]);
+
+  // Convert portfolio storage paths to public URLs
+  useEffect(() => {
+    const convertPortfolioUrls = async () => {
+      if (!profile?.portfolio_urls) return;
+      
+      const urls = await Promise.all(
+        profile.portfolio_urls.map(async (path) => {
+          try {
+            // Check if it's already a full URL
+            if (path.startsWith('http://') || path.startsWith('https://')) {
+              return path;
+            }
+            
+            // Convert storage path to public URL
+            const { data } = supabase.storage
+              .from('creator-portfolios')
+              .getPublicUrl(path);
+            
+            return data.publicUrl;
+          } catch (error) {
+            console.error('Error converting portfolio URL:', error);
+            return path; // Return original path as fallback
+          }
+        })
+      );
+      
+      setPortfolioUrls(urls);
+    };
+
+    convertPortfolioUrls();
+  }, [profile?.portfolio_urls]);
 
   const handleContactCreator = () => {
     if (!user) {
@@ -387,19 +420,32 @@ const PublicCreatorProfile = () => {
         )}
 
         {/* Portfolio */}
-        {profile.portfolio_urls && profile.portfolio_urls.length > 0 && (
+        {portfolioUrls.length > 0 && (
           <Card>
             <CardHeader>
               <CardTitle>Portfolio</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                {profile.portfolio_urls.map((url, index) => (
-                  <div key={index} className="aspect-square bg-gray-100 rounded-lg overflow-hidden">
+                {portfolioUrls.map((url, index) => (
+                  <div key={index} className="aspect-square bg-gray-100 rounded-lg overflow-hidden group cursor-pointer">
                     <img 
                       src={url} 
                       alt={`Portfolio item ${index + 1}`}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                        const parent = target.parentElement;
+                        if (parent) {
+                          parent.innerHTML = `
+                            <div class="w-full h-full flex items-center justify-center bg-gray-200">
+                              <span class="text-gray-500 text-sm">Image unavailable</span>
+                            </div>
+                          `;
+                        }
+                      }}
+                      loading="lazy"
                     />
                   </div>
                 ))}
