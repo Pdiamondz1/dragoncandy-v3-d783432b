@@ -60,10 +60,19 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
   };
 
   return (
-    <Card className="hover:shadow-lg transition-all duration-200 border-l-4 border-l-transparent hover:border-l-primary/50">
+    <Card className="relative hover:shadow-lg transition-all duration-200 border-l-4 border-l-transparent hover:border-l-primary/50">
+      {/* Application Counter Badge - Top Right Corner */}
+      {applicationCounts && applicationCounts.pending > 0 && (
+        <div className="absolute -top-2 -right-2 z-10">
+          <Badge className="bg-destructive text-destructive-foreground text-xs px-2 py-1 rounded-full shadow-lg">
+            {applicationCounts.pending}
+          </Badge>
+        </div>
+      )}
+      
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 pr-4">
             <CardTitle className="text-base sm:text-lg font-semibold line-clamp-2 mb-2">
               {campaign.title}
             </CardTitle>
@@ -99,17 +108,12 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
             </span>
           </div>
 
-          {/* Applications Count */}
+          {/* Total Applications Count (subtle) */}
           <div className="flex items-center gap-2 text-sm">
             <UserCheck className="h-4 w-4 text-purple-600" />
             <span className="text-muted-foreground">
               {applicationCounts?.total || 0} application{(applicationCounts?.total || 0) !== 1 ? 's' : ''}
             </span>
-            {applicationCounts && applicationCounts.pending > 0 && (
-              <Badge className="bg-destructive text-destructive-foreground text-xs px-1.5 py-0.5 h-5">
-                {applicationCounts.pending} new
-              </Badge>
-            )}
           </div>
 
           {campaign.deadline && (
