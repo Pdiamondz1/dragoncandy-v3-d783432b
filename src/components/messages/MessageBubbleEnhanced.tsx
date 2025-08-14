@@ -37,8 +37,8 @@ const MessageBubbleEnhanced: React.FC<MessageBubbleEnhancedProps> = ({
   const [showActions, setShowActions] = useState(false);
 
   const isOwnMessage = message.sender_id === user?.id;
-  const senderName = message.sender_profile?.email || 
-                     message.sender_profile?.full_name || 
+  const senderName = message.sender_profile?.full_name || 
+                     message.sender_profile?.email || 
                      `User ${message.sender_id.slice(0, 8)}`;
   const senderAvatar = message.sender_profile?.avatar_url;
 
