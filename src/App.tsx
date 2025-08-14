@@ -147,7 +147,7 @@ const App = () => {
                   {/* Business Messages Route */}
                   <Route path="/dashboard/business/messages" element={
                     <ProtectedRoute>
-                      <MessagesPage />
+                      <DirectMessagesPage />
                     </ProtectedRoute>
                   } />
 
