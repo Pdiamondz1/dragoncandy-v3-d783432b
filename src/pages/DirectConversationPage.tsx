@@ -7,6 +7,7 @@ import { ArrowLeft, MessageSquare } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import ConversationMessageThread from '@/components/messages/ConversationMessageThread';
 import { useConversations } from '@/hooks/useConversations';
+import { supabase } from '@/integrations/supabase/client';
 
 const DirectConversationPage: React.FC = () => {
   const { conversationId } = useParams<{ conversationId: string }>();
@@ -34,13 +35,28 @@ const DirectConversationPage: React.FC = () => {
     );
   }
 
-  // Get the other participant's ID from conversation
-  // For direct messages, we need to get the other participant
-  // Since this is from the ContactCreatorModal, the recipient should be the other participant
-  const recipientId = conversation && user ? 
-    // If we're in a conversation, find who is NOT the current user
-    conversation.conversation_id // We'll use a placeholder for now since we need better conversation participant data
-    : "";
+  // Get the other participant's ID from conversation participants
+  // We'll query the conversation_participants table to get the actual other participant
+  const [otherParticipantId, setOtherParticipantId] = React.useState<string>("");
+
+  React.useEffect(() => {
+    if (conversationId && user) {
+      // Fetch conversation participants to get the other user's ID
+      supabase
+        .from('conversation_participants')
+        .select('user_id')
+        .eq('conversation_id', conversationId)
+        .neq('user_id', user.id)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data) {
+            setOtherParticipantId(data.user_id);
+          }
+        });
+    }
+  }, [conversationId, user]);
+
+  const recipientId = otherParticipantId;
 
   return (
     <DashboardLayout userRole={userRole as 'business_client' | 'content_creator'}>
@@ -51,7 +67,10 @@ const DirectConversationPage: React.FC = () => {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => navigate('/messages')}
+              onClick={() => {
+                const role = userRole === 'content_creator' ? 'creator' : 'business';
+                navigate(`/dashboard/${role}/messages`);
+              }}
               className="flex items-center gap-2"
             >
               <ArrowLeft className="h-4 w-4" />
@@ -73,7 +92,7 @@ const DirectConversationPage: React.FC = () => {
           <Card>
             <ConversationMessageThread 
               conversationId={conversationId}
-              recipientId="" // We'll handle this in the component
+              recipientId={recipientId}
               conversationTitle={conversation?.other_participant_name || 'Direct Conversation'}
             />
           </Card>

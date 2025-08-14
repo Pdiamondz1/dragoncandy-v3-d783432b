@@ -8,6 +8,7 @@ import { useConversations, useArchiveConversation } from '@/hooks/useConversatio
 import UserPresenceIndicator from './UserPresenceIndicator';
 import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
+import { useAuth } from '@/hooks/useAuth';
 
 interface DirectMessagesListProps {
   onConversationSelect?: (conversationId: string) => void;
@@ -15,6 +16,7 @@ interface DirectMessagesListProps {
 
 const DirectMessagesList: React.FC<DirectMessagesListProps> = ({ onConversationSelect }) => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { data: conversations = [], isLoading } = useConversations();
   const archiveConversation = useArchiveConversation();
 
@@ -24,7 +26,10 @@ const DirectMessagesList: React.FC<DirectMessagesListProps> = ({ onConversationS
     if (onConversationSelect) {
       onConversationSelect(conversationId);
     } else {
-      navigate(`/messages/direct/${conversationId}`);
+      // Navigate to role-specific direct conversation page
+      const userRole = user?.user_metadata?.role || 'business_client';
+      const role = userRole === 'content_creator' ? 'creator' : 'business';
+      navigate(`/dashboard/${role}/messages/direct/${conversationId}`);
     }
   };
 
