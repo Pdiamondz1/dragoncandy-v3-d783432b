@@ -14,7 +14,14 @@ export const useMessages = (campaignId?: string, conversationId?: string) => {
       
       let query = supabase
         .from('messages')
-        .select('*')
+        .select(`
+          *,
+          sender_profile:profiles!sender_id (
+            full_name,
+            email,
+            avatar_url
+          )
+        `)
         .order('created_at', { ascending: true });
 
       if (campaignId) {
@@ -24,31 +31,15 @@ export const useMessages = (campaignId?: string, conversationId?: string) => {
         query = query.eq('conversation_id', conversationId);
       }
 
-      const { data: messagesData, error } = await query;
+      const { data, error } = await query;
 
       if (error) {
         console.error('Error fetching messages:', error);
         throw error;
       }
 
-      // Get sender profiles separately
-      const messagesWithProfiles = await Promise.all(
-        (messagesData || []).map(async (message) => {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('full_name, email, avatar_url')
-            .eq('id', message.sender_id)
-            .maybeSingle();
-          
-          return {
-            ...message,
-            sender_profile: profile || null
-          };
-        })
-      );
-
-      console.log('Fetched messages with profiles:', messagesWithProfiles);
-      return messagesWithProfiles as Message[];
+      console.log('Fetched messages:', data);
+      return data as Message[];
     },
     enabled: !!(campaignId || conversationId),
   });
@@ -112,9 +103,16 @@ export const useSearchMessages = (campaignId: string, searchQuery: string) => {
     queryFn: async () => {
       if (!searchQuery.trim()) return [];
       
-      const { data: messagesData, error } = await supabase
+      const { data, error } = await supabase
         .from('messages')
-        .select('*')
+        .select(`
+          *,
+          sender_profile:profiles!sender_id (
+            full_name,
+            email,
+            avatar_url
+          )
+        `)
         .eq('campaign_id', campaignId)
         .textSearch('content', searchQuery)
         .order('created_at', { ascending: false });
@@ -124,23 +122,7 @@ export const useSearchMessages = (campaignId: string, searchQuery: string) => {
         throw error;
       }
 
-      // Get sender profiles separately
-      const messagesWithProfiles = await Promise.all(
-        (messagesData || []).map(async (message) => {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('full_name, email, avatar_url')
-            .eq('id', message.sender_id)
-            .maybeSingle();
-          
-          return {
-            ...message,
-            sender_profile: profile || null
-          };
-        })
-      );
-
-      return messagesWithProfiles as Message[];
+      return data as Message[];
     },
     enabled: !!campaignId && !!searchQuery.trim(),
   });
