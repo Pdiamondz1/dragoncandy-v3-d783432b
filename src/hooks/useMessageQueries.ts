@@ -34,11 +34,17 @@ export const useMessages = (campaignId?: string, conversationId?: string) => {
       // Get sender profiles separately
       const messagesWithProfiles = await Promise.all(
         (messagesData || []).map(async (message) => {
-          const { data: profile } = await supabase
+          const { data: profile, error: profileError } = await supabase
             .from('profiles')
             .select('full_name, email, avatar_url')
             .eq('id', message.sender_id)
             .maybeSingle();
+          
+          if (profileError) {
+            console.error('Error fetching profile for sender:', message.sender_id, profileError);
+          }
+          
+          console.log('Profile for sender', message.sender_id, ':', profile);
           
           return {
             ...message,

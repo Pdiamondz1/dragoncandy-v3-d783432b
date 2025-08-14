@@ -37,7 +37,7 @@ const ConversationMessageThread: React.FC<ConversationMessageThreadProps> = ({
         markAsRead.mutate(msg.id);
       });
     }
-  }, [messages, user, markAsRead]);
+  }, [messages.length, user?.id]); // Removed markAsRead from deps to prevent infinite loop
 
   const handleSendMessage = (content: string, options?: {
     attachmentUrl?: string;
