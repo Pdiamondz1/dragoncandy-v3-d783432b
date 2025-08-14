@@ -1,9 +1,12 @@
 
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/use-toast';
 import { 
   MapPin, 
   DollarSign, 
@@ -38,9 +41,39 @@ interface CreatorCardProps {
 }
 
 export const CreatorCard: React.FC<CreatorCardProps> = ({ creator }) => {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const { toast } = useToast();
+
   const formatRate = (rate?: number) => {
     if (!rate) return 'Rate not specified';
     return `$${rate}/hour`;
+  };
+
+  const handleViewProfile = () => {
+    // Navigate to public creator profile using creator's name as slug
+    // We'll use the creator's ID as fallback if no proper slug exists
+    const slug = creator.creator_name?.toLowerCase().replace(/\s+/g, '-') || creator.id;
+    navigate(`/creator/${slug}`);
+  };
+
+  const handleContact = () => {
+    if (!user) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to contact creators.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Navigate to messages page - could be enhanced to start a specific conversation
+    navigate('/messages');
+    
+    toast({
+      title: "Redirecting to Messages",
+      description: `You can now start a conversation with ${creator.creator_name}.`,
+    });
   };
 
   const getSocialPlatforms = (creator: CreatorProfile) => {
@@ -140,11 +173,11 @@ export const CreatorCard: React.FC<CreatorCardProps> = ({ creator }) => {
         </div>
 
         <div className="flex gap-2 pt-2">
-          <Button size="sm" className="flex-1">
+          <Button size="sm" className="flex-1" onClick={handleContact}>
             <MessageSquare className="h-4 w-4 mr-2" />
             Contact
           </Button>
-          <Button size="sm" variant="outline" className="flex-1">
+          <Button size="sm" variant="outline" className="flex-1" onClick={handleViewProfile}>
             <ExternalLink className="h-4 w-4 mr-2" />
             View Profile
           </Button>
