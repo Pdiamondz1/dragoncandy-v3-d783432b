@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,6 +14,7 @@ import { useCampaignApplications } from '@/hooks/useFetchApplications';
 const CampaignMessagesPage: React.FC = () => {
   const { campaignId } = useParams<{ campaignId: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const { campaign, isLoading, error } = useCampaign(campaignId!);
   const { data: applications = [] } = useCampaignApplications(campaignId!);
@@ -65,7 +66,14 @@ const CampaignMessagesPage: React.FC = () => {
                 <p className="text-gray-600 mb-4">
                   The campaign you're looking for doesn't exist or you don't have access to it.
                 </p>
-                <Button onClick={() => navigate('/messages')}>
+                <Button onClick={() => {
+                  const from = searchParams.get('from');
+                  if (from === 'business-projects' && userRole === 'business_client') {
+                    navigate('/dashboard/business/projects');
+                  } else {
+                    navigate('/messages');
+                  }
+                }}>
                   Back to Messages
                 </Button>
               </CardContent>
@@ -92,7 +100,14 @@ const CampaignMessagesPage: React.FC = () => {
                     : 'Unable to find the campaign owner for messaging.'
                   }
                 </p>
-                <Button onClick={() => navigate('/messages')}>
+                <Button onClick={() => {
+                  const from = searchParams.get('from');
+                  if (from === 'business-projects' && userRole === 'business_client') {
+                    navigate('/dashboard/business/projects');
+                  } else {
+                    navigate('/messages');
+                  }
+                }}>
                   Back to Messages
                 </Button>
               </CardContent>
@@ -112,7 +127,14 @@ const CampaignMessagesPage: React.FC = () => {
             <Button 
               variant="ghost" 
               size="sm"
-              onClick={() => navigate('/messages')}
+              onClick={() => {
+                const from = searchParams.get('from');
+                if (from === 'business-projects' && userRole === 'business_client') {
+                  navigate('/dashboard/business/projects');
+                } else {
+                  navigate('/messages');
+                }
+              }}
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Messages

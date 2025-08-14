@@ -34,6 +34,11 @@ interface ProjectCollaboration {
     avatar_url?: string;
     bio?: string;
   } | null;
+  user_profile: {
+    id: string;
+    full_name?: string;
+    email: string;
+  } | null;
 }
 
 const BusinessProjects: React.FC = () => {
@@ -83,12 +88,18 @@ const BusinessProjects: React.FC = () => {
         return [];
       }
 
-      // Get creator profiles for each collaboration
+      // Get creator profiles and user profiles for each collaboration
       const creatorIds = data.map(item => item.creator_id).filter(Boolean);
-      const { data: creatorProfiles } = await supabase
-        .from('creator_profiles')
-        .select('user_id, creator_name, avatar_url, bio')
-        .in('user_id', creatorIds);
+      const [{ data: creatorProfiles }, { data: userProfiles }] = await Promise.all([
+        supabase
+          .from('creator_profiles')
+          .select('user_id, creator_name, avatar_url, bio')
+          .in('user_id', creatorIds),
+        supabase
+          .from('profiles')
+          .select('id, full_name, email')
+          .in('id', creatorIds)
+      ]);
 
       // Transform the data to match our interface
       return data.map(item => ({
@@ -99,7 +110,8 @@ const BusinessProjects: React.FC = () => {
         created_at: item.created_at,
         updated_at: item.updated_at,
         campaign: Array.isArray(item.campaigns) ? item.campaigns[0] : item.campaigns,
-        creator_profile: creatorProfiles?.find(cp => cp.user_id === item.creator_id) || null
+        creator_profile: creatorProfiles?.find(cp => cp.user_id === item.creator_id) || null,
+        user_profile: userProfiles?.find(up => up.id === item.creator_id) || null
       })).filter(item => item.campaign) as ProjectCollaboration[];
     },
     enabled: !!user,
@@ -137,7 +149,7 @@ const BusinessProjects: React.FC = () => {
   };
 
   const handleMessageCreator = (campaignId: string) => {
-    navigate(`/messages/${campaignId}`);
+    navigate(`/messages/${campaignId}?from=business-projects`);
   };
 
   if (projectsLoading) {
@@ -201,7 +213,9 @@ const BusinessProjects: React.FC = () => {
                         <div className="flex items-center gap-4 text-sm text-gray-600">
                           <div className="flex items-center gap-2">
                             <User className="h-4 w-4" />
-                            {project.creator_profile?.creator_name || 'Creator'}
+                            {project.creator_profile?.creator_name || 
+                             project.user_profile?.full_name || 
+                             project.user_profile?.email || 'Creator'}
                           </div>
                           {project.campaign.deadline && (
                             <div className="flex items-center gap-2">
