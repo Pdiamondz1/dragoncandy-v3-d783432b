@@ -1514,6 +1514,10 @@ export type Database = {
           unread_count: number
         }[]
       }
+      is_conversation_participant: {
+        Args: { conversation_uuid: string; user_uuid: string }
+        Returns: boolean
+      }
     }
     Enums: {
       application_status: "pending" | "accepted" | "rejected"
