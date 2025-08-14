@@ -52,18 +52,74 @@ export const useSendMessage = () => {
       console.log('Message sent:', data);
       return data;
     },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['messages', data.campaign_id, data.conversation_id] });
-      queryClient.invalidateQueries({ queryKey: ['unread-counts'] });
-      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+    onMutate: async (variables) => {
+      // Create optimistic message
+      const optimisticMessage = {
+        id: crypto.randomUUID(),
+        campaign_id: variables.campaignId,
+        conversation_id: variables.conversationId,
+        sender_id: user!.id,
+        recipient_id: variables.recipientId,
+        content: variables.content.trim(),
+        attachment_url: variables.attachmentUrl,
+        attachment_name: variables.attachmentName,
+        attachment_size: variables.attachmentSize,
+        parent_message_id: variables.parentMessageId,
+        thread_id: variables.threadId,
+        category: variables.category || 'general',
+        forwarded_from_message_id: variables.forwardedFromMessageId,
+        created_at: new Date().toISOString(),
+        read_at: null,
+        is_starred: false,
+        profiles: {
+          id: user!.id,
+          email: user!.email || 'Unknown',
+          full_name: null,
+          avatar_url: null
+        }
+      };
+
+      // Get the query key
+      const queryKey = variables.campaignId 
+        ? ['messages', variables.campaignId, undefined]
+        : ['messages', undefined, variables.conversationId];
+
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey });
+
+      // Snapshot previous value
+      const previousMessages = queryClient.getQueryData(queryKey);
+
+      // Optimistically update cache
+      queryClient.setQueryData(queryKey, (old: any) => {
+        if (!old) return [optimisticMessage];
+        return [...old, optimisticMessage];
+      });
+
+      return { previousMessages, queryKey };
     },
-    onError: (error) => {
+    onError: (error, variables, context) => {
+      // Rollback optimistic update
+      if (context?.previousMessages) {
+        queryClient.setQueryData(context.queryKey, context.previousMessages);
+      }
+      
       console.error('Failed to send message:', error);
       toast({
         title: 'Failed to send message',
         description: 'Please try again later.',
         variant: 'destructive',
       });
+    },
+    onSuccess: (data, variables) => {
+      // Invalidate and refetch with proper query keys
+      const queryKey = variables.campaignId 
+        ? ['messages', variables.campaignId, undefined]
+        : ['messages', undefined, variables.conversationId];
+      
+      queryClient.invalidateQueries({ queryKey });
+      queryClient.invalidateQueries({ queryKey: ['unread-counts'] });
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
     },
   });
 };
