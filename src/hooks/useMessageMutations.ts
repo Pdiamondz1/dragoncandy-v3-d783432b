@@ -23,8 +23,6 @@ export const useSendMessage = () => {
       category = 'general',
       forwardedFromMessageId
     }: SendMessageParams) => {
-      console.log('Sending message:', { campaignId, conversationId, recipientId, content });
-      
       const { data, error } = await supabase
         .from('messages')
         .insert({
@@ -49,7 +47,6 @@ export const useSendMessage = () => {
         throw error;
       }
 
-      console.log('Message sent:', data);
       return data;
     },
     onMutate: async (variables) => {
@@ -129,8 +126,6 @@ export const useStarMessage = () => {
 
   return useMutation({
     mutationFn: async ({ messageId, isStarred }: { messageId: string; isStarred: boolean }) => {
-      console.log('Starring message:', messageId, isStarred);
-      
       const { data, error } = await supabase
         .from('messages')
         .update({ is_starred: isStarred })
@@ -157,8 +152,6 @@ export const useMarkMessageAsRead = () => {
 
   return useMutation({
     mutationFn: async (messageId: string) => {
-      console.log('Marking message as read:', messageId);
-      
       // First, check if the message exists and is unread
       const { data: existingMessage } = await supabase
         .from('messages')
@@ -169,7 +162,6 @@ export const useMarkMessageAsRead = () => {
         .maybeSingle();
       
       if (!existingMessage) {
-        console.log('Message already read or not found');
         return null;
       }
       
