@@ -124,7 +124,7 @@ const PublicCreatorProfile = () => {
             
             // Convert storage path to public URL
             const { data } = supabase.storage
-              .from('creator-portfolios')
+              .from('profile-assets')
               .getPublicUrl(path);
             
             return data.publicUrl;
