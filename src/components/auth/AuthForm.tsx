@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { toast } from "@/hooks/use-toast";
+import { cleanupAuthState } from "@/lib/authCleanup";
 
 type Role = "business_client" | "content_creator";
 
@@ -28,6 +29,15 @@ export const AuthForm = ({ mode, onError }: AuthFormProps) => {
     console.log(`🔐 AuthForm: Starting ${mode} process for:`, email);
 
     try {
+      // Clean up any existing auth state before attempting login/signup
+      cleanupAuthState();
+      
+      // Attempt to sign out any existing session first
+      try {
+        await supabase.auth.signOut({ scope: 'global' });
+      } catch (cleanupError) {
+        console.log('🧹 AuthForm: Cleanup signout completed (expected if no session)');
+      }
       if (mode === "signup") {
         if (!role) {
           onError("Please select a role.");
@@ -101,7 +111,12 @@ export const AuthForm = ({ mode, onError }: AuthFormProps) => {
           description: "You have been logged in successfully.",
         });
 
-        // The AuthContext will handle the redirect automatically via useEffect
+        // Force refresh for clean state
+        if (data.user) {
+          setTimeout(() => {
+            window.location.href = '/';
+          }, 500);
+        }
       }
     } catch (err: any) {
       console.error('❌ AuthForm: Unexpected error:', err);

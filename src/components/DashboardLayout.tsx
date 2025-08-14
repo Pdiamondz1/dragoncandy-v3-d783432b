@@ -132,7 +132,7 @@ const AppSidebar: React.FC<{ userRole: 'business_client' | 'content_creator' }> 
 };
 
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, userRole }) => {
-  const { user, signOut } = useAuth();
+  const { user, signOut, signingOut } = useAuth();
   const { avatarUrl, displayName } = useProfileData();
   const isMobile = useIsMobile();
 
@@ -185,9 +185,9 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, userRole })
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={signOut}>
+                    <DropdownMenuItem onClick={signOut} disabled={signingOut}>
                       <LogOut className="mr-2 h-4 w-4" />
-                      <span>Log out</span>
+                      <span>{signingOut ? 'Signing out...' : 'Log out'}</span>
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
