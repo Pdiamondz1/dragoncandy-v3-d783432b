@@ -34,9 +34,6 @@ export const useConversations = () => {
         console.error('Error fetching conversations:', error);
         throw error;
       }
-
-      console.log('Raw conversations data:', data);
-      console.log('Number of conversations found:', data?.length || 0);
       
       return data as Conversation[];
     },

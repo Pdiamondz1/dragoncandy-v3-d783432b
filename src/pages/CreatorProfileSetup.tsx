@@ -2,6 +2,7 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { useLogout } from '@/hooks/useLogout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CreatorProfileSetupHeader } from '@/components/creator-profile/CreatorProfileSetupHeader';
@@ -10,7 +11,8 @@ import { useCreatorProfileForm } from '@/hooks/useCreatorProfileForm';
 import { useCreatorProfileSubmit } from '@/hooks/useCreatorProfileSubmit';
 
 const CreatorProfileSetup = () => {
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
+  const logout = useLogout();
   const navigate = useNavigate();
   const { submitProfile, loading } = useCreatorProfileSubmit();
   
@@ -49,7 +51,7 @@ const CreatorProfileSetup = () => {
         <div className="text-center mb-8 relative">
           <Button
             variant="outline"
-            onClick={signOut}
+            onClick={logout}
             className="absolute top-0 right-0 text-gray-600 hover:text-gray-900"
           >
             Logout

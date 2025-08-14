@@ -39,6 +39,7 @@ import {
   Menu
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { useLogout } from '@/hooks/useLogout';
 import { useProfileData } from '@/hooks/useProfileData';
 import NotificationDropdown from '@/components/notifications/NotificationDropdown';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -132,7 +133,8 @@ const AppSidebar: React.FC<{ userRole: 'business_client' | 'content_creator' }> 
 };
 
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, userRole }) => {
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
+  const logout = useLogout();
   const { avatarUrl, displayName } = useProfileData();
   const isMobile = useIsMobile();
 
@@ -185,7 +187,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, userRole })
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={signOut}>
+                    <DropdownMenuItem onClick={logout}>
                       <LogOut className="mr-2 h-4 w-4" />
                       <span>Log out</span>
                     </DropdownMenuItem>

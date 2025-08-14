@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { useLogout } from '@/hooks/useLogout';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,7 +16,8 @@ import type { Database } from '@/integrations/supabase/types';
 type IndustryType = Database['public']['Enums']['industry_type'];
 
 const BusinessProfileSetup = () => {
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
+  const logout = useLogout();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [logoFile, setLogoFile] = useState<File | null>(null);
@@ -143,7 +145,7 @@ const BusinessProfileSetup = () => {
         <div className="text-center mb-8 relative">
           <Button
             variant="outline"
-            onClick={signOut}
+            onClick={logout}
             className="absolute top-0 right-0 text-gray-600 hover:text-gray-900"
           >
             Logout

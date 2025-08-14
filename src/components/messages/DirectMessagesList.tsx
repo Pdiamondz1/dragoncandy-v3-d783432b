@@ -20,10 +20,6 @@ const DirectMessagesList: React.FC<DirectMessagesListProps> = ({ onConversationS
   const { data: conversations = [], isLoading } = useConversations();
   const archiveConversation = useArchiveConversation();
 
-  console.log('DirectMessagesList - conversations:', conversations);
-  console.log('DirectMessagesList - isLoading:', isLoading);
-  console.log('DirectMessagesList - user:', user?.id);
-
   // No filtering - show both direct and campaign conversations
   const allConversations = conversations;
 

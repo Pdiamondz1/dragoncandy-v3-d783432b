@@ -1,7 +1,6 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
-import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { cleanupAuthState } from '@/lib/authCleanup';
 
@@ -40,7 +39,6 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -291,7 +289,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       console.log('🚪 AuthProvider: Signing out user');
       
-      // Clean up auth state first
+      // Clean up auth state first  
       cleanupAuthState();
       
       // Sign out from Supabase
@@ -303,8 +301,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setUser(null);
       setSession(null);
       
-      // Navigate to landing page using React Router (no page refresh)
-      navigate('/landing');
     } catch (error) {
       console.error('❌ AuthProvider: Sign out failed:', error);
       
@@ -314,9 +310,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setError(null);
       setUser(null);
       setSession(null);
-      
-      // Still navigate to landing page
-      navigate('/landing');
     }
   };
 
