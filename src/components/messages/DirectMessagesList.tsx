@@ -59,65 +59,73 @@ const DirectMessagesList: React.FC<DirectMessagesListProps> = ({ onConversationS
   }
 
   return (
-    <Card>
-      <CardHeader>
+    <Card className="h-full border-border/50 shadow-lg">
+      <CardHeader className="border-b border-border/50 bg-muted/30">
         <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
-            <MessageSquare className="h-5 w-5" />
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <MessageSquare className="h-5 w-5 text-primary" />
             Direct Messages
           </CardTitle>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" className="h-8 w-8 p-0">
             <Search className="h-4 w-4" />
           </Button>
         </div>
       </CardHeader>
       <CardContent className="p-0">
         {directConversations.length === 0 ? (
-          <div className="p-6 text-center text-gray-500">
-            <MessageSquare className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-            <p>No direct conversations yet</p>
-            <p className="text-sm">Start a conversation with a creator or business client</p>
+          <div className="p-8 text-center">
+            <div className="p-6 bg-muted/30 rounded-full w-fit mx-auto mb-4">
+              <MessageSquare className="h-8 w-8 text-muted-foreground" />
+            </div>
+            <h3 className="font-semibold text-foreground mb-2">No conversations yet</h3>
+            <p className="text-sm text-muted-foreground max-w-xs mx-auto">
+              Start a conversation with creators or business clients to see them here
+            </p>
           </div>
         ) : (
-          <div className="space-y-1">
-            {directConversations.map((conversation) => (
+          <div className="space-y-0">
+            {directConversations.map((conversation, index) => (
               <div
                 key={conversation.conversation_id}
-                className="flex items-center justify-between p-4 hover:bg-gray-50 cursor-pointer border-b last:border-b-0"
+                className={`flex items-center justify-between p-4 hover:bg-muted/50 cursor-pointer transition-colors duration-200 ${
+                  index !== directConversations.length - 1 ? 'border-b border-border/30' : ''
+                }`}
                 onClick={() => handleConversationClick(conversation.conversation_id)}
               >
-                <div className="flex items-center gap-3 flex-1">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
                   <UserPresenceIndicator
-                    userId={conversation.conversation_id} // This would need to be the actual other user ID
+                    userId={conversation.conversation_id}
                     userName={conversation.other_participant_name || 'Unknown User'}
+                    userEmail={conversation.other_participant_name || 'unknown@example.com'}
                     avatarUrl={conversation.other_participant_avatar || undefined}
                     size="md"
                   />
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <h4 className="font-medium text-sm truncate">
+                    <div className="flex items-center justify-between mb-1">
+                      <h4 className="font-medium text-sm truncate text-foreground">
                         {conversation.other_participant_name || 'Unknown User'}
                       </h4>
                       {conversation.last_message_at && (
-                        <span className="text-xs text-gray-500">
+                        <span className="text-xs text-muted-foreground whitespace-nowrap ml-2">
                           {formatDistanceToNow(new Date(conversation.last_message_at), { addSuffix: true })}
                         </span>
                       )}
                     </div>
-                    <p className="text-sm text-gray-600">
-                      {conversation.conversation_title || 'Direct conversation'}
+                    <p className="text-sm text-muted-foreground truncate">
+                      Direct conversation
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 ml-2">
                   {conversation.unread_count > 0 && (
-                    <Badge variant="default" className="text-xs">
+                    <Badge variant="default" className="text-xs min-w-[20px] h-5 flex items-center justify-center">
                       {conversation.unread_count}
                     </Badge>
                   )}
                   <Button
                     variant="ghost"
                     size="sm"
+                    className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive"
                     onClick={(e) => handleArchive(e, conversation.conversation_id)}
                   >
                     <Archive className="h-4 w-4" />
