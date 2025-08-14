@@ -46,9 +46,17 @@ const ConversationMessageThread: React.FC<ConversationMessageThreadProps> = ({
     parentMessageId?: string;
     threadId?: string;
   }) => {
+    // For direct conversations, we need to determine the recipient
+    // We'll get it from the messages or use a default approach
+    const actualRecipientId = messages.length > 0 
+      ? messages[0].sender_id === user?.id 
+        ? messages[0].recipient_id 
+        : messages[0].sender_id
+      : recipientId;
+      
     sendMessage.mutate({
       conversationId,
-      recipientId,
+      recipientId: actualRecipientId,
       content,
       ...options,
     });

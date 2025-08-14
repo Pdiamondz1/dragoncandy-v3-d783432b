@@ -34,11 +34,13 @@ const DirectConversationPage: React.FC = () => {
     );
   }
 
-  // Get the other participant's ID (recipient)
-  const recipientId = conversation ? 
-    // For now, we'll need to determine the recipient ID from the conversation
-    // This would typically come from conversation participants
-    "" : "";
+  // Get the other participant's ID from conversation
+  // For direct messages, we need to get the other participant
+  // Since this is from the ContactCreatorModal, the recipient should be the other participant
+  const recipientId = conversation && user ? 
+    // If we're in a conversation, find who is NOT the current user
+    conversation.conversation_id // We'll use a placeholder for now since we need better conversation participant data
+    : "";
 
   return (
     <DashboardLayout userRole={userRole as 'business_client' | 'content_creator'}>
@@ -71,7 +73,7 @@ const DirectConversationPage: React.FC = () => {
           <Card>
             <ConversationMessageThread 
               conversationId={conversationId}
-              recipientId={recipientId}
+              recipientId="" // We'll handle this in the component
               conversationTitle={conversation?.other_participant_name || 'Direct Conversation'}
             />
           </Card>

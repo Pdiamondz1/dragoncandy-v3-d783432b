@@ -48,9 +48,10 @@ export const useMessages = (campaignId?: string, conversationId?: string) => {
     if (!campaignId && !conversationId) return;
 
     console.log('Setting up real-time subscription for messages');
-
+    
+    const channelName = `messages-${campaignId || conversationId}-${Date.now()}`;
     const channel = supabase
-      .channel(`messages-${campaignId || conversationId}`)
+      .channel(channelName)
       .on(
         'postgres_changes',
         {

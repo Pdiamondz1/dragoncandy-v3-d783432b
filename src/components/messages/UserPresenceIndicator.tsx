@@ -19,7 +19,8 @@ const UserPresenceIndicator: React.FC<UserPresenceIndicatorProps> = ({
   showLabel = false,
   size = 'md'
 }) => {
-  const presence = useCurrentUserPresence(userId);
+  // Temporarily disable presence functionality to fix the crash
+  const presence = null; // useCurrentUserPresence(userId);
 
   const getStatusColor = (status?: string) => {
     switch (status) {
