@@ -10,12 +10,13 @@ export const useMessages = (campaignId?: string, conversationId?: string) => {
   const query = useQuery({
     queryKey: ['messages', campaignId, conversationId],
     queryFn: async () => {
-      // Single optimized query with JOIN to fetch messages and profiles together
+      console.log('Fetching messages for:', { campaignId, conversationId });
+      
       let query = supabase
         .from('messages')
         .select(`
           *,
-          sender_profile:profiles!messages_sender_id_fkey(
+          sender_profile:profiles!sender_id (
             full_name,
             email,
             avatar_url
@@ -30,35 +31,26 @@ export const useMessages = (campaignId?: string, conversationId?: string) => {
         query = query.eq('conversation_id', conversationId);
       }
 
-      const { data: messagesData, error } = await query;
+      const { data, error } = await query;
 
       if (error) {
         console.error('Error fetching messages:', error);
         throw error;
       }
 
-      return (messagesData || []) as Message[];
+      console.log('Fetched messages:', data);
+      return data as Message[];
     },
     enabled: !!(campaignId || conversationId),
-    staleTime: 1000 * 60, // 1 minute
-    gcTime: 1000 * 60 * 5, // 5 minutes
   });
 
-  // Set up real-time subscription with debounced invalidation
+  // Set up real-time subscription
   useEffect(() => {
     if (!campaignId && !conversationId) return;
 
-    let timeoutId: NodeJS.Timeout;
-    const debouncedInvalidate = () => {
-      clearTimeout(timeoutId);
-      timeoutId = setTimeout(() => {
-        queryClient.refetchQueries({ queryKey: ['messages', campaignId, conversationId] });
-        queryClient.invalidateQueries({ queryKey: ['unread-counts'] });
-        queryClient.invalidateQueries({ queryKey: ['conversations'] });
-      }, 100);
-    };
+    console.log('Setting up real-time subscription for messages');
     
-    const channelName = `messages-${campaignId || conversationId}`;
+    const channelName = `messages-${campaignId || conversationId}-${Date.now()}`;
     const channel = supabase
       .channel(channelName)
       .on(
@@ -71,7 +63,12 @@ export const useMessages = (campaignId?: string, conversationId?: string) => {
             ? `campaign_id=eq.${campaignId}` 
             : `conversation_id=eq.${conversationId}`
         },
-        debouncedInvalidate
+        (payload) => {
+          console.log('New message received:', payload);
+          queryClient.invalidateQueries({ queryKey: ['messages', campaignId, conversationId] });
+          queryClient.invalidateQueries({ queryKey: ['unread-counts'] });
+          queryClient.invalidateQueries({ queryKey: ['conversations'] });
+        }
       )
       .on(
         'postgres_changes',
@@ -83,12 +80,16 @@ export const useMessages = (campaignId?: string, conversationId?: string) => {
             ? `campaign_id=eq.${campaignId}` 
             : `conversation_id=eq.${conversationId}`
         },
-        debouncedInvalidate
+        (payload) => {
+          console.log('Message updated:', payload);
+          queryClient.invalidateQueries({ queryKey: ['messages', campaignId, conversationId] });
+          queryClient.invalidateQueries({ queryKey: ['unread-counts'] });
+        }
       )
       .subscribe();
 
     return () => {
-      clearTimeout(timeoutId);
+      console.log('Cleaning up real-time subscription');
       supabase.removeChannel(channel);
     };
   }, [campaignId, conversationId, queryClient]);
@@ -102,11 +103,11 @@ export const useSearchMessages = (campaignId: string, searchQuery: string) => {
     queryFn: async () => {
       if (!searchQuery.trim()) return [];
       
-      const { data: messagesData, error } = await supabase
+      const { data, error } = await supabase
         .from('messages')
         .select(`
           *,
-          sender_profile:profiles!messages_sender_id_fkey(
+          sender_profile:profiles!sender_id (
             full_name,
             email,
             avatar_url
@@ -121,9 +122,8 @@ export const useSearchMessages = (campaignId: string, searchQuery: string) => {
         throw error;
       }
 
-      return (messagesData || []) as Message[];
+      return data as Message[];
     },
     enabled: !!campaignId && !!searchQuery.trim(),
-    staleTime: 1000 * 30, // 30 seconds
   });
 };

@@ -27,6 +27,7 @@ export const useCampaignsList = () => {
   return useQuery({
     queryKey: ['campaigns', user?.id],
     queryFn: async () => {
+      console.log('Fetching campaigns for user:', user?.id);
       const { data, error } = await supabase
         .from('campaigns')
         .select('*')
@@ -37,6 +38,7 @@ export const useCampaignsList = () => {
         throw error;
       }
 
+      console.log('Fetched campaigns:', data);
       return data as Campaign[];
     },
     enabled: !!user,
@@ -47,6 +49,7 @@ export const useCampaignById = (id: string) => {
   return useQuery({
     queryKey: ['campaign', id],
     queryFn: async () => {
+      console.log('Fetching campaign:', id);
       const { data, error } = await supabase
         .from('campaigns')
         .select('*')
@@ -58,6 +61,7 @@ export const useCampaignById = (id: string) => {
         throw error;
       }
 
+      console.log('Fetched campaign:', data);
       return data as Campaign;
     },
     enabled: !!id,

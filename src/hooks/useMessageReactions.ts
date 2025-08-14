@@ -16,6 +16,7 @@ export const useMessageReactions = (messageId: string) => {
   return useQuery({
     queryKey: ['message-reactions', messageId],
     queryFn: async () => {
+      console.log('Fetching reactions for message:', messageId);
       const { data, error } = await supabase
         .from('message_reactions')
         .select('*')
@@ -41,6 +42,7 @@ export const useAddReaction = () => {
     mutationFn: async ({ messageId, emoji }: { messageId: string; emoji: string }) => {
       if (!user) throw new Error('User not authenticated');
       
+      console.log('Adding reaction:', emoji, 'to message:', messageId);
       const { data, error } = await supabase
         .from('message_reactions')
         .insert({
@@ -80,6 +82,7 @@ export const useRemoveReaction = () => {
     mutationFn: async ({ messageId, emoji }: { messageId: string; emoji: string }) => {
       if (!user) throw new Error('User not authenticated');
       
+      console.log('Removing reaction:', emoji, 'from message:', messageId);
       const { error } = await supabase
         .from('message_reactions')
         .delete()

@@ -37,18 +37,7 @@ const MessageBubbleEnhanced: React.FC<MessageBubbleEnhancedProps> = ({
   const [showActions, setShowActions] = useState(false);
 
   const isOwnMessage = message.sender_id === user?.id;
-  
-  // Improved fallback logic: full_name -> email -> "Unknown User"
-  const senderName = (() => {
-    if (message.sender_profile?.full_name?.trim()) {
-      return message.sender_profile.full_name;
-    }
-    if (message.sender_profile?.email?.trim()) {
-      return message.sender_profile.email;
-    }
-    return 'Unknown User';
-  })();
-  
+  const senderName = message.sender_profile?.email || 'Unknown User';
   const senderAvatar = message.sender_profile?.avatar_url;
 
   const handleStarToggle = () => {

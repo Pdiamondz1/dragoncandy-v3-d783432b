@@ -23,6 +23,8 @@ export const useSendMessage = () => {
       category = 'general',
       forwardedFromMessageId
     }: SendMessageParams) => {
+      console.log('Sending message:', { campaignId, conversationId, recipientId, content });
+      
       const { data, error } = await supabase
         .from('messages')
         .insert({
@@ -47,6 +49,7 @@ export const useSendMessage = () => {
         throw error;
       }
 
+      console.log('Message sent:', data);
       return data;
     },
     onMutate: async (variables) => {
@@ -126,6 +129,8 @@ export const useStarMessage = () => {
 
   return useMutation({
     mutationFn: async ({ messageId, isStarred }: { messageId: string; isStarred: boolean }) => {
+      console.log('Starring message:', messageId, isStarred);
+      
       const { data, error } = await supabase
         .from('messages')
         .update({ is_starred: isStarred })
@@ -152,28 +157,18 @@ export const useMarkMessageAsRead = () => {
 
   return useMutation({
     mutationFn: async (messageId: string) => {
-      // First, check if the message exists and is unread
-      const { data: existingMessage } = await supabase
-        .from('messages')
-        .select('id, read_at')
-        .eq('id', messageId)
-        .eq('recipient_id', user!.id)
-        .is('read_at', null)
-        .maybeSingle();
-      
-      if (!existingMessage) {
-        return null;
-      }
+      console.log('Marking message as read:', messageId);
       
       const { data, error } = await supabase
         .from('messages')
         .update({ read_at: new Date().toISOString() })
         .eq('id', messageId)
         .eq('recipient_id', user!.id)
+        .eq('read_at', null)
         .select()
-        .maybeSingle();
+        .single();
 
-      if (error) {
+      if (error && error.code !== 'PGRST116') { // PGRST116 = no rows updated (already read)
         console.error('Error marking message as read:', error);
         throw error;
       }
