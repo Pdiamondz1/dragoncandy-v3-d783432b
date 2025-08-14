@@ -23,8 +23,6 @@ export const useSendMessage = () => {
       category = 'general',
       forwardedFromMessageId
     }: SendMessageParams) => {
-      console.log('Sending message:', { campaignId, conversationId, recipientId, content });
-      
       const { data, error } = await supabase
         .from('messages')
         .insert({
@@ -49,7 +47,6 @@ export const useSendMessage = () => {
         throw error;
       }
 
-      console.log('Message sent:', data);
       return data;
     },
     onMutate: async (variables) => {
@@ -104,7 +101,6 @@ export const useSendMessage = () => {
         queryClient.setQueryData(context.queryKey, context.previousMessages);
       }
       
-      console.error('Failed to send message:', error);
       toast({
         title: 'Failed to send message',
         description: 'Please try again later.',
@@ -112,14 +108,11 @@ export const useSendMessage = () => {
       });
     },
     onSuccess: (data, variables) => {
-      // Invalidate and refetch with proper query keys
       const queryKey = variables.campaignId 
         ? ['messages', variables.campaignId, undefined]
         : ['messages', undefined, variables.conversationId];
       
       queryClient.invalidateQueries({ queryKey });
-      queryClient.invalidateQueries({ queryKey: ['unread-counts'] });
-      queryClient.invalidateQueries({ queryKey: ['conversations'] });
     },
   });
 };
@@ -129,8 +122,6 @@ export const useStarMessage = () => {
 
   return useMutation({
     mutationFn: async ({ messageId, isStarred }: { messageId: string; isStarred: boolean }) => {
-      console.log('Starring message:', messageId, isStarred);
-      
       const { data, error } = await supabase
         .from('messages')
         .update({ is_starred: isStarred })
@@ -157,8 +148,6 @@ export const useMarkMessageAsRead = () => {
 
   return useMutation({
     mutationFn: async (messageId: string) => {
-      console.log('Marking message as read:', messageId);
-      
       const { data, error } = await supabase
         .from('messages')
         .update({ read_at: new Date().toISOString() })
@@ -178,7 +167,6 @@ export const useMarkMessageAsRead = () => {
     onSuccess: (data) => {
       if (data) {
         queryClient.invalidateQueries({ queryKey: ['messages', data.campaign_id, data.conversation_id] });
-        queryClient.invalidateQueries({ queryKey: ['unread-counts'] });
       }
     },
   });

@@ -27,18 +27,8 @@ const MessageThread: React.FC<MessageThreadProps> = ({
   const [showSearch, setShowSearch] = useState(false);
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
 
-  // Mark unread messages as read when component mounts or messages change
-  useEffect(() => {
-    if (messages.length > 0 && user) {
-      const unreadMessages = messages.filter(
-        msg => msg.recipient_id === user.id && !msg.read_at
-      );
-      
-      unreadMessages.forEach(msg => {
-        markAsRead.mutate(msg.id);
-      });
-    }
-  }, [messages, user, markAsRead]);
+  // Mark as read functionality removed to prevent infinite loops
+  // Messages can be marked as read manually if needed
 
   const handleSendMessage = (content: string, options?: {
     attachmentUrl?: string;

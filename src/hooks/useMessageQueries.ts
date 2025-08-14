@@ -10,8 +10,6 @@ export const useMessages = (campaignId?: string, conversationId?: string) => {
   const query = useQuery({
     queryKey: ['messages', campaignId, conversationId],
     queryFn: async () => {
-      console.log('Fetching messages for:', { campaignId, conversationId });
-      
       let query = supabase
         .from('messages')
         .select(`
@@ -38,19 +36,16 @@ export const useMessages = (campaignId?: string, conversationId?: string) => {
         throw error;
       }
 
-      console.log('Fetched messages:', data);
       return data as Message[];
     },
     enabled: !!(campaignId || conversationId),
   });
 
-  // Set up real-time subscription
+  // Set up real-time subscription with stable channel name
   useEffect(() => {
     if (!campaignId && !conversationId) return;
 
-    console.log('Setting up real-time subscription for messages');
-    
-    const channelName = `messages-${campaignId || conversationId}-${Date.now()}`;
+    const channelName = `messages-${campaignId || conversationId}`;
     const channel = supabase
       .channel(channelName)
       .on(
@@ -63,11 +58,8 @@ export const useMessages = (campaignId?: string, conversationId?: string) => {
             ? `campaign_id=eq.${campaignId}` 
             : `conversation_id=eq.${conversationId}`
         },
-        (payload) => {
-          console.log('New message received:', payload);
+        () => {
           queryClient.invalidateQueries({ queryKey: ['messages', campaignId, conversationId] });
-          queryClient.invalidateQueries({ queryKey: ['unread-counts'] });
-          queryClient.invalidateQueries({ queryKey: ['conversations'] });
         }
       )
       .on(
@@ -80,16 +72,13 @@ export const useMessages = (campaignId?: string, conversationId?: string) => {
             ? `campaign_id=eq.${campaignId}` 
             : `conversation_id=eq.${conversationId}`
         },
-        (payload) => {
-          console.log('Message updated:', payload);
+        () => {
           queryClient.invalidateQueries({ queryKey: ['messages', campaignId, conversationId] });
-          queryClient.invalidateQueries({ queryKey: ['unread-counts'] });
         }
       )
       .subscribe();
 
     return () => {
-      console.log('Cleaning up real-time subscription');
       supabase.removeChannel(channel);
     };
   }, [campaignId, conversationId, queryClient]);
