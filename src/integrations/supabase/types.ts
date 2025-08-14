@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.3 (519615d)"
@@ -1459,10 +1459,10 @@ export type Database = {
       debug_user_upload_permissions: {
         Args: Record<PropertyKey, never>
         Returns: {
-          user_id: string
           is_authenticated: boolean
           profile_exists: boolean
           profile_role: string
+          user_id: string
         }[]
       }
       generate_profile_slug: {
@@ -1475,24 +1475,24 @@ export type Database = {
           required_skills?: Database["public"]["Enums"]["creator_skill"][]
         }
         Returns: {
-          id: string
-          user_id: string
-          creator_name: string
-          avatar_url: string
-          bio: string
-          skills: Database["public"]["Enums"]["creator_skill"][]
-          portfolio_urls: string[]
-          location: string
           availability: string
+          avatar_url: string
           base_rate_per_hour: number
-          instagram_url: string
-          tiktok_url: string
-          youtube_url: string
+          bio: string
+          creator_name: string
           facebook_url: string
+          id: string
+          instagram_url: string
           linkedin_url: string
-          x_url: string
+          location: string
           other_social_url: string
+          portfolio_urls: string[]
+          skills: Database["public"]["Enums"]["creator_skill"][]
+          tiktok_url: string
+          user_id: string
           website_url: string
+          x_url: string
+          youtube_url: string
         }[]
       }
       get_unread_message_counts: {
@@ -1506,12 +1506,12 @@ export type Database = {
         Args: { user_uuid: string }
         Returns: {
           conversation_id: string
-          conversation_type: string
           conversation_title: string
+          conversation_type: string
           last_message_at: string
-          unread_count: number
-          other_participant_name: string
           other_participant_avatar: string
+          other_participant_name: string
+          unread_count: number
         }[]
       }
     }
