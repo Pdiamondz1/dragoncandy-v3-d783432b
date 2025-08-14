@@ -3,10 +3,9 @@ import React from 'react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Calendar, DollarSign, Eye, Users, FileText, MessageSquare, Edit, Bell } from 'lucide-react';
+import { Calendar, DollarSign, Eye, Users, FileText, MessageSquare, Edit } from 'lucide-react';
 import { Campaign } from '@/hooks/useCampaigns';
 import { format } from 'date-fns';
-import { useCampaignApplicationsCount } from '@/hooks/useCampaignApplicationsCount';
 
 interface CampaignCardProps {
   campaign: Campaign;
@@ -19,7 +18,6 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
   onViewDetails, 
   onEdit 
 }) => {
-  const { data: applicationCounts, isLoading: countsLoading } = useCampaignApplicationsCount(campaign.id);
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'draft': return 'bg-gray-100 text-gray-800 border-gray-200';
@@ -77,14 +75,6 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
               </span>
             </div>
           </div>
-          
-          {/* Application Notification Badge */}
-          {!countsLoading && applicationCounts && applicationCounts.pending > 0 && (
-            <div className="flex items-center gap-1 bg-red-100 text-red-700 px-2 py-1 rounded-full text-xs font-medium">
-              <Bell className="h-3 w-3" />
-              {applicationCounts.pending} new
-            </div>
-          )}
         </div>
       </CardHeader>
 
@@ -106,16 +96,6 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
               {getContentItemsCount()} item{getContentItemsCount() !== 1 ? 's' : ''}
             </span>
           </div>
-
-          {/* Applications Count */}
-          {!countsLoading && applicationCounts && applicationCounts.total > 0 && (
-            <div className="flex items-center gap-2 text-sm">
-              <Users className="h-4 w-4 text-purple-600" />
-              <span className="text-gray-600">
-                {applicationCounts.total} application{applicationCounts.total !== 1 ? 's' : ''}
-              </span>
-            </div>
-          )}
 
           {campaign.deadline && (
             <div className="flex items-center gap-2 text-sm col-span-2">
@@ -166,32 +146,18 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
       </CardContent>
 
       <CardFooter className="flex gap-2 pt-4 border-t border-gray-100">
-        {/* Quick Review Button for Pending Applications */}
-        {!countsLoading && applicationCounts && applicationCounts.pending > 0 ? (
-          <Button 
-            variant="default" 
-            size="sm" 
-            className="flex-1 text-xs bg-red-600 hover:bg-red-700"
-            onClick={() => onViewDetails?.(campaign)}
-          >
-            <Bell className="h-3 w-3 mr-1" />
-            Review {applicationCounts.pending} Application{applicationCounts.pending !== 1 ? 's' : ''}
-          </Button>
-        ) : (
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="flex-1 text-xs"
-            onClick={() => onViewDetails?.(campaign)}
-          >
-            <Eye className="h-3 w-3 mr-1" />
-            View Details
-          </Button>
-        )}
-        
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className="flex-1 text-xs"
+          onClick={() => onViewDetails?.(campaign)}
+        >
+          <Eye className="h-3 w-3 mr-1" />
+          View Details
+        </Button>
         {onEdit && (
           <Button 
-            variant="outline" 
+            variant="default" 
             size="sm" 
             className="flex-1 text-xs"
             onClick={() => onEdit(campaign)}
