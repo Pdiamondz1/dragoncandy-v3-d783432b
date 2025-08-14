@@ -14,7 +14,7 @@ export const useMessages = (campaignId?: string, conversationId?: string) => {
         .from('messages')
         .select(`
           *,
-          sender_profile:profiles!sender_id (
+          sender_profile:profiles!messages_sender_id_fkey (
             full_name,
             email,
             avatar_url
@@ -96,7 +96,7 @@ export const useSearchMessages = (campaignId: string, searchQuery: string) => {
         .from('messages')
         .select(`
           *,
-          sender_profile:profiles!sender_id (
+          sender_profile:profiles!messages_sender_id_fkey (
             full_name,
             email,
             avatar_url
