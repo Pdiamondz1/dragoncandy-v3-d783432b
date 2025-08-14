@@ -100,6 +100,11 @@ const ApplicationsListFixed: React.FC<ApplicationsListFixedProps> = ({ campaignI
           <TabsTrigger value="applications" className="flex items-center gap-2">
             <Users className="h-4 w-4" />
             Applications ({applications.length})
+            {pendingCount > 0 && (
+              <span className="ml-1 bg-red-100 text-red-700 px-1.5 py-0.5 rounded-full text-xs font-medium">
+                {pendingCount} new
+              </span>
+            )}
           </TabsTrigger>
           <TabsTrigger value="analytics" className="flex items-center gap-2">
             <BarChart3 className="h-4 w-4" />
