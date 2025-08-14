@@ -10,7 +10,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
 interface MessageInputEnhancedProps {
-  campaignId: string;
+  campaignId?: string;
+  conversationId?: string;
   onSendMessage: (content: string, options?: {
     attachmentUrl?: string;
     attachmentName?: string;
@@ -26,6 +27,7 @@ interface MessageInputEnhancedProps {
 
 const MessageInputEnhanced: React.FC<MessageInputEnhancedProps> = ({ 
   campaignId,
+  conversationId,
   onSendMessage, 
   disabled = false,
   placeholder = "Type your message...",

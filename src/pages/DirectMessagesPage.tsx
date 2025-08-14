@@ -6,11 +6,15 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { MessageSquare, Plus, Users } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import DirectMessagesList from '@/components/messages/DirectMessagesList';
-import MessageThread from '@/components/messages/MessageThread';
+import { useNavigate } from 'react-router-dom';
 
 const DirectMessagesPage: React.FC = () => {
   const { user } = useAuth();
-  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
+  const navigate = useNavigate();
+
+  const handleConversationSelect = (conversationId: string) => {
+    navigate(`/messages/direct/${conversationId}`);
+  };
 
   const userRole = user?.user_metadata?.role || 'business_client';
 
@@ -37,33 +41,23 @@ const DirectMessagesPage: React.FC = () => {
             {/* Conversations List */}
             <div className="lg:col-span-1">
               <DirectMessagesList 
-                onConversationSelect={setSelectedConversationId}
+                onConversationSelect={handleConversationSelect}
               />
             </div>
 
-            {/* Message Thread */}
+            {/* Message Thread Placeholder */}
             <div className="lg:col-span-2">
-              {selectedConversationId ? (
-                <Card className="h-[600px]">
-                  <MessageThread 
-                    campaignId="" // This would be conversation-based messaging
-                    recipientId="" // This would be determined by the conversation
-                    campaignTitle="Direct Conversation"
-                  />
-                </Card>
-              ) : (
-                <Card className="h-[600px]">
-                  <CardContent className="flex flex-col items-center justify-center h-full">
-                    <Users className="h-16 w-16 text-gray-400 mb-4" />
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                      Select a conversation
-                    </h3>
-                    <p className="text-gray-600 text-center">
-                      Choose a conversation from the list to start messaging
-                    </p>
-                  </CardContent>
-                </Card>
-              )}
+              <Card className="h-[600px]">
+                <CardContent className="flex flex-col items-center justify-center h-full">
+                  <Users className="h-16 w-16 text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">
+                    Select a conversation
+                  </h3>
+                  <p className="text-muted-foreground text-center">
+                    Choose a conversation from the list to start messaging
+                  </p>
+                </CardContent>
+              </Card>
             </div>
           </div>
         </div>

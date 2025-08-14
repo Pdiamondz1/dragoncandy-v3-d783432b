@@ -85,8 +85,8 @@ const ContactCreatorModal: React.FC<ContactCreatorModalProps> = ({
       setMessage('');
       setOpen(false);
       
-      // Navigate to messages page
-      navigate('/messages');
+      // Navigate to the specific conversation to see the message
+      navigate(`/messages/direct/${conversationId}`);
       
     } catch (error) {
       console.error('Error sending message:', error);

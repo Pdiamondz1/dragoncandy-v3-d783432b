@@ -25,6 +25,8 @@ import CampaignWizard from "./pages/CampaignWizard";
 import CampaignDetailsPage from "./pages/CampaignDetailsPage";
 import CampaignEditPage from "./pages/CampaignEditPage";
 import MessagesPage from "./pages/MessagesPage";
+import DirectMessagesPage from "./pages/DirectMessagesPage";
+import DirectConversationPage from "./pages/DirectConversationPage";
 import CampaignMessagesPage from "./pages/CampaignMessagesPage";
 import ProjectDetailsPage from "./pages/ProjectDetailsPage";
 import CreatorCampaignMarketplace from "./pages/CreatorCampaignMarketplace";
@@ -178,7 +180,12 @@ const App = () => {
                   {/* General Message Routes */}
                   <Route path="/messages" element={
                     <ProtectedRoute>
-                      <MessagesPage />
+                      <DirectMessagesPage />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/messages/direct/:conversationId" element={
+                    <ProtectedRoute>
+                      <DirectConversationPage />
                     </ProtectedRoute>
                   } />
                   <Route path="/messages/:campaignId" element={
