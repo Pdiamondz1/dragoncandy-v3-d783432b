@@ -11,10 +11,6 @@ const DirectMessagesPage: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  const handleConversationSelect = (conversationId: string) => {
-    const role = userRole === 'content_creator' ? 'creator' : 'business';
-    navigate(`/dashboard/${role}/messages/direct/${conversationId}`);
-  };
 
   const userRole = user?.user_metadata?.role || 'business_client';
 
@@ -29,19 +25,17 @@ const DirectMessagesPage: React.FC = () => {
                 <MessageCircle className="h-8 w-8 text-primary" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-foreground">Direct Messages</h1>
-                <p className="text-muted-foreground text-lg">Communicate directly with creators and clients</p>
+                <h1 className="text-3xl font-bold text-foreground">Messages</h1>
+                <p className="text-muted-foreground text-lg">Communicate with creators and clients through direct messages and campaign discussions</p>
               </div>
             </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-240px)]">
             {/* Conversations List */}
-            <div className="lg:col-span-1">
-              <DirectMessagesList 
-                onConversationSelect={handleConversationSelect}
-              />
-            </div>
+          <div className="lg:col-span-1">
+            <DirectMessagesList />
+          </div>
 
             {/* Message Thread Placeholder */}
             <div className="lg:col-span-2">
@@ -56,7 +50,7 @@ const DirectMessagesPage: React.FC = () => {
                         Select a conversation
                       </h3>
                       <p className="text-muted-foreground max-w-md">
-                        Choose a conversation from the list to start messaging, or browse creators to start new conversations
+                        Choose a conversation from the list to start messaging. Both direct messages and campaign conversations are shown here.
                       </p>
                     </div>
                   </div>

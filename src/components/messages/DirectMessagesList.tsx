@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { MessageSquare, Archive, Search } from 'lucide-react';
-import { useConversations, useArchiveConversation } from '@/hooks/useConversations';
+import { useConversations, useArchiveConversation, Conversation } from '@/hooks/useConversations';
 import UserPresenceIndicator from './UserPresenceIndicator';
 import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
@@ -20,22 +20,32 @@ const DirectMessagesList: React.FC<DirectMessagesListProps> = ({ onConversationS
   const { data: conversations = [], isLoading } = useConversations();
   const archiveConversation = useArchiveConversation();
 
-  const directConversations = conversations.filter(conv => conv.conversation_type === 'direct');
+  // No filtering - show both direct and campaign conversations
+  const allConversations = conversations;
 
-  const handleConversationClick = (conversationId: string) => {
-    if (onConversationSelect) {
-      onConversationSelect(conversationId);
-    } else {
-      // Navigate to role-specific direct conversation page
+  const handleConversationClick = (conversation: Conversation) => {
+    if (conversation.conversation_type === 'campaign' && conversation.campaign_id) {
+      // Navigate to campaign messages
       const userRole = user?.user_metadata?.role || 'business_client';
       const role = userRole === 'content_creator' ? 'creator' : 'business';
-      navigate(`/dashboard/${role}/messages/direct/${conversationId}`);
+      navigate(`/dashboard/${role}/messages/campaign/${conversation.campaign_id}`);
+    } else if (conversation.conversation_id) {
+      // Navigate to direct conversation
+      if (onConversationSelect) {
+        onConversationSelect(conversation.conversation_id);
+      } else {
+        const userRole = user?.user_metadata?.role || 'business_client';
+        const role = userRole === 'content_creator' ? 'creator' : 'business';
+        navigate(`/dashboard/${role}/messages/direct/${conversation.conversation_id}`);
+      }
     }
   };
 
   const handleArchive = (e: React.MouseEvent, conversationId: string) => {
     e.stopPropagation();
-    archiveConversation.mutate(conversationId);
+    if (conversationId) {
+      archiveConversation.mutate(conversationId);
+    }
   };
 
   if (isLoading) {
@@ -72,7 +82,7 @@ const DirectMessagesList: React.FC<DirectMessagesListProps> = ({ onConversationS
         </div>
       </CardHeader>
       <CardContent className="p-0">
-        {directConversations.length === 0 ? (
+        {allConversations.length === 0 ? (
           <div className="p-8 text-center">
             <div className="p-6 bg-muted/30 rounded-full w-fit mx-auto mb-4">
               <MessageSquare className="h-8 w-8 text-muted-foreground" />
@@ -84,17 +94,17 @@ const DirectMessagesList: React.FC<DirectMessagesListProps> = ({ onConversationS
           </div>
         ) : (
           <div className="space-y-0">
-            {directConversations.map((conversation, index) => (
+            {allConversations.map((conversation, index) => (
               <div
-                key={conversation.conversation_id}
+                key={conversation.conversation_id || conversation.campaign_id}
                 className={`flex items-center justify-between p-4 hover:bg-muted/50 cursor-pointer transition-colors duration-200 ${
-                  index !== directConversations.length - 1 ? 'border-b border-border/30' : ''
+                  index !== allConversations.length - 1 ? 'border-b border-border/30' : ''
                 }`}
-                onClick={() => handleConversationClick(conversation.conversation_id)}
+                onClick={() => handleConversationClick(conversation)}
               >
                 <div className="flex items-center gap-3 flex-1 min-w-0">
                   <UserPresenceIndicator
-                    userId={conversation.conversation_id}
+                    userId={conversation.conversation_id || conversation.campaign_id || 'unknown'}
                     userName={conversation.other_participant_name || 'Unknown User'}
                     userEmail={conversation.other_participant_name || 'unknown@example.com'}
                     avatarUrl={conversation.other_participant_avatar || undefined}
@@ -111,9 +121,18 @@ const DirectMessagesList: React.FC<DirectMessagesListProps> = ({ onConversationS
                         </span>
                       )}
                     </div>
-                    <p className="text-sm text-muted-foreground truncate">
-                      Direct conversation
-                    </p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm text-muted-foreground truncate">
+                        {conversation.conversation_type === 'campaign' 
+                          ? conversation.conversation_title 
+                          : 'Direct conversation'}
+                      </p>
+                      {conversation.conversation_type === 'campaign' && conversation.campaign_status && (
+                        <Badge variant="outline" className="text-xs">
+                          {conversation.campaign_status}
+                        </Badge>
+                      )}
+                    </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 ml-2">
@@ -122,14 +141,16 @@ const DirectMessagesList: React.FC<DirectMessagesListProps> = ({ onConversationS
                       {conversation.unread_count}
                     </Badge>
                   )}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive"
-                    onClick={(e) => handleArchive(e, conversation.conversation_id)}
-                  >
-                    <Archive className="h-4 w-4" />
-                  </Button>
+                  {conversation.conversation_type === 'direct' && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive"
+                      onClick={(e) => handleArchive(e, conversation.conversation_id)}
+                    >
+                      <Archive className="h-4 w-4" />
+                    </Button>
+                  )}
                 </div>
               </div>
             ))}

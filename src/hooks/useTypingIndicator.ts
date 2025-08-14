@@ -13,35 +13,16 @@ export const useTypingIndicator = (campaignId: string) => {
   const { user } = useAuth();
   const [typingUsers, setTypingUsers] = useState<TypingUser[]>([]);
   const [isTyping, setIsTyping] = useState(false);
+  const [channel, setChannel] = useState<any>(null);
 
-  // Send typing indicator
-  const sendTypingIndicator = useCallback(async (typing: boolean) => {
-    if (!user || !campaignId) return;
-
-    const channel = supabase.channel(`typing-${campaignId}`);
-    
-    if (typing) {
-      await channel.track({
-        user_id: user.id,
-        user_name: user.user_metadata?.full_name || 'Unknown User',
-        typing: true,
-        timestamp: Date.now()
-      });
-    } else {
-      await channel.untrack();
-    }
-
-    setIsTyping(typing);
-  }, [user, campaignId]);
-
-  // Listen for typing indicators
+  // Listen for typing indicators and manage channel subscription
   useEffect(() => {
     if (!campaignId || !user) return;
 
-    const channel = supabase
+    const channelInstance = supabase
       .channel(`typing-${campaignId}`)
       .on('presence', { event: 'sync' }, () => {
-        const presenceState = channel.presenceState();
+        const presenceState = channelInstance.presenceState();
         const currentTypingUsers: TypingUser[] = [];
 
         Object.values(presenceState).forEach((presences: any) => {
@@ -59,12 +40,40 @@ export const useTypingIndicator = (campaignId: string) => {
 
         setTypingUsers(currentTypingUsers);
       })
-      .subscribe();
+      .subscribe((status: string) => {
+        if (status === 'SUBSCRIBED') {
+          setChannel(channelInstance);
+        }
+      });
 
     return () => {
-      supabase.removeChannel(channel);
+      if (channelInstance) {
+        supabase.removeChannel(channelInstance);
+      }
+      setChannel(null);
     };
   }, [campaignId, user]);
+
+  // Send typing indicator
+  const sendTypingIndicator = useCallback(async (typing: boolean) => {
+    if (!user || !campaignId || !channel) return;
+    
+    try {
+      if (typing) {
+        await channel.track({
+          user_id: user.id,
+          user_name: user.user_metadata?.full_name || 'Unknown User',
+          typing: true,
+          timestamp: Date.now()
+        });
+      } else {
+        await channel.untrack();
+      }
+      setIsTyping(typing);
+    } catch (error) {
+      console.error('Error sending typing indicator:', error);
+    }
+  }, [user, campaignId, channel]);
 
   // Clean up old typing indicators (remove after 3 seconds of inactivity)
   useEffect(() => {

@@ -12,6 +12,8 @@ export interface Conversation {
   unread_count: number;
   other_participant_name: string | null;
   other_participant_avatar: string | null;
+  campaign_id: string | null;
+  campaign_status: string | null;
 }
 
 export const useConversations = () => {

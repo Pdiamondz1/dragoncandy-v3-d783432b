@@ -1609,6 +1609,8 @@ export type Database = {
       get_user_conversations: {
         Args: { user_uuid: string }
         Returns: {
+          campaign_id: string
+          campaign_status: string
           conversation_id: string
           conversation_title: string
           conversation_type: string
