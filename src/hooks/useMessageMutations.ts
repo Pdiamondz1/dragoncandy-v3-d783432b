@@ -142,32 +142,4 @@ export const useStarMessage = () => {
   });
 };
 
-export const useMarkMessageAsRead = () => {
-  const { user } = useAuth();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (messageId: string) => {
-      const { data, error } = await supabase
-        .from('messages')
-        .update({ read_at: new Date().toISOString() })
-        .eq('id', messageId)
-        .eq('recipient_id', user!.id)
-        .eq('read_at', null)
-        .select()
-        .single();
-
-      if (error && error.code !== 'PGRST116') { // PGRST116 = no rows updated (already read)
-        console.error('Error marking message as read:', error);
-        throw error;
-      }
-
-      return data;
-    },
-    onSuccess: (data) => {
-      if (data) {
-        queryClient.invalidateQueries({ queryKey: ['messages', data.campaign_id, data.conversation_id] });
-      }
-    },
-  });
-};
+// Mark as read functionality completely removed to prevent console flooding and infinite loops

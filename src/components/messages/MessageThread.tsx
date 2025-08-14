@@ -6,7 +6,7 @@ import { Search } from 'lucide-react';
 import MessageList from './MessageList';
 import MessageInputEnhanced from './MessageInputEnhanced';
 import MessageSearch from './MessageSearch';
-import { useMessages, useSendMessage, useMarkMessageAsRead, type Message } from '@/hooks/useMessages';
+import { useMessages, useSendMessage, type Message } from '@/hooks/useMessages';
 import { useAuth } from '@/hooks/useAuth';
 
 interface MessageThreadProps {
@@ -23,7 +23,6 @@ const MessageThread: React.FC<MessageThreadProps> = ({
   const { user } = useAuth();
   const { data: messages = [], isLoading } = useMessages(campaignId);
   const sendMessage = useSendMessage();
-  const markAsRead = useMarkMessageAsRead();
   const [showSearch, setShowSearch] = useState(false);
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
 
