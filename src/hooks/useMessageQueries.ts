@@ -10,11 +10,17 @@ export const useMessages = (campaignId?: string, conversationId?: string) => {
   const query = useQuery({
     queryKey: ['messages', campaignId, conversationId],
     queryFn: async () => {
-      console.log('Fetching messages for:', { campaignId, conversationId });
-      
+      // Single optimized query with JOIN to fetch messages and profiles together
       let query = supabase
         .from('messages')
-        .select('*')
+        .select(`
+          *,
+          sender_profile:profiles!messages_sender_id_fkey(
+            full_name,
+            email,
+            avatar_url
+          )
+        `)
         .order('created_at', { ascending: true });
 
       if (campaignId) {
@@ -31,35 +37,28 @@ export const useMessages = (campaignId?: string, conversationId?: string) => {
         throw error;
       }
 
-      // Get sender profiles separately
-      const messagesWithProfiles = await Promise.all(
-        (messagesData || []).map(async (message) => {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('full_name, email, avatar_url')
-            .eq('id', message.sender_id)
-            .maybeSingle();
-          
-          return {
-            ...message,
-            sender_profile: profile || null
-          };
-        })
-      );
-
-      console.log('Fetched messages with profiles:', messagesWithProfiles);
-      return messagesWithProfiles as Message[];
+      return (messagesData || []) as Message[];
     },
     enabled: !!(campaignId || conversationId),
+    staleTime: 1000 * 60, // 1 minute
+    gcTime: 1000 * 60 * 5, // 5 minutes
   });
 
-  // Set up real-time subscription
+  // Set up real-time subscription with debounced invalidation
   useEffect(() => {
     if (!campaignId && !conversationId) return;
 
-    console.log('Setting up real-time subscription for messages');
+    let timeoutId: NodeJS.Timeout;
+    const debouncedInvalidate = () => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        queryClient.refetchQueries({ queryKey: ['messages', campaignId, conversationId] });
+        queryClient.invalidateQueries({ queryKey: ['unread-counts'] });
+        queryClient.invalidateQueries({ queryKey: ['conversations'] });
+      }, 100);
+    };
     
-    const channelName = `messages-${campaignId || conversationId}-${Date.now()}`;
+    const channelName = `messages-${campaignId || conversationId}`;
     const channel = supabase
       .channel(channelName)
       .on(
@@ -72,12 +71,7 @@ export const useMessages = (campaignId?: string, conversationId?: string) => {
             ? `campaign_id=eq.${campaignId}` 
             : `conversation_id=eq.${conversationId}`
         },
-        (payload) => {
-          console.log('New message received:', payload);
-          queryClient.invalidateQueries({ queryKey: ['messages', campaignId, conversationId] });
-          queryClient.invalidateQueries({ queryKey: ['unread-counts'] });
-          queryClient.invalidateQueries({ queryKey: ['conversations'] });
-        }
+        debouncedInvalidate
       )
       .on(
         'postgres_changes',
@@ -89,16 +83,12 @@ export const useMessages = (campaignId?: string, conversationId?: string) => {
             ? `campaign_id=eq.${campaignId}` 
             : `conversation_id=eq.${conversationId}`
         },
-        (payload) => {
-          console.log('Message updated:', payload);
-          queryClient.invalidateQueries({ queryKey: ['messages', campaignId, conversationId] });
-          queryClient.invalidateQueries({ queryKey: ['unread-counts'] });
-        }
+        debouncedInvalidate
       )
       .subscribe();
 
     return () => {
-      console.log('Cleaning up real-time subscription');
+      clearTimeout(timeoutId);
       supabase.removeChannel(channel);
     };
   }, [campaignId, conversationId, queryClient]);
@@ -114,7 +104,14 @@ export const useSearchMessages = (campaignId: string, searchQuery: string) => {
       
       const { data: messagesData, error } = await supabase
         .from('messages')
-        .select('*')
+        .select(`
+          *,
+          sender_profile:profiles!messages_sender_id_fkey(
+            full_name,
+            email,
+            avatar_url
+          )
+        `)
         .eq('campaign_id', campaignId)
         .textSearch('content', searchQuery)
         .order('created_at', { ascending: false });
@@ -124,24 +121,9 @@ export const useSearchMessages = (campaignId: string, searchQuery: string) => {
         throw error;
       }
 
-      // Get sender profiles separately
-      const messagesWithProfiles = await Promise.all(
-        (messagesData || []).map(async (message) => {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('full_name, email, avatar_url')
-            .eq('id', message.sender_id)
-            .maybeSingle();
-          
-          return {
-            ...message,
-            sender_profile: profile || null
-          };
-        })
-      );
-
-      return messagesWithProfiles as Message[];
+      return (messagesData || []) as Message[];
     },
     enabled: !!campaignId && !!searchQuery.trim(),
+    staleTime: 1000 * 30, // 30 seconds
   });
 };
