@@ -1025,7 +1025,7 @@ export type Database = {
           attachment_name: string | null
           attachment_size: number | null
           attachment_url: string | null
-          campaign_id: string
+          campaign_id: string | null
           category: string | null
           content: string
           conversation_id: string | null
@@ -1046,7 +1046,7 @@ export type Database = {
           attachment_name?: string | null
           attachment_size?: number | null
           attachment_url?: string | null
-          campaign_id: string
+          campaign_id?: string | null
           category?: string | null
           content: string
           conversation_id?: string | null
@@ -1067,7 +1067,7 @@ export type Database = {
           attachment_name?: string | null
           attachment_size?: number | null
           attachment_url?: string | null
-          campaign_id?: string
+          campaign_id?: string | null
           category?: string | null
           content?: string
           conversation_id?: string | null
