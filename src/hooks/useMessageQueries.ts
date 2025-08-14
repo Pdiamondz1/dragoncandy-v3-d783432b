@@ -11,7 +11,7 @@ export const useMessages = (campaignId?: string, conversationId?: string) => {
     queryKey: ['messages', campaignId, conversationId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('messages')
+        .from('messages_with_profiles')
         .select('*')
         .eq(campaignId ? 'campaign_id' : 'conversation_id', campaignId || conversationId)
         .order('created_at', { ascending: true });
@@ -21,17 +21,14 @@ export const useMessages = (campaignId?: string, conversationId?: string) => {
         throw error;
       }
 
-      // Fetch profiles separately and merge
-      const senderIds = [...new Set(data?.map(m => m.sender_id) || [])];
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, full_name, email, avatar_url')
-        .in('id', senderIds);
-
-      // Merge profile data with messages
+      // Transform the data to match Message interface
       const messagesWithProfiles = data?.map(message => ({
         ...message,
-        sender_profile: profiles?.find(p => p.id === message.sender_id)
+        sender_profile: {
+          full_name: message.sender_full_name,
+          email: message.sender_email,
+          avatar_url: message.sender_avatar_url
+        }
       })) || [];
 
       return messagesWithProfiles as Message[];
@@ -91,7 +88,7 @@ export const useSearchMessages = (campaignId: string, searchQuery: string) => {
       if (!searchQuery.trim()) return [];
       
       const { data, error } = await supabase
-        .from('messages')
+        .from('messages_with_profiles')
         .select('*')
         .eq('campaign_id', campaignId)
         .textSearch('content', searchQuery)
@@ -102,17 +99,14 @@ export const useSearchMessages = (campaignId: string, searchQuery: string) => {
         throw error;
       }
 
-      // Fetch profiles separately and merge
-      const senderIds = [...new Set(data?.map(m => m.sender_id) || [])];
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, full_name, email, avatar_url')
-        .in('id', senderIds);
-
-      // Merge profile data with messages
+      // Transform the data to match Message interface
       const messagesWithProfiles = data?.map(message => ({
         ...message,
-        sender_profile: profiles?.find(p => p.id === message.sender_id)
+        sender_profile: {
+          full_name: message.sender_full_name,
+          email: message.sender_email,
+          avatar_url: message.sender_avatar_url
+        }
       })) || [];
 
       return messagesWithProfiles as Message[];
