@@ -164,9 +164,9 @@ export const useMarkMessageAsRead = () => {
         .update({ read_at: new Date().toISOString() })
         .eq('id', messageId)
         .eq('recipient_id', user!.id)
-        .eq('read_at', null)
+        .is('read_at', null)
         .select()
-        .single();
+        .maybeSingle();
 
       if (error && error.code !== 'PGRST116') { // PGRST116 = no rows updated (already read)
         console.error('Error marking message as read:', error);
