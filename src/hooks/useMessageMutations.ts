@@ -159,16 +159,29 @@ export const useMarkMessageAsRead = () => {
     mutationFn: async (messageId: string) => {
       console.log('Marking message as read:', messageId);
       
+      // First, check if the message exists and is unread
+      const { data: existingMessage } = await supabase
+        .from('messages')
+        .select('id, read_at')
+        .eq('id', messageId)
+        .eq('recipient_id', user!.id)
+        .is('read_at', null)
+        .maybeSingle();
+      
+      if (!existingMessage) {
+        console.log('Message already read or not found');
+        return null;
+      }
+      
       const { data, error } = await supabase
         .from('messages')
         .update({ read_at: new Date().toISOString() })
         .eq('id', messageId)
         .eq('recipient_id', user!.id)
-        .is('read_at', null)
         .select()
         .maybeSingle();
 
-      if (error && error.code !== 'PGRST116') { // PGRST116 = no rows updated (already read)
+      if (error) {
         console.error('Error marking message as read:', error);
         throw error;
       }

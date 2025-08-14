@@ -27,18 +27,18 @@ const ConversationMessageThread: React.FC<ConversationMessageThreadProps> = ({
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
 
   // Mark unread messages as read when component mounts or messages change
-  // Temporarily disabled to prevent console flooding
-  // useEffect(() => {
-  //   if (messages.length > 0 && user) {
-  //     const unreadMessages = messages.filter(
-  //       msg => msg.recipient_id === user.id && !msg.read_at
-  //     );
+  useEffect(() => {
+    if (messages.length > 0 && user) {
+      const unreadMessages = messages.filter(
+        msg => msg.recipient_id === user.id && !msg.read_at
+      );
       
-  //     unreadMessages.forEach(msg => {
-  //       markAsRead.mutate(msg.id);
-  //     });
-  //   }
-  // }, [messages.length, user?.id]); // Removed markAsRead from deps to prevent infinite loop
+      // Only mark first few messages to avoid flooding
+      unreadMessages.slice(0, 5).forEach(msg => {
+        markAsRead.mutate(msg.id);
+      });
+    }
+  }, [messages.length, user?.id]); // Fixed dependencies
 
   const handleSendMessage = (content: string, options?: {
     attachmentUrl?: string;
