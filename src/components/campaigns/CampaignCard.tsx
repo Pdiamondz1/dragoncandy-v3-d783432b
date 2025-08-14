@@ -60,19 +60,19 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
   };
 
   return (
-    <Card className="hover:shadow-lg transition-all duration-200 border-l-4 border-l-transparent hover:border-l-blue-500">
+    <Card className="hover:shadow-lg transition-all duration-200 border-l-4 border-l-transparent hover:border-l-primary/50">
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="flex-1 min-w-0">
-            <CardTitle className="text-lg font-semibold line-clamp-2 mb-2">
+            <CardTitle className="text-base sm:text-lg font-semibold line-clamp-2 mb-2">
               {campaign.title}
             </CardTitle>
-            <div className="flex items-center gap-2">
-              <Badge className={`${getStatusColor(campaign.status)} text-xs font-medium flex items-center gap-1`}>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+              <Badge className={`${getStatusColor(campaign.status)} text-xs font-medium flex items-center gap-1 w-fit`}>
                 {getStatusIcon(campaign.status)}
                 {campaign.status.charAt(0).toUpperCase() + campaign.status.slice(1)}
               </Badge>
-              <span className="text-xs text-gray-500">
+              <span className="text-xs text-muted-foreground">
                 {format(new Date(campaign.created_at), 'MMM dd, yyyy')}
               </span>
             </div>
@@ -80,13 +80,13 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-4 pt-0">
-        <p className="text-sm text-gray-600 line-clamp-2 min-h-[2.5rem]">
+      <CardContent className="space-y-3 sm:space-y-4 pt-0">
+        <p className="text-sm text-muted-foreground line-clamp-2 min-h-[2.5rem]">
           {campaign.description || 'No description provided'}
         </p>
 
         {/* Key Metrics */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
           <div className="flex items-center gap-2 text-sm">
             <DollarSign className="h-4 w-4 text-emerald-600" />
             <span className="text-muted-foreground truncate">{formatBudget()}</span>
@@ -124,17 +124,17 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
 
         {/* Platforms */}
         {campaign.platforms && campaign.platforms.length > 0 && (
-          <div className="flex items-center gap-2">
-            <Users className="h-4 w-4 text-gray-500" />
+          <div className="flex items-start gap-2">
+            <Users className="h-4 w-4 text-muted-foreground mt-0.5" />
             <div className="flex flex-wrap gap-1">
-              {campaign.platforms.slice(0, 3).map((platform) => (
+              {campaign.platforms.slice(0, 2).map((platform) => (
                 <Badge key={platform} variant="outline" className="text-xs">
                   {platform}
                 </Badge>
               ))}
-              {campaign.platforms.length > 3 && (
+              {campaign.platforms.length > 2 && (
                 <Badge variant="outline" className="text-xs">
-                  +{campaign.platforms.length - 3} more
+                  +{campaign.platforms.length - 2} more
                 </Badge>
               )}
             </div>
@@ -160,11 +160,11 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
         )}
       </CardContent>
 
-      <CardFooter className="flex gap-2 pt-4 border-t border-border">
+      <CardFooter className="flex flex-col sm:flex-row gap-2 pt-4 border-t border-border">
         <Button 
           variant="outline" 
           size="sm" 
-          className="flex-1 text-xs"
+          className="flex-1 text-xs w-full sm:w-auto"
           onClick={() => onViewDetails?.(campaign)}
         >
           {applicationCounts && applicationCounts.pending > 0 ? (
@@ -183,7 +183,7 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
           <Button 
             variant="default" 
             size="sm" 
-            className="flex-1 text-xs"
+            className="flex-1 text-xs w-full sm:w-auto"
             onClick={() => onEdit(campaign)}
           >
             <Edit className="h-3 w-3 mr-1" />

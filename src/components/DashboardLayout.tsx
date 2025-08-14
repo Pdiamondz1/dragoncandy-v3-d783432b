@@ -11,6 +11,21 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+  SidebarTrigger,
+  SidebarInset,
+  useSidebar,
+} from '@/components/ui/sidebar';
 import { 
   LayoutDashboard, 
   Target, 
@@ -20,21 +35,23 @@ import {
   LogOut,
   PlusCircle,
   Search,
-  Briefcase
+  Briefcase,
+  Menu
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfileData } from '@/hooks/useProfileData';
 import NotificationDropdown from '@/components/notifications/NotificationDropdown';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
   userRole: 'business_client' | 'content_creator';
 }
 
-const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, userRole }) => {
+const AppSidebar: React.FC<{ userRole: 'business_client' | 'content_creator' }> = ({ userRole }) => {
   const location = useLocation();
-  const { user, signOut } = useAuth();
-  const { avatarUrl, displayName } = useProfileData();
+  const { state } = useSidebar();
+  const collapsed = state === 'collapsed';
 
   const businessNavItems = [
     { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard/business' },
@@ -61,108 +78,130 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, userRole })
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      {/* Sidebar */}
-      <div className="w-64 bg-white shadow-sm border-r border-gray-200">
-        <div className="p-6">
-          <Link to="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-gradient-to-r from-pink-500 to-purple-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-sm">DC</span>
-            </div>
-            <span className="text-xl font-bold text-gray-900">DragonCandy</span>
-          </Link>
+    <Sidebar className={collapsed ? "w-14" : "w-60"} collapsible="icon">
+      <SidebarHeader className="border-b border-sidebar-border">
+        <div className="flex items-center gap-2 px-4 py-2">
+          <div className="w-8 h-8 bg-gradient-to-r from-pink-500 to-purple-600 rounded-lg flex items-center justify-center">
+            <span className="text-white font-bold text-sm">DC</span>
+          </div>
+          {!collapsed && (
+            <Link to="/" className="text-xl font-bold text-sidebar-foreground">
+              DragonCandy
+            </Link>
+          )}
         </div>
+      </SidebarHeader>
 
-        <nav className="px-4 pb-4 space-y-2">
-          {navItems.map((item) => {
-            const isActive = isActiveRoute(item.href);
-            return (
-              <Link
-                key={item.href}
-                to={item.href}
-                className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  isActive
-                    ? 'bg-purple-100 text-purple-700'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                }`}
-              >
-                <item.icon className="h-5 w-5" />
-                {item.label}
-              </Link>
-            );
-          })}
-        </nav>
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {navItems.map((item) => {
+                const isActive = isActiveRoute(item.href);
+                return (
+                  <SidebarMenuItem key={item.href}>
+                    <SidebarMenuButton asChild isActive={isActive}>
+                      <Link to={item.href} className="flex items-center gap-3">
+                        <item.icon className="h-5 w-5" />
+                        {!collapsed && <span>{item.label}</span>}
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
 
         {userRole === 'business_client' && (
-          <div className="px-4 pb-4">
-            <Link to="/dashboard/business/campaigns/new">
-              <Button className="w-full">
-                <PlusCircle className="h-4 w-4 mr-2" />
-                New Campaign
-              </Button>
-            </Link>
-          </div>
+          <SidebarGroup>
+            <SidebarGroupContent className="px-4">
+              <Link to="/dashboard/business/campaigns/create">
+                <Button className="w-full" size={collapsed ? "icon" : "default"}>
+                  <PlusCircle className="h-4 w-4" />
+                  {!collapsed && <span className="ml-2">New Campaign</span>}
+                </Button>
+              </Link>
+            </SidebarGroupContent>
+          </SidebarGroup>
         )}
-      </div>
+      </SidebarContent>
+    </Sidebar>
+  );
+};
 
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col">
-        {/* Header */}
-        <header className="bg-white border-b border-gray-200 px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <h1 className="text-2xl font-bold text-gray-900">
-                {userRole === 'business_client' ? 'Business Dashboard' : 'Creator Dashboard'}
-              </h1>
+const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, userRole }) => {
+  const { user, signOut } = useAuth();
+  const { avatarUrl, displayName } = useProfileData();
+  const isMobile = useIsMobile();
+
+  return (
+    <SidebarProvider defaultOpen={!isMobile}>
+      <div className="min-h-screen flex w-full bg-background">
+        <AppSidebar userRole={userRole} />
+        
+        <SidebarInset className="flex-1">
+          {/* Header */}
+          <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+            <div className="flex h-14 items-center justify-between px-4 lg:px-6">
+              <div className="flex items-center gap-4">
+                <SidebarTrigger />
+                <h1 className="text-xl font-semibold text-foreground hidden sm:block">
+                  {userRole === 'business_client' ? 'Business Dashboard' : 'Creator Dashboard'}
+                </h1>
+              </div>
+
+              <div className="flex items-center gap-2 sm:gap-4">
+                <NotificationDropdown />
+                
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src={avatarUrl} alt="Avatar" />
+                        <AvatarFallback>
+                          {displayName?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || 'U'}
+                        </AvatarFallback>
+                      </Avatar>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-56" align="end" forceMount>
+                    <DropdownMenuLabel className="font-normal">
+                      <div className="flex flex-col space-y-1">
+                        <p className="text-sm font-medium leading-none">
+                          {displayName || user?.user_metadata?.full_name || 'User'}
+                        </p>
+                        <p className="text-xs leading-none text-muted-foreground">
+                          {user?.email}
+                        </p>
+                      </div>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link to={`/dashboard/${userRole === 'business_client' ? 'business' : 'creator'}/settings`}>
+                        <Settings className="mr-2 h-4 w-4" />
+                        <span>Settings</span>
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={signOut}>
+                      <LogOut className="mr-2 h-4 w-4" />
+                      <span>Log out</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             </div>
+          </header>
 
-            <div className="flex items-center gap-4">
-              <NotificationDropdown />
-              
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage src={avatarUrl} alt="Avatar" />
-                      <AvatarFallback>
-                        {displayName?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || 'U'}
-                      </AvatarFallback>
-                    </Avatar>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-56" align="end" forceMount>
-                  <DropdownMenuLabel className="font-normal">
-                    <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-medium leading-none">
-                        {displayName || user?.user_metadata?.full_name || 'User'}
-                      </p>
-                      <p className="text-xs leading-none text-muted-foreground">
-                        {user?.email}
-                      </p>
-                    </div>
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild>
-                    <Link to={`/dashboard/${userRole === 'business_client' ? 'business' : 'creator'}/settings`}>
-                      <Settings className="mr-2 h-4 w-4" />
-                      <span>Settings</span>
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={signOut}>
-                    <LogOut className="mr-2 h-4 w-4" />
-                    <span>Log out</span>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          </div>
-        </header>
-
-        {/* Page Content */}
-        {children}
+          {/* Page Content */}
+          <main className="flex-1">
+            {children}
+          </main>
+        </SidebarInset>
       </div>
-    </div>
+    </SidebarProvider>
   );
 };
 
