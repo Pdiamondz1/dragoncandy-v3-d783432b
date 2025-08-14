@@ -117,6 +117,11 @@ const App = () => {
                       <CampaignEditPage />
                     </ProtectedRoute>
                   } />
+                  <Route path="/dashboard/creator/campaigns/:id" element={
+                    <ProtectedRoute>
+                      <CampaignDetailsPage />
+                    </ProtectedRoute>
+                  } />
 
                   {/* Business Project and Proposals Routes */}
                   <Route path="/dashboard/business/projects" element={
