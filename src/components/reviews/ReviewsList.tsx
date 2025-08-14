@@ -20,7 +20,7 @@ const ReviewsList: React.FC<ReviewsListProps> = ({
   if (isLoading) {
     return (
       <div className="space-y-4">
-        {[...Array(3)].map((_, i) => (
+        {[...Array(limit || 3)].map((_, i) => (
           <div key={i} className="border rounded-lg p-6">
             <div className="flex items-start gap-4">
               <Skeleton className="h-10 w-10 rounded-full" />
@@ -37,9 +37,11 @@ const ReviewsList: React.FC<ReviewsListProps> = ({
   }
 
   if (error) {
+    console.error('ReviewsList error:', error);
     return (
       <div className="text-center py-8 text-gray-500">
-        Error loading reviews. Please try again.
+        <p className="mb-2">Unable to load reviews at this time.</p>
+        <p className="text-sm">This feature is being improved. Please check back later.</p>
       </div>
     );
   }
@@ -47,7 +49,8 @@ const ReviewsList: React.FC<ReviewsListProps> = ({
   if (!reviews || reviews.length === 0) {
     return (
       <div className="text-center py-8 text-gray-500">
-        No reviews yet.
+        <p className="mb-2">No reviews yet</p>
+        <p className="text-sm">Reviews will appear here once collaborations are completed.</p>
       </div>
     );
   }

@@ -27,7 +27,7 @@ const RatingPromptManager: React.FC = () => {
   if (isLoading || !completedProjects) return null;
 
   const pendingReviews = completedProjects.filter(project => 
-    project.review_status === 'pending' && 
+    project.can_review && 
     !dismissedPrompts.has(project.id)
   );
 
@@ -36,27 +36,14 @@ const RatingPromptManager: React.FC = () => {
   return (
     <div className="space-y-4">
       {pendingReviews.slice(0, 2).map((project) => {
-        const isCreator = project.creator_id === user?.id;
-        const revieweeId = isCreator ? project.campaigns.user_id : project.creator_id;
-        
-        // Handle the nested profile data structure
-        let revieweeName = 'Unknown';
-        if (isCreator) {
-          // Business name from nested business profile
-          revieweeName = project.business?.[0]?.profiles?.full_name || 'Unknown Business';
-        } else {
-          // Creator name from creator profile
-          revieweeName = project.creator?.full_name || 'Unknown Creator';
-        }
-        
-        const reviewType = isCreator ? 'creator_to_business' : 'business_to_creator';
+        const reviewType = project.user_role === 'creator' ? 'creator_to_business' : 'business_to_creator';
 
         return (
           <RatingPrompt
             key={project.id}
             collaborationId={project.id}
-            revieweeId={revieweeId}
-            revieweeName={revieweeName}
+            revieweeId={project.other_party_id}
+            revieweeName={project.other_party_name}
             reviewType={reviewType}
             onDismiss={() => handleDismiss(project.id)}
           />

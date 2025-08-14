@@ -10,16 +10,26 @@ interface RatingStatsProps {
 }
 
 const RatingStats: React.FC<RatingStatsProps> = ({ revieweeId, reviewType }) => {
-  const { data: stats, isLoading } = useReviewStats(revieweeId, reviewType);
+  const { data: stats, isLoading, error } = useReviewStats(revieweeId, reviewType);
 
   if (isLoading || !stats) {
     return <div className="animate-pulse h-32 bg-gray-100 rounded" />;
   }
 
+  if (error) {
+    console.error('RatingStats error:', error);
+    return (
+      <div className="text-center py-6 text-gray-500">
+        <p>Unable to load ratings</p>
+      </div>
+    );
+  }
+
   if (stats.total_reviews === 0) {
     return (
       <div className="text-center py-6 text-gray-500">
-        No ratings yet
+        <p className="mb-1">No ratings yet</p>
+        <p className="text-sm">Ratings will appear here after completed collaborations.</p>
       </div>
     );
   }

@@ -2,14 +2,27 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
+export interface CompletedCollaboration {
+  id: string;
+  campaign_id: string;
+  creator_id: string;
+  status: string;
+  review_status: string | null;
+  campaign_title: string;
+  other_party_name: string;
+  other_party_id: string;
+  user_role: 'creator' | 'business';
+  can_review: boolean;
+}
+
 export const useProjectCompletion = (userId?: string) => {
   return useQuery({
     queryKey: ['project-completion', userId],
-    queryFn: async () => {
+    queryFn: async (): Promise<CompletedCollaboration[]> => {
       if (!userId) return [];
 
       try {
-        // Simplified approach: get collaborations first, then fetch related data separately
+        // Get completed collaborations where user is involved
         const { data: collaborations, error: collabError } = await supabase
           .from('campaign_collaborations')
           .select(`
@@ -17,98 +30,75 @@ export const useProjectCompletion = (userId?: string) => {
             status,
             review_status,
             creator_id,
-            campaign_id
+            campaign_id,
+            campaigns(id, title, user_id)
           `)
-          .eq('status', 'completed')
-          .eq('creator_id', userId)
-          .in('review_status', ['pending', 'completed']);
+          .eq('status', 'completed');
 
         if (collabError) {
           console.error('Error fetching collaborations:', collabError);
           return [];
         }
 
-        // Also get collaborations where user is the business owner
-        const { data: businessCollabs, error: businessError } = await supabase
-          .from('campaign_collaborations')
-          .select(`
-            id,
-            status,
-            review_status,
-            creator_id,
-            campaign_id,
-            campaigns!inner(user_id)
-          `)
-          .eq('status', 'completed')
-          .eq('campaigns.user_id', userId)
-          .in('review_status', ['pending', 'completed']);
-
-        if (businessError) {
-          console.error('Error fetching business collaborations:', businessError);
+        if (!collaborations || collaborations.length === 0) {
+          return [];
         }
 
-        // Combine both arrays
-        const allCollabs = [...(collaborations || []), ...(businessCollabs || [])];
+        // Filter collaborations where user is involved
+        const userCollaborations = collaborations.filter(collab => 
+          collab.creator_id === userId || collab.campaigns?.user_id === userId
+        );
 
-        // Get unique campaign IDs to fetch campaign details
-        const campaignIds = [...new Set(allCollabs.map(c => c.campaign_id))];
-        
-        if (campaignIds.length === 0) return [];
+        if (userCollaborations.length === 0) return [];
 
-        // Fetch campaign details
-        const { data: campaigns, error: campaignError } = await supabase
-          .from('campaigns')
-          .select('id, title, user_id')
-          .in('id', campaignIds);
+        // Get profile names for all participants
+        const allUserIds = [...new Set([
+          ...userCollaborations.map(c => c.creator_id),
+          ...userCollaborations.map(c => c.campaigns?.user_id).filter(Boolean)
+        ])];
 
-        if (campaignError) {
-          console.error('Error fetching campaigns:', campaignError);
-        }
-
-        // Fetch creator profiles
-        const creatorIds = [...new Set(allCollabs.map(c => c.creator_id))];
-        const { data: creators, error: creatorError } = await supabase
+        const { data: profiles } = await supabase
           .from('profiles')
           .select('id, full_name')
-          .in('id', creatorIds);
+          .in('id', allUserIds);
 
-        if (creatorError) {
-          console.error('Error fetching creators:', creatorError);
-        }
+        // Check for existing reviews
+        const { data: existingReviews } = await supabase
+          .from('project_reviews')
+          .select('collaboration_id, reviewer_id')
+          .in('collaboration_id', userCollaborations.map(c => c.id))
+          .eq('reviewer_id', userId);
 
-        // Fetch business profiles
-        const businessIds = [...new Set(campaigns?.map(c => c.user_id) || [])];
-        const { data: businesses, error: businessError2 } = await supabase
-          .from('profiles')
-          .select('id, full_name')
-          .in('id', businessIds);
+        const reviewedCollaborationIds = new Set(existingReviews?.map(r => r.collaboration_id) || []);
 
-        if (businessError2) {
-          console.error('Error fetching businesses:', businessError2);
-        }
-
-        // Combine all data
-        return allCollabs.map(collab => {
-          const campaign = campaigns?.find(c => c.id === collab.campaign_id);
-          const creator = creators?.find(c => c.id === collab.creator_id);
-          const business = businesses?.find(b => b.id === campaign?.user_id);
-
+        // Transform to final format
+        const result: CompletedCollaboration[] = userCollaborations.map(collab => {
+          const isCreator = collab.creator_id === userId;
+          const otherPartyId = isCreator ? collab.campaigns?.user_id : collab.creator_id;
+          const otherPartyProfile = profiles?.find(p => p.id === otherPartyId);
+          
           return {
-            ...collab,
-            campaigns: campaign ? {
-              user_id: campaign.user_id,
-              title: campaign.title,
-              profiles: business ? { full_name: business.full_name } : null
-            } : null,
-            creator: creator ? { full_name: creator.full_name } : null,
-            business: business ? [{ profiles: { full_name: business.full_name } }] : []
+            id: collab.id,
+            campaign_id: collab.campaign_id,
+            creator_id: collab.creator_id,
+            status: collab.status,
+            review_status: collab.review_status,
+            campaign_title: collab.campaigns?.title || 'Unknown Campaign',
+            other_party_name: otherPartyProfile?.full_name || 'Unknown User',
+            other_party_id: otherPartyId || '',
+            user_role: isCreator ? 'creator' : 'business',
+            can_review: !reviewedCollaborationIds.has(collab.id)
           };
         });
+
+        return result;
       } catch (error) {
         console.error('Error in useProjectCompletion:', error);
         return [];
       }
     },
     enabled: !!userId,
+    retry: 1,
+    staleTime: 2 * 60 * 1000, // 2 minutes
   });
 };
