@@ -45,6 +45,7 @@ const BusinessProjects: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [selectedProject, setSelectedProject] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<string>('overview');
 
   // Fetch all collaborations for campaigns owned by this business
   const { data: projects, isLoading: projectsLoading } = useQuery({
@@ -197,7 +198,7 @@ const BusinessProjects: React.FC = () => {
             </CardContent>
           </Card>
         ) : (
-          <Tabs defaultValue="overview" className="space-y-6">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
             <TabsList>
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="deliverables">Deliverables</TabsTrigger>
@@ -236,7 +237,11 @@ const BusinessProjects: React.FC = () => {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => setSelectedProject(project.campaign_id)}
+                        onClick={() => {
+                          console.log('Viewing files for project:', project.campaign_id);
+                          setSelectedProject(project.campaign_id);
+                          setActiveTab('deliverables');
+                        }}
                       >
                         <FileText className="h-4 w-4 mr-2" />
                         View Files
