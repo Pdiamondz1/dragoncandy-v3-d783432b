@@ -137,12 +137,23 @@ const BusinessProjects: React.FC = () => {
         .createSignedUrl(file.file_path, 3600);
 
       if (data?.signedUrl) {
+        // Fetch the file to force download
+        const response = await fetch(data.signedUrl);
+        const blob = await response.blob();
+        
+        // Create blob URL and trigger download
+        const blobUrl = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
-        link.href = data.signedUrl;
+        link.href = blobUrl;
         link.download = file.original_filename;
+        link.style.display = 'none';
+        
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+        
+        // Clean up the blob URL
+        window.URL.revokeObjectURL(blobUrl);
       }
     } catch (error) {
       console.error('Download failed:', error);
