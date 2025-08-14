@@ -1518,6 +1518,10 @@ export type Database = {
         Args: { conversation_uuid: string; user_uuid: string }
         Returns: boolean
       }
+      user_in_conversation: {
+        Args: { conversation_uuid: string; user_uuid: string }
+        Returns: boolean
+      }
     }
     Enums: {
       application_status: "pending" | "accepted" | "rejected"
