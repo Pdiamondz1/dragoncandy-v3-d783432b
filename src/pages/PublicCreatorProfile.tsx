@@ -23,10 +23,12 @@ import {
   Youtube,
   Calendar,
   Languages,
-  Briefcase
+  Briefcase,
+  ArrowLeft
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import PublicProfileReviews from '@/components/profiles/PublicProfileReviews';
+import ContactCreatorModal from '@/components/creator-profile/ContactCreatorModal';
 
 interface CreatorProfile {
   id: string;
@@ -141,15 +143,14 @@ const PublicCreatorProfile = () => {
     convertPortfolioUrls();
   }, [profile?.portfolio_urls]);
 
-  const handleContactCreator = () => {
-    if (!user) {
-      navigate('/auth');
-      return;
+  const handleGoBack = () => {
+    // Check if there's history to go back to
+    if (window.history.length > 1) {
+      navigate(-1);
+    } else {
+      // Default fallback - go to creator browse or home
+      navigate('/creator-browse');
     }
-    toast({
-      title: "Contact feature coming soon",
-      description: "Direct messaging will be available in the next update."
-    });
   };
 
   const getSocialLinks = () => {
@@ -212,6 +213,15 @@ const PublicCreatorProfile = () => {
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-4xl mx-auto px-4 space-y-6">
+        {/* Back Button */}
+        <Button 
+          variant="ghost" 
+          onClick={handleGoBack}
+          className="mb-4"
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back
+        </Button>
         {/* Header */}
         <Card>
           <CardContent className="pt-6">
@@ -250,10 +260,16 @@ const PublicCreatorProfile = () => {
                   </div>
                   
                   <div className="flex gap-2">
-                    <Button onClick={handleContactCreator}>
-                      <MessageSquare className="h-4 w-4 mr-2" />
-                      Contact
-                    </Button>
+                    <ContactCreatorModal 
+                      creator={{
+                        id: profile.id,
+                        user_id: profile.user_id,
+                        creator_name: profile.creator_name,
+                        avatar_url: profile.avatar_url,
+                        bio: profile.bio,
+                        response_time: profile.response_time
+                      }}
+                    />
                     {profile.website_url && (
                       <Button variant="outline" asChild>
                         <a href={profile.website_url} target="_blank" rel="noopener noreferrer">
