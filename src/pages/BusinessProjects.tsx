@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Download, MessageCircle, User, Calendar, FileText } from 'lucide-react';
+import { Download, MessageCircle, User, Calendar, FileText, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useFileUploads } from '@/hooks/useFileUploads';
 import { formatFileSize } from '@/lib/fileUtils';
@@ -46,6 +46,7 @@ const BusinessProjects: React.FC = () => {
   const navigate = useNavigate();
   const [selectedProject, setSelectedProject] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<string>('overview');
+  const [downloadingFileId, setDownloadingFileId] = useState<string | null>(null);
 
   // Fetch all collaborations for campaigns owned by this business
   const { data: projects, isLoading: projectsLoading } = useQuery({
@@ -131,27 +132,31 @@ const BusinessProjects: React.FC = () => {
   };
 
   const handleDownloadFile = async (file: any) => {
+    setDownloadingFileId(file.id);
     try {
       const { data } = await supabase.storage
         .from(file.bucket_name)
-        .createSignedUrl(file.file_path, 3600);
+        .download(file.file_path);
 
-      if (data?.signedUrl) {
-        // Create a temporary link element for download
+      if (data) {
+        // Create blob URL for download
+        const url = window.URL.createObjectURL(data);
         const link = document.createElement('a');
-        link.href = data.signedUrl;
+        link.href = url;
         link.download = file.original_filename;
-        link.target = '_blank';
-        link.rel = 'noopener noreferrer';
         link.style.display = 'none';
         
-        // Add to DOM, click, and remove
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+        
+        // Clean up the blob URL
+        window.URL.revokeObjectURL(url);
       }
     } catch (error) {
       console.error('Download failed:', error);
+    } finally {
+      setDownloadingFileId(null);
     }
   };
 
@@ -298,9 +303,14 @@ const BusinessProjects: React.FC = () => {
                               <Button
                                 size="sm"
                                 onClick={() => handleDownloadFile(file)}
+                                disabled={downloadingFileId === file.id}
                               >
-                                <Download className="h-4 w-4 mr-2" />
-                                Download
+                                {downloadingFileId === file.id ? (
+                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                ) : (
+                                  <Download className="h-4 w-4 mr-2" />
+                                )}
+                                {downloadingFileId === file.id ? 'Downloading...' : 'Download'}
                               </Button>
                             </div>
                           </CardContent>
