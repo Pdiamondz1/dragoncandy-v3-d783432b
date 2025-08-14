@@ -65,8 +65,8 @@ const CampaignMessagesPage: React.FC = () => {
                 <p className="text-gray-600 mb-4">
                   The campaign you're looking for doesn't exist or you don't have access to it.
                 </p>
-                <Button onClick={() => navigate(userRole === 'business_client' ? '/dashboard/business/projects' : '/messages')}>
-                  Back to {userRole === 'business_client' ? 'Projects' : 'Messages'}
+                <Button onClick={() => navigate('/messages')}>
+                  Back to Messages
                 </Button>
               </CardContent>
             </Card>
@@ -92,8 +92,8 @@ const CampaignMessagesPage: React.FC = () => {
                     : 'Unable to find the campaign owner for messaging.'
                   }
                 </p>
-                <Button onClick={() => navigate(userRole === 'business_client' ? '/dashboard/business/projects' : '/messages')}>
-                  Back to {userRole === 'business_client' ? 'Projects' : 'Messages'}
+                <Button onClick={() => navigate('/messages')}>
+                  Back to Messages
                 </Button>
               </CardContent>
             </Card>
@@ -112,10 +112,10 @@ const CampaignMessagesPage: React.FC = () => {
             <Button 
               variant="ghost" 
               size="sm"
-              onClick={() => navigate(userRole === 'business_client' ? '/dashboard/business/projects' : '/messages')}
+              onClick={() => navigate('/messages')}
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to {userRole === 'business_client' ? 'Projects' : 'Messages'}
+              Back to Messages
             </Button>
             <div className="flex items-center gap-3">
               <MessageSquare className="h-6 w-6 text-blue-600" />

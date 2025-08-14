@@ -33,7 +33,6 @@ interface ProjectCollaboration {
     creator_name?: string;
     avatar_url?: string;
     bio?: string;
-    display_name?: string;
   } | null;
 }
 
@@ -84,42 +83,24 @@ const BusinessProjects: React.FC = () => {
         return [];
       }
 
-      // Get creator profiles and basic profiles for each collaboration
+      // Get creator profiles for each collaboration
       const creatorIds = data.map(item => item.creator_id).filter(Boolean);
-      const [creatorProfiles, basicProfiles] = await Promise.all([
-        supabase
-          .from('creator_profiles')
-          .select('user_id, creator_name, avatar_url, bio')
-          .in('user_id', creatorIds)
-          .then(res => res.data || []),
-        supabase
-          .from('profiles')
-          .select('id, full_name, email')
-          .in('id', creatorIds)
-          .then(res => res.data || [])
-      ]);
+      const { data: creatorProfiles } = await supabase
+        .from('creator_profiles')
+        .select('user_id, creator_name, avatar_url, bio')
+        .in('user_id', creatorIds);
 
       // Transform the data to match our interface
-      return data.map(item => {
-        const creatorProfile = creatorProfiles?.find(cp => cp.user_id === item.creator_id);
-        const basicProfile = basicProfiles?.find(bp => bp.id === item.creator_id);
-        
-        return {
-          id: item.id,
-          campaign_id: item.campaign_id,
-          creator_id: item.creator_id,
-          status: item.status,
-          created_at: item.created_at,
-          updated_at: item.updated_at,
-          campaign: Array.isArray(item.campaigns) ? item.campaigns[0] : item.campaigns,
-          creator_profile: creatorProfile ? {
-            ...creatorProfile,
-            display_name: creatorProfile.creator_name || basicProfile?.full_name || basicProfile?.email || 'Unknown Creator'
-          } : {
-            display_name: basicProfile?.full_name || basicProfile?.email || 'Unknown Creator'
-          }
-        };
-      }).filter(item => item.campaign) as ProjectCollaboration[];
+      return data.map(item => ({
+        id: item.id,
+        campaign_id: item.campaign_id,
+        creator_id: item.creator_id,
+        status: item.status,
+        created_at: item.created_at,
+        updated_at: item.updated_at,
+        campaign: Array.isArray(item.campaigns) ? item.campaigns[0] : item.campaigns,
+        creator_profile: creatorProfiles?.find(cp => cp.user_id === item.creator_id) || null
+      })).filter(item => item.campaign) as ProjectCollaboration[];
     },
     enabled: !!user,
   });
@@ -156,7 +137,7 @@ const BusinessProjects: React.FC = () => {
   };
 
   const handleMessageCreator = (campaignId: string) => {
-    navigate(`/dashboard/business/campaigns/${campaignId}/messages`);
+    navigate(`/messages/${campaignId}`);
   };
 
   if (projectsLoading) {
@@ -220,7 +201,7 @@ const BusinessProjects: React.FC = () => {
                         <div className="flex items-center gap-4 text-sm text-gray-600">
                           <div className="flex items-center gap-2">
                             <User className="h-4 w-4" />
-                            {project.creator_profile?.display_name || 'Creator'}
+                            {project.creator_profile?.creator_name || 'Creator'}
                           </div>
                           {project.campaign.deadline && (
                             <div className="flex items-center gap-2">
