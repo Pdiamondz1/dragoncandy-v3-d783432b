@@ -37,13 +37,7 @@ const MessageBubbleEnhanced: React.FC<MessageBubbleEnhancedProps> = ({
   const [showActions, setShowActions] = useState(false);
 
   const isOwnMessage = message.sender_id === user?.id;
-  const senderName = message.sender_profile?.full_name || 
-    (message.sender_profile?.email ? 
-      message.sender_profile.email.split('@')[0].replace(/[._]/g, ' ')
-        .split(' ')
-        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-        .join(' ') 
-      : 'Unknown User');
+  const senderName = message.sender_profile?.email || 'Unknown User';
   const senderAvatar = message.sender_profile?.avatar_url;
 
   const handleStarToggle = () => {

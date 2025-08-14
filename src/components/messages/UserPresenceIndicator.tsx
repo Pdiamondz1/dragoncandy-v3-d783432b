@@ -25,14 +25,7 @@ const UserPresenceIndicator: React.FC<UserPresenceIndicatorProps> = ({
   const presence = null; // useCurrentUserPresence(userId);
 
   const getDisplayName = () => {
-    if (userName && userName.trim() !== '') return userName;
-    if (userEmail) {
-      return userEmail.split('@')[0].replace(/[._]/g, ' ')
-        .split(' ')
-        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-        .join(' ');
-    }
-    return 'Unknown User';
+    return userEmail || 'Unknown User';
   };
 
   const getStatusColor = (status?: string) => {
@@ -78,7 +71,7 @@ const UserPresenceIndicator: React.FC<UserPresenceIndicatorProps> = ({
       <div className="relative">
         <Avatar className={sizeClasses[size]}>
           <AvatarImage src={avatarUrl} alt={userName} />
-          <AvatarFallback>{userName?.[0]?.toUpperCase()}</AvatarFallback>
+          <AvatarFallback>{userEmail?.[0]?.toUpperCase()}</AvatarFallback>
         </Avatar>
         <div
           className={`absolute -bottom-0.5 -right-0.5 ${indicatorSizeClasses[size]} rounded-full border-2 border-white ${getStatusColor(presence?.status)}`}
