@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { AuthHeader } from "@/components/auth/AuthHeader";
 import { AuthForm } from "@/components/auth/AuthForm";
 import { AuthModeToggle } from "@/components/auth/AuthModeToggle";
+import { toast } from 'sonner';
 
 const AuthPage = () => {
   const [searchParams] = useSearchParams();
@@ -14,7 +15,7 @@ const AuthPage = () => {
   const [error, setError] = useState<string | null>(null);
 
   const navigate = useNavigate();
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, migrateCampaignData } = useAuth();
 
   // Update mode when URL params change
   useEffect(() => {
@@ -42,12 +43,13 @@ const AuthPage = () => {
         .eq('id', user.id)
         .single();
 
+      const hasAnon = !!localStorage.getItem('anonymous_campaign_data') || !!localStorage.getItem('anonymous_campaign_final');
+
       if (!profile) {
         navigate('/profile/onboarding');
         return;
       }
 
-      // Check if they have completed their specific profile
       if (profile.role === 'business_client') {
         const { data: businessProfile } = await supabase
           .from('business_profiles')
@@ -59,7 +61,18 @@ const AuthPage = () => {
           navigate('/profile/business');
           return;
         }
-      } else if (profile.role === 'content_creator') {
+
+        if (hasAnon) {
+          await migrateCampaignData();
+          navigate('/dashboard/business/campaigns', { replace: true });
+          return;
+        }
+
+        navigate('/', { replace: true });
+        return;
+      }
+
+      if (profile.role === 'content_creator') {
         const { data: creatorProfile } = await supabase
           .from('creator_profiles')
           .select('is_completed')
@@ -70,9 +83,17 @@ const AuthPage = () => {
           navigate('/profile/creator');
           return;
         }
+
+        if (hasAnon) {
+          localStorage.removeItem('anonymous_campaign_data');
+          localStorage.removeItem('anonymous_campaign_final');
+          toast.message('Campaign creation is for business clients. You can browse paid campaigns.');
+        }
+        navigate('/dashboard/creator/campaigns', { replace: true });
+        return;
       }
 
-      // If profile is completed, go to home
+      // Fallback
       navigate('/', { replace: true });
     } catch (error) {
       console.error('Error checking profile completion:', error);

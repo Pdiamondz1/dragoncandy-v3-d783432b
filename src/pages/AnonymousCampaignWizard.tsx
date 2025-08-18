@@ -14,6 +14,7 @@ import { useAnonymousCampaignWizard } from '@/hooks/useAnonymousCampaignWizard';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import { useEffect } from 'react';
+import { toast } from 'sonner';
 
 const AnonymousCampaignWizard: React.FC = () => {
   const {
@@ -39,15 +40,33 @@ const AnonymousCampaignWizard: React.FC = () => {
     handleSaveDraftAttempt,
   } = useAnonymousCampaignWizard();
 
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, profile, migrateCampaignData } = useAuth();
   const navigate = useNavigate();
 
-  // Redirect authenticated users to the regular campaign wizard
+  // Redirect authenticated users based on role and migrate/clear anonymous data
   useEffect(() => {
-    if (isAuthenticated) {
-      navigate('/dashboard/business/campaigns/create');
+    if (!isAuthenticated || !profile) return;
+
+    const hasAnon = !!localStorage.getItem('anonymous_campaign_data') || !!localStorage.getItem('anonymous_campaign_final');
+
+    if (profile.role === 'business_client') {
+      if (hasAnon) {
+        migrateCampaignData().finally(() => {
+          toast.success('Your campaign was saved to your account.');
+          navigate('/dashboard/business/campaigns');
+        });
+      } else {
+        navigate('/dashboard/business/campaigns/create');
+      }
+    } else {
+      if (hasAnon) {
+        localStorage.removeItem('anonymous_campaign_data');
+        localStorage.removeItem('anonymous_campaign_final');
+        toast.message('Campaign creation is for business clients. Browse campaigns instead.');
+      }
+      navigate('/dashboard/creator/campaigns');
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, profile, migrateCampaignData, navigate]);
 
   const steps = [
     { number: 1, title: 'Campaign Goal', active: true },
@@ -58,8 +77,8 @@ const AnonymousCampaignWizard: React.FC = () => {
   ];
 
   const handleAuthSuccess = () => {
-    // After successful auth, redirect to the regular wizard with data migration
-    navigate('/dashboard/business/campaigns/create');
+    // Close modal; redirect will be handled by the auth effect above once profile is loaded
+    setShowAuthModal(false);
   };
 
   return (

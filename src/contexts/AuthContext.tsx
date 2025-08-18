@@ -3,6 +3,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { cleanupAuthState } from '@/lib/authCleanup';
+import { toast } from 'sonner';
 
 interface Profile {
   id: string;
@@ -292,14 +293,36 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       const anonymousCampaignData = localStorage.getItem('anonymous_campaign_data');
       const finalCampaignData = localStorage.getItem('anonymous_campaign_final');
-      
-      if (anonymousCampaignData && finalCampaignData && user) {
+
+      // Nothing to migrate
+      if (!anonymousCampaignData && !finalCampaignData) {
+        return;
+      }
+
+      // Determine role from loaded profile or user metadata
+      const userRole = profile?.role || (user?.user_metadata?.role as 'business_client' | 'content_creator' | undefined);
+
+      if (!user || !userRole) {
+        console.warn('⚠️ AuthProvider: Cannot migrate - missing user or role');
+        return;
+      }
+
+      // If the user is a content creator, do NOT migrate campaigns
+      if (userRole === 'content_creator') {
+        console.log('ℹ️ AuthProvider: Creator account detected - clearing anonymous campaign data');
+        localStorage.removeItem('anonymous_campaign_data');
+        localStorage.removeItem('anonymous_campaign_final');
+        toast.message('Campaign drafts are only for business clients.');
+        return;
+      }
+
+      // Only business clients can have campaigns migrated
+      if (anonymousCampaignData && finalCampaignData) {
         const campaignData = JSON.parse(anonymousCampaignData);
         const finalData = JSON.parse(finalCampaignData);
         
         console.log('📦 AuthProvider: Creating campaign from anonymous data');
         
-        // Create the campaign in the database
         const { error } = await supabase
           .from('campaigns')
           .insert({
@@ -319,6 +342,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         
         if (error) {
           console.error('❌ AuthProvider: Campaign migration failed:', error);
+          toast.error('Failed to save your campaign. Please try again.');
           throw error;
         }
         
@@ -327,6 +351,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         localStorage.removeItem('anonymous_campaign_final');
         
         console.log('✅ AuthProvider: Campaign migration successful');
+        toast.success('Your campaign has been saved to your account.');
       }
     } catch (error) {
       console.error('❌ AuthProvider: Campaign migration failed:', error);
