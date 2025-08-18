@@ -138,15 +138,21 @@ const AnonymousCampaignWizard: React.FC = () => {
           )}
 
           {/* Step 4: Timeline & Budget */}
-          {currentStep === 4 && customizedCampaign && (
+          {currentStep === 4 && (
             <CampaignTimelineBudgetStep
               initialData={{
-                goals: Array.isArray(customizedCampaign.goals) 
-                  ? customizedCampaign.goals.join('. ') + '.'
-                  : customizedCampaign.goals || '',
+                goals: customizedCampaign ? (
+                  Array.isArray(customizedCampaign.goals) 
+                    ? customizedCampaign.goals.join('. ') + '.'
+                    : customizedCampaign.goals || ''
+                ) : campaignAnalysis ? (
+                  Array.isArray(campaignAnalysis.goals)
+                    ? campaignAnalysis.goals.join('. ') + '.'
+                    : ''
+                ) : '',
                 deadline: undefined,
-                budget_min: undefined,
-                budget_max: undefined,
+                budget_min: customizedCampaign?.budget_min || campaignAnalysis?.budget_recommendations?.min,
+                budget_max: customizedCampaign?.budget_max || campaignAnalysis?.budget_recommendations?.max,
               }}
               onContinue={handleContinueFromTimelineBudget}
               onBackToCustomize={handleBackToCustomize}
