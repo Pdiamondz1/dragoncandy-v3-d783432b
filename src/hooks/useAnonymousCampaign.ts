@@ -79,7 +79,7 @@ export const useAnonymousCampaign = () => {
 
   const updateTimelineBudgetData = (data: any) => {
     if (campaignData) {
-      setCampaignData({ ...campaignData, timelineBudgetData: data, step: 4 });
+      setCampaignData({ ...campaignData, timelineBudgetData: data, step: 5 });
     }
   };
 

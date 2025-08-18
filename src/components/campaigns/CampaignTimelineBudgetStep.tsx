@@ -56,7 +56,8 @@ const CampaignTimelineBudgetStep: React.FC<CampaignTimelineBudgetStepProps> = ({
   });
 
   const handleSubmit = (data: TimelineBudgetFormData) => {
-    console.log('Timeline & Budget form data:', data);
+    console.log('Timeline & Budget form data being sent:', data);
+    console.log('Initial data received:', initialData);
     onContinue(data);
   };
 
