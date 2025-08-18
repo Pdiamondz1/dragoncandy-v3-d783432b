@@ -1,7 +1,8 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Eye } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { ArrowLeft, Eye, Info } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface AnonymousCampaignLayoutProps {
@@ -38,7 +39,6 @@ export const AnonymousCampaignLayout: React.FC<AnonymousCampaignLayoutProps> = (
                 Campaign Wizard
               </h1>
             </div>
-            
             <div className="flex items-center gap-3">
               <Badge variant="secondary" className="flex items-center gap-2">
                 <Eye className="h-3 w-3" />
@@ -50,6 +50,15 @@ export const AnonymousCampaignLayout: React.FC<AnonymousCampaignLayoutProps> = (
             </div>
           </div>
         </div>
+        
+        {/* Info Banner */}
+        <Alert className="mx-6 my-4 bg-blue-50 border-blue-200">
+          <Info className="h-4 w-4" />
+          <AlertDescription className="text-sm text-blue-800">
+            <strong>Business clients only:</strong> Campaign publishing requires a business account. 
+            Content creators can browse and apply to campaigns instead.
+          </AlertDescription>
+        </Alert>
       </header>
 
       {/* Main Content */}
