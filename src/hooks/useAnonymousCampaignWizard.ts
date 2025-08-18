@@ -35,8 +35,10 @@ export const useAnonymousCampaignWizard = () => {
     tone: customizedCampaign?.tone || '',
     target_audience: customizedCampaign?.target_audience || campaignAnalysis?.target_audience || '',
     key_messages: customizedCampaign?.key_messages || campaignAnalysis?.key_messages || [],
-    // Timeline and budget data
-    ...campaignData.timelineBudgetData,
+    // Timeline and budget data - map to correct property names
+    budgetMin: campaignData.timelineBudgetData.budget_min || campaignData.timelineBudgetData.budgetMin || 500,
+    budgetMax: campaignData.timelineBudgetData.budget_max || campaignData.timelineBudgetData.budgetMax || 2000,
+    deadline: campaignData.timelineBudgetData.deadline ? new Date(campaignData.timelineBudgetData.deadline) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // Default to 30 days from now
   } : null;
 
   const setCampaignGoal = (goal: string) => {
