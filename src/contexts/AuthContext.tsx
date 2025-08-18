@@ -22,6 +22,7 @@ interface AuthContextType {
   error: string | null;
   signOut: () => Promise<void>;
   isAuthenticated: boolean;
+  migrateCampaignData: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -285,6 +286,53 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     };
   }, []);
 
+  const migrateCampaignData = async () => {
+    try {
+      console.log('🔄 AuthProvider: Migrating anonymous campaign data');
+      
+      const anonymousCampaignData = localStorage.getItem('anonymous_campaign_data');
+      const finalCampaignData = localStorage.getItem('anonymous_campaign_final');
+      
+      if (anonymousCampaignData && finalCampaignData && user) {
+        const campaignData = JSON.parse(anonymousCampaignData);
+        const finalData = JSON.parse(finalCampaignData);
+        
+        console.log('📦 AuthProvider: Creating campaign from anonymous data');
+        
+        // Create the campaign in the database
+        const { error } = await supabase
+          .from('campaigns')
+          .insert({
+            user_id: user.id,
+            title: finalData.title,
+            description: finalData.description,
+            goals: campaignData.goal,
+            deliverables: campaignData.customizedData?.content_types || [],
+            platforms: campaignData.customizedData?.platforms || [],
+            style: campaignData.customizedData?.style || '',
+            tone: campaignData.customizedData?.tone || '',
+            budget_min: finalData.budgetMin,
+            budget_max: finalData.budgetMax,
+            deadline: finalData.deadline,
+            status: finalData.publishImmediately ? 'published' : 'draft',
+          });
+        
+        if (error) {
+          console.error('❌ AuthProvider: Campaign migration failed:', error);
+          throw error;
+        }
+        
+        // Clear the anonymous data
+        localStorage.removeItem('anonymous_campaign_data');
+        localStorage.removeItem('anonymous_campaign_final');
+        
+        console.log('✅ AuthProvider: Campaign migration successful');
+      }
+    } catch (error) {
+      console.error('❌ AuthProvider: Campaign migration failed:', error);
+    }
+  };
+
   const signOut = async () => {
     try {
       console.log('🚪 AuthProvider: Signing out user');
@@ -320,7 +368,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     loading,
     error,
     signOut,
-    isAuthenticated: !!user
+    isAuthenticated: !!user,
+    migrateCampaignData
   };
 
   console.log('📊 AuthProvider: Current state:', {

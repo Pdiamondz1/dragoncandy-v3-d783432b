@@ -22,6 +22,7 @@ import BusinessSettings from "./pages/BusinessSettings";
 import CreatorSettings from "./pages/CreatorSettings";
 import CampaignsPage from "./pages/CampaignsPage";
 import CampaignWizard from "./pages/CampaignWizard";
+import AnonymousCampaignWizard from "./pages/AnonymousCampaignWizard";
 import CampaignDetailsPage from "./pages/CampaignDetailsPage";
 import CampaignEditPage from "./pages/CampaignEditPage";
 import MessagesPage from "./pages/MessagesPage";
@@ -70,6 +71,9 @@ const App = () => {
                   <Route path="/" element={<Index />} />
                   <Route path="/landing" element={<LandingPage />} />
                   <Route path="/auth" element={<AuthPage />} />
+                  
+                  {/* Anonymous Campaign Creation */}
+                  <Route path="/campaign/create" element={<AnonymousCampaignWizard />} />
                   <Route path="/auth/forgot" element={<ForgotPassword />} />
                   <Route path="/auth/update-password" element={<UpdatePassword />} />
                   <Route path="/profile/onboarding" element={<ProfileOnboarding />} />

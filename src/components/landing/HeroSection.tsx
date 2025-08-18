@@ -29,17 +29,25 @@ export const HeroSection = () => {
         <Button
           size="lg"
           className="bg-pink-600 hover:bg-pink-700 text-white px-8 py-3 text-lg font-semibold"
-          onClick={() => navigate('/auth')}
+          onClick={() => navigate('/campaign/create')}
         >
-          Get Started Free →
+          Start Your Campaign →
         </Button>
         <Button
           size="lg"
           variant="outline"
           className="border-gray-300 text-gray-700 px-8 py-3 text-lg hover:bg-gray-50"
+          onClick={() => navigate('/auth')}
         >
-          Learn More
+          Sign Up Free
         </Button>
+      </div>
+      
+      {/* Trust Indicator */}
+      <div className="text-center mb-8">
+        <p className="text-sm text-gray-500">
+          ✨ No signup required to start • Create campaigns instantly
+        </p>
       </div>
     </div>
   );
