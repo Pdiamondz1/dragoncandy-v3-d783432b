@@ -160,13 +160,30 @@ const AnonymousCampaignWizard: React.FC = () => {
           )}
 
           {/* Step 5: Finalize - Anonymous Version */}
-          {currentStep === 5 && finalCampaignData && (
-            <AnonymousCampaignFinalizeStep
-              campaignData={finalCampaignData}
-              onBack={handleBackToTimelineBudget}
-              onPublishAttempt={handlePublishAttempt}
-              onSaveDraftAttempt={handleSaveDraftAttempt}
-            />
+          {currentStep === 5 && (
+            <>
+              {finalCampaignData ? (
+                <AnonymousCampaignFinalizeStep
+                  campaignData={finalCampaignData}
+                  onBack={handleBackToTimelineBudget}
+                  onPublishAttempt={handlePublishAttempt}
+                  onSaveDraftAttempt={handleSaveDraftAttempt}
+                />
+              ) : (
+                <div className="text-center py-12">
+                  <h3 className="text-lg font-semibold mb-4">Complete Previous Steps</h3>
+                  <p className="text-gray-600 mb-6">
+                    Please complete the timeline and budget step to continue.
+                  </p>
+                  <button
+                    onClick={handleBackToTimelineBudget}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  >
+                    Go Back to Timeline & Budget
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
