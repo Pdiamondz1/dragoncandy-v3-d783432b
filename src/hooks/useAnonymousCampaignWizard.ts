@@ -22,7 +22,22 @@ export const useAnonymousCampaignWizard = () => {
   const campaignGoal = campaignData?.goal || '';
   const campaignAnalysis = campaignData?.analysis || null;
   const customizedCampaign = campaignData?.customizedData || null;
-  const finalCampaignData = campaignData?.timelineBudgetData || null;
+  
+  // Combine all data for the finalize step
+  const finalCampaignData = campaignData?.timelineBudgetData ? {
+    // Use customized data if available, otherwise fall back to analysis data
+    title: customizedCampaign?.title || campaignAnalysis?.title || '',
+    description: customizedCampaign?.description || campaignAnalysis?.description || '',
+    goals: customizedCampaign?.goals || campaignAnalysis?.goals || [],
+    deliverables: customizedCampaign?.content_types || campaignAnalysis?.content_types || [],
+    platforms: customizedCampaign?.platforms || campaignAnalysis?.recommended_platforms || [],
+    style: customizedCampaign?.style || '',
+    tone: customizedCampaign?.tone || '',
+    target_audience: customizedCampaign?.target_audience || campaignAnalysis?.target_audience || '',
+    key_messages: customizedCampaign?.key_messages || campaignAnalysis?.key_messages || [],
+    // Timeline and budget data
+    ...campaignData.timelineBudgetData,
+  } : null;
 
   const setCampaignGoal = (goal: string) => {
     updateCampaignGoal(goal);
