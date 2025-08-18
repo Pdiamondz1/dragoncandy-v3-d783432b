@@ -8,6 +8,7 @@ export const useAnonymousCampaignWizard = () => {
   const {
     campaignData,
     createNewCampaign,
+    updateCampaignGoal,
     updateCampaignStep,
     updateCampaignAnalysis,
     updateCustomizedData,
@@ -24,13 +25,7 @@ export const useAnonymousCampaignWizard = () => {
   const finalCampaignData = campaignData?.timelineBudgetData || null;
 
   const setCampaignGoal = (goal: string) => {
-    if (campaignData) {
-      // Update existing campaign
-      campaignData.goal = goal;
-    } else {
-      // Create new campaign
-      createNewCampaign(goal);
-    }
+    updateCampaignGoal(goal);
   };
 
   const handleGenerateWithAI = async () => {

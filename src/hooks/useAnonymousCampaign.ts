@@ -51,6 +51,14 @@ export const useAnonymousCampaign = () => {
     return newCampaign;
   };
 
+  const updateCampaignGoal = (goal: string) => {
+    if (campaignData) {
+      setCampaignData({ ...campaignData, goal });
+    } else {
+      createNewCampaign(goal);
+    }
+  };
+
   const updateCampaignStep = (step: number) => {
     if (campaignData) {
       setCampaignData({ ...campaignData, step });
@@ -89,6 +97,7 @@ export const useAnonymousCampaign = () => {
   return {
     campaignData,
     createNewCampaign,
+    updateCampaignGoal,
     updateCampaignStep,
     updateCampaignAnalysis,
     updateCustomizedData,

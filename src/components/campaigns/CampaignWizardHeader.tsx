@@ -30,7 +30,7 @@ const CampaignWizardHeader: React.FC<CampaignWizardHeaderProps> = ({
       <div className="flex justify-center mb-8">
         <div className="flex items-center space-x-4">
           {steps.map((step, index) => (
-            <React.Fragment key={step.number}>
+            <div key={step.number} className="flex items-center">
               <div className="flex flex-col items-center">
                 <div className={`
                   w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold
@@ -50,11 +50,11 @@ const CampaignWizardHeader: React.FC<CampaignWizardHeaderProps> = ({
               </div>
               {index < steps.length - 1 && (
                 <div className={`
-                  w-8 h-0.5 
+                  w-8 h-0.5 ml-4
                   ${step.number < currentStep ? 'bg-blue-600' : 'bg-gray-200'}
                 `} />
               )}
-            </React.Fragment>
+            </div>
           ))}
         </div>
       </div>
