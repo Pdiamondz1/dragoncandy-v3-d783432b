@@ -1,5 +1,4 @@
 import React from 'react';
-import { createPortal } from 'react-dom';
 import { useCreatorPortfolioFeed } from '@/hooks/useCreatorPortfolioFeed';
 import { CreatorFeedColumn } from './CreatorFeedColumn';
 
@@ -37,75 +36,25 @@ export const CreatorPortfolioFeed = () => {
     rightColumnItems = portfolioMedia.slice(midpoint);
   }
 
-  // Use React Portal to render outside normal document flow
-  return createPortal(
-    <div 
-      style={{
-        position: 'fixed' as const,
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        zIndex: -1,
-        pointerEvents: 'none',
-        overflow: 'hidden',
-        userSelect: 'none',
-        contain: 'layout style',
-        isolation: 'isolate',
-        transform: 'translate3d(0, 0, 0)',
-        willChange: 'transform'
-      }}
-    >
-      {/* Left Column - CSS Animation Up */}
-      <div 
-        style={{
-          position: 'absolute' as const,
-          left: 0,
-          top: 0,
-          width: '10rem',
-          height: '100%',
-          opacity: 0.7,
-          transition: 'opacity 0.3s ease',
-          pointerEvents: 'auto',
-          paddingRight: '0.75rem',
-          transform: 'translate3d(0, 0, 0)',
-          willChange: 'transform',
-          contain: 'layout style'
-        }}
-        onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.9')}
-        onMouseLeave={(e) => (e.currentTarget.style.opacity = '0.7')}
-      >
+  return (
+    <>
+      {/* Left Column - Scrolls Up */}
+      <div className="fixed left-0 top-0 w-40 lg:w-64 z-0 opacity-70 hover:opacity-90 transition-opacity duration-300">
         <CreatorFeedColumn 
           mediaItems={leftColumnItems} 
           direction="up"
+          className="pr-3"
         />
       </div>
 
-      {/* Right Column - CSS Animation Down */}
-      <div 
-        style={{
-          position: 'absolute' as const,
-          right: 0,
-          top: 0,
-          width: '10rem',
-          height: '100%',
-          opacity: 0.7,
-          transition: 'opacity 0.3s ease',
-          pointerEvents: 'auto',
-          paddingLeft: '0.75rem',
-          transform: 'translate3d(0, 0, 0)',
-          willChange: 'transform',
-          contain: 'layout style'
-        }}
-        onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.9')}
-        onMouseLeave={(e) => (e.currentTarget.style.opacity = '0.7')}
-      >
+      {/* Right Column - Scrolls Down */}
+      <div className="fixed right-0 top-0 w-40 lg:w-64 z-0 opacity-70 hover:opacity-90 transition-opacity duration-300">
         <CreatorFeedColumn 
           mediaItems={rightColumnItems} 
           direction="down"
+          className="pl-3"
         />
       </div>
-    </div>,
-    document.body
+    </>
   );
 };

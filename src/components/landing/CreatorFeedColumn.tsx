@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { PortfolioMediaItem } from './PortfolioMediaItem';
 
 interface PortfolioMedia {
@@ -14,71 +14,75 @@ interface CreatorFeedColumnProps {
   className?: string;
 }
 
-export const CreatorFeedColumn = ({ mediaItems, direction }: CreatorFeedColumnProps) => {
+export const CreatorFeedColumn = ({ mediaItems, direction, className = '' }: CreatorFeedColumnProps) => {
+  const containerRef = useRef<HTMLDivElement>(null);
   const [isPaused, setIsPaused] = useState(false);
+
+  useEffect(() => {
+    if (!mediaItems.length || isPaused) return;
+
+    const container = containerRef.current;
+    if (!container) return;
+
+    const scrollSpeed = 1; // pixels per frame
+    const isUpward = direction === 'up';
+
+    let animationId: number;
+
+    const animate = () => {
+      if (container && !isPaused) {
+        const maxScroll = container.scrollHeight - container.clientHeight;
+        
+        if (isUpward) {
+          container.scrollTop += scrollSpeed;
+          if (container.scrollTop >= maxScroll) {
+            container.scrollTop = 0;
+          }
+        } else {
+          container.scrollTop -= scrollSpeed;
+          if (container.scrollTop <= 0) {
+            container.scrollTop = maxScroll;
+          }
+        }
+      }
+      animationId = requestAnimationFrame(animate);
+    };
+
+    animationId = requestAnimationFrame(animate);
+
+    return () => {
+      if (animationId) {
+        cancelAnimationFrame(animationId);
+      }
+    };
+  }, [direction, isPaused, mediaItems.length]);
 
   if (!mediaItems.length) {
     return null;
   }
 
-  // Create CSS keyframes for smooth infinite scroll
-  const animationName = `dragon-feed-${direction}`;
-  const animationDuration = '60s'; // Slow, smooth scrolling
-  
-  // Duplicate items multiple times for seamless infinite scroll
-  const duplicatedItems = [...mediaItems, ...mediaItems, ...mediaItems, ...mediaItems];
+  // Duplicate items to create seamless loop
+  const duplicatedItems = [...mediaItems, ...mediaItems];
 
   return (
-    <>
-      {/* Inject CSS animation keyframes */}
-      <style>
-        {`
-          @keyframes dragon-feed-up {
-            0% { transform: translateY(0%); }
-            100% { transform: translateY(-50%); }
-          }
-          @keyframes dragon-feed-down {
-            0% { transform: translateY(-50%); }
-            100% { transform: translateY(0%); }
-          }
-        `}
-      </style>
-      
-      <div
-        style={{
-          height: '100%',
-          overflow: 'hidden',
-          position: 'relative',
-          contain: 'layout style',
-          transform: 'translate3d(0, 0, 0)',
-          willChange: 'transform'
-        }}
-        onMouseEnter={() => setIsPaused(true)}
-        onMouseLeave={() => setIsPaused(false)}
-      >
-        <div 
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '1rem',
-            padding: '1rem 0',
-            animation: isPaused ? 'none' : `${animationName} ${animationDuration} linear infinite`,
-            transform: 'translate3d(0, 0, 0)',
-            backfaceVisibility: 'hidden',
-            contain: 'layout style'
-          }}
-        >
-          {duplicatedItems.map((item, index) => (
-            <PortfolioMediaItem
-              key={`${item.id}-${index}`}
-              url={item.url}
-              type={item.type}
-              creatorName={item.creatorName}
-              className="w-full h-64 flex-shrink-0"
-            />
-          ))}
-        </div>
+    <div
+      ref={containerRef}
+      className={`h-screen overflow-hidden scrollbar-hide ${className}`}
+      onMouseEnter={() => setIsPaused(true)}
+      onMouseLeave={() => setIsPaused(false)}
+      style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+    >
+      <div className="flex flex-col gap-4 py-4">
+        {duplicatedItems.map((item, index) => (
+          <PortfolioMediaItem
+            key={`${item.id}-${index}`}
+            url={item.url}
+            type={item.type}
+            creatorName={item.creatorName}
+            className="w-full h-64 flex-shrink-0"
+          />
+        ))}
       </div>
-    </>
+    </div>
   );
 };
