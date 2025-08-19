@@ -13,13 +13,15 @@ export const PortfolioUpload = ({ portfolioPaths, onPortfolioPathsChange }: Port
     <div>
       <Label>Portfolio</Label>
       <EnhancedFileUpload
-        bucketName="profile-media"
+        bucketName="profile-assets"
         category="portfolio"
         maxFiles={20}
         acceptedTypes={['image/*', 'video/*']}
         onUploadComplete={(files) => {
-          // Extract storage paths from uploaded files
-          const newPaths = files.map(f => f.path || f.name);
+          // Extract storage paths from uploaded files (prefer file_path from DB record)
+          const newPaths = files
+            .map((f: any) => f.file_path || f.path || f.name)
+            .filter(Boolean);
           const allPaths = [...portfolioPaths, ...newPaths];
           onPortfolioPathsChange(allPaths);
         }}
