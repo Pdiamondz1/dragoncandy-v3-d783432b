@@ -37,9 +37,9 @@ export const CreatorPortfolioFeed = () => {
   }
 
   return (
-    <>
+    <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
       {/* Left Column - Scrolls Up, Fixed to viewport */}
-      <div className="fixed left-0 top-0 w-40 lg:w-64 h-screen z-0 opacity-70 hover:opacity-90 transition-opacity duration-300 pointer-events-none">
+      <div className="absolute left-0 top-0 w-40 lg:w-64 h-full opacity-70 hover:opacity-90 transition-opacity duration-300 pointer-events-auto">
         <CreatorFeedColumn 
           mediaItems={leftColumnItems} 
           direction="up"
@@ -48,13 +48,13 @@ export const CreatorPortfolioFeed = () => {
       </div>
 
       {/* Right Column - Scrolls Down, Fixed to viewport */}
-      <div className="fixed right-0 top-0 w-40 lg:w-64 h-screen z-0 opacity-70 hover:opacity-90 transition-opacity duration-300 pointer-events-none">
+      <div className="absolute right-0 top-0 w-40 lg:w-64 h-full opacity-70 hover:opacity-90 transition-opacity duration-300 pointer-events-auto">
         <CreatorFeedColumn 
           mediaItems={rightColumnItems} 
           direction="down"
           className="pl-3"
         />
       </div>
-    </>
+    </div>
   );
 };
