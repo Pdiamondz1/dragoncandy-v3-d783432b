@@ -10,7 +10,7 @@ import { Separator } from '@/components/ui/separator';
 import { DollarSign, Clock, MessageSquare, Upload, X, Eye } from 'lucide-react';
 import { useCreateApplication } from '@/hooks/useCreateApplication';
 import { Campaign } from '@/hooks/useCampaignQueries';
-import { PortfolioUpload } from '@/components/creator-profile/PortfolioUpload';
+import { ApplicationPortfolioUpload } from './ApplicationPortfolioUpload';
 
 interface EnhancedApplicationFormProps {
   campaign: Campaign;
@@ -146,7 +146,7 @@ const EnhancedApplicationForm: React.FC<EnhancedApplicationFormProps> = ({
               <p className="text-sm text-gray-600 mb-3">
                 Upload your best work samples relevant to this campaign
               </p>
-              <PortfolioUpload 
+              <ApplicationPortfolioUpload 
                 portfolioFiles={portfolioFiles}
                 onPortfolioFilesChange={setPortfolioFiles}
               />

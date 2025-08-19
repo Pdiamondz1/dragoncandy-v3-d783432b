@@ -15,13 +15,13 @@ interface CreatorProfileSetupFormProps {
   formData: CreatorProfileFormData;
   selectedSkills: CreatorSkill[];
   avatarFile: File | null;
-  portfolioFiles: File[];
+  portfolioPaths: string[];
   loading: boolean;
   isFormValid: boolean;
   onInputChange: (field: string, value: string) => void;
   onSkillChange: (skillId: CreatorSkill, checked: boolean) => void;
   onAvatarFileChange: (file: File | null) => void;
-  onPortfolioFilesChange: (files: File[]) => void;
+  onPortfolioPathsChange: (paths: string[]) => void;
   onSubmit: (e: React.FormEvent) => void;
 }
 
@@ -29,13 +29,13 @@ export const CreatorProfileSetupForm = ({
   formData,
   selectedSkills,
   avatarFile,
-  portfolioFiles,
+  portfolioPaths,
   loading,
   isFormValid,
   onInputChange,
   onSkillChange,
   onAvatarFileChange,
-  onPortfolioFilesChange,
+  onPortfolioPathsChange,
   onSubmit
 }: CreatorProfileSetupFormProps) => {
   return (
@@ -61,8 +61,8 @@ export const CreatorProfileSetupForm = ({
       />
 
       <PortfolioUpload 
-        portfolioFiles={portfolioFiles}
-        onPortfolioFilesChange={onPortfolioFilesChange}
+        portfolioPaths={portfolioPaths}
+        onPortfolioPathsChange={onPortfolioPathsChange}
       />
 
       <Button

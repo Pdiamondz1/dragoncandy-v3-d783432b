@@ -33,7 +33,7 @@ export interface CreatorProfileFormData {
 
 export const useCreatorProfileForm = () => {
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
-  const [portfolioFiles, setPortfolioFiles] = useState<File[]>([]);
+  const [portfolioPaths, setPortfolioPaths] = useState<string[]>([]);
   const [selectedSkills, setSelectedSkills] = useState<CreatorSkill[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
   
@@ -118,12 +118,12 @@ export const useCreatorProfileForm = () => {
   return {
     formData,
     avatarFile,
-    portfolioFiles,
+    portfolioPaths,
     selectedSkills,
     handleInputChange,
     handleSkillChange,
     setAvatarFile,
-    setPortfolioFiles,
+    setPortfolioPaths,
     setFormDataFromProfile,
     setSelectedSkills,
     isFormValid

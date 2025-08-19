@@ -28,7 +28,7 @@ export const useCreatorProfileSubmit = () => {
     formData: CreatorProfileFormData,
     selectedSkills: CreatorSkill[],
     avatarFile: File | null,
-    portfolioFiles: File[],
+    portfolioPaths: string[],
     isUpdate = false
   ) => {
     if (!user) return false;
@@ -37,18 +37,14 @@ export const useCreatorProfileSubmit = () => {
     
     try {
       let avatarUrl = formData.avatar_url;
-      let portfolioUrls: string[] = [];
 
       // Upload avatar if provided
       if (avatarFile) {
         avatarUrl = await uploadFile(avatarFile, 'avatars');
       }
 
-      // Upload portfolio files
-      if (portfolioFiles.length > 0) {
-        const uploadPromises = portfolioFiles.map(file => uploadFile(file, 'portfolio'));
-        portfolioUrls = await Promise.all(uploadPromises);
-      }
+      // Portfolio files are already uploaded, use the paths directly
+      const portfolioUrls = portfolioPaths;
 
       // Process languages array
       const languagesArray = formData.languages_spoken 

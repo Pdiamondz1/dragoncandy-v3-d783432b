@@ -4,11 +4,11 @@ import { Label } from '@/components/ui/label';
 import EnhancedFileUpload from '@/components/files/EnhancedFileUpload';
 
 interface PortfolioUploadProps {
-  portfolioFiles: File[];
-  onPortfolioFilesChange: (files: File[]) => void;
+  portfolioPaths: string[];
+  onPortfolioPathsChange: (paths: string[]) => void;
 }
 
-export const PortfolioUpload = ({ portfolioFiles, onPortfolioFilesChange }: PortfolioUploadProps) => {
+export const PortfolioUpload = ({ portfolioPaths, onPortfolioPathsChange }: PortfolioUploadProps) => {
   return (
     <div>
       <Label>Portfolio</Label>
@@ -18,12 +18,18 @@ export const PortfolioUpload = ({ portfolioFiles, onPortfolioFilesChange }: Port
         maxFiles={20}
         acceptedTypes={['image/*', 'video/*']}
         onUploadComplete={(files) => {
-          // Convert to File objects for backward compatibility
-          const fileObjects = files.map(f => new File([], f.original_filename));
-          onPortfolioFilesChange(fileObjects);
+          // Extract storage paths from uploaded files
+          const newPaths = files.map(f => f.path || f.name);
+          const allPaths = [...portfolioPaths, ...newPaths];
+          onPortfolioPathsChange(allPaths);
         }}
         className="mt-2"
       />
+      {portfolioPaths.length > 0 && (
+        <div className="mt-2 text-sm text-muted-foreground">
+          {portfolioPaths.length} portfolio item(s) uploaded
+        </div>
+      )}
     </div>
   );
 };

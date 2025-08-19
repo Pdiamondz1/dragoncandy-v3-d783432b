@@ -19,12 +19,12 @@ const CreatorProfileSetup = () => {
   const {
     formData,
     avatarFile,
-    portfolioFiles,
+    portfolioPaths,
     selectedSkills,
     handleInputChange,
     handleSkillChange,
     setAvatarFile,
-    setPortfolioFiles,
+    setPortfolioPaths,
     isFormValid
   } = useCreatorProfileForm();
 
@@ -36,7 +36,7 @@ const CreatorProfileSetup = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const success = await submitProfile(formData, selectedSkills, avatarFile, portfolioFiles);
+    const success = await submitProfile(formData, selectedSkills, avatarFile, portfolioPaths);
     
     // Redirect to creator dashboard on successful profile creation
     if (success) {
@@ -68,13 +68,13 @@ const CreatorProfileSetup = () => {
               formData={formData}
               selectedSkills={selectedSkills}
               avatarFile={avatarFile}
-              portfolioFiles={portfolioFiles}
+              portfolioPaths={portfolioPaths}
               loading={loading}
               isFormValid={isFormValid()}
               onInputChange={handleInputChange}
               onSkillChange={handleSkillChange}
               onAvatarFileChange={setAvatarFile}
-              onPortfolioFilesChange={setPortfolioFiles}
+              onPortfolioPathsChange={setPortfolioPaths}
               onSubmit={handleSubmit}
             />
           </CardContent>
