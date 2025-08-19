@@ -67,7 +67,7 @@ export const CreatorFeedColumn = ({ mediaItems, direction, className = '' }: Cre
   return (
     <div
       ref={containerRef}
-      className={`h-screen overflow-hidden scrollbar-hide ${className}`}
+      className={`h-full overflow-hidden scrollbar-hide ${className}`}
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
       style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
