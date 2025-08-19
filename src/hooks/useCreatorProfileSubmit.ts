@@ -82,6 +82,7 @@ export const useCreatorProfileSubmit = () => {
         website_url: formData.website_url,
         avatar_url: avatarUrl,
         skills: selectedSkills,
+        allow_portfolio_in_feed: formData.allow_portfolio_in_feed,
         updated_at: new Date().toISOString()
       };
 
