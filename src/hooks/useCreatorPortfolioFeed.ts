@@ -17,6 +17,7 @@ export const useCreatorPortfolioFeed = () => {
     const fetchPortfolioMedia = async () => {
       try {
         setLoading(true);
+        console.log('🎥 DragonFeed: Starting portfolio media fetch...');
         
         // Fetch creator profiles with portfolio URLs who allow DragonFeed display
         const { data: creators, error: fetchError } = await supabase
@@ -28,10 +29,14 @@ export const useCreatorPortfolioFeed = () => {
           .limit(50);
 
         if (fetchError) {
+          console.error('❌ DragonFeed: Database fetch error:', fetchError);
           throw fetchError;
         }
 
+        console.log('📊 DragonFeed: Found creators:', creators?.length || 0, creators);
+
         if (!creators || creators.length === 0) {
+          console.log('⚠️ DragonFeed: No eligible creators found');
           setPortfolioMedia([]);
           return;
         }
@@ -40,43 +45,67 @@ export const useCreatorPortfolioFeed = () => {
         const mediaItems: PortfolioMedia[] = [];
         
         for (const creator of creators) {
+          console.log('👤 DragonFeed: Processing creator:', creator.creator_name, creator.portfolio_urls);
+          
           if (creator.portfolio_urls && Array.isArray(creator.portfolio_urls)) {
             for (const url of creator.portfolio_urls) {
               if (url && typeof url === 'string') {
+                console.log('🔗 DragonFeed: Processing URL:', url);
+                
                 // Check if it's a storage path or external URL
                 let finalUrl = url;
                 
                 if (!url.startsWith('http')) {
+                  console.log('🗄️ DragonFeed: Creating signed URL for:', url);
+                  
                   // Convert storage path to signed URL using profile-assets bucket
-                  const { data: signedUrl } = await supabase.storage
+                  const { data: signedUrl, error: urlError } = await supabase.storage
                     .from('profile-assets')
                     .createSignedUrl(url, 3600);
                   
+                  if (urlError) {
+                    console.error('❌ DragonFeed: Signed URL error for', url, ':', urlError);
+                    continue; // Skip this URL if signing fails
+                  }
+                  
                   if (signedUrl?.signedUrl) {
                     finalUrl = signedUrl.signedUrl;
+                    console.log('✅ DragonFeed: Generated signed URL:', finalUrl);
+                  } else {
+                    console.error('❌ DragonFeed: No signed URL returned for:', url);
+                    continue; // Skip this URL if no signed URL
                   }
+                } else {
+                  console.log('🌐 DragonFeed: Using external URL:', url);
                 }
 
                 // Determine media type based on URL
                 const isVideo = /\.(mp4|webm|mov|avi)$/i.test(url);
                 
-                mediaItems.push({
+                const mediaItem: PortfolioMedia = {
                   id: `${creator.id}-${url}`,
                   url: finalUrl,
                   type: isVideo ? 'video' : 'image',
                   creatorName: creator.creator_name || 'Creator'
-                });
+                };
+                
+                console.log('📸 DragonFeed: Adding media item:', mediaItem);
+                mediaItems.push(mediaItem);
               }
             }
           }
         }
 
+        console.log('🎬 DragonFeed: Total media items before shuffle:', mediaItems.length);
+
         // Shuffle the media items for randomization
         const shuffled = mediaItems.sort(() => Math.random() - 0.5);
         setPortfolioMedia(shuffled);
         
+        console.log('🎯 DragonFeed: Final portfolio media set:', shuffled.length, 'items');
+        
       } catch (err) {
-        console.error('Error fetching portfolio media:', err);
+        console.error('💥 DragonFeed: Critical error:', err);
         setError(err instanceof Error ? err.message : 'Failed to load portfolio media');
       } finally {
         setLoading(false);
