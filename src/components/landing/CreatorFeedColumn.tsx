@@ -70,9 +70,22 @@ export const CreatorFeedColumn = ({ mediaItems, direction, className = '' }: Cre
       className={`h-full overflow-hidden scrollbar-hide ${className}`}
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
-      style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+      style={{ 
+        scrollbarWidth: 'none', 
+        msOverflowStyle: 'none',
+        position: 'relative',
+        transform: 'translate3d(0, 0, 0)',
+        willChange: 'scroll-position',
+        isolation: 'isolate'
+      }}
     >
-      <div className="flex flex-col gap-4 py-4">
+      <div 
+        className="flex flex-col gap-4 py-4"
+        style={{
+          transform: 'translate3d(0, 0, 0)',
+          backfaceVisibility: 'hidden'
+        }}
+      >
         {duplicatedItems.map((item, index) => (
           <PortfolioMediaItem
             key={`${item.id}-${index}`}

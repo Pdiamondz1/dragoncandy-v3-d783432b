@@ -37,9 +37,30 @@ export const CreatorPortfolioFeed = () => {
   }
 
   return (
-    <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
+    <div 
+      className="z-0 pointer-events-none overflow-hidden"
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        transform: 'translate3d(0, 0, 0)',
+        willChange: 'scroll-position'
+      }}
+    >
       {/* Left Column - Scrolls Up, Fixed to viewport */}
-      <div className="absolute left-0 top-0 w-40 lg:w-64 h-full opacity-70 hover:opacity-90 transition-opacity duration-300 pointer-events-auto">
+      <div 
+        className="opacity-70 hover:opacity-90 transition-opacity duration-300 pointer-events-auto"
+        style={{
+          position: 'absolute',
+          left: 0,
+          top: 0,
+          width: '10rem', // w-40
+          height: '100%',
+          transform: 'translate3d(0, 0, 0)'
+        }}
+      >
         <CreatorFeedColumn 
           mediaItems={leftColumnItems} 
           direction="up"
@@ -48,7 +69,17 @@ export const CreatorPortfolioFeed = () => {
       </div>
 
       {/* Right Column - Scrolls Down, Fixed to viewport */}
-      <div className="absolute right-0 top-0 w-40 lg:w-64 h-full opacity-70 hover:opacity-90 transition-opacity duration-300 pointer-events-auto">
+      <div 
+        className="opacity-70 hover:opacity-90 transition-opacity duration-300 pointer-events-auto"
+        style={{
+          position: 'absolute',
+          right: 0,
+          top: 0,
+          width: '10rem', // w-40
+          height: '100%',
+          transform: 'translate3d(0, 0, 0)'
+        }}
+      >
         <CreatorFeedColumn 
           mediaItems={rightColumnItems} 
           direction="down"
