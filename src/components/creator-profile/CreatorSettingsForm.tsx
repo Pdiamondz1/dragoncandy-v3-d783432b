@@ -19,7 +19,7 @@ interface CreatorSettingsFormProps {
   selectedSkills: CreatorSkill[];
   avatarFile: File | null;
   loading: boolean;
-  onInputChange: (field: string, value: string) => void;
+  onInputChange: (field: string, value: string | boolean) => void;
   onSkillChange: (skillId: CreatorSkill, checked: boolean) => void;
   onAvatarFileChange: (file: File | null) => void;
   onSubmit: (e: React.FormEvent) => void;
@@ -279,6 +279,29 @@ export const CreatorSettingsForm = ({
             formData={formData}
             onInputChange={onInputChange}
           />
+
+          {/* DragonFeed Showcase */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">DragonFeed Showcase</h3>
+            <div className="space-y-2">
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="allow_portfolio_in_feed"
+                  checked={formData.allow_portfolio_in_feed}
+                  onChange={(e) => onInputChange('allow_portfolio_in_feed', e.target.checked)}
+                  className="rounded border-border focus:ring-primary focus:ring-2"
+                />
+                <Label htmlFor="allow_portfolio_in_feed" className="text-sm font-medium">
+                  Display my portfolio in DragonFeed
+                </Label>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Allow your portfolio content to be featured in the public showcase on our landing page. 
+                This helps you gain visibility and attract potential clients. You can change this setting anytime.
+              </p>
+            </div>
+          </div>
 
           {/* Submit Button */}
           <Button

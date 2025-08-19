@@ -21,8 +21,9 @@ interface EnhancedCreatorProfileFormProps {
     preferred_project_duration: string;
     collaboration_preferences: string;
     profile_visibility: string;
+    allow_portfolio_in_feed: boolean;
   };
-  onInputChange: (field: string, value: string) => void;
+  onInputChange: (field: string, value: string | boolean) => void;
 }
 
 export const EnhancedCreatorProfileForm = ({ formData, onInputChange }: EnhancedCreatorProfileFormProps) => {
@@ -247,6 +248,26 @@ export const EnhancedCreatorProfileForm = ({ formData, onInputChange }: Enhanced
             <SelectItem value="private">Private - Only you can view</SelectItem>
           </SelectContent>
         </Select>
+      </div>
+
+      {/* DragonFeed Showcase */}
+      <div className="space-y-2">
+        <div className="flex items-center space-x-2">
+          <input
+            type="checkbox"
+            id="allow_portfolio_in_feed"
+            checked={formData.allow_portfolio_in_feed}
+            onChange={(e) => onInputChange('allow_portfolio_in_feed', e.target.checked)}
+            className="rounded border-border focus:ring-primary focus:ring-2"
+          />
+          <Label htmlFor="allow_portfolio_in_feed" className="text-sm font-medium">
+            Display my portfolio in DragonFeed
+          </Label>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Allow your portfolio content to be featured in the public showcase on our landing page. 
+          This helps you gain visibility and attract potential clients.
+        </p>
       </div>
     </>
   );

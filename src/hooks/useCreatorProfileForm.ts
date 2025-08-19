@@ -28,6 +28,7 @@ export interface CreatorProfileFormData {
   other_social_url: string;
   website_url: string;
   avatar_url: string;
+  allow_portfolio_in_feed: boolean;
 }
 
 export const useCreatorProfileForm = () => {
@@ -59,10 +60,11 @@ export const useCreatorProfileForm = () => {
     x_url: '',
     other_social_url: '',
     website_url: '',
-    avatar_url: ''
+    avatar_url: '',
+    allow_portfolio_in_feed: false
   });
 
-  const handleInputChange = (field: string, value: string) => {
+  const handleInputChange = (field: string, value: string | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
@@ -102,7 +104,8 @@ export const useCreatorProfileForm = () => {
       x_url: profile.x_url || '',
       other_social_url: profile.other_social_url || '',
       website_url: profile.website_url || '',
-      avatar_url: profile.avatar_url || ''
+      avatar_url: profile.avatar_url || '',
+      allow_portfolio_in_feed: profile.allow_portfolio_in_feed || false
     });
     setSelectedSkills(profile.skills as CreatorSkill[] || []);
     setIsLoaded(true);

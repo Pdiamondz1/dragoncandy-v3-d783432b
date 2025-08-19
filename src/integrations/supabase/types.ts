@@ -535,6 +535,7 @@ export type Database = {
       }
       creator_profiles: {
         Row: {
+          allow_portfolio_in_feed: boolean
           availability: string | null
           avatar_url: string | null
           average_rating: number | null
@@ -570,6 +571,7 @@ export type Database = {
           youtube_url: string | null
         }
         Insert: {
+          allow_portfolio_in_feed?: boolean
           availability?: string | null
           avatar_url?: string | null
           average_rating?: number | null
@@ -605,6 +607,7 @@ export type Database = {
           youtube_url?: string | null
         }
         Update: {
+          allow_portfolio_in_feed?: boolean
           availability?: string | null
           avatar_url?: string | null
           average_rating?: number | null

@@ -18,11 +18,12 @@ export const useCreatorPortfolioFeed = () => {
       try {
         setLoading(true);
         
-        // Fetch creator profiles with portfolio URLs
+        // Fetch creator profiles with portfolio URLs who allow DragonFeed display
         const { data: creators, error: fetchError } = await supabase
           .from('creator_profiles')
           .select('id, creator_name, portfolio_urls')
           .eq('is_completed', true)
+          .eq('allow_portfolio_in_feed', true)
           .not('portfolio_urls', 'is', null)
           .limit(50);
 
