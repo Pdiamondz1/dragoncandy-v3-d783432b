@@ -46,11 +46,11 @@ export const useCreatorPortfolioFeed = () => {
                 // Check if it's a storage path or external URL
                 let finalUrl = url;
                 
-                if (url.startsWith('creator-portfolios/')) {
-                  // Convert storage path to signed URL
+                if (!url.startsWith('http')) {
+                  // Convert storage path to signed URL using profile-assets bucket
                   const { data: signedUrl } = await supabase.storage
-                    .from('creator-portfolios')
-                    .createSignedUrl(url.replace('creator-portfolios/', ''), 3600);
+                    .from('profile-assets')
+                    .createSignedUrl(url, 3600);
                   
                   if (signedUrl?.signedUrl) {
                     finalUrl = signedUrl.signedUrl;
