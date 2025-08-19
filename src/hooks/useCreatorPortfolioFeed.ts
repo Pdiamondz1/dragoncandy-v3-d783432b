@@ -82,6 +82,20 @@ export const useCreatorPortfolioFeed = () => {
                 // Determine media type based on URL
                 const isVideo = /\.(mp4|webm|mov|avi)$/i.test(url);
                 
+                // Validate URL before adding to feed
+                try {
+                  const response = await fetch(finalUrl, { method: 'HEAD' });
+                  const contentLength = response.headers.get('content-length');
+                  
+                  if (!response.ok || (contentLength && parseInt(contentLength) === 0)) {
+                    console.warn('⚠️ DragonFeed: Skipping empty/corrupted file:', finalUrl);
+                    continue; // Skip empty/corrupted files
+                  }
+                } catch (fetchError) {
+                  console.warn('⚠️ DragonFeed: Failed to validate file, skipping:', finalUrl, fetchError);
+                  continue; // Skip files that can't be validated
+                }
+                
                 const mediaItem: PortfolioMedia = {
                   id: `${creator.id}-${url}`,
                   url: finalUrl,
@@ -89,7 +103,7 @@ export const useCreatorPortfolioFeed = () => {
                   creatorName: creator.creator_name || 'Creator'
                 };
                 
-                console.log('📸 DragonFeed: Adding media item:', mediaItem);
+                console.log('📸 DragonFeed: Adding validated media item:', mediaItem);
                 mediaItems.push(mediaItem);
               }
             }

@@ -13,15 +13,19 @@ export const CreatorPortfolioFeed = () => {
     portfolioMedia
   });
 
-  // Temporarily show debug info instead of returning null
+  // Enhanced debug - always render for now to see what's happening
+  console.log('🔍 CreatorPortfolioFeed: About to render, component mounted');
+  
+  // Show debug info with higher z-index
   if (loading || error || !portfolioMedia.length) {
     return (
-      <div className="fixed top-4 left-4 z-50 bg-black/80 text-white p-4 rounded-lg text-xs max-w-md">
-        <h3 className="font-bold mb-2">🐛 DragonFeed Debug</h3>
+      <div className="fixed top-4 left-4 z-[9999] bg-black text-white p-4 rounded-lg text-xs max-w-md border-2 border-red-500">
+        <h3 className="font-bold mb-2 text-red-400">🐛 DragonFeed Debug</h3>
         <div>Loading: {loading ? 'true' : 'false'}</div>
         <div>Error: {error || 'none'}</div>
         <div>Media Items: {portfolioMedia.length}</div>
         <div>Should Render: {(!loading && !error && portfolioMedia.length > 0) ? 'YES' : 'NO'}</div>
+        <div className="mt-2 text-yellow-400">Component is mounted and running!</div>
       </div>
     );
   }

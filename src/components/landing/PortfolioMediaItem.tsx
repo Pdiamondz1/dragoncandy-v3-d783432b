@@ -12,15 +12,19 @@ export const PortfolioMediaItem = ({ url, type, creatorName, className = '' }: P
   const [error, setError] = useState(false);
 
   const handleLoad = () => {
+    console.log('✅ PortfolioMediaItem loaded successfully:', url);
     setLoaded(true);
   };
 
-  const handleError = () => {
+  const handleError = (e: any) => {
+    console.error('❌ PortfolioMediaItem failed to load:', url, e);
     setError(true);
   };
 
+  // Don't render broken media, but log for debugging
   if (error) {
-    return null; // Don't render broken media
+    console.log('🚫 PortfolioMediaItem: Skipping broken media:', url);
+    return null;
   }
 
   return (
