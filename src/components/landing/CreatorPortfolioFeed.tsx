@@ -5,8 +5,25 @@ import { CreatorFeedColumn } from './CreatorFeedColumn';
 export const CreatorPortfolioFeed = () => {
   const { portfolioMedia, loading, error } = useCreatorPortfolioFeed();
 
+  // Debug logging to see current state
+  console.log('🖥️ CreatorPortfolioFeed Debug:', {
+    loading,
+    error,
+    portfolioMediaLength: portfolioMedia.length,
+    portfolioMedia
+  });
+
+  // Temporarily show debug info instead of returning null
   if (loading || error || !portfolioMedia.length) {
-    return null; // Don't render if no data
+    return (
+      <div className="fixed top-4 left-4 z-50 bg-black/80 text-white p-4 rounded-lg text-xs max-w-md">
+        <h3 className="font-bold mb-2">🐛 DragonFeed Debug</h3>
+        <div>Loading: {loading ? 'true' : 'false'}</div>
+        <div>Error: {error || 'none'}</div>
+        <div>Media Items: {portfolioMedia.length}</div>
+        <div>Should Render: {(!loading && !error && portfolioMedia.length > 0) ? 'YES' : 'NO'}</div>
+      </div>
+    );
   }
 
   // Split media items into two columns
