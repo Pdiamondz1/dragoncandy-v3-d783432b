@@ -5,6 +5,34 @@
 /* Definition of the design system. All colors, gradients, fonts, etc should be defined here. */
 
 @layer base {
+  html {
+    height: 100%;
+    overflow-x: hidden;
+  }
+  
+  body {
+    height: 100%;
+    overflow-x: hidden;
+    position: relative;
+  }
+
+  /* Ensure fixed positioning works correctly */
+  .fixed-sidebar {
+    position: fixed !important;
+    top: 0 !important;
+    height: 100vh !important;
+    z-index: 0 !important;
+    transform: none !important;
+  }
+
+  .fixed-sidebar-left {
+    left: 0 !important;
+  }
+
+  .fixed-sidebar-right {
+    right: 0 !important;
+  }
+
   :root {
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;

@@ -24,7 +24,7 @@ export const CreatorFeedColumn = ({ mediaItems, direction, className = '' }: Cre
     const container = containerRef.current;
     if (!container) return;
 
-    const scrollSpeed = 1; // pixels per frame
+    const scrollSpeed = 0.5; // pixels per frame - slower for smoother animation
     const isUpward = direction === 'up';
 
     let animationId: number;
@@ -33,15 +33,17 @@ export const CreatorFeedColumn = ({ mediaItems, direction, className = '' }: Cre
       if (container && !isPaused) {
         const maxScroll = container.scrollHeight - container.clientHeight;
         
-        if (isUpward) {
-          container.scrollTop += scrollSpeed;
-          if (container.scrollTop >= maxScroll) {
-            container.scrollTop = 0;
-          }
-        } else {
-          container.scrollTop -= scrollSpeed;
-          if (container.scrollTop <= 0) {
-            container.scrollTop = maxScroll;
+        if (maxScroll > 0) { // Only animate if there's content to scroll
+          if (isUpward) {
+            container.scrollTop += scrollSpeed;
+            if (container.scrollTop >= maxScroll) {
+              container.scrollTop = 0;
+            }
+          } else {
+            container.scrollTop -= scrollSpeed;
+            if (container.scrollTop <= 0) {
+              container.scrollTop = maxScroll;
+            }
           }
         }
       }
@@ -61,8 +63,8 @@ export const CreatorFeedColumn = ({ mediaItems, direction, className = '' }: Cre
     return null;
   }
 
-  // Duplicate items to create seamless loop
-  const duplicatedItems = [...mediaItems, ...mediaItems];
+  // Create more duplicates for seamless looping - we need enough content to fill the screen multiple times
+  const duplicatedItems = [...mediaItems, ...mediaItems, ...mediaItems, ...mediaItems];
 
   return (
     <div
@@ -70,7 +72,11 @@ export const CreatorFeedColumn = ({ mediaItems, direction, className = '' }: Cre
       className={`h-screen overflow-hidden scrollbar-hide ${className}`}
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
-      style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+      style={{ 
+        scrollbarWidth: 'none', 
+        msOverflowStyle: 'none',
+        scrollBehavior: 'auto' // Disable smooth scrolling for animation
+      }}
     >
       <div className="flex flex-col gap-4 py-4">
         {duplicatedItems.map((item, index) => (

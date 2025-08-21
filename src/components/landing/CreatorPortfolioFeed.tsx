@@ -16,10 +16,13 @@ export const CreatorPortfolioFeed = () => {
   // Enhanced debug - always render for now to see what's happening
   console.log('🔍 CreatorPortfolioFeed: About to render, component mounted');
   
-  // Only show feed if we have enough content to make it look good
+  // Only show feed if we have real content from the database
   if (loading || error || portfolioMedia.length === 0) {
+    console.log('🚫 DragonFeed: No real content available, not rendering feed');
     return null;
   }
+
+  console.log(`📊 DragonFeed: Using ${portfolioMedia.length} real media items`);
 
   // Smart column distribution logic
   let leftColumnItems: typeof portfolioMedia;
@@ -36,10 +39,26 @@ export const CreatorPortfolioFeed = () => {
     rightColumnItems = portfolioMedia.slice(midpoint);
   }
 
+  console.log(`🎯 DragonFeed Distribution: Left column: ${leftColumnItems.length} items, Right column: ${rightColumnItems.length} items`);
+
   return (
     <>
       {/* Left Column - Scrolls Up */}
-      <div className="fixed left-0 top-0 w-40 lg:w-64 z-0 opacity-70 hover:opacity-90 transition-opacity duration-300">
+      <div 
+        className="fixed-sidebar fixed-sidebar-left w-40 lg:w-64 opacity-70 hover:opacity-90 transition-opacity duration-300"
+        style={{
+          width: '10rem',
+          opacity: 0.7,
+          transition: 'opacity 300ms',
+          pointerEvents: 'auto'
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.opacity = '0.9';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.opacity = '0.7';
+        }}
+      >
         <CreatorFeedColumn 
           mediaItems={leftColumnItems} 
           direction="up"
@@ -48,7 +67,21 @@ export const CreatorPortfolioFeed = () => {
       </div>
 
       {/* Right Column - Scrolls Down */}
-      <div className="fixed right-0 top-0 w-40 lg:w-64 z-0 opacity-70 hover:opacity-90 transition-opacity duration-300">
+      <div 
+        className="fixed-sidebar fixed-sidebar-right w-40 lg:w-64 opacity-70 hover:opacity-90 transition-opacity duration-300"
+        style={{
+          width: '10rem',
+          opacity: 0.7,
+          transition: 'opacity 300ms',
+          pointerEvents: 'auto'
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.opacity = '0.9';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.opacity = '0.7';
+        }}
+      >
         <CreatorFeedColumn 
           mediaItems={rightColumnItems} 
           direction="down"
