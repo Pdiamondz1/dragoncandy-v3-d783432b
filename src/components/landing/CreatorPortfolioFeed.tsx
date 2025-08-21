@@ -47,16 +47,8 @@ export const CreatorPortfolioFeed = () => {
       <div 
         className="fixed-sidebar fixed-sidebar-left w-40 lg:w-64 opacity-70 hover:opacity-90 transition-opacity duration-300"
         style={{
-          width: '10rem',
-          opacity: 0.7,
-          transition: 'opacity 300ms',
-          pointerEvents: 'auto'
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.opacity = '0.9';
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.opacity = '0.7';
+          pointerEvents: 'none',
+          zIndex: 0
         }}
       >
         <CreatorFeedColumn 
@@ -70,16 +62,8 @@ export const CreatorPortfolioFeed = () => {
       <div 
         className="fixed-sidebar fixed-sidebar-right w-40 lg:w-64 opacity-70 hover:opacity-90 transition-opacity duration-300"
         style={{
-          width: '10rem',
-          opacity: 0.7,
-          transition: 'opacity 300ms',
-          pointerEvents: 'auto'
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.opacity = '0.9';
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.opacity = '0.7';
+          pointerEvents: 'none',
+          zIndex: 0
         }}
       >
         <CreatorFeedColumn 

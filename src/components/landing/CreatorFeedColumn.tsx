@@ -24,7 +24,7 @@ export const CreatorFeedColumn = ({ mediaItems, direction, className = '' }: Cre
     const container = containerRef.current;
     if (!container) return;
 
-    const scrollSpeed = 0.5; // pixels per frame - slower for smoother animation
+    const scrollSpeed = 1; // pixels per frame - increased for more visible movement
     const isUpward = direction === 'up';
 
     let animationId: number;
@@ -33,7 +33,17 @@ export const CreatorFeedColumn = ({ mediaItems, direction, className = '' }: Cre
       if (container && !isPaused) {
         const maxScroll = container.scrollHeight - container.clientHeight;
         
-        if (maxScroll > 0) { // Only animate if there's content to scroll
+        // Debug logging - remove after testing
+        if (Math.random() < 0.01) { // Log occasionally
+          console.log(`🎭 Animation Debug [${direction}]:`, {
+            maxScroll,
+            currentScroll: container.scrollTop,
+            clientHeight: container.clientHeight,
+            scrollHeight: container.scrollHeight
+          });
+        }
+        
+        if (maxScroll > 50) { // Ensure sufficient scrollable content
           if (isUpward) {
             container.scrollTop += scrollSpeed;
             if (container.scrollTop >= maxScroll) {
@@ -63,19 +73,21 @@ export const CreatorFeedColumn = ({ mediaItems, direction, className = '' }: Cre
     return null;
   }
 
-  // Create more duplicates for seamless looping - we need enough content to fill the screen multiple times
-  const duplicatedItems = [...mediaItems, ...mediaItems, ...mediaItems, ...mediaItems];
+  // Create more duplicates for seamless looping - ensure we have enough content for smooth scrolling
+  const duplicatedItems = [...mediaItems, ...mediaItems, ...mediaItems, ...mediaItems, ...mediaItems, ...mediaItems];
 
   return (
     <div
       ref={containerRef}
-      className={`h-screen overflow-hidden scrollbar-hide ${className}`}
+      className={`h-full overflow-hidden scrollbar-hide ${className}`}
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
       style={{ 
         scrollbarWidth: 'none', 
         msOverflowStyle: 'none',
-        scrollBehavior: 'auto' // Disable smooth scrolling for animation
+        scrollBehavior: 'auto', // Disable smooth scrolling for animation
+        pointerEvents: 'auto',
+        height: '100vh'
       }}
     >
       <div className="flex flex-col gap-4 py-4">
