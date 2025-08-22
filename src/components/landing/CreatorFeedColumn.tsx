@@ -73,8 +73,30 @@ export const CreatorFeedColumn = ({ mediaItems, direction, className = '' }: Cre
     return null;
   }
 
-  // Create more duplicates for seamless looping - ensure we have enough content for smooth scrolling
-  const duplicatedItems = [...mediaItems, ...mediaItems, ...mediaItems, ...mediaItems, ...mediaItems, ...mediaItems];
+  // Smart loop duplication - just enough for seamless scrolling
+  const getLoopDuplication = () => {
+    // For smooth looping, we need at least 2 copies, but not excessive duplication
+    const minLoopCopies = 2;
+    const maxLoopCopies = 3;
+    
+    // Use fewer loop copies when we already have variety from smart feed
+    const loopCopies = mediaItems.length >= 15 ? minLoopCopies : maxLoopCopies;
+    
+    const result = [];
+    for (let i = 0; i < loopCopies; i++) {
+      result.push(...mediaItems);
+    }
+    
+    console.log('🔄 Loop Duplication:', {
+      originalLength: mediaItems.length,
+      loopCopies,
+      finalLength: result.length
+    });
+    
+    return result;
+  };
+
+  const duplicatedItems = getLoopDuplication();
 
   return (
     <div

@@ -8,6 +8,56 @@ interface PortfolioMedia {
   creatorName: string;
 }
 
+// Smart content distribution algorithm
+const createSmartFeed = (mediaItems: PortfolioMedia[]): PortfolioMedia[] => {
+  if (mediaItems.length === 0) return [];
+
+  const MAX_FEED_LENGTH = 25; // Maximum total items in feed
+  const MIN_DUPLICATION = 2; // Minimum times each item appears
+  const MAX_DUPLICATION = 4; // Maximum times each item appears
+
+  // Calculate optimal duplication based on content availability
+  let duplicationFactor = MIN_DUPLICATION;
+  
+  if (mediaItems.length <= 3) {
+    duplicationFactor = MAX_DUPLICATION; // More duplication for very few items
+  } else if (mediaItems.length <= 8) {
+    duplicationFactor = 3; // Moderate duplication for small collections
+  } else {
+    duplicationFactor = MIN_DUPLICATION; // Minimal duplication for large collections
+  }
+
+  // Create distributed content with smart shuffling
+  const distributedItems: PortfolioMedia[] = [];
+  
+  // Create duplication sets with different IDs to prevent React key conflicts
+  for (let round = 0; round < duplicationFactor; round++) {
+    const shuffledItems = [...mediaItems].sort(() => Math.random() - 0.5);
+    
+    shuffledItems.forEach((item, index) => {
+      distributedItems.push({
+        ...item,
+        id: `${item.id}-round${round}-${index}` // Unique ID for each duplicate
+      });
+    });
+  }
+
+  // Final shuffle to distribute duplicates evenly
+  const finalShuffled = distributedItems.sort(() => Math.random() - 0.5);
+  
+  // Limit total feed length
+  const limitedFeed = finalShuffled.slice(0, MAX_FEED_LENGTH);
+  
+  console.log('🧠 Smart Feed Logic:', {
+    originalItems: mediaItems.length,
+    duplicationFactor,
+    distributedItems: distributedItems.length,
+    finalFeedLength: limitedFeed.length
+  });
+
+  return limitedFeed;
+};
+
 export const useCreatorPortfolioFeed = () => {
   const [portfolioMedia, setPortfolioMedia] = useState<PortfolioMedia[]>([]);
   const [loading, setLoading] = useState(true);
@@ -110,13 +160,13 @@ export const useCreatorPortfolioFeed = () => {
           }
         }
 
-        console.log('🎬 DragonFeed: Total media items before shuffle:', mediaItems.length);
+        console.log('🎬 DragonFeed: Total media items before processing:', mediaItems.length);
 
-        // Shuffle the media items for randomization
-        const shuffled = mediaItems.sort(() => Math.random() - 0.5);
-        setPortfolioMedia(shuffled);
+        // Smart content distribution algorithm
+        const processedMedia = createSmartFeed(mediaItems);
+        setPortfolioMedia(processedMedia);
         
-        console.log('🎯 DragonFeed: Final portfolio media set:', shuffled.length, 'items');
+        console.log('🎯 DragonFeed: Final portfolio media set:', processedMedia.length, 'items');
         
       } catch (err) {
         console.error('💥 DragonFeed: Critical error:', err);
