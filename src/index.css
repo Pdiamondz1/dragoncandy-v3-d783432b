@@ -19,8 +19,8 @@
   /* Ensure fixed positioning works correctly */
   .fixed-sidebar {
     position: fixed !important;
-    top: 0 !important;
-    height: 100vh !important;
+    top: 76px !important;
+    height: calc(100vh - 76px) !important;
     z-index: 0 !important;
     transform: none !important;
   }
