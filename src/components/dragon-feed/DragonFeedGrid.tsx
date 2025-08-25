@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useCreatorPortfolioFeed } from '@/hooks/useCreatorPortfolioFeed';
+import { useUniqueCreatorPortfolio } from '@/hooks/useUniqueCreatorPortfolio';
 import { DragonFeedCard } from './DragonFeedCard';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -16,7 +16,7 @@ interface PortfolioMedia {
 }
 
 export const DragonFeedGrid: React.FC = () => {
-  const { portfolioMedia, loading, error } = useCreatorPortfolioFeed();
+  const { portfolioMedia, loading, error } = useUniqueCreatorPortfolio();
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
