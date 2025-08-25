@@ -34,15 +34,9 @@ export default function Index() {
 
           if (profileError) {
             console.error('❌ Index: Error checking user role:', profileError);
-            // If user has metadata role but profile fetch failed, redirect to profile setup
-            if (userRole) {
-              console.log('🔧 Index: Profile check failed but user has metadata role, redirecting to profile setup...');
-              navigate('/profile/onboarding');
-              return;
-            }
-            // Otherwise redirect to landing
-            console.log('🔧 Index: Profile check failed, redirecting to landing...');
-            navigate('/landing');
+            // For newly verified users, always redirect to profile setup
+            console.log('🔧 Index: Profile check failed for authenticated user, redirecting to profile setup...');
+            navigate('/profile/onboarding');
             return;
           }
 
@@ -58,21 +52,15 @@ export default function Index() {
             console.log('👤 Index: User has metadata role but no profile, redirecting to profile setup');
             navigate('/profile/onboarding');
           } else {
-            // No profile and no metadata role - something went wrong, redirect to landing
-            console.log('❓ Index: No profile and no metadata role, redirecting to landing');
-            navigate('/landing');
+            // No profile found - redirect to profile setup for authenticated users
+            console.log('❓ Index: No profile found for authenticated user, redirecting to profile setup');
+            navigate('/profile/onboarding');
           }
         } catch (error) {
           console.error('❌ Index: Dashboard redirect failed:', error);
-          // Check if user has metadata role for fallback
-          const userRole = user.user_metadata?.role;
-          if (userRole) {
-            console.log('🔧 Index: Error occurred but user has metadata role, redirecting to profile setup');
-            navigate('/profile/onboarding');
-          } else {
-            // Fallback to landing page if anything goes wrong
-            navigate('/landing');
-          }
+          // For any authenticated user with errors, redirect to profile setup
+          console.log('🔧 Index: Error occurred for authenticated user, redirecting to profile setup');
+          navigate('/profile/onboarding');
         }
       };
       

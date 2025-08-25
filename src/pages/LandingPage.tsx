@@ -4,8 +4,21 @@ import { HeroSection } from "@/components/landing/HeroSection";
 import { FeatureSection } from "@/components/landing/FeatureSection";
 import { BottomCTA } from "@/components/landing/BottomCTA";
 import { CreatorPortfolioFeed } from "@/components/landing/CreatorPortfolioFeed";
+import { useAuth } from "@/hooks/useAuth";
+import { useNavigate } from "react-router-dom";
+import { useEffect } from "react";
 
 export default function LandingPage() {
+  const { user, loading } = useAuth();
+  const navigate = useNavigate();
+
+  // Redirect authenticated users to their dashboard
+  useEffect(() => {
+    if (!loading && user) {
+      console.log('🔄 LandingPage: Authenticated user detected, redirecting to dashboard...');
+      navigate('/', { replace: true });
+    }
+  }, [user, loading, navigate]);
   return (
     <div className="min-h-screen bg-background relative">
       {/* Creator Portfolio Feed - Behind main content */}

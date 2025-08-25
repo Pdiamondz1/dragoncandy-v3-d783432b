@@ -57,8 +57,7 @@ const ProfileOnboarding = () => {
           console.error('❌ ProfileOnboarding: Error fetching profile:', error);
           setDebugInfo(`Database error: ${error.message}`);
           
-          // If profile doesn't exist and we don't have role metadata, 
-          // something went wrong - redirect to auth to try again
+          // For authenticated users, redirect to auth to restart the flow
           console.log('🔄 ProfileOnboarding: Profile fetch failed, redirecting to auth');
           navigate('/auth');
           return;
