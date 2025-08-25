@@ -8,6 +8,26 @@ interface PortfolioMedia {
   creatorName: string;
 }
 
+// Simple signed URL cache (1 hour TTL)
+const signedUrlCache = new Map<string, { url: string; expiresAt: number }>();
+
+const getSignedUrl = async (path: string): Promise<string | null> => {
+  const cached = signedUrlCache.get(path);
+  const now = Date.now();
+  if (cached && cached.expiresAt > now) return cached.url;
+  const { data, error } = await supabase.storage
+    .from('profile-assets')
+    .createSignedUrl(path, 3600);
+  if (error || !data?.signedUrl) {
+    if (import.meta.env.DEV) console.error('❌ DragonFeed: Signed URL error for', path, error);
+    return null;
+  }
+  const url = data.signedUrl;
+  // Refresh a bit earlier than expiry to avoid edge cases
+  signedUrlCache.set(path, { url, expiresAt: now + 55 * 60 * 1000 });
+  return url;
+};
+
 // Smart content distribution algorithm
 const createSmartFeed = (mediaItems: PortfolioMedia[]): PortfolioMedia[] => {
   if (mediaItems.length === 0) return [];
@@ -48,12 +68,16 @@ const createSmartFeed = (mediaItems: PortfolioMedia[]): PortfolioMedia[] => {
   // Limit total feed length
   const limitedFeed = finalShuffled.slice(0, MAX_FEED_LENGTH);
   
-  console.log('🧠 Smart Feed Logic:', {
-    originalItems: mediaItems.length,
-    duplicationFactor,
-    distributedItems: distributedItems.length,
-    finalFeedLength: limitedFeed.length
-  });
+  if (import.meta.env.DEV) {
+  if (import.meta.env.DEV) {
+    console.log('🧠 Smart Feed Logic:', {
+      originalItems: mediaItems.length,
+      duplicationFactor,
+      distributedItems: distributedItems.length,
+      finalFeedLength: limitedFeed.length
+    });
+  }
+  }
 
   return limitedFeed;
 };
@@ -91,82 +115,43 @@ export const useCreatorPortfolioFeed = () => {
           return;
         }
 
-        // Process portfolio URLs and create media items
-        const mediaItems: PortfolioMedia[] = [];
-        
-        for (const creator of creators) {
-          console.log('👤 DragonFeed: Processing creator:', creator.creator_name, creator.portfolio_urls);
-          
-          if (creator.portfolio_urls && Array.isArray(creator.portfolio_urls)) {
-            for (const url of creator.portfolio_urls) {
-              if (url && typeof url === 'string') {
-                console.log('🔗 DragonFeed: Processing URL:', url);
-                
-                // Check if it's a storage path or external URL
-                let finalUrl = url;
-                
-                if (!url.startsWith('http')) {
-                  console.log('🗄️ DragonFeed: Creating signed URL for:', url);
-                  
-                  // Convert storage path to signed URL using profile-assets bucket
-                  const { data: signedUrl, error: urlError } = await supabase.storage
-                    .from('profile-assets')
-                    .createSignedUrl(url, 3600);
-                  
-                  if (urlError) {
-                    console.error('❌ DragonFeed: Signed URL error for', url, ':', urlError);
-                    continue; // Skip this URL if signing fails
-                  }
-                  
-                  if (signedUrl?.signedUrl) {
-                    finalUrl = signedUrl.signedUrl;
-                    console.log('✅ DragonFeed: Generated signed URL:', finalUrl);
-                  } else {
-                    console.error('❌ DragonFeed: No signed URL returned for:', url);
-                    continue; // Skip this URL if no signed URL
-                  }
-                } else {
-                  console.log('🌐 DragonFeed: Using external URL:', url);
-                }
+        // Process portfolio URLs and create media items in parallel
+        const mediaPromises = creators.flatMap((creator: any) => {
+          const urls = Array.isArray(creator.portfolio_urls) ? creator.portfolio_urls : [];
+          return urls
+            .filter((url: any) => typeof url === 'string' && url.length > 0)
+            .map(async (url: string) => {
+              const isExternal = url.startsWith('http');
+              const finalUrl = isExternal ? url : await getSignedUrl(url);
+              if (!finalUrl) return null;
+              const isVideo = /\.(mp4|webm|mov|avi)$/i.test(url);
+              return {
+                id: `${creator.id}-${url}`,
+                url: finalUrl,
+                type: isVideo ? 'video' : 'image',
+                creatorName: creator.creator_name || 'Creator',
+              } as PortfolioMedia;
+            });
+        });
 
-                // Determine media type based on URL
-                const isVideo = /\.(mp4|webm|mov|avi)$/i.test(url);
-                
-                // Validate URL before adding to feed
-                try {
-                  const response = await fetch(finalUrl, { method: 'HEAD' });
-                  const contentLength = response.headers.get('content-length');
-                  
-                  if (!response.ok || (contentLength && parseInt(contentLength) === 0)) {
-                    console.warn('⚠️ DragonFeed: Skipping empty/corrupted file:', finalUrl);
-                    continue; // Skip empty/corrupted files
-                  }
-                } catch (fetchError) {
-                  console.warn('⚠️ DragonFeed: Failed to validate file, skipping:', finalUrl, fetchError);
-                  continue; // Skip files that can't be validated
-                }
-                
-                const mediaItem: PortfolioMedia = {
-                  id: `${creator.id}-${url}`,
-                  url: finalUrl,
-                  type: isVideo ? 'video' : 'image',
-                  creatorName: creator.creator_name || 'Creator'
-                };
-                
-                console.log('📸 DragonFeed: Adding validated media item:', mediaItem);
-                mediaItems.push(mediaItem);
-              }
-            }
-          }
-        }
+        const settled = await Promise.allSettled(mediaPromises);
+        const mediaItems: PortfolioMedia[] = settled
+          .filter((r): r is PromiseFulfilledResult<PortfolioMedia | null> => r.status === 'fulfilled')
+          .map(r => r.value)
+          .filter((v): v is PortfolioMedia => !!v);
+
 
         console.log('🎬 DragonFeed: Total media items before processing:', mediaItems.length);
 
         // Smart content distribution algorithm
         const processedMedia = createSmartFeed(mediaItems);
-        setPortfolioMedia(processedMedia);
-        
-        console.log('🎯 DragonFeed: Final portfolio media set:', processedMedia.length, 'items');
+        // Progressive load: show a small subset immediately, then full feed next tick
+        const initialCount = Math.min(8, processedMedia.length);
+        setPortfolioMedia(processedMedia.slice(0, initialCount));
+        if (processedMedia.length > initialCount) {
+          setTimeout(() => setPortfolioMedia(processedMedia), 0);
+        }
+        if (import.meta.env.DEV) console.log('🎯 DragonFeed: Final portfolio media set:', processedMedia.length, 'items');
         
       } catch (err) {
         console.error('💥 DragonFeed: Critical error:', err);

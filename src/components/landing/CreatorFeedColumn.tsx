@@ -34,7 +34,7 @@ export const CreatorFeedColumn = ({ mediaItems, direction, className = '' }: Cre
         const maxScroll = container.scrollHeight - container.clientHeight;
         
         // Debug logging - remove after testing
-        if (Math.random() < 0.01) { // Log occasionally
+        if (import.meta.env.DEV && Math.random() < 0.01) { // Log occasionally in dev only
           console.log(`🎭 Animation Debug [${direction}]:`, {
             maxScroll,
             currentScroll: container.scrollTop,
@@ -87,11 +87,13 @@ export const CreatorFeedColumn = ({ mediaItems, direction, className = '' }: Cre
       result.push(...mediaItems);
     }
     
-    console.log('🔄 Loop Duplication:', {
-      originalLength: mediaItems.length,
-      loopCopies,
-      finalLength: result.length
-    });
+    if (import.meta.env.DEV) {
+      console.log('🔄 Loop Duplication:', {
+        originalLength: mediaItems.length,
+        loopCopies,
+        finalLength: result.length
+      });
+    }
     
     return result;
   };

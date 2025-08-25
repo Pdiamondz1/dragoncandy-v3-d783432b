@@ -12,18 +12,18 @@ export const PortfolioMediaItem = ({ url, type, creatorName, className = '' }: P
   const [error, setError] = useState(false);
 
   const handleLoad = () => {
-    console.log('✅ PortfolioMediaItem loaded successfully:', url);
+    if (import.meta.env.DEV) console.log('✅ PortfolioMediaItem loaded successfully:', url);
     setLoaded(true);
   };
 
   const handleError = (e: any) => {
-    console.error('❌ PortfolioMediaItem failed to load:', url, e);
+    if (import.meta.env.DEV) console.error('❌ PortfolioMediaItem failed to load:', url, e);
     setError(true);
   };
 
   // Don't render broken media, but log for debugging
   if (error) {
-    console.log('🚫 PortfolioMediaItem: Skipping broken media:', url);
+    if (import.meta.env.DEV) console.log('🚫 PortfolioMediaItem: Skipping broken media:', url);
     return null;
   }
 
@@ -46,6 +46,7 @@ export const PortfolioMediaItem = ({ url, type, creatorName, className = '' }: P
           loop
           playsInline
           autoPlay
+          preload="metadata"
         />
       ) : (
         <img
