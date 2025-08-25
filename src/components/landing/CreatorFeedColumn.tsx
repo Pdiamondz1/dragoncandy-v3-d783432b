@@ -112,14 +112,14 @@ export const CreatorFeedColumn = ({ mediaItems, direction, className = '' }: Cre
         height: '100vh'
       }}
     >
-      <div className="flex flex-col gap-4 py-4">
+      <div className="flex flex-col gap-6 py-6">
         {duplicatedItems.map((item, index) => (
           <PortfolioMediaItem
             key={`${item.id}-${index}`}
             url={item.url}
             type={item.type}
             creatorName={item.creatorName}
-            className="w-full h-64 flex-shrink-0"
+            className="w-full h-80 flex-shrink-0"
           />
         ))}
       </div>

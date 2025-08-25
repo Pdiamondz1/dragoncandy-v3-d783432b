@@ -8,7 +8,7 @@ export const HeroSection = () => {
   return (
     <div className="text-center">
       {/* Badge */}
-      <span className="inline-block bg-pink-100 text-pink-600 rounded-full px-4 py-1 text-sm mb-8 font-semibold">
+      <span className="inline-block bg-pink-100 text-pink-600 rounded-2xl px-6 py-2 text-sm mb-10 font-semibold shadow-sm hover:shadow-md transition-shadow duration-300">
         🚀 AI-Powered Content Creation Platform
       </span>
       
@@ -25,10 +25,10 @@ export const HeroSection = () => {
       </p>
       
       {/* CTA Buttons */}
-      <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
+      <div className="flex flex-col sm:flex-row gap-6 justify-center mb-20">
         <Button
           size="lg"
-          className="bg-pink-600 hover:bg-pink-700 text-white px-8 py-3 text-lg font-semibold"
+          className="bg-pink-600 hover:bg-pink-700 text-white px-10 py-4 text-lg font-semibold rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
           onClick={() => navigate('/campaign/create')}
         >
           Start Your Campaign →
@@ -36,7 +36,7 @@ export const HeroSection = () => {
         <Button
           size="lg"
           variant="outline"
-          className="border-gray-300 text-gray-700 px-8 py-3 text-lg hover:bg-gray-50"
+          className="border-2 border-gray-300 text-gray-700 px-10 py-4 text-lg hover:bg-gray-50 rounded-2xl shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105"
           onClick={() => navigate('/auth')}
         >
           Sign Up Free

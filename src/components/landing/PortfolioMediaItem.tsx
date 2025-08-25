@@ -28,7 +28,7 @@ export const PortfolioMediaItem = ({ url, type, creatorName, className = '' }: P
   }
 
   return (
-    <div className={`relative rounded-lg overflow-hidden shadow-lg bg-muted ${className}`}>
+    <div className={`relative rounded-3xl overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-[1.02] bg-muted ${className}`}>
       {/* Loading placeholder */}
       {!loaded && (
         <div className="absolute inset-0 bg-muted animate-pulse flex items-center justify-center">
@@ -60,8 +60,8 @@ export const PortfolioMediaItem = ({ url, type, creatorName, className = '' }: P
 
       {/* Creator name overlay */}
       {loaded && (
-        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-3">
-          <p className="text-white text-sm font-medium truncate">{creatorName}</p>
+        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-4">
+          <p className="text-white text-sm font-semibold truncate drop-shadow-sm">{creatorName}</p>
         </div>
       )}
     </div>
