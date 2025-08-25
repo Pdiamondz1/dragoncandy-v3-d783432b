@@ -36,7 +36,8 @@ import {
   PlusCircle,
   Search,
   Briefcase,
-  Menu
+  Menu,
+  Image
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useLogout } from '@/hooks/useLogout';
@@ -57,6 +58,7 @@ const AppSidebar: React.FC<{ userRole: 'business_client' | 'content_creator' }> 
   const businessNavItems = [
     { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard/business' },
     { icon: Target, label: 'Campaigns', href: '/dashboard/business/campaigns' },
+    { icon: Image, label: 'Dragon Feed', href: '/dashboard/business/dragon-feed' },
     { icon: Users, label: 'Browse Creators', href: '/dashboard/business/creators' },
     { icon: Briefcase, label: 'Projects', href: '/dashboard/business/projects' },
     { icon: MessageSquare, label: 'Messages', href: '/dashboard/business/messages' },
