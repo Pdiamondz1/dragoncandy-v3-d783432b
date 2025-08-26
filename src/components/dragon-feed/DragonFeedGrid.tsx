@@ -19,9 +19,6 @@ export const DragonFeedGrid: React.FC = () => {
   const { portfolioMedia, loading, error } = useUniqueCreatorPortfolio();
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
-  const [categoryFilter, setCategoryFilter] = useState<string>('all');
-
-  const categories = ['Fine Dining', 'Sweets', 'Quick Bites', 'Beverages', 'Street Food'];
 
   const filteredMedia = portfolioMedia.filter((item) => {
     const matchesSearch = item.creatorName.toLowerCase().includes(searchTerm.toLowerCase());
@@ -32,7 +29,6 @@ export const DragonFeedGrid: React.FC = () => {
   const clearFilters = () => {
     setSearchTerm('');
     setTypeFilter('all');
-    setCategoryFilter('all');
   };
 
   if (loading) {
@@ -40,7 +36,6 @@ export const DragonFeedGrid: React.FC = () => {
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="h-10 bg-muted rounded-md flex-1 animate-pulse" />
-          <div className="h-10 bg-muted rounded-md w-32 animate-pulse" />
           <div className="h-10 bg-muted rounded-md w-32 animate-pulse" />
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -92,21 +87,7 @@ export const DragonFeedGrid: React.FC = () => {
             </SelectContent>
           </Select>
 
-          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-            <SelectTrigger className="w-full sm:w-32">
-              <SelectValue placeholder="Category" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Categories</SelectItem>
-              {categories.map((category) => (
-                <SelectItem key={category} value={category.toLowerCase().replace(/\s+/g, '-')}>
-                  {category}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          {(searchTerm || typeFilter !== 'all' || categoryFilter !== 'all') && (
+          {(searchTerm || typeFilter !== 'all') && (
             <Button variant="outline" onClick={clearFilters} className="w-full sm:w-auto">
               <X className="h-4 w-4 mr-2" />
               Clear
@@ -115,7 +96,7 @@ export const DragonFeedGrid: React.FC = () => {
         </div>
 
         {/* Active Filters */}
-        {(searchTerm || typeFilter !== 'all' || categoryFilter !== 'all') && (
+        {(searchTerm || typeFilter !== 'all') && (
           <div className="flex flex-wrap gap-2">
             {searchTerm && (
               <Badge variant="secondary" className="flex items-center gap-1">
@@ -127,12 +108,6 @@ export const DragonFeedGrid: React.FC = () => {
               <Badge variant="secondary" className="flex items-center gap-1">
                 Type: {typeFilter}
                 <X className="h-3 w-3 cursor-pointer" onClick={() => setTypeFilter('all')} />
-              </Badge>
-            )}
-            {categoryFilter !== 'all' && (
-              <Badge variant="secondary" className="flex items-center gap-1">
-                Category: {categoryFilter}
-                <X className="h-3 w-3 cursor-pointer" onClick={() => setCategoryFilter('all')} />
               </Badge>
             )}
           </div>
