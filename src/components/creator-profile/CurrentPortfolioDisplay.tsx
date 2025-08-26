@@ -51,19 +51,32 @@ export const CurrentPortfolioDisplay = ({ portfolioPaths, onRemoveItem }: Curren
       setLoading(true);
       
       // Process portfolio URLs using the exact same logic as working DragonFeed
+      console.log('🔍 CurrentPortfolio: Starting to process paths:', portfolioPaths);
+      
       const mediaPromises = portfolioPaths.map(async (path) => {
+        console.log('🔍 CurrentPortfolio: Processing path:', path);
         const isExternal = path.startsWith('http');
+        console.log('🔍 CurrentPortfolio: Is external URL?', isExternal);
+        
         const finalUrl = isExternal ? path : await getSignedUrl(path);
-        if (!finalUrl) return null;
+        console.log('🔍 CurrentPortfolio: Generated URL for', path, '→', finalUrl);
+        
+        if (!finalUrl) {
+          console.error('❌ CurrentPortfolio: Failed to generate URL for:', path);
+          return null;
+        }
         
         const isVideo = /\.(mp4|webm|mov|avi)$/i.test(path);
-        return {
+        const item = {
           path,
           url: finalUrl,
           type: isVideo ? 'video' : 'image',
           isLoaded: false,
           hasError: false
         } as PortfolioItem;
+        
+        console.log('✅ CurrentPortfolio: Created portfolio item:', item);
+        return item;
       });
 
       const settled = await Promise.allSettled(mediaPromises);
@@ -73,6 +86,7 @@ export const CurrentPortfolioDisplay = ({ portfolioPaths, onRemoveItem }: Curren
         .filter((v): v is PortfolioItem => !!v);
 
       console.log('🎬 CurrentPortfolio: Successfully processed portfolio items:', items.length);
+      console.log('🎬 CurrentPortfolio: Final items array:', items);
       
       setPortfolioItems(items);
       setLoading(false);
@@ -82,12 +96,31 @@ export const CurrentPortfolioDisplay = ({ portfolioPaths, onRemoveItem }: Curren
   }, [portfolioPaths]);
 
   const handleMediaLoad = (path: string) => {
+    console.log('✅ CurrentPortfolio: Media loaded successfully for:', path);
     setPortfolioItems(prev => prev.map(item => 
       item.path === path ? { ...item, isLoaded: true, hasError: false } : item
     ));
   };
 
-  const handleMediaError = (path: string) => {
+  const handleMediaError = (path: string, event: any) => {
+    console.error('❌ CurrentPortfolio: Media failed to load for:', path);
+    console.error('❌ CurrentPortfolio: Error event:', event);
+    // Let's also try to fetch the URL directly to see what happens
+    const item = portfolioItems.find(i => i.path === path);
+    if (item) {
+      console.error('❌ CurrentPortfolio: Failed URL was:', item.url);
+      fetch(item.url)
+        .then(response => {
+          console.log('🔍 CurrentPortfolio: Direct fetch response:', response.status, response.statusText);
+          if (!response.ok) {
+            console.error('❌ CurrentPortfolio: Direct fetch failed:', response.status, response.statusText);
+          }
+        })
+        .catch(error => {
+          console.error('❌ CurrentPortfolio: Direct fetch error:', error);
+        });
+    }
+    
     setPortfolioItems(prev => prev.map(item => 
       item.path === path ? { ...item, hasError: true } : item
     ));
@@ -133,7 +166,7 @@ export const CurrentPortfolioDisplay = ({ portfolioPaths, onRemoveItem }: Curren
                 alt="Portfolio item"
                 className="w-full h-full object-cover transition-transform group-hover:scale-105"
                 onLoad={() => handleMediaLoad(item.path)}
-                onError={() => handleMediaError(item.path)}
+                onError={(e) => handleMediaError(item.path, e)}
               />
             ) : (
               <div className="relative w-full h-full">
@@ -143,7 +176,7 @@ export const CurrentPortfolioDisplay = ({ portfolioPaths, onRemoveItem }: Curren
                   muted
                   playsInline
                   onLoadedData={() => handleMediaLoad(item.path)}
-                  onError={() => handleMediaError(item.path)}
+                  onError={(e) => handleMediaError(item.path, e)}
                 />
                 <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 opacity-0 group-hover:opacity-100 transition-opacity">
                   <Play className="w-8 h-8 text-white" />
