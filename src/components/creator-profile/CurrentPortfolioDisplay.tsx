@@ -3,6 +3,26 @@ import { X, Play, Image as ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 
+// Simple signed URL cache (1 hour TTL) - same as working DragonFeed implementation
+const signedUrlCache = new Map<string, { url: string; expiresAt: number }>();
+
+const getSignedUrl = async (path: string): Promise<string | null> => {
+  const cached = signedUrlCache.get(path);
+  const now = Date.now();
+  if (cached && cached.expiresAt > now) return cached.url;
+  const { data, error } = await supabase.storage
+    .from('profile-assets')
+    .createSignedUrl(path, 3600);
+  if (error || !data?.signedUrl) {
+    if (import.meta.env.DEV) console.error('❌ CurrentPortfolio: Signed URL error for', path, error);
+    return null;
+  }
+  const url = data.signedUrl;
+  // Refresh a bit earlier than expiry to avoid edge cases
+  signedUrlCache.set(path, { url, expiresAt: now + 55 * 60 * 1000 });
+  return url;
+};
+
 interface CurrentPortfolioDisplayProps {
   portfolioPaths: string[];
   onRemoveItem: (path: string) => void;
@@ -30,55 +50,29 @@ export const CurrentPortfolioDisplay = ({ portfolioPaths, onRemoveItem }: Curren
 
       setLoading(true);
       
-      const items = await Promise.all(
-        portfolioPaths.map(async (path) => {
-          try {
-            let url = path;
-            
-            // Check if it's already a full URL
-            if (!path.startsWith('http://') && !path.startsWith('https://')) {
-              // Try signed URL first (more reliable for private buckets)
-              const { data: signedData } = await supabase.storage
-                .from('profile-assets')
-                .createSignedUrl(path, 3600);
-              
-              if (signedData?.signedUrl) {
-                url = signedData.signedUrl;
-                console.log('Using signed URL for:', path, '→', url);
-              } else {
-                // Fallback to public URL
-                const { data: publicData } = supabase.storage
-                  .from('profile-assets')
-                  .getPublicUrl(path);
-                url = publicData.publicUrl;
-                console.log('Using public URL for:', path, '→', url);
-              }
-            }
-            
-            // Determine media type based on file extension
-            const extension = path.toLowerCase().split('.').pop() || '';
-            const videoExtensions = ['mp4', 'mov', 'avi', 'mkv', 'webm'];
-            const type = videoExtensions.includes(extension) ? 'video' : 'image';
-            
-            return {
-              path,
-              url,
-              type,
-              isLoaded: false,
-              hasError: false
-            } as PortfolioItem;
-          } catch (error) {
-            console.error('Error converting portfolio URL for path:', path, error);
-            return {
-              path,
-              url: path,
-              type: 'image' as const,
-              isLoaded: false,
-              hasError: true
-            };
-          }
-        })
-      );
+      // Process portfolio URLs using the exact same logic as working DragonFeed
+      const mediaPromises = portfolioPaths.map(async (path) => {
+        const isExternal = path.startsWith('http');
+        const finalUrl = isExternal ? path : await getSignedUrl(path);
+        if (!finalUrl) return null;
+        
+        const isVideo = /\.(mp4|webm|mov|avi)$/i.test(path);
+        return {
+          path,
+          url: finalUrl,
+          type: isVideo ? 'video' : 'image',
+          isLoaded: false,
+          hasError: false
+        } as PortfolioItem;
+      });
+
+      const settled = await Promise.allSettled(mediaPromises);
+      const items: PortfolioItem[] = settled
+        .filter((r): r is PromiseFulfilledResult<PortfolioItem | null> => r.status === 'fulfilled')
+        .map(r => r.value)
+        .filter((v): v is PortfolioItem => !!v);
+
+      console.log('🎬 CurrentPortfolio: Successfully processed portfolio items:', items.length);
       
       setPortfolioItems(items);
       setLoading(false);
