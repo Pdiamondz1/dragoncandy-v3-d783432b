@@ -3,7 +3,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Play, Heart, MessageSquare, User, Star } from 'lucide-react';
+import { Play, Heart, MessageSquare, User } from 'lucide-react';
 
 interface PortfolioMedia {
   id: string;
@@ -25,27 +25,6 @@ export const DragonFeedCard: React.FC<DragonFeedCardProps> = ({ media }) => {
   const handleError = () => setError(true);
   const toggleLike = () => setLiked(!liked);
 
-  // Generate a tier badge based on creator name (mock logic)
-  const getTierBadge = (creatorName: string) => {
-    const hash = creatorName.split('').reduce((a, b) => {
-      a = ((a << 5) - a) + b.charCodeAt(0);
-      return a & a;
-    }, 0);
-    
-    const tiers = ['Rising Star', 'Top Tier', 'Elite', 'Pro'];
-    return tiers[Math.abs(hash) % tiers.length];
-  };
-
-  const getTierColor = (tier: string) => {
-    switch (tier) {
-      case 'Elite': return 'bg-gradient-to-r from-yellow-400 to-yellow-600';
-      case 'Top Tier': return 'bg-gradient-to-r from-purple-400 to-purple-600';
-      case 'Pro': return 'bg-gradient-to-r from-blue-400 to-blue-600';
-      default: return 'bg-gradient-to-r from-green-400 to-green-600';
-    }
-  };
-
-  const tier = getTierBadge(media.creatorName);
 
   return (
     <Card className="group overflow-hidden hover:shadow-lg transition-all duration-300 hover:scale-105">
@@ -103,13 +82,6 @@ export const DragonFeedCard: React.FC<DragonFeedCardProps> = ({ media }) => {
           </Badge>
         </div>
 
-        {/* Tier badge */}
-        <div className="absolute top-2 right-2">
-          <Badge className={`text-xs text-white border-0 ${getTierColor(tier)}`}>
-            <Star className="h-3 w-3 mr-1" />
-            {tier}
-          </Badge>
-        </div>
 
         {/* Action buttons */}
         <div className="absolute bottom-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
