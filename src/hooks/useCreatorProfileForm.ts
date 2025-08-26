@@ -108,6 +108,7 @@ export const useCreatorProfileForm = () => {
       allow_portfolio_in_feed: profile.allow_portfolio_in_feed || false
     });
     setSelectedSkills(profile.skills as CreatorSkill[] || []);
+    setPortfolioPaths(profile.portfolio_urls || []);
     setIsLoaded(true);
   }, [isLoaded]);
 

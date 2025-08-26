@@ -82,9 +82,9 @@ export const useCreatorProfileSubmit = () => {
         updated_at: new Date().toISOString()
       };
 
-      // Add portfolio URLs and is_completed only for new profiles
+      // Add portfolio URLs for all profiles and is_completed only for new profiles
+      (profileData as any).portfolio_urls = portfolioUrls;
       if (!isUpdate) {
-        (profileData as any).portfolio_urls = portfolioUrls;
         (profileData as any).is_completed = true;
       }
 

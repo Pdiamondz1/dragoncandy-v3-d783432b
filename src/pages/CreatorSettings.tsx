@@ -13,10 +13,12 @@ const CreatorSettings = () => {
   const {
     formData,
     avatarFile,
+    portfolioPaths,
     selectedSkills,
     handleInputChange,
     handleSkillChange,
     setAvatarFile,
+    setPortfolioPaths,
     setFormDataFromProfile
   } = useCreatorProfileForm();
 
@@ -26,7 +28,7 @@ const CreatorSettings = () => {
     e.preventDefault();
     if (!user) return;
     
-    const success = await submitProfile(formData, selectedSkills, avatarFile, [], true);
+    const success = await submitProfile(formData, selectedSkills, avatarFile, portfolioPaths, true);
     if (success) {
       setAvatarFile(null);
     }
@@ -41,10 +43,12 @@ const CreatorSettings = () => {
             formData={formData}
             selectedSkills={selectedSkills}
             avatarFile={avatarFile}
+            portfolioPaths={portfolioPaths}
             loading={loading}
             onInputChange={handleInputChange}
             onSkillChange={handleSkillChange}
             onAvatarFileChange={setAvatarFile}
+            onPortfolioPathsChange={setPortfolioPaths}
             onSubmit={handleSubmit}
           />
         </div>

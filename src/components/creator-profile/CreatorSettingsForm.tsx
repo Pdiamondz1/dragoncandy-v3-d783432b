@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Upload } from 'lucide-react';
 import { SkillsSelection } from './SkillsSelection';
 import { CreatorSocialMediaLinks } from './CreatorSocialMediaLinks';
+import { PortfolioUpload } from './PortfolioUpload';
 import type { CreatorProfileFormData } from '@/hooks/useCreatorProfileForm';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -18,10 +19,12 @@ interface CreatorSettingsFormProps {
   formData: CreatorProfileFormData;
   selectedSkills: CreatorSkill[];
   avatarFile: File | null;
+  portfolioPaths: string[];
   loading: boolean;
   onInputChange: (field: string, value: string | boolean) => void;
   onSkillChange: (skillId: CreatorSkill, checked: boolean) => void;
   onAvatarFileChange: (file: File | null) => void;
+  onPortfolioPathsChange: (paths: string[]) => void;
   onSubmit: (e: React.FormEvent) => void;
 }
 
@@ -29,10 +32,12 @@ export const CreatorSettingsForm = ({
   formData,
   selectedSkills,
   avatarFile,
+  portfolioPaths,
   loading,
   onInputChange,
   onSkillChange,
   onAvatarFileChange,
+  onPortfolioPathsChange,
   onSubmit
 }: CreatorSettingsFormProps) => {
   return (
@@ -278,6 +283,12 @@ export const CreatorSettingsForm = ({
           <CreatorSocialMediaLinks
             formData={formData}
             onInputChange={onInputChange}
+          />
+
+          {/* Portfolio Upload */}
+          <PortfolioUpload 
+            portfolioPaths={portfolioPaths}
+            onPortfolioPathsChange={onPortfolioPathsChange}
           />
 
           {/* DragonFeed Showcase */}
