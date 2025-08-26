@@ -3,24 +3,54 @@ import { X, Play, Image as ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 
-// Simple signed URL cache (1 hour TTL) - same as working DragonFeed implementation
-const signedUrlCache = new Map<string, { url: string; expiresAt: number }>();
+// URL cache for both public and signed URLs
+const urlCache = new Map<string, { url: string; expiresAt: number }>();
 
-const getSignedUrl = async (path: string): Promise<string | null> => {
-  const cached = signedUrlCache.get(path);
+const getStorageMediaUrl = async (path: string): Promise<string | null> => {
+  // If it's already an HTTP URL, return as-is
+  if (path.startsWith('http')) {
+    return path;
+  }
+
+  // Check cache first
+  const cached = urlCache.get(path);
   const now = Date.now();
-  if (cached && cached.expiresAt > now) return cached.url;
-  const { data, error } = await supabase.storage
-    .from('profile-assets')
-    .createSignedUrl(path, 3600);
-  if (error || !data?.signedUrl) {
-    if (import.meta.env.DEV) console.error('❌ CurrentPortfolio: Signed URL error for', path, error);
+  if (cached && cached.expiresAt > now) {
+    return cached.url;
+  }
+
+  try {
+    // Encode the path to handle special characters
+    const encodedPath = encodeURI(path);
+    
+    // First try public URL (works for public buckets and is more stable)
+    const { data: publicData } = supabase.storage
+      .from('profile-assets')
+      .getPublicUrl(encodedPath);
+    
+    if (publicData?.publicUrl) {
+      // Cache public URLs for longer since they don't expire
+      urlCache.set(path, { url: publicData.publicUrl, expiresAt: now + 24 * 60 * 60 * 1000 });
+      return publicData.publicUrl;
+    }
+
+    // Fallback to signed URL
+    const { data: signedData, error } = await supabase.storage
+      .from('profile-assets')
+      .createSignedUrl(encodedPath, 3600);
+
+    if (error || !signedData?.signedUrl) {
+      console.error('Error creating URL for path:', path, error);
+      return null;
+    }
+
+    // Cache signed URL for 55 minutes (refresh before expiry)
+    urlCache.set(path, { url: signedData.signedUrl, expiresAt: now + 55 * 60 * 1000 });
+    return signedData.signedUrl;
+  } catch (error) {
+    console.error('Error in getStorageMediaUrl:', error);
     return null;
   }
-  const url = data.signedUrl;
-  // Refresh a bit earlier than expiry to avoid edge cases
-  signedUrlCache.set(path, { url, expiresAt: now + 55 * 60 * 1000 });
-  return url;
 };
 
 interface CurrentPortfolioDisplayProps {
@@ -50,33 +80,23 @@ export const CurrentPortfolioDisplay = ({ portfolioPaths, onRemoveItem }: Curren
 
       setLoading(true);
       
-      // Process portfolio URLs using the exact same logic as working DragonFeed
-      console.log('🔍 CurrentPortfolio: Starting to process paths:', portfolioPaths);
-      
       const mediaPromises = portfolioPaths.map(async (path) => {
-        console.log('🔍 CurrentPortfolio: Processing path:', path);
         const isExternal = path.startsWith('http');
-        console.log('🔍 CurrentPortfolio: Is external URL?', isExternal);
-        
-        const finalUrl = isExternal ? path : await getSignedUrl(path);
-        console.log('🔍 CurrentPortfolio: Generated URL for', path, '→', finalUrl);
+        const finalUrl = isExternal ? path : await getStorageMediaUrl(path);
         
         if (!finalUrl) {
-          console.error('❌ CurrentPortfolio: Failed to generate URL for:', path);
+          console.error('Failed to generate URL for path:', path);
           return null;
         }
         
         const isVideo = /\.(mp4|webm|mov|avi)$/i.test(path);
-        const item = {
+        return {
           path,
           url: finalUrl,
           type: isVideo ? 'video' : 'image',
           isLoaded: false,
           hasError: false
         } as PortfolioItem;
-        
-        console.log('✅ CurrentPortfolio: Created portfolio item:', item);
-        return item;
       });
 
       const settled = await Promise.allSettled(mediaPromises);
@@ -85,9 +105,6 @@ export const CurrentPortfolioDisplay = ({ portfolioPaths, onRemoveItem }: Curren
         .map(r => r.value)
         .filter((v): v is PortfolioItem => !!v);
 
-      console.log('🎬 CurrentPortfolio: Successfully processed portfolio items:', items.length);
-      console.log('🎬 CurrentPortfolio: Final items array:', items);
-      
       setPortfolioItems(items);
       setLoading(false);
     };
@@ -96,33 +113,37 @@ export const CurrentPortfolioDisplay = ({ portfolioPaths, onRemoveItem }: Curren
   }, [portfolioPaths]);
 
   const handleMediaLoad = (path: string) => {
-    console.log('✅ CurrentPortfolio: Media loaded successfully for:', path);
     setPortfolioItems(prev => prev.map(item => 
       item.path === path ? { ...item, isLoaded: true, hasError: false } : item
     ));
   };
 
-  const handleMediaError = (path: string, event: any) => {
-    console.error('❌ CurrentPortfolio: Media failed to load for:', path);
-    console.error('❌ CurrentPortfolio: Error event:', event);
-    // Let's also try to fetch the URL directly to see what happens
+  const handleMediaError = async (path: string) => {
     const item = portfolioItems.find(i => i.path === path);
-    if (item) {
-      console.error('❌ CurrentPortfolio: Failed URL was:', item.url);
-      fetch(item.url)
-        .then(response => {
-          console.log('🔍 CurrentPortfolio: Direct fetch response:', response.status, response.statusText);
-          if (!response.ok) {
-            console.error('❌ CurrentPortfolio: Direct fetch failed:', response.status, response.statusText);
-          }
-        })
-        .catch(error => {
-          console.error('❌ CurrentPortfolio: Direct fetch error:', error);
-        });
+    if (!item) return;
+
+    try {
+      // Try to fetch as blob and create object URL as fallback
+      const response = await fetch(item.url);
+      if (response.ok) {
+        const blob = await response.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        
+        // Update the item with the blob URL
+        setPortfolioItems(prev => prev.map(portfolioItem => 
+          portfolioItem.path === path 
+            ? { ...portfolioItem, url: blobUrl, hasError: false }
+            : portfolioItem
+        ));
+        return;
+      }
+    } catch (error) {
+      console.error('Blob fallback failed for:', path, error);
     }
     
-    setPortfolioItems(prev => prev.map(item => 
-      item.path === path ? { ...item, hasError: true } : item
+    // If all fallbacks fail, mark as error
+    setPortfolioItems(prev => prev.map(portfolioItem => 
+      portfolioItem.path === path ? { ...portfolioItem, hasError: true } : portfolioItem
     ));
   };
 
@@ -166,7 +187,7 @@ export const CurrentPortfolioDisplay = ({ portfolioPaths, onRemoveItem }: Curren
                 alt="Portfolio item"
                 className="w-full h-full object-cover transition-transform group-hover:scale-105"
                 onLoad={() => handleMediaLoad(item.path)}
-                onError={(e) => handleMediaError(item.path, e)}
+                onError={() => handleMediaError(item.path)}
               />
             ) : (
               <div className="relative w-full h-full">
@@ -176,7 +197,7 @@ export const CurrentPortfolioDisplay = ({ portfolioPaths, onRemoveItem }: Curren
                   muted
                   playsInline
                   onLoadedData={() => handleMediaLoad(item.path)}
-                  onError={(e) => handleMediaError(item.path, e)}
+                  onError={() => handleMediaError(item.path)}
                 />
                 <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 opacity-0 group-hover:opacity-100 transition-opacity">
                   <Play className="w-8 h-8 text-white" />
