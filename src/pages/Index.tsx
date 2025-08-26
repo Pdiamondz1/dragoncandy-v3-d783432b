@@ -40,13 +40,49 @@ export default function Index() {
             return;
           }
 
-          // If profile exists, redirect to appropriate dashboard
+          // If profile exists, check role-specific profile completion before redirect
           if (profile?.role === 'business_client') {
-            console.log('🏢 Index: Redirecting to business dashboard');
-            navigate('/dashboard/business');
+            console.log('🏢 Index: Checking business profile completion');
+            const { data: businessProfile, error: bpError } = await supabase
+              .from('business_profiles')
+              .select('is_completed')
+              .eq('user_id', user.id)
+              .maybeSingle();
+
+            if (bpError) {
+              console.error('❌ Index: Error fetching business profile:', bpError);
+              navigate('/profile/onboarding');
+              return;
+            }
+
+            if (businessProfile?.is_completed) {
+              console.log('🏢 Index: Business profile completed, redirecting to dashboard');
+              navigate('/dashboard/business');
+            } else {
+              console.log('🔧 Index: Business profile incomplete, redirecting to onboarding');
+              navigate('/profile/onboarding');
+            }
           } else if (profile?.role === 'content_creator') {
-            console.log('🎨 Index: Redirecting to creator dashboard');
-            navigate('/dashboard/creator');
+            console.log('🎨 Index: Checking creator profile completion');
+            const { data: creatorProfile, error: cpError } = await supabase
+              .from('creator_profiles')
+              .select('is_completed')
+              .eq('user_id', user.id)
+              .maybeSingle();
+
+            if (cpError) {
+              console.error('❌ Index: Error fetching creator profile:', cpError);
+              navigate('/profile/onboarding');
+              return;
+            }
+
+            if (creatorProfile?.is_completed) {
+              console.log('🎨 Index: Creator profile completed, redirecting to dashboard');
+              navigate('/dashboard/creator');
+            } else {
+              console.log('🔧 Index: Creator profile incomplete, redirecting to onboarding');
+              navigate('/profile/onboarding');
+            }
           } else if (userRole) {
             // User is authenticated and has metadata role but no profile - redirect to profile setup
             console.log('👤 Index: User has metadata role but no profile, redirecting to profile setup');
