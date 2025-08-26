@@ -13,6 +13,7 @@ interface PortfolioItem {
   url: string;
   type: 'image' | 'video';
   isLoaded: boolean;
+  hasError: boolean;
 }
 
 export const CurrentPortfolioDisplay = ({ portfolioPaths, onRemoveItem }: CurrentPortfolioDisplayProps) => {
@@ -36,11 +37,22 @@ export const CurrentPortfolioDisplay = ({ portfolioPaths, onRemoveItem }: Curren
             
             // Check if it's already a full URL
             if (!path.startsWith('http://') && !path.startsWith('https://')) {
-              // Convert storage path to public URL
-              const { data } = supabase.storage
+              // Try signed URL first (more reliable for private buckets)
+              const { data: signedData } = await supabase.storage
                 .from('profile-assets')
-                .getPublicUrl(path);
-              url = data.publicUrl;
+                .createSignedUrl(path, 3600);
+              
+              if (signedData?.signedUrl) {
+                url = signedData.signedUrl;
+                console.log('Using signed URL for:', path, '→', url);
+              } else {
+                // Fallback to public URL
+                const { data: publicData } = supabase.storage
+                  .from('profile-assets')
+                  .getPublicUrl(path);
+                url = publicData.publicUrl;
+                console.log('Using public URL for:', path, '→', url);
+              }
             }
             
             // Determine media type based on file extension
@@ -52,15 +64,17 @@ export const CurrentPortfolioDisplay = ({ portfolioPaths, onRemoveItem }: Curren
               path,
               url,
               type,
-              isLoaded: false
+              isLoaded: false,
+              hasError: false
             } as PortfolioItem;
           } catch (error) {
-            console.error('Error converting portfolio URL:', error);
+            console.error('Error converting portfolio URL for path:', path, error);
             return {
               path,
               url: path,
               type: 'image' as const,
-              isLoaded: false
+              isLoaded: false,
+              hasError: true
             };
           }
         })
@@ -75,7 +89,13 @@ export const CurrentPortfolioDisplay = ({ portfolioPaths, onRemoveItem }: Curren
 
   const handleMediaLoad = (path: string) => {
     setPortfolioItems(prev => prev.map(item => 
-      item.path === path ? { ...item, isLoaded: true } : item
+      item.path === path ? { ...item, isLoaded: true, hasError: false } : item
+    ));
+  };
+
+  const handleMediaError = (path: string) => {
+    setPortfolioItems(prev => prev.map(item => 
+      item.path === path ? { ...item, hasError: true } : item
     ));
   };
 
@@ -105,34 +125,21 @@ export const CurrentPortfolioDisplay = ({ portfolioPaths, onRemoveItem }: Curren
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {portfolioItems.map((item) => (
           <div key={item.path} className="relative aspect-square bg-muted rounded-lg overflow-hidden group">
-            {item.type === 'image' ? (
+            {item.hasError ? (
+              // Error state
+              <div className="w-full h-full flex items-center justify-center bg-muted">
+                <div className="text-center">
+                  <ImageIcon className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                  <span className="text-xs text-muted-foreground">Media unavailable</span>
+                </div>
+              </div>
+            ) : item.type === 'image' ? (
               <img 
                 src={item.url} 
                 alt="Portfolio item"
                 className="w-full h-full object-cover transition-transform group-hover:scale-105"
                 onLoad={() => handleMediaLoad(item.path)}
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.style.display = 'none';
-                  const parent = target.parentElement;
-                  if (parent && !parent.querySelector('.error-fallback')) {
-                    const fallback = document.createElement('div');
-                    fallback.className = 'error-fallback w-full h-full flex items-center justify-center bg-muted';
-                    fallback.innerHTML = `
-                      <div class="text-center">
-                        <div class="w-8 h-8 mx-auto mb-2 opacity-50">
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                            <circle cx="9" cy="9" r="2"/>
-                            <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
-                          </svg>
-                        </div>
-                        <span class="text-xs text-muted-foreground">Image unavailable</span>
-                      </div>
-                    `;
-                    parent.appendChild(fallback);
-                  }
-                }}
+                onError={() => handleMediaError(item.path)}
               />
             ) : (
               <div className="relative w-full h-full">
@@ -142,9 +149,7 @@ export const CurrentPortfolioDisplay = ({ portfolioPaths, onRemoveItem }: Curren
                   muted
                   playsInline
                   onLoadedData={() => handleMediaLoad(item.path)}
-                  onError={() => {
-                    // Handle video error similar to image
-                  }}
+                  onError={() => handleMediaError(item.path)}
                 />
                 <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 opacity-0 group-hover:opacity-100 transition-opacity">
                   <Play className="w-8 h-8 text-white" />
