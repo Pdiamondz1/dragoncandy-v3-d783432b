@@ -6,7 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 // URL cache for both public and signed URLs
 const urlCache = new Map<string, { url: string; expiresAt: number }>();
 
-const getStorageMediaUrl = async (path: string): Promise<string | null> => {
+const getSignedUrl = async (path: string): Promise<string | null> => {
   // If it's already an HTTP URL, return as-is
   if (path.startsWith('http')) {
     return path;
@@ -20,35 +20,19 @@ const getStorageMediaUrl = async (path: string): Promise<string | null> => {
   }
 
   try {
-    // Encode the path to handle special characters
-    const encodedPath = encodeURI(path);
-    
-    // First try public URL (works for public buckets and is more stable)
-    const { data: publicData } = supabase.storage
+    // Create signed URL for storage path
+    const { data, error } = await supabase.storage
       .from('profile-assets')
-      .getPublicUrl(encodedPath);
-    
-    if (publicData?.publicUrl) {
-      // Cache public URLs for longer since they don't expire
-      urlCache.set(path, { url: publicData.publicUrl, expiresAt: now + 24 * 60 * 60 * 1000 });
-      return publicData.publicUrl;
-    }
+      .createSignedUrl(path, 3600);
 
-    // Fallback to signed URL
-    const { data: signedData, error } = await supabase.storage
-      .from('profile-assets')
-      .createSignedUrl(encodedPath, 3600);
-
-    if (error || !signedData?.signedUrl) {
-      console.error('Error creating URL for path:', path, error);
+    if (error || !data?.signedUrl) {
       return null;
     }
 
-    // Cache signed URL for 55 minutes (refresh before expiry)
-    urlCache.set(path, { url: signedData.signedUrl, expiresAt: now + 55 * 60 * 1000 });
-    return signedData.signedUrl;
+    // Cache signed URL for 55 minutes
+    urlCache.set(path, { url: data.signedUrl, expiresAt: now + 55 * 60 * 1000 });
+    return data.signedUrl;
   } catch (error) {
-    console.error('Error in getStorageMediaUrl:', error);
     return null;
   }
 };
@@ -81,11 +65,9 @@ export const CurrentPortfolioDisplay = ({ portfolioPaths, onRemoveItem }: Curren
       setLoading(true);
       
       const mediaPromises = portfolioPaths.map(async (path) => {
-        const isExternal = path.startsWith('http');
-        const finalUrl = isExternal ? path : await getStorageMediaUrl(path);
+        const finalUrl = await getSignedUrl(path);
         
         if (!finalUrl) {
-          console.error('Failed to generate URL for path:', path);
           return null;
         }
         
@@ -118,30 +100,7 @@ export const CurrentPortfolioDisplay = ({ portfolioPaths, onRemoveItem }: Curren
     ));
   };
 
-  const handleMediaError = async (path: string) => {
-    const item = portfolioItems.find(i => i.path === path);
-    if (!item) return;
-
-    try {
-      // Try to fetch as blob and create object URL as fallback
-      const response = await fetch(item.url);
-      if (response.ok) {
-        const blob = await response.blob();
-        const blobUrl = URL.createObjectURL(blob);
-        
-        // Update the item with the blob URL
-        setPortfolioItems(prev => prev.map(portfolioItem => 
-          portfolioItem.path === path 
-            ? { ...portfolioItem, url: blobUrl, hasError: false }
-            : portfolioItem
-        ));
-        return;
-      }
-    } catch (error) {
-      console.error('Blob fallback failed for:', path, error);
-    }
-    
-    // If all fallbacks fail, mark as error
+  const handleMediaError = (path: string) => {
     setPortfolioItems(prev => prev.map(portfolioItem => 
       portfolioItem.path === path ? { ...portfolioItem, hasError: true } : portfolioItem
     ));
