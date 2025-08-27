@@ -3,19 +3,15 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { 
-  Star, 
-  Archive, 
-  Forward, 
   Reply, 
-  MoreHorizontal,
-  Edit,
+  Download,
   Check,
   CheckCheck 
 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { formatDistanceToNow } from 'date-fns';
 import { useAuth } from '@/hooks/useAuth';
-import { useStarMessage, type Message } from '@/hooks/useMessages';
+import { type Message } from '@/hooks/useMessages';
 import MessageReactions from './MessageReactions';
 import UserPresenceIndicator from './UserPresenceIndicator';
 
@@ -33,8 +29,6 @@ const MessageBubbleEnhanced: React.FC<MessageBubbleEnhancedProps> = ({
   onEdit
 }) => {
   const { user } = useAuth();
-  const starMessage = useStarMessage();
-  const [showActions, setShowActions] = useState(false);
 
   const isOwnMessage = message.sender_id === user?.id;
   const senderName = message.sender_profile?.email || 
@@ -42,12 +36,6 @@ const MessageBubbleEnhanced: React.FC<MessageBubbleEnhancedProps> = ({
                      `User ${message.sender_id.slice(0, 8)}`;
   const senderAvatar = message.sender_profile?.avatar_url;
 
-  const handleStarToggle = () => {
-    starMessage.mutate({ 
-      messageId: message.id, 
-      isStarred: !message.is_starred 
-    });
-  };
 
   const getDeliveryStatusIcon = () => {
     switch (message.delivery_status) {
@@ -75,8 +63,6 @@ const MessageBubbleEnhanced: React.FC<MessageBubbleEnhancedProps> = ({
   return (
     <div 
       className={`flex gap-3 p-4 hover:bg-gray-50 group ${isOwnMessage ? 'flex-row-reverse' : ''}`}
-      onMouseEnter={() => setShowActions(true)}
-      onMouseLeave={() => setShowActions(false)}
     >
       {/* Avatar */}
       <UserPresenceIndicator
@@ -90,19 +76,17 @@ const MessageBubbleEnhanced: React.FC<MessageBubbleEnhancedProps> = ({
       {/* Message content */}
       <div className={`flex-1 max-w-md ${isOwnMessage ? 'text-right' : ''}`}>
         {/* Header */}
-        <div className={`flex items-center gap-2 mb-1 ${isOwnMessage ? 'justify-end' : ''}`}>
-          <span className="text-sm font-medium text-gray-900">{senderName}</span>
-          {getCategoryBadge()}
-          {message.is_starred && <Star className="h-3 w-3 text-yellow-500 fill-current" />}
-          <span className="text-xs text-gray-500">
-            {formatDistanceToNow(new Date(message.created_at), { addSuffix: true })}
-          </span>
-        </div>
+          <div className={`flex items-center gap-2 mb-1 ${isOwnMessage ? 'justify-end' : ''}`}>
+            <span className="text-sm font-medium text-gray-900">{senderName}</span>
+            {getCategoryBadge()}
+            <span className="text-xs text-gray-500">
+              {formatDistanceToNow(new Date(message.created_at), { addSuffix: true })}
+            </span>
+          </div>
 
         {/* Forwarded indicator */}
         {message.forwarded_from_message_id && (
           <div className="text-xs text-gray-500 mb-1 flex items-center gap-1">
-            <Forward className="h-3 w-3" />
             Forwarded
           </div>
         )}
@@ -205,54 +189,33 @@ const MessageBubbleEnhanced: React.FC<MessageBubbleEnhancedProps> = ({
         {/* Reactions */}
         <MessageReactions messageId={message.id} />
 
-        {/* Quick actions */}
-        {showActions && (
-          <div className={`flex items-center gap-1 mt-2 ${isOwnMessage ? 'justify-end' : ''}`}>
+        {/* Actions */}
+        {onReply && (
+          <div className={`flex items-center gap-2 mt-2 ${isOwnMessage ? 'justify-end' : ''}`}>
             <Button
               variant="ghost"
               size="sm"
-              onClick={handleStarToggle}
-              className="h-6 px-2"
+              onClick={() => onReply(message)}
+              className="h-6 px-2 text-xs"
             >
-              <Star className={`h-3 w-3 ${message.is_starred ? 'text-yellow-500 fill-current' : ''}`} />
+              <Reply className="h-3 w-3 mr-1" />
+              Reply
             </Button>
-            
-            {onReply && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => onReply(message)}
-                className="h-6 px-2"
-              >
-                <Reply className="h-3 w-3" />
-              </Button>
-            )}
+          </div>
+        )}
 
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-6 px-2">
-                  <MoreHorizontal className="h-3 w-3" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {onForward && (
-                  <DropdownMenuItem onClick={() => onForward(message)}>
-                    <Forward className="h-4 w-4 mr-2" />
-                    Forward
-                  </DropdownMenuItem>
-                )}
-                {isOwnMessage && onEdit && (
-                  <DropdownMenuItem onClick={() => onEdit(message)}>
-                    <Edit className="h-4 w-4 mr-2" />
-                    Edit
-                  </DropdownMenuItem>
-                )}
-                <DropdownMenuItem>
-                  <Archive className="h-4 w-4 mr-2" />
-                  Archive
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+        {/* Download button for attachments */}
+        {message.attachment_url && (
+          <div className={`flex items-center gap-2 mt-2 ${isOwnMessage ? 'justify-end' : ''}`}>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => window.open(message.attachment_url, '_blank')}
+              className="h-6 px-2 text-xs"
+            >
+              <Download className="h-3 w-3 mr-1" />
+              Download
+            </Button>
           </div>
         )}
       </div>
