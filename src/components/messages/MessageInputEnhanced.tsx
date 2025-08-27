@@ -47,19 +47,23 @@ const MessageInputEnhanced: React.FC<MessageInputEnhancedProps> = ({
     const filePath = `message-attachments/${fileName}`;
 
     const { error: uploadError } = await supabase.storage
-      .from('messages')
+      .from('message-attachments')
       .upload(filePath, file);
 
     if (uploadError) {
       throw uploadError;
     }
 
-    const { data } = supabase.storage
-      .from('messages')
-      .getPublicUrl(filePath);
+    const { data: signedData, error: urlError } = await supabase.storage
+      .from('message-attachments')
+      .createSignedUrl(filePath, 60 * 60);
+
+    if (urlError || !signedData?.signedUrl) {
+      throw urlError || new Error('Failed to generate signed URL');
+    }
 
     return {
-      url: data.publicUrl,
+      url: signedData.signedUrl,
       name: file.name,
       size: file.size
     };
