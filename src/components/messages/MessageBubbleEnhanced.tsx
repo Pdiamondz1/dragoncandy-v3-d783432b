@@ -126,20 +126,64 @@ const MessageBubbleEnhanced: React.FC<MessageBubbleEnhancedProps> = ({
           
           {/* Attachment */}
           {message.attachment_url && (
-            <div className="mt-2 p-2 bg-black bg-opacity-10 rounded">
-              <a 
-                href={message.attachment_url} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="text-sm underline flex items-center gap-1"
-              >
-                📎 {message.attachment_name || 'Attachment'}
-                {message.attachment_size && (
-                  <span className="text-xs opacity-75">
-                    ({Math.round(message.attachment_size / 1024)}KB)
-                  </span>
-                )}
-              </a>
+            <div className="mt-2">
+              {(() => {
+                const isImage = message.attachment_name && 
+                  /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(message.attachment_name);
+                
+                if (isImage) {
+                  return (
+                    <div className="space-y-2">
+                      <img 
+                        src={message.attachment_url}
+                        alt={message.attachment_name || 'Shared image'}
+                        className="max-w-full h-auto rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
+                        style={{ maxHeight: '300px', maxWidth: '300px' }}
+                        onClick={() => window.open(message.attachment_url, '_blank')}
+                        onError={(e) => {
+                          // Fallback to download link if image fails to load
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = 'none';
+                          const fallback = target.nextElementSibling as HTMLElement;
+                          if (fallback) fallback.style.display = 'block';
+                        }}
+                      />
+                      <a 
+                        href={message.attachment_url} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-xs underline flex items-center gap-1 opacity-75 hover:opacity-100"
+                        style={{ display: 'none' }}
+                      >
+                        📎 {message.attachment_name || 'Download image'}
+                        {message.attachment_size && (
+                          <span className="text-xs">
+                            ({Math.round(message.attachment_size / 1024)}KB)
+                          </span>
+                        )}
+                      </a>
+                    </div>
+                  );
+                } else {
+                  return (
+                    <div className="p-2 bg-black bg-opacity-10 rounded">
+                      <a 
+                        href={message.attachment_url} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-sm underline flex items-center gap-1"
+                      >
+                        📎 {message.attachment_name || 'Attachment'}
+                        {message.attachment_size && (
+                          <span className="text-xs opacity-75">
+                            ({Math.round(message.attachment_size / 1024)}KB)
+                          </span>
+                        )}
+                      </a>
+                    </div>
+                  );
+                }
+              })()}
             </div>
           )}
 
