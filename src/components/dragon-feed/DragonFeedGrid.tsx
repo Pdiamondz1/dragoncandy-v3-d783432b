@@ -13,6 +13,8 @@ interface PortfolioMedia {
   url: string;
   type: 'image' | 'video';
   creatorName: string;
+  creatorSlug: string;
+  creatorId: string;
 }
 
 export const DragonFeedGrid: React.FC = () => {

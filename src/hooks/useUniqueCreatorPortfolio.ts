@@ -6,6 +6,8 @@ interface PortfolioMedia {
   url: string;
   type: 'image' | 'video';
   creatorName: string;
+  creatorSlug: string;
+  creatorId: string;
 }
 
 // Simple signed URL cache (1 hour TTL)
@@ -42,7 +44,7 @@ export const useUniqueCreatorPortfolio = () => {
         // Fetch creator profiles with portfolio URLs who allow DragonFeed display
         const { data: creators, error: fetchError } = await supabase
           .from('creator_profiles')
-          .select('id, creator_name, portfolio_urls')
+          .select('id, user_id, creator_name, portfolio_urls, profile_slug')
           .eq('is_completed', true)
           .eq('allow_portfolio_in_feed', true)
           .not('portfolio_urls', 'is', null)
@@ -76,6 +78,8 @@ export const useUniqueCreatorPortfolio = () => {
                 url: finalUrl,
                 type: isVideo ? 'video' : 'image',
                 creatorName: creator.creator_name || 'Creator',
+                creatorSlug: creator.profile_slug || '',
+                creatorId: creator.user_id || creator.id,
               } as PortfolioMedia;
             });
         });

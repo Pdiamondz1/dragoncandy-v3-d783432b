@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -10,6 +11,8 @@ interface PortfolioMedia {
   url: string;
   type: 'image' | 'video';
   creatorName: string;
+  creatorSlug: string;
+  creatorId: string;
 }
 
 interface DragonFeedCardProps {
@@ -22,10 +25,19 @@ export const DragonFeedCard: React.FC<DragonFeedCardProps> = ({ media }) => {
   const [liked, setLiked] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const navigate = useNavigate();
 
   const handleLoad = () => setLoaded(true);
   const handleError = () => setError(true);
   const toggleLike = () => setLiked(!liked);
+  
+  const handleCreatorClick = () => {
+    if (media.creatorSlug) {
+      navigate(`/creator/${media.creatorSlug}`);
+    } else if (media.creatorId) {
+      navigate(`/creator/${media.creatorId}`);
+    }
+  };
 
   const toggleVideoPlayback = async () => {
     if (!videoRef.current) return;
@@ -139,9 +151,12 @@ export const DragonFeedCard: React.FC<DragonFeedCardProps> = ({ media }) => {
             </AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
-            <p className="font-medium text-sm text-foreground truncate">
+            <button
+              onClick={handleCreatorClick}
+              className="font-medium text-sm text-foreground truncate hover:text-primary transition-colors cursor-pointer text-left w-full"
+            >
               {media.creatorName}
-            </p>
+            </button>
             <p className="text-xs text-muted-foreground">Creator</p>
           </div>
         </div>
