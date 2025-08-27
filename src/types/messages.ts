@@ -24,6 +24,13 @@ export interface Message {
     email: string | null;
     avatar_url: string | null;
   };
+  parent_message?: {
+    content: string;
+    sender_profile?: {
+      full_name: string | null;
+      email: string | null;
+    };
+  };
 }
 
 export interface SendMessageParams {

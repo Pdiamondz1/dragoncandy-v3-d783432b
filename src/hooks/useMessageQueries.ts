@@ -28,10 +28,37 @@ export const useMessages = (campaignId?: string, conversationId?: string) => {
         .select('id, full_name, email, avatar_url')
         .in('id', senderIds);
 
+      // Fetch parent messages for replies
+      const parentMessageIds = [...new Set(data?.filter(m => m.parent_message_id).map(m => m.parent_message_id) || [])];
+      let parentMessages: any[] = [];
+      let parentProfiles: any[] = [];
+      
+      if (parentMessageIds.length > 0) {
+        const { data: parentMessagesData } = await supabase
+          .from('messages')
+          .select('id, content, sender_id')
+          .in('id', parentMessageIds);
+        
+        parentMessages = parentMessagesData || [];
+        
+        // Fetch profiles for parent message senders
+        const parentSenderIds = [...new Set(parentMessages.map(m => m.sender_id))];
+        const { data: parentProfilesData } = await supabase
+          .from('profiles')
+          .select('id, full_name, email')
+          .in('id', parentSenderIds);
+        
+        parentProfiles = parentProfilesData || [];
+      }
+
       // Merge profile data with messages
       const messagesWithProfiles = data?.map(message => ({
         ...message,
-        sender_profile: profiles?.find(p => p.id === message.sender_id)
+        sender_profile: profiles?.find(p => p.id === message.sender_id),
+        parent_message: message.parent_message_id ? {
+          content: parentMessages.find(pm => pm.id === message.parent_message_id)?.content || '',
+          sender_profile: parentProfiles.find(p => p.id === parentMessages.find(pm => pm.id === message.parent_message_id)?.sender_id)
+        } : undefined
       })) || [];
 
       return messagesWithProfiles as Message[];

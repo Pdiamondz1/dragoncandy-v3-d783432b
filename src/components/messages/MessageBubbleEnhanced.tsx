@@ -36,6 +36,27 @@ const MessageBubbleEnhanced: React.FC<MessageBubbleEnhancedProps> = ({
                      `User ${message.sender_id.slice(0, 8)}`;
   const senderAvatar = message.sender_profile?.avatar_url;
 
+  const handleDownload = async (url: string, filename?: string) => {
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const downloadUrl = URL.createObjectURL(blob);
+      
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = filename || 'download';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      URL.revokeObjectURL(downloadUrl);
+    } catch (error) {
+      console.error('Download failed:', error);
+      // Fallback to opening in new tab
+      window.open(url, '_blank');
+    }
+  };
+
 
   const getDeliveryStatusIcon = () => {
     switch (message.delivery_status) {
@@ -92,9 +113,19 @@ const MessageBubbleEnhanced: React.FC<MessageBubbleEnhancedProps> = ({
         )}
 
         {/* Reply context */}
-        {message.parent_message_id && (
+        {message.parent_message_id && message.parent_message && (
           <div className="bg-gray-100 p-2 rounded mb-2 text-sm border-l-2 border-gray-300">
-            <span className="text-gray-600">Replying to previous message</span>
+            <div className="text-gray-600">
+              <span className="font-medium">
+                Replying to {message.parent_message.sender_profile?.full_name || message.parent_message.sender_profile?.email || 'User'}:
+              </span>
+              <div className="text-gray-500 mt-1 truncate">
+                {message.parent_message.content.length > 50 
+                  ? message.parent_message.content.substring(0, 50) + '...'
+                  : message.parent_message.content
+                }
+              </div>
+            </div>
           </div>
         )}
 
@@ -210,7 +241,7 @@ const MessageBubbleEnhanced: React.FC<MessageBubbleEnhancedProps> = ({
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => window.open(message.attachment_url, '_blank')}
+              onClick={() => handleDownload(message.attachment_url!, message.attachment_name || undefined)}
               className="h-6 px-2 text-xs"
             >
               <Download className="h-3 w-3 mr-1" />
