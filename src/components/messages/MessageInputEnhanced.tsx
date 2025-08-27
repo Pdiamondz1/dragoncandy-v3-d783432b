@@ -43,7 +43,7 @@ const MessageInputEnhanced: React.FC<MessageInputEnhancedProps> = ({
   const { user } = useAuth();
   const typingTimeoutRef = useRef<NodeJS.Timeout>();
 
-  const uploadFile = async (file: File): Promise<{ url: string; name: string; size: number }> => {
+  const uploadFile = async (file: File): Promise<{ attachmentUrl: string; attachmentName: string; attachmentSize: number }> => {
     if (!user?.id) {
       toast({
         title: 'You must be signed in to upload',
@@ -77,9 +77,9 @@ const MessageInputEnhanced: React.FC<MessageInputEnhancedProps> = ({
     }
 
     return {
-      url: signedData.signedUrl,
-      name: file.name,
-      size: file.size
+      attachmentUrl: signedData.signedUrl,
+      attachmentName: file.name,
+      attachmentSize: file.size
     };
   };
 
