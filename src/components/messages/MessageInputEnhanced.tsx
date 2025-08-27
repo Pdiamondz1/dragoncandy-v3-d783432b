@@ -8,6 +8,7 @@ import { useTypingIndicator } from '@/hooks/useTypingIndicator';
 import { Message } from '@/hooks/useMessages';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 
 interface MessageInputEnhancedProps {
   campaignId?: string;
@@ -39,12 +40,25 @@ const MessageInputEnhanced: React.FC<MessageInputEnhancedProps> = ({
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { sendTypingIndicator } = useTypingIndicator(campaignId);
+  const { user } = useAuth();
   const typingTimeoutRef = useRef<NodeJS.Timeout>();
 
   const uploadFile = async (file: File): Promise<{ url: string; name: string; size: number }> => {
+    if (!user?.id) {
+      toast({
+        title: 'You must be signed in to upload',
+        description: 'Please sign in and try again.',
+        variant: 'destructive',
+      });
+      throw new Error('Missing user id for upload');
+    }
+
     const fileExt = file.name.split('.').pop();
-    const fileName = `${Math.random()}.${fileExt}`;
-    const filePath = `message-attachments/${fileName}`;
+    const randomId = (typeof crypto !== 'undefined' && 'randomUUID' in crypto)
+      ? crypto.randomUUID()
+      : Math.random().toString(36).slice(2);
+    const fileName = `${randomId}.${fileExt}`;
+    const filePath = `${user.id}/${fileName}`;
 
     const { error: uploadError } = await supabase.storage
       .from('message-attachments')
