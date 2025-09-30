@@ -6,7 +6,7 @@ import { Sparkles, Users, Target, TrendingUp } from 'lucide-react';
 
 interface WelcomeStepProps {
   stepId: string;
-  userRole: 'business_client' | 'content_creator';
+  userRole: 'business_client' | 'content_creator' | 'brand';
   onNext: () => void;
 }
 
@@ -49,8 +49,8 @@ export const WelcomeStep: React.FC<WelcomeStepProps> = ({ userRole, onNext }) =>
     }
   ];
 
-  const features = userRole === 'business_client' ? businessFeatures : creatorFeatures;
-  const roleName = userRole === 'business_client' ? 'Business' : 'Creator';
+  const features = (userRole === 'business_client' || userRole === 'brand') ? businessFeatures : creatorFeatures;
+  const roleName = (userRole === 'business_client' || userRole === 'brand') ? 'Business' : 'Creator';
 
   return (
     <div className="text-center space-y-6">

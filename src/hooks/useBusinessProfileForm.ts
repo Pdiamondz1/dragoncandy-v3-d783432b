@@ -25,6 +25,10 @@ export interface BusinessProfileFormData {
   preferred_collaboration_style: string;
   timezone: string;
   profile_visibility: string;
+  // Brand-specific fields
+  brandCategory?: string;
+  sponsorshipBudget?: string;
+  marketingObjectives?: string;
 }
 
 export const useBusinessProfileForm = () => {

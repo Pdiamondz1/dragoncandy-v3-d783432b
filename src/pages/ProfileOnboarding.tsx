@@ -70,6 +70,9 @@ const ProfileOnboarding = () => {
           if (profile.role === 'business_client') {
             console.log('🏢 ProfileOnboarding: Redirecting to business profile setup');
             navigate('/profile/business');
+          } else if (profile.role === 'brand') {
+            console.log('✨ ProfileOnboarding: Redirecting to brand profile setup');
+            navigate('/profile/brand');
           } else if (profile.role === 'content_creator') {
             console.log('🎨 ProfileOnboarding: Redirecting to creator profile setup');
             navigate('/profile/creator');

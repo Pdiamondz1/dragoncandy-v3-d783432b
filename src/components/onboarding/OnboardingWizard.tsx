@@ -9,7 +9,7 @@ import { OnboardingStep } from './OnboardingStep';
 import { useOnboardingProgress } from '@/hooks/useOnboardingProgress';
 
 interface OnboardingWizardProps {
-  userRole: 'business_client' | 'content_creator';
+  userRole: 'business_client' | 'content_creator' | 'brand';
   onComplete: () => void;
 }
 
@@ -84,7 +84,7 @@ const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ userRole, onComplet
     }
   ];
 
-  const steps = userRole === 'business_client' ? businessSteps : creatorSteps;
+  const steps = userRole === 'business_client' || userRole === 'brand' ? businessSteps : creatorSteps;
   const progressPercentage = ((currentStep + 1) / steps.length) * 100;
 
   const handleNext = () => {

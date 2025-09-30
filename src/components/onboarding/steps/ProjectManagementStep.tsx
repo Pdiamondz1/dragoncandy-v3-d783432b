@@ -7,7 +7,7 @@ import { Upload, MessageCircle, Star, Repeat } from 'lucide-react';
 
 interface ProjectManagementStepProps {
   stepId: string;
-  userRole: 'business_client' | 'content_creator';
+  userRole: 'business_client' | 'content_creator' | 'brand';
   onNext: () => void;
 }
 

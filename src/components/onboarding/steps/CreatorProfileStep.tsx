@@ -7,7 +7,7 @@ import { User, Camera, Star, Award } from 'lucide-react';
 
 interface CreatorProfileStepProps {
   stepId: string;
-  userRole: 'business_client' | 'content_creator';
+  userRole: 'business_client' | 'content_creator' | 'brand';
   onNext: () => void;
 }
 

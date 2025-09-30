@@ -7,7 +7,7 @@ import { FileText, Clock, MessageSquare, CheckCircle } from 'lucide-react';
 
 interface ApplicationStepProps {
   stepId: string;
-  userRole: 'business_client' | 'content_creator';
+  userRole: 'business_client' | 'content_creator' | 'brand';
   onNext: () => void;
 }
 

@@ -1,0 +1,125 @@
+import React from 'react';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { EnhancedBusinessProfileForm } from '@/components/business-profile/EnhancedBusinessProfileForm';
+import { SocialMediaLinks } from '@/components/business-profile/SocialMediaLinks';
+import { FileUploadSection } from '@/components/business-profile/FileUploadSection';
+import type { BusinessProfileFormData } from '@/hooks/useBusinessProfileForm';
+
+interface BrandProfileSetupFormProps {
+  formData: BusinessProfileFormData;
+  logoFile: File | null;
+  loading: boolean;
+  onInputChange: (field: string, value: string) => void;
+  onLogoChange: (file: File | null) => void;
+  onSubmit: (e: React.FormEvent) => void;
+}
+
+const brandCategories = [
+  'Food & Beverage',
+  'Retail & Fashion',
+  'Technology',
+  'Health & Wellness',
+  'Automotive',
+  'Entertainment',
+  'Travel & Hospitality',
+  'Financial Services',
+  'Consumer Goods',
+  'Other'
+];
+
+export const BrandProfileSetupForm = ({
+  formData,
+  logoFile,
+  loading,
+  onInputChange,
+  onLogoChange,
+  onSubmit
+}: BrandProfileSetupFormProps) => {
+  return (
+    <form onSubmit={onSubmit} className="space-y-6">
+      {/* Basic brand information */}
+      <EnhancedBusinessProfileForm 
+        formData={formData}
+        onInputChange={onInputChange}
+      />
+
+      {/* Brand-specific fields */}
+      <div className="space-y-4 border-t pt-6">
+        <h3 className="text-lg font-semibold">Brand Details</h3>
+        
+        <div className="space-y-2">
+          <Label htmlFor="brandCategory">Brand Category *</Label>
+          <Select
+            value={formData.brandCategory || ''}
+            onValueChange={(value) => onInputChange('brandCategory', value)}
+          >
+            <SelectTrigger id="brandCategory">
+              <SelectValue placeholder="Select your brand category" />
+            </SelectTrigger>
+            <SelectContent>
+              {brandCategories.map((category) => (
+                <SelectItem key={category} value={category}>
+                  {category}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="sponsorshipBudget">Monthly Marketing Budget (USD)</Label>
+          <Input
+            id="sponsorshipBudget"
+            type="number"
+            min="0"
+            step="100"
+            placeholder="e.g., 5000"
+            value={formData.sponsorshipBudget || ''}
+            onChange={(e) => onInputChange('sponsorshipBudget', e.target.value)}
+          />
+          <p className="text-xs text-muted-foreground">
+            Help us match you with campaigns that fit your budget
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="marketingObjectives">Marketing Objectives *</Label>
+          <Textarea
+            id="marketingObjectives"
+            placeholder="What are your key marketing goals? (e.g., brand awareness, product launches, local engagement)"
+            value={formData.marketingObjectives || ''}
+            onChange={(e) => onInputChange('marketingObjectives', e.target.value)}
+            rows={4}
+            required
+          />
+        </div>
+      </div>
+
+      {/* Logo upload */}
+      <FileUploadSection
+        logoFile={logoFile}
+        sampleFiles={[]}
+        onLogoChange={onLogoChange}
+        onSampleFilesChange={() => {}}
+      />
+
+      {/* Social media links */}
+      <SocialMediaLinks 
+        formData={formData}
+        onInputChange={onInputChange}
+      />
+
+      <Button
+        type="submit"
+        className="w-full bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-700 hover:to-purple-700"
+        disabled={loading}
+      >
+        {loading ? 'Setting Up Profile...' : 'Complete Brand Profile'}
+      </Button>
+    </form>
+  );
+};

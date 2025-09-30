@@ -7,7 +7,7 @@ import { MessageCircle, FileText, CheckCircle, AlertCircle } from 'lucide-react'
 
 interface MessagingStepProps {
   stepId: string;
-  userRole: 'business_client' | 'content_creator';
+  userRole: 'business_client' | 'content_creator' | 'brand';
   onNext: () => void;
 }
 

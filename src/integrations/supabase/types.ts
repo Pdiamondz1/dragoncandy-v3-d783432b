@@ -97,7 +97,9 @@ export type Database = {
       }
       business_profiles: {
         Row: {
+          account_type: string | null
           average_rating: number | null
+          brand_category: string | null
           budget_range: string | null
           business_name: string
           company_size: string | null
@@ -113,11 +115,13 @@ export type Database = {
           linkedin_url: string | null
           location: string | null
           logo_url: string | null
+          marketing_objectives: string | null
           other_social_url: string | null
           preferred_collaboration_style: string | null
           profile_slug: string | null
           profile_visibility: string | null
           sample_content_urls: string[] | null
+          sponsorship_budget: number | null
           tiktok_url: string | null
           timezone: string | null
           total_reviews: number | null
@@ -128,7 +132,9 @@ export type Database = {
           youtube_url: string | null
         }
         Insert: {
+          account_type?: string | null
           average_rating?: number | null
+          brand_category?: string | null
           budget_range?: string | null
           business_name: string
           company_size?: string | null
@@ -144,11 +150,13 @@ export type Database = {
           linkedin_url?: string | null
           location?: string | null
           logo_url?: string | null
+          marketing_objectives?: string | null
           other_social_url?: string | null
           preferred_collaboration_style?: string | null
           profile_slug?: string | null
           profile_visibility?: string | null
           sample_content_urls?: string[] | null
+          sponsorship_budget?: number | null
           tiktok_url?: string | null
           timezone?: string | null
           total_reviews?: number | null
@@ -159,7 +167,9 @@ export type Database = {
           youtube_url?: string | null
         }
         Update: {
+          account_type?: string | null
           average_rating?: number | null
+          brand_category?: string | null
           budget_range?: string | null
           business_name?: string
           company_size?: string | null
@@ -175,11 +185,13 @@ export type Database = {
           linkedin_url?: string | null
           location?: string | null
           logo_url?: string | null
+          marketing_objectives?: string | null
           other_social_url?: string | null
           preferred_collaboration_style?: string | null
           profile_slug?: string | null
           profile_visibility?: string | null
           sample_content_urls?: string[] | null
+          sponsorship_budget?: number | null
           tiktok_url?: string | null
           timezone?: string | null
           total_reviews?: number | null
@@ -1673,7 +1685,7 @@ export type Database = {
         | "real_estate"
         | "finance"
         | "other"
-      user_role: "business_client" | "content_creator"
+      user_role: "business_client" | "content_creator" | "brand"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1840,7 +1852,7 @@ export const Constants = {
         "finance",
         "other",
       ],
-      user_role: ["business_client", "content_creator"],
+      user_role: ["business_client", "content_creator", "brand"],
     },
   },
 } as const

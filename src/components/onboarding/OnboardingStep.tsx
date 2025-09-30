@@ -13,7 +13,7 @@ import { ProjectManagementStep } from './steps/ProjectManagementStep';
 interface OnboardingStepProps {
   stepId: string;
   stepComponent: string;
-  userRole: 'business_client' | 'content_creator';
+  userRole: 'business_client' | 'content_creator' | 'brand';
   onNext: () => void;
 }
 

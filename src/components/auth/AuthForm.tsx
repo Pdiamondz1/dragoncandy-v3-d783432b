@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { toast } from "@/hooks/use-toast";
 
-type Role = "business_client" | "content_creator";
+type Role = "business_client" | "content_creator" | "brand";
 
 interface AuthFormProps {
   mode: "login" | "signup";
@@ -121,15 +121,25 @@ export const AuthForm = ({ mode, onError }: AuthFormProps) => {
             id="role"
             value={role}
             onValueChange={setRole as any}
-            className="flex flex-row gap-4 mb-2"
+            className="flex flex-col gap-3 mb-2"
           >
             <div className="flex items-center space-x-2">
               <RadioGroupItem value="business_client" id="business_client" />
-              <Label htmlFor="business_client" className="text-base">Business Client</Label>
+              <Label htmlFor="business_client" className="text-base cursor-pointer">
+                Restaurant / Business Client
+              </Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="brand" id="brand" />
+              <Label htmlFor="brand" className="text-base cursor-pointer">
+                Brand / Sponsor
+              </Label>
             </div>
             <div className="flex items-center space-x-2">
               <RadioGroupItem value="content_creator" id="content_creator" />
-              <Label htmlFor="content_creator" className="text-base">Content Creator</Label>
+              <Label htmlFor="content_creator" className="text-base cursor-pointer">
+                Content Creator
+              </Label>
             </div>
           </RadioGroup>
         </div>

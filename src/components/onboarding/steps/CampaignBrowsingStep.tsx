@@ -7,7 +7,7 @@ import { Search, Filter, Heart, DollarSign } from 'lucide-react';
 
 interface CampaignBrowsingStepProps {
   stepId: string;
-  userRole: 'business_client' | 'content_creator';
+  userRole: 'business_client' | 'content_creator' | 'brand';
   onNext: () => void;
 }
 

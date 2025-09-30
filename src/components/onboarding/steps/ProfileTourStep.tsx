@@ -7,12 +7,12 @@ import { User, Building, Camera, Star } from 'lucide-react';
 
 interface ProfileTourStepProps {
   stepId: string;
-  userRole: 'business_client' | 'content_creator';
+  userRole: 'business_client' | 'content_creator' | 'brand';
   onNext: () => void;
 }
 
 export const ProfileTourStep: React.FC<ProfileTourStepProps> = ({ userRole, onNext }) => {
-  const profileTips = userRole === 'business_client' 
+  const profileTips = (userRole === 'business_client' || userRole === 'brand')
     ? [
         {
           icon: <Building className="w-5 h-5 text-pink-600" />,
@@ -55,7 +55,7 @@ export const ProfileTourStep: React.FC<ProfileTourStepProps> = ({ userRole, onNe
           Complete Your Profile
         </h2>
         <p className="text-gray-600">
-          A complete profile helps you {userRole === 'business_client' ? 'attract quality creators' : 'get discovered by businesses'}.
+          A complete profile helps you {(userRole === 'business_client' || userRole === 'brand') ? 'attract quality creators' : 'get discovered by businesses'}.
         </p>
       </div>
 
@@ -80,7 +80,7 @@ export const ProfileTourStep: React.FC<ProfileTourStepProps> = ({ userRole, onNe
       <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
         <h3 className="font-medium text-yellow-800 mb-2">💡 Pro Tip</h3>
         <p className="text-sm text-yellow-700">
-          {userRole === 'business_client' 
+          {(userRole === 'business_client' || userRole === 'brand')
             ? "Profiles with complete information and sample content receive 3x more applications from creators."
             : "Creators with complete portfolios and clear skills get 5x more campaign invitations."
           }
@@ -89,7 +89,7 @@ export const ProfileTourStep: React.FC<ProfileTourStepProps> = ({ userRole, onNe
 
       <div className="flex justify-between items-center">
         <Link 
-          to={`/dashboard/${userRole === 'business_client' ? 'business' : 'creator'}/settings`}
+          to={`/dashboard/${(userRole === 'business_client' || userRole === 'brand') ? 'business' : 'creator'}/settings`}
           className="text-pink-600 hover:text-pink-700 text-sm font-medium"
         >
           Complete Profile Now →

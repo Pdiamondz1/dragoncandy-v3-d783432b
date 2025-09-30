@@ -7,7 +7,7 @@ import { Search, Filter, Users, Star } from 'lucide-react';
 
 interface CreatorDiscoveryStepProps {
   stepId: string;
-  userRole: 'business_client' | 'content_creator';
+  userRole: 'business_client' | 'content_creator' | 'brand';
   onNext: () => void;
 }
 

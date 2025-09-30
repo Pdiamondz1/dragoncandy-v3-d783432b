@@ -25,7 +25,8 @@ export const useBusinessProfileSubmit = () => {
   const submitProfile = async (
     formData: BusinessProfileFormData,
     logoFile: File | null,
-    userId: string
+    userId: string,
+    isBrand: boolean = false
   ) => {
     setLoading(true);
     
@@ -37,39 +38,54 @@ export const useBusinessProfileSubmit = () => {
         logoUrl = await uploadFile(logoFile, 'logos', userId);
       }
 
+      // Base profile data
+      const profileData: any = {
+        business_name: formData.business_name,
+        industry: formData.industry as IndustryType,
+        website_url: formData.website_url,
+        location: formData.location,
+        description: formData.description,
+        instagram_url: formData.instagram_url,
+        tiktok_url: formData.tiktok_url,
+        youtube_url: formData.youtube_url,
+        facebook_url: formData.facebook_url,
+        linkedin_url: formData.linkedin_url,
+        x_url: formData.x_url,
+        other_social_url: formData.other_social_url,
+        logo_url: logoUrl,
+        company_size: formData.company_size,
+        founded_year: formData.founded_year ? parseInt(formData.founded_year) : null,
+        employee_count_range: formData.employee_count_range,
+        budget_range: formData.budget_range,
+        preferred_collaboration_style: formData.preferred_collaboration_style,
+        timezone: formData.timezone,
+        profile_visibility: formData.profile_visibility,
+        updated_at: new Date().toISOString()
+      };
+
+      // Add brand-specific fields if this is a brand profile
+      if (isBrand) {
+        profileData.account_type = 'brand';
+        profileData.brand_category = formData.brandCategory || null;
+        profileData.sponsorship_budget = formData.sponsorshipBudget ? parseFloat(formData.sponsorshipBudget) : null;
+        profileData.marketing_objectives = formData.marketingObjectives || null;
+        profileData.is_completed = true;
+      } else {
+        profileData.account_type = 'restaurant';
+        profileData.is_completed = true;
+      }
+
       // Update profile data
       const { error } = await supabase
         .from('business_profiles')
-        .update({
-          business_name: formData.business_name,
-          industry: formData.industry as IndustryType,
-          website_url: formData.website_url,
-          location: formData.location,
-          description: formData.description,
-          instagram_url: formData.instagram_url,
-          tiktok_url: formData.tiktok_url,
-          youtube_url: formData.youtube_url,
-          facebook_url: formData.facebook_url,
-          linkedin_url: formData.linkedin_url,
-          x_url: formData.x_url,
-          other_social_url: formData.other_social_url,
-          logo_url: logoUrl,
-          company_size: formData.company_size,
-          founded_year: formData.founded_year ? parseInt(formData.founded_year) : null,
-          employee_count_range: formData.employee_count_range,
-          budget_range: formData.budget_range,
-          preferred_collaboration_style: formData.preferred_collaboration_style,
-          timezone: formData.timezone,
-          profile_visibility: formData.profile_visibility,
-          updated_at: new Date().toISOString()
-        })
+        .update(profileData)
         .eq('user_id', userId);
 
       if (error) throw error;
 
       toast({
         title: "Profile updated successfully!",
-        description: "Your business profile has been updated."
+        description: isBrand ? "Your brand profile has been created." : "Your business profile has been updated."
       });
 
       return true;
@@ -86,8 +102,17 @@ export const useBusinessProfileSubmit = () => {
     }
   };
 
+  const handleSubmit = (onSuccess?: () => void, isBrand: boolean = false) => async (e: React.FormEvent, formData: BusinessProfileFormData, logoFile: File | null, userId: string) => {
+    e.preventDefault();
+    const success = await submitProfile(formData, logoFile, userId, isBrand);
+    if (success && onSuccess) {
+      onSuccess();
+    }
+  };
+
   return {
     submitProfile,
+    handleSubmit,
     loading
   };
 };

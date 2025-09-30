@@ -7,7 +7,7 @@ import { PlusCircle, Target, Calendar, DollarSign } from 'lucide-react';
 
 interface CampaignCreationStepProps {
   stepId: string;
-  userRole: 'business_client' | 'content_creator';
+  userRole: 'business_client' | 'content_creator' | 'brand';
   onNext: () => void;
 }
 

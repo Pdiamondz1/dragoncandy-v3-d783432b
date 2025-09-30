@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 interface Profile {
   id: string;
   email: string;
-  role: 'business_client' | 'content_creator';
+  role: 'business_client' | 'content_creator' | 'brand';
   full_name?: string;
   avatar_url?: string;
   business_name?: string;

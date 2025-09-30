@@ -47,10 +47,10 @@ import { useIsMobile } from '@/hooks/use-mobile';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
-  userRole: 'business_client' | 'content_creator';
+  userRole: 'business_client' | 'content_creator' | 'brand';
 }
 
-const AppSidebar: React.FC<{ userRole: 'business_client' | 'content_creator' }> = ({ userRole }) => {
+const AppSidebar: React.FC<{ userRole: 'business_client' | 'content_creator' | 'brand' }> = ({ userRole }) => {
   const location = useLocation();
   const { state } = useSidebar();
   const collapsed = state === 'collapsed';
@@ -65,6 +65,15 @@ const AppSidebar: React.FC<{ userRole: 'business_client' | 'content_creator' }> 
     { icon: Settings, label: 'Settings', href: '/dashboard/business/settings' },
   ];
 
+  const brandNavItems = [
+    { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard/brand' },
+    { icon: Target, label: 'Sponsorships', href: '/dashboard/brand/sponsorships' },
+    { icon: Search, label: 'Discover Campaigns', href: '/dashboard/brand/discover' },
+    { icon: Users, label: 'Browse Creators', href: '/dashboard/brand/creators' },
+    { icon: MessageSquare, label: 'Messages', href: '/dashboard/brand/messages' },
+    { icon: Settings, label: 'Settings', href: '/dashboard/brand/settings' },
+  ];
+
   const creatorNavItems = [
     { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard/creator' },
     { icon: Search, label: 'Browse Campaigns', href: '/dashboard/creator/campaigns' },
@@ -74,7 +83,11 @@ const AppSidebar: React.FC<{ userRole: 'business_client' | 'content_creator' }> 
     { icon: Settings, label: 'Settings', href: '/dashboard/creator/settings' },
   ];
 
-  const navItems = userRole === 'business_client' ? businessNavItems : creatorNavItems;
+  const navItems = userRole === 'business_client' 
+    ? businessNavItems 
+    : userRole === 'brand'
+    ? brandNavItems
+    : creatorNavItems;
 
   const isActiveRoute = (href: string) => {
     return location.pathname === href || location.pathname.startsWith(href + '/');

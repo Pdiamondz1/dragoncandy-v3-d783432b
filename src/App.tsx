@@ -15,6 +15,7 @@ import NotFound from "./pages/NotFound";
 import AuthPage from "./pages/AuthPage";
 import ProfileOnboarding from "./pages/ProfileOnboarding";
 import BusinessProfileSetup from "./pages/BusinessProfileSetup";
+import BrandProfileSetup from "./pages/BrandProfileSetup";
 import CreatorProfileSetup from "./pages/CreatorProfileSetup";
 import BusinessDashboard from "./pages/BusinessDashboard";
 import CreatorDashboard from "./pages/CreatorDashboard";
@@ -79,10 +80,16 @@ const App = () => {
                   <Route path="/auth/update-password" element={<UpdatePassword />} />
                   <Route path="/profile/onboarding" element={<ProfileOnboarding />} />
                   <Route path="/profile/business" element={<BusinessProfileSetup />} />
+                  <Route path="/profile/brand" element={<BrandProfileSetup />} />
                   <Route path="/profile/creator" element={<CreatorProfileSetup />} />
                   
                   {/* Protected Dashboard Routes */}
                   <Route path="/dashboard/business" element={
+                    <ProtectedRoute>
+                      <BusinessDashboard />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/dashboard/brand" element={
                     <ProtectedRoute>
                       <BusinessDashboard />
                     </ProtectedRoute>
