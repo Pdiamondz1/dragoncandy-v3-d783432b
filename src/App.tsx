@@ -18,6 +18,7 @@ import BusinessProfileSetup from "./pages/BusinessProfileSetup";
 import BrandProfileSetup from "./pages/BrandProfileSetup";
 import CreatorProfileSetup from "./pages/CreatorProfileSetup";
 import BusinessDashboard from "./pages/BusinessDashboard";
+import BrandDashboard from "./pages/BrandDashboard";
 import CreatorDashboard from "./pages/CreatorDashboard";
 import BusinessSettings from "./pages/BusinessSettings";
 import CreatorSettings from "./pages/CreatorSettings";
@@ -91,7 +92,7 @@ const App = () => {
                   } />
                   <Route path="/dashboard/brand" element={
                     <ProtectedRoute>
-                      <BusinessDashboard />
+                      <BrandDashboard />
                     </ProtectedRoute>
                   } />
                   <Route path="/dashboard/creator" element={
