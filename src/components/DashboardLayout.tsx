@@ -67,8 +67,8 @@ const AppSidebar: React.FC<{ userRole: 'business_client' | 'content_creator' | '
 
   const brandNavItems = [
     { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard/brand' },
+    { icon: Search, label: 'Discover Campaigns', href: '/dashboard/brand/discover-campaigns' },
     { icon: Target, label: 'Sponsorships', href: '/dashboard/brand/sponsorships' },
-    { icon: Search, label: 'Discover Campaigns', href: '/dashboard/brand/discover' },
     { icon: Users, label: 'Browse Creators', href: '/dashboard/brand/creators' },
     { icon: MessageSquare, label: 'Messages', href: '/dashboard/brand/messages' },
     { icon: Settings, label: 'Settings', href: '/dashboard/brand/settings' },

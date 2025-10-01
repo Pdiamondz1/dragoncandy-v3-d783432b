@@ -418,6 +418,67 @@ export type Database = {
           },
         ]
       }
+      campaign_sponsorships: {
+        Row: {
+          brand_id: string
+          campaign_id: string
+          created_at: string
+          id: string
+          proposal_message: string | null
+          restaurant_id: string
+          sponsorship_amount: number | null
+          status: string
+          terms: Json | null
+          updated_at: string
+        }
+        Insert: {
+          brand_id: string
+          campaign_id: string
+          created_at?: string
+          id?: string
+          proposal_message?: string | null
+          restaurant_id: string
+          sponsorship_amount?: number | null
+          status?: string
+          terms?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          brand_id?: string
+          campaign_id?: string
+          created_at?: string
+          id?: string
+          proposal_message?: string | null
+          restaurant_id?: string
+          sponsorship_amount?: number | null
+          status?: string
+          terms?: Json | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_sponsorships_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "business_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_sponsorships_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_sponsorships_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "business_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       campaigns: {
         Row: {
           budget_max: number | null
@@ -428,6 +489,7 @@ export type Database = {
           description: string | null
           goals: string | null
           id: string
+          open_for_sponsorship: boolean | null
           platforms: string[] | null
           status: Database["public"]["Enums"]["campaign_status"]
           style: string | null
@@ -445,6 +507,7 @@ export type Database = {
           description?: string | null
           goals?: string | null
           id?: string
+          open_for_sponsorship?: boolean | null
           platforms?: string[] | null
           status?: Database["public"]["Enums"]["campaign_status"]
           style?: string | null
@@ -462,6 +525,7 @@ export type Database = {
           description?: string | null
           goals?: string | null
           id?: string
+          open_for_sponsorship?: boolean | null
           platforms?: string[] | null
           status?: Database["public"]["Enums"]["campaign_status"]
           style?: string | null
