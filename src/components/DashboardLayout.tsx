@@ -165,7 +165,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, userRole })
               <div className="flex items-center gap-4">
                 <SidebarTrigger />
                 <h1 className="text-xl font-semibold text-foreground hidden sm:block">
-                  {userRole === 'business_client' ? 'Business Dashboard' : 'Creator Dashboard'}
+                  {userRole === 'business_client' ? 'Business Dashboard' : userRole === 'brand' ? 'Brand Dashboard' : 'Creator Dashboard'}
                 </h1>
               </div>
 
@@ -196,7 +196,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, userRole })
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem asChild>
-                      <Link to={`/dashboard/${userRole === 'business_client' ? 'business' : 'creator'}/settings`}>
+                      <Link to={`/dashboard/${userRole === 'business_client' ? 'business' : userRole === 'brand' ? 'brand' : 'creator'}/settings`}>
                         <Settings className="mr-2 h-4 w-4" />
                         <span>Settings</span>
                       </Link>
