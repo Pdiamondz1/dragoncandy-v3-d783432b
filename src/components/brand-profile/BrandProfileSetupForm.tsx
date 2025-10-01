@@ -1,10 +1,9 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { EnhancedBusinessProfileForm } from '@/components/business-profile/EnhancedBusinessProfileForm';
+import { BrandEnhancedProfileForm } from './BrandEnhancedProfileForm';
 import { SocialMediaLinks } from '@/components/business-profile/SocialMediaLinks';
 import { FileUploadSection } from '@/components/business-profile/FileUploadSection';
 import type { BusinessProfileFormData } from '@/hooks/useBusinessProfileForm';
@@ -41,11 +40,14 @@ export const BrandProfileSetupForm = ({
 }: BrandProfileSetupFormProps) => {
   return (
     <form onSubmit={onSubmit} className="space-y-6">
-      {/* Basic brand information */}
-      <EnhancedBusinessProfileForm 
-        formData={formData}
-        onInputChange={onInputChange}
-      />
+      {/* Enhanced Brand Profile Fields */}
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold">Basic Information</h3>
+        <BrandEnhancedProfileForm 
+          formData={formData}
+          onInputChange={onInputChange}
+        />
+      </div>
 
       {/* Brand-specific fields */}
       <div className="space-y-4 border-t pt-6">
@@ -68,22 +70,6 @@ export const BrandProfileSetupForm = ({
               ))}
             </SelectContent>
           </Select>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="sponsorshipBudget">Monthly Marketing Budget (USD)</Label>
-          <Input
-            id="sponsorshipBudget"
-            type="number"
-            min="0"
-            step="100"
-            placeholder="e.g., 5000"
-            value={formData.sponsorshipBudget || ''}
-            onChange={(e) => onInputChange('sponsorshipBudget', e.target.value)}
-          />
-          <p className="text-xs text-muted-foreground">
-            Help us match you with campaigns that fit your budget
-          </p>
         </div>
 
         <div className="space-y-2">

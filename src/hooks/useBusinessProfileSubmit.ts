@@ -67,9 +67,9 @@ export const useBusinessProfileSubmit = () => {
       if (isBrand) {
         profileData.account_type = 'brand';
         profileData.brand_category = formData.brandCategory || null;
-        profileData.sponsorship_budget = formData.sponsorshipBudget ? parseFloat(formData.sponsorshipBudget) : null;
         profileData.marketing_objectives = formData.marketingObjectives || null;
         profileData.is_completed = true;
+        // Don't include company_size, employee_count_range, or sponsorship_budget for brands
       } else {
         profileData.account_type = 'restaurant';
         profileData.is_completed = true;
