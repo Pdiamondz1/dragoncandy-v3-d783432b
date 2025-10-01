@@ -15,8 +15,11 @@ export interface SponsorshipProposal {
   created_at: string;
   updated_at: string;
   campaigns?: {
+    id: string;
     title: string;
     description: string;
+    deadline?: string;
+    platforms?: string[];
   };
   brand_profile?: {
     business_name: string;

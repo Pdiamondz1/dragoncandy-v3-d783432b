@@ -23,6 +23,9 @@ interface CreatorProfile {
   x_url?: string;
   other_social_url?: string;
   website_url?: string;
+  average_rating?: number;
+  profile_slug?: string;
+  total_reviews?: number;
 }
 
 export interface CreatorFilters {

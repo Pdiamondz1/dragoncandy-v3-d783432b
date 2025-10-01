@@ -19,6 +19,12 @@ import BrandProfileSetup from "./pages/BrandProfileSetup";
 import CreatorProfileSetup from "./pages/CreatorProfileSetup";
 import BusinessDashboard from "./pages/BusinessDashboard";
 import BrandDashboard from "./pages/BrandDashboard";
+import BrandSponsorships from "./pages/BrandSponsorships";
+import BrandCreators from "./pages/BrandCreators";
+import BrandAnalytics from "./pages/BrandAnalytics";
+import BrandMessages from "./pages/BrandMessages";
+import BrandSettings from "./pages/BrandSettings";
+import BrandCampaignDetails from "./pages/BrandCampaignDetails";
 import CreatorDashboard from "./pages/CreatorDashboard";
 import BusinessSettings from "./pages/BusinessSettings";
 import CreatorSettings from "./pages/CreatorSettings";
@@ -165,10 +171,40 @@ const App = () => {
                     </ProtectedRoute>
                   } />
 
-                  {/* Brand Campaign Discovery Route */}
+                  {/* Brand Routes */}
                   <Route path="/dashboard/brand/discover-campaigns" element={
                     <ProtectedRoute>
                       <BrandDiscoverCampaigns />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/dashboard/brand/sponsorships" element={
+                    <ProtectedRoute>
+                      <BrandSponsorships />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/dashboard/brand/creators" element={
+                    <ProtectedRoute>
+                      <BrandCreators />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/dashboard/brand/analytics" element={
+                    <ProtectedRoute>
+                      <BrandAnalytics />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/dashboard/brand/messages" element={
+                    <ProtectedRoute>
+                      <BrandMessages />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/dashboard/brand/settings" element={
+                    <ProtectedRoute>
+                      <BrandSettings />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/dashboard/brand/campaigns/:id" element={
+                    <ProtectedRoute>
+                      <BrandCampaignDetails />
                     </ProtectedRoute>
                   } />
 
