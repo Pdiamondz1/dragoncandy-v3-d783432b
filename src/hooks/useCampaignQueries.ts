@@ -17,6 +17,7 @@ export interface Campaign {
   status: 'draft' | 'published' | 'active' | 'completed' | 'cancelled';
   style?: string;
   tone?: string;
+  open_for_sponsorship?: boolean;
   created_at: string;
   updated_at: string;
 }

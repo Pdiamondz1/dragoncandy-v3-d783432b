@@ -3,13 +3,18 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import DashboardLayout from '@/components/DashboardLayout';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Search, BarChart3, Users, Target, Zap, CheckCircle } from 'lucide-react';
+import { PlusCircle, Search, BarChart3, Users, Target, Zap, CheckCircle, DollarSign } from 'lucide-react';
+import { useSponsorshipProposals } from '@/hooks/useSponsorshipProposals';
+import SponsorshipProposalCard from '@/components/campaigns/SponsorshipProposalCard';
 
 const BusinessDashboard = () => {
   const { profile } = useAuth();
   const navigate = useNavigate();
+  const { proposals, isLoading: proposalsLoading, updateProposalStatus } = useSponsorshipProposals();
+
+  const pendingProposals = proposals.filter(p => p.status === 'pending');
 
   if (!profile) {
     return <div>Loading...</div>;
@@ -128,6 +133,44 @@ const BusinessDashboard = () => {
               ))}
             </div>
           </div>
+
+          {/* Sponsorship Proposals Section */}
+          {pendingProposals.length > 0 && (
+            <div className="space-y-6">
+              <Card className="border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <DollarSign className="h-5 w-5 text-blue-600" />
+                    Sponsorship Proposals ({pendingProposals.length})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    You have {pendingProposals.length} pending sponsorship {pendingProposals.length === 1 ? 'proposal' : 'proposals'} from brands interested in funding your campaigns.
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {pendingProposals.slice(0, 4).map((proposal) => (
+                      <SponsorshipProposalCard
+                        key={proposal.id}
+                        proposal={proposal}
+                        onAccept={(id) => updateProposalStatus.mutate({ proposalId: id, status: 'accepted' })}
+                        onReject={(id) => updateProposalStatus.mutate({ proposalId: id, status: 'rejected' })}
+                      />
+                    ))}
+                  </div>
+                  {pendingProposals.length > 4 && (
+                    <Button 
+                      variant="outline" 
+                      className="w-full mt-4"
+                      onClick={() => navigate('/dashboard/business/sponsorships')}
+                    >
+                      View All Proposals
+                    </Button>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
 
           {/* Quick Actions */}
           <div className="space-y-8">

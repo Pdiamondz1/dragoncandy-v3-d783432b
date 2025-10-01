@@ -10,6 +10,7 @@ import CampaignBasicInfoForm from '@/components/campaigns/CampaignBasicInfoForm'
 import CampaignPlatformsForm from '@/components/campaigns/CampaignPlatformsForm';
 import CampaignBudgetTimelineForm from '@/components/campaigns/CampaignBudgetTimelineForm';
 import CampaignStyleToneForm from '@/components/campaigns/CampaignStyleToneForm';
+import CampaignSponsorshipToggle from '@/components/campaigns/CampaignSponsorshipToggle';
 
 const CampaignEditPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -115,6 +116,11 @@ const CampaignEditPage: React.FC = () => {
             <CampaignStyleToneForm
               formData={formData}
               onInputChange={handleInputChange}
+            />
+
+            <CampaignSponsorshipToggle
+              openForSponsorship={formData.open_for_sponsorship}
+              onToggle={(value) => handleInputChange('open_for_sponsorship', value)}
             />
 
             {/* Action Buttons */}

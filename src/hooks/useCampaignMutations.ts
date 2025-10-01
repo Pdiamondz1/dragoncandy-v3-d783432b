@@ -17,6 +17,7 @@ export interface CreateCampaignData {
   style?: string;
   tone?: string;
   status?: 'draft' | 'published';
+  open_for_sponsorship?: boolean;
 }
 
 export const useCreateCampaign = () => {

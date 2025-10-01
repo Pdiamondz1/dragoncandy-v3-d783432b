@@ -16,6 +16,7 @@ interface CampaignEditFormData {
   status: 'draft' | 'published' | 'active' | 'completed' | 'cancelled';
   style: string;
   tone: string;
+  open_for_sponsorship: boolean;
 }
 
 export const useCampaignEditForm = (campaign: Campaign | undefined) => {
@@ -34,6 +35,7 @@ export const useCampaignEditForm = (campaign: Campaign | undefined) => {
     status: 'draft' as 'draft' | 'published' | 'active' | 'completed' | 'cancelled',
     style: '',
     tone: '',
+    open_for_sponsorship: false,
   });
 
   useEffect(() => {
@@ -50,11 +52,12 @@ export const useCampaignEditForm = (campaign: Campaign | undefined) => {
         status: campaign.status,
         style: campaign.style || '',
         tone: campaign.tone || '',
+        open_for_sponsorship: campaign.open_for_sponsorship || false,
       });
     }
   }, [campaign]);
 
-  const handleInputChange = (field: keyof CampaignEditFormData, value: string) => {
+  const handleInputChange = (field: keyof CampaignEditFormData, value: string | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
