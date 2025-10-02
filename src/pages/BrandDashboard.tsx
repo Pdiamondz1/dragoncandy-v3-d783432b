@@ -53,7 +53,7 @@ const BrandDashboard = () => {
       title: "Creator Directory",
       description: "Find local content creators for brand collaborations",
       icon: <Users className="h-6 w-6 text-green-600" />,
-      action: () => navigate('/dashboard/business/creators'),
+      action: () => navigate('/dashboard/brand/creators'),
       buttonText: "Browse Creators"
     },
     {
