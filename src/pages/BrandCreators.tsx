@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useCreatorBrowse } from '@/hooks/useCreatorBrowse';
+import { useCreateDirectConversation } from '@/hooks/useConversations';
 import { Users, MapPin, DollarSign, Star, Search, Loader2, MessageSquare } from 'lucide-react';
 import { useState } from 'react';
 import * as React from 'react';
@@ -15,6 +16,16 @@ const BrandCreators = () => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const { filteredCreators, isLoading, handleFilterChange } = useCreatorBrowse();
+  const createConversation = useCreateDirectConversation();
+
+  const handleContactCreator = async (creatorUserId: string) => {
+    try {
+      const conversationId = await createConversation.mutateAsync(creatorUserId);
+      navigate(`/dashboard/brand/messages/${conversationId}`);
+    } catch (error) {
+      console.error('Failed to create conversation:', error);
+    }
+  };
 
   // Update search filter when searchQuery changes
   React.useEffect(() => {
@@ -130,7 +141,8 @@ const BrandCreators = () => {
                       </Button>
                       <Button
                         className="flex-1"
-                        onClick={() => navigate(`/dashboard/brand/messages`)}
+                        onClick={() => handleContactCreator(creator.user_id)}
+                        disabled={createConversation.isPending}
                       >
                         <MessageSquare className="h-4 w-4 mr-2" />
                         Contact
