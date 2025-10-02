@@ -6,6 +6,7 @@ import { CheckCircle, Clock, XCircle, DollarSign, FileText, CreditCard } from 'l
 import { BrandSponsorshipStatus } from '@/hooks/useBrandSponsorshipStatus';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
+import { PaymentButton } from './PaymentButton';
 
 interface SponsorshipStatusCardProps {
   sponsorshipStatus: BrandSponsorshipStatus | null | undefined;
@@ -129,14 +130,13 @@ export const SponsorshipStatusCard = ({
         )}
 
         {sponsorshipStatus.status === 'accepted' && (
-          <div className="pt-4 border-t">
-            <Button className="w-full" size="lg">
-              <CreditCard className="h-4 w-4 mr-2" />
-              Proceed to Payment
-            </Button>
-            <p className="text-xs text-muted-foreground text-center mt-2">
-              Payment processing will be available in the next phase
-            </p>
+          <div className="pt-4 border-t space-y-2">
+            <PaymentButton sponsorship={sponsorshipStatus} />
+            {sponsorshipStatus.payment_status === 'paid' && (
+              <p className="text-xs text-green-600 text-center">
+                ✓ Payment completed on {sponsorshipStatus.payment_date ? format(new Date(sponsorshipStatus.payment_date), 'MMM dd, yyyy') : 'N/A'}
+              </p>
+            )}
           </div>
         )}
       </CardContent>

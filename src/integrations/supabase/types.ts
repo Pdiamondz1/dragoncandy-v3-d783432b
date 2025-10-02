@@ -205,35 +205,44 @@ export type Database = {
       }
       campaign_applications: {
         Row: {
+          brand_approval_status: string | null
           campaign_id: string
           created_at: string
           creator_id: string
+          final_approval_status: string | null
           id: string
           intro_message: string | null
           proposed_rate: number | null
           proposed_timeline: string | null
+          restaurant_approval_status: string | null
           status: Database["public"]["Enums"]["application_status"]
           updated_at: string
         }
         Insert: {
+          brand_approval_status?: string | null
           campaign_id: string
           created_at?: string
           creator_id: string
+          final_approval_status?: string | null
           id?: string
           intro_message?: string | null
           proposed_rate?: number | null
           proposed_timeline?: string | null
+          restaurant_approval_status?: string | null
           status?: Database["public"]["Enums"]["application_status"]
           updated_at?: string
         }
         Update: {
+          brand_approval_status?: string | null
           campaign_id?: string
           created_at?: string
           creator_id?: string
+          final_approval_status?: string | null
           id?: string
           intro_message?: string | null
           proposed_rate?: number | null
           proposed_timeline?: string | null
+          restaurant_approval_status?: string | null
           status?: Database["public"]["Enums"]["application_status"]
           updated_at?: string
         }
@@ -424,6 +433,10 @@ export type Database = {
           campaign_id: string
           created_at: string
           id: string
+          payment_date: string | null
+          payment_intent_id: string | null
+          payment_method: string | null
+          payment_status: string | null
           proposal_message: string | null
           restaurant_id: string
           sponsorship_amount: number | null
@@ -436,6 +449,10 @@ export type Database = {
           campaign_id: string
           created_at?: string
           id?: string
+          payment_date?: string | null
+          payment_intent_id?: string | null
+          payment_method?: string | null
+          payment_status?: string | null
           proposal_message?: string | null
           restaurant_id: string
           sponsorship_amount?: number | null
@@ -448,6 +465,10 @@ export type Database = {
           campaign_id?: string
           created_at?: string
           id?: string
+          payment_date?: string | null
+          payment_intent_id?: string | null
+          payment_method?: string | null
+          payment_status?: string | null
           proposal_message?: string | null
           restaurant_id?: string
           sponsorship_amount?: number | null

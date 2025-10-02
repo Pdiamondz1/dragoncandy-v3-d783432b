@@ -9,6 +9,9 @@ export interface CampaignApplication {
   status: 'pending' | 'accepted' | 'rejected';
   created_at: string;
   updated_at: string;
+  brand_approval_status?: 'pending' | 'approved' | 'rejected';
+  restaurant_approval_status?: 'pending' | 'approved' | 'rejected';
+  final_approval_status?: 'pending' | 'approved' | 'rejected';
   // Joined data
   creator_profile?: {
     creator_name: string;

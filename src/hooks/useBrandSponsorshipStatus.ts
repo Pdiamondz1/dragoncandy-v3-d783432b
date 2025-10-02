@@ -10,6 +10,10 @@ export interface BrandSponsorshipStatus {
   terms: any;
   created_at: string;
   updated_at: string;
+  payment_status?: 'unpaid' | 'pending' | 'paid' | 'refunded';
+  payment_intent_id?: string;
+  payment_date?: string;
+  payment_method?: string;
 }
 
 export const useBrandSponsorshipStatus = (campaignId: string) => {
