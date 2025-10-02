@@ -48,8 +48,15 @@ export const useSponsorshipProposals = () => {
         .select(`
           *,
           campaigns (
+            id,
             title,
-            description
+            description,
+            deadline,
+            platforms
+          ),
+          brand_profile:business_profiles!brand_id (
+            business_name,
+            logo_url
           )
         `)
         .eq('restaurant_id', profile.id)

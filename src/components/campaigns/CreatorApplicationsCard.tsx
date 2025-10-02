@@ -111,7 +111,16 @@ export const CreatorApplicationsCard = ({ campaignId }: CreatorApplicationsCardP
                     </p>
                   )}
 
-                  <Button variant="outline" size="sm" className="mt-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="mt-2"
+                    onClick={() => {
+                      // Navigate to public creator profile
+                      const creatorId = application.creator_id;
+                      window.open(`/profile/creator/${creatorId}`, '_blank');
+                    }}
+                  >
                     View Creator Profile
                     <ExternalLink className="h-3 w-3 ml-2" />
                   </Button>
