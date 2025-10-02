@@ -5,6 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Users, ExternalLink, DollarSign, Calendar } from 'lucide-react';
 import { useCampaignApplications } from '@/hooks/useCampaignApplications';
 import { Skeleton } from '@/components/ui/skeleton';
+import { JointApprovalCard } from './JointApprovalCard';
+import { useCampaign } from '@/hooks/useCampaigns';
+import { useAuth } from '@/hooks/useAuth';
 
 interface CreatorApplicationsCardProps {
   campaignId: string;
@@ -12,6 +15,22 @@ interface CreatorApplicationsCardProps {
 
 export const CreatorApplicationsCard = ({ campaignId }: CreatorApplicationsCardProps) => {
   const { data: applications, isLoading } = useCampaignApplications(campaignId);
+  const { campaign } = useCampaign(campaignId);
+  const { profile } = useAuth();
+
+  // Determine user role based on profile and campaign ownership
+  const getUserRole = (): 'brand' | 'restaurant' | undefined => {
+    if (!profile || !campaign) return undefined;
+    
+    // If user is the campaign owner, they're the restaurant
+    if (campaign.user_id === profile.id) return 'restaurant';
+    
+    // Otherwise, they're viewing as a brand (sponsor)
+    return 'brand';
+  };
+
+  const userRole = getUserRole();
+  const isSponsored = campaign?.open_for_sponsorship || false;
 
   if (isLoading) {
     return (
@@ -111,19 +130,28 @@ export const CreatorApplicationsCard = ({ campaignId }: CreatorApplicationsCardP
                     </p>
                   )}
 
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="mt-2"
-                    onClick={() => {
-                      // Navigate to public creator profile
-                      const creatorId = application.creator_id;
-                      window.open(`/profile/creator/${creatorId}`, '_blank');
-                    }}
-                  >
-                    View Creator Profile
-                    <ExternalLink className="h-3 w-3 ml-2" />
-                  </Button>
+                  <div className="space-y-3 mt-3">
+                    {isSponsored && userRole && application.status === 'pending' && (
+                      <JointApprovalCard 
+                        application={application as any} 
+                        userRole={userRole}
+                      />
+                    )}
+                    
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full"
+                      onClick={() => {
+                        // Navigate to public creator profile
+                        const creatorId = application.creator_id;
+                        window.open(`/profile/creator/${creatorId}`, '_blank');
+                      }}
+                    >
+                      View Creator Profile
+                      <ExternalLink className="h-3 w-3 ml-2" />
+                    </Button>
+                  </div>
                 </div>
               </div>
             ))}

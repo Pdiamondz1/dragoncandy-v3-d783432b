@@ -7,15 +7,20 @@ import { Check, X, Clock, DollarSign, User } from 'lucide-react';
 import { useManageApplication } from '@/hooks/useManageApplication';
 import { CampaignApplication } from '@/types/applications';
 import ApplicationStatusBadge from './ApplicationStatusBadge';
+import { JointApprovalCard } from './JointApprovalCard';
 
 interface ApplicationCardProps {
   application: CampaignApplication;
   showActions?: boolean;
+  isSponsored?: boolean;
+  userRole?: 'brand' | 'restaurant';
 }
 
 const ApplicationCard: React.FC<ApplicationCardProps> = ({ 
   application, 
-  showActions = false 
+  showActions = false,
+  isSponsored = false,
+  userRole
 }) => {
   const manageApplication = useManageApplication();
 
@@ -121,25 +126,36 @@ const ApplicationCard: React.FC<ApplicationCardProps> = ({
         </div>
 
         {showActions && application.status === 'pending' && (
-          <div className="flex gap-2 pt-4 border-t">
-            <Button
-              onClick={handleAccept}
-              disabled={manageApplication.isPending}
-              className="flex-1"
-            >
-              <Check className="h-4 w-4 mr-2" />
-              Accept
-            </Button>
-            <Button
-              onClick={handleReject}
-              variant="outline"
-              disabled={manageApplication.isPending}
-              className="flex-1"
-            >
-              <X className="h-4 w-4 mr-2" />
-              Reject
-            </Button>
-          </div>
+          <>
+            {isSponsored && userRole ? (
+              <div className="pt-4 border-t">
+                <JointApprovalCard 
+                  application={application as any} 
+                  userRole={userRole}
+                />
+              </div>
+            ) : (
+              <div className="flex gap-2 pt-4 border-t">
+                <Button
+                  onClick={handleAccept}
+                  disabled={manageApplication.isPending}
+                  className="flex-1"
+                >
+                  <Check className="h-4 w-4 mr-2" />
+                  Accept
+                </Button>
+                <Button
+                  onClick={handleReject}
+                  variant="outline"
+                  disabled={manageApplication.isPending}
+                  className="flex-1"
+                >
+                  <X className="h-4 w-4 mr-2" />
+                  Reject
+                </Button>
+              </div>
+            )}
+          </>
         )}
       </CardContent>
     </Card>

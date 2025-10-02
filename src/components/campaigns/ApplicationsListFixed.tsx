@@ -13,6 +13,8 @@ import ApplicationAnalytics from './ApplicationAnalytics';
 import CreatorProfileModal from './CreatorProfileModal';
 import { CampaignApplication } from '@/types/applications';
 import { useManageApplication } from '@/hooks/useManageApplication';
+import { useCampaign } from '@/hooks/useCampaigns';
+import { useAuth } from '@/hooks/useAuth';
 
 interface ApplicationsListFixedProps {
   campaignId: string;
@@ -25,6 +27,22 @@ const ApplicationsListFixed: React.FC<ApplicationsListFixedProps> = ({ campaignI
   const [selectedApplication, setSelectedApplication] = useState<CampaignApplication | null>(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const manageApplication = useManageApplication();
+  const { campaign } = useCampaign(campaignId);
+  const { profile } = useAuth();
+
+  // Determine user role based on profile and campaign ownership
+  const getUserRole = (): 'brand' | 'restaurant' | undefined => {
+    if (!profile || !campaign) return undefined;
+    
+    // If user is the campaign owner, they're the restaurant
+    if (campaign.user_id === profile.id) return 'restaurant';
+    
+    // Otherwise, they're viewing as a brand (sponsor)
+    return 'brand';
+  };
+
+  const userRole = getUserRole();
+  const isSponsored = campaign?.open_for_sponsorship || false;
 
   console.log('ApplicationsListFixed: Rendering with data:', {
     campaignId,
@@ -224,6 +242,8 @@ const ApplicationsListFixed: React.FC<ApplicationsListFixedProps> = ({ campaignI
                         <ApplicationCard
                           application={application}
                           showActions={true}
+                          isSponsored={isSponsored}
+                          userRole={userRole}
                         />
                       </div>
                       <div className="flex flex-col gap-2 ml-4">
