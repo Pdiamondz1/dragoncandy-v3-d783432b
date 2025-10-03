@@ -1,14 +1,16 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { useBrandDashboardStats } from '@/hooks/useBrandDashboardStats';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Search, TrendingUp, Users, DollarSign, Target, Sparkles, Calendar, BarChart3 } from 'lucide-react';
+import { Search, TrendingUp, Users, DollarSign, Target, Sparkles, Calendar, BarChart3, Loader2 } from 'lucide-react';
 
 const BrandDashboard = () => {
   const { profile } = useAuth();
   const navigate = useNavigate();
+  const { data: stats, isLoading: statsLoading } = useBrandDashboardStats();
 
   if (!profile) {
     return <div>Loading...</div>;
@@ -17,25 +19,25 @@ const BrandDashboard = () => {
   const quickStats = [
     {
       title: "Active Sponsorships",
-      value: "0",
+      value: statsLoading ? "..." : stats?.activeSponsorships.toString() || "0",
       icon: <Target className="h-5 w-5 text-primary" />,
       description: "Currently sponsored campaigns"
     },
     {
       title: "Campaigns Discovered",
-      value: "0",
+      value: statsLoading ? "..." : stats?.campaignsDiscovered.toString() || "0",
       icon: <Search className="h-5 w-5 text-primary" />,
       description: "Available opportunities"
     },
     {
       title: "Creators Connected",
-      value: "0",
+      value: statsLoading ? "..." : stats?.creatorsConnected.toString() || "0",
       icon: <Users className="h-5 w-5 text-primary" />,
       description: "In your network"
     },
     {
       title: "Marketing ROI",
-      value: "0%",
+      value: statsLoading ? "..." : `${stats?.marketingROI || 0}%`,
       icon: <TrendingUp className="h-5 w-5 text-primary" />,
       description: "Average return"
     }
@@ -226,23 +228,39 @@ const BrandDashboard = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="space-y-2">
-                  <p className="text-sm text-muted-foreground">Monthly Budget</p>
-                  <p className="text-2xl font-bold text-foreground">$0</p>
-                  <p className="text-xs text-muted-foreground">Set in profile settings</p>
+              {statsLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 </div>
-                <div className="space-y-2">
-                  <p className="text-sm text-muted-foreground">Allocated</p>
-                  <p className="text-2xl font-bold text-foreground">$0</p>
-                  <p className="text-xs text-muted-foreground">0% of budget</p>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="space-y-2">
+                    <p className="text-sm text-muted-foreground">Monthly Budget</p>
+                    <p className="text-2xl font-bold text-foreground">
+                      ${stats?.monthlyBudget.toLocaleString() || 0}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {stats?.monthlyBudget ? 'Set in profile settings' : 'Not set'}
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-sm text-muted-foreground">Allocated</p>
+                    <p className="text-2xl font-bold text-foreground">
+                      ${stats?.allocatedBudget.toLocaleString() || 0}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {stats?.budgetPercentage || 0}% of budget
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-sm text-muted-foreground">Available</p>
+                    <p className="text-2xl font-bold text-primary">
+                      ${stats?.availableBudget.toLocaleString() || 0}
+                    </p>
+                    <p className="text-xs text-muted-foreground">Ready to allocate</p>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <p className="text-sm text-muted-foreground">Available</p>
-                  <p className="text-2xl font-bold text-primary">$0</p>
-                  <p className="text-xs text-muted-foreground">Ready to allocate</p>
-                </div>
-              </div>
+              )}
             </CardContent>
           </Card>
 

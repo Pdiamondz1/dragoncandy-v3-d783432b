@@ -107,3 +107,68 @@ export const useArchiveConversation = () => {
     },
   });
 };
+
+export const useCreateCampaignConversation = () => {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      campaignId,
+      participantIds,
+      participantType = 'three_way',
+    }: {
+      campaignId: string;
+      participantIds: string[];
+      participantType?: string;
+    }) => {
+      if (!user) throw new Error('User not authenticated');
+
+      console.log('Creating campaign conversation for:', campaignId);
+
+      // Create conversation
+      const { data: conversation, error: conversationError } = await supabase
+        .from('conversations')
+        .insert({
+          type: 'group',
+          campaign_id: campaignId,
+          participant_type: participantType,
+          title: 'Campaign Discussion',
+        })
+        .select()
+        .single();
+
+      if (conversationError) throw conversationError;
+
+      // Add all participants (including current user)
+      const allParticipants = [user.id, ...participantIds.filter(id => id !== user.id)];
+      const participantInserts = allParticipants.map(userId => ({
+        conversation_id: conversation.id,
+        user_id: userId,
+      }));
+
+      const { error: participantsError } = await supabase
+        .from('conversation_participants')
+        .insert(participantInserts);
+
+      if (participantsError) throw participantsError;
+
+      return conversation.id;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+      toast({
+        title: 'Campaign conversation created',
+        description: 'You can now chat with all campaign participants.',
+      });
+    },
+    onError: (error) => {
+      console.error('Failed to create campaign conversation:', error);
+      toast({
+        title: 'Failed to create conversation',
+        description: 'Please try again later.',
+        variant: 'destructive',
+      });
+    },
+  });
+};

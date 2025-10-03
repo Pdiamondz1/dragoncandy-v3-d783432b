@@ -57,7 +57,7 @@ const AppSidebar: React.FC<{ userRole: 'business_client' | 'content_creator' | '
 
   const businessNavItems = [
     { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard/business' },
-    { icon: Target, label: 'Campaigns', href: '/dashboard/business/campaigns' },
+    { icon: Target, label: 'My Campaigns', href: '/dashboard/business/campaigns' },
     { icon: Image, label: 'Dragon Feed', href: '/dashboard/business/dragon-feed' },
     { icon: Users, label: 'Browse Creators', href: '/dashboard/business/creators' },
     { icon: Briefcase, label: 'Projects', href: '/dashboard/business/projects' },

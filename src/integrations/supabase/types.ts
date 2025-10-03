@@ -602,33 +602,47 @@ export type Database = {
       }
       conversations: {
         Row: {
+          campaign_id: string | null
           created_at: string
           id: string
           is_archived: boolean | null
           last_message_at: string | null
+          participant_type: string | null
           title: string | null
           type: string
           updated_at: string
         }
         Insert: {
+          campaign_id?: string | null
           created_at?: string
           id?: string
           is_archived?: boolean | null
           last_message_at?: string | null
+          participant_type?: string | null
           title?: string | null
           type?: string
           updated_at?: string
         }
         Update: {
+          campaign_id?: string | null
           created_at?: string
           id?: string
           is_archived?: boolean | null
           last_message_at?: string | null
+          participant_type?: string | null
           title?: string | null
           type?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "conversations_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       creator_profiles: {
         Row: {

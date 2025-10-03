@@ -157,6 +157,13 @@ const App = () => {
                       <BusinessProposals />
                     </ProtectedRoute>
                   } />
+                  
+                  {/* Restaurant Campaign Details (different from creator campaign details) */}
+                  <Route path="/dashboard/business/campaigns/:id/details" element={
+                    <ProtectedRoute>
+                      <CampaignDetailsPage />
+                    </ProtectedRoute>
+                  } />
 
                   {/* Business Creator Browse Route */}
                   <Route path="/dashboard/business/creators" element={
