@@ -27,10 +27,20 @@ export const BusinessDashboardSideFeed: React.FC<BusinessDashboardSideFeedProps>
 
   // Auto-scroll animation
   useEffect(() => {
-    if (!feedItems.length || isPaused) return;
+    if (!feedItems.length || isPaused || loading) return;
 
     const container = containerRef.current;
-    if (!container) return;
+    if (!container) {
+      console.log('📭 Dragon Feed: No container ref');
+      return;
+    }
+
+    console.log('🎬 Dragon Feed: Starting auto-scroll', {
+      feedItemsCount: feedItems.length,
+      scrollHeight: container.scrollHeight,
+      clientHeight: container.clientHeight,
+      isPaused
+    });
 
     const scrollSpeed = 1; // pixels per frame
     let animationId: number;
@@ -41,22 +51,28 @@ export const BusinessDashboardSideFeed: React.FC<BusinessDashboardSideFeedProps>
         
         if (maxScroll > 50) {
           container.scrollTop += scrollSpeed; // Upward scroll
-          if (container.scrollTop >= maxScroll) {
+          if (container.scrollTop >= maxScroll - 1) {
             container.scrollTop = 0; // Reset for seamless loop
           }
+        } else {
+          console.log('⚠️ Dragon Feed: Not enough content to scroll', { maxScroll });
         }
       }
       animationId = requestAnimationFrame(animate);
     };
 
-    animationId = requestAnimationFrame(animate);
+    // Start animation after a brief delay to ensure content is rendered
+    const timeoutId = setTimeout(() => {
+      animationId = requestAnimationFrame(animate);
+    }, 100);
 
     return () => {
+      if (timeoutId) clearTimeout(timeoutId);
       if (animationId) {
         cancelAnimationFrame(animationId);
       }
     };
-  }, [isPaused, feedItems.length]);
+  }, [isPaused, feedItems.length, loading]);
 
   if (loading) {
     return (
@@ -103,13 +119,15 @@ export const BusinessDashboardSideFeed: React.FC<BusinessDashboardSideFeedProps>
       
       <div
         ref={containerRef}
-        className="flex-1 overflow-hidden scrollbar-hide"
+        className="flex-1 overflow-y-auto scrollbar-hide"
         onMouseEnter={() => setIsPaused(true)}
         onMouseLeave={() => setIsPaused(false)}
         style={{
           scrollbarWidth: 'none',
           msOverflowStyle: 'none',
           scrollBehavior: 'auto',
+          height: '100%',
+          overflowX: 'hidden'
         }}
       >
         <div className="flex flex-col gap-3 p-3">
