@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import DashboardLayout from '@/components/DashboardLayout';
@@ -8,13 +8,31 @@ import { Button } from '@/components/ui/button';
 import { PlusCircle, Search, BarChart3, Users, Target, Zap, CheckCircle, DollarSign } from 'lucide-react';
 import { useSponsorshipProposals } from '@/hooks/useSponsorshipProposals';
 import SponsorshipProposalCard from '@/components/campaigns/SponsorshipProposalCard';
+import { BusinessDashboardSideFeed } from '@/components/dragon-feed/BusinessDashboardSideFeed';
+import { FeedLightbox } from '@/components/dragon-feed/FeedLightbox';
+import { FeedMediaItem } from '@/hooks/useBusinessDragonFeed';
 
 const BusinessDashboard = () => {
   const { profile } = useAuth();
   const navigate = useNavigate();
   const { proposals, isLoading: proposalsLoading, updateProposalStatus } = useSponsorshipProposals();
+  const [selectedFeedItem, setSelectedFeedItem] = useState<FeedMediaItem | null>(null);
+  const [currentFeedIndex, setCurrentFeedIndex] = useState(0);
+  const [allFeedItems, setAllFeedItems] = useState<FeedMediaItem[]>([]);
 
   const pendingProposals = proposals.filter(p => p.status === 'pending');
+
+  const handleFeedItemClick = (item: FeedMediaItem, index: number) => {
+    setSelectedFeedItem(item);
+    setCurrentFeedIndex(index);
+  };
+
+  const handleFeedNavigate = (index: number) => {
+    if (allFeedItems[index]) {
+      setSelectedFeedItem(allFeedItems[index]);
+      setCurrentFeedIndex(index);
+    }
+  };
 
   if (!profile) {
     return <div>Loading...</div>;
@@ -66,8 +84,10 @@ const BusinessDashboard = () => {
 
   return (
     <DashboardLayout userRole="business_client">
-      <div className="flex-1 p-8">
-        <div className="max-w-6xl mx-auto space-y-12">
+      <div className="flex h-full">
+        {/* Main Content Area */}
+        <div className="flex-1 overflow-y-auto p-8">
+          <div className="max-w-6xl mx-auto space-y-12">
           
           {/* Welcome Header */}
           <div className="text-center space-y-4">
@@ -202,8 +222,26 @@ const BusinessDashboard = () => {
             </div>
           </div>
 
+          </div>
+        </div>
+
+        {/* Side Feed - Always Visible */}
+        <div className="w-80 border-l bg-muted/10 hidden lg:block">
+          <BusinessDashboardSideFeed 
+            onItemClick={handleFeedItemClick}
+            onFeedItemsLoaded={setAllFeedItems}
+          />
         </div>
       </div>
+
+      {/* Lightbox Modal */}
+      <FeedLightbox
+        item={selectedFeedItem}
+        allItems={allFeedItems}
+        currentIndex={currentFeedIndex}
+        onClose={() => setSelectedFeedItem(null)}
+        onNavigate={handleFeedNavigate}
+      />
     </DashboardLayout>
   );
 };
