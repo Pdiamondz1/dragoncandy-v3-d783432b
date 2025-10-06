@@ -17,13 +17,28 @@ export const BusinessDashboardSideFeed: React.FC<BusinessDashboardSideFeedProps>
 }) => {
   const { feedItems, loading, error } = useBusinessDragonFeed();
   const containerRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLDivElement>(null);
   const [isPaused, setIsPaused] = useState(false);
+  const [containerHeight, setContainerHeight] = useState<number | undefined>(undefined);
 
   useEffect(() => {
     if (!loading && feedItems.length > 0 && onFeedItemsLoaded) {
       onFeedItemsLoaded(feedItems);
     }
   }, [feedItems, loading, onFeedItemsLoaded]);
+
+  // Compute viewport-bounded container height for smooth overflow scrolling
+  useEffect(() => {
+    const updateHeight = () => {
+      const headerH = headerRef.current?.offsetHeight ?? 0;
+      const padding = 16; // inner padding/margins
+      const h = window.innerHeight - headerH - padding;
+      setContainerHeight(h > 240 ? h : 240);
+    };
+    updateHeight();
+    window.addEventListener('resize', updateHeight);
+    return () => window.removeEventListener('resize', updateHeight);
+  }, []);
 
   // Auto-scroll animation
   useEffect(() => {
@@ -72,7 +87,7 @@ export const BusinessDashboardSideFeed: React.FC<BusinessDashboardSideFeedProps>
         cancelAnimationFrame(animationId);
       }
     };
-  }, [isPaused, feedItems.length, loading]);
+  }, [isPaused, feedItems.length, loading, containerHeight]);
 
   if (loading) {
     return (
@@ -112,7 +127,7 @@ export const BusinessDashboardSideFeed: React.FC<BusinessDashboardSideFeedProps>
 
   return (
     <div className="h-full flex flex-col">
-      <div className="p-4 border-b">
+      <div className="p-4 border-b" ref={headerRef}>
         <h2 className="text-lg font-semibold">Dragon Feed</h2>
         <p className="text-xs text-muted-foreground">Latest creator content</p>
       </div>
@@ -126,7 +141,7 @@ export const BusinessDashboardSideFeed: React.FC<BusinessDashboardSideFeedProps>
           scrollbarWidth: 'none',
           msOverflowStyle: 'none',
           scrollBehavior: 'auto',
-          height: '100%',
+          height: containerHeight ? `${containerHeight}px` : undefined,
           overflowX: 'hidden'
         }}
       >
