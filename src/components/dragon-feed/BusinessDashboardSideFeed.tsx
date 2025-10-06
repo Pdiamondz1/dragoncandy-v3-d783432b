@@ -17,6 +17,7 @@ export const BusinessDashboardSideFeed: React.FC<BusinessDashboardSideFeedProps>
 }) => {
   const { feedItems, loading, error } = useBusinessDragonFeed();
   const containerRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
   const [isPaused, setIsPaused] = useState(false);
   const [containerHeight, setContainerHeight] = useState<number | undefined>(undefined);
@@ -57,20 +58,31 @@ export const BusinessDashboardSideFeed: React.FC<BusinessDashboardSideFeedProps>
       isPaused
     });
 
-    const scrollSpeed = 1; // pixels per frame
+    const scrollSpeed = 0.8; // pixels per frame
     let animationId: number;
+    let y = 0; // fallback translate offset
 
     const animate = () => {
       if (container && !isPaused) {
         const maxScroll = container.scrollHeight - container.clientHeight;
-        
-        if (maxScroll > 50) {
+        if (maxScroll > 0) {
           container.scrollTop += scrollSpeed; // Upward scroll
           if (container.scrollTop >= maxScroll - 1) {
             container.scrollTop = 0; // Reset for seamless loop
           }
         } else {
-          console.log('⚠️ Dragon Feed: Not enough content to scroll', { maxScroll });
+          // Fallback: translate the list itself when native scroll is not possible
+          const list = listRef.current;
+          if (list) {
+            const loopCopies = feedItems.length >= 15 ? 2 : 3;
+            const totalHeight = list.scrollHeight;
+            const baseHeight = loopCopies > 0 ? totalHeight / loopCopies : totalHeight;
+            y += scrollSpeed;
+            if (y >= Math.max(baseHeight, 1)) {
+              y = 0;
+            }
+            list.style.transform = `translateY(-${y}px)`;
+          }
         }
       }
       animationId = requestAnimationFrame(animate);
@@ -145,7 +157,7 @@ export const BusinessDashboardSideFeed: React.FC<BusinessDashboardSideFeedProps>
           overflowX: 'hidden'
         }}
       >
-        <div className="flex flex-col gap-3 p-3">
+        <div ref={listRef} className="flex flex-col gap-3 p-3" style={{ willChange: 'transform' }}>
           {duplicatedItems.map((item, index) => {
             const originalIndex = index % feedItems.length;
             return (
