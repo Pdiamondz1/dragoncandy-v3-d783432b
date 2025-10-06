@@ -1,9 +1,8 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useBusinessDragonFeed, FeedMediaItem } from '@/hooks/useBusinessDragonFeed';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Heart, MessageSquare, Loader2 } from 'lucide-react';
-import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface BusinessDashboardSideFeedProps {
   onItemClick: (item: FeedMediaItem, index: number) => void;
@@ -15,12 +14,43 @@ export const BusinessDashboardSideFeed: React.FC<BusinessDashboardSideFeedProps>
   onFeedItemsLoaded 
 }) => {
   const { feedItems, loading, error } = useBusinessDragonFeed();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isPaused, setIsPaused] = useState(false);
 
   useEffect(() => {
     if (!loading && feedItems.length > 0 && onFeedItemsLoaded) {
       onFeedItemsLoaded(feedItems);
     }
   }, [feedItems, loading, onFeedItemsLoaded]);
+
+  // Auto-scroll animation
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container || feedItems.length === 0 || isPaused) return;
+
+    let animationFrameId: number;
+    const scrollSpeed = 1; // pixels per frame
+
+    const animate = () => {
+      if (container) {
+        container.scrollTop += scrollSpeed;
+
+        // Reset scroll position for seamless loop
+        const maxScroll = container.scrollHeight / 3; // We duplicate items 3x
+        if (container.scrollTop >= maxScroll) {
+          container.scrollTop = 0;
+        }
+      }
+
+      animationFrameId = requestAnimationFrame(animate);
+    };
+
+    animationFrameId = requestAnimationFrame(animate);
+
+    return () => {
+      cancelAnimationFrame(animationFrameId);
+    };
+  }, [feedItems, isPaused]);
 
   if (loading) {
     return (
@@ -46,6 +76,9 @@ export const BusinessDashboardSideFeed: React.FC<BusinessDashboardSideFeedProps>
     );
   }
 
+  // Duplicate items 3x for seamless looping
+  const loopedItems = [...feedItems, ...feedItems, ...feedItems];
+
   return (
     <div className="h-full flex flex-col">
       <div className="p-4 border-b">
@@ -53,13 +86,19 @@ export const BusinessDashboardSideFeed: React.FC<BusinessDashboardSideFeedProps>
         <p className="text-xs text-muted-foreground">Latest creator content</p>
       </div>
       
-      <ScrollArea className="flex-1">
+      <div 
+        ref={containerRef}
+        className="flex-1 overflow-y-auto scrollbar-hide"
+        onMouseEnter={() => setIsPaused(true)}
+        onMouseLeave={() => setIsPaused(false)}
+        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+      >
         <div className="p-3 space-y-3">
-          {feedItems.map((item, index) => (
+          {loopedItems.map((item, index) => (
             <Card
-              key={item.id}
+              key={`${item.id}-${index}`}
               className="group cursor-pointer overflow-hidden hover:shadow-lg transition-all duration-300"
-              onClick={() => onItemClick(item, index)}
+              onClick={() => onItemClick(item, index % feedItems.length)}
             >
               <div className="relative aspect-square overflow-hidden">
                 {item.type === 'video' ? (
@@ -107,7 +146,7 @@ export const BusinessDashboardSideFeed: React.FC<BusinessDashboardSideFeedProps>
             </Card>
           ))}
         </div>
-      </ScrollArea>
+      </div>
     </div>
   );
 };
