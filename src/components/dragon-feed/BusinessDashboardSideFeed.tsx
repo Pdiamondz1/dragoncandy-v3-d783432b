@@ -180,7 +180,6 @@ const FeedCard: React.FC<FeedCardProps> = ({ item, onItemClick }) => {
   };
 
   const toggleVideoPlayback = async (e: React.MouseEvent) => {
-    e.stopPropagation();
     if (!videoRef.current) return;
     
     try {
