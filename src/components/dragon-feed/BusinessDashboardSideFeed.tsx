@@ -18,9 +18,7 @@ export const BusinessDashboardSideFeed: React.FC<BusinessDashboardSideFeedProps>
   const { feedItems, loading, error } = useBusinessDragonFeed();
   const containerRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
-  const headerRef = useRef<HTMLDivElement>(null);
   const [isPaused, setIsPaused] = useState(false);
-  const [containerHeight, setContainerHeight] = useState<number | undefined>(undefined);
 
   useEffect(() => {
     if (!loading && feedItems.length > 0 && onFeedItemsLoaded) {
@@ -28,18 +26,6 @@ export const BusinessDashboardSideFeed: React.FC<BusinessDashboardSideFeedProps>
     }
   }, [feedItems, loading, onFeedItemsLoaded]);
 
-  // Compute viewport-bounded container height for smooth overflow scrolling
-  useEffect(() => {
-    const updateHeight = () => {
-      const headerH = headerRef.current?.offsetHeight ?? 0;
-      const padding = 16; // inner padding/margins
-      const h = window.innerHeight - headerH - padding;
-      setContainerHeight(h > 240 ? h : 240);
-    };
-    updateHeight();
-    window.addEventListener('resize', updateHeight);
-    return () => window.removeEventListener('resize', updateHeight);
-  }, []);
 
   // Auto-scroll animation
   useEffect(() => {
@@ -74,7 +60,7 @@ export const BusinessDashboardSideFeed: React.FC<BusinessDashboardSideFeedProps>
           // Fallback: translate the list itself when native scroll is not possible
           const list = listRef.current;
           if (list) {
-            const loopCopies = feedItems.length >= 15 ? 2 : 3;
+            const loopCopies = 2;
             const totalHeight = list.scrollHeight;
             const baseHeight = loopCopies > 0 ? totalHeight / loopCopies : totalHeight;
             y += scrollSpeed;
@@ -99,7 +85,7 @@ export const BusinessDashboardSideFeed: React.FC<BusinessDashboardSideFeedProps>
         cancelAnimationFrame(animationId);
       }
     };
-  }, [isPaused, feedItems.length, loading, containerHeight]);
+  }, [isPaused, feedItems.length, loading]);
 
   if (loading) {
     return (
@@ -127,8 +113,8 @@ export const BusinessDashboardSideFeed: React.FC<BusinessDashboardSideFeedProps>
 
   // Duplicate items for seamless looping
   const getLoopDuplication = () => {
-    const loopCopies = feedItems.length >= 15 ? 2 : 3;
-    const result = [];
+    const loopCopies = 2;
+    const result: FeedMediaItem[] = [];
     for (let i = 0; i < loopCopies; i++) {
       result.push(...feedItems);
     }
@@ -139,21 +125,20 @@ export const BusinessDashboardSideFeed: React.FC<BusinessDashboardSideFeedProps>
 
   return (
     <div className="h-full flex flex-col">
-      <div className="p-4 border-b" ref={headerRef}>
+      <div className="p-4 border-b">
         <h2 className="text-lg font-semibold">Dragon Feed</h2>
         <p className="text-xs text-muted-foreground">Latest creator content</p>
       </div>
       
       <div
         ref={containerRef}
-        className="flex-1 overflow-y-auto scrollbar-hide"
+        className="flex-1 min-h-0 overflow-y-auto scrollbar-hide"
         onMouseEnter={() => setIsPaused(true)}
         onMouseLeave={() => setIsPaused(false)}
         style={{
           scrollbarWidth: 'none',
           msOverflowStyle: 'none',
           scrollBehavior: 'auto',
-          height: containerHeight ? `${containerHeight}px` : undefined,
           overflowX: 'hidden'
         }}
       >

@@ -226,7 +226,7 @@ const BusinessDashboard = () => {
         </div>
 
         {/* Side Feed - Always Visible */}
-        <div className="w-80 border-l bg-muted/10 hidden lg:block">
+        <div className="hidden lg:block w-80 shrink-0 border-l bg-muted/10 sticky top-14 h-[calc(100vh-56px)] overflow-hidden">
           <BusinessDashboardSideFeed 
             onItemClick={handleFeedItemClick}
             onFeedItemsLoaded={setAllFeedItems}
