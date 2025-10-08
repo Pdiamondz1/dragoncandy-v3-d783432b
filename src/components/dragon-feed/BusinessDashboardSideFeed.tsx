@@ -4,7 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Play, Pause, Heart, MessageSquare, Loader2, User } from 'lucide-react';
+import { Play, Pause, Heart, MessageSquare, Loader2, User, Sparkles } from 'lucide-react';
 
 interface BusinessDashboardSideFeedProps {
   onItemClick: (item: FeedMediaItem, index: number) => void;
@@ -125,9 +125,17 @@ export const BusinessDashboardSideFeed: React.FC<BusinessDashboardSideFeedProps>
 
   return (
     <div className="h-full flex flex-col">
-      <div className="p-4 border-b">
-        <h2 className="text-lg font-semibold">Dragon Feed</h2>
-        <p className="text-xs text-muted-foreground">Latest creator content</p>
+      <div className="relative p-6 bg-gradient-to-br from-pink-50 via-purple-50 to-indigo-50 dark:from-pink-950/20 dark:via-purple-950/20 dark:to-indigo-950/20 border-b border-pink-200/50 dark:border-pink-800/30 overflow-hidden">
+        {/* Decorative background element */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-pink-200/20 via-transparent to-transparent dark:from-pink-500/10" />
+        
+        <div className="relative z-10 flex items-center gap-2 mb-1">
+          <Sparkles className="h-5 w-5 text-pink-500 dark:text-pink-400 animate-pulse" />
+          <h2 className="text-xl font-bold bg-gradient-to-r from-pink-600 to-purple-600 dark:from-pink-400 dark:to-purple-400 bg-clip-text text-transparent">
+            Dragon Feed
+          </h2>
+        </div>
+        <p className="text-sm text-muted-foreground ml-7">Latest creator content</p>
       </div>
       
       <div
