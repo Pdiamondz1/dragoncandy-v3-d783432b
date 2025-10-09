@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useSponsorshipCampaigns } from '@/hooks/useSponsorshipCampaigns';
 import { useBrandCampaignFilters } from '@/hooks/useBrandCampaignFilters';
+import { useBrandSponsorshipStatus } from '@/hooks/useBrandSponsorshipStatus';
 import DashboardLayout from '@/components/DashboardLayout';
 import BrandCampaignCard from '@/components/campaigns/BrandCampaignCard';
 import BrandCampaignFilters from '@/components/campaigns/BrandCampaignFilters';
@@ -44,7 +45,17 @@ const BrandDiscoverCampaigns = () => {
     return <MarketplaceErrorState />;
   }
 
-  const handleSponsor = (campaignId: string) => {
+  const handleSponsor = (campaignId: string, existingProposal?: any) => {
+    // Don't allow opening dialog if proposal already exists
+    if (existingProposal) {
+      toast({
+        title: 'Proposal Already Submitted',
+        description: `You already have a ${existingProposal.status} proposal for this campaign.`,
+        variant: 'default',
+      });
+      return;
+    }
+    
     const campaign = campaigns.find(c => c.id === campaignId);
     if (campaign) {
       setSelectedCampaign(campaign);
@@ -92,7 +103,13 @@ const BrandDiscoverCampaigns = () => {
           status: 'pending',
         });
 
-      if (sponsorshipError) throw sponsorshipError;
+      if (sponsorshipError) {
+        // Check for duplicate key error
+        if (sponsorshipError.code === '23505' || sponsorshipError.message?.includes('duplicate')) {
+          throw new Error('DUPLICATE_PROPOSAL');
+        }
+        throw sponsorshipError;
+      }
 
       toast({
         title: 'Sponsorship Proposal Sent',
@@ -106,13 +123,22 @@ const BrandDiscoverCampaigns = () => {
       
       // Navigate to sponsorships page
       navigate('/dashboard/brand/sponsorships');
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error submitting sponsorship:', err);
-      toast({
-        title: 'Error',
-        description: 'Failed to submit sponsorship proposal. Please try again.',
-        variant: 'destructive',
-      });
+      
+      if (err.message === 'DUPLICATE_PROPOSAL') {
+        toast({
+          title: 'Proposal Already Exists',
+          description: 'You have already submitted a proposal for this campaign. Check your sponsorships page to view it.',
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: 'Error',
+          description: 'Failed to submit sponsorship proposal. Please try again.',
+          variant: 'destructive',
+        });
+      }
     } finally {
       setIsSubmitting(false);
     }

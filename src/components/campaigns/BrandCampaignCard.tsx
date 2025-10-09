@@ -3,12 +3,14 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { MapPin, DollarSign, Calendar, Users, TrendingUp } from 'lucide-react';
+import { MapPin, DollarSign, Calendar, Users, TrendingUp, CheckCircle, Clock, XCircle } from 'lucide-react';
 import { SponsorshipCampaign } from '@/hooks/useSponsorshipCampaigns';
+import { useBrandSponsorshipStatus } from '@/hooks/useBrandSponsorshipStatus';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface BrandCampaignCardProps {
   campaign: SponsorshipCampaign;
-  onSponsor: (campaignId: string) => void;
+  onSponsor: (campaignId: string, existingProposal?: any) => void;
   onViewDetails: (campaignId: string) => void;
 }
 
@@ -17,6 +19,8 @@ const BrandCampaignCard: React.FC<BrandCampaignCardProps> = ({
   onSponsor,
   onViewDetails,
 }) => {
+  const { data: existingProposal, isLoading: isLoadingProposal } = useBrandSponsorshipStatus(campaign.id);
+
   const formatCurrency = (amount?: number) => {
     if (!amount) return 'N/A';
     return new Intl.NumberFormat('en-US', {
@@ -46,12 +50,57 @@ const BrandCampaignCard: React.FC<BrandCampaignCardProps> = ({
     return 'Budget not specified';
   };
 
+  const getProposalStatusBadge = () => {
+    if (!existingProposal) return null;
+
+    const statusConfig = {
+      pending: { label: 'Proposal Pending', icon: Clock, variant: 'secondary' as const },
+      accepted: { label: 'Proposal Accepted', icon: CheckCircle, variant: 'default' as const },
+      rejected: { label: 'Proposal Rejected', icon: XCircle, variant: 'destructive' as const },
+    };
+
+    const config = statusConfig[existingProposal.status as keyof typeof statusConfig];
+    if (!config) return null;
+
+    const Icon = config.icon;
+    return (
+      <Badge variant={config.variant} className="gap-1">
+        <Icon className="h-3 w-3" />
+        {config.label}
+      </Badge>
+    );
+  };
+
+  const getSponsorButtonContent = () => {
+    if (isLoadingProposal) {
+      return { text: 'Loading...', disabled: true, tooltip: null };
+    }
+
+    if (existingProposal) {
+      const statusMessages = {
+        pending: 'You have already submitted a proposal for this campaign',
+        accepted: 'Your sponsorship proposal has been accepted',
+        rejected: 'Your sponsorship proposal was rejected',
+      };
+      return {
+        text: existingProposal.status === 'accepted' ? 'Sponsored' : 'Proposal Submitted',
+        disabled: true,
+        tooltip: statusMessages[existingProposal.status as keyof typeof statusMessages] || 'Proposal already exists',
+      };
+    }
+
+    return { text: 'Sponsor Campaign', disabled: false, tooltip: null };
+  };
+
+  const buttonConfig = getSponsorButtonContent();
+
   return (
     <Card className="hover:shadow-lg transition-shadow duration-200">
       <CardHeader>
         <div className="flex items-start justify-between gap-4">
-          <div className="flex-1">
-            <CardTitle className="text-xl mb-2">{campaign.title}</CardTitle>
+          <div className="flex-1 space-y-2">
+            <CardTitle className="text-xl">{campaign.title}</CardTitle>
+            {getProposalStatusBadge()}
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Avatar className="h-6 w-6">
                 <AvatarImage src={campaign.business_profile?.logo_url} />
@@ -132,12 +181,26 @@ const BrandCampaignCard: React.FC<BrandCampaignCardProps> = ({
         >
           View Details
         </Button>
-        <Button
-          className="flex-1"
-          onClick={() => onSponsor(campaign.id)}
-        >
-          Sponsor Campaign
-        </Button>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex-1">
+                <Button
+                  className="w-full"
+                  onClick={() => onSponsor(campaign.id, existingProposal)}
+                  disabled={buttonConfig.disabled}
+                >
+                  {buttonConfig.text}
+                </Button>
+              </div>
+            </TooltipTrigger>
+            {buttonConfig.tooltip && (
+              <TooltipContent>
+                <p>{buttonConfig.tooltip}</p>
+              </TooltipContent>
+            )}
+          </Tooltip>
+        </TooltipProvider>
       </CardFooter>
     </Card>
   );
