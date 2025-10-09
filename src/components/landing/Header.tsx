@@ -11,9 +11,8 @@ export const Header = () => {
       <div className="px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center py-6">
           {/* Logo */}
-          <div className="flex items-center gap-2">
-            <img src={dragonCandyLogo} alt="DragonCandy" className="h-12" />
-            <span className="text-xl font-extrabold text-pink-600 tracking-tight">DragonCandy</span>
+          <div className="flex items-center">
+            <img src={dragonCandyLogo} alt="DragonCandy" className="h-16 cursor-pointer" onClick={() => navigate('/')} />
           </div>
           
           {/* Auth buttons */}

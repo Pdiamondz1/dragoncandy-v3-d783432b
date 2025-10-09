@@ -5,10 +5,7 @@ import dragonCandyLogo from '@/assets/dragon-candy-logo.png';
 export const AuthHeader = () => {
   return (
     <div className="flex flex-col items-center mb-8">
-      <img src={dragonCandyLogo} alt="DragonCandy" className="h-24 mb-2" />
-      <span className="text-2xl font-extrabold text-pink-600 tracking-tight mb-2">
-        DragonCandy
-      </span>
+      <img src={dragonCandyLogo} alt="DragonCandy" className="h-32 mb-4" />
       <span className="inline-block bg-pink-100 text-pink-600 rounded-full px-4 py-1 text-xs font-semibold shadow-sm animate-fade-in">
         🚀 AI-Powered Content Platform
       </span>
