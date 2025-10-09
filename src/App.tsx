@@ -212,6 +212,16 @@ const App = () => {
                       <BrandMessages />
                     </ProtectedRoute>
                   } />
+                  <Route path="/dashboard/brand/messages/direct/:conversationId" element={
+                    <ProtectedRoute>
+                      <DirectConversationPage />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/dashboard/brand/messages/campaign/:campaignId" element={
+                    <ProtectedRoute>
+                      <CampaignMessagesPage />
+                    </ProtectedRoute>
+                  } />
                   <Route path="/dashboard/brand/settings" element={
                     <ProtectedRoute>
                       <BrandSettings />
