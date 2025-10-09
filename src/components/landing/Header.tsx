@@ -12,7 +12,7 @@ export const Header = () => {
         <div className="flex justify-between items-center py-6">
           {/* Logo */}
           <div className="flex items-center">
-            <img src={dragonCandyLogo} alt="DragonCandy" className="h-16 cursor-pointer" onClick={() => navigate('/')} />
+            <img src={dragonCandyLogo} alt="DragonCandy" className="h-24 cursor-pointer" onClick={() => navigate('/')} />
           </div>
           
           {/* Auth buttons */}
