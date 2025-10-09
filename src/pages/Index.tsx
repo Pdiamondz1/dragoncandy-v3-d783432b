@@ -83,6 +83,28 @@ export default function Index() {
               console.log('🔧 Index: Creator profile incomplete, redirecting to onboarding');
               navigate('/profile/onboarding');
             }
+          } else if (profile?.role === 'brand') {
+            console.log('🎯 Index: Checking brand profile completion');
+            const { data: brandProfile, error: brandError } = await supabase
+              .from('business_profiles')
+              .select('is_completed')
+              .eq('user_id', user.id)
+              .eq('account_type', 'brand')
+              .maybeSingle();
+
+            if (brandError) {
+              console.error('❌ Index: Error fetching brand profile:', brandError);
+              navigate('/profile/onboarding');
+              return;
+            }
+
+            if (brandProfile?.is_completed) {
+              console.log('🎯 Index: Brand profile completed, redirecting to dashboard');
+              navigate('/dashboard/brand');
+            } else {
+              console.log('🔧 Index: Brand profile incomplete, redirecting to onboarding');
+              navigate('/profile/onboarding');
+            }
           } else if (userRole) {
             // User is authenticated and has metadata role but no profile - redirect to profile setup
             console.log('👤 Index: User has metadata role but no profile, redirecting to profile setup');

@@ -7,6 +7,7 @@ import { BrandProfileSetupForm } from '@/components/brand-profile/BrandProfileSe
 import { BrandProfileSetupHeader } from '@/components/brand-profile/BrandProfileSetupHeader';
 import { useBusinessProfileForm } from '@/hooks/useBusinessProfileForm';
 import { useBusinessProfileSubmit } from '@/hooks/useBusinessProfileSubmit';
+import { supabase } from '@/integrations/supabase/client';
 
 const BrandProfileSetup = () => {
   const { user, profile } = useAuth();
@@ -22,6 +23,27 @@ const BrandProfileSetup = () => {
       navigate('/');
     }
   }, [profile, navigate]);
+
+  // Check if brand profile is already completed
+  React.useEffect(() => {
+    const checkProfileCompletion = async () => {
+      if (user && profile?.role === 'brand') {
+        const { data: brandProfile } = await supabase
+          .from('business_profiles')
+          .select('is_completed')
+          .eq('user_id', user.id)
+          .eq('account_type', 'brand')
+          .maybeSingle();
+
+        if (brandProfile?.is_completed) {
+          console.log('🎯 Brand profile already completed, redirecting to dashboard');
+          navigate('/dashboard/brand');
+        }
+      }
+    };
+
+    checkProfileCompletion();
+  }, [user, profile, navigate]);
 
   if (!user || !profile) {
     return null;
