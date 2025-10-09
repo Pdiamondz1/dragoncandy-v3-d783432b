@@ -19,6 +19,14 @@ const NotificationDropdown: React.FC = () => {
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [isOpen, setIsOpen] = React.useState(false);
+
+  // Mark all as read when dropdown opens
+  React.useEffect(() => {
+    if (isOpen && unreadCount > 0) {
+      markAllAsRead();
+    }
+  }, [isOpen, unreadCount, markAllAsRead]);
 
   const formatTimeAgo = (dateString: string) => {
     const date = new Date(dateString);
@@ -49,7 +57,7 @@ const NotificationDropdown: React.FC = () => {
   };
 
   return (
-    <DropdownMenu>
+    <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="sm" className="relative">
           <Bell className="h-5 w-5" />
