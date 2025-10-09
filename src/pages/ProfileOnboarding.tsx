@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { Sparkles } from 'lucide-react';
+import logo from '@/assets/dragon-candy-logo.png';
 
 const ProfileOnboarding = () => {
   const { user, loading } = useAuth();
@@ -109,9 +109,7 @@ const ProfileOnboarding = () => {
       <div className="min-h-screen flex items-center justify-center bg-pink-50">
         <div className="text-center max-w-md">
           <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-pink-600 mx-auto mb-4"></div>
-          <div className="rounded-full bg-pink-100 p-3 mx-auto mb-4 w-16 h-16 flex items-center justify-center">
-            <Sparkles className="text-pink-600 w-8 h-8" />
-          </div>
+          <img src={logo} alt="DragonCandy" className="h-16 w-auto mx-auto mb-4" />
           <h1 className="text-2xl font-bold text-gray-900 mb-2">
             Welcome to DragonCandy!
           </h1>
@@ -134,9 +132,7 @@ const ProfileOnboarding = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-pink-50">
       <div className="text-center">
-        <div className="rounded-full bg-pink-100 p-3 mx-auto mb-4 w-16 h-16 flex items-center justify-center">
-          <Sparkles className="text-pink-600 w-8 h-8" />
-        </div>
+        <img src={logo} alt="DragonCandy" className="h-16 w-auto mx-auto mb-4" />
         <h1 className="text-2xl font-bold text-gray-900 mb-2">
           Welcome to DragonCandy!
         </h1>

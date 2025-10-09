@@ -4,7 +4,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { CheckCircle, Circle, ArrowRight, ArrowLeft, Sparkles } from 'lucide-react';
+import { CheckCircle, Circle, ArrowRight, ArrowLeft } from 'lucide-react';
+import logo from '@/assets/dragon-candy-logo.png';
 import { OnboardingStep } from './OnboardingStep';
 import { useOnboardingProgress } from '@/hooks/useOnboardingProgress';
 
@@ -114,9 +115,7 @@ const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ userRole, onComplet
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="rounded-full bg-pink-100 p-3 mx-auto mb-4 w-16 h-16 flex items-center justify-center">
-            <Sparkles className="text-pink-600 w-8 h-8" />
-          </div>
+          <img src={logo} alt="DragonCandy" className="h-16 w-auto mx-auto mb-4" />
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
             Welcome to DragonCandy
           </h1>

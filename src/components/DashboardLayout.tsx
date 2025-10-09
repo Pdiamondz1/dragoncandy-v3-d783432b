@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import logo from '@/assets/dragon-candy-logo.png';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -97,14 +98,9 @@ const AppSidebar: React.FC<{ userRole: 'business_client' | 'content_creator' | '
     <Sidebar className={collapsed ? "w-14" : "w-60"} collapsible="icon">
       <SidebarHeader className="border-b border-sidebar-border">
         <div className="flex items-center gap-2 px-4 py-2">
-          <div className="w-8 h-8 bg-gradient-to-r from-pink-500 to-purple-600 rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold text-sm">DC</span>
-          </div>
-          {!collapsed && (
-            <Link to="/" className="text-xl font-bold text-sidebar-foreground">
-              DragonCandy
-            </Link>
-          )}
+          <Link to="/" className="flex items-center">
+            <img src={logo} alt="DragonCandy" className={collapsed ? "h-8 w-auto" : "h-10 w-auto"} />
+          </Link>
         </div>
       </SidebarHeader>
 
