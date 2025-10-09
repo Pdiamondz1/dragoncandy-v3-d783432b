@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
@@ -18,9 +18,69 @@ export const useNotifications = () => {
   const { user } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
-
+  const initializedRef = useRef(false);
   useEffect(() => {
     if (!user) return;
+
+    // Hydrate initial notifications for existing pending sponsorship proposals
+    const init = async () => {
+      if (initializedRef.current) return;
+      try {
+        const { data: myCampaigns } = await supabase
+          .from('campaigns')
+          .select('id,title')
+          .eq('user_id', user.id);
+
+        const campaignIds = (myCampaigns || []).map((c: any) => c.id);
+        if (campaignIds.length === 0) return;
+
+        const { data: proposals } = await supabase
+          .from('campaign_sponsorships')
+          .select('id,campaign_id,brand_id,sponsorship_amount,created_at,status')
+          .in('campaign_id', campaignIds)
+          .eq('status', 'pending')
+          .order('created_at', { ascending: false })
+          .limit(10);
+
+        if (!proposals || proposals.length === 0) return;
+
+        const brandIds = Array.from(new Set(proposals.map((p: any) => p.brand_id)));
+        const { data: brands } = await supabase
+          .from('business_profiles')
+          .select('id,business_name')
+          .in('id', brandIds);
+
+        const brandMap = new Map((brands || []).map((b: any) => [b.id, b.business_name]));
+        const campaignTitleMap = new Map((myCampaigns || []).map((c: any) => [c.id, c.title]));
+
+        const initialNotifications: Notification[] = (proposals || []).map((p: any) => ({
+          id: `sponsorship-${p.id}`,
+          type: 'sponsorship_proposal_received',
+          title: 'New Sponsorship Proposal',
+          message: `${brandMap.get(p.brand_id) || 'A brand'} has proposed $${p.sponsorship_amount || 0} to sponsor "${campaignTitleMap.get(p.campaign_id) || 'your campaign'}"`,
+          read: false,
+          created_at: p.created_at,
+          data: {
+            campaign_id: p.campaign_id,
+            sponsorship_id: p.id,
+            brand_id: p.brand_id,
+          },
+        }));
+
+        let addedCount = 0;
+        setNotifications(prev => {
+          const existingIds = new Set(prev.map(n => n.id));
+          const toAdd = initialNotifications.filter(n => !existingIds.has(n.id));
+          addedCount = toAdd.length;
+          return [...toAdd, ...prev];
+        });
+        setUnreadCount(prev => prev + addedCount);
+      } catch (e) {
+        console.log('Initial notifications load failed', e);
+      }
+    };
+
+    init();
 
     // Set up real-time subscription for application status changes
     const applicationChannel = supabase
