@@ -130,14 +130,23 @@ const BusinessSponsorships = () => {
                         <DollarSign className="h-5 w-5" />
                         ${proposal.sponsorship_amount?.toLocaleString() || 0}
                       </div>
-                      <Button 
-                        className="w-full" 
-                        variant="outline"
-                        onClick={() => navigate(`/dashboard/business/campaigns/${proposal.campaign_id}`)}
-                      >
-                        <MessageSquare className="h-4 w-4 mr-2" />
-                        View Campaign
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button 
+                          className="flex-1" 
+                          variant="outline"
+                          onClick={() => navigate(`/dashboard/business/campaigns/${proposal.campaign_id}`)}
+                        >
+                          View Campaign
+                        </Button>
+                        <Button 
+                          className="flex-1"
+                          variant="outline"
+                          onClick={() => navigate(`/dashboard/business/messages`)}
+                        >
+                          <MessageSquare className="h-4 w-4 mr-2" />
+                          Message Brand
+                        </Button>
+                      </div>
                     </CardContent>
                   </Card>
                 ))}

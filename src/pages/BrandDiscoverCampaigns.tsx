@@ -103,6 +103,9 @@ const BrandDiscoverCampaigns = () => {
       setSponsorshipAmount('');
       setProposalMessage('');
       setSelectedCampaign(null);
+      
+      // Navigate to sponsorships page
+      navigate('/dashboard/brand/sponsorships');
     } catch (err) {
       console.error('Error submitting sponsorship:', err);
       toast({

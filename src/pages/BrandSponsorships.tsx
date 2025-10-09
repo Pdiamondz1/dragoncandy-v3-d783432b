@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useSponsorshipProposals } from '@/hooks/useSponsorshipProposals';
-import { Target, DollarSign, Calendar, ExternalLink, Loader2 } from 'lucide-react';
+import { Target, DollarSign, Calendar, ExternalLink, Loader2, MessageSquare } from 'lucide-react';
 import { format } from 'date-fns';
 
 const BrandSponsorships = () => {
@@ -120,11 +120,13 @@ const BrandSponsorships = () => {
                         View Campaign
                       </Button>
                       
-                      {proposal.status === 'accepted' && (
-                        <Button onClick={() => navigate(`/dashboard/brand/messages/campaign/${proposal.campaigns?.id}`)}>
-                          Open Messages
-                        </Button>
-                      )}
+                      <Button
+                        variant="outline"
+                        onClick={() => navigate(`/dashboard/brand/messages`)}
+                      >
+                        <MessageSquare className="h-4 w-4 mr-2" />
+                        Message Restaurant
+                      </Button>
                     </div>
                   </div>
                 </CardContent>
