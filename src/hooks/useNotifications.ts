@@ -108,7 +108,7 @@ export const useNotifications = () => {
           table: 'campaign_sponsorships',
         },
         async (payload) => {
-          console.log('New sponsorship proposal:', payload);
+          console.log('New sponsorship proposal received (realtime):', payload);
           
           // Fetch campaign and brand details for context
           const { data: campaign } = await supabase
@@ -117,6 +117,13 @@ export const useNotifications = () => {
             .eq('id', payload.new.campaign_id)
             .single();
 
+          if (!campaign) {
+            console.log('Campaign not found');
+            return;
+          }
+
+          console.log('Campaign user_id:', campaign.user_id, 'Current user:', user.id);
+
           const { data: brandProfile } = await supabase
             .from('business_profiles')
             .select('business_name')
@@ -124,9 +131,11 @@ export const useNotifications = () => {
             .single();
 
           // Only notify the restaurant owner (campaign creator)
-          if (campaign && campaign.user_id === user.id) {
+          if (campaign.user_id === user.id) {
+            console.log('Creating notification for restaurant owner');
+            
             toast({
-              title: 'New Sponsorship Proposal Received',
+              title: 'New Sponsorship Proposal! 🎉',
               description: `${brandProfile?.business_name || 'A brand'} wants to sponsor your campaign "${campaign.title}"`,
             });
 
@@ -146,6 +155,8 @@ export const useNotifications = () => {
 
             setNotifications(prev => [notification, ...prev]);
             setUnreadCount(prev => prev + 1);
+          } else {
+            console.log('User is not the campaign owner, skipping notification');
           }
         }
       )
