@@ -97,9 +97,9 @@ const AppSidebar: React.FC<{ userRole: 'business_client' | 'content_creator' | '
   return (
     <Sidebar className={collapsed ? "w-14" : "w-60"} collapsible="icon">
       <SidebarHeader className="border-b border-sidebar-border">
-        <div className="flex items-center justify-center px-4 py-2">
+        <div className="flex items-center justify-center px-4 py-4">
           <Link to="/">
-            <img src={dragonCandyLogo} alt="DragonCandy" className={collapsed ? "w-10 h-10" : "h-16"} />
+            <img src={dragonCandyLogo} alt="DragonCandy" className={collapsed ? "h-8" : "w-full max-w-[180px]"} />
           </Link>
         </div>
       </SidebarHeader>
