@@ -19,6 +19,33 @@ export const useNotifications = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const initializedRef = useRef(false);
+
+  // Persist notifications per-user so read state survives route changes/reloads
+  useEffect(() => {
+    if (!user) return;
+    try {
+      const raw = localStorage.getItem(`dc_notifications_${user.id}`);
+      if (raw) {
+        const stored: Notification[] = JSON.parse(raw);
+        setNotifications(stored);
+        setUnreadCount(stored.filter(n => !n.read).length);
+      }
+    } catch (e) {
+      console.log('Failed to load stored notifications', e);
+    }
+  }, [user]);
+
+  // Save notifications and keep unread count in sync
+  useEffect(() => {
+    if (!user) return;
+    try {
+      localStorage.setItem(`dc_notifications_${user.id}`, JSON.stringify(notifications));
+      setUnreadCount(notifications.filter(n => !n.read).length);
+    } catch (e) {
+      console.log('Failed to save notifications', e);
+    }
+  }, [notifications, user]);
+
   useEffect(() => {
     if (!user) return;
 
@@ -26,6 +53,16 @@ export const useNotifications = () => {
     const init = async () => {
       if (initializedRef.current) return;
       try {
+        // Build a map of read states from storage to keep them across navigations
+        let storedRead = new Map<string, boolean>();
+        try {
+          const rawStored = localStorage.getItem(`dc_notifications_${user.id}`);
+          if (rawStored) {
+            const storedList: Notification[] = JSON.parse(rawStored);
+            storedRead = new Map(storedList.map((n) => [n.id, !!n.read]));
+          }
+        } catch {}
+
         // Load notifications for restaurant owners (received proposals)
         const { data: myCampaigns } = await supabase
           .from('campaigns')
@@ -58,7 +95,7 @@ export const useNotifications = () => {
               type: 'sponsorship_proposal_received',
               title: 'New Sponsorship Proposal',
               message: `${brandMap.get(p.brand_id) || 'A brand'} has proposed $${p.sponsorship_amount || 0} to sponsor "${campaignTitleMap.get(p.campaign_id) || 'your campaign'}"`,
-              read: false,
+              read: storedRead.get(`sponsorship-${p.id}`) ?? false,
               created_at: p.created_at,
               data: {
                 campaign_id: p.campaign_id,
@@ -72,7 +109,7 @@ export const useNotifications = () => {
               const toAdd = restaurantNotifications.filter(n => !existingIds.has(n.id));
               return [...toAdd, ...prev];
             });
-            setUnreadCount(prev => prev + restaurantNotifications.length);
+            // unread count recalculated via persistence effect
           }
         }
 
@@ -107,7 +144,7 @@ export const useNotifications = () => {
               type: 'sponsorship_status_changed',
               title: `Sponsorship ${p.status.charAt(0).toUpperCase() + p.status.slice(1)}`,
               message: `Your $${p.sponsorship_amount || 0} proposal for "${campaignTitleMap.get(p.campaign_id) || 'campaign'}" was ${p.status}`,
-              read: false,
+              read: storedRead.get(`sponsorship-update-${p.id}`) ?? false,
               created_at: p.updated_at || p.created_at,
               data: {
                 campaign_id: p.campaign_id,
@@ -121,7 +158,7 @@ export const useNotifications = () => {
               const toAdd = brandNotifications.filter(n => !existingIds.has(n.id));
               return [...toAdd, ...prev];
             });
-            setUnreadCount(prev => prev + brandNotifications.length);
+            // unread count recalculated via persistence effect
           }
         }
 
