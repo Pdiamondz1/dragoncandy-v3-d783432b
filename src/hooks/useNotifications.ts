@@ -6,7 +6,7 @@ import { toast } from '@/hooks/use-toast';
 
 export interface Notification {
   id: string;
-  type: 'application_received' | 'application_status_changed' | 'milestone_completed';
+  type: 'application_received' | 'application_status_changed' | 'milestone_completed' | 'sponsorship_proposal_received' | 'sponsorship_status_changed';
   title: string;
   message: string;
   read: boolean;
@@ -97,8 +97,125 @@ export const useNotifications = () => {
       )
       .subscribe();
 
+    // Set up real-time subscription for sponsorship proposals
+    const sponsorshipChannel = supabase
+      .channel('sponsorship-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'campaign_sponsorships',
+        },
+        async (payload) => {
+          console.log('New sponsorship proposal:', payload);
+          
+          // Fetch campaign and brand details for context
+          const { data: campaign } = await supabase
+            .from('campaigns')
+            .select('title, user_id')
+            .eq('id', payload.new.campaign_id)
+            .single();
+
+          const { data: brandProfile } = await supabase
+            .from('business_profiles')
+            .select('business_name')
+            .eq('id', payload.new.brand_id)
+            .single();
+
+          // Only notify the restaurant owner (campaign creator)
+          if (campaign && campaign.user_id === user.id) {
+            toast({
+              title: 'New Sponsorship Proposal Received',
+              description: `${brandProfile?.business_name || 'A brand'} wants to sponsor your campaign "${campaign.title}"`,
+            });
+
+            const notification: Notification = {
+              id: `sponsorship-${payload.new.id}`,
+              type: 'sponsorship_proposal_received',
+              title: 'New Sponsorship Proposal',
+              message: `${brandProfile?.business_name || 'A brand'} has proposed $${payload.new.sponsorship_amount || 0} to sponsor "${campaign.title}"`,
+              read: false,
+              created_at: new Date().toISOString(),
+              data: {
+                campaign_id: payload.new.campaign_id,
+                sponsorship_id: payload.new.id,
+                brand_id: payload.new.brand_id,
+              },
+            };
+
+            setNotifications(prev => [notification, ...prev]);
+            setUnreadCount(prev => prev + 1);
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'campaign_sponsorships',
+        },
+        async (payload) => {
+          console.log('Sponsorship status updated:', payload);
+          
+          // Check if status changed
+          if (payload.old.status !== payload.new.status) {
+            // Fetch campaign and brand details
+            const { data: campaign } = await supabase
+              .from('campaigns')
+              .select('title')
+              .eq('id', payload.new.campaign_id)
+              .single();
+
+            const { data: brandProfile } = await supabase
+              .from('business_profiles')
+              .select('user_id')
+              .eq('id', payload.new.brand_id)
+              .single();
+
+            // Only notify the brand who submitted the proposal
+            if (brandProfile && brandProfile.user_id === user.id) {
+              const newStatus = payload.new.status;
+              const statusMessages: Record<string, string> = {
+                accepted: '✅ Your sponsorship proposal has been accepted!',
+                rejected: '❌ Your sponsorship proposal was declined',
+                counter_offer: '💬 The restaurant made a counter-offer',
+              };
+
+              if (statusMessages[newStatus]) {
+                toast({
+                  title: 'Sponsorship Update',
+                  description: `${statusMessages[newStatus]} for "${campaign?.title || 'campaign'}"`,
+                  variant: newStatus === 'rejected' ? 'destructive' : 'default',
+                });
+
+                const notification: Notification = {
+                  id: `sponsorship-update-${payload.new.id}-${Date.now()}`,
+                  type: 'sponsorship_status_changed',
+                  title: `Sponsorship ${newStatus.charAt(0).toUpperCase() + newStatus.slice(1)}`,
+                  message: `Your proposal for "${campaign?.title || 'campaign'}" is now ${newStatus}`,
+                  read: false,
+                  created_at: new Date().toISOString(),
+                  data: {
+                    campaign_id: payload.new.campaign_id,
+                    sponsorship_id: payload.new.id,
+                    status: newStatus,
+                  },
+                };
+
+                setNotifications(prev => [notification, ...prev]);
+                setUnreadCount(prev => prev + 1);
+              }
+            }
+          }
+        }
+      )
+      .subscribe();
+
     return () => {
       supabase.removeChannel(applicationChannel);
+      supabase.removeChannel(sponsorshipChannel);
     };
   }, [user]);
 

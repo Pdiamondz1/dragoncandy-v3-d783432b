@@ -1,5 +1,6 @@
 
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -12,9 +13,12 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Bell, Check, CheckCheck } from 'lucide-react';
 import { useNotifications } from '@/hooks/useNotifications';
+import { useAuth } from '@/hooks/useAuth';
 
 const NotificationDropdown: React.FC = () => {
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
+  const { user } = useAuth();
+  const navigate = useNavigate();
 
   const formatTimeAgo = (dateString: string) => {
     const date = new Date(dateString);
@@ -25,6 +29,23 @@ const NotificationDropdown: React.FC = () => {
     if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
     if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`;
     return `${Math.floor(diffInMinutes / 1440)}d ago`;
+  };
+
+  const handleNotificationClick = (notification: any) => {
+    markAsRead(notification.id);
+    
+    // Navigate based on notification type
+    if (notification.type === 'sponsorship_proposal_received') {
+      navigate('/dashboard/business/sponsorships');
+    } else if (notification.type === 'sponsorship_status_changed') {
+      navigate('/dashboard/brand/sponsorships');
+    } else if (notification.type === 'application_received') {
+      if (notification.data?.campaign_id) {
+        navigate(`/dashboard/business/campaigns/${notification.data.campaign_id}`);
+      }
+    } else if (notification.type === 'application_status_changed') {
+      navigate('/dashboard/creator/applications');
+    }
   };
 
   return (
@@ -73,7 +94,7 @@ const NotificationDropdown: React.FC = () => {
                 className={`flex flex-col items-start gap-1 p-3 cursor-pointer ${
                   !notification.read ? 'bg-blue-50' : ''
                 }`}
-                onClick={() => markAsRead(notification.id)}
+                onClick={() => handleNotificationClick(notification)}
               >
                 <div className="flex items-center justify-between w-full">
                   <span className="font-medium text-sm">{notification.title}</span>
