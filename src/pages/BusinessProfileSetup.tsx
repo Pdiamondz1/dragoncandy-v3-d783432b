@@ -124,7 +124,7 @@ const BusinessProfileSetup = () => {
         description: "Welcome to DragonCandy. You can now start creating campaigns."
       });
 
-      // Redirect to business dashboard on successful profile creation
+      // Redirect to restaurant dashboard on successful profile creation
       navigate('/dashboard/business');
     } catch (error: any) {
       console.error('Error saving profile:', error);

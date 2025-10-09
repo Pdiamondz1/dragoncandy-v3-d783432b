@@ -165,7 +165,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, userRole })
               <div className="flex items-center gap-4">
                 <SidebarTrigger />
                 <h1 className="text-xl font-semibold text-foreground hidden sm:block">
-                  {userRole === 'business_client' ? 'Business Dashboard' : userRole === 'brand' ? 'Brand Dashboard' : 'Creator Dashboard'}
+                  {userRole === 'business_client' ? 'Restaurant Dashboard' : userRole === 'brand' ? 'Brand Dashboard' : 'Creator Dashboard'}
                 </h1>
               </div>
 
