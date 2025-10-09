@@ -1,12 +1,12 @@
 
 import React from 'react';
-import { Sparkles } from 'lucide-react';
+import dragonCandyLogo from '@/assets/dragon-candy-logo.png';
 
 export const CreatorProfileSetupHeader = () => {
   return (
     <>
-      <div className="rounded-full bg-pink-100 p-3 mx-auto mb-4 w-16 h-16 flex items-center justify-center">
-        <Sparkles className="text-pink-600 w-8 h-8" />
+      <div className="mx-auto mb-4 flex items-center justify-center">
+        <img src={dragonCandyLogo} alt="DragonCandy" className="h-16" />
       </div>
       <h1 className="text-3xl font-bold text-gray-900 mb-2">
         Complete Your Creator Profile

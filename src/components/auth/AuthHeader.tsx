@@ -1,13 +1,11 @@
 
 import React from 'react';
-import { Youtube } from 'lucide-react';
+import dragonCandyLogo from '@/assets/dragon-candy-logo.png';
 
 export const AuthHeader = () => {
   return (
     <div className="flex flex-col items-center mb-8">
-      <div className="rounded-full bg-pink-100 p-3 mb-2">
-        <Youtube className="text-pink-600 w-8 h-8" />
-      </div>
+      <img src={dragonCandyLogo} alt="DragonCandy" className="h-16 mb-2" />
       <span className="text-2xl font-extrabold text-pink-600 tracking-tight mb-2">
         DragonCandy
       </span>

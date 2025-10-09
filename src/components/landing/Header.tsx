@@ -1,7 +1,7 @@
 
 import { Button } from "@/components/ui/button";
-import { Sparkles } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import dragonCandyLogo from "@/assets/dragon-candy-logo.png";
 
 export const Header = () => {
   const navigate = useNavigate();
@@ -12,9 +12,7 @@ export const Header = () => {
         <div className="flex justify-between items-center py-6">
           {/* Logo */}
           <div className="flex items-center gap-2">
-            <div className="rounded-full bg-pink-100 p-2">
-              <Sparkles className="text-pink-600 h-6 w-6" />
-            </div>
+            <img src={dragonCandyLogo} alt="DragonCandy" className="h-8" />
             <span className="text-xl font-extrabold text-pink-600 tracking-tight">DragonCandy</span>
           </div>
           
