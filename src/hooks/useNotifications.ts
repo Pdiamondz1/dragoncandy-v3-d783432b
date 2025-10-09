@@ -26,55 +26,106 @@ export const useNotifications = () => {
     const init = async () => {
       if (initializedRef.current) return;
       try {
+        // Load notifications for restaurant owners (received proposals)
         const { data: myCampaigns } = await supabase
           .from('campaigns')
           .select('id,title')
           .eq('user_id', user.id);
 
         const campaignIds = (myCampaigns || []).map((c: any) => c.id);
-        if (campaignIds.length === 0) return;
+        
+        if (campaignIds.length > 0) {
+          const { data: proposals } = await supabase
+            .from('campaign_sponsorships')
+            .select('id,campaign_id,brand_id,sponsorship_amount,created_at,status')
+            .in('campaign_id', campaignIds)
+            .eq('status', 'pending')
+            .order('created_at', { ascending: false })
+            .limit(10);
 
-        const { data: proposals } = await supabase
-          .from('campaign_sponsorships')
-          .select('id,campaign_id,brand_id,sponsorship_amount,created_at,status')
-          .in('campaign_id', campaignIds)
-          .eq('status', 'pending')
-          .order('created_at', { ascending: false })
-          .limit(10);
+          if (proposals && proposals.length > 0) {
+            const brandIds = Array.from(new Set(proposals.map((p: any) => p.brand_id)));
+            const { data: brands } = await supabase
+              .from('business_profiles')
+              .select('id,business_name')
+              .in('id', brandIds);
 
-        if (!proposals || proposals.length === 0) return;
+            const brandMap = new Map((brands || []).map((b: any) => [b.id, b.business_name]));
+            const campaignTitleMap = new Map((myCampaigns || []).map((c: any) => [c.id, c.title]));
 
-        const brandIds = Array.from(new Set(proposals.map((p: any) => p.brand_id)));
-        const { data: brands } = await supabase
+            const restaurantNotifications: Notification[] = proposals.map((p: any) => ({
+              id: `sponsorship-${p.id}`,
+              type: 'sponsorship_proposal_received',
+              title: 'New Sponsorship Proposal',
+              message: `${brandMap.get(p.brand_id) || 'A brand'} has proposed $${p.sponsorship_amount || 0} to sponsor "${campaignTitleMap.get(p.campaign_id) || 'your campaign'}"`,
+              read: false,
+              created_at: p.created_at,
+              data: {
+                campaign_id: p.campaign_id,
+                sponsorship_id: p.id,
+                brand_id: p.brand_id,
+              },
+            }));
+
+            setNotifications(prev => {
+              const existingIds = new Set(prev.map(n => n.id));
+              const toAdd = restaurantNotifications.filter(n => !existingIds.has(n.id));
+              return [...toAdd, ...prev];
+            });
+            setUnreadCount(prev => prev + restaurantNotifications.length);
+          }
+        }
+
+        // Load notifications for brands (status updates on their proposals)
+        const { data: myBrandProfile } = await supabase
           .from('business_profiles')
-          .select('id,business_name')
-          .in('id', brandIds);
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('account_type', 'brand')
+          .maybeSingle();
 
-        const brandMap = new Map((brands || []).map((b: any) => [b.id, b.business_name]));
-        const campaignTitleMap = new Map((myCampaigns || []).map((c: any) => [c.id, c.title]));
+        if (myBrandProfile) {
+          const { data: myProposals } = await supabase
+            .from('campaign_sponsorships')
+            .select('id,campaign_id,sponsorship_amount,status,created_at,updated_at')
+            .eq('brand_id', myBrandProfile.id)
+            .in('status', ['accepted', 'rejected'])
+            .order('updated_at', { ascending: false })
+            .limit(10);
 
-        const initialNotifications: Notification[] = (proposals || []).map((p: any) => ({
-          id: `sponsorship-${p.id}`,
-          type: 'sponsorship_proposal_received',
-          title: 'New Sponsorship Proposal',
-          message: `${brandMap.get(p.brand_id) || 'A brand'} has proposed $${p.sponsorship_amount || 0} to sponsor "${campaignTitleMap.get(p.campaign_id) || 'your campaign'}"`,
-          read: false,
-          created_at: p.created_at,
-          data: {
-            campaign_id: p.campaign_id,
-            sponsorship_id: p.id,
-            brand_id: p.brand_id,
-          },
-        }));
+          if (myProposals && myProposals.length > 0) {
+            const proposalCampaignIds = myProposals.map((p: any) => p.campaign_id);
+            const { data: campaigns } = await supabase
+              .from('campaigns')
+              .select('id,title')
+              .in('id', proposalCampaignIds);
 
-        let addedCount = 0;
-        setNotifications(prev => {
-          const existingIds = new Set(prev.map(n => n.id));
-          const toAdd = initialNotifications.filter(n => !existingIds.has(n.id));
-          addedCount = toAdd.length;
-          return [...toAdd, ...prev];
-        });
-        setUnreadCount(prev => prev + addedCount);
+            const campaignTitleMap = new Map((campaigns || []).map((c: any) => [c.id, c.title]));
+
+            const brandNotifications: Notification[] = myProposals.map((p: any) => ({
+              id: `sponsorship-update-${p.id}`,
+              type: 'sponsorship_status_changed',
+              title: `Sponsorship ${p.status.charAt(0).toUpperCase() + p.status.slice(1)}`,
+              message: `Your $${p.sponsorship_amount || 0} proposal for "${campaignTitleMap.get(p.campaign_id) || 'campaign'}" was ${p.status}`,
+              read: false,
+              created_at: p.updated_at || p.created_at,
+              data: {
+                campaign_id: p.campaign_id,
+                sponsorship_id: p.id,
+                status: p.status,
+              },
+            }));
+
+            setNotifications(prev => {
+              const existingIds = new Set(prev.map(n => n.id));
+              const toAdd = brandNotifications.filter(n => !existingIds.has(n.id));
+              return [...toAdd, ...prev];
+            });
+            setUnreadCount(prev => prev + brandNotifications.length);
+          }
+        }
+
+        initializedRef.current = true;
       } catch (e) {
         console.log('Initial notifications load failed', e);
       }
