@@ -1,9 +1,21 @@
+import { useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import DashboardLayout from '@/components/DashboardLayout';
 import DirectMessagesList from '@/components/messages/DirectMessagesList';
 
 const BrandMessages = () => {
   const { profile } = useAuth();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  
+  useEffect(() => {
+    const conversationId = searchParams.get('conversation');
+    if (conversationId) {
+      // Immediately navigate to the direct conversation page
+      navigate(`/dashboard/brand/messages/direct/${conversationId}`, { replace: true });
+    }
+  }, [searchParams, navigate]);
 
   if (!profile) {
     return <div>Loading...</div>;
