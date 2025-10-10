@@ -10,7 +10,7 @@ export const HeroSection = () => {
     <div className="text-center">
       {/* Logo */}
       <div className="flex justify-center mb-10">
-        <img src={dragonCandyLogo} alt="DragonCandy" className="h-20 cursor-pointer hover:opacity-90 transition-opacity" onClick={() => navigate('/')} />
+        <img src={dragonCandyLogo} alt="DragonCandy" className="h-32 cursor-pointer hover:opacity-90 transition-opacity" onClick={() => navigate('/')} />
       </div>
       
       {/* Badge */}
