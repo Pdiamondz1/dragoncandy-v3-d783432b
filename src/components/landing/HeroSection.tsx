@@ -1,12 +1,18 @@
 
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
+import dragonCandyLogo from "@/assets/dragon-candy-logo.png";
 
 export const HeroSection = () => {
   const navigate = useNavigate();
 
   return (
     <div className="text-center">
+      {/* Logo */}
+      <div className="flex justify-center mb-10">
+        <img src={dragonCandyLogo} alt="DragonCandy" className="h-20 cursor-pointer hover:opacity-90 transition-opacity" onClick={() => navigate('/')} />
+      </div>
+      
       {/* Badge */}
       <span className="inline-block bg-pink-100 text-pink-600 rounded-2xl px-6 py-2 text-sm mb-10 font-semibold shadow-sm hover:shadow-md transition-shadow duration-300">
         🚀 AI-Powered Content Creation Platform
