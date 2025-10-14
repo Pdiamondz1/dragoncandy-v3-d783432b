@@ -100,7 +100,7 @@ const App = () => {
                       <BusinessProfileSetup />
                     </VerifiedRoute>
                   } />
-                  {/* Legacy/alias path support for external links */}
+                  {/* Legacy/alias paths support for external email links */}
                   <Route path="/business-profile-setup" element={
                     <VerifiedRoute>
                       <BusinessProfileSetup />
@@ -111,7 +111,17 @@ const App = () => {
                       <BrandProfileSetup />
                     </VerifiedRoute>
                   } />
+                  <Route path="/brand-profile-setup" element={
+                    <VerifiedRoute>
+                      <BrandProfileSetup />
+                    </VerifiedRoute>
+                  } />
                   <Route path="/profile/creator" element={
+                    <VerifiedRoute>
+                      <CreatorProfileSetup />
+                    </VerifiedRoute>
+                  } />
+                  <Route path="/creator-profile-setup" element={
                     <VerifiedRoute>
                       <CreatorProfileSetup />
                     </VerifiedRoute>
