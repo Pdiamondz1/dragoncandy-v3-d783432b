@@ -153,7 +153,7 @@ const handler = async (req: Request): Promise<Response> => {
     `;
 
     const { data, error } = await resend.emails.send({
-      from: "DragonCandy <welcome@notify.dragoncandy.io>",
+      from: "DragonCandy <onboarding@notify.dragoncandy.io>",
       to: [email],
       subject: content.subject,
       html: emailHtml,

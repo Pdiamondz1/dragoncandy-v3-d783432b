@@ -57,7 +57,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send verification email using Resend
     const emailResponse = await resend.emails.send({
-      from: "DragonCandy <onboarding@resend.dev>",
+      from: "DragonCandy <onboarding@notify.dragoncandy.io>",
       to: [email],
       subject: "Verify Your Email - DragonCandy",
       html: `
