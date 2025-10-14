@@ -23,50 +23,22 @@ const VerifyEmail = () => {
       }
 
       try {
-        // Check if token exists and is valid
-        const { data: tokenData, error: tokenError } = await supabase
-          .from('email_verification_tokens')
-          .select('*')
-          .eq('token', token)
-          .is('verified_at', null)
-          .single();
+        const { data, error } = await supabase.functions.invoke('verify-email', {
+          body: { token },
+        });
 
-        if (tokenError || !tokenData) {
+        if (error || !data?.success) {
           setStatus('error');
-          setErrorMessage('Invalid or expired verification link');
+          setErrorMessage(data?.message || error?.message || 'Invalid or expired verification link');
           return;
         }
-
-        // Check if token is expired
-        const expiresAt = new Date(tokenData.expires_at);
-        if (expiresAt < new Date()) {
-          setStatus('error');
-          setErrorMessage('Verification link has expired. Please request a new one.');
-          return;
-        }
-
-        // Mark token as verified
-        const { error: updateTokenError } = await supabase
-          .from('email_verification_tokens')
-          .update({ verified_at: new Date().toISOString() })
-          .eq('id', tokenData.id);
-
-        if (updateTokenError) throw updateTokenError;
-
-        // Update profile email_verified status
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .update({ email_verified: true })
-          .eq('id', tokenData.user_id);
-
-        if (profileError) throw profileError;
 
         setStatus('success');
         toast.success('Email verified successfully!');
 
         // Redirect to login after 2 seconds
         setTimeout(() => {
-          navigate('/auth');
+          navigate('/auth?mode=login');
         }, 2000);
 
       } catch (error: any) {
