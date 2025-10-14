@@ -23,14 +23,24 @@ const VerifyEmail = () => {
       }
 
       try {
+        console.log('VerifyEmail: invoking edge function via supabase.functions.invoke');
         const { data, error } = await supabase.functions.invoke('verify-email', {
           body: { token },
         });
 
         if (error || !data?.success) {
-          setStatus('error');
-          setErrorMessage(data?.message || error?.message || 'Invalid or expired verification link');
-          return;
+          console.warn('VerifyEmail: invoke failed, falling back to direct fetch', { error, data });
+          const resp = await fetch('https://zocahiffooqdybdhguqv.supabase.co/functions/v1/verify-email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token }),
+          });
+          const json = await resp.json().catch(() => ({}));
+          if (!resp.ok || !json?.success) {
+            setStatus('error');
+            setErrorMessage(json?.message || error?.message || 'Invalid or expired verification link');
+            return;
+          }
         }
 
         setStatus('success');
@@ -42,9 +52,26 @@ const VerifyEmail = () => {
         }, 2000);
 
       } catch (error: any) {
-        console.error('Error verifying email:', error);
-        setStatus('error');
-        setErrorMessage('An error occurred during verification. Please try again.');
+        console.error('VerifyEmail: unexpected error', error);
+        try {
+          const resp = await fetch('https://zocahiffooqdybdhguqv.supabase.co/functions/v1/verify-email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token }),
+          });
+          const json = await resp.json().catch(() => ({}));
+          if (resp.ok && json?.success) {
+            setStatus('success');
+            toast.success('Email verified successfully!');
+            setTimeout(() => { navigate('/auth?mode=login'); }, 2000);
+            return;
+          }
+          setStatus('error');
+          setErrorMessage(json?.message || 'Invalid or expired verification link');
+        } catch (nested) {
+          setStatus('error');
+          setErrorMessage('An error occurred during verification. Please try again.');
+        }
       }
     };
 

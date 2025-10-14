@@ -5,6 +5,7 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
 interface VerifyEmailRequest {
@@ -19,7 +20,11 @@ const handler = async (req: Request): Promise<Response> => {
 
   try {
     const { token }: VerifyEmailRequest = await req.json();
-
+    console.log('verify-email: request received', {
+      method: req.method,
+      origin: req.headers.get('origin') || req.headers.get('referer') || 'unknown',
+      token_prefix: token?.slice(0, 8) || null,
+    });
     if (!token) {
       return new Response(
         JSON.stringify({ success: false, message: 'Missing token' }),
