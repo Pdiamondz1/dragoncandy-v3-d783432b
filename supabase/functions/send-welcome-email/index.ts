@@ -38,7 +38,7 @@ const handler = async (req: Request): Promise<Response> => {
             <li><strong>Launch and collaborate</strong> - Work directly with creators to bring your vision to life</li>
           </ol>
           <p style="margin-top: 20px;">
-            <a href="https://${Deno.env.get('SUPABASE_URL')?.replace('https://', '')}/business-profile-setup" 
+            <a href="${Deno.env.get('APP_URL') || 'https://lovable.app'}/business-profile-setup" 
                style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block;">
               Complete Your Profile
             </a>
@@ -56,7 +56,7 @@ const handler = async (req: Request): Promise<Response> => {
             <li><strong>Create amazing content</strong> - Get paid for doing what you love</li>
           </ol>
           <p style="margin-top: 20px;">
-            <a href="https://${Deno.env.get('SUPABASE_URL')?.replace('https://', '')}/creator-profile-setup" 
+            <a href="${Deno.env.get('APP_URL') || 'https://lovable.app'}/creator-profile-setup" 
                style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block;">
               Complete Your Profile
             </a>
@@ -74,7 +74,7 @@ const handler = async (req: Request): Promise<Response> => {
             <li><strong>Amplify your reach</strong> - Get your brand in front of engaged audiences</li>
           </ol>
           <p style="margin-top: 20px;">
-            <a href="https://${Deno.env.get('SUPABASE_URL')?.replace('https://', '')}/brand-profile-setup" 
+            <a href="${Deno.env.get('APP_URL') || 'https://lovable.app'}/brand-profile-setup" 
                style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block;">
               Complete Your Profile
             </a>
