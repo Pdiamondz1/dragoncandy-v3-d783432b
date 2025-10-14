@@ -60,7 +60,7 @@ const handler = async (req: Request): Promise<Response> => {
     } catch (_) {
       inferredOrigin = origin;
     }
-    const appUrl = inferredOrigin || Deno.env.get('APP_URL') || 'https://preview--dragoncandy-v3.lovable.app';
+    const appUrl = Deno.env.get('APP_URL') || inferredOrigin || 'https://dragoncandy.io';
     const verificationLink = `${appUrl}/verify-email?token=${token}`;
 
     // Send verification email using Resend
@@ -93,10 +93,6 @@ const handler = async (req: Request): Promise<Response> => {
                   Verify Email Address
                 </a>
               </div>
-              <p style="font-size: 12px; color: #6b7280; word-break: break-all;">
-                If the button doesn't work, copy and paste this link into your browser:<br/>
-                <span>${verificationLink}</span>
-              </p>
               
               <p style="font-size: 14px; color: #6b7280; margin-top: 30px;">
                 This verification link will expire in 24 hours.
