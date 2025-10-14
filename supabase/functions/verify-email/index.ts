@@ -5,7 +5,7 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
 
 interface VerifyEmailRequest {
@@ -19,15 +19,40 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { token }: VerifyEmailRequest = await req.json();
+    const url = new URL(req.url);
+    const isGet = req.method === 'GET';
+
+    // Support both POST JSON body and GET query param
+    let token: string | null = null;
+    if (isGet) {
+      token = url.searchParams.get('token');
+    } else {
+      const body: VerifyEmailRequest = await req.json();
+      token = body?.token ?? null;
+    }
+
+    const redirectBase = url.searchParams.get('redirect')
+      || req.headers.get('origin')
+      || req.headers.get('referer')
+      || Deno.env.get('APP_URL')
+      || '';
+
     console.log('verify-email: request received', {
       method: req.method,
-      origin: req.headers.get('origin') || req.headers.get('referer') || 'unknown',
       token_prefix: token?.slice(0, 8) || null,
+      redirectBase,
     });
+
     if (!token) {
+      const message = 'Missing token';
+      if (isGet && redirectBase) {
+        return new Response(null, {
+          status: 302,
+          headers: { ...corsHeaders, Location: `${redirectBase.replace(/\/$/, '')}/verify-email?status=error&reason=missing_token` },
+        });
+      }
       return new Response(
-        JSON.stringify({ success: false, message: 'Missing token' }),
+        JSON.stringify({ success: false, message }),
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
@@ -45,15 +70,29 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (tokenError) {
       console.error('verify-email: token fetch error', tokenError);
+      const message = 'Invalid or expired verification link';
+      if (isGet && redirectBase) {
+        return new Response(null, {
+          status: 302,
+          headers: { ...corsHeaders, Location: `${redirectBase.replace(/\/$/, '')}/verify-email?status=error&reason=not_found` },
+        });
+      }
       return new Response(
-        JSON.stringify({ success: false, message: 'Invalid or expired verification link' }),
+        JSON.stringify({ success: false, message }),
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
 
     if (!tokenData || tokenData.verified_at !== null) {
+      const message = 'Invalid or expired verification link';
+      if (isGet && redirectBase) {
+        return new Response(null, {
+          status: 302,
+          headers: { ...corsHeaders, Location: `${redirectBase.replace(/\/$/, '')}/verify-email?status=error&reason=invalid_or_used` },
+        });
+      }
       return new Response(
-        JSON.stringify({ success: false, message: 'Invalid or expired verification link' }),
+        JSON.stringify({ success: false, message }),
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
@@ -61,8 +100,15 @@ const handler = async (req: Request): Promise<Response> => {
     // Expiration check
     const expiresAt = new Date(tokenData.expires_at as unknown as string);
     if (Number.isNaN(expiresAt.getTime()) || expiresAt < new Date()) {
+      const message = 'Verification link has expired. Please request a new one.';
+      if (isGet && redirectBase) {
+        return new Response(null, {
+          status: 302,
+          headers: { ...corsHeaders, Location: `${redirectBase.replace(/\/$/, '')}/verify-email?status=error&reason=expired` },
+        });
+      }
       return new Response(
-        JSON.stringify({ success: false, message: 'Verification link has expired. Please request a new one.' }),
+        JSON.stringify({ success: false, message }),
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
@@ -75,8 +121,15 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (updateTokenError) {
       console.error('verify-email: update token error', updateTokenError);
+      const message = 'Could not verify token';
+      if (isGet && redirectBase) {
+        return new Response(null, {
+          status: 302,
+          headers: { ...corsHeaders, Location: `${redirectBase.replace(/\/$/, '')}/verify-email?status=error&reason=update_failed` },
+        });
+      }
       return new Response(
-        JSON.stringify({ success: false, message: 'Could not verify token' }),
+        JSON.stringify({ success: false, message }),
         { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
@@ -89,10 +142,26 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (profileError) {
       console.error('verify-email: update profile error', profileError);
+      const message = 'Could not update profile';
+      if (isGet && redirectBase) {
+        return new Response(null, {
+          status: 302,
+          headers: { ...corsHeaders, Location: `${redirectBase.replace(/\/$/, '')}/verify-email?status=error&reason=profile_update_failed` },
+        });
+      }
       return new Response(
-        JSON.stringify({ success: false, message: 'Could not update profile' }),
+        JSON.stringify({ success: false, message }),
         { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
+    }
+
+    console.log('verify-email: success for user', tokenData.user_id);
+
+    if (isGet && redirectBase) {
+      return new Response(null, {
+        status: 302,
+        headers: { ...corsHeaders, Location: `${redirectBase.replace(/\/$/, '')}/auth?mode=login&verified=1` },
+      });
     }
 
     return new Response(
