@@ -56,7 +56,7 @@ const handler = async (req: Request): Promise<Response> => {
             <li><strong>Create amazing content</strong> - Get paid for doing what you love</li>
           </ol>
           <p style="margin-top: 20px;">
-            <a href="${Deno.env.get('APP_URL') || 'https://lovable.app'}/creator-profile-setup" 
+            <a href="${Deno.env.get('APP_URL') || 'https://lovable.app'}/profile/creator" 
                style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block;">
               Complete Your Profile
             </a>
@@ -74,7 +74,7 @@ const handler = async (req: Request): Promise<Response> => {
             <li><strong>Amplify your reach</strong> - Get your brand in front of engaged audiences</li>
           </ol>
           <p style="margin-top: 20px;">
-            <a href="${Deno.env.get('APP_URL') || 'https://lovable.app'}/brand-profile-setup" 
+            <a href="${Deno.env.get('APP_URL') || 'https://lovable.app'}/profile/brand" 
                style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block;">
               Complete Your Profile
             </a>
