@@ -52,7 +52,15 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Create verification link
-    const appUrl = Deno.env.get('APP_URL') || 'https://dragoncandy.io';
+    const origin = req.headers.get('origin') ?? '';
+    const referer = req.headers.get('referer') ?? '';
+    let inferredOrigin = '';
+    try {
+      inferredOrigin = origin || (referer ? new URL(referer).origin : '');
+    } catch (_) {
+      inferredOrigin = origin;
+    }
+    const appUrl = Deno.env.get('APP_URL') || inferredOrigin || 'https://dragoncandy.io';
     const verificationLink = `${appUrl}/verify-email?token=${token}`;
 
     // Send verification email using Resend
