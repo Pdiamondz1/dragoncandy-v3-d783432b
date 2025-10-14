@@ -39,9 +39,17 @@ const AuthPage = () => {
     try {
       const { data: profile } = await supabase
         .from('profiles')
-        .select('role')
+        .select('role, email_verified')
         .eq('id', user.id)
         .single();
+
+      // Check email verification first
+      if (profile && profile.email_verified !== true) {
+        console.log('Email not verified, signing out');
+        await supabase.auth.signOut();
+        setError('Please verify your email before continuing. Check your inbox for the verification link.');
+        return;
+      }
 
       const hasAnon = !!localStorage.getItem('anonymous_campaign_data') || !!localStorage.getItem('anonymous_campaign_final');
 

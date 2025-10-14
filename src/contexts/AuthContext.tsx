@@ -13,6 +13,7 @@ interface Profile {
   avatar_url?: string;
   business_name?: string;
   creator_name?: string;
+  email_verified?: boolean;
 }
 
 interface AuthContextType {
@@ -100,7 +101,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.log('🔍 AuthProvider: Querying basic profile...');
       const { data: basicProfile, error: profileError } = await supabase
         .from('profiles')
-        .select('id, email, role, full_name, avatar_url')
+        .select('id, email, role, full_name, avatar_url, email_verified')
         .eq('id', userId)
         .maybeSingle();
 
@@ -130,6 +131,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         role: basicProfile.role,
         full_name: basicProfile.full_name,
         avatar_url: basicProfile.avatar_url,
+        email_verified: basicProfile.email_verified,
       };
 
       // Fetch role-specific data with error handling

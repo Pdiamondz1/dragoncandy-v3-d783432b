@@ -9,6 +9,7 @@ import { AnalyticsProvider } from "@/components/analytics/AnalyticsProvider";
 import { PerformanceMonitor } from "@/components/analytics/PerformanceMonitor";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import VerifiedRoute from "@/components/VerifiedRoute";
 import Index from "./pages/Index";
 import LandingPage from "./pages/LandingPage";
 import NotFound from "./pages/NotFound";
@@ -89,10 +90,26 @@ const App = () => {
                   <Route path="/campaign/create" element={<AnonymousCampaignWizard />} />
                   <Route path="/auth/forgot" element={<ForgotPassword />} />
                   <Route path="/auth/update-password" element={<UpdatePassword />} />
-                  <Route path="/profile/onboarding" element={<ProfileOnboarding />} />
-                  <Route path="/profile/business" element={<BusinessProfileSetup />} />
-                  <Route path="/profile/brand" element={<BrandProfileSetup />} />
-                  <Route path="/profile/creator" element={<CreatorProfileSetup />} />
+                  <Route path="/profile/onboarding" element={
+                    <VerifiedRoute>
+                      <ProfileOnboarding />
+                    </VerifiedRoute>
+                  } />
+                  <Route path="/profile/business" element={
+                    <VerifiedRoute>
+                      <BusinessProfileSetup />
+                    </VerifiedRoute>
+                  } />
+                  <Route path="/profile/brand" element={
+                    <VerifiedRoute>
+                      <BrandProfileSetup />
+                    </VerifiedRoute>
+                  } />
+                  <Route path="/profile/creator" element={
+                    <VerifiedRoute>
+                      <CreatorProfileSetup />
+                    </VerifiedRoute>
+                  } />
                   
                   {/* Protected Dashboard Routes */}
                   <Route path="/dashboard/business" element={
