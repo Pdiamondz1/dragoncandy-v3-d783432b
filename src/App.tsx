@@ -100,6 +100,12 @@ const App = () => {
                       <BusinessProfileSetup />
                     </VerifiedRoute>
                   } />
+                  {/* Legacy/alias path support for external links */}
+                  <Route path="/business-profile-setup" element={
+                    <VerifiedRoute>
+                      <BusinessProfileSetup />
+                    </VerifiedRoute>
+                  } />
                   <Route path="/profile/brand" element={
                     <VerifiedRoute>
                       <BrandProfileSetup />
