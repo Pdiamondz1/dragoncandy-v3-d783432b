@@ -755,6 +755,33 @@ export type Database = {
         }
         Relationships: []
       }
+      email_verification_tokens: {
+        Row: {
+          created_at: string | null
+          expires_at: string
+          id: string
+          token: string
+          user_id: string
+          verified_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          expires_at: string
+          id?: string
+          token: string
+          user_id: string
+          verified_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          expires_at?: string
+          id?: string
+          token?: string
+          user_id?: string
+          verified_at?: string | null
+        }
+        Relationships: []
+      }
       feature_flags: {
         Row: {
           created_at: string
@@ -1368,6 +1395,7 @@ export type Database = {
           avatar_url: string | null
           created_at: string | null
           email: string
+          email_verified: boolean | null
           full_name: string | null
           id: string
           role: Database["public"]["Enums"]["user_role"]
@@ -1377,6 +1405,7 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string | null
           email: string
+          email_verified?: boolean | null
           full_name?: string | null
           id: string
           role: Database["public"]["Enums"]["user_role"]
@@ -1386,6 +1415,7 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string | null
           email?: string
+          email_verified?: boolean | null
           full_name?: string | null
           id?: string
           role?: Database["public"]["Enums"]["user_role"]
@@ -1670,6 +1700,10 @@ export type Database = {
       }
     }
     Functions: {
+      cleanup_expired_verification_tokens: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       create_or_get_direct_conversation: {
         Args: { user1_uuid: string; user2_uuid: string }
         Returns: string

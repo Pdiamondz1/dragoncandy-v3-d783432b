@@ -52,6 +52,7 @@ import PublicBusinessProfile from "./pages/PublicBusinessProfile";
 import ReviewsManagement from "./pages/ReviewsManagement";
 import ForgotPassword from "./pages/ForgotPassword";
 import UpdatePassword from "./pages/UpdatePassword";
+import VerifyEmail from "./pages/VerifyEmail";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -82,6 +83,7 @@ const App = () => {
                   <Route path="/" element={<Index />} />
                   <Route path="/landing" element={<LandingPage />} />
                   <Route path="/auth" element={<AuthPage />} />
+                  <Route path="/verify-email" element={<VerifyEmail />} />
                   
                   {/* Anonymous Campaign Creation */}
                   <Route path="/campaign/create" element={<AnonymousCampaignWizard />} />

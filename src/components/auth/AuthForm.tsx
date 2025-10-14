@@ -37,17 +37,14 @@ export const AuthForm = ({ mode, onError }: AuthFormProps) => {
 
         console.log('📝 AuthForm: Signing up user with role:', role);
         
-        const redirectUrl = `${window.location.origin}/profile/onboarding`;
-        console.log('🔗 AuthForm: Redirect URL:', redirectUrl);
-        
         const { data, error: signupError } = await supabase.auth.signUp({
           email,
           password,
           options: { 
-            emailRedirectTo: redirectUrl,
+            emailRedirectTo: `${window.location.origin}/`,
             data: {
-              role: role, // Store role in user metadata
-              email: email // Also store email for reference
+              role: role,
+              email: email
             }
           }
         });
@@ -61,42 +58,38 @@ export const AuthForm = ({ mode, onError }: AuthFormProps) => {
 
         console.log('✅ AuthForm: Signup successful:', data);
 
-        // Send welcome email after successful signup
+        // Send verification email
         if (data.user) {
-          const userName = email.split('@')[0]; // Use email username as temporary name
+          const userName = email.split('@')[0];
           
           try {
-            const { error: emailError } = await supabase.functions.invoke('send-welcome-email', {
+            const { error: emailError } = await supabase.functions.invoke('send-verification-email', {
               body: {
                 email,
                 name: userName,
-                role: role,
+                userId: data.user.id,
               },
             });
 
             if (emailError) {
-              console.error('Failed to send welcome email:', emailError);
+              console.error('Failed to send verification email:', emailError);
+              toast({
+                title: "Account created",
+                description: "But there was an issue sending the verification email. Please contact support.",
+              });
             } else {
-              console.log('✅ Welcome email sent successfully');
+              console.log('✅ Verification email sent successfully');
+              toast({
+                title: "Check your email",
+                description: "We've sent you a verification link. Please verify your email before logging in.",
+              });
             }
           } catch (emailError) {
-            console.error('Error sending welcome email:', emailError);
+            console.error('Error sending verification email:', emailError);
           }
-        }
 
-        if (data.user && !data.session) {
-          // Email confirmation required
-          toast({
-            title: "Check your inbox",
-            description: "A confirmation email has been sent with a welcome message. Please check your email and follow the link to complete signup.",
-          });
-        } else if (data.session) {
-          // Immediate login (if email confirmation is disabled)
-          console.log('🚀 AuthForm: User logged in immediately, redirecting...');
-          toast({
-            title: "Welcome to DragonCandy!",
-            description: "Your account has been created successfully. Check your email for a welcome message!",
-          });
+          // Sign out the user - they must verify first
+          await supabase.auth.signOut();
         }
 
         setLoading(false);
@@ -117,6 +110,23 @@ export const AuthForm = ({ mode, onError }: AuthFormProps) => {
         }
 
         console.log('✅ AuthForm: Login successful:', data);
+
+        // Check if email is verified
+        if (data.user) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('email_verified')
+            .eq('id', data.user.id)
+            .single();
+
+          if (profile && !profile.email_verified) {
+            // Sign out if not verified
+            await supabase.auth.signOut();
+            onError('Please verify your email before logging in. Check your inbox for the verification link.');
+            setLoading(false);
+            return;
+          }
+        }
         
         // Success toast for login
         toast({
