@@ -61,18 +61,41 @@ export const AuthForm = ({ mode, onError }: AuthFormProps) => {
 
         console.log('✅ AuthForm: Signup successful:', data);
 
+        // Send welcome email after successful signup
+        if (data.user) {
+          const userName = email.split('@')[0]; // Use email username as temporary name
+          
+          try {
+            const { error: emailError } = await supabase.functions.invoke('send-welcome-email', {
+              body: {
+                email,
+                name: userName,
+                role: role,
+              },
+            });
+
+            if (emailError) {
+              console.error('Failed to send welcome email:', emailError);
+            } else {
+              console.log('✅ Welcome email sent successfully');
+            }
+          } catch (emailError) {
+            console.error('Error sending welcome email:', emailError);
+          }
+        }
+
         if (data.user && !data.session) {
           // Email confirmation required
           toast({
             title: "Check your inbox",
-            description: "A confirmation email has been sent. Please check your email and follow the link to complete signup.",
+            description: "A confirmation email has been sent with a welcome message. Please check your email and follow the link to complete signup.",
           });
         } else if (data.session) {
           // Immediate login (if email confirmation is disabled)
           console.log('🚀 AuthForm: User logged in immediately, redirecting...');
           toast({
             title: "Welcome to DragonCandy!",
-            description: "Your account has been created successfully.",
+            description: "Your account has been created successfully. Check your email for a welcome message!",
           });
         }
 
