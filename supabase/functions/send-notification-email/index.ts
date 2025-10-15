@@ -192,6 +192,12 @@ const handler = async (req: Request): Promise<Response> => {
             ? `<p>Congratulations! The restaurant is excited to partner with your brand. Check your messages to coordinate next steps.</p>` 
             : `<p>Thank you for your interest. There are many more great sponsorship opportunities available!</p>`
           }
+          <p style="margin-top: 30px;">
+            <a href="https://${baseUrl}/brand-sponsorships" 
+               style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block;">
+              View Sponsorships
+            </a>
+          </p>
         `,
       },
     };
