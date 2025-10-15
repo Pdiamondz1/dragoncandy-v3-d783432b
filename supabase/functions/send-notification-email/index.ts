@@ -51,7 +51,8 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log('Incoming notification request:', { type, to, recipientUserId: data?.recipientUserId });
 
-    const baseUrl = Deno.env.get('SUPABASE_URL')?.replace('https://', '') || '';
+    const baseUrl = Deno.env.get('APP_URL') || '';
+    console.log('Using base URL for email links:', baseUrl);
 
     // Resolve recipient if email not provided
     let resolvedTo = to;
