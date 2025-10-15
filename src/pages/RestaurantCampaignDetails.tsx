@@ -25,24 +25,61 @@ import { JointApprovalCard } from '@/components/campaigns/JointApprovalCard';
 import SponsorshipProposalCard from '@/components/campaigns/SponsorshipProposalCard';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/hooks/use-toast';
+import { useEmailNotifications } from '@/hooks/useEmailNotifications';
 
 const RestaurantCampaignDetails = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const { sendNotification } = useEmailNotifications();
 
   const handleAcceptSponsorship = useMutation({
     mutationFn: async (proposalId: string) => {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('campaign_sponsorships')
         .update({ status: 'accepted' })
-        .eq('id', proposalId);
+        .eq('id', proposalId)
+        .select('*, brand_id!inner(business_name, user_id)')
+        .single();
 
       if (error) throw error;
+      return data;
     },
-    onSuccess: () => {
+    onSuccess: async (data) => {
       queryClient.invalidateQueries({ queryKey: ['campaign_sponsorships', id] });
+      
+      // Send email notification to brand
+      try {
+        const { data: campaign } = await supabase
+          .from('campaigns')
+          .select('title')
+          .eq('id', id)
+          .single();
+
+        const { data: brandUser } = await supabase
+          .from('profiles')
+          .select('email, full_name')
+          .eq('id', (data.brand_id as any)?.user_id)
+          .single();
+
+        if (brandUser?.email && campaign) {
+          await sendNotification(
+            'sponsorship_status',
+            brandUser.email,
+            brandUser.full_name || (data.brand_id as any)?.business_name || 'Brand Partner',
+            {
+              campaignTitle: campaign.title,
+              proposalStatus: 'accepted',
+              sponsorshipAmount: data.sponsorship_amount,
+            }
+          );
+        }
+      } catch (error) {
+        console.error('Failed to send email notification:', error);
+        // Don't block the success flow if email fails
+      }
+
       toast({
         title: 'Sponsorship accepted',
         description: 'The brand sponsor has been notified.',
@@ -60,15 +97,49 @@ const RestaurantCampaignDetails = () => {
 
   const handleRejectSponsorship = useMutation({
     mutationFn: async (proposalId: string) => {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('campaign_sponsorships')
         .update({ status: 'rejected' })
-        .eq('id', proposalId);
+        .eq('id', proposalId)
+        .select('*, brand_id!inner(business_name, user_id)')
+        .single();
 
       if (error) throw error;
+      return data;
     },
-    onSuccess: () => {
+    onSuccess: async (data) => {
       queryClient.invalidateQueries({ queryKey: ['campaign_sponsorships', id] });
+      
+      // Send email notification to brand
+      try {
+        const { data: campaign } = await supabase
+          .from('campaigns')
+          .select('title')
+          .eq('id', id)
+          .single();
+
+        const { data: brandUser } = await supabase
+          .from('profiles')
+          .select('email, full_name')
+          .eq('id', (data.brand_id as any)?.user_id)
+          .single();
+
+        if (brandUser?.email && campaign) {
+          await sendNotification(
+            'sponsorship_status',
+            brandUser.email,
+            brandUser.full_name || (data.brand_id as any)?.business_name || 'Brand Partner',
+            {
+              campaignTitle: campaign.title,
+              proposalStatus: 'rejected',
+            }
+          );
+        }
+      } catch (error) {
+        console.error('Failed to send email notification:', error);
+        // Don't block the success flow if email fails
+      }
+
       toast({
         title: 'Sponsorship rejected',
         description: 'The brand sponsor has been notified.',
