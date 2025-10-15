@@ -96,7 +96,7 @@ const handler = async (req: Request): Promise<Response> => {
           <p>Great news! <strong>${data.applicantName}</strong> has applied to your campaign <strong>"${data.campaignTitle}"</strong>.</p>
           <p>Review their application and portfolio to see if they're a good fit for your project.</p>
           <p style="margin-top: 30px;">
-            <a href="https://${baseUrl}/campaign/${data.campaignId}" 
+            <a href="${baseUrl}/campaign/${data.campaignId}" 
                style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block;">
               Review Application
             </a>
@@ -113,7 +113,7 @@ const handler = async (req: Request): Promise<Response> => {
             : `<p>Don't worry - there are many more great opportunities waiting for you in the marketplace!</p>`
           }
           <p style="margin-top: 30px;">
-            <a href="https://${baseUrl}/${data.applicationStatus === 'accepted' ? 'creator-applications' : 'creator-marketplace'}" 
+            <a href="${baseUrl}/${data.applicationStatus === 'accepted' ? 'creator-applications' : 'creator-marketplace'}" 
                style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block;">
               ${data.applicationStatus === 'accepted' ? 'View Campaign' : 'Browse More Campaigns'}
             </a>
@@ -127,7 +127,7 @@ const handler = async (req: Request): Promise<Response> => {
           <p>You have a new message from <strong>${data.senderName}</strong>${data.campaignTitle ? ` about "${data.campaignTitle}"` : ''}.</p>
           ${data.message ? `<blockquote style="border-left: 4px solid #8B5CF6; padding-left: 16px; margin: 20px 0; color: #374151;">${data.message}</blockquote>` : ''}
           <p style="margin-top: 30px;">
-            <a href="https://${baseUrl}/messages${data.campaignId ? `/${data.campaignId}` : ''}" 
+            <a href="${baseUrl}/messages${data.campaignId ? `/${data.campaignId}` : ''}" 
                style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block;">
               View Message
             </a>
@@ -141,7 +141,7 @@ const handler = async (req: Request): Promise<Response> => {
           <p>Great news! You've received a payment of <strong>$${data.amount}</strong> for your work on <strong>"${data.campaignTitle}"</strong>.</p>
           <p>The funds will be available in your account shortly. Thank you for your excellent work!</p>
           <p style="margin-top: 30px;">
-            <a href="https://${baseUrl}/creator-projects" 
+            <a href="${baseUrl}/creator-projects" 
                style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block;">
               View Projects
             </a>
@@ -155,7 +155,7 @@ const handler = async (req: Request): Promise<Response> => {
           <p>Your collaboration on <strong>"${data.campaignTitle}"</strong> is now complete! 🎉</p>
           <p>We'd love to hear about your experience. Your feedback helps build trust in the DragonCandy community.</p>
           <p style="margin-top: 30px;">
-            <a href="https://${baseUrl}${data.reviewUrl}" 
+            <a href="${baseUrl}${data.reviewUrl}" 
                style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block;">
               Leave a Review
             </a>
@@ -169,7 +169,7 @@ const handler = async (req: Request): Promise<Response> => {
           <p>There's an update to the campaign <strong>"${data.campaignTitle}"</strong>:</p>
           ${data.updateDetails ? `<div style="background: #F9FAFB; padding: 16px; border-radius: 8px; margin: 20px 0;">${data.updateDetails}</div>` : ''}
           <p style="margin-top: 30px;">
-            <a href="https://${baseUrl}/campaign/${data.campaignId}" 
+            <a href="${baseUrl}/campaign/${data.campaignId}" 
                style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block;">
               View Campaign
             </a>
@@ -183,7 +183,7 @@ const handler = async (req: Request): Promise<Response> => {
           <p><strong>${data.brandName}</strong> has submitted a sponsorship proposal of <strong>$${data.sponsorshipAmount}</strong> for your campaign <strong>"${data.campaignTitle}"</strong>!</p>
           ${data.message ? `<p>Their message:</p><blockquote style="border-left: 4px solid #8B5CF6; padding-left: 16px; margin: 20px 0; color: #374151;">${data.message}</blockquote>` : ''}
           <p style="margin-top: 30px;">
-            <a href="https://${baseUrl}/dashboard/business/sponsorships" 
+            <a href="${baseUrl}/dashboard/business/sponsorships" 
                style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block;">
               Review Proposal
             </a>
@@ -200,7 +200,7 @@ const handler = async (req: Request): Promise<Response> => {
             : `<p>Thank you for your interest. There are many more great sponsorship opportunities available!</p>`
           }
           <p style="margin-top: 30px;">
-            <a href="https://${baseUrl}/dashboard/brand/sponsorships" 
+            <a href="${baseUrl}/dashboard/brand/sponsorships" 
                style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block;">
               View Sponsorships
             </a>
