@@ -151,39 +151,25 @@ export const useSubmitSponsorshipProposal = () => {
         }
         console.log('✅ Brand profile fetched:', brandProfile);
 
-        if (restaurantUser?.email && campaign) {
-          console.log('📧 All data ready, sending notification email...');
-          console.log('📧 Email details:', {
-            to: restaurantUser.email,
-            recipientName: restaurantUser.full_name || restaurantProfile?.business_name || 'Restaurant Owner',
-            campaign: campaign.title,
-            brand: brandProfile?.business_name || 'A brand',
-            amount: variables.sponsorshipAmount,
-            message: variables.proposalMessage
-          });
-          
-          const emailResult = await sendNotification(
-            'sponsorship_proposal',
-            restaurantUser.email,
-            restaurantUser.full_name || restaurantProfile?.business_name || 'Restaurant Owner',
-            {
-              campaignTitle: campaign.title,
-              brandName: brandProfile?.business_name || 'A brand',
-              sponsorshipAmount: variables.sponsorshipAmount,
-              message: variables.proposalMessage,
-            }
-          );
-          
-          console.log('📧 Email notification result:', emailResult);
-        } else {
-          console.warn('⚠️ Email notification skipped - missing required data:', {
-            hasEmail: !!restaurantUser?.email,
-            email: restaurantUser?.email,
-            hasCampaign: !!campaign,
-            campaignTitle: campaign?.title,
-            restaurantUserId: restaurantProfile?.user_id
-          });
-        }
+        // Always attempt to send the email; server will resolve recipient if email is missing
+        const recipientEmail = restaurantUser?.email || undefined;
+        const recipientName = restaurantUser?.full_name || restaurantProfile?.business_name || 'Restaurant Owner';
+        
+        const emailResult = await sendNotification(
+          'sponsorship_proposal',
+          recipientEmail,
+          recipientName,
+          {
+            campaignTitle: campaign.title,
+            brandName: brandProfile?.business_name || 'A brand',
+            sponsorshipAmount: variables.sponsorshipAmount,
+            message: variables.proposalMessage,
+            recipientUserId: restaurantProfile?.user_id,
+          }
+        );
+        
+        console.log('📧 Email notification result:', emailResult);
+
       } catch (error) {
         console.error('❌ Failed to send email notification:', error);
         console.error('❌ Error details:', {

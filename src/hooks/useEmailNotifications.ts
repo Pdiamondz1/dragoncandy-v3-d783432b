@@ -14,6 +14,7 @@ type NotificationType =
 interface NotificationData {
   campaignTitle?: string;
   campaignId?: string;
+  recipientUserId?: string;
   applicantName?: string;
   applicationStatus?: string;
   senderName?: string;
@@ -29,8 +30,8 @@ interface NotificationData {
 export const useEmailNotifications = () => {
   const sendNotification = async (
     type: NotificationType,
-    recipientEmail: string,
-    recipientName: string,
+    recipientEmail: string | undefined,
+    recipientName: string | undefined,
     data: NotificationData
   ) => {
     try {
