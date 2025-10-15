@@ -12,6 +12,8 @@ interface BrandCampaignCardProps {
   campaign: SponsorshipCampaign;
   onSponsor: (campaignId: string, existingProposal?: any) => void;
   onViewDetails: (campaignId: string) => void;
+  submittingCampaignId?: string;
+  submittedCampaignId?: string;
 }
 
 const BrandCampaignCard: React.FC<BrandCampaignCardProps> = ({

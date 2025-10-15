@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useSponsorshipCampaigns } from '@/hooks/useSponsorshipCampaigns';
 import { useBrandCampaignFilters } from '@/hooks/useBrandCampaignFilters';
-import { useBrandSponsorshipStatus } from '@/hooks/useBrandSponsorshipStatus';
 import DashboardLayout from '@/components/DashboardLayout';
 import BrandCampaignCard from '@/components/campaigns/BrandCampaignCard';
 import BrandCampaignFilters from '@/components/campaigns/BrandCampaignFilters';
@@ -22,12 +21,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
+import { useSubmitSponsorshipProposal } from '@/hooks/useSubmitSponsorshipProposal';
 
 const BrandDiscoverCampaigns = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const submitProposal = useSubmitSponsorshipProposal();
   const { data: campaigns = [], isLoading, error } = useSponsorshipCampaigns(user?.id);
   const { filters, filteredCampaigns, updateFilter, resetFilters } = useBrandCampaignFilters(campaigns);
   
@@ -73,43 +73,12 @@ const BrandDiscoverCampaigns = () => {
     setIsSubmitting(true);
 
     try {
-      // Get brand profile
-      const { data: brandProfile, error: profileError } = await supabase
-        .from('business_profiles')
-        .select('id')
-        .eq('user_id', user.id)
-        .single();
-
-      if (profileError) throw profileError;
-
-      // Get restaurant profile
-      const { data: restaurantProfile, error: restaurantError } = await supabase
-        .from('business_profiles')
-        .select('id')
-        .eq('user_id', selectedCampaign.user_id)
-        .single();
-
-      if (restaurantError) throw restaurantError;
-
-      // Create sponsorship proposal
-      const { error: sponsorshipError } = await supabase
-        .from('campaign_sponsorships')
-        .insert({
-          campaign_id: selectedCampaign.id,
-          brand_id: brandProfile.id,
-          restaurant_id: restaurantProfile.id,
-          sponsorship_amount: parseFloat(sponsorshipAmount),
-          proposal_message: proposalMessage,
-          status: 'pending',
-        });
-
-      if (sponsorshipError) {
-        // Check for duplicate key error
-        if (sponsorshipError.code === '23505' || sponsorshipError.message?.includes('duplicate')) {
-          throw new Error('DUPLICATE_PROPOSAL');
-        }
-        throw sponsorshipError;
-      }
+      await submitProposal.mutateAsync({
+        campaignId: selectedCampaign.id,
+        restaurantUserId: selectedCampaign.user_id,
+        sponsorshipAmount: parseFloat(sponsorshipAmount),
+        proposalMessage: proposalMessage,
+      });
 
       toast({
         title: 'Sponsorship Proposal Sent',
@@ -121,9 +90,8 @@ const BrandDiscoverCampaigns = () => {
       setProposalMessage('');
       setSelectedCampaign(null);
     } catch (err: any) {
-      console.error('Error submitting sponsorship:', err);
-      
-      if (err.message === 'DUPLICATE_PROPOSAL') {
+      console.error('Error submitting sponsorship via hook:', err);
+      if (err?.message === 'DUPLICATE_PROPOSAL') {
         toast({
           title: 'Proposal Already Exists',
           description: 'You have already submitted a proposal for this campaign. Check your sponsorships page to view it.',
@@ -132,7 +100,7 @@ const BrandDiscoverCampaigns = () => {
       } else {
         toast({
           title: 'Error',
-          description: 'Failed to submit sponsorship proposal. Please try again.',
+          description: err?.message || 'Failed to submit sponsorship proposal. Please try again.',
           variant: 'destructive',
         });
       }
@@ -199,6 +167,7 @@ const BrandDiscoverCampaigns = () => {
                       campaign={campaign}
                       onSponsor={handleSponsor}
                       onViewDetails={handleViewDetails}
+                      submittingCampaignId={isSubmitting ? selectedCampaign?.id : undefined}
                     />
                   ))}
                 </div>
