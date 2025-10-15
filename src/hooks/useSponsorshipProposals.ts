@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
+import { useEmailNotifications } from '@/hooks/useEmailNotifications';
 
 export interface SponsorshipProposal {
   id: string;
@@ -24,12 +25,14 @@ export interface SponsorshipProposal {
   brand_profile?: {
     business_name: string;
     logo_url: string;
+    user_id: string;
   };
 }
 
 export const useSponsorshipProposals = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const { sendNotification } = useEmailNotifications();
 
   const { data: proposals, isLoading } = useQuery({
     queryKey: ['sponsorship-proposals', user?.id],
@@ -56,7 +59,8 @@ export const useSponsorshipProposals = () => {
           ),
           brand_profile:business_profiles!brand_id (
             business_name,
-            logo_url
+            logo_url,
+            user_id
           )
         `)
         .eq('restaurant_id', profile.id)
@@ -83,8 +87,33 @@ export const useSponsorshipProposals = () => {
 
       if (error) throw error;
     },
-    onSuccess: (_, { status }) => {
+    onSuccess: async (_, { proposalId, status }) => {
+      console.log('🎯 Sponsorship status updated:', { proposalId, status });
+      
       queryClient.invalidateQueries({ queryKey: ['sponsorship-proposals'] });
+      
+      // Get the proposal data to send notification
+      const proposal = proposals?.find(p => p.id === proposalId);
+      
+      if (proposal?.brand_profile?.user_id && proposal?.campaigns) {
+        console.log('📧 Sending sponsorship status email to brand:', proposal.brand_profile.user_id);
+        
+        const result = await sendNotification(
+          'sponsorship_status',
+          undefined, // Let edge function resolve email
+          undefined, // Let edge function resolve name
+          {
+            recipientUserId: proposal.brand_profile.user_id,
+            campaignTitle: proposal.campaigns.title,
+            proposalStatus: status,
+          }
+        );
+        
+        console.log('✅ Email notification result:', result);
+      } else {
+        console.warn('⚠️ Missing brand user_id or campaign data, email not sent');
+      }
+      
       toast({
         title: status === 'accepted' ? 'Proposal accepted' : 'Proposal rejected',
         description: status === 'accepted' 
