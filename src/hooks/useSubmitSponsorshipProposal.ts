@@ -27,10 +27,12 @@ export const useSubmitSponsorshipProposal = () => {
         .select('id')
         .eq('user_id', user.id)
         .eq('account_type', 'brand')
-        .single();
+        .maybeSingle();
 
-      if (brandError || !brandProfile) {
-        throw new Error('Brand profile not found');
+      if (brandError) throw brandError;
+      
+      if (!brandProfile) {
+        throw new Error('Please complete your brand profile setup before submitting sponsorship proposals.');
       }
 
       // Get restaurant profile ID
@@ -39,10 +41,12 @@ export const useSubmitSponsorshipProposal = () => {
         .select('id')
         .eq('user_id', params.restaurantUserId)
         .eq('account_type', 'restaurant')
-        .single();
+        .maybeSingle();
 
-      if (restaurantError || !restaurantProfile) {
-        throw new Error('Restaurant profile not found');
+      if (restaurantError) throw restaurantError;
+      
+      if (!restaurantProfile) {
+        throw new Error('Restaurant profile not found. Please try again later.');
       }
 
       // Insert sponsorship proposal
@@ -81,13 +85,14 @@ export const useSubmitSponsorshipProposal = () => {
           .from('business_profiles')
           .select('business_name, user_id')
           .eq('user_id', campaign?.user_id)
-          .single();
+          .eq('account_type', 'restaurant')
+          .maybeSingle();
 
         const { data: restaurantUser } = await supabase
           .from('profiles')
           .select('email, full_name')
           .eq('id', restaurantProfile?.user_id)
-          .single();
+          .maybeSingle();
 
         // Get brand name
         const { data: brandProfile } = await supabase
@@ -95,7 +100,7 @@ export const useSubmitSponsorshipProposal = () => {
           .select('business_name')
           .eq('user_id', user?.id)
           .eq('account_type', 'brand')
-          .single();
+          .maybeSingle();
 
         if (restaurantUser?.email && campaign) {
           await sendNotification(

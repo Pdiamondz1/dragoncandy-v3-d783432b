@@ -61,7 +61,7 @@ const RestaurantCampaignDetails = () => {
           .from('profiles')
           .select('email, full_name')
           .eq('id', (data.brand_id as any)?.user_id)
-          .single();
+          .maybeSingle();
 
         if (brandUser?.email && campaign) {
           await sendNotification(
@@ -122,7 +122,7 @@ const RestaurantCampaignDetails = () => {
           .from('profiles')
           .select('email, full_name')
           .eq('id', (data.brand_id as any)?.user_id)
-          .single();
+          .maybeSingle();
 
         if (brandUser?.email && campaign) {
           await sendNotification(

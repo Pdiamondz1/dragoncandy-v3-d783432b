@@ -38,6 +38,8 @@ export const useBusinessProfileSubmit = () => {
         logoUrl = await uploadFile(logoFile, 'logos', userId);
       }
 
+      const accountType = isBrand ? 'brand' : 'restaurant';
+
       // Base profile data
       const profileData: any = {
         business_name: formData.business_name,
@@ -60,31 +62,49 @@ export const useBusinessProfileSubmit = () => {
         preferred_collaboration_style: formData.preferred_collaboration_style,
         timezone: formData.timezone,
         profile_visibility: formData.profile_visibility,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
+        is_completed: true
       };
 
       // Add brand-specific fields if this is a brand profile
       if (isBrand) {
-        profileData.account_type = 'brand';
         profileData.brand_category = formData.brandCategory || null;
         profileData.marketing_objectives = formData.marketingObjectives || null;
-        profileData.is_completed = true;
-        // Don't include company_size, employee_count_range, or sponsorship_budget for brands
-      } else {
-        profileData.account_type = 'restaurant';
-        profileData.is_completed = true;
       }
 
-      // Update profile data
-      const { error } = await supabase
+      // Check if profile exists for this account type
+      const { data: existing, error: lookupError } = await supabase
         .from('business_profiles')
-        .update(profileData)
-        .eq('user_id', userId);
+        .select('id')
+        .eq('user_id', userId)
+        .eq('account_type', accountType)
+        .maybeSingle();
 
-      if (error) throw error;
+      if (lookupError) throw lookupError;
+
+      if (existing) {
+        // Update existing profile
+        const { error: updateError } = await supabase
+          .from('business_profiles')
+          .update(profileData)
+          .eq('id', existing.id);
+
+        if (updateError) throw updateError;
+      } else {
+        // Insert new profile
+        const { error: insertError } = await supabase
+          .from('business_profiles')
+          .insert({
+            ...profileData,
+            user_id: userId,
+            account_type: accountType
+          });
+
+        if (insertError) throw insertError;
+      }
 
       toast({
-        title: "Profile updated successfully!",
+        title: "Profile saved successfully!",
         description: isBrand ? "Your brand profile has been created." : "Your business profile has been updated."
       });
 

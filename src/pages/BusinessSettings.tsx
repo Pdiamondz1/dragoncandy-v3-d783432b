@@ -34,7 +34,7 @@ const BusinessSettings = () => {
           .from('business_profiles')
           .select('*')
           .eq('user_id', user.id)
-          .single();
+          .maybeSingle();
 
         if (businessProfile) {
           setFormDataFromProfile(businessProfile);
