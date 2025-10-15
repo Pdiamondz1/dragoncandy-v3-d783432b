@@ -69,6 +69,15 @@ export const useSubmitSponsorshipProposal = () => {
       return data;
     },
     onSuccess: async (data, variables) => {
+      // Optimistic cache update for instant UI feedback
+      if (user?.id) {
+        queryClient.setQueryData([
+          'brand-sponsorship-status',
+          variables.campaignId,
+          user.id,
+        ], data);
+      }
+
       // Invalidate all sponsorship status queries so cards update in real-time
       queryClient.invalidateQueries({ queryKey: ['brand-sponsorship-status'] });
       // Also refresh the campaigns list with updated sponsorship counts
