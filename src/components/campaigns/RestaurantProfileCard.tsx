@@ -113,7 +113,7 @@ export const RestaurantProfileCard = ({ restaurant, isLoading }: RestaurantProfi
           )}
           {restaurant.profile_slug && (
             <Button variant="outline" size="sm" asChild>
-              <a href={`/profile/business/${restaurant.profile_slug}`} target="_blank" rel="noopener noreferrer">
+              <a href={`/business/${restaurant.profile_slug}`} target="_blank" rel="noopener noreferrer">
                 View Full Profile
                 <ExternalLink className="h-3 w-3 ml-2" />
               </a>

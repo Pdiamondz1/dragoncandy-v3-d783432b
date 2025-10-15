@@ -69,7 +69,10 @@ export const useSubmitSponsorshipProposal = () => {
       return data;
     },
     onSuccess: async (data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['brand-sponsorship-status', variables.campaignId] });
+      // Invalidate all sponsorship status queries so cards update in real-time
+      queryClient.invalidateQueries({ queryKey: ['brand-sponsorship-status'] });
+      // Also refresh the campaigns list with updated sponsorship counts
+      queryClient.invalidateQueries({ queryKey: ['sponsorship-campaigns'] });
       
       // Send email notification to restaurant owner
       try {
@@ -103,6 +106,13 @@ export const useSubmitSponsorshipProposal = () => {
           .maybeSingle();
 
         if (restaurantUser?.email && campaign) {
+          console.log('📧 Sending sponsorship proposal notification:', {
+            to: restaurantUser.email,
+            campaign: campaign.title,
+            brand: brandProfile?.business_name,
+            amount: variables.sponsorshipAmount
+          });
+          
           await sendNotification(
             'sponsorship_proposal',
             restaurantUser.email,
@@ -114,9 +124,14 @@ export const useSubmitSponsorshipProposal = () => {
               message: variables.proposalMessage,
             }
           );
+        } else {
+          console.warn('⚠️ Email notification skipped - missing data:', {
+            hasEmail: !!restaurantUser?.email,
+            hasCampaign: !!campaign,
+          });
         }
       } catch (error) {
-        console.error('Failed to send email notification:', error);
+        console.error('❌ Failed to send email notification:', error);
         // Don't block the success flow if email fails
       }
 
