@@ -255,7 +255,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     const { data: emailData, error } = await resend.emails.send({
       from: "DragonCandy <alerts@notify.dragoncandy.io>",
-      to: [to],
+      to: resolvedTo,
       subject: template.subject,
       html: emailHtml,
     });
