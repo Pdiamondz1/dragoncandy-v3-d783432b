@@ -17,6 +17,7 @@ interface AuthFormProps {
 export const AuthForm = ({ mode, onError }: AuthFormProps) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [fullName, setFullName] = useState("");
   const [role, setRole] = useState<Role>("business_client");
   const [loading, setLoading] = useState(false);
 
@@ -44,7 +45,8 @@ export const AuthForm = ({ mode, onError }: AuthFormProps) => {
             emailRedirectTo: `${window.location.origin}/`,
             data: {
               role: role,
-              email: email
+              email: email,
+              full_name: fullName || email.split('@')[0]
             }
           }
         });
@@ -60,7 +62,7 @@ export const AuthForm = ({ mode, onError }: AuthFormProps) => {
 
         // Send verification email
         if (data.user) {
-          const userName = email.split('@')[0];
+          const userName = fullName || email.split('@')[0];
           
           try {
             const { error: emailError } = await supabase.functions.invoke('send-verification-email', {
@@ -146,36 +148,53 @@ export const AuthForm = ({ mode, onError }: AuthFormProps) => {
   return (
     <form className="space-y-5" onSubmit={handleSubmit}>
       {mode === "signup" && (
-        <div>
-          <Label htmlFor="role" className="mb-1 block text-pink-700 font-semibold">
-            Select your role
-          </Label>
-          <RadioGroup
-            id="role"
-            value={role}
-            onValueChange={setRole as any}
-            className="flex flex-col gap-3 mb-2"
-          >
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="business_client" id="business_client" />
-              <Label htmlFor="business_client" className="text-base cursor-pointer">
-                Restaurant / Business Client
-              </Label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="brand" id="brand" />
-              <Label htmlFor="brand" className="text-base cursor-pointer">
-                Brand / Sponsor
-              </Label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="content_creator" id="content_creator" />
-              <Label htmlFor="content_creator" className="text-base cursor-pointer">
-                Content Creator
-              </Label>
-            </div>
-          </RadioGroup>
-        </div>
+        <>
+          <div>
+            <Label htmlFor="fullName" className="mb-1 block text-pink-700">Full Name</Label>
+            <Input
+              id="fullName"
+              type="text"
+              value={fullName}
+              autoComplete="name"
+              required
+              onChange={e => setFullName(e.target.value)}
+              placeholder="John Doe"
+              disabled={loading}
+              className="bg-pink-50 border-pink-200 focus-visible:ring-pink-300/70 text-base"
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="role" className="mb-1 block text-pink-700 font-semibold">
+              Select your role
+            </Label>
+            <RadioGroup
+              id="role"
+              value={role}
+              onValueChange={setRole as any}
+              className="flex flex-col gap-3 mb-2"
+            >
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="business_client" id="business_client" />
+                <Label htmlFor="business_client" className="text-base cursor-pointer">
+                  Restaurant / Business Client
+                </Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="brand" id="brand" />
+                <Label htmlFor="brand" className="text-base cursor-pointer">
+                  Brand / Sponsor
+                </Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="content_creator" id="content_creator" />
+                <Label htmlFor="content_creator" className="text-base cursor-pointer">
+                  Content Creator
+                </Label>
+              </div>
+            </RadioGroup>
+          </div>
+        </>
       )}
 
       <div>
