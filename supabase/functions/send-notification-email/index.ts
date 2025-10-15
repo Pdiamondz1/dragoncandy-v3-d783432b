@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "npm:resend@2.0.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -19,12 +20,13 @@ type NotificationType =
   | 'sponsorship_status';
 
 interface NotificationEmailRequest {
-  to: string;
-  recipientName: string;
+  to?: string;
+  recipientName?: string;
   type: NotificationType;
   data: {
     campaignTitle?: string;
     campaignId?: string;
+    recipientUserId?: string; // optional user id to resolve recipient email server-side
     applicantName?: string;
     applicationStatus?: string;
     senderName?: string;
@@ -47,16 +49,49 @@ const handler = async (req: Request): Promise<Response> => {
   try {
     const { to, recipientName, type, data }: NotificationEmailRequest = await req.json();
 
-    console.log('Sending notification email:', type, 'to:', to);
+    console.log('Incoming notification request:', { type, to, recipientUserId: data?.recipientUserId });
 
     const baseUrl = Deno.env.get('SUPABASE_URL')?.replace('https://', '') || '';
 
-    // Generate email content based on notification type
+    // Resolve recipient if email not provided
+    let resolvedTo = to;
+    let resolvedRecipientName = recipientName || 'User';
+
+    if (!resolvedTo && data?.recipientUserId) {
+      console.log('Resolving recipient email via service role for user:', data.recipientUserId);
+      const supabaseUrl = Deno.env.get('SUPABASE_URL') as string;
+      const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') as string;
+      const supabase = createClient(supabaseUrl, serviceRoleKey);
+
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('email, full_name')
+        .eq('id', data.recipientUserId)
+        .single();
+
+      if (profileError) {
+        console.error('Failed to resolve recipient profile:', profileError);
+      } else if (profile?.email) {
+        resolvedTo = profile.email;
+        resolvedRecipientName = profile.full_name || resolvedRecipientName;
+      }
+    }
+
+    if (!resolvedTo) {
+      console.warn('No recipient email could be resolved. Aborting send.');
+      return new Response(JSON.stringify({ success: false, error: 'Missing recipient email' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
+      });
+    }
+
+    console.log('Sending notification email:', type, 'to:', resolvedTo);
+    const rn = resolvedRecipientName;
     const templates: Record<NotificationType, { subject: string; html: string }> = {
       new_application: {
         subject: `New Application for "${data.campaignTitle}"`,
         html: `
-          <p>Hi ${recipientName},</p>
+          <p>Hi ${rn},</p>
           <p>Great news! <strong>${data.applicantName}</strong> has applied to your campaign <strong>"${data.campaignTitle}"</strong>.</p>
           <p>Review their application and portfolio to see if they're a good fit for your project.</p>
           <p style="margin-top: 30px;">
