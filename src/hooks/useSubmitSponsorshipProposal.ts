@@ -69,8 +69,11 @@ export const useSubmitSponsorshipProposal = () => {
       return data;
     },
     onSuccess: async (data, variables) => {
+      console.log('✅ Sponsorship proposal submitted successfully:', data);
+      
       // Optimistic cache update for instant UI feedback
       if (user?.id) {
+        console.log('🔄 Setting optimistic cache data for campaign:', variables.campaignId);
         queryClient.setQueryData([
           'brand-sponsorship-status',
           variables.campaignId,
@@ -78,51 +81,88 @@ export const useSubmitSponsorshipProposal = () => {
         ], data);
       }
 
-      // Invalidate all sponsorship status queries so cards update in real-time
-      queryClient.invalidateQueries({ queryKey: ['brand-sponsorship-status'] });
-      // Also refresh the campaigns list with updated sponsorship counts
-      queryClient.invalidateQueries({ queryKey: ['sponsorship-campaigns'] });
+      // Invalidate and refetch all sponsorship status queries
+      console.log('🔄 Invalidating and refetching sponsorship queries...');
+      await queryClient.invalidateQueries({ 
+        queryKey: ['brand-sponsorship-status'],
+        refetchType: 'active' // Force active queries to refetch immediately
+      });
+      
+      // Refetch campaigns list
+      await queryClient.refetchQueries({ 
+        queryKey: ['sponsorship-campaigns']
+      });
       
       // Send email notification to restaurant owner
+      console.log('📧 Starting email notification process...');
       try {
+        console.log('📧 Fetching campaign details for campaign ID:', variables.campaignId);
+        
         // Get campaign details
-        const { data: campaign } = await supabase
+        const { data: campaign, error: campaignError } = await supabase
           .from('campaigns')
           .select('title, user_id')
           .eq('id', variables.campaignId)
           .single();
 
+        if (campaignError) {
+          console.error('❌ Error fetching campaign:', campaignError);
+          throw campaignError;
+        }
+        console.log('✅ Campaign fetched:', campaign);
+
         // Get restaurant owner's profile
-        const { data: restaurantProfile } = await supabase
+        console.log('📧 Fetching restaurant profile for user:', campaign?.user_id);
+        const { data: restaurantProfile, error: restaurantProfileError } = await supabase
           .from('business_profiles')
           .select('business_name, user_id')
           .eq('user_id', campaign?.user_id)
           .eq('account_type', 'restaurant')
           .maybeSingle();
 
-        const { data: restaurantUser } = await supabase
+        if (restaurantProfileError) {
+          console.error('❌ Error fetching restaurant profile:', restaurantProfileError);
+        }
+        console.log('✅ Restaurant profile fetched:', restaurantProfile);
+
+        console.log('📧 Fetching restaurant user email...');
+        const { data: restaurantUser, error: restaurantUserError } = await supabase
           .from('profiles')
           .select('email, full_name')
           .eq('id', restaurantProfile?.user_id)
           .maybeSingle();
 
+        if (restaurantUserError) {
+          console.error('❌ Error fetching restaurant user:', restaurantUserError);
+        }
+        console.log('✅ Restaurant user fetched:', restaurantUser);
+
         // Get brand name
-        const { data: brandProfile } = await supabase
+        console.log('📧 Fetching brand profile for user:', user?.id);
+        const { data: brandProfile, error: brandProfileError } = await supabase
           .from('business_profiles')
           .select('business_name')
           .eq('user_id', user?.id)
           .eq('account_type', 'brand')
           .maybeSingle();
 
+        if (brandProfileError) {
+          console.error('❌ Error fetching brand profile:', brandProfileError);
+        }
+        console.log('✅ Brand profile fetched:', brandProfile);
+
         if (restaurantUser?.email && campaign) {
-          console.log('📧 Sending sponsorship proposal notification:', {
+          console.log('📧 All data ready, sending notification email...');
+          console.log('📧 Email details:', {
             to: restaurantUser.email,
+            recipientName: restaurantUser.full_name || restaurantProfile?.business_name || 'Restaurant Owner',
             campaign: campaign.title,
-            brand: brandProfile?.business_name,
-            amount: variables.sponsorshipAmount
+            brand: brandProfile?.business_name || 'A brand',
+            amount: variables.sponsorshipAmount,
+            message: variables.proposalMessage
           });
           
-          await sendNotification(
+          const emailResult = await sendNotification(
             'sponsorship_proposal',
             restaurantUser.email,
             restaurantUser.full_name || restaurantProfile?.business_name || 'Restaurant Owner',
@@ -133,14 +173,24 @@ export const useSubmitSponsorshipProposal = () => {
               message: variables.proposalMessage,
             }
           );
+          
+          console.log('📧 Email notification result:', emailResult);
         } else {
-          console.warn('⚠️ Email notification skipped - missing data:', {
+          console.warn('⚠️ Email notification skipped - missing required data:', {
             hasEmail: !!restaurantUser?.email,
+            email: restaurantUser?.email,
             hasCampaign: !!campaign,
+            campaignTitle: campaign?.title,
+            restaurantUserId: restaurantProfile?.user_id
           });
         }
       } catch (error) {
         console.error('❌ Failed to send email notification:', error);
+        console.error('❌ Error details:', {
+          name: error?.name,
+          message: error?.message,
+          stack: error?.stack
+        });
         // Don't block the success flow if email fails
       }
 
