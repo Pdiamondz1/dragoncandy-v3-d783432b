@@ -74,7 +74,7 @@ const handler = async (req: Request): Promise<Response> => {
         console.error('Failed to resolve recipient profile:', profileError);
       } else if (profile?.email) {
         resolvedTo = profile.email;
-        resolvedRecipientName = profile.full_name || resolvedRecipientName;
+        resolvedRecipientName = profile.full_name || profile.email?.split('@')[0] || 'User';
       }
     }
 
