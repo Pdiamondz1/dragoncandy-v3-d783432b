@@ -27,7 +27,7 @@ export const useBrandDashboardStats = () => {
         .select('id, sponsorship_budget')
         .eq('user_id', user.id)
         .eq('account_type', 'brand')
-        .single();
+        .maybeSingle();
 
       if (profileError) throw profileError;
       if (!brandProfile) throw new Error('Brand profile not found');

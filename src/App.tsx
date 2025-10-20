@@ -10,6 +10,8 @@ import { PerformanceMonitor } from "@/components/analytics/PerformanceMonitor";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import VerifiedRoute from "@/components/VerifiedRoute";
+import { BusinessRoute } from "@/components/BusinessRoute";
+import { BrandRoute } from "@/components/BrandRoute";
 import Index from "./pages/Index";
 import LandingPage from "./pages/LandingPage";
 import NotFound from "./pages/NotFound";
@@ -130,12 +132,16 @@ const App = () => {
                   {/* Protected Dashboard Routes */}
                   <Route path="/dashboard/business" element={
                     <ProtectedRoute>
-                      <BusinessDashboard />
+                      <BusinessRoute>
+                        <BusinessDashboard />
+                      </BusinessRoute>
                     </ProtectedRoute>
                   } />
                   <Route path="/dashboard/brand" element={
                     <ProtectedRoute>
-                      <BrandDashboard />
+                      <BrandRoute>
+                        <BrandDashboard />
+                      </BrandRoute>
                     </ProtectedRoute>
                   } />
                   <Route path="/dashboard/creator" element={
@@ -145,7 +151,9 @@ const App = () => {
                   } />
                   <Route path="/dashboard/business/settings" element={
                     <ProtectedRoute>
-                      <BusinessSettings />
+                      <BusinessRoute>
+                        <BusinessSettings />
+                      </BusinessRoute>
                     </ProtectedRoute>
                   } />
                   <Route path="/dashboard/creator/settings" element={
@@ -157,22 +165,30 @@ const App = () => {
                   {/* Campaign Routes */}
                   <Route path="/dashboard/business/campaigns" element={
                     <ProtectedRoute>
-                      <CampaignsPage />
+                      <BusinessRoute>
+                        <CampaignsPage />
+                      </BusinessRoute>
                     </ProtectedRoute>
                   } />
                   <Route path="/dashboard/business/campaigns/create" element={
                     <ProtectedRoute>
-                      <CampaignWizard />
+                      <BusinessRoute>
+                        <CampaignWizard />
+                      </BusinessRoute>
                     </ProtectedRoute>
                   } />
                   <Route path="/dashboard/business/campaigns/:id" element={
                     <ProtectedRoute>
-                      <CampaignDetailsPage />
+                      <BusinessRoute>
+                        <CampaignDetailsPage />
+                      </BusinessRoute>
                     </ProtectedRoute>
                   } />
                   <Route path="/dashboard/business/campaigns/:id/edit" element={
                     <ProtectedRoute>
-                      <CampaignEditPage />
+                      <BusinessRoute>
+                        <CampaignEditPage />
+                      </BusinessRoute>
                     </ProtectedRoute>
                   } />
                   <Route path="/dashboard/creator/campaigns/:id" element={
@@ -184,104 +200,140 @@ const App = () => {
                   {/* Business Project and Proposals Routes */}
                   <Route path="/dashboard/business/projects" element={
                     <ProtectedRoute>
-                      <BusinessProjects />
+                      <BusinessRoute>
+                        <BusinessProjects />
+                      </BusinessRoute>
                     </ProtectedRoute>
                   } />
                   <Route path="/dashboard/business/campaigns/:campaignId/proposals" element={
                     <ProtectedRoute>
-                      <BusinessProposals />
+                      <BusinessRoute>
+                        <BusinessProposals />
+                      </BusinessRoute>
                     </ProtectedRoute>
                   } />
                   
                   {/* Restaurant Campaign Details (different from creator campaign details) */}
                   <Route path="/dashboard/business/campaigns/:id/details" element={
                     <ProtectedRoute>
-                      <CampaignDetailsPage />
+                      <BusinessRoute>
+                        <CampaignDetailsPage />
+                      </BusinessRoute>
                     </ProtectedRoute>
                   } />
 
                   {/* Business Creator Browse Route */}
                   <Route path="/dashboard/business/creators" element={
                     <ProtectedRoute>
-                      <CreatorBrowse />
+                      <BusinessRoute>
+                        <CreatorBrowse />
+                      </BusinessRoute>
                     </ProtectedRoute>
                   } />
 
                   {/* Business Dragon Feed Route */}
                   <Route path="/dashboard/business/dragon-feed" element={
                     <ProtectedRoute>
-                      <BusinessDragonFeed />
+                      <BusinessRoute>
+                        <BusinessDragonFeed />
+                      </BusinessRoute>
                     </ProtectedRoute>
                   } />
 
                   {/* Business Sponsorship Route */}
                   <Route path="/dashboard/business/sponsorships" element={
                     <ProtectedRoute>
-                      <BusinessSponsorships />
+                      <BusinessRoute>
+                        <BusinessSponsorships />
+                      </BusinessRoute>
                     </ProtectedRoute>
                   } />
 
                   {/* Brand Routes */}
                   <Route path="/dashboard/brand/discover-campaigns" element={
                     <ProtectedRoute>
-                      <BrandDiscoverCampaigns />
+                      <BrandRoute>
+                        <BrandDiscoverCampaigns />
+                      </BrandRoute>
                     </ProtectedRoute>
                   } />
                   <Route path="/dashboard/brand/sponsorships" element={
                     <ProtectedRoute>
-                      <BrandSponsorships />
+                      <BrandRoute>
+                        <BrandSponsorships />
+                      </BrandRoute>
                     </ProtectedRoute>
                   } />
                   <Route path="/dashboard/brand/creators" element={
                     <ProtectedRoute>
-                      <BrandCreators />
+                      <BrandRoute>
+                        <BrandCreators />
+                      </BrandRoute>
                     </ProtectedRoute>
                   } />
                   <Route path="/dashboard/brand/analytics" element={
                     <ProtectedRoute>
-                      <BrandAnalytics />
+                      <BrandRoute>
+                        <BrandAnalytics />
+                      </BrandRoute>
                     </ProtectedRoute>
                   } />
                   <Route path="/dashboard/brand/messages" element={
                     <ProtectedRoute>
-                      <BrandMessages />
+                      <BrandRoute>
+                        <BrandMessages />
+                      </BrandRoute>
                     </ProtectedRoute>
                   } />
                   <Route path="/dashboard/brand/messages/direct/:conversationId" element={
                     <ProtectedRoute>
-                      <DirectConversationPage />
+                      <BrandRoute>
+                        <DirectConversationPage />
+                      </BrandRoute>
                     </ProtectedRoute>
                   } />
                   <Route path="/dashboard/brand/messages/campaign/:campaignId" element={
                     <ProtectedRoute>
-                      <CampaignMessagesPage />
+                      <BrandRoute>
+                        <CampaignMessagesPage />
+                      </BrandRoute>
                     </ProtectedRoute>
                   } />
                   <Route path="/dashboard/brand/settings" element={
                     <ProtectedRoute>
-                      <BrandSettings />
+                      <BrandRoute>
+                        <BrandSettings />
+                      </BrandRoute>
                     </ProtectedRoute>
                   } />
                   <Route path="/dashboard/brand/campaigns/:id" element={
                     <ProtectedRoute>
-                      <BrandCampaignDetails />
+                      <BrandRoute>
+                        <BrandCampaignDetails />
+                      </BrandRoute>
                     </ProtectedRoute>
                   } />
 
                   {/* Business Messages Route */}
                   <Route path="/dashboard/business/messages" element={
                     <ProtectedRoute>
-                      <DirectMessagesPage />
+                      <BusinessRoute>
+                        <DirectMessagesPage />
+                      </BusinessRoute>
                     </ProtectedRoute>
                   } />
                   <Route path="/dashboard/business/messages/direct/:conversationId" element={
                     <ProtectedRoute>
-                      <DirectConversationPage />
+                      <BusinessRoute>
+                        <DirectConversationPage />
+                      </BusinessRoute>
                     </ProtectedRoute>
                   } />
                   <Route path="/dashboard/business/messages/campaign/:campaignId" element={
                     <ProtectedRoute>
-                      <CampaignMessagesPage />
+                      <BusinessRoute>
+                        <CampaignMessagesPage />
+                      </BusinessRoute>
                     </ProtectedRoute>
                   } />
 

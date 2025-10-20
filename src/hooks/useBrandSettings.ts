@@ -33,7 +33,7 @@ export const useBrandSettings = () => {
         })
         .eq('user_id', user.id)
         .select()
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
       return data;

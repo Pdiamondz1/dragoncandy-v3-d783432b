@@ -25,7 +25,7 @@ export const useBrandAnalytics = () => {
         .select('id')
         .eq('user_id', user.id)
         .eq('account_type', 'brand')
-        .single();
+        .maybeSingle();
 
       if (profileError) throw profileError;
       if (!brandProfile) throw new Error('Brand profile not found');
