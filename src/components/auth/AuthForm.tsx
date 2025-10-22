@@ -1,11 +1,12 @@
 
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { toast } from "@/hooks/use-toast";
+import ReCaptcha, { ReCaptchaHandle } from "./ReCaptcha";
 
 type Role = "business_client" | "content_creator" | "brand";
 
@@ -20,6 +21,7 @@ export const AuthForm = ({ mode, onError }: AuthFormProps) => {
   const [fullName, setFullName] = useState("");
   const [role, setRole] = useState<Role>("business_client");
   const [loading, setLoading] = useState(false);
+  const captchaRef = useRef<ReCaptchaHandle>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,6 +31,35 @@ export const AuthForm = ({ mode, onError }: AuthFormProps) => {
     console.log(`🔐 AuthForm: Starting ${mode} process for:`, email);
 
     try {
+      // Get reCAPTCHA token
+      const captchaToken = captchaRef.current?.getToken();
+      
+      if (!captchaToken) {
+        onError("Please complete the CAPTCHA verification.");
+        setLoading(false);
+        return;
+      }
+
+      console.log('🔒 Verifying reCAPTCHA token...');
+
+      // Verify reCAPTCHA token with backend
+      const { data: verificationData, error: verificationError } = await supabase.functions.invoke(
+        'verify-recaptcha',
+        {
+          body: { token: captchaToken },
+        }
+      );
+
+      if (verificationError || !verificationData?.success) {
+        console.error('❌ reCAPTCHA verification failed:', verificationError || verificationData);
+        onError("CAPTCHA verification failed. Please try again.");
+        captchaRef.current?.reset();
+        setLoading(false);
+        return;
+      }
+
+      console.log('✅ reCAPTCHA verification successful');
+
       if (mode === "signup") {
         if (!role) {
           onError("Please select a role.");
@@ -94,6 +125,8 @@ export const AuthForm = ({ mode, onError }: AuthFormProps) => {
           await supabase.auth.signOut();
         }
 
+        // Reset CAPTCHA after successful signup
+        captchaRef.current?.reset();
         setLoading(false);
       } else {
         // Login mode
@@ -136,11 +169,15 @@ export const AuthForm = ({ mode, onError }: AuthFormProps) => {
           description: "You have been logged in successfully.",
         });
 
+        // Reset CAPTCHA after successful login
+        captchaRef.current?.reset();
+
         // The AuthContext will handle the redirect automatically via useEffect
       }
     } catch (err: any) {
       console.error('❌ AuthForm: Unexpected error:', err);
       onError("Something went wrong. Please try again.");
+      captchaRef.current?.reset();
       setLoading(false);
     }
   };
@@ -226,6 +263,25 @@ export const AuthForm = ({ mode, onError }: AuthFormProps) => {
           className="bg-pink-50 border-pink-200 focus-visible:ring-pink-300/70 text-base"
         />
       </div>
+
+      {/* reCAPTCHA Widget */}
+      <ReCaptcha 
+        ref={captchaRef}
+        onExpired={() => {
+          toast({
+            title: "CAPTCHA expired",
+            description: "Please verify again.",
+            variant: "destructive",
+          });
+        }}
+        onError={() => {
+          toast({
+            title: "CAPTCHA error",
+            description: "There was an error loading the CAPTCHA. Please refresh the page.",
+            variant: "destructive",
+          });
+        }}
+      />
 
       <Button
         type="submit"

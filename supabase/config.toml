@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.verify-email]
 verify_jwt = false
+
+[functions.verify-recaptcha]
+verify_jwt = false
