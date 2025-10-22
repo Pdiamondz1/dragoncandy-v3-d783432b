@@ -15,6 +15,7 @@ serve(async (req) => {
     const { token } = await req.json();
 
     if (!token) {
+      console.error('❌ No reCAPTCHA token provided');
       return new Response(
         JSON.stringify({ success: false, error: 'No reCAPTCHA token provided' }),
         { 
@@ -24,12 +25,18 @@ serve(async (req) => {
       );
     }
 
+    console.log('📝 Token received (length:', token.length, 'chars)');
+
     const recaptchaSecretKey = Deno.env.get('RECAPTCHA_SECRET_KEY');
     
     if (!recaptchaSecretKey) {
-      console.error('RECAPTCHA_SECRET_KEY not configured');
+      console.error('❌ RECAPTCHA_SECRET_KEY not configured');
       return new Response(
-        JSON.stringify({ success: false, error: 'Server configuration error' }),
+        JSON.stringify({ 
+          success: false, 
+          error: 'Server configuration error',
+          errorCodes: ['missing-secret-key']
+        }),
         { 
           status: 500, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -44,7 +51,7 @@ serve(async (req) => {
       response: token,
     });
 
-    console.log('Verifying reCAPTCHA token with Google...');
+    console.log('🔒 Verifying reCAPTCHA token with Google...');
 
     const verificationResponse = await fetch(verificationUrl, {
       method: 'POST',
@@ -55,19 +62,22 @@ serve(async (req) => {
     });
 
     const verificationResult = await verificationResponse.json();
+    const errorCodes = verificationResult['error-codes'] || [];
 
-    console.log('reCAPTCHA verification result:', {
+    console.log('📊 reCAPTCHA verification result:', {
       success: verificationResult.success,
       challenge_ts: verificationResult.challenge_ts,
       hostname: verificationResult.hostname,
-      'error-codes': verificationResult['error-codes'],
+      'error-codes': errorCodes,
     });
 
     if (verificationResult.success) {
+      console.log('✅ reCAPTCHA verified successfully for hostname:', verificationResult.hostname);
       return new Response(
         JSON.stringify({ 
           success: true,
           message: 'reCAPTCHA verification successful',
+          hostname: verificationResult.hostname,
         }),
         { 
           status: 200, 
@@ -75,11 +85,28 @@ serve(async (req) => {
         }
       );
     } else {
+      // Provide specific error messages based on error codes
+      let errorMessage = 'reCAPTCHA verification failed';
+      
+      if (errorCodes.includes('invalid-input-secret')) {
+        console.error('❌ Invalid secret key - secret key mismatch!');
+        errorMessage = 'Server configuration error (invalid secret key)';
+      } else if (errorCodes.includes('timeout-or-duplicate')) {
+        console.error('❌ Token timeout or duplicate submission');
+        errorMessage = 'CAPTCHA expired or already used';
+      } else if (errorCodes.includes('invalid-input-response')) {
+        console.error('❌ Invalid token response - possible domain mismatch or corrupted token');
+        errorMessage = 'Invalid CAPTCHA response';
+      } else if (errorCodes.includes('missing-input-response')) {
+        console.error('❌ Missing token in request');
+        errorMessage = 'CAPTCHA token missing';
+      }
+
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: 'reCAPTCHA verification failed',
-          errorCodes: verificationResult['error-codes'] || [],
+          error: errorMessage,
+          errorCodes: errorCodes,
         }),
         { 
           status: 400, 

@@ -31,34 +31,69 @@ export const AuthForm = ({ mode, onError }: AuthFormProps) => {
     console.log(`🔐 AuthForm: Starting ${mode} process for:`, email);
 
     try {
-      // Get reCAPTCHA token
-      const captchaToken = captchaRef.current?.getToken();
+      // Get reCAPTCHA token with timestamp
+      const tokenData = captchaRef.current?.getTokenWithAge();
       
-      if (!captchaToken) {
+      if (!tokenData || !tokenData.token) {
         onError("Please complete the CAPTCHA verification.");
         setLoading(false);
         return;
       }
 
-      console.log('🔒 Verifying reCAPTCHA token...');
-
-      // Verify reCAPTCHA token with backend
-      const { data: verificationData, error: verificationError } = await supabase.functions.invoke(
-        'verify-recaptcha',
-        {
-          body: { token: captchaToken },
-        }
-      );
-
-      if (verificationError || !verificationData?.success) {
-        console.error('❌ reCAPTCHA verification failed:', verificationError || verificationData);
-        onError("CAPTCHA verification failed. Please try again.");
+      // Check token age (Google tokens expire after 2 minutes)
+      const tokenAgeSeconds = (Date.now() - tokenData.issuedAt) / 1000;
+      const MAX_TOKEN_AGE = 100; // 100 seconds to be safe
+      
+      if (tokenAgeSeconds > MAX_TOKEN_AGE) {
+        console.warn(`⏰ Token too old: ${tokenAgeSeconds.toFixed(1)}s`);
+        onError("CAPTCHA expired. Please verify again.");
+        toast({
+          title: "CAPTCHA Expired",
+          description: "Please complete the CAPTCHA verification again.",
+          variant: "destructive",
+        });
         captchaRef.current?.reset();
         setLoading(false);
         return;
       }
 
-      console.log('✅ reCAPTCHA verification successful');
+      console.log(`🔒 Verifying reCAPTCHA token (age: ${tokenAgeSeconds.toFixed(1)}s)...`);
+
+      // Verify reCAPTCHA token with backend
+      const { data: verificationData, error: verificationError } = await supabase.functions.invoke(
+        'verify-recaptcha',
+        {
+          body: { token: tokenData.token },
+        }
+      );
+
+      if (verificationError || !verificationData?.success) {
+        console.error('❌ reCAPTCHA verification failed:', verificationError || verificationData);
+        
+        // Parse error codes for specific messages
+        const errorCodes = verificationData?.errorCodes || [];
+        let errorMessage = "CAPTCHA verification failed. Please try again.";
+        
+        if (errorCodes.includes('invalid-input-secret')) {
+          errorMessage = "Server configuration error. Please contact support.";
+        } else if (errorCodes.includes('timeout-or-duplicate')) {
+          errorMessage = "CAPTCHA expired or already used. Please verify again.";
+        } else if (errorCodes.includes('invalid-input-response')) {
+          errorMessage = "Invalid CAPTCHA response. Please try again.";
+        }
+        
+        onError(errorMessage);
+        toast({
+          title: "Verification Failed",
+          description: errorMessage,
+          variant: "destructive",
+        });
+        captchaRef.current?.reset();
+        setLoading(false);
+        return;
+      }
+
+      console.log('✅ reCAPTCHA verification successful for:', verificationData.hostname);
 
       if (mode === "signup") {
         if (!role) {

@@ -18,6 +18,7 @@ declare global {
 
 export interface ReCaptchaHandle {
   getToken: () => string;
+  getTokenWithAge: () => { token: string; issuedAt: number } | null;
   reset: () => void;
 }
 
@@ -31,6 +32,7 @@ const ReCaptcha = forwardRef<ReCaptchaHandle, ReCaptchaProps>(
   ({ onVerify, onExpired, onError }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const widgetIdRef = useRef<number | null>(null);
+    const tokenDataRef = useRef<{ token: string; issuedAt: number } | null>(null);
     const siteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
 
     useEffect(() => {
@@ -43,12 +45,18 @@ const ReCaptcha = forwardRef<ReCaptchaHandle, ReCaptchaProps>(
             widgetIdRef.current = window.grecaptcha.render(containerRef.current, {
               sitekey: siteKey,
               callback: (token: string) => {
+                tokenDataRef.current = {
+                  token,
+                  issuedAt: Date.now()
+                };
                 if (onVerify) onVerify(token);
               },
               'expired-callback': () => {
+                tokenDataRef.current = null;
                 if (onExpired) onExpired();
               },
               'error-callback': () => {
+                tokenDataRef.current = null;
                 if (onError) onError();
               },
             });
@@ -70,9 +78,13 @@ const ReCaptcha = forwardRef<ReCaptchaHandle, ReCaptchaProps>(
         }
         return '';
       },
+      getTokenWithAge: () => {
+        return tokenDataRef.current;
+      },
       reset: () => {
         if (window.grecaptcha && widgetIdRef.current !== null) {
           window.grecaptcha.reset(widgetIdRef.current);
+          tokenDataRef.current = null;
         }
       },
     }));
