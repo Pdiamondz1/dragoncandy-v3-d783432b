@@ -98,6 +98,7 @@ export const AuthForm = ({ mode, onError }: AuthFormProps) => {
       if (mode === "signup") {
         if (!role) {
           onError("Please select a role.");
+          captchaRef.current?.reset();
           setLoading(false);
           return;
         }
@@ -120,6 +121,7 @@ export const AuthForm = ({ mode, onError }: AuthFormProps) => {
         if (signupError) {
           console.error('❌ AuthForm: Signup error:', signupError);
           onError(signupError.message);
+          captchaRef.current?.reset();
           setLoading(false);
           return;
         }
@@ -175,6 +177,7 @@ export const AuthForm = ({ mode, onError }: AuthFormProps) => {
         if (loginError) {
           console.error('❌ AuthForm: Login error:', loginError);
           onError(loginError.message);
+          captchaRef.current?.reset();
           setLoading(false);
           return;
         }
@@ -193,6 +196,7 @@ export const AuthForm = ({ mode, onError }: AuthFormProps) => {
             // Sign out if not verified
             await supabase.auth.signOut();
             onError('Please verify your email before logging in. Check your inbox for the verification link.');
+            captchaRef.current?.reset();
             setLoading(false);
             return;
           }
