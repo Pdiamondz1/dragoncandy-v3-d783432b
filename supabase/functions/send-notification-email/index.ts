@@ -96,7 +96,7 @@ const handler = async (req: Request): Promise<Response> => {
           <p>Great news! <strong>${data.applicantName}</strong> has applied to your campaign <strong>"${data.campaignTitle}"</strong>.</p>
           <p>Review their application and portfolio to see if they're a good fit for your project.</p>
           <p style="margin-top: 30px;">
-            <a href="${baseUrl}/campaign/${data.campaignId}" 
+            <a href="${baseUrl}/dashboard/business/campaigns/${data.campaignId}" 
                style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block;">
               Review Application
             </a>
@@ -169,7 +169,7 @@ const handler = async (req: Request): Promise<Response> => {
           <p>There's an update to the campaign <strong>"${data.campaignTitle}"</strong>:</p>
           ${data.updateDetails ? `<div style="background: #F9FAFB; padding: 16px; border-radius: 8px; margin: 20px 0;">${data.updateDetails}</div>` : ''}
           <p style="margin-top: 30px;">
-            <a href="${baseUrl}/campaign/${data.campaignId}" 
+            <a href="${baseUrl}/dashboard/business/campaigns/${data.campaignId}" 
                style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block;">
               View Campaign
             </a>
