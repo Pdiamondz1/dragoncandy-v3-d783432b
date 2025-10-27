@@ -106,11 +106,12 @@ export const useCreatorApplications = () => {
         return [];
       }
 
+      // Fetch applications with campaign data
       const { data, error } = await supabase
         .from('campaign_applications')
         .select(`
           *,
-          campaigns!campaign_id (
+          campaign:campaigns!campaign_id (
             title,
             description,
             budget_min,
@@ -126,8 +127,36 @@ export const useCreatorApplications = () => {
         throw error;
       }
 
-      console.log('✅ useCreatorApplications: Fetched creator applications:', data);
-      return data as CampaignApplication[];
+      if (!data || data.length === 0) {
+        console.log('🎨 useCreatorApplications: No applications found');
+        return [];
+      }
+
+      // Fetch creator's own profile once and add it to all applications
+      const { data: creatorProfile } = await supabase
+        .from('creator_profiles')
+        .select('creator_name, avatar_url, bio, skills')
+        .eq('user_id', user.id)
+        .single();
+
+      // Add creator profile to all applications
+      const enrichedApplications = data.map(app => ({
+        ...app,
+        creator_profile: creatorProfile ? {
+          creator_name: creatorProfile.creator_name || 'Creator',
+          avatar_url: creatorProfile.avatar_url || null,
+          bio: creatorProfile.bio || null,
+          skills: creatorProfile.skills || [],
+        } : {
+          creator_name: 'Creator',
+          avatar_url: null,
+          bio: null,
+          skills: [],
+        }
+      }));
+
+      console.log('✅ useCreatorApplications: Fetched creator applications:', enrichedApplications);
+      return enrichedApplications as CampaignApplication[];
     },
     enabled: !!user,
     refetchOnWindowFocus: true,
