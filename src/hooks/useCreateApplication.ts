@@ -3,10 +3,12 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
+import { useEmailNotifications } from '@/hooks/useEmailNotifications';
 
 export const useCreateApplication = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const { sendNotification } = useEmailNotifications();
 
   return useMutation({
     mutationFn: async ({
@@ -55,13 +57,44 @@ export const useCreateApplication = () => {
       console.log('Created application:', data);
       return data;
     },
-    onSuccess: () => {
+    onSuccess: async (data) => {
       queryClient.invalidateQueries({ queryKey: ['campaign-applications'] });
       queryClient.invalidateQueries({ queryKey: ['creator-applications'] });
       toast({
         title: 'Application submitted successfully!',
         description: 'The business owner will review your application.',
       });
+
+      // Send email notification to campaign owner
+      try {
+        const { data: campaign } = await supabase
+          .from('campaigns')
+          .select('title, user_id, id')
+          .eq('id', data.campaign_id)
+          .single();
+
+        const { data: creatorProfile } = await supabase
+          .from('creator_profiles')
+          .select('creator_name')
+          .eq('user_id', user!.id)
+          .single();
+
+        if (campaign && creatorProfile) {
+          await sendNotification(
+            'new_application',
+            undefined,
+            undefined,
+            {
+              recipientUserId: campaign.user_id,
+              campaignTitle: campaign.title,
+              campaignId: campaign.id,
+              applicantName: creatorProfile.creator_name
+            }
+          );
+        }
+      } catch (error) {
+        console.error('Failed to send notification email:', error);
+      }
     },
     onError: (error) => {
       console.error('Application submission failed:', error);
