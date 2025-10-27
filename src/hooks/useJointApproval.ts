@@ -2,12 +2,14 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
+import { useEmailNotifications } from '@/hooks/useEmailNotifications';
 
 export type ApprovalAction = 'approved' | 'rejected';
 
 export const useJointApproval = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const { sendNotification } = useEmailNotifications();
 
   const updateBrandApproval = useMutation({
     mutationFn: async ({
@@ -57,13 +59,74 @@ export const useJointApproval = () => {
         if (finalError) throw finalError;
       }
     },
-    onSuccess: (_, { action }) => {
+    onSuccess: async (_, { applicationId, action }) => {
       queryClient.invalidateQueries({ queryKey: ['campaign-applications'] });
+      
+      // Send email notifications
+      try {
+        const { data: application } = await supabase
+          .from('campaign_applications')
+          .select(`
+            *,
+            campaign:campaigns!campaign_applications_campaign_id_fkey(title, user_id)
+          `)
+          .eq('id', applicationId)
+          .single();
+        
+        if (!application) return;
+        
+        const finalStatus = application.final_approval_status;
+        
+        // If final decision is made, notify creator
+        if (finalStatus === 'approved' || finalStatus === 'rejected') {
+          const { data: creatorProfile } = await supabase
+            .from('profiles')
+            .select('email, full_name')
+            .eq('id', application.creator_id)
+            .single();
+          
+          if (creatorProfile?.email && application.campaign?.title) {
+            await sendNotification(
+              'application_status',
+              creatorProfile.email,
+              creatorProfile.full_name,
+              {
+                campaignTitle: application.campaign.title,
+                applicationStatus: finalStatus,
+                campaignId: application.campaign_id,
+              }
+            );
+          }
+        } else if (action === 'approved') {
+          // Brand approved, notify restaurant owner
+          const { data: restaurantProfile } = await supabase
+            .from('profiles')
+            .select('email, full_name')
+            .eq('id', application.campaign.user_id)
+            .single();
+          
+          if (restaurantProfile?.email && application.campaign?.title) {
+            await sendNotification(
+              'approval_pending',
+              restaurantProfile.email,
+              restaurantProfile.full_name,
+              {
+                campaignTitle: application.campaign.title,
+                party: 'brand sponsor',
+                campaignId: application.campaign_id,
+              }
+            );
+          }
+        }
+      } catch (emailError) {
+        console.error('Failed to send email notification:', emailError);
+      }
+      
       toast({
         title: action === 'approved' ? 'Application Approved' : 'Application Rejected',
         description: action === 'approved'
           ? 'Waiting for restaurant owner approval to finalize.'
-          : 'The application has been rejected.',
+          : 'The application has been rejected and the creator has been notified.',
       });
     },
     onError: (error) => {
@@ -123,13 +186,89 @@ export const useJointApproval = () => {
         if (finalError) throw finalError;
       }
     },
-    onSuccess: (_, { action }) => {
+    onSuccess: async (_, { applicationId, action }) => {
       queryClient.invalidateQueries({ queryKey: ['campaign-applications'] });
+      
+      // Send email notifications
+      try {
+        const { data: application } = await supabase
+          .from('campaign_applications')
+          .select(`
+            *,
+            campaign:campaigns!campaign_applications_campaign_id_fkey(title, user_id),
+            sponsorship:campaign_sponsorships!campaign_sponsorships_campaign_id_fkey(brand_id)
+          `)
+          .eq('id', applicationId)
+          .single();
+        
+        if (!application) return;
+        
+        const finalStatus = application.final_approval_status;
+        
+        // If final decision is made, notify creator
+        if (finalStatus === 'approved' || finalStatus === 'rejected') {
+          const { data: creatorProfile } = await supabase
+            .from('profiles')
+            .select('email, full_name')
+            .eq('id', application.creator_id)
+            .single();
+          
+          if (creatorProfile?.email && application.campaign?.title) {
+            await sendNotification(
+              'application_status',
+              creatorProfile.email,
+              creatorProfile.full_name,
+              {
+                campaignTitle: application.campaign.title,
+                applicationStatus: finalStatus,
+                campaignId: application.campaign_id,
+              }
+            );
+          }
+        } else if (action === 'approved') {
+          // Restaurant approved, notify brand
+          const sponsorshipArray = Array.isArray(application.sponsorship) 
+            ? application.sponsorship 
+            : application.sponsorship ? [application.sponsorship] : [];
+          
+          if (sponsorshipArray.length > 0 && sponsorshipArray[0].brand_id) {
+            const { data: brandProfile } = await supabase
+              .from('business_profiles')
+              .select('user_id')
+              .eq('id', sponsorshipArray[0].brand_id)
+              .single();
+            
+            if (brandProfile?.user_id) {
+              const { data: brandUser } = await supabase
+                .from('profiles')
+                .select('email, full_name')
+                .eq('id', brandProfile.user_id)
+                .single();
+              
+              if (brandUser?.email && application.campaign?.title) {
+                await sendNotification(
+                  'approval_pending',
+                  brandUser.email,
+                  brandUser.full_name,
+                  {
+                    campaignTitle: application.campaign.title,
+                    party: 'restaurant owner',
+                    campaignId: application.campaign_id,
+                  }
+                );
+              }
+            }
+          }
+        }
+      } catch (emailError) {
+        console.error('Failed to send email notification:', emailError);
+      }
+      
       toast({
         title: action === 'approved' ? 'Application Approved' : 'Application Rejected',
         description: action === 'approved'
           ? 'Waiting for brand sponsor approval to finalize.'
-          : 'The application has been rejected.',
+          : 'The application has been rejected and the creator has been notified.',
       });
     },
     onError: (error) => {

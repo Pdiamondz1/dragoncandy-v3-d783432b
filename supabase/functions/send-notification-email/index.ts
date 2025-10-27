@@ -17,7 +17,8 @@ type NotificationType =
   | 'review_request'
   | 'campaign_update'
   | 'sponsorship_proposal'
-  | 'sponsorship_status';
+  | 'sponsorship_status'
+  | 'approval_pending';
 
 interface NotificationEmailRequest {
   to?: string;
@@ -37,6 +38,7 @@ interface NotificationEmailRequest {
     brandName?: string;
     sponsorshipAmount?: number;
     proposalStatus?: string;
+    party?: string;
   };
 }
 
@@ -203,6 +205,20 @@ const handler = async (req: Request): Promise<Response> => {
             <a href="${baseUrl}/dashboard/brand/sponsorships" 
                style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block;">
               View Sponsorships
+            </a>
+          </p>
+        `,
+      },
+      approval_pending: {
+        subject: `Action Required: Creator Application Awaiting Your Approval`,
+        html: `
+          <p>Hi ${recipientName},</p>
+          <p>A creator application for campaign <strong>"${data.campaignTitle}"</strong> has been approved by the ${data.party}.</p>
+          <p><strong>Your approval is now required</strong> to finalize the collaboration.</p>
+          <p style="margin-top: 30px;">
+            <a href="${baseUrl}/dashboard/business/campaigns/${data.campaignId}" 
+               style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block;">
+              Review Application
             </a>
           </p>
         `,

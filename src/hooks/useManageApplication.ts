@@ -2,9 +2,11 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { useEmailNotifications } from '@/hooks/useEmailNotifications';
 
 export const useManageApplication = () => {
   const queryClient = useQueryClient();
+  const { sendNotification } = useEmailNotifications();
 
   return useMutation({
     mutationFn: async ({
@@ -48,14 +50,44 @@ export const useManageApplication = () => {
       console.log('Updated application:', data);
       return data;
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       queryClient.invalidateQueries({ queryKey: ['campaign-applications'] });
       queryClient.invalidateQueries({ queryKey: ['creator-applications'] });
+      
+      // Send email notification to creator
+      try {
+        const { data: creatorProfile } = await supabase
+          .from('profiles')
+          .select('email, full_name')
+          .eq('id', data.creator_id)
+          .single();
+        
+        const { data: campaign } = await supabase
+          .from('campaigns')
+          .select('title')
+          .eq('id', data.campaign_id)
+          .single();
+        
+        if (creatorProfile?.email && campaign?.title) {
+          await sendNotification(
+            'application_status',
+            creatorProfile.email,
+            creatorProfile.full_name,
+            {
+              campaignTitle: campaign.title,
+              applicationStatus: data.status,
+              campaignId: data.campaign_id,
+            }
+          );
+        }
+      } catch (emailError) {
+        console.error('Failed to send email notification:', emailError);
+      }
       
       toast({
         title: `Application ${data.status}!`,
         description: data.status === 'accepted' 
-          ? 'A new collaboration has been created.' 
+          ? 'A new collaboration has been created and the creator has been notified.' 
           : 'The creator has been notified.',
       });
     },

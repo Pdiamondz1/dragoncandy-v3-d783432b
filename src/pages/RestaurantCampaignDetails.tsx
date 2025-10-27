@@ -21,7 +21,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { JointApprovalCard } from '@/components/campaigns/JointApprovalCard';
+import ApplicationCard from '@/components/campaigns/ApplicationCard';
 import SponsorshipProposalCard from '@/components/campaigns/SponsorshipProposalCard';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/hooks/use-toast';
@@ -412,13 +412,18 @@ const RestaurantCampaignDetails = () => {
               </div>
             ) : applications && applications.length > 0 ? (
               <div className="space-y-4">
-                {applications.map((application) => (
-                  <JointApprovalCard
-                    key={application.id}
-                    application={application as any}
-                    userRole="restaurant"
-                  />
-                ))}
+                {applications.map((application) => {
+                  const hasAcceptedSponsorship = sponsorships?.some(s => s.status === 'accepted');
+                  return (
+                    <ApplicationCard
+                      key={application.id}
+                      application={application as any}
+                      showActions={true}
+                      isSponsored={hasAcceptedSponsorship}
+                      userRole={hasAcceptedSponsorship ? "restaurant" : undefined}
+                    />
+                  );
+                })}
               </div>
             ) : (
               <Card>
