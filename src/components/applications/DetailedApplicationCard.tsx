@@ -1,8 +1,11 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Clock, DollarSign } from 'lucide-react';
+import { Clock, DollarSign, Building, MessageSquare } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
 import ApplicationStatusBadge from '@/components/campaigns/ApplicationStatusBadge';
+import ContactRestaurantModal from '@/components/creator-profile/ContactRestaurantModal';
 import { CampaignApplication } from '@/types/applications';
 
 interface DetailedApplicationCardProps {
@@ -27,11 +30,34 @@ const DetailedApplicationCard: React.FC<DetailedApplicationCardProps> = ({ appli
     <Card>
       <CardHeader>
         <div className="flex items-start justify-between">
-          <div>
+          <div className="flex-1">
             <CardTitle className="text-lg">
               {application.campaign?.title || 'Campaign Title'}
             </CardTitle>
-            <p className="text-sm text-gray-600">
+            
+            {/* Restaurant Information */}
+            {application.campaign?.business_profile && (
+              <div className="flex items-center gap-2 mt-2">
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src={application.campaign.business_profile.logo_url} />
+                  <AvatarFallback>
+                    <Building className="h-4 w-4" />
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="text-sm font-medium">
+                    {application.campaign.business_profile.business_name}
+                  </p>
+                  {application.campaign.business_profile.location && (
+                    <p className="text-xs text-muted-foreground">
+                      {application.campaign.business_profile.location}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+            
+            <p className="text-sm text-muted-foreground mt-2">
               Applied on {formatDate(application.created_at)}
             </p>
           </div>
@@ -67,6 +93,28 @@ const DetailedApplicationCard: React.FC<DetailedApplicationCardProps> = ({ appli
             </div>
           )}
         </div>
+
+        {/* Message Restaurant Button (for accepted applications) */}
+        {application.status === 'accepted' && 
+         application.campaign?.business_profile && (
+          <div className="pt-4 border-t">
+            <ContactRestaurantModal
+              restaurant={{
+                user_id: application.campaign.business_profile.user_id,
+                business_name: application.campaign.business_profile.business_name,
+                logo_url: application.campaign.business_profile.logo_url,
+                description: application.campaign.business_profile.description,
+              }}
+              campaignTitle={application.campaign.title}
+              trigger={
+                <Button className="w-full" variant="default">
+                  <MessageSquare className="h-4 w-4 mr-2" />
+                  Message {application.campaign.business_profile.business_name}
+                </Button>
+              }
+            />
+          </div>
+        )}
       </CardContent>
     </Card>
   );

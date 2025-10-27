@@ -22,5 +22,13 @@ export interface CampaignApplication {
   campaign?: {
     title: string;
     description?: string;
+    user_id?: string;
+    business_profile?: {
+      business_name: string;
+      logo_url?: string;
+      location?: string;
+      description?: string;
+      user_id: string;
+    };
   };
 }

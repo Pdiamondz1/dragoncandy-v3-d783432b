@@ -106,7 +106,7 @@ export const useCreatorApplications = () => {
         return [];
       }
 
-      // Fetch applications with campaign data
+      // Fetch applications with campaign and restaurant data
       const { data, error } = await supabase
         .from('campaign_applications')
         .select(`
@@ -116,7 +116,15 @@ export const useCreatorApplications = () => {
             description,
             budget_min,
             budget_max,
-            deadline
+            deadline,
+            user_id,
+            business_profile:business_profiles!user_id (
+              business_name,
+              logo_url,
+              location,
+              description,
+              user_id
+            )
           )
         `)
         .eq('creator_id', user.id)
@@ -139,7 +147,7 @@ export const useCreatorApplications = () => {
         .eq('user_id', user.id)
         .single();
 
-      // Add creator profile to all applications
+      // Add creator profile to all applications and normalize business_profile
       const enrichedApplications = data.map(app => ({
         ...app,
         creator_profile: creatorProfile ? {
@@ -152,7 +160,14 @@ export const useCreatorApplications = () => {
           avatar_url: null,
           bio: null,
           skills: [],
-        }
+        },
+        campaign: app.campaign ? {
+          ...app.campaign,
+          // Extract business_profile from array (Supabase returns it as array due to join)
+          business_profile: Array.isArray(app.campaign.business_profile) 
+            ? app.campaign.business_profile[0] 
+            : app.campaign.business_profile
+        } : undefined
       }));
 
       console.log('✅ useCreatorApplications: Fetched creator applications:', enrichedApplications);
