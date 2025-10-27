@@ -1,5 +1,4 @@
-
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import DashboardLayout from '@/components/DashboardLayout';
 import { useCampaign } from '@/hooks/useCampaigns';
@@ -11,10 +10,13 @@ import CampaignPlatformsForm from '@/components/campaigns/CampaignPlatformsForm'
 import CampaignBudgetTimelineForm from '@/components/campaigns/CampaignBudgetTimelineForm';
 import CampaignStyleToneForm from '@/components/campaigns/CampaignStyleToneForm';
 import CampaignSponsorshipToggle from '@/components/campaigns/CampaignSponsorshipToggle';
+import { useAuth } from '@/hooks/useAuth';
+import { toast } from '@/hooks/use-toast';
 
 const CampaignEditPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { campaign, isLoading, error } = useCampaign(id!);
   const {
     formData,
@@ -23,6 +25,18 @@ const CampaignEditPage: React.FC = () => {
     handleArrayChange,
     handleSave,
   } = useCampaignEditForm(campaign);
+
+  // Ownership check - redirect if not owner
+  useEffect(() => {
+    if (campaign && user && campaign.user_id !== user.id) {
+      toast({
+        title: 'Access Denied',
+        description: 'You do not have permission to edit this campaign.',
+        variant: 'destructive',
+      });
+      navigate('/dashboard/business/campaigns');
+    }
+  }, [campaign, user, navigate]);
 
   const handleSaveWithNavigation = async (saveStatus: 'draft' | 'published') => {
     const success = await handleSave(saveStatus);
@@ -62,6 +76,11 @@ const CampaignEditPage: React.FC = () => {
         </div>
       </DashboardLayout>
     );
+  }
+
+  // If not owner, show nothing while redirecting
+  if (campaign && user && campaign.user_id !== user.id) {
+    return null;
   }
 
   return (

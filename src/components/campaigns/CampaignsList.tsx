@@ -8,10 +8,14 @@ import { useNavigate } from 'react-router-dom';
 
 interface CampaignsListProps {
   statusFilter?: 'all' | 'draft' | 'published' | 'active' | 'completed' | 'cancelled';
+  filterByOwnership?: boolean;
 }
 
-const CampaignsList: React.FC<CampaignsListProps> = ({ statusFilter = 'all' }) => {
-  const { campaigns, isLoading, error } = useCampaigns();
+const CampaignsList: React.FC<CampaignsListProps> = ({ 
+  statusFilter = 'all',
+  filterByOwnership = true 
+}) => {
+  const { campaigns, isLoading, error } = useCampaigns(filterByOwnership);
   const navigate = useNavigate();
 
   if (isLoading) {

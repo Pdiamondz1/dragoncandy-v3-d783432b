@@ -1,3 +1,4 @@
+import React, { useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -33,6 +34,22 @@ const RestaurantCampaignDetails = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { sendNotification } = useEmailNotifications();
+
+  // Fetch campaign for ownership check
+  const { data: campaign, isLoading: campaignLoading } = useQuery({
+    queryKey: ['campaign', id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('campaigns')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!id,
+  });
 
   const handleAcceptSponsorship = useMutation({
     mutationFn: async (proposalId: string) => {
@@ -155,20 +172,17 @@ const RestaurantCampaignDetails = () => {
     },
   });
 
-  const { data: campaign, isLoading: campaignLoading } = useQuery({
-    queryKey: ['campaign', id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('campaigns')
-        .select('*')
-        .eq('id', id)
-        .single();
-
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!id,
-  });
+  // Ownership check - redirect if not owner
+  useEffect(() => {
+    if (campaign && user && campaign.user_id !== user.id) {
+      toast({
+        title: 'Access Denied',
+        description: 'You do not have permission to view this campaign.',
+        variant: 'destructive',
+      });
+      navigate('/dashboard/business/campaigns');
+    }
+  }, [campaign, user, navigate]);
 
   const { data: sponsorships, isLoading: sponsorshipsLoading } = useQuery({
     queryKey: ['campaign_sponsorships', id],
@@ -236,6 +250,11 @@ const RestaurantCampaignDetails = () => {
         </div>
       </DashboardLayout>
     );
+  }
+
+  // If not owner, show nothing while redirecting
+  if (campaign && user && campaign.user_id !== user.id) {
+    return null;
   }
 
   const getStatusColor = (status: string) => {

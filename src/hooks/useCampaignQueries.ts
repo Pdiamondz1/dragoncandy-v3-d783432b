@@ -22,17 +22,24 @@ export interface Campaign {
   updated_at: string;
 }
 
-export const useCampaignsList = () => {
+export const useCampaignsList = (filterByOwnership: boolean = true) => {
   const { user } = useAuth();
 
   return useQuery({
-    queryKey: ['campaigns', user?.id],
+    queryKey: ['campaigns', user?.id, filterByOwnership],
     queryFn: async () => {
-      console.log('Fetching campaigns for user:', user?.id);
-      const { data, error } = await supabase
+      console.log('Fetching campaigns for user:', user?.id, 'filterByOwnership:', filterByOwnership);
+      
+      let query = supabase
         .from('campaigns')
-        .select('*')
-        .order('created_at', { ascending: false });
+        .select('*');
+      
+      // If filtering by ownership, only return user's own campaigns
+      if (filterByOwnership && user?.id) {
+        query = query.eq('user_id', user.id);
+      }
+      
+      const { data, error } = await query.order('created_at', { ascending: false });
 
       if (error) {
         console.error('Error fetching campaigns:', error);

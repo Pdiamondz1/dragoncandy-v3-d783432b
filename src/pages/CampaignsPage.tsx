@@ -13,7 +13,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 const CampaignsPage: React.FC = () => {
   const navigate = useNavigate();
   const [statusFilter, setStatusFilter] = useState<'all' | 'draft' | 'published' | 'active' | 'completed' | 'cancelled'>('all');
-  const { campaigns } = useCampaigns();
+  const { campaigns } = useCampaigns(true); // Only show user's own campaigns
   const isMobile = useIsMobile();
 
   // Calculate counts for each status
@@ -143,7 +143,7 @@ const CampaignsPage: React.FC = () => {
             )}
 
             <TabsContent value={statusFilter} className="mt-6">
-              <CampaignsList statusFilter={statusFilter} />
+              <CampaignsList statusFilter={statusFilter} filterByOwnership={true} />
             </TabsContent>
           </Tabs>
         </div>
