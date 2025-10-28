@@ -115,7 +115,7 @@ const handler = async (req: Request): Promise<Response> => {
             : `<p>Don't worry - there are many more great opportunities waiting for you in the marketplace!</p>`
           }
           <p style="margin-top: 30px;">
-            <a href="${baseUrl}/${data.applicationStatus === 'accepted' ? 'creator-applications' : 'creator-marketplace'}" 
+            <a href="${baseUrl}/${data.applicationStatus === 'accepted' ? 'dashboard/creator/applications' : 'dashboard/creator/campaigns'}" 
                style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block;">
               ${data.applicationStatus === 'accepted' ? 'View Campaign' : 'Browse More Campaigns'}
             </a>
@@ -143,7 +143,7 @@ const handler = async (req: Request): Promise<Response> => {
           <p>Great news! You've received a payment of <strong>$${data.amount}</strong> for your work on <strong>"${data.campaignTitle}"</strong>.</p>
           <p>The funds will be available in your account shortly. Thank you for your excellent work!</p>
           <p style="margin-top: 30px;">
-            <a href="${baseUrl}/creator-projects" 
+            <a href="${baseUrl}/dashboard/creator/projects" 
                style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block;">
               View Projects
             </a>
