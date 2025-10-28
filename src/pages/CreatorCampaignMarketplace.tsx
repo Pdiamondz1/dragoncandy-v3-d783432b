@@ -6,7 +6,7 @@ import { usePublicCampaigns } from '@/hooks/usePublicCampaigns';
 import { useCampaignMarketplaceFilters } from '@/hooks/useCampaignMarketplaceFilters';
 import DashboardLayout from '@/components/DashboardLayout';
 import CampaignMarketplaceFilters from '@/components/campaigns/CampaignMarketplaceFilters';
-import CampaignMarketplaceCard from '@/components/campaigns/CampaignMarketplaceCard';
+import CampaignMarketplaceListItem from '@/components/campaigns/CampaignMarketplaceListItem';
 import ApplicationForm from '@/components/campaigns/ApplicationForm';
 import MarketplaceHeader from '@/components/campaigns/MarketplaceHeader';
 import MarketplaceStats from '@/components/campaigns/MarketplaceStats';
@@ -80,16 +80,16 @@ const CreatorCampaignMarketplace = () => {
             filteredCount={filteredCampaigns.length}
           />
 
-          {/* Campaigns Grid */}
+          {/* Campaigns List */}
           {filteredCampaigns.length === 0 ? (
             <MarketplaceEmptyState
               totalCampaigns={campaigns.length}
               onResetFilters={campaigns.length > 0 ? resetFilters : undefined}
             />
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="flex flex-col gap-4">
               {filteredCampaigns.map((campaign) => (
-                <CampaignMarketplaceCard
+                <CampaignMarketplaceListItem
                   key={campaign.id}
                   campaign={campaign}
                   onApply={handleApply}
