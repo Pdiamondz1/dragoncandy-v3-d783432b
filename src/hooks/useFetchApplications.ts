@@ -106,7 +106,7 @@ export const useCreatorApplications = () => {
         return [];
       }
 
-      // Fetch applications with campaign and restaurant data
+      // Fetch applications with campaign data (without nested business_profile)
       const { data, error } = await supabase
         .from('campaign_applications')
         .select(`
@@ -117,14 +117,7 @@ export const useCreatorApplications = () => {
             budget_min,
             budget_max,
             deadline,
-            user_id,
-            business_profile:business_profiles!user_id (
-              business_name,
-              logo_url,
-              location,
-              description,
-              user_id
-            )
+            user_id
           )
         `)
         .eq('creator_id', user.id)
@@ -140,6 +133,33 @@ export const useCreatorApplications = () => {
         return [];
       }
 
+      // Collect unique campaign owner IDs
+      const campaignOwnerIds = [...new Set(
+        data
+          .map(app => app.campaign?.user_id)
+          .filter(Boolean)
+      )] as string[];
+
+      console.log('🎨 useCreatorApplications: Fetching business profiles for:', campaignOwnerIds);
+
+      // Fetch all business profiles for these campaign owners in one query
+      const { data: businessProfiles, error: businessError } = await supabase
+        .from('business_profiles')
+        .select('user_id, business_name, logo_url, location, description')
+        .in('user_id', campaignOwnerIds);
+
+      if (businessError) {
+        console.error('❌ useCreatorApplications: Error fetching business profiles:', businessError);
+        // Don't throw - continue without business profiles
+      }
+
+      // Create a map for quick lookup
+      const businessProfileMap = new Map(
+        (businessProfiles || []).map(bp => [bp.user_id, bp])
+      );
+
+      console.log('✅ useCreatorApplications: Fetched business profiles:', businessProfiles?.length || 0);
+
       // Fetch creator's own profile once and add it to all applications
       const { data: creatorProfile } = await supabase
         .from('creator_profiles')
@@ -147,7 +167,7 @@ export const useCreatorApplications = () => {
         .eq('user_id', user.id)
         .single();
 
-      // Add creator profile to all applications and normalize business_profile
+      // Add creator profile AND business profile to all applications
       const enrichedApplications = data.map(app => ({
         ...app,
         creator_profile: creatorProfile ? {
@@ -163,14 +183,13 @@ export const useCreatorApplications = () => {
         },
         campaign: app.campaign ? {
           ...app.campaign,
-          // Extract business_profile from array (Supabase returns it as array due to join)
-          business_profile: Array.isArray(app.campaign.business_profile) 
-            ? app.campaign.business_profile[0] 
-            : app.campaign.business_profile
+          business_profile: app.campaign.user_id 
+            ? businessProfileMap.get(app.campaign.user_id) || undefined
+            : undefined
         } : undefined
       }));
 
-      console.log('✅ useCreatorApplications: Fetched creator applications:', enrichedApplications);
+      console.log('✅ useCreatorApplications: Fetched creator applications with business profiles:', enrichedApplications);
       return enrichedApplications as CampaignApplication[];
     },
     enabled: !!user,
