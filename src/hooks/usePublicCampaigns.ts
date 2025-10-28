@@ -19,11 +19,33 @@ export const usePublicCampaigns = (userId?: string) => {
     queryFn: async () => {
       console.log('Fetching public campaigns for user:', userId);
       
-      // First, get published campaigns
-      const { data: campaigns, error: campaignsError } = await supabase
+      // First, get campaigns that have active collaborations
+      const { data: assignedCampaigns, error: assignedError } = await supabase
+        .from('campaign_collaborations')
+        .select('campaign_id')
+        .eq('status', 'active');
+
+      if (assignedError) {
+        console.error('Error fetching assigned campaigns:', assignedError);
+        throw assignedError;
+      }
+
+      // Extract campaign IDs that are already assigned
+      const assignedCampaignIds = (assignedCampaigns || []).map(c => c.campaign_id);
+      console.log('Assigned campaign IDs:', assignedCampaignIds);
+
+      // Get published campaigns excluding assigned ones
+      let query = supabase
         .from('campaigns')
         .select('*')
-        .eq('status', 'published')
+        .eq('status', 'published');
+
+      // Only add the not.in filter if there are assigned campaigns
+      if (assignedCampaignIds.length > 0) {
+        query = query.not('id', 'in', `(${assignedCampaignIds.join(',')})`);
+      }
+
+      const { data: campaigns, error: campaignsError } = await query
         .order('created_at', { ascending: false });
 
       if (campaignsError) {
