@@ -15,6 +15,7 @@ import { CampaignApplication } from '@/types/applications';
 import { useManageApplication } from '@/hooks/useManageApplication';
 import { useCampaign } from '@/hooks/useCampaigns';
 import { useAuth } from '@/hooks/useAuth';
+import { useCampaignSponsorship } from '@/hooks/useCampaignSponsorship';
 
 interface ApplicationsListFixedProps {
   campaignId: string;
@@ -29,6 +30,10 @@ const ApplicationsListFixed: React.FC<ApplicationsListFixedProps> = ({ campaignI
   const manageApplication = useManageApplication();
   const { campaign } = useCampaign(campaignId);
   const { profile } = useAuth();
+  
+  // Check if campaign has an active sponsorship
+  const { data: activeSponsorshipData } = useCampaignSponsorship(campaignId);
+  const hasActiveSponsor = !!activeSponsorshipData;
 
   // Determine user role based on profile and campaign ownership
   const getUserRole = (): 'brand' | 'restaurant' | undefined => {
@@ -42,7 +47,9 @@ const ApplicationsListFixed: React.FC<ApplicationsListFixedProps> = ({ campaignI
   };
 
   const userRole = getUserRole();
-  const isSponsored = campaign?.open_for_sponsorship || false;
+  
+  // Only consider it sponsored if campaign is open for sponsorship AND has an accepted sponsor
+  const isSponsored = (campaign?.open_for_sponsorship && hasActiveSponsor) || false;
 
   console.log('ApplicationsListFixed: Rendering with data:', {
     campaignId,

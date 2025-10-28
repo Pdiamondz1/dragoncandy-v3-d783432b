@@ -8,6 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { JointApprovalCard } from './JointApprovalCard';
 import { useCampaign } from '@/hooks/useCampaigns';
 import { useAuth } from '@/hooks/useAuth';
+import { useCampaignSponsorship } from '@/hooks/useCampaignSponsorship';
 
 interface CreatorApplicationsCardProps {
   campaignId: string;
@@ -17,6 +18,10 @@ export const CreatorApplicationsCard = ({ campaignId }: CreatorApplicationsCardP
   const { data: applications, isLoading } = useCampaignApplications(campaignId);
   const { campaign } = useCampaign(campaignId);
   const { profile } = useAuth();
+  
+  // Check if campaign has an active sponsorship
+  const { data: activeSponsorshipData } = useCampaignSponsorship(campaignId);
+  const hasActiveSponsor = !!activeSponsorshipData;
 
   // Determine user role based on profile and campaign ownership
   const getUserRole = (): 'brand' | 'restaurant' | undefined => {
@@ -30,7 +35,9 @@ export const CreatorApplicationsCard = ({ campaignId }: CreatorApplicationsCardP
   };
 
   const userRole = getUserRole();
-  const isSponsored = campaign?.open_for_sponsorship || false;
+  
+  // Only consider it sponsored if campaign is open for sponsorship AND has an accepted sponsor
+  const isSponsored = (campaign?.open_for_sponsorship && hasActiveSponsor) || false;
 
   if (isLoading) {
     return (
