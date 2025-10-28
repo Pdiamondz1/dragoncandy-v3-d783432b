@@ -1,10 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useBusinessDragonFeed, FeedMediaItem } from '@/hooks/useBusinessDragonFeed';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Play, Pause, Heart, MessageSquare, Loader2, User, Sparkles } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 interface BusinessDashboardSideFeedProps {
   onItemClick: (item: FeedMediaItem, index: number) => void;
@@ -179,12 +182,58 @@ const FeedCard: React.FC<FeedCardProps> = ({ item, onItemClick }) => {
   const [liked, setLiked] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const navigate = useNavigate();
+  const { toast } = useToast();
 
   const handleLoad = () => setLoaded(true);
   const handleError = () => setError(true);
   const toggleLike = (e: React.MouseEvent) => {
     e.stopPropagation();
     setLiked(!liked);
+  };
+
+  const handleMessage = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        toast({
+          title: "Authentication required",
+          description: "Please log in to send messages.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const { data: conversationId, error } = await supabase.rpc(
+        'create_or_get_direct_conversation',
+        {
+          user1_uuid: user.id,
+          user2_uuid: item.creatorId
+        }
+      );
+
+      if (error) throw error;
+
+      toast({
+        title: "Opening conversation",
+        description: `Starting a conversation with ${item.creatorName}`,
+      });
+
+      const userRole = user.user_metadata?.role || 'business_client';
+      const rolePrefix = userRole === 'brand' ? 'brand' : 'business';
+      
+      navigate(`/dashboard/${rolePrefix}/messages/direct/${conversationId}`);
+    } catch (error) {
+      console.error('Failed to create conversation:', error);
+      toast({
+        title: "Error",
+        description: "Failed to start conversation. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   const toggleVideoPlayback = async (e: React.MouseEvent) => {
@@ -285,7 +334,7 @@ const FeedCard: React.FC<FeedCardProps> = ({ item, onItemClick }) => {
             size="sm" 
             variant="secondary"
             className="h-8 w-8 p-0 bg-white/90 hover:bg-white"
-            onClick={(e) => e.stopPropagation()}
+            onClick={handleMessage}
           >
             <MessageSquare className="h-4 w-4 text-muted-foreground" />
           </Button>
