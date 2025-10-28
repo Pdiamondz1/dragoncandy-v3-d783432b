@@ -11,6 +11,7 @@ export interface PublicCampaign extends Campaign {
   };
   application_count?: number;
   user_applied?: boolean;
+  application_status?: 'pending' | 'accepted' | 'rejected';
 }
 
 export const usePublicCampaigns = (userId?: string) => {
@@ -86,17 +87,20 @@ export const usePublicCampaigns = (userId?: string) => {
             .select('*', { count: 'exact', head: true })
             .eq('campaign_id', campaign.id);
 
-          // Check if user has applied (only if userId provided)
+          // Check if user has applied and get application status (only if userId provided)
           let userApplied = false;
+          let applicationStatus: 'pending' | 'accepted' | 'rejected' | undefined = undefined;
+
           if (userId) {
             const { data: userApplication } = await supabase
               .from('campaign_applications')
-              .select('id')
+              .select('id, status')
               .eq('campaign_id', campaign.id)
               .eq('creator_id', userId)
               .maybeSingle();
             
             userApplied = !!userApplication;
+            applicationStatus = userApplication?.status as 'pending' | 'accepted' | 'rejected' | undefined;
           }
 
           // Get business profile for this campaign
@@ -111,6 +115,7 @@ export const usePublicCampaigns = (userId?: string) => {
             } : undefined,
             application_count: count || 0,
             user_applied: userApplied,
+            application_status: applicationStatus,
           };
         })
       );

@@ -11,7 +11,8 @@ import {
   Users, 
   Clock,
   CheckCircle,
-  Building
+  Building,
+  XCircle
 } from 'lucide-react';
 import { PublicCampaign } from '@/hooks/usePublicCampaigns';
 
@@ -78,11 +79,27 @@ const CampaignMarketplaceCard: React.FC<CampaignMarketplaceCardProps> = ({
               </div>
             </div>
           </div>
-          {campaign.user_applied && (
-            <Badge variant="secondary" className="bg-green-100 text-green-700">
-              <CheckCircle className="h-3 w-3 mr-1" />
-              Applied
-            </Badge>
+          {campaign.user_applied && campaign.application_status && (
+            <>
+              {campaign.application_status === 'pending' && (
+                <Badge variant="secondary" className="bg-yellow-100 text-yellow-700">
+                  <Clock className="h-3 w-3 mr-1" />
+                  Applied
+                </Badge>
+              )}
+              {campaign.application_status === 'accepted' && (
+                <Badge className="bg-gradient-to-r from-pink-500 to-purple-600 text-white border-0">
+                  <CheckCircle className="h-3 w-3 mr-1" />
+                  Accepted
+                </Badge>
+              )}
+              {campaign.application_status === 'rejected' && (
+                <Badge variant="secondary" className="bg-red-100 text-red-700">
+                  <XCircle className="h-3 w-3 mr-1" />
+                  Rejected
+                </Badge>
+              )}
+            </>
           )}
         </div>
       </CardHeader>
@@ -153,10 +170,16 @@ const CampaignMarketplaceCard: React.FC<CampaignMarketplaceCardProps> = ({
             </Button>
             <Button 
               size="sm"
-              onClick={() => onApply(campaign.id)}
-              disabled={campaign.user_applied}
+              onClick={() => campaign.application_status === 'accepted' 
+                ? onViewDetails(campaign.id) 
+                : onApply(campaign.id)
+              }
+              disabled={campaign.application_status === 'pending'}
             >
-              {campaign.user_applied ? 'Applied' : 'Apply'}
+              {campaign.application_status === 'accepted' && 'View Project'}
+              {campaign.application_status === 'pending' && 'Applied'}
+              {campaign.application_status === 'rejected' && 'Apply Again'}
+              {!campaign.application_status && 'Apply'}
             </Button>
           </div>
         </div>
