@@ -56,8 +56,11 @@ const ContactRestaurantModal: React.FC<ContactRestaurantModalProps> = ({
       setMessage('');
       setOpen(false);
       
-      // Navigate to the conversation
-      navigate(`/messages/conversation/${conversationId}`);
+      // Navigate to the conversation with correct role-based route
+      const userRole = user?.user_metadata?.role || 'content_creator';
+      const rolePrefix = userRole === 'content_creator' ? 'creator' : 
+                         userRole === 'brand' ? 'brand' : 'business';
+      navigate(`/dashboard/${rolePrefix}/messages/direct/${conversationId}`);
     } catch (error) {
       console.error('Error sending message:', error);
       toast({
