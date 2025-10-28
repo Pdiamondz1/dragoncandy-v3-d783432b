@@ -45,15 +45,39 @@ const ApplicationsTabsContent: React.FC<ApplicationsTabsContentProps> = ({
       </TabsContent>
 
       <TabsContent value="pending" className="space-y-4">
-        <ApplicationsList applications={pendingApplications} />
+        {pendingApplications.length === 0 ? (
+          <ApplicationsList applications={[]} emptyMessage="No pending applications yet." />
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {pendingApplications.map((application) => (
+              <DetailedApplicationCard key={application.id} application={application} />
+            ))}
+          </div>
+        )}
       </TabsContent>
 
       <TabsContent value="accepted" className="space-y-4">
-        <ApplicationsList applications={acceptedApplications} />
+        {acceptedApplications.length === 0 ? (
+          <ApplicationsList applications={[]} emptyMessage="No accepted applications yet." />
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {acceptedApplications.map((application) => (
+              <DetailedApplicationCard key={application.id} application={application} />
+            ))}
+          </div>
+        )}
       </TabsContent>
 
       <TabsContent value="rejected" className="space-y-4">
-        <ApplicationsList applications={rejectedApplications} />
+        {rejectedApplications.length === 0 ? (
+          <ApplicationsList applications={[]} emptyMessage="No rejected applications yet." />
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {rejectedApplications.map((application) => (
+              <DetailedApplicationCard key={application.id} application={application} />
+            ))}
+          </div>
+        )}
       </TabsContent>
     </Tabs>
   );
