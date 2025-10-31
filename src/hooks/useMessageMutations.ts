@@ -107,12 +107,46 @@ export const useSendMessage = () => {
         variant: 'destructive',
       });
     },
-    onSuccess: (data, variables) => {
+    onSuccess: async (data, variables) => {
       const queryKey = variables.campaignId 
         ? ['messages', variables.campaignId, undefined]
         : ['messages', undefined, variables.conversationId];
       
       queryClient.invalidateQueries({ queryKey });
+      
+      // Send email notification to recipient for direct messages
+      if (variables.conversationId && variables.recipientId) {
+        try {
+          const { data: recipientProfile } = await supabase
+            .from('profiles')
+            .select('email, full_name, role')
+            .eq('id', variables.recipientId)
+            .single();
+
+          const { data: senderProfile } = await supabase
+            .from('profiles')
+            .select('full_name')
+            .eq('id', user!.id)
+            .single();
+
+          // Only send if recipient is a business_client or brand
+          if (recipientProfile && (recipientProfile.role === 'business_client' || recipientProfile.role === 'brand')) {
+            await supabase.functions.invoke('send-notification-email', {
+              body: {
+                to: recipientProfile.email,
+                recipientName: recipientProfile.full_name,
+                type: 'new_message',
+                data: {
+                  senderName: senderProfile?.full_name || 'A user',
+                  message: variables.content.substring(0, 100) + (variables.content.length > 100 ? '...' : ''),
+                },
+              },
+            });
+          }
+        } catch (error) {
+          console.error('Failed to send message notification email:', error);
+        }
+      }
     },
   });
 };

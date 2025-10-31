@@ -44,8 +44,37 @@ export const useCreateCampaign = () => {
       console.log('Created campaign:', data);
       return data as Campaign;
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+      
+      // Send email notification if campaign is published
+      if (data.status === 'published') {
+        try {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('email, full_name')
+            .eq('id', user!.id)
+            .single();
+
+          if (profile) {
+            await supabase.functions.invoke('send-notification-email', {
+              body: {
+                to: profile.email,
+                recipientName: profile.full_name,
+                type: 'campaign_update',
+                data: {
+                  campaignTitle: data.title,
+                  campaignId: data.id,
+                  updateDetails: 'Your campaign has been successfully published and is now live in the marketplace!',
+                },
+              },
+            });
+          }
+        } catch (error) {
+          console.error('Failed to send campaign published email:', error);
+        }
+      }
+      
       toast({
         title: 'Campaign created successfully!',
         description: `"${data.title}" has been ${data.status === 'published' ? 'published' : 'saved as draft'}.`,
@@ -83,8 +112,48 @@ export const useUpdateCampaign = () => {
       console.log('Updated campaign:', data);
       return data as Campaign;
     },
-    onSuccess: (data) => {
+    onSuccess: async (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+      
+      // Send email notification if status was changed
+      if (variables.updates.status) {
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) return;
+
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('email, full_name')
+            .eq('id', user.id)
+            .single();
+
+          if (profile) {
+            const statusMessages: Record<string, string> = {
+              published: 'Your campaign has been published and is now live in the marketplace!',
+              active: 'Your campaign is now active with accepted creators working on it.',
+              completed: 'Your campaign has been marked as completed.',
+              cancelled: 'Your campaign has been cancelled.',
+              draft: 'Your campaign has been saved as a draft.',
+            };
+
+            await supabase.functions.invoke('send-notification-email', {
+              body: {
+                to: profile.email,
+                recipientName: profile.full_name,
+                type: 'campaign_update',
+                data: {
+                  campaignTitle: data.title,
+                  campaignId: data.id,
+                  updateDetails: statusMessages[data.status as string] || `Campaign status updated to ${data.status}`,
+                },
+              },
+            });
+          }
+        } catch (error) {
+          console.error('Failed to send campaign status update email:', error);
+        }
+      }
+      
       toast({
         title: 'Campaign updated successfully!',
         description: `"${data.title}" has been updated.`,
