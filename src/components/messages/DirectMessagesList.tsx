@@ -27,7 +27,7 @@ const DirectMessagesList: React.FC<DirectMessagesListProps> = ({ onConversationS
     if (conversation.conversation_type === 'campaign' && conversation.campaign_id) {
       // Navigate to campaign messages
       const userRole = user?.user_metadata?.role || 'business_client';
-      const role = userRole === 'content_creator' ? 'creator' : 'business';
+      const role = userRole === 'content_creator' ? 'creator' : userRole === 'brand' ? 'brand' : 'business';
       navigate(`/dashboard/${role}/messages/campaign/${conversation.campaign_id}`);
     } else if (conversation.conversation_id) {
       // Navigate to direct conversation
@@ -35,7 +35,7 @@ const DirectMessagesList: React.FC<DirectMessagesListProps> = ({ onConversationS
         onConversationSelect(conversation.conversation_id);
       } else {
         const userRole = user?.user_metadata?.role || 'business_client';
-        const role = userRole === 'content_creator' ? 'creator' : 'business';
+        const role = userRole === 'content_creator' ? 'creator' : userRole === 'brand' ? 'brand' : 'business';
         navigate(`/dashboard/${role}/messages/direct/${conversation.conversation_id}`);
       }
     }
