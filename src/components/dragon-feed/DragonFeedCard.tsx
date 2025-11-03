@@ -1,10 +1,11 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Play, Pause, Heart, MessageSquare, User } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface PortfolioMedia {
   id: string;
@@ -29,7 +30,51 @@ export const DragonFeedCard: React.FC<DragonFeedCardProps> = ({ media }) => {
 
   const handleLoad = () => setLoaded(true);
   const handleError = () => setError(true);
-  const toggleLike = () => setLiked(!liked);
+  
+  const toggleLike = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const newLikedState = !liked;
+    setLiked(newLikedState);
+    
+    try {
+      await supabase.from('analytics_events').insert({
+        event_type: 'dragon_feed_like',
+        event_data: {
+          content_id: media.id,
+          creator_id: media.creatorId,
+          action: newLikedState ? 'like' : 'unlike'
+        }
+      });
+    } catch (error) {
+      console.error('Failed to track like:', error);
+    }
+  };
+
+  useEffect(() => {
+    const checkIfLiked = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data } = await supabase
+        .from('analytics_events')
+        .select('event_data')
+        .eq('user_id', user.id)
+        .eq('event_type', 'dragon_feed_like')
+        .eq('event_data->>content_id', media.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (data && typeof data.event_data === 'object' && data.event_data !== null) {
+        const eventData = data.event_data as { action?: string };
+        if (eventData.action === 'like') {
+          setLiked(true);
+        }
+      }
+    };
+
+    checkIfLiked();
+  }, [media.id]);
   
   const handleCreatorClick = () => {
     if (media.creatorSlug) {
