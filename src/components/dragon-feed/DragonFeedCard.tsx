@@ -37,8 +37,14 @@ export const DragonFeedCard: React.FC<DragonFeedCardProps> = ({ media }) => {
     setLiked(newLikedState);
     
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
       await supabase.from('analytics_events').insert({
         event_type: 'dragon_feed_like',
+        user_id: user.id,
+        page_url: window.location.href,
+        user_agent: navigator.userAgent,
         event_data: {
           content_id: media.id,
           creator_id: media.creatorId,

@@ -26,16 +26,23 @@ const BusinessActivity = () => {
     setCurrentIndex(index);
   };
 
-  const handleUnlike = async (contentId: string, e: React.MouseEvent) => {
+  const handleUnlike = async (contentId: string, creatorId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     
     setUnlikingIds(prev => new Set(prev).add(contentId));
     
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
       await supabase.from('analytics_events').insert({
         event_type: 'dragon_feed_like',
+        user_id: user.id,
+        page_url: window.location.href,
+        user_agent: navigator.userAgent,
         event_data: {
           content_id: contentId,
+          creator_id: creatorId,
           action: 'unlike'
         }
       });
@@ -158,7 +165,7 @@ const BusinessActivity = () => {
                       size="sm"
                       variant="secondary"
                       className="h-8 w-8 p-0 bg-white/90 hover:bg-white opacity-0 group-hover:opacity-100 transition-opacity"
-                      onClick={(e) => handleUnlike(item.id, e)}
+                      onClick={(e) => handleUnlike(item.id, item.creatorId, e)}
                       disabled={unlikingIds.has(item.id)}
                     >
                       {unlikingIds.has(item.id) ? (

@@ -187,9 +187,57 @@ const FeedCard: React.FC<FeedCardProps> = ({ item, onItemClick }) => {
 
   const handleLoad = () => setLoaded(true);
   const handleError = () => setError(true);
-  const toggleLike = (e: React.MouseEvent) => {
+  
+  // Hydrate liked state from database
+  useEffect(() => {
+    const checkIfLiked = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data } = await supabase
+        .from('analytics_events')
+        .select('event_data')
+        .eq('user_id', user.id)
+        .eq('event_type', 'dragon_feed_like')
+        .eq('event_data->>content_id', item.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (data && typeof data.event_data === 'object' && data.event_data !== null) {
+        const eventData = data.event_data as { action?: string };
+        setLiked(eventData.action === 'like');
+      } else {
+        setLiked(false);
+      }
+    };
+
+    checkIfLiked();
+  }, [item.id]);
+
+  const toggleLike = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    setLiked(!liked);
+    const newLikedState = !liked;
+    setLiked(newLikedState);
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      await supabase.from('analytics_events').insert({
+        event_type: 'dragon_feed_like',
+        user_id: user.id,
+        page_url: window.location.href,
+        user_agent: navigator.userAgent,
+        event_data: {
+          content_id: item.id,
+          creator_id: item.creatorId,
+          action: newLikedState ? 'like' : 'unlike'
+        }
+      });
+    } catch (error) {
+      console.error('Failed to track like:', error);
+    }
   };
 
   const handleMessage = async (e: React.MouseEvent) => {
