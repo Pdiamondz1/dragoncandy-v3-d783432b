@@ -49,6 +49,7 @@ import CreatorApplications from "./pages/CreatorApplications";
 import CreatorProjects from "./pages/CreatorProjects";
 import CreatorBrowse from "./pages/CreatorBrowse";
 import BusinessDragonFeed from "./pages/BusinessDragonFeed";
+import CreatorDragonFeed from "./pages/CreatorDragonFeed";
 import BusinessActivity from "./pages/BusinessActivity";
 import BrandDiscoverCampaigns from "./pages/BrandDiscoverCampaigns";
 import PublicCreatorProfile from "./pages/PublicCreatorProfile";
@@ -363,6 +364,13 @@ const App = () => {
                   <Route path="/dashboard/creator/projects" element={
                     <ProtectedRoute>
                       <CreatorProjects />
+                    </ProtectedRoute>
+                  } />
+
+                  {/* Creator Dragon Feed Route */}
+                  <Route path="/dashboard/creator/dragon-feed" element={
+                    <ProtectedRoute>
+                      <CreatorDragonFeed />
                     </ProtectedRoute>
                   } />
 
