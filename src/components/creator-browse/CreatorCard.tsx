@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { useCreateDirectConversation } from '@/hooks/useConversations';
 import { 
   MapPin, 
   DollarSign, 
@@ -42,8 +43,9 @@ interface CreatorCardProps {
 
 export const CreatorCard: React.FC<CreatorCardProps> = ({ creator }) => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { toast } = useToast();
+  const createConversation = useCreateDirectConversation();
 
   const formatRate = (rate?: number) => {
     if (!rate) return 'Rate not specified';
@@ -57,7 +59,7 @@ export const CreatorCard: React.FC<CreatorCardProps> = ({ creator }) => {
     navigate(`/creator/${slug}`);
   };
 
-  const handleContact = () => {
+  const handleContact = async () => {
     if (!user) {
       toast({
         title: "Authentication Required",
@@ -67,13 +69,32 @@ export const CreatorCard: React.FC<CreatorCardProps> = ({ creator }) => {
       return;
     }
     
-    // Navigate to messages page - could be enhanced to start a specific conversation
-    navigate('/messages');
-    
-    toast({
-      title: "Redirecting to Messages",
-      description: `You can now start a conversation with ${creator.creator_name}.`,
-    });
+    try {
+      // Create or get existing conversation
+      const conversationId = await createConversation.mutateAsync(creator.user_id);
+      
+      // Navigate based on user role
+      if (profile?.role === 'business_client') {
+        navigate(`/dashboard/business/messages/direct/${conversationId}`);
+      } else if (profile?.role === 'brand') {
+        navigate(`/dashboard/brand/messages/direct/${conversationId}`);
+      } else {
+        // Fallback to generic messages route
+        navigate(`/messages/direct/${conversationId}`);
+      }
+      
+      toast({
+        title: "Starting conversation",
+        description: `Opening chat with ${creator.creator_name}...`,
+      });
+    } catch (error) {
+      console.error('Failed to create conversation:', error);
+      toast({
+        title: "Failed to start conversation",
+        description: "Please try again later.",
+        variant: "destructive",
+      });
+    }
   };
 
   const getSocialPlatforms = (creator: CreatorProfile) => {
@@ -173,9 +194,14 @@ export const CreatorCard: React.FC<CreatorCardProps> = ({ creator }) => {
         </div>
 
         <div className="flex gap-2 pt-2">
-          <Button size="sm" className="flex-1" onClick={handleContact}>
+          <Button 
+            size="sm" 
+            className="flex-1" 
+            onClick={handleContact}
+            disabled={createConversation.isPending}
+          >
             <MessageSquare className="h-4 w-4 mr-2" />
-            Contact
+            {createConversation.isPending ? 'Starting...' : 'Contact'}
           </Button>
           <Button size="sm" variant="outline" className="flex-1" onClick={handleViewProfile}>
             <ExternalLink className="h-4 w-4 mr-2" />
