@@ -39,7 +39,8 @@ import {
   Briefcase,
   Menu,
   Image,
-  DollarSign
+  DollarSign,
+  Activity
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useLogout } from '@/hooks/useLogout';
@@ -61,6 +62,7 @@ const AppSidebar: React.FC<{ userRole: 'business_client' | 'content_creator' | '
     { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard/business' },
     { icon: Target, label: 'My Campaigns', href: '/dashboard/business/campaigns' },
     { icon: Image, label: 'Dragon Feed', href: '/dashboard/business/dragon-feed' },
+    { icon: Activity, label: 'My Activity', href: '/dashboard/business/activity' },
     { icon: Users, label: 'Browse Creators', href: '/dashboard/business/creators' },
     { icon: Briefcase, label: 'Projects', href: '/dashboard/business/projects' },
     { icon: DollarSign, label: 'Sponsorships', href: '/dashboard/business/sponsorships' },

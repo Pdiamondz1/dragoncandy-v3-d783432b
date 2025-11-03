@@ -49,6 +49,7 @@ import CreatorApplications from "./pages/CreatorApplications";
 import CreatorProjects from "./pages/CreatorProjects";
 import CreatorBrowse from "./pages/CreatorBrowse";
 import BusinessDragonFeed from "./pages/BusinessDragonFeed";
+import BusinessActivity from "./pages/BusinessActivity";
 import BrandDiscoverCampaigns from "./pages/BrandDiscoverCampaigns";
 import PublicCreatorProfile from "./pages/PublicCreatorProfile";
 import PublicBusinessProfile from "./pages/PublicBusinessProfile";
@@ -236,6 +237,15 @@ const App = () => {
                     <ProtectedRoute>
                       <BusinessRoute>
                         <BusinessDragonFeed />
+                      </BusinessRoute>
+                    </ProtectedRoute>
+                  } />
+
+                  {/* Business Activity Route */}
+                  <Route path="/dashboard/business/activity" element={
+                    <ProtectedRoute>
+                      <BusinessRoute>
+                        <BusinessActivity />
                       </BusinessRoute>
                     </ProtectedRoute>
                   } />
