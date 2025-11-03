@@ -89,6 +89,20 @@ export const FeedLightbox: React.FC<FeedLightboxProps> = ({
           action: newLikedState ? 'like' : 'unlike'
         }
       });
+
+      // Send email notification for likes (not unlikes)
+      if (newLikedState) {
+        await supabase.functions.invoke('send-notification-email', {
+          body: {
+            type: 'content_liked',
+            data: {
+              recipientUserId: item?.creatorId,
+              likerName: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Someone',
+              contentUrl: item?.url,
+            }
+          }
+        }).catch(err => console.error('Failed to send like notification email:', err));
+      }
     } catch (error) {
       console.error('Failed to track like:', error);
     }

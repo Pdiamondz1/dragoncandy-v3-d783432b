@@ -18,7 +18,8 @@ type NotificationType =
   | 'campaign_update'
   | 'sponsorship_proposal'
   | 'sponsorship_status'
-  | 'approval_pending';
+  | 'approval_pending'
+  | 'content_liked';
 
 interface NotificationEmailRequest {
   to?: string;
@@ -39,6 +40,9 @@ interface NotificationEmailRequest {
     sponsorshipAmount?: number;
     proposalStatus?: string;
     party?: string;
+    creatorName?: string;
+    contentUrl?: string;
+    likerName?: string;
   };
 }
 
@@ -212,7 +216,7 @@ const handler = async (req: Request): Promise<Response> => {
       approval_pending: {
         subject: `Action Required: Creator Application Awaiting Your Approval`,
         html: `
-          <p>Hi ${recipientName},</p>
+          <p>Hi ${rn},</p>
           <p>A creator application for campaign <strong>"${data.campaignTitle}"</strong> has been approved by the ${data.party}.</p>
           <p><strong>Your approval is now required</strong> to finalize the collaboration.</p>
           <p style="margin-top: 30px;">
@@ -220,6 +224,28 @@ const handler = async (req: Request): Promise<Response> => {
                style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block;">
               Review Application
             </a>
+          </p>
+        `,
+      },
+      content_liked: {
+        subject: `Someone liked your content! ❤️`,
+        html: `
+          <p>Hi ${rn},</p>
+          <p>Great news! <strong>${data.likerName || 'A business client'}</strong> liked your content on DragonCandy!</p>
+          <p>This is a great sign that your work is resonating with potential clients. Keep creating amazing content!</p>
+          ${data.contentUrl ? `
+            <p style="margin: 20px 0;">
+              <img src="${data.contentUrl}" alt="Liked content" style="max-width: 300px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);" />
+            </p>
+          ` : ''}
+          <p style="margin-top: 30px;">
+            <a href="${baseUrl}/dashboard/creator/dragon-feed" 
+               style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block;">
+              View Dragon Feed
+            </a>
+          </p>
+          <p style="color: #6B7280; font-size: 14px; margin-top: 20px;">
+            💡 <strong>Tip:</strong> Clients who like your content often reach out for collaborations. Make sure your profile is up to date!
           </p>
         `,
       },

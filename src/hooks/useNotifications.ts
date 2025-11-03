@@ -6,7 +6,7 @@ import { toast } from '@/hooks/use-toast';
 
 export interface Notification {
   id: string;
-  type: 'application_received' | 'application_status_changed' | 'milestone_completed' | 'sponsorship_proposal_received' | 'sponsorship_status_changed';
+  type: 'application_received' | 'application_status_changed' | 'milestone_completed' | 'sponsorship_proposal_received' | 'sponsorship_status_changed' | 'content_liked';
   title: string;
   message: string;
   read: boolean;
@@ -372,9 +372,75 @@ export const useNotifications = () => {
       )
       .subscribe();
 
+    // Set up real-time subscription for content likes
+    const likesChannel = supabase
+      .channel('content-likes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'analytics_events',
+          filter: 'event_type=eq.dragon_feed_like'
+        },
+        async (payload) => {
+          const eventData = payload.new.event_data as any;
+          
+          // Only notify if this is a 'like' action (not 'unlike')
+          if (eventData?.action !== 'like') return;
+          
+          // Fetch creator profile to check if current user is the creator
+          const { data: creatorProfile } = await supabase
+            .from('creator_profiles')
+            .select('id, user_id, creator_name')
+            .eq('id', eventData.creator_id)
+            .single();
+          
+          // Only notify if current user owns this content
+          if (creatorProfile?.user_id !== user.id) return;
+          
+          // Fetch the liker's profile for display name
+          const { data: likerProfile } = await supabase
+            .from('profiles')
+            .select('full_name, email')
+            .eq('id', payload.new.user_id)
+            .single();
+          
+          const likerName = likerProfile?.full_name || 
+                            likerProfile?.email?.split('@')[0] || 
+                            'Someone';
+          
+          // Show toast notification
+          toast({
+            title: '❤️ Your content got a like!',
+            description: `${likerName} liked your content`,
+          });
+          
+          // Add to notifications list
+          const notification: Notification = {
+            id: `content-like-${payload.new.id}`,
+            type: 'content_liked',
+            title: 'Content Liked',
+            message: `${likerName} liked your content`,
+            read: false,
+            created_at: new Date().toISOString(),
+            data: {
+              content_id: eventData.content_id,
+              liker_id: payload.new.user_id,
+              liker_name: likerName,
+            },
+          };
+          
+          setNotifications(prev => [notification, ...prev]);
+          setUnreadCount(prev => prev + 1);
+        }
+      )
+      .subscribe();
+
     return () => {
       supabase.removeChannel(applicationChannel);
       supabase.removeChannel(sponsorshipChannel);
+      supabase.removeChannel(likesChannel);
     };
   }, [user]);
 

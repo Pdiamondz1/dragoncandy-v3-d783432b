@@ -51,6 +51,20 @@ export const DragonFeedCard: React.FC<DragonFeedCardProps> = ({ media }) => {
           action: newLikedState ? 'like' : 'unlike'
         }
       });
+
+      // Send email notification for likes (not unlikes)
+      if (newLikedState) {
+        await supabase.functions.invoke('send-notification-email', {
+          body: {
+            type: 'content_liked',
+            data: {
+              recipientUserId: media.creatorId,
+              likerName: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Someone',
+              contentUrl: media.url,
+            }
+          }
+        }).catch(err => console.error('Failed to send like notification email:', err));
+      }
     } catch (error) {
       console.error('Failed to track like:', error);
     }

@@ -53,6 +53,8 @@ const NotificationDropdown: React.FC = () => {
       }
     } else if (notification.type === 'application_status_changed') {
       navigate('/dashboard/creator/applications');
+    } else if (notification.type === 'content_liked') {
+      navigate('/dashboard/creator/dragon-feed');
     }
   };
 

@@ -10,7 +10,8 @@ type NotificationType =
   | 'campaign_update'
   | 'sponsorship_proposal'
   | 'sponsorship_status'
-  | 'approval_pending';
+  | 'approval_pending'
+  | 'content_liked';
 
 interface NotificationData {
   campaignTitle?: string;
@@ -27,6 +28,9 @@ interface NotificationData {
   sponsorshipAmount?: number;
   proposalStatus?: string;
   party?: string;
+  creatorName?: string;
+  contentUrl?: string;
+  likerName?: string;
 }
 
 export const useEmailNotifications = () => {
