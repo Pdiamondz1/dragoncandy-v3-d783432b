@@ -61,11 +61,10 @@ export const useCreateCampaign = () => {
               body: {
                 to: profile.email,
                 recipientName: profile.full_name,
-                type: 'campaign_update',
+                type: 'campaign_published',
                 data: {
                   campaignTitle: data.title,
                   campaignId: data.id,
-                  updateDetails: 'Your campaign has been successfully published and is now live in the marketplace!',
                 },
               },
             });
@@ -140,7 +139,7 @@ export const useUpdateCampaign = () => {
               body: {
                 to: profile.email,
                 recipientName: profile.full_name,
-                type: 'campaign_update',
+                type: data.status === 'published' ? 'campaign_published' : 'campaign_update',
                 data: {
                   campaignTitle: data.title,
                   campaignId: data.id,

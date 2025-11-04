@@ -16,6 +16,7 @@ type NotificationType =
   | 'payment_received'
   | 'review_request'
   | 'campaign_update'
+  | 'campaign_published'
   | 'sponsorship_proposal'
   | 'sponsorship_status'
   | 'approval_pending'
@@ -180,6 +181,77 @@ const handler = async (req: Request): Promise<Response> => {
               View Campaign
             </a>
           </p>
+        `,
+      },
+      campaign_published: {
+        subject: `🎉 Your Campaign "${data.campaignTitle}" is Now Live!`,
+        html: `
+          <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); padding: 40px 20px; text-align: center; border-radius: 12px 12px 0 0;">
+              <h1 style="color: white; margin: 0; font-size: 28px;">🎉 Campaign Published!</h1>
+            </div>
+            
+            <div style="background: white; padding: 40px 20px; border-radius: 0 0 12px 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+              <p style="font-size: 16px; color: #374151; margin-top: 0;">Hi ${rn},</p>
+              
+              <p style="font-size: 16px; color: #374151; line-height: 1.6;">
+                Congratulations! Your campaign <strong>"${data.campaignTitle}"</strong> is now <strong>live in the DragonCandy marketplace</strong> and visible to talented content creators! 🚀
+              </p>
+
+              <div style="background: #F0FDF4; border-left: 4px solid #10B981; padding: 16px; margin: 24px 0; border-radius: 4px;">
+                <p style="margin: 0; color: #065F46; font-weight: 600;">✅ Your campaign is discoverable by creators</p>
+                <p style="margin: 8px 0 0 0; color: #065F46;">Creators can now browse, apply, and submit proposals for your campaign.</p>
+              </div>
+
+              <h3 style="color: #1F2937; margin-top: 32px; margin-bottom: 16px;">What Happens Next?</h3>
+              
+              <div style="margin: 16px 0;">
+                <div style="display: flex; margin-bottom: 12px;">
+                  <div style="background: #8B5CF6; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-right: 12px; font-weight: bold;">1</div>
+                  <p style="margin: 0; color: #374151; line-height: 1.8;"><strong>Creators will apply:</strong> You'll receive email notifications when creators submit applications.</p>
+                </div>
+                
+                <div style="display: flex; margin-bottom: 12px;">
+                  <div style="background: #8B5CF6; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-right: 12px; font-weight: bold;">2</div>
+                  <p style="margin: 0; color: #374151; line-height: 1.8;"><strong>Review applications:</strong> Check creator portfolios, rates, and proposals.</p>
+                </div>
+                
+                <div style="display: flex; margin-bottom: 12px;">
+                  <div style="background: #8B5CF6; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-right: 12px; font-weight: bold;">3</div>
+                  <p style="margin: 0; color: #374151; line-height: 1.8;"><strong>Accept & collaborate:</strong> Accept your favorite creator and start working together!</p>
+                </div>
+              </div>
+
+              <div style="background: #EFF6FF; border-left: 4px solid #3B82F6; padding: 16px; margin: 24px 0; border-radius: 4px;">
+                <p style="margin: 0 0 8px 0; color: #1E40AF; font-weight: 600;">💡 Pro Tip</p>
+                <p style="margin: 0; color: #1E40AF; font-size: 14px; line-height: 1.6;">
+                  Campaigns with detailed descriptions and clear deliverables receive 3x more quality applications. 
+                  Consider adding example content or references to attract the best creators!
+                </p>
+              </div>
+
+              <p style="text-align: center; margin-top: 40px;">
+                <a href="${baseUrl}/dashboard/business/campaigns/${data.campaignId}" 
+                   style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600; font-size: 16px; box-shadow: 0 4px 6px rgba(139, 92, 246, 0.3);">
+                  View Campaign & Applications
+                </a>
+              </p>
+
+              <p style="text-align: center; margin-top: 24px;">
+                <a href="${baseUrl}/dashboard/business/creators" 
+                   style="color: #8B5CF6; text-decoration: none; font-size: 14px;">
+                  Browse Creators →
+                </a>
+              </p>
+
+              <hr style="border: none; border-top: 1px solid #E5E7EB; margin: 40px 0;" />
+
+              <p style="color: #6B7280; font-size: 14px; text-align: center; margin: 0;">
+                Questions? Reply to this email or visit our 
+                <a href="${baseUrl}" style="color: #8B5CF6; text-decoration: none;">Help Center</a>
+              </p>
+            </div>
+          </div>
         `,
       },
       sponsorship_proposal: {

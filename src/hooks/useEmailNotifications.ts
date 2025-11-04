@@ -8,6 +8,7 @@ type NotificationType =
   | 'payment_received'
   | 'review_request'
   | 'campaign_update'
+  | 'campaign_published'
   | 'sponsorship_proposal'
   | 'sponsorship_status'
   | 'approval_pending'
