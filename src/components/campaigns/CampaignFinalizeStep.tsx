@@ -15,6 +15,7 @@ import { Rocket, FileText, HelpCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { useCampaigns } from '@/hooks/useCampaigns';
 import { useNavigate } from 'react-router-dom';
+import { useToast } from '@/hooks/use-toast';
 
 const finalizeSchema = z.object({
   title: z.string().min(3, 'Campaign name must be at least 3 characters'),
@@ -56,6 +57,7 @@ const CampaignFinalizeStep: React.FC<CampaignFinalizeStepProps> = ({
   const [isCreating, setIsCreating] = useState(false);
   const { createCampaign } = useCampaigns();
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   const form = useForm<FinalizeFormData>({
     resolver: zodResolver(finalizeSchema),
@@ -103,7 +105,18 @@ const CampaignFinalizeStep: React.FC<CampaignFinalizeStepProps> = ({
     handleCreateCampaign(data);
   };
 
-  const handleSaveDraft = () => {
+  const handleSaveDraft = async () => {
+    const isValid = await form.trigger();
+    
+    if (!isValid) {
+      toast({
+        variant: "destructive",
+        title: "Please complete required fields",
+        description: "Campaign name and description are required even for drafts.",
+      });
+      return;
+    }
+    
     const data = form.getValues();
     handleCreateCampaign(data, 'draft');
   };
@@ -349,16 +362,21 @@ const CampaignFinalizeStep: React.FC<CampaignFinalizeStepProps> = ({
             </Button>
             
             <div className="flex gap-3">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleSaveDraft}
-                disabled={isCreating}
-                className="flex items-center gap-2"
-              >
-                <FileText className="h-4 w-4" />
-                Save as Draft
-              </Button>
+              <div className="flex flex-col gap-1">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleSaveDraft}
+                  disabled={isCreating}
+                  className="flex items-center gap-2"
+                >
+                  <FileText className="h-4 w-4" />
+                  Save as Draft
+                </Button>
+                <p className="text-xs text-muted-foreground text-center">
+                  * Name & description required
+                </p>
+              </div>
               <Button
                 type="submit"
                 disabled={isCreating}
