@@ -69,6 +69,49 @@ export const useCreateCampaign = () => {
               },
             });
           }
+
+          // Notify all brands if campaign is open for sponsorship
+          if (data.open_for_sponsorship === true) {
+            const { data: brands, error: brandsError } = await supabase
+              .from('business_profiles')
+              .select('user_id, business_name')
+              .eq('account_type', 'brand')
+              .eq('is_completed', true);
+
+            if (!brandsError && brands && brands.length > 0) {
+              console.log(`Notifying ${brands.length} brands about new sponsorship campaign`);
+              
+              const brandUserIds = brands.map(b => b.user_id);
+              const { data: brandProfiles } = await supabase
+                .from('profiles')
+                .select('id, email, full_name')
+                .in('id', brandUserIds);
+
+              if (brandProfiles) {
+                const notificationPromises = brandProfiles.map(async (brandProfile) => {
+                  try {
+                    return await supabase.functions.invoke('send-notification-email', {
+                      body: {
+                        to: brandProfile.email,
+                        recipientName: brandProfile.full_name,
+                        type: 'new_campaign_for_brands',
+                        data: {
+                          campaignTitle: data.title,
+                          campaignId: data.id,
+                          description: data.description?.substring(0, 200),
+                        },
+                      },
+                    });
+                  } catch (error) {
+                    console.error(`Failed to notify brand ${brandProfile.id}:`, error);
+                    return null;
+                  }
+                });
+
+                await Promise.allSettled(notificationPromises);
+              }
+            }
+          }
         } catch (error) {
           console.error('Failed to send campaign published email:', error);
         }
@@ -76,7 +119,11 @@ export const useCreateCampaign = () => {
       
       toast({
         title: 'Campaign created successfully!',
-        description: `"${data.title}" has been ${data.status === 'published' ? 'published' : 'saved as draft'}.`,
+        description: `"${data.title}" has been ${data.status === 'published' ? 'published' : 'saved as draft'}.${
+          data.status === 'published' && data.open_for_sponsorship 
+            ? ' Brands have been notified about this sponsorship opportunity!' 
+            : ''
+        }`,
       });
     },
     onError: (error) => {
@@ -147,6 +194,49 @@ export const useUpdateCampaign = () => {
                 },
               },
             });
+
+            // Notify all brands if campaign is changed to published AND open for sponsorship
+            if (data.status === 'published' && data.open_for_sponsorship === true) {
+              const { data: brands, error: brandsError } = await supabase
+                .from('business_profiles')
+                .select('user_id, business_name')
+                .eq('account_type', 'brand')
+                .eq('is_completed', true);
+
+              if (!brandsError && brands && brands.length > 0) {
+                console.log(`Notifying ${brands.length} brands about updated sponsorship campaign`);
+                
+                const brandUserIds = brands.map(b => b.user_id);
+                const { data: brandProfiles } = await supabase
+                  .from('profiles')
+                  .select('id, email, full_name')
+                  .in('id', brandUserIds);
+
+                if (brandProfiles) {
+                  const notificationPromises = brandProfiles.map(async (brandProfile) => {
+                    try {
+                      return await supabase.functions.invoke('send-notification-email', {
+                        body: {
+                          to: brandProfile.email,
+                          recipientName: brandProfile.full_name,
+                          type: 'new_campaign_for_brands',
+                          data: {
+                            campaignTitle: data.title,
+                            campaignId: data.id,
+                            description: data.description?.substring(0, 200),
+                          },
+                        },
+                      });
+                    } catch (error) {
+                      console.error(`Failed to notify brand ${brandProfile.id}:`, error);
+                      return null;
+                    }
+                  });
+
+                  await Promise.allSettled(notificationPromises);
+                }
+              }
+            }
           }
         } catch (error) {
           console.error('Failed to send campaign status update email:', error);
@@ -155,7 +245,11 @@ export const useUpdateCampaign = () => {
       
       toast({
         title: 'Campaign updated successfully!',
-        description: `"${data.title}" has been updated.`,
+        description: `"${data.title}" has been updated.${
+          data.status === 'published' && data.open_for_sponsorship 
+            ? ' Brands have been notified!' 
+            : ''
+        }`,
       });
     },
     onError: (error) => {

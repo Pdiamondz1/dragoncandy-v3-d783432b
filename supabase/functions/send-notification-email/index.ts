@@ -20,7 +20,8 @@ type NotificationType =
   | 'sponsorship_proposal'
   | 'sponsorship_status'
   | 'approval_pending'
-  | 'content_liked';
+  | 'content_liked'
+  | 'new_campaign_for_brands';
 
 interface NotificationEmailRequest {
   to?: string;
@@ -44,6 +45,7 @@ interface NotificationEmailRequest {
     creatorName?: string;
     contentUrl?: string;
     likerName?: string;
+    description?: string;
   };
 }
 
@@ -319,6 +321,51 @@ const handler = async (req: Request): Promise<Response> => {
           <p style="color: #6B7280; font-size: 14px; margin-top: 20px;">
             💡 <strong>Tip:</strong> Clients who like your content often reach out for collaborations. Make sure your profile is up to date!
           </p>
+        `,
+      },
+      new_campaign_for_brands: {
+        subject: `🎉 New Campaign Available: "${data.campaignTitle}"`,
+        html: `
+          <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); padding: 40px 20px; text-align: center; border-radius: 12px 12px 0 0;">
+              <h1 style="color: white; margin: 0; font-size: 28px;">🎯 New Sponsorship Opportunity!</h1>
+            </div>
+            
+            <div style="background: white; padding: 40px 20px; border-radius: 0 0 12px 12px;">
+              <p style="font-size: 16px; color: #374151;">Hi ${rn},</p>
+              
+              <p style="font-size: 16px; color: #374151; line-height: 1.6;">
+                A new campaign is looking for brand sponsors! <strong>"${data.campaignTitle}"</strong> is now live and open for sponsorship opportunities.
+              </p>
+
+              ${data.description ? `
+                <div style="background: #F9FAFB; padding: 16px; border-radius: 8px; margin: 20px 0;">
+                  <p style="margin: 0; color: #6B7280; font-size: 14px; line-height: 1.6;">${data.description}</p>
+                </div>
+              ` : ''}
+
+              <div style="background: #FEF3C7; border-left: 4px solid #F59E0B; padding: 16px; margin: 24px 0; border-radius: 4px;">
+                <p style="margin: 0; color: #92400E; font-weight: 600;">💼 Sponsorship Available</p>
+                <p style="margin: 8px 0 0 0; color: #92400E; font-size: 14px;">
+                  This campaign is actively seeking brand partnerships. Be the first to submit your sponsorship proposal!
+                </p>
+              </div>
+
+              <p style="text-align: center; margin-top: 40px;">
+                <a href="${baseUrl}/dashboard/brand/discover-campaigns" 
+                   style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600; font-size: 16px;">
+                  View Campaign Details
+                </a>
+              </p>
+
+              <p style="text-align: center; margin-top: 16px;">
+                <a href="${baseUrl}/dashboard/brand/settings" 
+                   style="color: #6B7280; text-decoration: none; font-size: 12px;">
+                  Unsubscribe from campaign alerts
+                </a>
+              </p>
+            </div>
+          </div>
         `,
       },
     };
