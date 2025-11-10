@@ -652,7 +652,9 @@ export type Database = {
           average_rating: number | null
           base_rate_per_hour: number | null
           bio: string | null
+          city: string | null
           collaboration_preferences: string | null
+          country: string | null
           created_at: string | null
           creator_name: string
           facebook_url: string | null
@@ -666,6 +668,7 @@ export type Database = {
           min_project_budget: number | null
           other_social_url: string | null
           portfolio_urls: string[] | null
+          postal_code: string | null
           preferred_project_duration: string | null
           profile_slug: string | null
           profile_visibility: string | null
@@ -688,7 +691,9 @@ export type Database = {
           average_rating?: number | null
           base_rate_per_hour?: number | null
           bio?: string | null
+          city?: string | null
           collaboration_preferences?: string | null
+          country?: string | null
           created_at?: string | null
           creator_name: string
           facebook_url?: string | null
@@ -702,6 +707,7 @@ export type Database = {
           min_project_budget?: number | null
           other_social_url?: string | null
           portfolio_urls?: string[] | null
+          postal_code?: string | null
           preferred_project_duration?: string | null
           profile_slug?: string | null
           profile_visibility?: string | null
@@ -724,7 +730,9 @@ export type Database = {
           average_rating?: number | null
           base_rate_per_hour?: number | null
           bio?: string | null
+          city?: string | null
           collaboration_preferences?: string | null
+          country?: string | null
           created_at?: string | null
           creator_name?: string
           facebook_url?: string | null
@@ -738,6 +746,7 @@ export type Database = {
           min_project_budget?: number | null
           other_social_url?: string | null
           portfolio_urls?: string[] | null
+          postal_code?: string | null
           preferred_project_duration?: string | null
           profile_slug?: string | null
           profile_visibility?: string | null
@@ -1363,7 +1372,7 @@ export type Database = {
       profile_views: {
         Row: {
           id: string
-          ip_address: unknown | null
+          ip_address: unknown
           profile_id: string
           profile_type: string
           user_agent: string | null
@@ -1372,7 +1381,7 @@ export type Database = {
         }
         Insert: {
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           profile_id: string
           profile_type: string
           user_agent?: string | null
@@ -1381,7 +1390,7 @@ export type Database = {
         }
         Update: {
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           profile_id?: string
           profile_type?: string
           user_agent?: string | null
@@ -1700,16 +1709,13 @@ export type Database = {
       }
     }
     Functions: {
-      cleanup_expired_verification_tokens: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
+      cleanup_expired_verification_tokens: { Args: never; Returns: undefined }
       create_or_get_direct_conversation: {
         Args: { user1_uuid: string; user2_uuid: string }
         Returns: string
       }
       debug_user_upload_permissions: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           is_authenticated: boolean
           profile_exists: boolean
@@ -1768,10 +1774,7 @@ export type Database = {
           unread_count: number
         }[]
       }
-      get_user_display_name: {
-        Args: { user_uuid: string }
-        Returns: string
-      }
+      get_user_display_name: { Args: { user_uuid: string }; Returns: string }
       is_conversation_participant: {
         Args: { conversation_uuid: string; user_uuid: string }
         Returns: boolean

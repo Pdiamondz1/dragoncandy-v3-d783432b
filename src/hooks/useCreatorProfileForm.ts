@@ -8,6 +8,9 @@ export interface CreatorProfileFormData {
   creator_name: string;
   bio: string;
   location: string;
+  city: string;
+  country: string;
+  postal_code: string;
   availability: string;
   base_rate_per_hour: string;
   years_of_experience: string;
@@ -41,6 +44,9 @@ export const useCreatorProfileForm = () => {
     creator_name: '',
     bio: '',
     location: '',
+    city: '',
+    country: '',
+    postal_code: '',
     availability: '',
     base_rate_per_hour: '',
     years_of_experience: '',
@@ -83,6 +89,9 @@ export const useCreatorProfileForm = () => {
       creator_name: profile.creator_name || '',
       bio: profile.bio || '',
       location: profile.location || '',
+      city: profile.city || '',
+      country: profile.country || '',
+      postal_code: profile.postal_code || '',
       availability: profile.availability || '',
       base_rate_per_hour: profile.base_rate_per_hour?.toString() || '',
       years_of_experience: profile.years_of_experience?.toString() || '',

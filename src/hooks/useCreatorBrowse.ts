@@ -13,6 +13,9 @@ interface CreatorProfile {
   skills?: string[];
   portfolio_urls?: string[];
   location?: string;
+  city?: string;
+  country?: string;
+  postal_code?: string;
   availability?: string;
   base_rate_per_hour?: number;
   instagram_url?: string;
@@ -31,7 +34,9 @@ interface CreatorProfile {
 export interface CreatorFilters {
   searchTerm: string;
   skills: string[];
-  location: string;
+  city: string;
+  country: string;
+  postal_code: string;
   minRate: number;
   maxRate: number;
   platforms: string[];
@@ -44,7 +49,9 @@ export const useCreatorBrowse = () => {
   const [filters, setFilters] = React.useState<CreatorFilters>({
     searchTerm: '',
     skills: [],
-    location: '',
+    city: '',
+    country: '',
+    postal_code: '',
     minRate: 0,
     maxRate: 500,
     platforms: [],
@@ -81,7 +88,9 @@ export const useCreatorBrowse = () => {
     setFilters({
       searchTerm: '',
       skills: [],
-      location: '',
+      city: '',
+      country: '',
+      postal_code: '',
       minRate: 0,
       maxRate: 500,
       platforms: [],
@@ -100,8 +109,33 @@ export const useCreatorBrowse = () => {
     const matchesSkills = filters.skills.length === 0 || 
       creator.skills?.some(skill => filters.skills.includes(skill));
 
-    const matchesLocation = !filters.location ||
-      creator.location?.toLowerCase().includes(filters.location.toLowerCase());
+    // Location filters - structured with legacy fallback
+    const matchesPostalCode = !filters.postal_code || (() => {
+      const filterPostal = filters.postal_code.toLowerCase().trim();
+      const creatorPostal = (creator.postal_code || '').toLowerCase().trim();
+      
+      if (creatorPostal && creatorPostal.startsWith(filterPostal)) return true;
+      if (!creatorPostal && creator.location?.toLowerCase().includes(filterPostal)) return true;
+      return false;
+    })();
+
+    const matchesCity = !filters.city || (() => {
+      const filterCity = filters.city.toLowerCase().trim();
+      const creatorCity = (creator.city || '').toLowerCase().trim();
+      
+      if (creatorCity && creatorCity.includes(filterCity)) return true;
+      if (!creatorCity && creator.location?.toLowerCase().includes(filterCity)) return true;
+      return false;
+    })();
+
+    const matchesCountry = !filters.country || (() => {
+      const filterCountry = filters.country.toLowerCase().trim();
+      const creatorCountry = (creator.country || '').toLowerCase().trim();
+      
+      if (creatorCountry && creatorCountry.includes(filterCountry)) return true;
+      if (!creatorCountry && creator.location?.toLowerCase().includes(filterCountry)) return true;
+      return false;
+    })();
 
     const matchesRate = (() => {
       const rate = creator.base_rate_per_hour || 0;
@@ -125,8 +159,8 @@ export const useCreatorBrowse = () => {
 
     const matchesExperience = !filters.experienceLevel || filters.experienceLevel === "any";
 
-    return matchesSearch && matchesSkills && matchesLocation && matchesRate && 
-           matchesPlatforms && matchesAvailability && matchesExperience;
+    return matchesSearch && matchesSkills && matchesPostalCode && matchesCity && 
+           matchesCountry && matchesRate && matchesPlatforms && matchesAvailability && matchesExperience;
   });
 
   return {
