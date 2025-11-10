@@ -4,6 +4,7 @@ import { validateFile, generateFileHash, compressImage } from '@/lib/fileUtils';
 import { useCreateFileUpload } from '@/hooks/useFileOperations';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useFileUploadNotification } from '@/hooks/useFileUploadNotification';
 import type { FileUploadProgress } from '@/types/files';
 
 interface UseFileUploadLogicProps {
@@ -23,6 +24,7 @@ export const useFileUploadLogic = ({
   const [uploadQueue, setUploadQueue] = useState<FileUploadProgress[]>([]);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const createFileUpload = useCreateFileUpload();
+  const { notifyFileUpload } = useFileUploadNotification();
 
   const processFileUpload = useCallback(async (acceptedFiles: File[]) => {
     setValidationErrors([]);
@@ -166,7 +168,29 @@ export const useFileUploadLogic = ({
     if (onUploadComplete && uploadResults.length > 0) {
       onUploadComplete(uploadResults);
     }
-  }, [bucketName, campaignId, category, user, createFileUpload, onUploadComplete]);
+
+    // Send notification if this is a campaign upload
+    if (campaignId && uploadResults.length > 0 && user) {
+      try {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .single();
+        
+        const uploaderRole = profile?.role === 'content_creator' ? 'creator' : 'restaurant';
+        
+        await notifyFileUpload(
+          campaignId,
+          'Campaign',
+          uploadResults.length,
+          uploaderRole
+        );
+      } catch (error) {
+        console.error('Failed to send file upload notification:', error);
+      }
+    }
+  }, [bucketName, campaignId, category, user, createFileUpload, onUploadComplete, notifyFileUpload]);
 
   const removeFromQueue = useCallback((fileId: string) => {
     setUploadQueue(prev => prev.filter(item => item.fileId !== fileId));

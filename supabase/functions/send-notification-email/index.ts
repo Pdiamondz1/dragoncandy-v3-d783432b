@@ -21,7 +21,10 @@ type NotificationType =
   | 'sponsorship_status'
   | 'approval_pending'
   | 'content_liked'
-  | 'new_campaign_for_brands';
+  | 'new_campaign_for_brands'
+  | 'new_campaign_for_creators'
+  | 'file_uploaded_by_creator'
+  | 'file_uploaded_by_restaurant';
 
 interface NotificationEmailRequest {
   to?: string;
@@ -46,6 +49,10 @@ interface NotificationEmailRequest {
     contentUrl?: string;
     likerName?: string;
     description?: string;
+    budget?: number;
+    platforms?: string[];
+    uploaderName?: string;
+    fileCount?: number;
   };
 }
 
@@ -364,6 +371,58 @@ const handler = async (req: Request): Promise<Response> => {
                   Unsubscribe from campaign alerts
                 </a>
               </p>
+            </div>
+          </div>
+        `,
+      },
+      new_campaign_for_creators: {
+        subject: `🎬 New Campaign: "${data.campaignTitle}"`,
+        html: `
+          <div style="font-family: 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); padding: 40px 20px; text-align: center; border-radius: 12px 12px 0 0;">
+              <h1 style="color: white; margin: 0; font-size: 28px;">🎯 New Campaign Alert!</h1>
+            </div>
+            <div style="background: white; padding: 40px 20px; border-radius: 0 0 12px 12px;">
+              <p style="font-size: 16px; color: #374151;">Hi ${rn},</p>
+              <p style="font-size: 16px; color: #374151; line-height: 1.6;">
+                A new campaign opportunity is now live! <strong>"${data.campaignTitle}"</strong> is looking for talented creators like you.
+              </p>
+              ${data.description ? `<div style="background: #F9FAFB; padding: 16px; border-radius: 8px; margin: 20px 0;"><p style="margin: 0; color: #6B7280; font-size: 14px; line-height: 1.6;">${data.description}</p></div>` : ''}
+              ${data.budget ? `<div style="background: #ECFDF5; border-left: 4px solid #10B981; padding: 16px; margin: 24px 0; border-radius: 4px;"><p style="margin: 0; color: #065F46; font-weight: 600;">💰 Budget: $${data.budget}</p></div>` : ''}
+              ${data.platforms && data.platforms.length > 0 ? `<div style="margin: 20px 0;"><p style="font-weight: 600; color: #374151; margin-bottom: 8px;">📱 Platforms:</p><p style="color: #6B7280; font-size: 14px;">${data.platforms.join(', ')}</p></div>` : ''}
+              <p style="text-align: center; margin-top: 40px;"><a href="${baseUrl}/dashboard/creator/marketplace" style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600; font-size: 16px;">View Campaign & Apply</a></p>
+            </div>
+          </div>
+        `,
+      },
+      file_uploaded_by_creator: {
+        subject: `📁 New Files Uploaded: "${data.campaignTitle}"`,
+        html: `
+          <div style="font-family: 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); padding: 40px 20px; text-align: center; border-radius: 12px 12px 0 0;">
+              <h1 style="color: white; margin: 0; font-size: 28px;">📁 New Deliverables!</h1>
+            </div>
+            <div style="background: white; padding: 40px 20px; border-radius: 0 0 12px 12px;">
+              <p style="font-size: 16px; color: #374151;">Hi ${rn},</p>
+              <p style="font-size: 16px; color: #374151; line-height: 1.6;"><strong>${data.uploaderName}</strong> has uploaded <strong>${data.fileCount} new ${data.fileCount === 1 ? 'file' : 'files'}</strong> to your campaign <strong>"${data.campaignTitle}"</strong>.</p>
+              <div style="background: #F0F9FF; border-left: 4px solid #0EA5E9; padding: 16px; margin: 24px 0; border-radius: 4px;"><p style="margin: 0; color: #075985; font-weight: 600;">✅ Ready for Review</p><p style="margin: 8px 0 0 0; color: #075985; font-size: 14px;">The creator has submitted their work. Please review and provide feedback.</p></div>
+              <p style="text-align: center; margin-top: 40px;"><a href="${baseUrl}/dashboard/projects/${data.campaignId}" style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600; font-size: 16px;">Review Files</a></p>
+            </div>
+          </div>
+        `,
+      },
+      file_uploaded_by_restaurant: {
+        subject: `📁 New Reference Files: "${data.campaignTitle}"`,
+        html: `
+          <div style="font-family: 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); padding: 40px 20px; text-align: center; border-radius: 12px 12px 0 0;">
+              <h1 style="color: white; margin: 0; font-size: 28px;">📁 New Campaign Files!</h1>
+            </div>
+            <div style="background: white; padding: 40px 20px; border-radius: 0 0 12px 12px;">
+              <p style="font-size: 16px; color: #374151;">Hi ${rn},</p>
+              <p style="font-size: 16px; color: #374151; line-height: 1.6;"><strong>${data.uploaderName}</strong> has uploaded <strong>${data.fileCount} new ${data.fileCount === 1 ? 'file' : 'files'}</strong> for campaign <strong>"${data.campaignTitle}"</strong>.</p>
+              <div style="background: #FEF3C7; border-left: 4px solid #F59E0B; padding: 16px; margin: 24px 0; border-radius: 4px;"><p style="margin: 0; color: #92400E; font-weight: 600;">📋 Reference Materials</p><p style="margin: 8px 0 0 0; color: #92400E; font-size: 14px;">New reference files are available to help with your content creation.</p></div>
+              <p style="text-align: center; margin-top: 40px;"><a href="${baseUrl}/dashboard/creator/projects/${data.campaignId}" style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600; font-size: 16px;">View Files</a></p>
             </div>
           </div>
         `,

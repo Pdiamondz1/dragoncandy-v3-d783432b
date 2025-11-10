@@ -70,7 +70,7 @@ export const useCreateCampaign = () => {
             });
           }
 
-          // Notify all brands if campaign is open for sponsorship
+            // Notify all brands if campaign is open for sponsorship
           if (data.open_for_sponsorship === true) {
             const { data: brands, error: brandsError } = await supabase
               .from('business_profiles')
@@ -112,6 +112,48 @@ export const useCreateCampaign = () => {
               }
             }
           }
+
+          // Notify all creators about new campaign
+          const { data: creators, error: creatorsError } = await supabase
+            .from('creator_profiles')
+            .select('user_id, creator_name')
+            .eq('is_completed', true);
+
+          if (!creatorsError && creators && creators.length > 0) {
+            console.log(`Notifying ${creators.length} creators about new campaign`);
+            
+            const creatorUserIds = creators.map(c => c.user_id);
+            const { data: creatorProfiles } = await supabase
+              .from('profiles')
+              .select('id, email, full_name')
+              .in('id', creatorUserIds);
+
+            if (creatorProfiles) {
+              const notificationPromises = creatorProfiles.map(async (creatorProfile) => {
+                try {
+                  return await supabase.functions.invoke('send-notification-email', {
+                    body: {
+                      to: creatorProfile.email,
+                      recipientName: creatorProfile.full_name,
+                      type: 'new_campaign_for_creators',
+                      data: {
+                        campaignTitle: data.title,
+                        campaignId: data.id,
+                        description: data.description?.substring(0, 200),
+                        budget: data.budget_max || data.budget_min,
+                        platforms: data.platforms,
+                      },
+                    },
+                  });
+                } catch (error) {
+                  console.error(`Failed to notify creator ${creatorProfile.id}:`, error);
+                  return null;
+                }
+              });
+
+              await Promise.allSettled(notificationPromises);
+            }
+          }
         } catch (error) {
           console.error('Failed to send campaign published email:', error);
         }
@@ -120,8 +162,8 @@ export const useCreateCampaign = () => {
       toast({
         title: 'Campaign created successfully!',
         description: `"${data.title}" has been ${data.status === 'published' ? 'published' : 'saved as draft'}.${
-          data.status === 'published' && data.open_for_sponsorship 
-            ? ' Brands have been notified about this sponsorship opportunity!' 
+          data.status === 'published' 
+            ? ' Creators and brands have been notified!' 
             : ''
         }`,
       });
@@ -237,6 +279,50 @@ export const useUpdateCampaign = () => {
                 }
               }
             }
+
+            // Notify all creators if campaign status changed to published
+            if (data.status === 'published' && variables.updates.status === 'published') {
+              const { data: creators, error: creatorsError } = await supabase
+                .from('creator_profiles')
+                .select('user_id, creator_name')
+                .eq('is_completed', true);
+
+              if (!creatorsError && creators && creators.length > 0) {
+                console.log(`Notifying ${creators.length} creators about newly published campaign`);
+                
+                const creatorUserIds = creators.map(c => c.user_id);
+                const { data: creatorProfiles } = await supabase
+                  .from('profiles')
+                  .select('id, email, full_name')
+                  .in('id', creatorUserIds);
+
+                if (creatorProfiles) {
+                  const notificationPromises = creatorProfiles.map(async (creatorProfile) => {
+                    try {
+                      return await supabase.functions.invoke('send-notification-email', {
+                        body: {
+                          to: creatorProfile.email,
+                          recipientName: creatorProfile.full_name,
+                          type: 'new_campaign_for_creators',
+                          data: {
+                            campaignTitle: data.title,
+                            campaignId: data.id,
+                            description: data.description?.substring(0, 200),
+                            budget: data.budget_max || data.budget_min,
+                            platforms: data.platforms,
+                          },
+                        },
+                      });
+                    } catch (error) {
+                      console.error(`Failed to notify creator ${creatorProfile.id}:`, error);
+                      return null;
+                    }
+                  });
+
+                  await Promise.allSettled(notificationPromises);
+                }
+              }
+            }
           }
         } catch (error) {
           console.error('Failed to send campaign status update email:', error);
@@ -246,8 +332,8 @@ export const useUpdateCampaign = () => {
       toast({
         title: 'Campaign updated successfully!',
         description: `"${data.title}" has been updated.${
-          data.status === 'published' && data.open_for_sponsorship 
-            ? ' Brands have been notified!' 
+          data.status === 'published'
+            ? ' Creators and brands have been notified!' 
             : ''
         }`,
       });

@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useCreateFileUpload } from '@/hooks/useFileUploadMutations';
+import { useFileUploadNotification } from '@/hooks/useFileUploadNotification';
 import { toast } from '@/hooks/use-toast';
 
 interface UseProjectFileUploadProps {
@@ -20,6 +21,7 @@ export const useProjectFileUpload = ({
   const [uploadProgress, setUploadProgress] = useState<{[key: string]: number}>({});
   const [isUploading, setIsUploading] = useState(false);
   const createFileUpload = useCreateFileUpload();
+  const { notifyFileUpload } = useFileUploadNotification();
 
   const handleUpload = async (acceptedFiles: File[]) => {
     if (acceptedFiles.length === 0 || !user) {
@@ -137,6 +139,26 @@ export const useProjectFileUpload = ({
         title: 'Files uploaded successfully',
         description: `${acceptedFiles.length} file(s) uploaded to ${campaignTitle}`,
       });
+
+      // Send notification
+      try {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .single();
+
+        const uploaderRole = profile?.role === 'content_creator' ? 'creator' : 'restaurant';
+
+        await notifyFileUpload(
+          campaignId,
+          campaignTitle,
+          uploadedFiles.length,
+          uploaderRole
+        );
+      } catch (error) {
+        console.error('Failed to send file upload notification:', error);
+      }
 
       console.log('=== UPLOAD PROCESS COMPLETED SUCCESSFULLY ===');
       if (onUploadComplete) onUploadComplete();
