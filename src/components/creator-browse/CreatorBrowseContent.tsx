@@ -1,8 +1,10 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Search, Users } from 'lucide-react';
+import { Search, Users, LayoutGrid, Map as MapIcon, LayoutDashboard } from 'lucide-react';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CreatorCard } from './CreatorCard';
+import { CreatorMapView } from './CreatorMapView';
 import AdvancedCreatorFilters from '@/components/creator-search/AdvancedCreatorFilters';
 import type { CreatorFilters } from '@/hooks/useCreatorBrowse';
 
@@ -75,8 +77,34 @@ export const CreatorBrowseContent: React.FC<CreatorBrowseContentProps> = ({
     );
   }
 
+  const [viewMode, setViewMode] = useState<'grid' | 'map' | 'split'>(() => {
+    return (localStorage.getItem('creator-view-mode') as any) || 'split';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('creator-view-mode', viewMode);
+  }, [viewMode]);
+
   return (
     <div className="space-y-6">
+      {/* View Mode Tabs */}
+      <Tabs value={viewMode} onValueChange={(value: any) => setViewMode(value)} className="w-full">
+        <TabsList className="grid w-full max-w-md grid-cols-3">
+          <TabsTrigger value="grid" className="flex items-center gap-2">
+            <LayoutGrid className="h-4 w-4" />
+            <span className="hidden sm:inline">Grid</span>
+          </TabsTrigger>
+          <TabsTrigger value="map" className="flex items-center gap-2">
+            <MapIcon className="h-4 w-4" />
+            <span className="hidden sm:inline">Map</span>
+          </TabsTrigger>
+          <TabsTrigger value="split" className="flex items-center gap-2">
+            <LayoutDashboard className="h-4 w-4" />
+            <span className="hidden sm:inline">Split</span>
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
+
       {/* Advanced Filters */}
       <AdvancedCreatorFilters
         filters={filters}
@@ -85,26 +113,47 @@ export const CreatorBrowseContent: React.FC<CreatorBrowseContentProps> = ({
         resultCount={filteredCreators.length}
       />
 
-      {/* Creators Grid */}
-      {filteredCreators.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <Search className="h-12 w-12 text-gray-400 mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              No creators found
-            </h3>
-            <p className="text-gray-600">
-              Try adjusting your search criteria to find more creators.
-            </p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredCreators.map((creator) => (
-            <CreatorCard key={creator.id} creator={creator} />
-          ))}
-        </div>
-      )}
+      {/* Main Content Area */}
+      <div className={`
+        ${viewMode === 'split' ? 'grid grid-cols-1 lg:grid-cols-5 gap-6' : ''}
+      `}>
+        {/* Left: Creator Grid */}
+        {(viewMode === 'grid' || viewMode === 'split') && (
+          <div className={`${viewMode === 'split' ? 'lg:col-span-3' : ''}`}>
+            {filteredCreators.length === 0 ? (
+              <Card>
+                <CardContent className="flex flex-col items-center justify-center py-12">
+                  <Search className="h-12 w-12 text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">
+                    No creators found
+                  </h3>
+                  <p className="text-muted-foreground">
+                    Try adjusting your search criteria to find more creators.
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
+                {filteredCreators.map((creator) => (
+                  <CreatorCard key={creator.id} creator={creator} />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Right: Map View */}
+        {(viewMode === 'map' || viewMode === 'split') && (
+          <div className={`${viewMode === 'split' ? 'lg:col-span-2' : ''}`}>
+            <div className={`${viewMode === 'split' ? 'sticky top-4' : ''}`}>
+              <CreatorMapView 
+                filteredCreators={filteredCreators}
+                filters={filters}
+              />
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

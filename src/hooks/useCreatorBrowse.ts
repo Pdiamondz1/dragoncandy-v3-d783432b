@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -59,6 +59,16 @@ export const useCreatorBrowse = () => {
     experienceLevel: '',
   });
 
+  const [debouncedFilters, setDebouncedFilters] = React.useState(filters);
+
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedFilters(filters);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [filters]);
+
   const { data: creators = [], isLoading, error } = useQuery({
     queryKey: ['available-creators'],
     queryFn: async () => {
@@ -99,8 +109,8 @@ export const useCreatorBrowse = () => {
     });
   };
 
-  // Filter creators based on search criteria
-  const filteredCreators = creators.filter(creator => {
+  const filteredCreators = useMemo(() => {
+    return creators.filter(creator => {
     const matchesSearch = 
       creator.creator_name.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
       creator.bio?.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
@@ -110,8 +120,8 @@ export const useCreatorBrowse = () => {
       creator.skills?.some(skill => filters.skills.includes(skill));
 
     // Location filters - structured with legacy fallback
-    const matchesPostalCode = !filters.postal_code || (() => {
-      const filterPostal = filters.postal_code.toLowerCase().trim();
+    const matchesPostalCode = !debouncedFilters.postal_code || (() => {
+      const filterPostal = debouncedFilters.postal_code.toLowerCase().trim();
       const creatorPostal = (creator.postal_code || '').toLowerCase().trim();
       
       if (creatorPostal && creatorPostal.startsWith(filterPostal)) return true;
@@ -119,8 +129,8 @@ export const useCreatorBrowse = () => {
       return false;
     })();
 
-    const matchesCity = !filters.city || (() => {
-      const filterCity = filters.city.toLowerCase().trim();
+    const matchesCity = !debouncedFilters.city || (() => {
+      const filterCity = debouncedFilters.city.toLowerCase().trim();
       const creatorCity = (creator.city || '').toLowerCase().trim();
       
       if (creatorCity && creatorCity.includes(filterCity)) return true;
@@ -128,8 +138,8 @@ export const useCreatorBrowse = () => {
       return false;
     })();
 
-    const matchesCountry = !filters.country || (() => {
-      const filterCountry = filters.country.toLowerCase().trim();
+    const matchesCountry = !debouncedFilters.country || (() => {
+      const filterCountry = debouncedFilters.country.toLowerCase().trim();
       const creatorCountry = (creator.country || '').toLowerCase().trim();
       
       if (creatorCountry && creatorCountry.includes(filterCountry)) return true;
@@ -159,9 +169,10 @@ export const useCreatorBrowse = () => {
 
     const matchesExperience = !filters.experienceLevel || filters.experienceLevel === "any";
 
-    return matchesSearch && matchesSkills && matchesPostalCode && matchesCity && 
-           matchesCountry && matchesRate && matchesPlatforms && matchesAvailability && matchesExperience;
-  });
+      return matchesSearch && matchesSkills && matchesPostalCode && matchesCity && 
+             matchesCountry && matchesRate && matchesPlatforms && matchesAvailability && matchesExperience;
+    });
+  }, [creators, filters, debouncedFilters]);
 
   return {
     creators,
