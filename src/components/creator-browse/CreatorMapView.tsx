@@ -85,10 +85,16 @@ export const CreatorMapView: React.FC<CreatorMapViewProps> = ({
         points.forEach(p => bounds.extend(p));
         map.fitBounds(bounds);
         
-        // Clamp zoom so it doesn't get too close
+        // Clamp zoom so it doesn't get too close and sync state
         google.maps.event.addListenerOnce(map, 'idle', () => {
-          const currentZoom = map.getZoom();
-          if (currentZoom && currentZoom > 12) {
+          const currentZoom = map.getZoom() ?? 12;
+          const clampedZoom = currentZoom > 12 ? 12 : currentZoom;
+          const centerAfterFit = map.getCenter()?.toJSON() ?? DEFAULT_MAP_CENTER;
+          
+          setMapCenter(centerAfterFit);
+          setMapZoom(clampedZoom);
+          
+          if (currentZoom > 12) {
             map.setZoom(12);
           }
         });
@@ -111,6 +117,7 @@ export const CreatorMapView: React.FC<CreatorMapViewProps> = ({
         else if (f.city) newZoom = 10;
         else if (f.country) newZoom = 5;
         
+        setMapCenter(center);
         setMapZoom(newZoom);
         map.setZoom(newZoom);
         return;
