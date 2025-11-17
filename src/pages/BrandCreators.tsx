@@ -8,6 +8,7 @@ const BrandCreators: React.FC = () => {
   const {
     filteredCreators,
     filters,
+    debouncedFilters,
     isLoading,
     error,
     handleFilterChange,
@@ -22,6 +23,7 @@ const BrandCreators: React.FC = () => {
           <CreatorBrowseContent
             filteredCreators={filteredCreators}
             filters={filters}
+            mapFilters={debouncedFilters}
             onFilterChange={handleFilterChange}
             onResetFilters={resetFilters}
             isLoading={isLoading}

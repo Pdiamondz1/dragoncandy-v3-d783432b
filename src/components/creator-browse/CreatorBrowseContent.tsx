@@ -32,6 +32,7 @@ interface CreatorProfile {
 interface CreatorBrowseContentProps {
   filteredCreators: CreatorProfile[];
   filters: CreatorFilters;
+  mapFilters?: CreatorFilters;
   onFilterChange: (key: keyof CreatorFilters, value: any) => void;
   onResetFilters: () => void;
   isLoading: boolean;
@@ -41,6 +42,7 @@ interface CreatorBrowseContentProps {
 export const CreatorBrowseContent: React.FC<CreatorBrowseContentProps> = ({
   filteredCreators,
   filters,
+  mapFilters,
   onFilterChange,
   onResetFilters,
   isLoading,
@@ -148,7 +150,7 @@ export const CreatorBrowseContent: React.FC<CreatorBrowseContentProps> = ({
             <div className={`${viewMode === 'split' ? 'sticky top-4' : ''}`}>
               <CreatorMapView 
                 filteredCreators={filteredCreators}
-                filters={filters}
+                filters={mapFilters ?? filters}
               />
             </div>
           </div>

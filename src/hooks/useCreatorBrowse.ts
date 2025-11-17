@@ -178,6 +178,7 @@ export const useCreatorBrowse = () => {
     creators,
     filteredCreators,
     filters,
+    debouncedFilters,
     isLoading,
     error,
     handleFilterChange,
