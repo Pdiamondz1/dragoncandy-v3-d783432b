@@ -68,8 +68,8 @@ export class GeocodingService {
     const query = queryParts.join(', ');
 
     try {
-      const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-      const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(query)}&key=${apiKey}`;
+      const { GOOGLE_MAPS_API_KEY } = await import('./googleMapsConfig');
+      const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(query)}&key=${GOOGLE_MAPS_API_KEY}`;
       
       const response = await fetch(url);
       const data = await response.json();
