@@ -76,16 +76,19 @@ export const CreatorMapView: React.FC<CreatorMapViewProps> = ({
           const newCenter = { lat: result.lat, lng: result.lng };
           setMapCenter(newCenter);
           
+          // Calculate zoom level based on filter type
+          let newZoom = DEFAULT_MAP_ZOOM;
           if (filters.postal_code) {
-            setMapZoom(12);
+            newZoom = 12; // Close-up for zip codes
           } else if (filters.city) {
-            setMapZoom(10);
-          } else {
-            setMapZoom(5);
+            newZoom = 10; // City-level view
+          } else if (filters.country) {
+            newZoom = 5; // Country-level view
           }
-
+          
+          setMapZoom(newZoom);
           map.panTo(newCenter);
-          map.setZoom(mapZoom);
+          map.setZoom(newZoom); // Use calculated value, not state
         }
       } else if (geocodedCreators.length > 0) {
         const bounds = new google.maps.LatLngBounds();
@@ -97,7 +100,7 @@ export const CreatorMapView: React.FC<CreatorMapViewProps> = ({
     };
 
     centerMapOnFilters();
-  }, [filters, map, geocodedCreators, mapZoom]);
+  }, [filters, map, geocodedCreators]);
 
   const onLoad = useCallback((map: google.maps.Map) => {
     setMap(map);
