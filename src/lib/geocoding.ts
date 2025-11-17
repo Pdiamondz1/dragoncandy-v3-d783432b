@@ -74,7 +74,12 @@ export class GeocodingService {
       const response = await fetch(url);
       const data = await response.json();
 
-      if (data.status === 'OK' && data.results.length > 0) {
+      if (data.status !== 'OK') {
+        console.warn('Geocoding API status:', data.status, data.error_message || 'No error message');
+        return null;
+      }
+
+      if (data.results.length > 0) {
         const result = data.results[0];
         const geocodedResult: GeocodingResult = {
           lat: result.geometry.location.lat,
