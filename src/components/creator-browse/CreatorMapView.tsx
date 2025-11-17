@@ -74,15 +74,17 @@ export const CreatorMapView: React.FC<CreatorMapViewProps> = ({
       };
       
       const hasLocation = !!(f.postal_code || f.city || f.country);
+      console.debug('[Map] Debounced effect start', { filters: f, hasLocation, geocodedCount: geocodedCreators.length, time: new Date().toISOString() });
       
       // Guard against very short inputs
-      if (f.postal_code && f.postal_code.length < 3) return;
-      if (f.city && f.city.length < 3) return;
+      if (f.postal_code && f.postal_code.length < 3) { console.debug('[Map] Skip: postal_code too short', f.postal_code); return; }
+      if (f.city && f.city.length < 3) { console.debug('[Map] Skip: city too short', f.city); return; }
       
       // Helper function to fit bounds to all markers
       const fitAllMarkers = (points: Array<{lat: number; lng: number}>) => {
         const bounds = new google.maps.LatLngBounds();
         points.forEach(p => bounds.extend(p));
+        console.debug('[Map] Path: multiple markers -> fitBounds', { count: points.length });
         map.fitBounds(bounds);
         
         // Clamp zoom so it doesn't get too close and sync state
@@ -90,6 +92,7 @@ export const CreatorMapView: React.FC<CreatorMapViewProps> = ({
           const currentZoom = map.getZoom() ?? 12;
           const clampedZoom = currentZoom > 12 ? 12 : currentZoom;
           const centerAfterFit = map.getCenter()?.toJSON() ?? DEFAULT_MAP_CENTER;
+          console.debug('[Map] fitBounds idle', { currentZoom, clampedZoom, center: centerAfterFit });
           
           setMapCenter(centerAfterFit);
           setMapZoom(clampedZoom);
@@ -102,6 +105,7 @@ export const CreatorMapView: React.FC<CreatorMapViewProps> = ({
       
       // Case 1: Multiple geocoded creators - fit bounds to show all
       if (geocodedCreators.length > 1) {
+        console.debug('[Map] Path: multiple markers', { count: geocodedCreators.length });
         fitAllMarkers(geocodedCreators.map(c => ({ lat: c.lat, lng: c.lng })));
         return;
       }
@@ -110,12 +114,14 @@ export const CreatorMapView: React.FC<CreatorMapViewProps> = ({
       if (geocodedCreators.length === 1) {
         const { lat, lng } = geocodedCreators[0];
         const center = { lat, lng };
+        console.debug('[Map] Path: single marker', { center });
         map.panTo(center);
         
         let newZoom = 8;
         if (f.postal_code) newZoom = 12;
         else if (f.city) newZoom = 10;
         else if (f.country) newZoom = 5;
+        console.debug('[Map] Set zoom from single marker', { newZoom });
         
         setMapCenter(center);
         setMapZoom(newZoom);
@@ -125,6 +131,7 @@ export const CreatorMapView: React.FC<CreatorMapViewProps> = ({
       
       // Case 3: User entered location but no markers yet - geocode and center
       if (hasLocation) {
+        console.debug('[Map] Path: filter geocode', { filters: f });
         const result = await geocodingService.geocodeLocation(
           f.postal_code,
           f.city,
@@ -143,12 +150,16 @@ export const CreatorMapView: React.FC<CreatorMapViewProps> = ({
           setMapCenter(center);
           setMapZoom(newZoom);
           map.setZoom(newZoom);
+          console.debug('[Map] Geocode success', { center, newZoom });
+        } else {
+          console.warn('[Map] Geocode returned null for filters', { filters: f });
         }
         return;
       }
       
       // Case 4: No filters but we have markers - fit all markers
       if (geocodedCreators.length > 0) {
+        console.debug('[Map] Path: default fit (no filters)', { count: geocodedCreators.length });
         fitAllMarkers(geocodedCreators.map(c => ({ lat: c.lat, lng: c.lng })));
       }
     }, 450); // 450ms debounce
