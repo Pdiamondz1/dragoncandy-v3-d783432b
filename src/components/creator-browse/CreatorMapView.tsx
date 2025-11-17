@@ -62,44 +62,91 @@ export const CreatorMapView: React.FC<CreatorMapViewProps> = ({
   );
 
   useEffect(() => {
-    const centerMapOnFilters = async () => {
-      if (!map) return;
-
-      if (filters.postal_code || filters.city || filters.country) {
-        const result = await geocodingService.geocodeLocation(
-          filters.postal_code,
-          filters.city,
-          filters.country
-        );
-
-        if (result) {
-          const newCenter = { lat: result.lat, lng: result.lng };
-          setMapCenter(newCenter);
-          
-          // Calculate zoom level based on filter type
-          let newZoom = DEFAULT_MAP_ZOOM;
-          if (filters.postal_code) {
-            newZoom = 12; // Close-up for zip codes
-          } else if (filters.city) {
-            newZoom = 10; // City-level view
-          } else if (filters.country) {
-            newZoom = 5; // Country-level view
-          }
-          
-          setMapZoom(newZoom);
-          map.panTo(newCenter);
-          map.setZoom(newZoom); // Use calculated value, not state
-        }
-      } else if (geocodedCreators.length > 0) {
+    if (!map) return;
+    
+    // Debounce map updates to prevent freezing during typing
+    const timeoutId = setTimeout(async () => {
+      // Sanitize filter inputs
+      const f = {
+        postal_code: filters.postal_code?.trim() || '',
+        city: filters.city?.trim() || '',
+        country: filters.country?.trim() || ''
+      };
+      
+      const hasLocation = !!(f.postal_code || f.city || f.country);
+      
+      // Guard against very short inputs
+      if (f.postal_code && f.postal_code.length < 3) return;
+      if (f.city && f.city.length < 3) return;
+      
+      // Helper function to fit bounds to all markers
+      const fitAllMarkers = (points: Array<{lat: number; lng: number}>) => {
         const bounds = new google.maps.LatLngBounds();
-        geocodedCreators.forEach(creator => {
-          bounds.extend({ lat: creator.lat, lng: creator.lng });
-        });
+        points.forEach(p => bounds.extend(p));
         map.fitBounds(bounds);
+        
+        // Clamp zoom so it doesn't get too close
+        google.maps.event.addListenerOnce(map, 'idle', () => {
+          const currentZoom = map.getZoom();
+          if (currentZoom && currentZoom > 12) {
+            map.setZoom(12);
+          }
+        });
+      };
+      
+      // Case 1: Multiple geocoded creators - fit bounds to show all
+      if (geocodedCreators.length > 1) {
+        fitAllMarkers(geocodedCreators.map(c => ({ lat: c.lat, lng: c.lng })));
+        return;
       }
-    };
-
-    centerMapOnFilters();
+      
+      // Case 2: Single geocoded creator - zoom to appropriate level
+      if (geocodedCreators.length === 1) {
+        const { lat, lng } = geocodedCreators[0];
+        const center = { lat, lng };
+        map.panTo(center);
+        
+        let newZoom = 8;
+        if (f.postal_code) newZoom = 12;
+        else if (f.city) newZoom = 10;
+        else if (f.country) newZoom = 5;
+        
+        setMapZoom(newZoom);
+        map.setZoom(newZoom);
+        return;
+      }
+      
+      // Case 3: User entered location but no markers yet - geocode and center
+      if (hasLocation) {
+        const result = await geocodingService.geocodeLocation(
+          f.postal_code,
+          f.city,
+          f.country
+        );
+        
+        if (result) {
+          const center = { lat: result.lat, lng: result.lng };
+          map.panTo(center);
+          
+          let newZoom = 8;
+          if (f.postal_code) newZoom = 12;
+          else if (f.city) newZoom = 10;
+          else if (f.country) newZoom = 5;
+          
+          setMapCenter(center);
+          setMapZoom(newZoom);
+          map.setZoom(newZoom);
+        }
+        return;
+      }
+      
+      // Case 4: No filters but we have markers - fit all markers
+      if (geocodedCreators.length > 0) {
+        fitAllMarkers(geocodedCreators.map(c => ({ lat: c.lat, lng: c.lng })));
+      }
+    }, 450); // 450ms debounce
+    
+    return () => clearTimeout(timeoutId);
   }, [filters, map, geocodedCreators]);
 
   const onLoad = useCallback((map: google.maps.Map) => {
