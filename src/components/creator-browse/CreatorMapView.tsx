@@ -76,8 +76,8 @@ export const CreatorMapView: React.FC<CreatorMapViewProps> = ({
       return;
     }
     
-    // Debounce map updates to prevent freezing during typing
-    const timeoutId = setTimeout(async () => {
+    // Map update logic (parent already provides debounced filters)
+    (async () => {
       // Sanitize filter inputs
       const f = {
         postal_code: filters.postal_code?.trim() || '',
@@ -86,7 +86,7 @@ export const CreatorMapView: React.FC<CreatorMapViewProps> = ({
       };
       
       const hasLocation = !!(f.postal_code || f.city || f.country);
-      console.log('[Map] Debounced effect start', { filters: f, hasLocation, geocodedCount: geocodedCreators.length, time: new Date().toISOString() });
+      console.log('[Map] Effect start', { filters: f, hasLocation, geocodedCount: geocodedCreators.length, time: new Date().toISOString() });
       
       // Guard against very short inputs
       if (f.postal_code && f.postal_code.length < 3) { console.log('[Map] Skip: postal_code too short', f.postal_code); return; }
@@ -174,9 +174,7 @@ export const CreatorMapView: React.FC<CreatorMapViewProps> = ({
         console.log('[Map] Path: default fit (no filters)', { count: geocodedCreators.length });
         fitAllMarkers(geocodedCreators.map(c => ({ lat: c.lat, lng: c.lng })));
       }
-    }, 450); // 450ms debounce
-    
-    return () => clearTimeout(timeoutId);
+    })();
   }, [filters, map, geocodedCreators]);
 
   const onLoad = useCallback((map: google.maps.Map) => {
