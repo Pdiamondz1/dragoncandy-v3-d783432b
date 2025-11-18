@@ -62,23 +62,10 @@ export const CreatorMapView: React.FC<CreatorMapViewProps> = ({
   );
 
   useEffect(() => {
-    console.log('🗺️ [Map] useEffect triggered', { 
-      mapExists: !!map, 
-      mapState: map ? 'initialized' : 'null',
-      filtersPostalCode: filters.postal_code,
-      filtersCity: filters.city,
-      filtersCountry: filters.country,
-      geocodedCreatorsCount: geocodedCreators.length 
-    });
+    if (!map) return;
     
-    if (!map) {
-      console.log('🗺️ [Map] Early return: map is null');
-      return;
-    }
-    
-    // Map update logic (parent already provides debounced filters)
-    (async () => {
-      // Sanitize filter inputs
+    // Debounce map updates to prevent lag during typing
+    const timeoutId = setTimeout(async () => {
       const f = {
         postal_code: filters.postal_code?.trim() || '',
         city: filters.city?.trim() || '',
@@ -86,96 +73,60 @@ export const CreatorMapView: React.FC<CreatorMapViewProps> = ({
       };
       
       const hasLocation = !!(f.postal_code || f.city || f.country);
-      console.log('[Map] Effect start', { filters: f, hasLocation, geocodedCount: geocodedCreators.length, time: new Date().toISOString() });
+      console.log('[Map] Debounced update', { filters: f, hasLocation, geocodedCount: geocodedCreators.length });
       
       // Guard against very short inputs
-      if (f.postal_code && f.postal_code.length < 3) { console.log('[Map] Skip: postal_code too short', f.postal_code); return; }
-      if (f.city && f.city.length < 3) { console.log('[Map] Skip: city too short', f.city); return; }
+      if (f.postal_code && f.postal_code.length < 3) return;
+      if (f.city && f.city.length < 3) return;
       
-      // Helper function to fit bounds to all markers
+      // Helper to fit all markers
       const fitAllMarkers = (points: Array<{lat: number; lng: number}>) => {
+        if (points.length === 0) return;
         const bounds = new google.maps.LatLngBounds();
         points.forEach(p => bounds.extend(p));
-        console.log('[Map] Path: multiple markers -> fitBounds', { count: points.length });
         map.fitBounds(bounds);
         
-        // Clamp zoom so it doesn't get too close and sync state
         google.maps.event.addListenerOnce(map, 'idle', () => {
           const currentZoom = map.getZoom() ?? 12;
-          const clampedZoom = currentZoom > 12 ? 12 : currentZoom;
-          const centerAfterFit = map.getCenter()?.toJSON() ?? DEFAULT_MAP_CENTER;
-          console.log('[Map] fitBounds idle', { currentZoom, clampedZoom, center: centerAfterFit });
-          
-          setMapCenter(centerAfterFit);
+          const clampedZoom = Math.min(currentZoom, 12);
+          const center = map.getCenter()?.toJSON() ?? DEFAULT_MAP_CENTER;
+          setMapCenter(center);
           setMapZoom(clampedZoom);
-          
-          if (currentZoom > 12) {
-            map.setZoom(12);
-          }
+          if (currentZoom > 12) map.setZoom(12);
         });
       };
       
-      // Case 1: Multiple geocoded creators - fit bounds to show all
-      if (geocodedCreators.length > 1) {
-        console.log('[Map] Path: multiple markers', { count: geocodedCreators.length });
-        fitAllMarkers(geocodedCreators.map(c => ({ lat: c.lat, lng: c.lng })));
-        return;
-      }
-      
-      // Case 2: Single geocoded creator - zoom to appropriate level
-      if (geocodedCreators.length === 1) {
-        const { lat, lng } = geocodedCreators[0];
-        const center = { lat, lng };
-        console.log('[Map] Path: single marker', { center });
-        map.panTo(center);
-        
-        let newZoom = 8;
-        if (f.postal_code) newZoom = 12;
-        else if (f.city) newZoom = 10;
-        else if (f.country) newZoom = 5;
-        console.log('[Map] Set zoom from single marker', { newZoom });
-        
-        setMapCenter(center);
-        setMapZoom(newZoom);
-        map.setZoom(newZoom);
-        return;
-      }
-      
-      // Case 3: User entered location but no markers yet - geocode and center
+      // If location filters are active, geocode and center
       if (hasLocation) {
-        console.log('[Map] Path: filter geocode', { filters: f });
-        const result = await geocodingService.geocodeLocation(
-          f.postal_code,
-          f.city,
-          f.country
-        );
+        console.log('[Map] Geocoding location filter', f);
+        const result = await geocodingService.geocodeLocation(f.postal_code, f.city, f.country);
         
         if (result) {
-          const center = { lat: result.lat, lng: result.lng };
-          map.panTo(center);
-          
-          let newZoom = 8;
-          if (f.postal_code) newZoom = 12;
-          else if (f.city) newZoom = 10;
-          else if (f.country) newZoom = 5;
-          
-          setMapCenter(center);
-          setMapZoom(newZoom);
-          map.setZoom(newZoom);
-          console.log('[Map] Geocode success', { center, newZoom });
-        } else {
-          console.warn('[Map] Geocode returned null for filters', { filters: f });
+          console.log('[Map] Geocoded location', result);
+          const zoom = f.postal_code ? 12 : f.city ? 10 : 5;
+          map.setCenter(result);
+          map.setZoom(zoom);
+          setMapCenter(result);
+          setMapZoom(zoom);
+          return;
         }
-        return;
       }
       
-      // Case 4: No filters but we have markers - fit all markers
+      // Otherwise fit all geocoded creators
       if (geocodedCreators.length > 0) {
-        console.log('[Map] Path: default fit (no filters)', { count: geocodedCreators.length });
+        console.log('[Map] Fitting all creators', geocodedCreators.length);
         fitAllMarkers(geocodedCreators.map(c => ({ lat: c.lat, lng: c.lng })));
+      } else {
+        console.log('[Map] No creators, reset to default');
+        map.setCenter(DEFAULT_MAP_CENTER);
+        map.setZoom(DEFAULT_MAP_ZOOM);
+        setMapCenter(DEFAULT_MAP_CENTER);
+        setMapZoom(DEFAULT_MAP_ZOOM);
       }
-    })();
-  }, [filters, map, geocodedCreators]);
+    }, 300); // 300ms debounce
+    
+    return () => clearTimeout(timeoutId);
+  }, [filters, map]);
 
   const onLoad = useCallback((map: google.maps.Map) => {
     console.log('🗺️ [Map] Google Map loaded successfully', { mapObject: !!map });
