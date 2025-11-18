@@ -62,7 +62,19 @@ export const CreatorMapView: React.FC<CreatorMapViewProps> = ({
   );
 
   useEffect(() => {
-    if (!map) return;
+    console.log('🗺️ [Map] useEffect triggered', { 
+      mapExists: !!map, 
+      mapState: map ? 'initialized' : 'null',
+      filtersPostalCode: filters.postal_code,
+      filtersCity: filters.city,
+      filtersCountry: filters.country,
+      geocodedCreatorsCount: geocodedCreators.length 
+    });
+    
+    if (!map) {
+      console.log('🗺️ [Map] Early return: map is null');
+      return;
+    }
     
     // Debounce map updates to prevent freezing during typing
     const timeoutId = setTimeout(async () => {
@@ -168,10 +180,12 @@ export const CreatorMapView: React.FC<CreatorMapViewProps> = ({
   }, [filters, map, geocodedCreators]);
 
   const onLoad = useCallback((map: google.maps.Map) => {
+    console.log('🗺️ [Map] Google Map loaded successfully', { mapObject: !!map });
     setMap(map);
   }, []);
 
   const onUnmount = useCallback(() => {
+    console.log('🗺️ [Map] Google Map unmounting, clearing state');
     setMap(null);
   }, []);
 
