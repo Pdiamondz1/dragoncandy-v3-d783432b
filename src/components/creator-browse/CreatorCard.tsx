@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { useCreateDirectConversation } from '@/hooks/useConversations';
+import CreatorProfileModal from './CreatorProfileModal';
 import { 
   MapPin, 
   DollarSign, 
@@ -46,6 +47,7 @@ export const CreatorCard: React.FC<CreatorCardProps> = ({ creator }) => {
   const { user, profile } = useAuth();
   const { toast } = useToast();
   const createConversation = useCreateDirectConversation();
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const formatRate = (rate?: number) => {
     if (!rate) return 'Rate not specified';
@@ -53,10 +55,7 @@ export const CreatorCard: React.FC<CreatorCardProps> = ({ creator }) => {
   };
 
   const handleViewProfile = () => {
-    // Navigate to public creator profile using creator's name as slug
-    // We'll use the creator's ID as fallback if no proper slug exists
-    const slug = creator.creator_name?.toLowerCase().replace(/\s+/g, '-') || creator.id;
-    navigate(`/creator/${slug}`);
+    setIsModalOpen(true);
   };
 
   const handleContact = async () => {
@@ -109,15 +108,21 @@ export const CreatorCard: React.FC<CreatorCardProps> = ({ creator }) => {
   };
 
   return (
-    <Card className="hover:shadow-lg transition-shadow">
-      <CardHeader>
-        <div className="flex items-start gap-4">
-          <Avatar className="h-12 w-12">
-            <AvatarImage src={creator.avatar_url} />
-            <AvatarFallback>
-              <User className="h-6 w-6" />
-            </AvatarFallback>
-          </Avatar>
+    <>
+      <Card className="hover:shadow-lg transition-shadow">
+        <CardHeader>
+          <div className="flex items-start gap-4">
+            <div 
+              className="cursor-pointer hover:opacity-80 transition-opacity"
+              onClick={handleViewProfile}
+            >
+              <Avatar className="h-12 w-12">
+                <AvatarImage src={creator.avatar_url} />
+                <AvatarFallback>
+                  <User className="h-6 w-6" />
+                </AvatarFallback>
+              </Avatar>
+            </div>
           <div className="flex-1 min-w-0">
             <CardTitle className="text-lg truncate">
               {creator.creator_name}
@@ -210,5 +215,12 @@ export const CreatorCard: React.FC<CreatorCardProps> = ({ creator }) => {
         </div>
       </CardContent>
     </Card>
+
+    <CreatorProfileModal
+      creator={creator}
+      isOpen={isModalOpen}
+      onClose={() => setIsModalOpen(false)}
+    />
+  </>
   );
 };
