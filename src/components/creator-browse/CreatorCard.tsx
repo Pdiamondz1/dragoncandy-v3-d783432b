@@ -50,6 +50,7 @@ export const CreatorCard: React.FC<CreatorCardProps> = ({ creator }) => {
   const createConversation = useCreateDirectConversation();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [portfolioImageUrl, setPortfolioImageUrl] = useState<string | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   useEffect(() => {
     const loadPortfolioImage = async () => {
@@ -69,7 +70,7 @@ export const CreatorCard: React.FC<CreatorCardProps> = ({ creator }) => {
       // It's a Supabase storage path, generate signed URL
       try {
         const { data } = await supabase.storage
-          .from('portfolio')
+          .from('profile-assets')
           .createSignedUrl(firstUrl, 3600);
         
         if (data?.signedUrl) {
@@ -82,6 +83,33 @@ export const CreatorCard: React.FC<CreatorCardProps> = ({ creator }) => {
 
     loadPortfolioImage();
   }, [creator.portfolio_urls]);
+
+  useEffect(() => {
+    const loadAvatarUrl = async () => {
+      if (!creator.avatar_url) return;
+      
+      // Check if it's an external URL
+      if (creator.avatar_url.startsWith('http://') || creator.avatar_url.startsWith('https://')) {
+        setAvatarUrl(creator.avatar_url);
+        return;
+      }
+      
+      // Generate signed URL from profile-assets bucket
+      try {
+        const { data } = await supabase.storage
+          .from('profile-assets')
+          .createSignedUrl(creator.avatar_url, 3600);
+        
+        if (data?.signedUrl) {
+          setAvatarUrl(data.signedUrl);
+        }
+      } catch (error) {
+        console.error('Error loading avatar:', error);
+      }
+    };
+    
+    loadAvatarUrl();
+  }, [creator.avatar_url]);
 
   const formatRate = (rate?: number) => {
     if (!rate) return 'Rate not specified';
@@ -176,7 +204,7 @@ export const CreatorCard: React.FC<CreatorCardProps> = ({ creator }) => {
               onClick={handleViewProfile}
             >
               <Avatar className="h-16 w-16 ring-4 ring-background">
-                <AvatarImage src={creator.avatar_url} />
+                <AvatarImage src={avatarUrl || undefined} />
                 <AvatarFallback>
                   <User className="h-8 w-8" />
                 </AvatarFallback>
