@@ -42,6 +42,7 @@ export interface CreatorFilters {
   platforms: string[];
   availability: string;
   experienceLevel: string;
+  _isLocationAutoFilled?: boolean; // Internal flag to track if city/country came from postal auto-fill
 }
 
 export const useCreatorBrowse = () => {
@@ -106,6 +107,7 @@ export const useCreatorBrowse = () => {
       platforms: [],
       availability: '',
       experienceLevel: '',
+      _isLocationAutoFilled: false,
     });
   };
 
@@ -120,6 +122,9 @@ export const useCreatorBrowse = () => {
       creator.skills?.some(skill => filters.skills.includes(skill));
 
     // Location filters - structured with legacy fallback
+    // Smart filtering: If postal code search with auto-filled city/country, only use postal code
+    const isPostalCodeSearch = !!debouncedFilters.postal_code && filters._isLocationAutoFilled;
+    
     const matchesPostalCode = !debouncedFilters.postal_code || (() => {
       const filterPostal = debouncedFilters.postal_code.toLowerCase().trim();
       const creatorPostal = (creator.postal_code || '').toLowerCase().trim();
@@ -129,23 +134,24 @@ export const useCreatorBrowse = () => {
       return false;
     })();
 
-    const matchesCity = !debouncedFilters.city || (() => {
+    // If it's a postal code search with auto-filled location, skip city/country filtering
+    const matchesCity = isPostalCodeSearch ? true : (!debouncedFilters.city || (() => {
       const filterCity = debouncedFilters.city.toLowerCase().trim();
       const creatorCity = (creator.city || '').toLowerCase().trim();
       
       if (creatorCity && creatorCity.includes(filterCity)) return true;
       if (!creatorCity && creator.location?.toLowerCase().includes(filterCity)) return true;
       return false;
-    })();
+    })());
 
-    const matchesCountry = !debouncedFilters.country || (() => {
+    const matchesCountry = isPostalCodeSearch ? true : (!debouncedFilters.country || (() => {
       const filterCountry = debouncedFilters.country.toLowerCase().trim();
       const creatorCountry = (creator.country || '').toLowerCase().trim();
       
       if (creatorCountry && creatorCountry.includes(filterCountry)) return true;
       if (!creatorCountry && creator.location?.toLowerCase().includes(filterCountry)) return true;
       return false;
-    })();
+    })());
 
     const matchesRate = (() => {
       const rate = creator.base_rate_per_hour || 0;
