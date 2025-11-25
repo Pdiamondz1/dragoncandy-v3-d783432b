@@ -29,6 +29,7 @@ interface CreatorFilters {
   platforms: string[];
   availability: string;
   experienceLevel: string;
+  _isLocationAutoFilled?: boolean;
 }
 
 interface AdvancedCreatorFiltersProps {
@@ -82,6 +83,8 @@ const AdvancedCreatorFilters: React.FC<AdvancedCreatorFiltersProps> = ({
           // Auto-fill city and country
           onFilterChange('city', result.city);
           onFilterChange('country', result.country);
+          // Mark location as auto-filled so filtering uses postal code only
+          onFilterChange('_isLocationAutoFilled', true);
         }
       } catch (error) {
         console.error('Failed to lookup postal code:', error);
@@ -175,7 +178,15 @@ const AdvancedCreatorFilters: React.FC<AdvancedCreatorFiltersProps> = ({
                   id="filter-postal-code"
                   placeholder="e.g., 10001, SW1A 1AA"
                   value={filters.postal_code || ''}
-                  onChange={(e) => onFilterChange('postal_code', e.target.value)}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    onFilterChange('postal_code', value);
+                    // Clear auto-fill flag when postal code is cleared
+                    if (!value) {
+                      onFilterChange('_isLocationAutoFilled', false);
+                      lastLookedUpPostalRef.current = '';
+                    }
+                  }}
                 />
                 {isLookingUp && (
                   <Loader2 className="absolute right-3 top-3 h-4 w-4 animate-spin text-muted-foreground" />
@@ -188,7 +199,13 @@ const AdvancedCreatorFilters: React.FC<AdvancedCreatorFiltersProps> = ({
                 id="filter-city"
                 placeholder="e.g., New York, London"
                 value={filters.city || ''}
-                onChange={(e) => onFilterChange('city', e.target.value)}
+                onChange={(e) => {
+                  onFilterChange('city', e.target.value);
+                  // Mark as user-edited so auto-fill doesn't override
+                  userEditedCityRef.current = true;
+                  // Clear auto-fill flag so city filter becomes active
+                  onFilterChange('_isLocationAutoFilled', false);
+                }}
               />
             </div>
             <div>
@@ -197,7 +214,13 @@ const AdvancedCreatorFilters: React.FC<AdvancedCreatorFiltersProps> = ({
                 id="filter-country"
                 placeholder="e.g., United States, UK"
                 value={filters.country || ''}
-                onChange={(e) => onFilterChange('country', e.target.value)}
+                onChange={(e) => {
+                  onFilterChange('country', e.target.value);
+                  // Mark as user-edited so auto-fill doesn't override
+                  userEditedCityRef.current = true;
+                  // Clear auto-fill flag so country filter becomes active
+                  onFilterChange('_isLocationAutoFilled', false);
+                }}
               />
             </div>
           </div>
