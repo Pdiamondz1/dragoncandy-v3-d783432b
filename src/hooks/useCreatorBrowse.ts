@@ -1,5 +1,5 @@
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -90,9 +90,9 @@ export const useCreatorBrowse = () => {
     enabled: !!user,
   });
 
-  const handleFilterChange = (key: keyof CreatorFilters, value: any) => {
+  const handleFilterChange = useCallback((key: keyof CreatorFilters, value: any) => {
     setFilters(prev => ({ ...prev, [key]: value }));
-  };
+  }, []);
 
   const resetFilters = () => {
     setFilters({
