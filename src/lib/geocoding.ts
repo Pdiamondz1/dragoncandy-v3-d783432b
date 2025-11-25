@@ -110,6 +110,67 @@ export class GeocodingService {
     }
   }
 
+  async lookupPostalCode(postalCode: string): Promise<{ city: string; country: string } | null> {
+    if (!postalCode || postalCode.trim().length < 3) return null;
+
+    const cacheKey = `postal_lookup_${postalCode}`;
+    
+    if (this.cache[cacheKey]) {
+      console.log('[Geocoding] Postal lookup cache hit', { postalCode });
+      const cached = this.cache[cacheKey];
+      return { city: cached.address, country: cached.address };
+    }
+
+    try {
+      const { GOOGLE_MAPS_API_KEY } = await import('./googleMapsConfig');
+      const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(postalCode)}&key=${GOOGLE_MAPS_API_KEY}`;
+      console.log('[Geocoding] Looking up postal code:', postalCode);
+      
+      const response = await fetch(url);
+      const data = await response.json();
+
+      if (data.status !== 'OK' || !data.results?.[0]) {
+        console.warn('[Geocoding] Postal lookup failed', { status: data.status, postalCode });
+        return null;
+      }
+
+      const result = data.results[0];
+      let city = '';
+      let country = '';
+
+      // Extract city and country from address_components
+      result.address_components.forEach((component: any) => {
+        if (component.types.includes('locality')) {
+          city = component.long_name;
+        } else if (component.types.includes('administrative_area_level_1') && !city) {
+          city = component.long_name;
+        }
+        if (component.types.includes('country')) {
+          country = component.long_name;
+        }
+      });
+
+      if (city && country) {
+        // Cache the result
+        const geocodedResult: GeocodingResult = {
+          lat: result.geometry.location.lat,
+          lng: result.geometry.location.lng,
+          address: result.formatted_address
+        };
+        this.cache[cacheKey] = geocodedResult;
+        this.saveCache();
+        
+        console.log('[Geocoding] Postal lookup success', { postalCode, city, country });
+        return { city, country };
+      }
+
+      return null;
+    } catch (error) {
+      console.error('Postal code lookup error:', error);
+      return null;
+    }
+  }
+
   async geocodeCreators(
     creators: Array<{
       id: string;
