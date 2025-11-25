@@ -8,17 +8,31 @@ interface GeocodingCache {
   [key: string]: GeocodingResult;
 }
 
+interface PostalLookupResult {
+  city: string;
+  country: string;
+  lat: number;
+  lng: number;
+}
+
+interface PostalLookupCache {
+  [key: string]: PostalLookupResult;
+}
+
 const GEOCODING_CACHE_KEY = 'creator_geocoding_cache';
 const CACHE_EXPIRY_DAYS = 7;
 
 export class GeocodingService {
   private cache: GeocodingCache;
+  private postalCache: PostalLookupCache;
 
   constructor() {
     this.cache = this.loadCache();
+    this.postalCache = this.loadPostalCache();
     try {
       const count = Object.keys(this.cache).length;
-      console.log('[Geocoding] Service initialized. Cache entries:', count);
+      const postalCount = Object.keys(this.postalCache).length;
+      console.log('[Geocoding] Service initialized. Cache entries:', count, 'Postal cache:', postalCount);
     } catch {}
   }
 
@@ -44,6 +58,31 @@ export class GeocodingService {
       }));
     } catch (e) {
       console.error('Failed to save geocoding cache:', e);
+    }
+  }
+
+  private loadPostalCache(): PostalLookupCache {
+    try {
+      const cached = localStorage.getItem('postal_geocoding_cache');
+      if (cached) {
+        const { data, timestamp } = JSON.parse(cached);
+        const isExpired = Date.now() - timestamp > CACHE_EXPIRY_DAYS * 24 * 60 * 60 * 1000;
+        if (!isExpired) return data;
+      }
+    } catch (e) {
+      console.error('Failed to load postal geocoding cache:', e);
+    }
+    return {};
+  }
+
+  private savePostalCache() {
+    try {
+      localStorage.setItem('postal_geocoding_cache', JSON.stringify({
+        data: this.postalCache,
+        timestamp: Date.now()
+      }));
+    } catch (e) {
+      console.error('Failed to save postal geocoding cache:', e);
     }
   }
 
@@ -113,12 +152,13 @@ export class GeocodingService {
   async lookupPostalCode(postalCode: string): Promise<{ city: string; country: string } | null> {
     if (!postalCode || postalCode.trim().length < 3) return null;
 
-    const cacheKey = `postal_lookup_${postalCode}`;
+    const cacheKey = postalCode.trim().toLowerCase();
     
-    if (this.cache[cacheKey]) {
+    // Check postal-specific cache
+    if (this.postalCache[cacheKey]) {
       console.log('[Geocoding] Postal lookup cache hit', { postalCode });
-      const cached = this.cache[cacheKey];
-      return { city: cached.address, country: cached.address };
+      const cached = this.postalCache[cacheKey];
+      return { city: cached.city, country: cached.country };
     }
 
     try {
@@ -151,14 +191,15 @@ export class GeocodingService {
       });
 
       if (city && country) {
-        // Cache the result
-        const geocodedResult: GeocodingResult = {
+        // Cache the result in postal-specific cache
+        const postalResult: PostalLookupResult = {
+          city,
+          country,
           lat: result.geometry.location.lat,
-          lng: result.geometry.location.lng,
-          address: result.formatted_address
+          lng: result.geometry.location.lng
         };
-        this.cache[cacheKey] = geocodedResult;
-        this.saveCache();
+        this.postalCache[cacheKey] = postalResult;
+        this.savePostalCache();
         
         console.log('[Geocoding] Postal lookup success', { postalCode, city, country });
         return { city, country };

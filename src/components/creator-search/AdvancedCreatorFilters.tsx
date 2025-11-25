@@ -46,19 +46,25 @@ const AdvancedCreatorFilters: React.FC<AdvancedCreatorFiltersProps> = ({
 }) => {
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
   const [isLookingUp, setIsLookingUp] = useState(false);
-  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const lastLookedUpPostalRef = useRef('');
+  const userEditedCityRef = useRef(false);
+
+  // Track if user manually edited city/country to prevent overwriting
+  useEffect(() => {
+    if (filters.city && lastLookedUpPostalRef.current === filters.postal_code) {
+      userEditedCityRef.current = true;
+    }
+  }, [filters.city, filters.postal_code]);
 
   // Auto-fill city and country based on postal code
   useEffect(() => {
     const postalCode = filters.postal_code?.trim();
     
-    // Clear existing timer
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
-    }
-
-    // Only lookup if postal code has at least 3 characters
-    if (!postalCode || postalCode.length < 3) {
+    // Skip if invalid, already looked up, or user manually edited
+    if (!postalCode || 
+        postalCode.length < 3 || 
+        postalCode === lastLookedUpPostalRef.current ||
+        (userEditedCityRef.current && filters.postal_code === lastLookedUpPostalRef.current)) {
       setIsLookingUp(false);
       return;
     }
@@ -66,11 +72,13 @@ const AdvancedCreatorFilters: React.FC<AdvancedCreatorFiltersProps> = ({
     setIsLookingUp(true);
 
     // Debounce the lookup by 500ms
-    debounceTimerRef.current = setTimeout(async () => {
+    const debounceTimer = setTimeout(async () => {
       try {
         const result = await geocodingService.lookupPostalCode(postalCode);
         
         if (result) {
+          lastLookedUpPostalRef.current = postalCode;
+          userEditedCityRef.current = false;
           // Auto-fill city and country
           onFilterChange('city', result.city);
           onFilterChange('country', result.country);
@@ -83,11 +91,7 @@ const AdvancedCreatorFilters: React.FC<AdvancedCreatorFiltersProps> = ({
     }, 500);
 
     // Cleanup on unmount
-    return () => {
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current);
-      }
-    };
+    return () => clearTimeout(debounceTimer);
   }, [filters.postal_code, onFilterChange]);
 
   const availableSkills = [
