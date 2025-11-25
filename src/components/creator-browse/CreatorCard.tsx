@@ -1,13 +1,14 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { useCreateDirectConversation } from '@/hooks/useConversations';
+import { supabase } from '@/integrations/supabase/client';
 import CreatorProfileModal from './CreatorProfileModal';
 import { 
   MapPin, 
@@ -48,6 +49,39 @@ export const CreatorCard: React.FC<CreatorCardProps> = ({ creator }) => {
   const { toast } = useToast();
   const createConversation = useCreateDirectConversation();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [portfolioImageUrl, setPortfolioImageUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    const loadPortfolioImage = async () => {
+      if (!creator.portfolio_urls || creator.portfolio_urls.length === 0) {
+        setPortfolioImageUrl(null);
+        return;
+      }
+
+      const firstUrl = creator.portfolio_urls[0];
+      
+      // Check if it's an external URL
+      if (firstUrl.startsWith('http://') || firstUrl.startsWith('https://')) {
+        setPortfolioImageUrl(firstUrl);
+        return;
+      }
+
+      // It's a Supabase storage path, generate signed URL
+      try {
+        const { data } = await supabase.storage
+          .from('portfolio')
+          .createSignedUrl(firstUrl, 3600);
+        
+        if (data?.signedUrl) {
+          setPortfolioImageUrl(data.signedUrl);
+        }
+      } catch (error) {
+        console.error('Error loading portfolio image:', error);
+      }
+    };
+
+    loadPortfolioImage();
+  }, [creator.portfolio_urls]);
 
   const formatRate = (rate?: number) => {
     if (!rate) return 'Rate not specified';
@@ -109,35 +143,50 @@ export const CreatorCard: React.FC<CreatorCardProps> = ({ creator }) => {
 
   return (
     <>
-      <Card className="hover:shadow-lg transition-shadow">
-        <CardHeader>
-          <div className="flex items-start gap-4">
-            <div 
-              className="cursor-pointer hover:opacity-80 transition-opacity"
-              onClick={handleViewProfile}
-            >
-              <Avatar className="h-12 w-12">
-                <AvatarImage src={creator.avatar_url} />
-                <AvatarFallback>
-                  <User className="h-6 w-6" />
-                </AvatarFallback>
-              </Avatar>
-            </div>
-          <div className="flex-1 min-w-0">
-            <CardTitle className="text-lg truncate">
+      <Card className="hover:shadow-lg transition-shadow overflow-hidden">
+        {/* Hero Section with Portfolio Background */}
+        <div 
+          className="relative h-40 bg-gradient-to-br from-primary/20 to-secondary/20"
+          style={portfolioImageUrl ? {
+            backgroundImage: `url(${portfolioImageUrl})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+          } : undefined}
+        >
+          {/* Dark gradient overlay for text readability */}
+          <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/30 to-black/60" />
+          
+          {/* Creator Info on Hero */}
+          <div className="absolute bottom-0 left-0 right-0 px-6 pb-10">
+            <h3 className="text-xl font-semibold text-white mb-1 truncate">
               {creator.creator_name}
-            </CardTitle>
+            </h3>
             {creator.location && (
-              <div className="flex items-center gap-1 text-sm text-gray-600">
+              <div className="flex items-center gap-1 text-white/90">
                 <MapPin className="h-3 w-3" />
-                <span className="truncate">{creator.location}</span>
+                <span className="text-sm truncate">{creator.location}</span>
               </div>
             )}
           </div>
-        </div>
-      </CardHeader>
 
-      <CardContent className="space-y-4">
+          {/* Profile Picture positioned at bottom center */}
+          <div className="absolute -bottom-8 left-1/2 -translate-x-1/2">
+            <div 
+              className="cursor-pointer hover:opacity-90 transition-opacity"
+              onClick={handleViewProfile}
+            >
+              <Avatar className="h-16 w-16 ring-4 ring-background">
+                <AvatarImage src={creator.avatar_url} />
+                <AvatarFallback>
+                  <User className="h-8 w-8" />
+                </AvatarFallback>
+              </Avatar>
+            </div>
+          </div>
+        </div>
+
+        {/* Card Body Content */}
+        <CardContent className="pt-10 space-y-4">
         {creator.bio && (
           <p className="text-sm text-gray-600 line-clamp-3">
             {creator.bio}
