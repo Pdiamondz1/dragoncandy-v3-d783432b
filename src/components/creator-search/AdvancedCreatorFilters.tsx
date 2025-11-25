@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,7 +15,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
-import { Search, Filter, X, MapPin, DollarSign, Star, ChevronDown, ChevronUp } from 'lucide-react';
+import { Search, Filter, X, MapPin, DollarSign, Star, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
+import { geocodingService } from '@/lib/geocoding';
 
 interface CreatorFilters {
   searchTerm: string;
@@ -44,6 +45,50 @@ const AdvancedCreatorFilters: React.FC<AdvancedCreatorFiltersProps> = ({
   resultCount,
 }) => {
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
+  const [isLookingUp, setIsLookingUp] = useState(false);
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Auto-fill city and country based on postal code
+  useEffect(() => {
+    const postalCode = filters.postal_code?.trim();
+    
+    // Clear existing timer
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    // Only lookup if postal code has at least 3 characters
+    if (!postalCode || postalCode.length < 3) {
+      setIsLookingUp(false);
+      return;
+    }
+
+    setIsLookingUp(true);
+
+    // Debounce the lookup by 500ms
+    debounceTimerRef.current = setTimeout(async () => {
+      try {
+        const result = await geocodingService.lookupPostalCode(postalCode);
+        
+        if (result) {
+          // Auto-fill city and country
+          onFilterChange('city', result.city);
+          onFilterChange('country', result.country);
+        }
+      } catch (error) {
+        console.error('Failed to lookup postal code:', error);
+      } finally {
+        setIsLookingUp(false);
+      }
+    }, 500);
+
+    // Cleanup on unmount
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, [filters.postal_code, onFilterChange]);
 
   const availableSkills = [
     'Video Editing',
@@ -121,12 +166,17 @@ const AdvancedCreatorFilters: React.FC<AdvancedCreatorFiltersProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <Label htmlFor="filter-postal-code">Postal/Zip Code</Label>
-              <Input
-                id="filter-postal-code"
-                placeholder="e.g., 10001, SW1A 1AA"
-                value={filters.postal_code || ''}
-                onChange={(e) => onFilterChange('postal_code', e.target.value)}
-              />
+              <div className="relative">
+                <Input
+                  id="filter-postal-code"
+                  placeholder="e.g., 10001, SW1A 1AA"
+                  value={filters.postal_code || ''}
+                  onChange={(e) => onFilterChange('postal_code', e.target.value)}
+                />
+                {isLookingUp && (
+                  <Loader2 className="absolute right-3 top-3 h-4 w-4 animate-spin text-muted-foreground" />
+                )}
+              </div>
             </div>
             <div>
               <Label htmlFor="filter-city">City</Label>
