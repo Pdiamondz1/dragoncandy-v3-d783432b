@@ -8,7 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Download, MessageCircle, User, Calendar, FileText, Loader2 } from 'lucide-react';
+import { Download, MessageCircle, User, Calendar, FileText, Loader2, CheckCircle2, Clock } from 'lucide-react';
+import { useProjectComplete } from '@/hooks/useProjectComplete';
 import { useNavigate } from 'react-router-dom';
 import { useFileUploads } from '@/hooks/useFileUploads';
 import { formatFileSize } from '@/lib/fileUtils';
@@ -18,6 +19,9 @@ interface ProjectCollaboration {
   campaign_id: string;
   creator_id: string;
   status: string;
+  business_completion_status?: string;
+  creator_completion_status?: string;
+  completed_at?: string | null;
   created_at: string;
   updated_at: string;
   campaign: {
@@ -47,6 +51,7 @@ const BusinessProjects: React.FC = () => {
   const [selectedProject, setSelectedProject] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<string>('overview');
   const [downloadingFileId, setDownloadingFileId] = useState<string | null>(null);
+  const { requestCompletion, isRequesting } = useProjectComplete();
 
   // Fetch all collaborations for campaigns owned by this business
   const { data: projects, isLoading: projectsLoading } = useQuery({
@@ -164,6 +169,26 @@ const BusinessProjects: React.FC = () => {
     navigate(`/messages/${campaignId}?from=business-projects`);
   };
 
+  const handleMarkComplete = (collaborationId: string) => {
+    requestCompletion({ 
+      collaborationId, 
+      userRole: 'business_client' 
+    });
+  };
+
+  const getCompletionStatus = (project: ProjectCollaboration) => {
+    if (project.status === 'completed') {
+      return { text: 'Project Completed', icon: CheckCircle2, color: 'text-green-600' };
+    }
+    if (project.business_completion_status === 'requested') {
+      if (project.creator_completion_status === 'requested') {
+        return { text: 'Both approved - finalizing', icon: CheckCircle2, color: 'text-green-600' };
+      }
+      return { text: 'Waiting for creator approval', icon: Clock, color: 'text-amber-600' };
+    }
+    return null;
+  };
+
   if (projectsLoading) {
     return (
       <DashboardLayout userRole="business_client">
@@ -244,7 +269,30 @@ const BusinessProjects: React.FC = () => {
                   </CardHeader>
                   <CardContent>
                     <p className="text-gray-600 mb-4">{project.campaign.description}</p>
+                    
+                    {/* Completion Status */}
+                    {getCompletionStatus(project) && (
+                      <div className={`flex items-center gap-2 text-sm ${getCompletionStatus(project)!.color} mb-4`}>
+                        {(() => {
+                          const StatusIcon = getCompletionStatus(project)!.icon;
+                          return <StatusIcon className="h-4 w-4" />;
+                        })()}
+                        <span>{getCompletionStatus(project)!.text}</span>
+                      </div>
+                    )}
+
                     <div className="flex gap-2">
+                      {project.status === 'active' && !project.business_completion_status && (
+                        <Button
+                          onClick={() => handleMarkComplete(project.id)}
+                          disabled={isRequesting}
+                          variant="default"
+                          size="sm"
+                        >
+                          <CheckCircle2 className="h-4 w-4 mr-2" />
+                          Mark Complete
+                        </Button>
+                      )}
                       <Button
                         variant="outline"
                         size="sm"

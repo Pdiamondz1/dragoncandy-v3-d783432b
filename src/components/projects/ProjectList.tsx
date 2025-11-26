@@ -8,9 +8,12 @@ import {
   Briefcase, 
   Calendar,
   DollarSign, 
-  MessageSquare 
+  MessageSquare,
+  CheckCircle2,
+  Clock
 } from 'lucide-react';
 import ProjectFileUpload from '@/components/projects/ProjectFileUpload';
+import { useProjectComplete } from '@/hooks/useProjectComplete';
 
 interface ProjectCollaboration {
   id: string;
@@ -20,6 +23,9 @@ interface ProjectCollaboration {
   contract_details?: any;
   milestones?: any;
   deliverables_status?: any;
+  business_completion_status?: string;
+  creator_completion_status?: string;
+  completed_at?: string | null;
   created_at: string;
   updated_at: string;
   campaigns: {
@@ -39,6 +45,7 @@ interface ProjectListProps {
 }
 
 const ProjectList: React.FC<ProjectListProps> = ({ projects, showProgress, onMessageClick }) => {
+  const { requestCompletion, isRequesting } = useProjectComplete();
   const formatCurrency = (min?: number, max?: number) => {
     if (!min && !max) return 'Not specified';
     if (min && max && min !== max) {
@@ -74,6 +81,26 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, showProgress, onMes
       default:
         return 'bg-gray-100 text-gray-800 border-gray-200';
     }
+  };
+
+  const handleMarkComplete = (collaborationId: string) => {
+    requestCompletion({ 
+      collaborationId, 
+      userRole: 'content_creator' 
+    });
+  };
+
+  const getCompletionStatus = (project: ProjectCollaboration) => {
+    if (project.status === 'completed') {
+      return { text: 'Project Completed', icon: CheckCircle2, color: 'text-green-600' };
+    }
+    if (project.creator_completion_status === 'requested') {
+      if (project.business_completion_status === 'requested') {
+        return { text: 'Both approved - finalizing', icon: CheckCircle2, color: 'text-green-600' };
+      }
+      return { text: 'Waiting for business approval', icon: Clock, color: 'text-amber-600' };
+    }
+    return null;
   };
 
   if (projects.length === 0) {
@@ -162,8 +189,30 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, showProgress, onMes
               </div>
             )}
 
+            {/* Completion Status */}
+            {getCompletionStatus(project) && (
+              <div className={`flex items-center gap-2 text-sm ${getCompletionStatus(project)!.color} mb-4`}>
+                {(() => {
+                  const StatusIcon = getCompletionStatus(project)!.icon;
+                  return <StatusIcon className="h-4 w-4" />;
+                })()}
+                <span>{getCompletionStatus(project)!.text}</span>
+              </div>
+            )}
+
             {project.status === 'active' && (
               <div className="flex gap-2 pt-4 border-t">
+                {!project.creator_completion_status && (
+                  <Button
+                    onClick={() => handleMarkComplete(project.id)}
+                    disabled={isRequesting}
+                    variant="default"
+                    size="sm"
+                  >
+                    <CheckCircle2 className="h-4 w-4 mr-2" />
+                    Mark Complete
+                  </Button>
+                )}
                 <ProjectFileUpload
                   campaignId={project.campaign_id}
                   campaignTitle={project.campaigns.title}
