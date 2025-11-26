@@ -19,6 +19,9 @@ interface ProjectCollaboration {
   contract_details?: any;
   milestones?: any;
   deliverables_status?: any;
+  business_completion_status?: string;
+  creator_completion_status?: string;
+  completed_at?: string | null;
   created_at: string;
   updated_at: string;
   campaigns: {

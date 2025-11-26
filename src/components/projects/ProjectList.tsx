@@ -202,7 +202,7 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, showProgress, onMes
 
             {project.status === 'active' && (
               <div className="flex gap-2 pt-4 border-t">
-                {!project.creator_completion_status && (
+                {(!project.creator_completion_status || project.creator_completion_status === 'pending') && (
                   <Button
                     onClick={() => handleMarkComplete(project.id)}
                     disabled={isRequesting}
