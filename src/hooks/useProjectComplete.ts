@@ -1,0 +1,168 @@
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
+import { useEmailNotifications } from './useEmailNotifications';
+
+export const useProjectComplete = () => {
+  const queryClient = useQueryClient();
+  const { sendNotification } = useEmailNotifications();
+
+  const requestCompletion = useMutation({
+    mutationFn: async ({ 
+      collaborationId, 
+      userRole 
+    }: { 
+      collaborationId: string; 
+      userRole: 'business_client' | 'content_creator';
+    }) => {
+      const statusField = userRole === 'business_client' 
+        ? 'business_completion_status' 
+        : 'creator_completion_status';
+
+      // Fetch collaboration details for notifications
+      const { data: collaboration, error: fetchError } = await supabase
+        .from('campaign_collaborations')
+        .select(`
+          *,
+          campaigns (
+            id,
+            title,
+            user_id
+          ),
+          creator_profiles:creator_id (
+            user_id,
+            creator_name
+          )
+        `)
+        .eq('id', collaborationId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // Update completion status
+      const { data, error } = await supabase
+        .from('campaign_collaborations')
+        .update({ 
+          [statusField]: 'requested',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', collaborationId)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Check if both parties have now requested completion
+      const bothRequested = 
+        (userRole === 'business_client' && data.creator_completion_status === 'requested') ||
+        (userRole === 'content_creator' && data.business_completion_status === 'requested');
+
+      if (bothRequested) {
+        // Both parties requested - mark as completed
+        const { data: completedData, error: completeError } = await supabase
+          .from('campaign_collaborations')
+          .update({ 
+            status: 'completed',
+            review_status: 'ready_for_review',
+            business_completion_status: 'approved',
+            creator_completion_status: 'approved',
+            completed_at: new Date().toISOString()
+          })
+          .eq('id', collaborationId)
+          .select()
+          .single();
+
+        if (completeError) throw completeError;
+
+        // Send completion confirmation emails to both parties
+        const campaignData = collaboration.campaigns as any;
+        const creatorData = collaboration.creator_profiles as any;
+
+        // Email to business owner
+        await sendNotification(
+          'project_completion',
+          '', // Will fetch from profile
+          '', // Will fetch from profile
+          {
+            campaignTitle: campaignData.title,
+            projectId: collaborationId,
+            actionUrl: `${window.location.origin}/dashboard/business/projects`
+          }
+        );
+
+        // Email to creator
+        await sendNotification(
+          'project_completion',
+          '', // Will fetch from profile
+          creatorData.creator_name,
+          {
+            campaignTitle: campaignData.title,
+            projectId: collaborationId,
+            actionUrl: `${window.location.origin}/dashboard/creator/projects`
+          }
+        );
+
+        return completedData;
+      }
+
+      // Only one party requested - send notification to the other party
+      if (userRole === 'content_creator') {
+        // Notify business owner
+        await sendNotification(
+          'completion_request',
+          '', // Will fetch from profile
+          '', // Will fetch from profile
+          {
+            campaignTitle: (collaboration.campaigns as any).title,
+            requesterName: (collaboration.creator_profiles as any).creator_name,
+            actionUrl: `${window.location.origin}/dashboard/business/projects`
+          }
+        );
+      } else {
+        // Notify creator
+        await sendNotification(
+          'completion_request',
+          '', // Will fetch from profile
+          (collaboration.creator_profiles as any).creator_name,
+          {
+            campaignTitle: (collaboration.campaigns as any).title,
+            requesterName: 'Business Owner',
+            actionUrl: `${window.location.origin}/dashboard/creator/projects`
+          }
+        );
+      }
+
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      queryClient.invalidateQueries({ queryKey: ['creator-projects'] });
+      queryClient.invalidateQueries({ queryKey: ['project-completion'] });
+
+      if (data.status === 'completed') {
+        toast({
+          title: "Project completed!",
+          description: "Both parties have approved completion. Please leave a review.",
+        });
+      } else {
+        toast({
+          title: "Completion requested",
+          description: "Waiting for the other party to approve completion.",
+        });
+      }
+    },
+    onError: (error) => {
+      console.error('Error requesting completion:', error);
+      toast({
+        title: "Error requesting completion",
+        description: "Please try again later.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  return {
+    requestCompletion: requestCompletion.mutate,
+    isRequesting: requestCompletion.isPending,
+  };
+};

@@ -266,9 +266,12 @@ export type Database = {
       campaign_collaborations: {
         Row: {
           application_id: string | null
+          business_completion_status: string | null
           campaign_id: string
+          completed_at: string | null
           contract_details: Json | null
           created_at: string
+          creator_completion_status: string | null
           creator_id: string
           deliverables_status: Json | null
           id: string
@@ -279,9 +282,12 @@ export type Database = {
         }
         Insert: {
           application_id?: string | null
+          business_completion_status?: string | null
           campaign_id: string
+          completed_at?: string | null
           contract_details?: Json | null
           created_at?: string
+          creator_completion_status?: string | null
           creator_id: string
           deliverables_status?: Json | null
           id?: string
@@ -292,9 +298,12 @@ export type Database = {
         }
         Update: {
           application_id?: string | null
+          business_completion_status?: string | null
           campaign_id?: string
+          completed_at?: string | null
           contract_details?: Json | null
           created_at?: string
+          creator_completion_status?: string | null
           creator_id?: string
           deliverables_status?: Json | null
           id?: string
