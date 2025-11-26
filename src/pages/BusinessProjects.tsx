@@ -289,8 +289,17 @@ const BusinessProjects: React.FC = () => {
                           variant="default"
                           size="sm"
                         >
-                          <CheckCircle2 className="h-4 w-4 mr-2" />
-                          Mark Complete
+                          {requestingId === project.id ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Completing...
+                            </>
+                          ) : (
+                            <>
+                              <CheckCircle2 className="h-4 w-4 mr-2" />
+                              Mark Complete
+                            </>
+                          )}
                         </Button>
                       )}
                       <Button
