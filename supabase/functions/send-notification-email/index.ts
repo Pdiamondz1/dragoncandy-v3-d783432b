@@ -24,7 +24,9 @@ type NotificationType =
   | 'new_campaign_for_brands'
   | 'new_campaign_for_creators'
   | 'file_uploaded_by_creator'
-  | 'file_uploaded_by_restaurant';
+  | 'file_uploaded_by_restaurant'
+  | 'completion_request'
+  | 'project_completion';
 
 interface NotificationEmailRequest {
   to?: string;
@@ -53,6 +55,9 @@ interface NotificationEmailRequest {
     platforms?: string[];
     uploaderName?: string;
     fileCount?: number;
+    requesterName?: string;
+    projectId?: string;
+    actionUrl?: string;
   };
 }
 
@@ -423,6 +428,53 @@ const handler = async (req: Request): Promise<Response> => {
               <p style="font-size: 16px; color: #374151; line-height: 1.6;"><strong>${data.uploaderName}</strong> has uploaded <strong>${data.fileCount} new ${data.fileCount === 1 ? 'file' : 'files'}</strong> for campaign <strong>"${data.campaignTitle}"</strong>.</p>
               <div style="background: #FEF3C7; border-left: 4px solid #F59E0B; padding: 16px; margin: 24px 0; border-radius: 4px;"><p style="margin: 0; color: #92400E; font-weight: 600;">📋 Reference Materials</p><p style="margin: 8px 0 0 0; color: #92400E; font-size: 14px;">New reference files are available to help with your content creation.</p></div>
               <p style="text-align: center; margin-top: 40px;"><a href="${baseUrl}/dashboard/creator/projects/${data.campaignId}" style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600; font-size: 16px;">View Files</a></p>
+            </div>
+          </div>
+        `,
+      },
+      completion_request: {
+        subject: `Action Required: Project Completion Approval Needed`,
+        html: `
+          <div style="font-family: 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); padding: 40px 20px; text-align: center; border-radius: 12px 12px 0 0;">
+              <h1 style="color: white; margin: 0; font-size: 28px;">⏰ Action Required</h1>
+            </div>
+            <div style="background: white; padding: 40px 20px; border-radius: 0 0 12px 12px;">
+              <p style="font-size: 16px; color: #374151;">Hi ${rn},</p>
+              <p style="font-size: 16px; color: #374151; line-height: 1.6;"><strong>${data.requesterName}</strong> has marked the project <strong>"${data.campaignTitle}"</strong> as complete.</p>
+              <div style="background: #FEF3C7; border-left: 4px solid #F59E0B; padding: 16px; margin: 24px 0; border-radius: 4px;">
+                <p style="margin: 0; color: #92400E; font-weight: 600;">⚡ Your Approval Needed</p>
+                <p style="margin: 8px 0 0 0; color: #92400E; font-size: 14px;">Please review and approve the project completion to finalize the collaboration.</p>
+              </div>
+              <p style="text-align: center; margin-top: 40px;">
+                <a href="${data.actionUrl || baseUrl}" style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600; font-size: 16px;">
+                  Review & Approve
+                </a>
+              </p>
+            </div>
+          </div>
+        `,
+      },
+      project_completion: {
+        subject: `Project Completed! 🎉`,
+        html: `
+          <div style="font-family: 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); padding: 40px 20px; text-align: center; border-radius: 12px 12px 0 0;">
+              <h1 style="color: white; margin: 0; font-size: 28px;">🎉 Project Complete!</h1>
+            </div>
+            <div style="background: white; padding: 40px 20px; border-radius: 0 0 12px 12px;">
+              <p style="font-size: 16px; color: #374151;">Hi ${rn},</p>
+              <p style="font-size: 16px; color: #374151; line-height: 1.6;">Congratulations! The project <strong>"${data.campaignTitle}"</strong> has been successfully completed. 🎊</p>
+              <div style="background: #ECFDF5; border-left: 4px solid #10B981; padding: 16px; margin: 24px 0; border-radius: 4px;">
+                <p style="margin: 0; color: #065F46; font-weight: 600;">✅ Both parties have approved completion</p>
+                <p style="margin: 8px 0 0 0; color: #065F46; font-size: 14px;">This collaboration is now officially complete. Time to celebrate and leave a review!</p>
+              </div>
+              <p style="font-size: 16px; color: #374151; line-height: 1.6;">We'd love to hear about your experience. Your feedback helps build trust in the DragonCandy community.</p>
+              <p style="text-align: center; margin-top: 40px;">
+                <a href="${baseUrl}/dashboard" style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600; font-size: 16px;">
+                  Leave a Review
+                </a>
+              </p>
             </div>
           </div>
         `,
