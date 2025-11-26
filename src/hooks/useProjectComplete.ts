@@ -88,6 +88,7 @@ export const useProjectComplete = () => {
           '', // Will fetch from profile
           '', // Will fetch from profile
           {
+            recipientUserId: campaignData.user_id,
             campaignTitle: campaignData.title,
             projectId: collaborationId,
             actionUrl: `${window.location.origin}/dashboard/business/projects`
@@ -100,6 +101,7 @@ export const useProjectComplete = () => {
           '', // Will fetch from profile
           creatorProfile.creator_name,
           {
+            recipientUserId: collaboration.creator_id,
             campaignTitle: campaignData.title,
             projectId: collaborationId,
             actionUrl: `${window.location.origin}/dashboard/creator/projects`
@@ -117,6 +119,7 @@ export const useProjectComplete = () => {
           '', // Will fetch from profile
           '', // Will fetch from profile
           {
+            recipientUserId: (collaboration.campaigns as any).user_id,
             campaignTitle: (collaboration.campaigns as any).title,
             requesterName: creatorProfile.creator_name,
             actionUrl: `${window.location.origin}/dashboard/business/projects`
@@ -129,6 +132,7 @@ export const useProjectComplete = () => {
           '', // Will fetch from profile
           creatorProfile.creator_name,
           {
+            recipientUserId: collaboration.creator_id,
             campaignTitle: (collaboration.campaigns as any).title,
             requesterName: 'Business Owner',
             actionUrl: `${window.location.origin}/dashboard/creator/projects`
