@@ -45,7 +45,7 @@ interface ProjectListProps {
 }
 
 const ProjectList: React.FC<ProjectListProps> = ({ projects, showProgress, onMessageClick }) => {
-  const { requestCompletion, isRequesting } = useProjectComplete();
+  const { requestCompletion, requestingId } = useProjectComplete();
   const formatCurrency = (min?: number, max?: number) => {
     if (!min && !max) return 'Not specified';
     if (min && max && min !== max) {
@@ -205,7 +205,7 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, showProgress, onMes
                 {(!project.creator_completion_status || project.creator_completion_status === 'pending') && (
                   <Button
                     onClick={() => handleMarkComplete(project.id)}
-                    disabled={isRequesting}
+                    disabled={requestingId === project.id}
                     variant="default"
                     size="sm"
                   >

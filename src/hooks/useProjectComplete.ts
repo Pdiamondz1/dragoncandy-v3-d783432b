@@ -19,7 +19,7 @@ export const useProjectComplete = () => {
         ? 'business_completion_status' 
         : 'creator_completion_status';
 
-      // Fetch collaboration details for notifications
+      // Fetch collaboration with campaign details
       const { data: collaboration, error: fetchError } = await supabase
         .from('campaign_collaborations')
         .select(`
@@ -28,16 +28,21 @@ export const useProjectComplete = () => {
             id,
             title,
             user_id
-          ),
-          creator_profiles:creator_id (
-            user_id,
-            creator_name
           )
         `)
         .eq('id', collaborationId)
         .single();
 
       if (fetchError) throw fetchError;
+
+      // Fetch creator profile separately to avoid join issues
+      const { data: creatorProfile, error: creatorError } = await supabase
+        .from('creator_profiles')
+        .select('user_id, creator_name')
+        .eq('user_id', collaboration.creator_id)
+        .single();
+
+      if (creatorError) throw creatorError;
 
       // Update completion status
       const { data, error } = await supabase
@@ -76,7 +81,6 @@ export const useProjectComplete = () => {
 
         // Send completion confirmation emails to both parties
         const campaignData = collaboration.campaigns as any;
-        const creatorData = collaboration.creator_profiles as any;
 
         // Email to business owner
         await sendNotification(
@@ -94,7 +98,7 @@ export const useProjectComplete = () => {
         await sendNotification(
           'project_completion',
           '', // Will fetch from profile
-          creatorData.creator_name,
+          creatorProfile.creator_name,
           {
             campaignTitle: campaignData.title,
             projectId: collaborationId,
@@ -114,7 +118,7 @@ export const useProjectComplete = () => {
           '', // Will fetch from profile
           {
             campaignTitle: (collaboration.campaigns as any).title,
-            requesterName: (collaboration.creator_profiles as any).creator_name,
+            requesterName: creatorProfile.creator_name,
             actionUrl: `${window.location.origin}/dashboard/business/projects`
           }
         );
@@ -123,7 +127,7 @@ export const useProjectComplete = () => {
         await sendNotification(
           'completion_request',
           '', // Will fetch from profile
-          (collaboration.creator_profiles as any).creator_name,
+          creatorProfile.creator_name,
           {
             campaignTitle: (collaboration.campaigns as any).title,
             requesterName: 'Business Owner',
@@ -163,6 +167,8 @@ export const useProjectComplete = () => {
 
   return {
     requestCompletion: requestCompletion.mutate,
-    isRequesting: requestCompletion.isPending,
+    requestingId: requestCompletion.isPending 
+      ? requestCompletion.variables?.collaborationId 
+      : null,
   };
 };

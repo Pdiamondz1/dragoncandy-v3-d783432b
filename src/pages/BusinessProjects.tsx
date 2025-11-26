@@ -51,7 +51,7 @@ const BusinessProjects: React.FC = () => {
   const [selectedProject, setSelectedProject] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<string>('overview');
   const [downloadingFileId, setDownloadingFileId] = useState<string | null>(null);
-  const { requestCompletion, isRequesting } = useProjectComplete();
+  const { requestCompletion, requestingId } = useProjectComplete();
 
   // Fetch all collaborations for campaigns owned by this business
   const { data: projects, isLoading: projectsLoading } = useQuery({
@@ -285,7 +285,7 @@ const BusinessProjects: React.FC = () => {
                       {project.status === 'active' && (!project.business_completion_status || project.business_completion_status === 'pending') && (
                         <Button
                           onClick={() => handleMarkComplete(project.id)}
-                          disabled={isRequesting}
+                          disabled={requestingId === project.id}
                           variant="default"
                           size="sm"
                         >
