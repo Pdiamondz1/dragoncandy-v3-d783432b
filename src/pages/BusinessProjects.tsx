@@ -282,7 +282,7 @@ const BusinessProjects: React.FC = () => {
                     )}
 
                     <div className="flex gap-2">
-                      {project.status === 'active' && !project.business_completion_status && (
+                      {project.status === 'active' && (!project.business_completion_status || project.business_completion_status === 'pending') && (
                         <Button
                           onClick={() => handleMarkComplete(project.id)}
                           disabled={isRequesting}
