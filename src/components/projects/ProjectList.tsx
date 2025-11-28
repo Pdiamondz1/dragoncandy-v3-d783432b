@@ -1,9 +1,10 @@
 
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
   Briefcase, 
   Calendar,
@@ -11,10 +12,14 @@ import {
   MessageSquare,
   CheckCircle2,
   Clock,
-  Loader2
+  Loader2,
+  AlertCircle,
+  Zap
 } from 'lucide-react';
 import ProjectFileUpload from '@/components/projects/ProjectFileUpload';
 import { useProjectComplete } from '@/hooks/useProjectComplete';
+import { useSearchParams } from 'react-router-dom';
+import { cn } from '@/lib/utils';
 
 interface ProjectCollaboration {
   id: string;
@@ -47,6 +52,21 @@ interface ProjectListProps {
 
 const ProjectList: React.FC<ProjectListProps> = ({ projects, showProgress, onMessageClick }) => {
   const { requestCompletion, requestingId } = useProjectComplete();
+  const [searchParams] = useSearchParams();
+  const highlightedProjectId = searchParams.get('highlight');
+  const highlightedRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to highlighted project
+  useEffect(() => {
+    if (highlightedProjectId && highlightedRef.current) {
+      setTimeout(() => {
+        highlightedRef.current?.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'center' 
+        });
+      }, 100);
+    }
+  }, [highlightedProjectId]);
   const formatCurrency = (min?: number, max?: number) => {
     if (!min && !max) return 'Not specified';
     if (min && max && min !== max) {
@@ -93,16 +113,24 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, showProgress, onMes
 
   const getCompletionStatus = (project: ProjectCollaboration) => {
     if (project.status === 'completed') {
-      return { text: 'Project Completed', icon: CheckCircle2, color: 'text-green-600' };
+      return { text: '✅ Completed', variant: 'default' as const, showBadge: true };
     }
-    if (project.creator_completion_status === 'requested') {
-      if (project.business_completion_status === 'requested') {
-        return { text: 'Both approved - finalizing', icon: CheckCircle2, color: 'text-green-600' };
-      }
-      return { text: 'Waiting for business approval', icon: Clock, color: 'text-amber-600' };
+    if (project.business_completion_status === 'requested' && project.creator_completion_status !== 'requested') {
+      return { text: '🔔 Awaiting Business Approval', variant: 'destructive' as const, showBadge: true };
     }
-    return null;
+    if (project.creator_completion_status === 'requested' && project.business_completion_status !== 'requested') {
+      return { text: '⏳ Waiting for Your Approval', variant: 'secondary' as const, showBadge: true };
+    }
+    if (project.business_completion_status === 'requested' && project.creator_completion_status === 'requested') {
+      return { text: '✅ Both Approved', variant: 'default' as const, showBadge: true };
+    }
+    return { text: 'Active', variant: 'outline' as const, showBadge: false };
   };
+
+  // Count projects needing approval from creator
+  const projectsNeedingApproval = projects.filter(
+    p => p.business_completion_status === 'requested' && p.creator_completion_status !== 'requested'
+  );
 
   if (projects.length === 0) {
     return (
@@ -121,130 +149,176 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, showProgress, onMes
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      {projects.map((project) => (
-        <Card key={project.id}>
-          <CardHeader>
-            <div className="flex items-start justify-between">
-              <div>
-                <CardTitle className="text-lg">
-                  {project.campaigns.title}
-                </CardTitle>
-                <p className="text-sm text-gray-600">
-                  Started {formatDate(project.created_at)}
-                </p>
-              </div>
-              <Badge className={getStatusColor(project.status)}>
-                {project.status.charAt(0).toUpperCase() + project.status.slice(1)}
-              </Badge>
-            </div>
-          </CardHeader>
-          
-          <CardContent className="space-y-4">
-            {project.campaigns.description && (
-              <p className="text-sm text-gray-600">
-                {project.campaigns.description}
-              </p>
-            )}
+    <>
+      {/* Action Required Banner */}
+      {projectsNeedingApproval.length > 0 && (
+        <Alert className="border-amber-500 bg-amber-50 dark:bg-amber-950/20 mb-6">
+          <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+          <AlertDescription className="text-amber-800 dark:text-amber-300 font-medium">
+            <strong>{projectsNeedingApproval.length} project{projectsNeedingApproval.length !== 1 ? 's' : ''}</strong> {projectsNeedingApproval.length === 1 ? 'has' : 'have'} been marked complete by the business and need your approval.
+          </AlertDescription>
+        </Alert>
+      )}
 
-            {showProgress && project.status === 'active' && (
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium">Progress</span>
-                  <span className="text-sm text-gray-500">{getProjectProgress(project)}%</span>
-                </div>
-                <Progress value={getProjectProgress(project)} className="h-2" />
-              </div>
-            )}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {projects.map((project) => {
+          const isHighlighted = highlightedProjectId === project.id;
+          const needsApproval = project.business_completion_status === 'requested' && 
+                               project.creator_completion_status !== 'requested';
+          const statusInfo = getCompletionStatus(project);
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-blue-600" />
-                <div>
-                  <p className="text-xs text-gray-500">Deadline</p>
-                  <p className="text-sm font-medium">{formatDate(project.campaigns.deadline)}</p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <DollarSign className="h-4 w-4 text-green-600" />
-                <div>
-                  <p className="text-xs text-gray-500">Budget</p>
-                  <p className="text-sm font-medium">
-                    {formatCurrency(project.campaigns.budget_min, project.campaigns.budget_max)}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {project.campaigns.deliverables && project.campaigns.deliverables.length > 0 && (
-              <div>
-                <h4 className="font-medium mb-2">Deliverables</h4>
-                <div className="flex flex-wrap gap-1">
-                  {project.campaigns.deliverables.map((deliverable, index) => (
-                    <Badge key={index} variant="outline" className="text-xs">
-                      {deliverable}
+          return (
+            <Card 
+              key={project.id}
+              ref={isHighlighted ? highlightedRef : null}
+              className={cn(
+                "transition-all duration-300",
+                needsApproval && "border-2 border-amber-400 bg-amber-50/50 dark:bg-amber-950/20",
+                isHighlighted && "ring-2 ring-amber-500 ring-offset-2"
+              )}
+            >
+              <CardHeader>
+                <div className="flex items-start justify-between">
+                  <div>
+                    <div className="flex items-center gap-3">
+                      <CardTitle className="text-lg">
+                        {project.campaigns.title}
+                      </CardTitle>
+                      {needsApproval && (
+                        <Badge variant="destructive" className="animate-pulse">
+                          <Zap className="h-3 w-3 mr-1" />
+                          Action Required
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Started {formatDate(project.created_at)}
+                    </p>
+                  </div>
+                  {statusInfo.showBadge && (
+                    <Badge variant={statusInfo.variant}>
+                      {statusInfo.text}
                     </Badge>
-                  ))}
+                  )}
                 </div>
-              </div>
-            )}
-
-            {/* Completion Status */}
-            {getCompletionStatus(project) && (
-              <div className={`flex items-center gap-2 text-sm ${getCompletionStatus(project)!.color} mb-4`}>
-                {(() => {
-                  const StatusIcon = getCompletionStatus(project)!.icon;
-                  return <StatusIcon className="h-4 w-4" />;
-                })()}
-                <span>{getCompletionStatus(project)!.text}</span>
-              </div>
-            )}
-
-            {project.status === 'active' && (
-              <div className="flex gap-2 pt-4 border-t">
-                {(!project.creator_completion_status || project.creator_completion_status === 'pending') && (
-                  <Button
-                    onClick={() => handleMarkComplete(project.id)}
-                    disabled={requestingId === project.id}
-                    variant="default"
-                    size="sm"
-                  >
-                    {requestingId === project.id ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Completing...
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle2 className="h-4 w-4 mr-2" />
-                        Mark Complete
-                      </>
-                    )}
-                  </Button>
+              </CardHeader>
+              
+              <CardContent className="space-y-4">
+                {project.campaigns.description && (
+                  <p className="text-sm text-muted-foreground">
+                    {project.campaigns.description}
+                  </p>
                 )}
-                <ProjectFileUpload
-                  campaignId={project.campaign_id}
-                  campaignTitle={project.campaigns.title}
-                  onUploadComplete={() => {
-                    console.log('Upload completed for campaign:', project.campaign_id);
-                  }}
-                />
-                <Button 
-                  size="sm" 
-                  variant="outline" 
-                  className="flex-1"
-                  onClick={() => onMessageClick(project.campaign_id)}
-                >
-                  <MessageSquare className="h-4 w-4 mr-2" />
-                  Message
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      ))}
-    </div>
+
+                {showProgress && project.status === 'active' && (
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium">Progress</span>
+                      <span className="text-sm text-muted-foreground">{getProjectProgress(project)}%</span>
+                    </div>
+                    <Progress value={getProjectProgress(project)} className="h-2" />
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-primary" />
+                    <div>
+                      <p className="text-xs text-muted-foreground">Deadline</p>
+                      <p className="text-sm font-medium">{formatDate(project.campaigns.deadline)}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <DollarSign className="h-4 w-4 text-primary" />
+                    <div>
+                      <p className="text-xs text-muted-foreground">Budget</p>
+                      <p className="text-sm font-medium">
+                        {formatCurrency(project.campaigns.budget_min, project.campaigns.budget_max)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {project.campaigns.deliverables && project.campaigns.deliverables.length > 0 && (
+                  <div>
+                    <h4 className="font-medium mb-2">Deliverables</h4>
+                    <div className="flex flex-wrap gap-1">
+                      {project.campaigns.deliverables.map((deliverable, index) => (
+                        <Badge key={index} variant="outline" className="text-xs">
+                          {deliverable}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {project.status === 'active' && (
+                  <div className="flex gap-2 pt-4 border-t">
+                    {needsApproval ? (
+                      <Button
+                        onClick={() => handleMarkComplete(project.id)}
+                        disabled={requestingId === project.id}
+                        variant="default"
+                        size="sm"
+                        className="bg-amber-600 hover:bg-amber-700"
+                      >
+                        {requestingId === project.id ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Approving...
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle2 className="h-4 w-4 mr-2" />
+                            Approve & Complete
+                          </>
+                        )}
+                      </Button>
+                    ) : (!project.creator_completion_status || project.creator_completion_status === 'pending') && (
+                      <Button
+                        onClick={() => handleMarkComplete(project.id)}
+                        disabled={requestingId === project.id}
+                        variant="default"
+                        size="sm"
+                      >
+                        {requestingId === project.id ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Completing...
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle2 className="h-4 w-4 mr-2" />
+                            Mark Complete
+                          </>
+                        )}
+                      </Button>
+                    )}
+                    <ProjectFileUpload
+                      campaignId={project.campaign_id}
+                      campaignTitle={project.campaigns.title}
+                      onUploadComplete={() => {
+                        console.log('Upload completed for campaign:', project.campaign_id);
+                      }}
+                    />
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      className="flex-1"
+                      onClick={() => onMessageClick(project.campaign_id)}
+                    >
+                      <MessageSquare className="h-4 w-4 mr-2" />
+                      Message
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+    </>
   );
 };
 

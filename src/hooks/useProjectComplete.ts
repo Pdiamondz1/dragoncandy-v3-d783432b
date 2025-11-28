@@ -91,7 +91,7 @@ export const useProjectComplete = () => {
             recipientUserId: campaignData.user_id,
             campaignTitle: campaignData.title,
             projectId: collaborationId,
-            actionUrl: `${window.location.origin}/dashboard/business/projects`
+            actionUrl: `${window.location.origin}/dashboard/business/projects?highlight=${collaborationId}`
           }
         );
 
@@ -104,7 +104,7 @@ export const useProjectComplete = () => {
             recipientUserId: collaboration.creator_id,
             campaignTitle: campaignData.title,
             projectId: collaborationId,
-            actionUrl: `${window.location.origin}/dashboard/creator/projects`
+            actionUrl: `${window.location.origin}/dashboard/creator/projects?highlight=${collaborationId}`
           }
         );
 
@@ -122,7 +122,7 @@ export const useProjectComplete = () => {
             recipientUserId: (collaboration.campaigns as any).user_id,
             campaignTitle: (collaboration.campaigns as any).title,
             requesterName: creatorProfile.creator_name,
-            actionUrl: `${window.location.origin}/dashboard/business/projects`
+            actionUrl: `${window.location.origin}/dashboard/business/projects?highlight=${collaborationId}`
           }
         );
       } else {
@@ -135,7 +135,7 @@ export const useProjectComplete = () => {
             recipientUserId: collaboration.creator_id,
             campaignTitle: (collaboration.campaigns as any).title,
             requesterName: 'Business Owner',
-            actionUrl: `${window.location.origin}/dashboard/creator/projects`
+            actionUrl: `${window.location.origin}/dashboard/creator/projects?highlight=${collaborationId}`
           }
         );
       }
