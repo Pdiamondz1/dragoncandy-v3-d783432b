@@ -223,8 +223,8 @@ const BusinessProjects: React.FC = () => {
   if (projectsLoading) {
     return (
       <DashboardLayout userRole="business_client">
-        <div className="space-y-6">
-          <h1 className="text-3xl font-bold">My Projects</h1>
+        <div className="p-4 lg:p-6 max-w-full overflow-hidden space-y-6">
+          <h1 className="text-3xl font-bold truncate">My Projects</h1>
           <div className="grid gap-4">
             {[1, 2, 3].map(i => (
               <Card key={i} className="animate-pulse">
@@ -243,10 +243,10 @@ const BusinessProjects: React.FC = () => {
 
   return (
     <DashboardLayout userRole="business_client">
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold">My Projects</h1>
-          <div className="text-sm text-gray-600">
+      <div className="p-4 lg:p-6 max-w-full overflow-hidden space-y-6">
+        <div className="flex justify-between items-center gap-4 min-w-0">
+          <h1 className="text-3xl font-bold truncate">My Projects</h1>
+          <div className="text-sm text-muted-foreground whitespace-nowrap flex-shrink-0">
             {projects?.length || 0} active project{projects?.length !== 1 ? 's' : ''}
           </div>
         </div>
