@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -8,11 +8,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Download, MessageCircle, User, Calendar, FileText, Loader2, CheckCircle2, Clock } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Download, MessageCircle, User, Calendar, FileText, Loader2, CheckCircle2, Clock, AlertCircle, Zap } from 'lucide-react';
 import { useProjectComplete } from '@/hooks/useProjectComplete';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useFileUploads } from '@/hooks/useFileUploads';
 import { formatFileSize } from '@/lib/fileUtils';
+import { cn } from '@/lib/utils';
 
 interface ProjectCollaboration {
   id: string;
@@ -48,6 +50,9 @@ interface ProjectCollaboration {
 const BusinessProjects: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const highlightedProjectId = searchParams.get('highlight');
+  const highlightedRef = useRef<HTMLDivElement>(null);
   const [selectedProject, setSelectedProject] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<string>('overview');
   const [downloadingFileId, setDownloadingFileId] = useState<string | null>(null);
@@ -68,6 +73,9 @@ const BusinessProjects: React.FC = () => {
           campaign_id,
           creator_id,
           status,
+          business_completion_status,
+          creator_completion_status,
+          completed_at,
           created_at,
           updated_at,
           campaigns!inner (
@@ -114,6 +122,9 @@ const BusinessProjects: React.FC = () => {
         campaign_id: item.campaign_id,
         creator_id: item.creator_id,
         status: item.status,
+        business_completion_status: item.business_completion_status,
+        creator_completion_status: item.creator_completion_status,
+        completed_at: item.completed_at,
         created_at: item.created_at,
         updated_at: item.updated_at,
         campaign: Array.isArray(item.campaigns) ? item.campaigns[0] : item.campaigns,
@@ -123,6 +134,18 @@ const BusinessProjects: React.FC = () => {
     },
     enabled: !!user,
   });
+
+  // Auto-scroll to highlighted project
+  useEffect(() => {
+    if (highlightedProjectId && highlightedRef.current && projects) {
+      setTimeout(() => {
+        highlightedRef.current?.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'center' 
+        });
+      }, 100);
+    }
+  }, [highlightedProjectId, projects]);
 
   // Fetch files for selected project
   const { data: projectFiles } = useFileUploads(selectedProject || undefined, 'deliverable');
@@ -178,16 +201,24 @@ const BusinessProjects: React.FC = () => {
 
   const getCompletionStatus = (project: ProjectCollaboration) => {
     if (project.status === 'completed') {
-      return { text: 'Project Completed', icon: CheckCircle2, color: 'text-green-600' };
+      return { text: '✅ Completed', variant: 'default' as const, showBadge: true };
     }
-    if (project.business_completion_status === 'requested') {
-      if (project.creator_completion_status === 'requested') {
-        return { text: 'Both approved - finalizing', icon: CheckCircle2, color: 'text-green-600' };
-      }
-      return { text: 'Waiting for creator approval', icon: Clock, color: 'text-amber-600' };
+    if (project.creator_completion_status === 'requested' && project.business_completion_status !== 'requested') {
+      return { text: '🔔 Awaiting Your Approval', variant: 'destructive' as const, showBadge: true };
     }
-    return null;
+    if (project.business_completion_status === 'requested' && project.creator_completion_status !== 'requested') {
+      return { text: '⏳ Waiting for Creator', variant: 'secondary' as const, showBadge: true };
+    }
+    if (project.business_completion_status === 'requested' && project.creator_completion_status === 'requested') {
+      return { text: '✅ Both Approved', variant: 'default' as const, showBadge: true };
+    }
+    return { text: 'Active', variant: 'outline' as const, showBadge: false };
   };
+
+  // Count projects needing approval
+  const projectsNeedingApproval = projects?.filter(
+    p => p.creator_completion_status === 'requested' && p.business_completion_status !== 'requested'
+  ) || [];
 
   if (projectsLoading) {
     return (
@@ -234,99 +265,144 @@ const BusinessProjects: React.FC = () => {
             </CardContent>
           </Card>
         ) : (
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList>
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="deliverables">Deliverables</TabsTrigger>
-            </TabsList>
+          <>
+            {/* Action Required Banner */}
+            {projectsNeedingApproval.length > 0 && (
+              <Alert className="border-amber-500 bg-amber-50 dark:bg-amber-950/20">
+                <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                <AlertDescription className="text-amber-800 dark:text-amber-300 font-medium">
+                  <strong>{projectsNeedingApproval.length} project{projectsNeedingApproval.length !== 1 ? 's' : ''}</strong> {projectsNeedingApproval.length === 1 ? 'has' : 'have'} been marked complete by creators and need your approval.
+                </AlertDescription>
+              </Alert>
+            )}
 
-            <TabsContent value="overview" className="space-y-4">
-              {projects.map((project) => (
-                <Card key={project.id} className="hover:shadow-md transition-shadow">
-                  <CardHeader>
-                    <div className="flex justify-between items-start">
-                      <div className="space-y-2">
-                        <CardTitle className="text-xl">{project.campaign.title}</CardTitle>
-                        <div className="flex items-center gap-4 text-sm text-gray-600">
-                          <div className="flex items-center gap-2">
-                            <User className="h-4 w-4" />
-                            {project.creator_profile?.creator_name || 
-                             project.user_profile?.full_name || 
-                             project.user_profile?.email || 'Creator'}
-                          </div>
-                          {project.campaign.deadline && (
-                            <div className="flex items-center gap-2">
-                              <Calendar className="h-4 w-4" />
-                              Due: {new Date(project.campaign.deadline).toLocaleDateString()}
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+              <TabsList>
+                <TabsTrigger value="overview">Overview</TabsTrigger>
+                <TabsTrigger value="deliverables">Deliverables</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="overview" className="space-y-4">
+                {projects.map((project) => {
+                  const isHighlighted = highlightedProjectId === project.id;
+                  const needsApproval = project.creator_completion_status === 'requested' && 
+                                       project.business_completion_status !== 'requested';
+                  const statusInfo = getCompletionStatus(project);
+
+                  return (
+                    <Card 
+                      key={project.id} 
+                      ref={isHighlighted ? highlightedRef : null}
+                      className={cn(
+                        "hover:shadow-md transition-all duration-300",
+                        needsApproval && "border-2 border-amber-400 bg-amber-50/50 dark:bg-amber-950/20",
+                        isHighlighted && "ring-2 ring-amber-500 ring-offset-2"
+                      )}
+                    >
+                      <CardHeader>
+                        <div className="flex justify-between items-start">
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-3">
+                              <CardTitle className="text-xl">{project.campaign.title}</CardTitle>
+                              {needsApproval && (
+                                <Badge variant="destructive" className="animate-pulse">
+                                  <Zap className="h-3 w-3 mr-1" />
+                                  Action Required
+                                </Badge>
+                              )}
                             </div>
+                            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                              <div className="flex items-center gap-2">
+                                <User className="h-4 w-4" />
+                                {project.creator_profile?.creator_name || 
+                                 project.user_profile?.full_name || 
+                                 project.user_profile?.email || 'Creator'}
+                              </div>
+                              {project.campaign.deadline && (
+                                <div className="flex items-center gap-2">
+                                  <Calendar className="h-4 w-4" />
+                                  Due: {new Date(project.campaign.deadline).toLocaleDateString()}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          {statusInfo.showBadge && (
+                            <Badge variant={statusInfo.variant}>
+                              {statusInfo.text}
+                            </Badge>
                           )}
                         </div>
-                      </div>
-                      <Badge variant={getStatusBadgeVariant(project.status)}>
-                        {project.status}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-gray-600 mb-4">{project.campaign.description}</p>
-                    
-                    {/* Completion Status */}
-                    {getCompletionStatus(project) && (
-                      <div className={`flex items-center gap-2 text-sm ${getCompletionStatus(project)!.color} mb-4`}>
-                        {(() => {
-                          const StatusIcon = getCompletionStatus(project)!.icon;
-                          return <StatusIcon className="h-4 w-4" />;
-                        })()}
-                        <span>{getCompletionStatus(project)!.text}</span>
-                      </div>
-                    )}
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-muted-foreground mb-4">{project.campaign.description}</p>
 
-                    <div className="flex gap-2">
-                      {project.status === 'active' && (!project.business_completion_status || project.business_completion_status === 'pending') && (
-                        <Button
-                          onClick={() => handleMarkComplete(project.id)}
-                          disabled={requestingId === project.id}
-                          variant="default"
-                          size="sm"
-                        >
-                          {requestingId === project.id ? (
-                            <>
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                              Completing...
-                            </>
-                          ) : (
-                            <>
-                              <CheckCircle2 className="h-4 w-4 mr-2" />
-                              Mark Complete
-                            </>
+                        <div className="flex gap-2">
+                          {needsApproval ? (
+                            <Button
+                              onClick={() => handleMarkComplete(project.id)}
+                              disabled={requestingId === project.id}
+                              variant="default"
+                              size="sm"
+                              className="bg-amber-600 hover:bg-amber-700"
+                            >
+                              {requestingId === project.id ? (
+                                <>
+                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                  Approving...
+                                </>
+                              ) : (
+                                <>
+                                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                                  Approve & Complete
+                                </>
+                              )}
+                            </Button>
+                          ) : project.status === 'active' && (!project.business_completion_status || project.business_completion_status === 'pending') && (
+                            <Button
+                              onClick={() => handleMarkComplete(project.id)}
+                              disabled={requestingId === project.id}
+                              variant="default"
+                              size="sm"
+                            >
+                              {requestingId === project.id ? (
+                                <>
+                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                  Completing...
+                                </>
+                              ) : (
+                                <>
+                                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                                  Mark Complete
+                                </>
+                              )}
+                            </Button>
                           )}
-                        </Button>
-                      )}
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          console.log('Viewing files for project:', project.campaign_id);
-                          setSelectedProject(project.campaign_id);
-                          setActiveTab('deliverables');
-                        }}
-                      >
-                        <FileText className="h-4 w-4 mr-2" />
-                        View Files
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleMessageCreator(project.campaign_id)}
-                      >
-                        <MessageCircle className="h-4 w-4 mr-2" />
-                        Message Creator
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </TabsContent>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              console.log('Viewing files for project:', project.campaign_id);
+                              setSelectedProject(project.campaign_id);
+                              setActiveTab('deliverables');
+                            }}
+                          >
+                            <FileText className="h-4 w-4 mr-2" />
+                            View Files
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleMessageCreator(project.campaign_id)}
+                          >
+                            <MessageCircle className="h-4 w-4 mr-2" />
+                            Message Creator
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </TabsContent>
 
             <TabsContent value="deliverables" className="space-y-4">
               {selectedProject ? (
@@ -393,6 +469,7 @@ const BusinessProjects: React.FC = () => {
               )}
             </TabsContent>
           </Tabs>
+          </>
         )}
       </div>
     </DashboardLayout>
