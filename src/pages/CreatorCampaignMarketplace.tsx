@@ -1,18 +1,20 @@
 
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { usePublicCampaigns } from '@/hooks/usePublicCampaigns';
+import { usePublicCampaigns, PublicCampaign } from '@/hooks/usePublicCampaigns';
 import { useCampaignMarketplaceFilters } from '@/hooks/useCampaignMarketplaceFilters';
 import DashboardLayout from '@/components/DashboardLayout';
-import CampaignMarketplaceFilters from '@/components/campaigns/CampaignMarketplaceFilters';
+import AdvancedCampaignFilters from '@/components/campaigns/AdvancedCampaignFilters';
 import CampaignMarketplaceListItem from '@/components/campaigns/CampaignMarketplaceListItem';
+import CampaignBrowseContent from '@/components/campaigns/CampaignBrowseContent';
 import ApplicationForm from '@/components/campaigns/ApplicationForm';
 import MarketplaceHeader from '@/components/campaigns/MarketplaceHeader';
 import MarketplaceStats from '@/components/campaigns/MarketplaceStats';
 import MarketplaceEmptyState from '@/components/campaigns/MarketplaceEmptyState';
 import MarketplaceLoadingState from '@/components/campaigns/MarketplaceLoadingState';
 import MarketplaceErrorState from '@/components/campaigns/MarketplaceErrorState';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -27,6 +29,17 @@ const CreatorCampaignMarketplace = () => {
   const { filters, filteredCampaigns, updateFilter, resetFilters } = useCampaignMarketplaceFilters(campaigns);
   const [selectedCampaign, setSelectedCampaign] = useState<any>(null);
   const [showApplicationForm, setShowApplicationForm] = useState(false);
+  
+  // Debounced campaigns for map performance
+  const [debouncedCampaigns, setDebouncedCampaigns] = useState(filteredCampaigns);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedCampaigns(filteredCampaigns);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [filteredCampaigns]);
 
   if (isLoading) {
     return <MarketplaceLoadingState />;
@@ -71,33 +84,40 @@ const CreatorCampaignMarketplace = () => {
             userApplications={userApplicationsCount}
           />
 
-          {/* Filters */}
-          <CampaignMarketplaceFilters
-            filters={filters}
-            onFilterChange={updateFilter}
-            onReset={resetFilters}
-            totalCount={campaigns.length}
-            filteredCount={filteredCampaigns.length}
-          />
-
-          {/* Campaigns List */}
-          {filteredCampaigns.length === 0 ? (
-            <MarketplaceEmptyState
-              totalCampaigns={campaigns.length}
-              onResetFilters={campaigns.length > 0 ? resetFilters : undefined}
-            />
-          ) : (
-            <div className="flex flex-col gap-4">
-              {filteredCampaigns.map((campaign) => (
-                <CampaignMarketplaceListItem
-                  key={campaign.id}
-                  campaign={campaign}
-                  onApply={handleApply}
-                  onViewDetails={handleViewDetails}
-                />
-              ))}
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            {/* Filters Sidebar */}
+            <div className="lg:col-span-1">
+              <AdvancedCampaignFilters
+                filters={filters}
+                onFilterChange={updateFilter}
+                onReset={resetFilters}
+                totalCount={campaigns.length}
+                filteredCount={filteredCampaigns.length}
+              />
             </div>
-          )}
+
+            {/* Browse Content with Grid/Map/Split Views */}
+            <div className="lg:col-span-3">
+              <CampaignBrowseContent
+                campaigns={debouncedCampaigns}
+                onViewDetails={handleViewDetails}
+                renderCampaignCard={(campaign) => (
+                  <CampaignMarketplaceListItem
+                    key={campaign.id}
+                    campaign={campaign as PublicCampaign}
+                    onApply={handleApply}
+                    onViewDetails={handleViewDetails}
+                  />
+                )}
+                emptyState={
+                  <MarketplaceEmptyState
+                    totalCampaigns={campaigns.length}
+                    onResetFilters={campaigns.length > 0 ? resetFilters : undefined}
+                  />
+                }
+              />
+            </div>
+          </div>
 
           {/* Application Form Dialog */}
           <Dialog open={showApplicationForm} onOpenChange={setShowApplicationForm}>

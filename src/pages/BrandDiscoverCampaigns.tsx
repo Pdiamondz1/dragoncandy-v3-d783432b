@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { useSponsorshipCampaigns } from '@/hooks/useSponsorshipCampaigns';
+import { useSponsorshipCampaigns, SponsorshipCampaign } from '@/hooks/useSponsorshipCampaigns';
 import { useBrandCampaignFilters } from '@/hooks/useBrandCampaignFilters';
 import DashboardLayout from '@/components/DashboardLayout';
 import BrandCampaignCard from '@/components/campaigns/BrandCampaignCard';
-import BrandCampaignFilters from '@/components/campaigns/BrandCampaignFilters';
+import AdvancedCampaignFilters from '@/components/campaigns/AdvancedCampaignFilters';
+import CampaignBrowseContent from '@/components/campaigns/CampaignBrowseContent';
 import MarketplaceLoadingState from '@/components/campaigns/MarketplaceLoadingState';
 import MarketplaceErrorState from '@/components/campaigns/MarketplaceErrorState';
 import { Rocket, Search } from 'lucide-react';
@@ -36,6 +37,17 @@ const BrandDiscoverCampaigns = () => {
   const [sponsorshipAmount, setSponsorshipAmount] = useState('');
   const [proposalMessage, setProposalMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Debounced campaigns for map performance
+  const [debouncedCampaigns, setDebouncedCampaigns] = useState(filteredCampaigns);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedCampaigns(filteredCampaigns);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [filteredCampaigns]);
 
   if (isLoading) {
     return <MarketplaceLoadingState />;
@@ -133,7 +145,7 @@ const BrandDiscoverCampaigns = () => {
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
             {/* Filters Sidebar */}
             <div className="lg:col-span-1">
-              <BrandCampaignFilters
+              <AdvancedCampaignFilters
                 filters={filters}
                 onFilterChange={updateFilter}
                 onReset={resetFilters}
@@ -142,36 +154,37 @@ const BrandDiscoverCampaigns = () => {
               />
             </div>
 
-            {/* Campaigns Grid */}
+            {/* Browse Content with Grid/Map/Split Views */}
             <div className="lg:col-span-3">
-              {filteredCampaigns.length === 0 ? (
-                <div className="text-center py-12 bg-card rounded-lg border">
-                  <Search className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">No campaigns found</h3>
-                  <p className="text-muted-foreground mb-4">
-                    {campaigns.length === 0
-                      ? 'No campaigns are currently open for sponsorship'
-                      : 'Try adjusting your filters to see more campaigns'}
-                  </p>
-                  {campaigns.length > 0 && (
-                    <Button variant="outline" onClick={resetFilters}>
-                      Reset Filters
-                    </Button>
-                  )}
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {filteredCampaigns.map((campaign) => (
-                    <BrandCampaignCard
-                      key={campaign.id}
-                      campaign={campaign}
-                      onSponsor={handleSponsor}
-                      onViewDetails={handleViewDetails}
-                      submittingCampaignId={isSubmitting ? selectedCampaign?.id : undefined}
-                    />
-                  ))}
-                </div>
-              )}
+              <CampaignBrowseContent
+                campaigns={debouncedCampaigns}
+                onViewDetails={handleViewDetails}
+                renderCampaignCard={(campaign) => (
+                  <BrandCampaignCard
+                    key={campaign.id}
+                    campaign={campaign as SponsorshipCampaign}
+                    onSponsor={handleSponsor}
+                    onViewDetails={handleViewDetails}
+                    submittingCampaignId={isSubmitting ? selectedCampaign?.id : undefined}
+                  />
+                )}
+                emptyState={
+                  <div className="text-center py-12 bg-card rounded-lg border">
+                    <Search className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                    <h3 className="text-lg font-semibold mb-2">No campaigns found</h3>
+                    <p className="text-muted-foreground mb-4">
+                      {campaigns.length === 0
+                        ? 'No campaigns are currently open for sponsorship'
+                        : 'Try adjusting your filters to see more campaigns'}
+                    </p>
+                    {campaigns.length > 0 && (
+                      <Button variant="outline" onClick={resetFilters}>
+                        Reset Filters
+                      </Button>
+                    )}
+                  </div>
+                }
+              />
             </div>
           </div>
 

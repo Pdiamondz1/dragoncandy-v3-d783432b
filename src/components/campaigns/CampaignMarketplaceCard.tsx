@@ -67,12 +67,14 @@ const CampaignMarketplaceCard: React.FC<CampaignMarketplaceCardProps> = ({
               <CardTitle className="text-lg line-clamp-1">{campaign.title}</CardTitle>
               <div className="flex items-center gap-2 text-sm text-gray-600">
                 <span>{campaign.business_profile?.business_name || 'Business'}</span>
-                {campaign.business_profile?.location && (
+                {(campaign.business_profile?.city || campaign.business_profile?.country) && (
                   <>
                     <span>•</span>
                     <div className="flex items-center gap-1">
                       <MapPin className="h-3 w-3" />
-                      <span>{campaign.business_profile.location}</span>
+                      <span>
+                        {[campaign.business_profile.city, campaign.business_profile.country].filter(Boolean).join(', ')}
+                      </span>
                     </div>
                   </>
                 )}

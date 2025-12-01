@@ -1,7 +1,18 @@
-
 import { useState, useMemo } from 'react';
 import { PublicCampaign } from '@/hooks/usePublicCampaigns';
-import { CampaignMarketplaceFilters } from '@/components/campaigns/CampaignMarketplaceFilters';
+
+export interface CampaignMarketplaceFilters {
+  searchTerm: string;
+  platforms: string[];
+  budgetMin: number | null;
+  budgetMax: number | null;
+  postal_code: string;
+  city: string;
+  country: string;
+  _isLocationAutoFilled?: boolean;
+  sortBy: 'created_at' | 'budget_max' | 'deadline' | 'application_count';
+  sortOrder: 'asc' | 'desc';
+}
 
 export const useCampaignMarketplaceFilters = (campaigns: PublicCampaign[]) => {
   const [filters, setFilters] = useState<CampaignMarketplaceFilters>({
@@ -9,7 +20,10 @@ export const useCampaignMarketplaceFilters = (campaigns: PublicCampaign[]) => {
     platforms: [],
     budgetMin: null,
     budgetMax: null,
-    location: '',
+    postal_code: '',
+    city: '',
+    country: '',
+    _isLocationAutoFilled: false,
     sortBy: 'created_at',
     sortOrder: 'desc',
   });
@@ -47,12 +61,35 @@ export const useCampaignMarketplaceFilters = (campaigns: PublicCampaign[]) => {
       );
     }
 
-    // Location filter
-    if (filters.location) {
-      const locationLower = filters.location.toLowerCase();
+    // Smart Location Filtering
+    if (filters._isLocationAutoFilled && filters.postal_code) {
+      // When postal code is auto-filled, only filter by postal code
+      const postalLower = filters.postal_code.toLowerCase();
       filtered = filtered.filter(campaign =>
-        campaign.business_profile?.location?.toLowerCase().includes(locationLower)
+        campaign.business_profile?.postal_code?.toLowerCase().includes(postalLower)
       );
+    } else {
+      // Manual location filtering - each field works independently
+      if (filters.postal_code) {
+        const postalLower = filters.postal_code.toLowerCase();
+        filtered = filtered.filter(campaign =>
+          campaign.business_profile?.postal_code?.toLowerCase().includes(postalLower)
+        );
+      }
+
+      if (filters.city) {
+        const cityLower = filters.city.toLowerCase();
+        filtered = filtered.filter(campaign =>
+          campaign.business_profile?.city?.toLowerCase().includes(cityLower)
+        );
+      }
+
+      if (filters.country) {
+        const countryLower = filters.country.toLowerCase();
+        filtered = filtered.filter(campaign =>
+          campaign.business_profile?.country?.toLowerCase().includes(countryLower)
+        );
+      }
     }
 
     // Sort campaigns
@@ -99,7 +136,10 @@ export const useCampaignMarketplaceFilters = (campaigns: PublicCampaign[]) => {
       platforms: [],
       budgetMin: null,
       budgetMax: null,
-      location: '',
+      postal_code: '',
+      city: '',
+      country: '',
+      _isLocationAutoFilled: false,
       sortBy: 'created_at',
       sortOrder: 'desc',
     });
