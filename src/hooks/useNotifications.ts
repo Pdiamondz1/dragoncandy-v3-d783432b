@@ -19,6 +19,7 @@ export const useNotifications = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const initializedRef = useRef(false);
+  const subscriptionsRef = useRef(false);
 
   // Persist notifications per-user so read state survives route changes/reloads
   useEffect(() => {
@@ -47,7 +48,8 @@ export const useNotifications = () => {
   }, [notifications, user]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || subscriptionsRef.current) return;
+    subscriptionsRef.current = true;
 
     // Hydrate initial notifications for existing pending sponsorship proposals
     const init = async () => {
@@ -172,7 +174,7 @@ export const useNotifications = () => {
 
     // Set up real-time subscription for application status changes
     const applicationChannel = supabase
-      .channel('application-updates')
+      .channel(`application-updates-${user.id}`)
       .on(
         'postgres_changes',
         {
@@ -247,7 +249,7 @@ export const useNotifications = () => {
 
     // Set up real-time subscription for sponsorship proposals
     const sponsorshipChannel = supabase
-      .channel('sponsorship-updates')
+      .channel(`sponsorship-updates-${user.id}`)
       .on(
         'postgres_changes',
         {
@@ -374,7 +376,7 @@ export const useNotifications = () => {
 
     // Set up real-time subscription for content likes
     const likesChannel = supabase
-      .channel('content-likes')
+      .channel(`content-likes-${user.id}`)
       .on(
         'postgres_changes',
         {
@@ -438,6 +440,7 @@ export const useNotifications = () => {
       .subscribe();
 
     return () => {
+      subscriptionsRef.current = false;
       supabase.removeChannel(applicationChannel);
       supabase.removeChannel(sponsorshipChannel);
       supabase.removeChannel(likesChannel);
