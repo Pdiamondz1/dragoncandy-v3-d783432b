@@ -11,6 +11,7 @@ import SponsorshipProposalCard from '@/components/campaigns/SponsorshipProposalC
 import { BusinessDashboardSideFeed } from '@/components/dragon-feed/BusinessDashboardSideFeed';
 import { FeedLightbox } from '@/components/dragon-feed/FeedLightbox';
 import { FeedMediaItem } from '@/hooks/useBusinessDragonFeed';
+import RatingPromptManager from '@/components/reviews/RatingPromptManager';
 
 const BusinessDashboard = () => {
   const { profile } = useAuth();
@@ -88,6 +89,9 @@ const BusinessDashboard = () => {
         {/* Main Content Area */}
         <div className="flex-1 overflow-y-auto p-8">
           <div className="max-w-6xl mx-auto space-y-12">
+          
+          {/* Review Prompts */}
+          <RatingPromptManager />
           
           {/* Welcome Header */}
           <div className="text-center space-y-4">
