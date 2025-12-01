@@ -62,14 +62,12 @@ const CampaignBrowseContent: React.FC<CampaignBrowseContentProps> = ({
         <CampaignMapView campaigns={campaigns} onViewDetails={onViewDetails} />
       </TabsContent>
 
-      <TabsContent value="split" className="space-y-4">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
-            {campaigns.map((campaign) => renderCampaignCard(campaign))}
-          </div>
-          <div className="sticky top-0">
-            <CampaignMapView campaigns={campaigns} onViewDetails={onViewDetails} />
-          </div>
+      <TabsContent value="split" className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {campaigns.map((campaign) => renderCampaignCard(campaign))}
+        </div>
+        <div className="h-[400px]">
+          <CampaignMapView campaigns={campaigns} onViewDetails={onViewDetails} />
         </div>
       </TabsContent>
     </Tabs>
