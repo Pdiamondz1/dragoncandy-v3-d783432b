@@ -68,7 +68,7 @@ export const useProjectComplete = () => {
           .from('campaign_collaborations')
           .update({ 
             status: 'completed',
-            review_status: 'ready_for_review',
+            review_status: 'pending',
             business_completion_status: 'approved',
             creator_completion_status: 'approved',
             completed_at: new Date().toISOString()
