@@ -15,12 +15,16 @@ import { X, Search } from 'lucide-react';
 export interface BrandCampaignFilters {
   searchTerm: string;
   location: string;
+  postal_code: string;
+  city: string;
+  country: string;
   industry: string;
   platforms: string[];
   budgetMin: string;
   budgetMax: string;
   sortBy: 'created_at' | 'budget_min' | 'deadline';
   sortOrder: 'asc' | 'desc';
+  _isLocationAutoFilled?: boolean;
 }
 
 interface BrandCampaignFiltersProps {

@@ -8,6 +8,9 @@ export interface PublicCampaign extends Campaign {
     business_name: string;
     logo_url?: string;
     location?: string;
+    postal_code?: string;
+    city?: string;
+    country?: string;
   };
   application_count?: number;
   user_applied?: boolean;
@@ -65,7 +68,7 @@ export const usePublicCampaigns = (userId?: string) => {
       // Fetch business profiles for these users
       const { data: businessProfiles, error: profilesError } = await supabase
         .from('business_profiles')
-        .select('user_id, business_name, logo_url, location')
+        .select('user_id, business_name, logo_url, location, postal_code, city, country')
         .in('user_id', userIds);
 
       if (profilesError) {
@@ -112,6 +115,9 @@ export const usePublicCampaigns = (userId?: string) => {
               business_name: businessProfile.business_name,
               logo_url: businessProfile.logo_url,
               location: businessProfile.location,
+              postal_code: businessProfile.postal_code,
+              city: businessProfile.city,
+              country: businessProfile.country,
             } : undefined,
             application_count: count || 0,
             user_applied: userApplied,
