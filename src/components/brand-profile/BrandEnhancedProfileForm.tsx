@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { Loader2 } from 'lucide-react';
+import { usePostalCodeAutoFill } from '@/hooks/usePostalCodeAutoFill';
 import type { Database } from '@/integrations/supabase/types';
 
 type IndustryType = Database['public']['Enums']['industry_type'];
@@ -13,6 +15,9 @@ interface BrandEnhancedProfileFormProps {
     industry: IndustryType | '';
     website_url: string;
     location: string;
+    postal_code: string;
+    city: string;
+    country: string;
     description: string;
     founded_year: string;
     budget_range: string;
@@ -24,6 +29,20 @@ interface BrandEnhancedProfileFormProps {
 }
 
 export const BrandEnhancedProfileForm = ({ formData, onInputChange }: BrandEnhancedProfileFormProps) => {
+  const handleCityChange = useCallback((city: string) => {
+    onInputChange('city', city);
+  }, [onInputChange]);
+
+  const handleCountryChange = useCallback((country: string) => {
+    onInputChange('country', country);
+  }, [onInputChange]);
+
+  const { isLoading: isLookingUpPostalCode } = usePostalCodeAutoFill({
+    postalCode: formData.postal_code,
+    onCityChange: handleCityChange,
+    onCountryChange: handleCountryChange,
+  });
+
   return (
     <>
       {/* Basic Brand Information */}
@@ -97,52 +116,91 @@ export const BrandEnhancedProfileForm = ({ formData, onInputChange }: BrandEnhan
         </div>
       </div>
 
-      {/* Location & Timezone */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <Label htmlFor="location">Location</Label>
-          <Input
-            id="location"
-            value={formData.location}
-            onChange={(e) => onInputChange('location', e.target.value)}
-            placeholder="City, Country"
-          />
+      {/* Location - Structured International Format */}
+      <div className="space-y-4">
+        <Label className="text-base font-semibold">Location</Label>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <Label htmlFor="postal_code">Postal/Zip Code</Label>
+            <div className="relative">
+              <Input
+                id="postal_code"
+                value={formData.postal_code}
+                onChange={(e) => onInputChange('postal_code', e.target.value)}
+                placeholder="e.g., 10001, SW1A 1AA"
+              />
+              {isLookingUpPostalCode && (
+                <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+              )}
+            </div>
+          </div>
+          <div>
+            <Label htmlFor="city">City</Label>
+            <Input
+              id="city"
+              value={formData.city}
+              onChange={(e) => onInputChange('city', e.target.value)}
+              placeholder="e.g., New York, London"
+            />
+          </div>
+          <div>
+            <Label htmlFor="country">Country</Label>
+            <Input
+              id="country"
+              value={formData.country}
+              onChange={(e) => onInputChange('country', e.target.value)}
+              placeholder="e.g., United States, United Kingdom"
+            />
+          </div>
         </div>
-        <div>
-          <Label htmlFor="timezone">Timezone</Label>
-          <Select value={formData.timezone} onValueChange={(value) => onInputChange('timezone', value)}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select timezone" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="UTC-12">UTC-12 (Baker Island)</SelectItem>
-              <SelectItem value="UTC-11">UTC-11 (Hawaii)</SelectItem>
-              <SelectItem value="UTC-10">UTC-10 (Alaska)</SelectItem>
-              <SelectItem value="UTC-9">UTC-9 (Pacific)</SelectItem>
-              <SelectItem value="UTC-8">UTC-8 (PST)</SelectItem>
-              <SelectItem value="UTC-7">UTC-7 (MST)</SelectItem>
-              <SelectItem value="UTC-6">UTC-6 (CST)</SelectItem>
-              <SelectItem value="UTC-5">UTC-5 (EST)</SelectItem>
-              <SelectItem value="UTC-4">UTC-4 (Atlantic)</SelectItem>
-              <SelectItem value="UTC-3">UTC-3 (Argentina)</SelectItem>
-              <SelectItem value="UTC-2">UTC-2 (South Georgia)</SelectItem>
-              <SelectItem value="UTC-1">UTC-1 (Azores)</SelectItem>
-              <SelectItem value="UTC+0">UTC+0 (GMT/London)</SelectItem>
-              <SelectItem value="UTC+1">UTC+1 (Central European)</SelectItem>
-              <SelectItem value="UTC+2">UTC+2 (Eastern European)</SelectItem>
-              <SelectItem value="UTC+3">UTC+3 (Moscow)</SelectItem>
-              <SelectItem value="UTC+4">UTC+4 (Gulf)</SelectItem>
-              <SelectItem value="UTC+5">UTC+5 (Pakistan)</SelectItem>
-              <SelectItem value="UTC+6">UTC+6 (Bangladesh)</SelectItem>
-              <SelectItem value="UTC+7">UTC+7 (Thailand)</SelectItem>
-              <SelectItem value="UTC+8">UTC+8 (China/Singapore)</SelectItem>
-              <SelectItem value="UTC+9">UTC+9 (Japan/Korea)</SelectItem>
-              <SelectItem value="UTC+10">UTC+10 (Australia East)</SelectItem>
-              <SelectItem value="UTC+11">UTC+11 (Solomon Islands)</SelectItem>
-              <SelectItem value="UTC+12">UTC+12 (New Zealand)</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        
+        {/* Legacy location field - hidden but kept for backward compatibility */}
+        <input
+          type="hidden"
+          id="location"
+          value={formData.location}
+        />
+        
+        <p className="text-xs text-muted-foreground">
+          💡 Your location helps creators and partners find you
+        </p>
+      </div>
+
+      {/* Timezone */}
+      <div>
+        <Label htmlFor="timezone">Timezone</Label>
+        <Select value={formData.timezone} onValueChange={(value) => onInputChange('timezone', value)}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select timezone" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="UTC-12">UTC-12 (Baker Island)</SelectItem>
+            <SelectItem value="UTC-11">UTC-11 (Hawaii)</SelectItem>
+            <SelectItem value="UTC-10">UTC-10 (Alaska)</SelectItem>
+            <SelectItem value="UTC-9">UTC-9 (Pacific)</SelectItem>
+            <SelectItem value="UTC-8">UTC-8 (PST)</SelectItem>
+            <SelectItem value="UTC-7">UTC-7 (MST)</SelectItem>
+            <SelectItem value="UTC-6">UTC-6 (CST)</SelectItem>
+            <SelectItem value="UTC-5">UTC-5 (EST)</SelectItem>
+            <SelectItem value="UTC-4">UTC-4 (Atlantic)</SelectItem>
+            <SelectItem value="UTC-3">UTC-3 (Argentina)</SelectItem>
+            <SelectItem value="UTC-2">UTC-2 (South Georgia)</SelectItem>
+            <SelectItem value="UTC-1">UTC-1 (Azores)</SelectItem>
+            <SelectItem value="UTC+0">UTC+0 (GMT/London)</SelectItem>
+            <SelectItem value="UTC+1">UTC+1 (Central European)</SelectItem>
+            <SelectItem value="UTC+2">UTC+2 (Eastern European)</SelectItem>
+            <SelectItem value="UTC+3">UTC+3 (Moscow)</SelectItem>
+            <SelectItem value="UTC+4">UTC+4 (Gulf)</SelectItem>
+            <SelectItem value="UTC+5">UTC+5 (Pakistan)</SelectItem>
+            <SelectItem value="UTC+6">UTC+6 (Bangladesh)</SelectItem>
+            <SelectItem value="UTC+7">UTC+7 (Thailand)</SelectItem>
+            <SelectItem value="UTC+8">UTC+8 (China/Singapore)</SelectItem>
+            <SelectItem value="UTC+9">UTC+9 (Japan/Korea)</SelectItem>
+            <SelectItem value="UTC+10">UTC+10 (Australia East)</SelectItem>
+            <SelectItem value="UTC+11">UTC+11 (Solomon Islands)</SelectItem>
+            <SelectItem value="UTC+12">UTC+12 (New Zealand)</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Website URL */}
