@@ -1,11 +1,9 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useSponsorshipCampaigns } from '@/hooks/useSponsorshipCampaigns';
 import { useBrandCampaignFilters } from '@/hooks/useBrandCampaignFilters';
 import DashboardLayout from '@/components/DashboardLayout';
-import BrandCampaignCard from '@/components/campaigns/BrandCampaignCard';
-import BrandCampaignFilters from '@/components/campaigns/BrandCampaignFilters';
+import { CampaignBrowseContent } from '@/components/campaigns/CampaignBrowseContent';
 import MarketplaceLoadingState from '@/components/campaigns/MarketplaceLoadingState';
 import MarketplaceErrorState from '@/components/campaigns/MarketplaceErrorState';
 import { Rocket, Search } from 'lucide-react';
@@ -25,7 +23,6 @@ import { useSubmitSponsorshipProposal } from '@/hooks/useSubmitSponsorshipPropos
 
 const BrandDiscoverCampaigns = () => {
   const { user } = useAuth();
-  const navigate = useNavigate();
   const { toast } = useToast();
   const submitProposal = useSubmitSponsorshipProposal();
   const { data: campaigns = [], isLoading, error } = useSponsorshipCampaigns(user?.id);
@@ -37,16 +34,7 @@ const BrandDiscoverCampaigns = () => {
   const [proposalMessage, setProposalMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  if (isLoading) {
-    return <MarketplaceLoadingState />;
-  }
-
-  if (error) {
-    return <MarketplaceErrorState />;
-  }
-
   const handleSponsor = (campaignId: string, existingProposal?: any) => {
-    // Don't allow opening dialog if proposal already exists
     if (existingProposal) {
       toast({
         title: 'Proposal Already Submitted',
@@ -64,7 +52,7 @@ const BrandDiscoverCampaigns = () => {
   };
 
   const handleViewDetails = (campaignId: string) => {
-    navigate(`/dashboard/brand/campaigns/${campaignId}`);
+    window.open(`/dashboard/brand/campaigns/${campaignId}`, '_blank');
   };
 
   const handleSubmitSponsorship = async () => {
@@ -113,7 +101,6 @@ const BrandDiscoverCampaigns = () => {
     <DashboardLayout userRole="brand">
       <div className="flex-1 p-8">
         <div className="max-w-7xl mx-auto space-y-6">
-          {/* Header */}
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold flex items-center gap-2">
@@ -130,52 +117,25 @@ const BrandDiscoverCampaigns = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            {/* Filters Sidebar */}
-            <div className="lg:col-span-1">
-              <BrandCampaignFilters
-                filters={filters}
-                onFilterChange={updateFilter}
-                onReset={resetFilters}
-                totalCount={campaigns.length}
-                filteredCount={filteredCampaigns.length}
-              />
-            </div>
+          {isLoading ? (
+            <MarketplaceLoadingState />
+          ) : error ? (
+            <MarketplaceErrorState />
+          ) : (
+            <CampaignBrowseContent
+              filteredCampaigns={filteredCampaigns}
+              filters={filters}
+              onFilterChange={updateFilter}
+              onResetFilters={resetFilters}
+              isLoading={isLoading}
+              error={error}
+              campaignType="brand"
+              onSponsor={handleSponsor}
+              onViewDetails={handleViewDetails}
+              submittingCampaignId={isSubmitting ? selectedCampaign?.id : undefined}
+            />
+          )}
 
-            {/* Campaigns Grid */}
-            <div className="lg:col-span-3">
-              {filteredCampaigns.length === 0 ? (
-                <div className="text-center py-12 bg-card rounded-lg border">
-                  <Search className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">No campaigns found</h3>
-                  <p className="text-muted-foreground mb-4">
-                    {campaigns.length === 0
-                      ? 'No campaigns are currently open for sponsorship'
-                      : 'Try adjusting your filters to see more campaigns'}
-                  </p>
-                  {campaigns.length > 0 && (
-                    <Button variant="outline" onClick={resetFilters}>
-                      Reset Filters
-                    </Button>
-                  )}
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {filteredCampaigns.map((campaign) => (
-                    <BrandCampaignCard
-                      key={campaign.id}
-                      campaign={campaign}
-                      onSponsor={handleSponsor}
-                      onViewDetails={handleViewDetails}
-                      submittingCampaignId={isSubmitting ? selectedCampaign?.id : undefined}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Sponsorship Proposal Dialog */}
           <Dialog open={showSponsorDialog} onOpenChange={setShowSponsorDialog}>
             <DialogContent className="max-w-2xl">
               <DialogHeader>

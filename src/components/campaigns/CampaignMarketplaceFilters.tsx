@@ -13,8 +13,12 @@ export interface CampaignMarketplaceFilters {
   budgetMin: number | null;
   budgetMax: number | null;
   location: string;
+  postal_code: string;
+  city: string;
+  country: string;
   sortBy: 'created_at' | 'budget_max' | 'deadline' | 'application_count';
   sortOrder: 'asc' | 'desc';
+  _isLocationAutoFilled?: boolean;
 }
 
 interface CampaignMarketplaceFiltersProps {

@@ -14,11 +14,15 @@ export interface SponsorshipCampaign {
   deadline?: string;
   status: string;
   created_at: string;
+  updated_at?: string;
   open_for_sponsorship: boolean;
   business_profile?: {
     business_name: string;
     logo_url?: string;
     location?: string;
+    postal_code?: string;
+    city?: string;
+    country?: string;
     industry?: string;
   };
   application_count?: number;
@@ -55,7 +59,7 @@ export const useSponsorshipCampaigns = (brandUserId?: string) => {
       // Fetch business profiles for these users
       const { data: businessProfiles, error: profilesError } = await supabase
         .from('business_profiles')
-        .select('user_id, business_name, logo_url, location, industry')
+        .select('user_id, business_name, logo_url, location, postal_code, city, country, industry')
         .in('user_id', userIds);
 
       if (profilesError) {
@@ -91,6 +95,9 @@ export const useSponsorshipCampaigns = (brandUserId?: string) => {
               business_name: businessProfile.business_name,
               logo_url: businessProfile.logo_url,
               location: businessProfile.location,
+              postal_code: businessProfile.postal_code,
+              city: businessProfile.city,
+              country: businessProfile.country,
               industry: businessProfile.industry,
             } : undefined,
             application_count: appCount || 0,
