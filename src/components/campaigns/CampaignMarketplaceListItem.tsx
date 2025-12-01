@@ -1,6 +1,6 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { 
@@ -55,125 +55,146 @@ const CampaignMarketplaceListItem: React.FC<CampaignMarketplaceListItemProps> = 
     return 'Budget not specified';
   };
 
+  const visiblePlatforms = campaign.platforms?.slice(0, 3) || [];
+  const remainingPlatforms = (campaign.platforms?.length || 0) - 3;
+
   return (
-    <Card className="hover:shadow-md transition-all hover:border-primary/50">
-      <CardContent className="p-6">
-        <div className="flex items-center gap-6">
-          {/* Left: Avatar + Main Info */}
-          <Avatar className="h-16 w-16 flex-shrink-0">
+    <Card className="group overflow-hidden hover:shadow-lg transition-all duration-300 hover:border-primary/50 h-full flex flex-col">
+      {/* Hero Section with Business Branding */}
+      <div className="relative h-32 bg-gradient-to-br from-primary/10 via-primary/5 to-background overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-background/90" />
+        
+        {/* Business Info in Hero */}
+        <div className="relative p-4 flex items-start justify-between">
+          <div className="flex-1">
+            <div className="flex items-center gap-2 text-sm text-foreground/80 mb-1">
+              <Building className="h-3.5 w-3.5" />
+              <span className="font-medium truncate">
+                {campaign.business_profile?.business_name || 'Business'}
+              </span>
+            </div>
+            {(campaign.business_profile?.city || campaign.business_profile?.country) && (
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <MapPin className="h-3 w-3" />
+                <span className="truncate">
+                  {[campaign.business_profile.city, campaign.business_profile.country].filter(Boolean).join(', ')}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Application Status Badge */}
+          {campaign.user_applied && campaign.application_status && (
+            <div className="ml-2">
+              {campaign.application_status === 'pending' && (
+                <Badge variant="secondary" className="bg-yellow-100 text-yellow-700 shadow-sm">
+                  <Clock className="h-3 w-3 mr-1" />
+                  Applied
+                </Badge>
+              )}
+              {campaign.application_status === 'accepted' && (
+                <Badge className="bg-gradient-to-r from-pink-500 to-purple-600 text-white border-0 shadow-sm">
+                  <CheckCircle className="h-3 w-3 mr-1" />
+                  Accepted
+                </Badge>
+              )}
+              {campaign.application_status === 'rejected' && (
+                <Badge variant="secondary" className="bg-red-100 text-red-700 shadow-sm">
+                  <XCircle className="h-3 w-3 mr-1" />
+                  Rejected
+                </Badge>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Business Avatar - Centered at Bottom */}
+        <div className="absolute -bottom-8 left-1/2 -translate-x-1/2">
+          <Avatar className="h-16 w-16 border-4 border-background shadow-lg">
             <AvatarImage src={campaign.business_profile?.logo_url} />
             <AvatarFallback className="bg-gradient-to-br from-pink-100 to-purple-100">
               <Building className="h-8 w-8 text-primary" />
             </AvatarFallback>
           </Avatar>
+        </div>
+      </div>
 
-          {/* Middle: Content */}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-start justify-between gap-4 mb-2">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="text-lg font-semibold text-foreground">{campaign.title}</h3>
-                {campaign.user_applied && campaign.application_status && (
-                  <>
-                    {campaign.application_status === 'pending' && (
-                      <Badge variant="secondary" className="bg-yellow-100 text-yellow-700">
-                        <Clock className="h-3 w-3 mr-1" />
-                        Applied
-                      </Badge>
-                    )}
-                    {campaign.application_status === 'accepted' && (
-                      <Badge className="bg-gradient-to-r from-pink-500 to-purple-600 text-white border-0">
-                        <CheckCircle className="h-3 w-3 mr-1" />
-                        Accepted
-                      </Badge>
-                    )}
-                    {campaign.application_status === 'rejected' && (
-                      <Badge variant="secondary" className="bg-red-100 text-red-700">
-                        <XCircle className="h-3 w-3 mr-1" />
-                        Rejected
-                      </Badge>
-                    )}
-                  </>
-                )}
-              </div>
-            </div>
+      {/* Card Body */}
+      <div className="flex-1 flex flex-col p-6 pt-10">
+        {/* Campaign Title */}
+        <h3 className="text-lg font-semibold text-foreground text-center mb-2 truncate">
+          {campaign.title}
+        </h3>
 
-            <div className="flex items-center gap-4 text-sm text-muted-foreground mb-2">
-              <div className="flex items-center gap-1">
-                <Building className="h-4 w-4" />
-                <span className="font-medium">{campaign.business_profile?.business_name || 'Business'}</span>
-              </div>
-              {(campaign.business_profile?.city || campaign.business_profile?.country) && (
-                <>
-                  <span>•</span>
-                  <div className="flex items-center gap-1">
-                    <MapPin className="h-4 w-4" />
-                    <span>
-                      {[campaign.business_profile.city, campaign.business_profile.country].filter(Boolean).join(', ')}
-                    </span>
-                  </div>
-                </>
-              )}
-            </div>
+        {/* Description */}
+        <p className="text-sm text-muted-foreground text-center mb-4 line-clamp-2 min-h-[2.5rem]">
+          {campaign.description || 'No description provided'}
+        </p>
 
-            <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
-              {campaign.description || 'No description provided'}
-            </p>
-
-            {campaign.platforms && campaign.platforms.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {campaign.platforms.map((platform) => (
-                  <Badge key={platform} variant="outline" className="text-xs">
-                    {platform}
-                  </Badge>
-                ))}
-              </div>
+        {/* Platforms */}
+        {campaign.platforms && campaign.platforms.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 justify-center mb-4">
+            {visiblePlatforms.map((platform) => (
+              <Badge key={platform} variant="outline" className="text-xs">
+                {platform}
+              </Badge>
+            ))}
+            {remainingPlatforms > 0 && (
+              <Badge variant="outline" className="text-xs">
+                +{remainingPlatforms} more
+              </Badge>
             )}
           </div>
+        )}
 
-          {/* Right: Stats + Actions */}
-          <div className="flex items-center gap-6 flex-shrink-0">
-            <div className="flex flex-col gap-3 text-sm">
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <DollarSign className="h-4 w-4 text-primary" />
-                <span className="font-medium">{getBudgetRange()}</span>
-              </div>
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Calendar className="h-4 w-4 text-primary" />
-                <span>{formatDate(campaign.deadline)}</span>
-              </div>
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Users className="h-4 w-4 text-primary" />
-                <span>{campaign.application_count || 0} applications</span>
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => onViewDetails(campaign.id)}
-                className="whitespace-nowrap"
-              >
-                View Details
-              </Button>
-              <Button 
-                size="sm"
-                onClick={() => campaign.application_status === 'accepted' 
-                  ? onViewDetails(campaign.id) 
-                  : onApply(campaign.id)
-                }
-                disabled={campaign.application_status === 'pending'}
-                className="whitespace-nowrap"
-              >
-                {campaign.application_status === 'accepted' && 'View Project'}
-                {campaign.application_status === 'pending' && 'Applied'}
-                {campaign.application_status === 'rejected' && 'Apply Again'}
-                {!campaign.application_status && 'Apply'}
-              </Button>
-            </div>
+        {/* Stats Grid */}
+        <div className="grid grid-cols-2 gap-3 mb-4 mt-auto">
+          <div className="flex items-center gap-2 text-sm">
+            <DollarSign className="h-4 w-4 text-primary flex-shrink-0" />
+            <span className="font-medium text-foreground truncate text-xs">
+              {getBudgetRange()}
+            </span>
+          </div>
+          <div className="flex items-center gap-2 text-sm">
+            <Calendar className="h-4 w-4 text-primary flex-shrink-0" />
+            <span className="text-muted-foreground truncate text-xs">
+              {formatDate(campaign.deadline)}
+            </span>
+          </div>
+          <div className="flex items-center gap-2 text-sm col-span-2">
+            <Users className="h-4 w-4 text-primary flex-shrink-0" />
+            <span className="text-muted-foreground text-xs">
+              {campaign.application_count || 0} applications
+            </span>
           </div>
         </div>
-      </CardContent>
+
+        {/* Action Buttons */}
+        <div className="flex flex-col gap-2 pt-4 border-t border-border">
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => onViewDetails(campaign.id)}
+            className="w-full"
+          >
+            View Details
+          </Button>
+          <Button 
+            size="sm"
+            onClick={() => campaign.application_status === 'accepted' 
+              ? onViewDetails(campaign.id) 
+              : onApply(campaign.id)
+            }
+            disabled={campaign.application_status === 'pending'}
+            className="w-full"
+          >
+            {campaign.application_status === 'accepted' && 'View Project'}
+            {campaign.application_status === 'pending' && 'Applied'}
+            {campaign.application_status === 'rejected' && 'Apply Again'}
+            {!campaign.application_status && 'Apply'}
+          </Button>
+        </div>
+      </div>
     </Card>
   );
 };
