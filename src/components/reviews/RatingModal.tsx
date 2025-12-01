@@ -33,10 +33,6 @@ const RatingModal: React.FC<RatingModalProps> = ({
 }) => {
   const [rating, setRating] = useState(0);
   const [reviewText, setReviewText] = useState('');
-  const [communicationRating, setCommunicationRating] = useState(0);
-  const [qualityRating, setQualityRating] = useState(0);
-  const [timelinessRating, setTimelinessRating] = useState(0);
-  const [professionalismRating, setProfessionalismRating] = useState(0);
   const [isPublic, setIsPublic] = useState(true);
 
   const submitRating = useSubmitRating();
@@ -52,10 +48,6 @@ const RatingModal: React.FC<RatingModalProps> = ({
       rating,
       review_text: reviewText || undefined,
       review_type: reviewType,
-      communication_rating: communicationRating || undefined,
-      quality_rating: qualityRating || undefined,
-      timeliness_rating: timelinessRating || undefined,
-      professionalism_rating: professionalismRating || undefined,
       is_public: isPublic,
     };
 
@@ -65,10 +57,6 @@ const RatingModal: React.FC<RatingModalProps> = ({
         // Reset form
         setRating(0);
         setReviewText('');
-        setCommunicationRating(0);
-        setQualityRating(0);
-        setTimelinessRating(0);
-        setProfessionalismRating(0);
         setIsPublic(true);
       },
     });
@@ -86,41 +74,6 @@ const RatingModal: React.FC<RatingModalProps> = ({
             <Label className="text-base font-medium">Overall Rating</Label>
             <div className="mt-2">
               <StarRating rating={rating} onRatingChange={setRating} size="lg" />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label className="text-sm">Communication</Label>
-              <StarRating 
-                rating={communicationRating} 
-                onRatingChange={setCommunicationRating} 
-                size="sm" 
-              />
-            </div>
-            <div>
-              <Label className="text-sm">Quality</Label>
-              <StarRating 
-                rating={qualityRating} 
-                onRatingChange={setQualityRating} 
-                size="sm" 
-              />
-            </div>
-            <div>
-              <Label className="text-sm">Timeliness</Label>
-              <StarRating 
-                rating={timelinessRating} 
-                onRatingChange={setTimelinessRating} 
-                size="sm" 
-              />
-            </div>
-            <div>
-              <Label className="text-sm">Professionalism</Label>
-              <StarRating 
-                rating={professionalismRating} 
-                onRatingChange={setProfessionalismRating} 
-                size="sm" 
-              />
             </div>
           </div>
 
