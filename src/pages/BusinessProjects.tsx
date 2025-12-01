@@ -9,12 +9,13 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Download, MessageCircle, User, Calendar, FileText, Loader2, CheckCircle2, Clock, AlertCircle, Zap } from 'lucide-react';
+import { Download, MessageCircle, User, Calendar, FileText, Loader2, CheckCircle2, Clock, AlertCircle, Zap, Star } from 'lucide-react';
 import { useProjectComplete } from '@/hooks/useProjectComplete';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useFileUploads } from '@/hooks/useFileUploads';
 import { formatFileSize } from '@/lib/fileUtils';
 import { cn } from '@/lib/utils';
+import RatingModal from '@/components/reviews/RatingModal';
 
 interface ProjectCollaboration {
   id: string;
@@ -57,6 +58,12 @@ const BusinessProjects: React.FC = () => {
   const [activeTab, setActiveTab] = useState<string>('overview');
   const [downloadingFileId, setDownloadingFileId] = useState<string | null>(null);
   const { requestCompletion, requestingId } = useProjectComplete();
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
+  const [selectedReview, setSelectedReview] = useState<{
+    collaborationId: string;
+    revieweeId: string;
+    revieweeName: string;
+  } | null>(null);
 
   // Fetch all collaborations for campaigns owned by this business
   const { data: projects, isLoading: projectsLoading } = useQuery({
@@ -199,6 +206,17 @@ const BusinessProjects: React.FC = () => {
     });
   };
 
+  const handleLeaveReview = (project: ProjectCollaboration) => {
+    setSelectedReview({
+      collaborationId: project.id,
+      revieweeId: project.creator_id,
+      revieweeName: project.creator_profile?.creator_name || 
+                    project.user_profile?.full_name || 
+                    project.user_profile?.email || 'Creator'
+    });
+    setReviewModalOpen(true);
+  };
+
   const getCompletionStatus = (project: ProjectCollaboration) => {
     if (project.status === 'completed') {
       return { text: '✅ Completed', variant: 'default' as const, showBadge: true };
@@ -336,7 +354,7 @@ const BusinessProjects: React.FC = () => {
                       <CardContent>
                         <p className="text-muted-foreground mb-4">{project.campaign.description}</p>
 
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 flex-wrap">
                           {needsApproval ? (
                             <Button
                               onClick={() => handleMarkComplete(project.id)}
@@ -375,6 +393,17 @@ const BusinessProjects: React.FC = () => {
                                   Mark Complete
                                 </>
                               )}
+                            </Button>
+                          )}
+                          {project.status === 'completed' && (
+                            <Button
+                              onClick={() => handleLeaveReview(project)}
+                              variant="default"
+                              size="sm"
+                              className="bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-700 hover:to-purple-700"
+                            >
+                              <Star className="h-4 w-4 mr-2" />
+                              Leave Review
                             </Button>
                           )}
                           <Button
@@ -472,6 +501,21 @@ const BusinessProjects: React.FC = () => {
           </>
         )}
       </div>
+
+      {/* Rating Modal */}
+      {selectedReview && (
+        <RatingModal
+          isOpen={reviewModalOpen}
+          onClose={() => {
+            setReviewModalOpen(false);
+            setSelectedReview(null);
+          }}
+          collaborationId={selectedReview.collaborationId}
+          revieweeId={selectedReview.revieweeId}
+          revieweeName={selectedReview.revieweeName}
+          reviewType="business_to_creator"
+        />
+      )}
     </DashboardLayout>
   );
 };

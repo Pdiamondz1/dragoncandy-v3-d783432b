@@ -471,7 +471,7 @@ const handler = async (req: Request): Promise<Response> => {
               </div>
               <p style="font-size: 16px; color: #374151; line-height: 1.6;">We'd love to hear about your experience. Your feedback helps build trust in the DragonCandy community.</p>
               <p style="text-align: center; margin-top: 40px;">
-                <a href="${baseUrl}/dashboard" style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600; font-size: 16px;">
+                <a href="${data.actionUrl || `${baseUrl}/dashboard`}" style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600; font-size: 16px;">
                   Leave a Review
                 </a>
               </p>

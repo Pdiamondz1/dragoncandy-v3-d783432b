@@ -1,5 +1,5 @@
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -14,12 +14,15 @@ import {
   Clock,
   Loader2,
   AlertCircle,
-  Zap
+  Zap,
+  Star
 } from 'lucide-react';
 import ProjectFileUpload from '@/components/projects/ProjectFileUpload';
 import { useProjectComplete } from '@/hooks/useProjectComplete';
 import { useSearchParams } from 'react-router-dom';
 import { cn } from '@/lib/utils';
+import RatingModal from '@/components/reviews/RatingModal';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ProjectCollaboration {
   id: string;
@@ -55,6 +58,13 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, showProgress, onMes
   const [searchParams] = useSearchParams();
   const highlightedProjectId = searchParams.get('highlight');
   const highlightedRef = useRef<HTMLDivElement>(null);
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
+  const [selectedReview, setSelectedReview] = useState<{
+    collaborationId: string;
+    revieweeId: string;
+    revieweeName: string;
+    businessUserId: string;
+  } | null>(null);
 
   // Auto-scroll to highlighted project
   useEffect(() => {
@@ -109,6 +119,32 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, showProgress, onMes
       collaborationId, 
       userRole: 'content_creator' 
     });
+  };
+
+  const handleLeaveReview = async (project: ProjectCollaboration) => {
+    // Fetch business user ID from campaign
+    const { data: campaignData } = await supabase
+      .from('campaigns')
+      .select('user_id')
+      .eq('id', project.campaign_id)
+      .single();
+    
+    if (!campaignData) return;
+
+    // Fetch business profile for display name
+    const { data: businessProfile } = await supabase
+      .from('business_profiles')
+      .select('business_name, user_id')
+      .eq('user_id', campaignData.user_id)
+      .single();
+
+    setSelectedReview({
+      collaborationId: project.id,
+      revieweeId: campaignData.user_id,
+      revieweeName: businessProfile?.business_name || 'Business',
+      businessUserId: campaignData.user_id
+    });
+    setReviewModalOpen(true);
   };
 
   const getCompletionStatus = (project: ProjectCollaboration) => {
@@ -254,7 +290,7 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, showProgress, onMes
                 )}
 
                 {project.status === 'active' && (
-                  <div className="flex gap-2 pt-4 border-t">
+                  <div className="flex gap-2 pt-4 border-t flex-wrap">
                     {needsApproval ? (
                       <Button
                         onClick={() => handleMarkComplete(project.id)}
@@ -313,11 +349,49 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, showProgress, onMes
                     </Button>
                   </div>
                 )}
+
+                {project.status === 'completed' && (
+                  <div className="flex gap-2 pt-4 border-t flex-wrap">
+                    <Button
+                      onClick={() => handleLeaveReview(project)}
+                      variant="default"
+                      size="sm"
+                      className="bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-700 hover:to-purple-700"
+                    >
+                      <Star className="h-4 w-4 mr-2" />
+                      Leave Review
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      className="flex-1"
+                      onClick={() => onMessageClick(project.campaign_id)}
+                    >
+                      <MessageSquare className="h-4 w-4 mr-2" />
+                      Message
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
           );
         })}
       </div>
+
+      {/* Rating Modal */}
+      {selectedReview && (
+        <RatingModal
+          isOpen={reviewModalOpen}
+          onClose={() => {
+            setReviewModalOpen(false);
+            setSelectedReview(null);
+          }}
+          collaborationId={selectedReview.collaborationId}
+          revieweeId={selectedReview.revieweeId}
+          revieweeName={selectedReview.revieweeName}
+          reviewType="creator_to_business"
+        />
+      )}
     </>
   );
 };
