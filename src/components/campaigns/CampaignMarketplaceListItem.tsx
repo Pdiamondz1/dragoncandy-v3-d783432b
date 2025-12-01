@@ -102,12 +102,14 @@ const CampaignMarketplaceListItem: React.FC<CampaignMarketplaceListItemProps> = 
                 <Building className="h-4 w-4" />
                 <span className="font-medium">{campaign.business_profile?.business_name || 'Business'}</span>
               </div>
-              {campaign.business_profile?.location && (
+              {(campaign.business_profile?.city || campaign.business_profile?.country) && (
                 <>
                   <span>•</span>
                   <div className="flex items-center gap-1">
                     <MapPin className="h-4 w-4" />
-                    <span>{campaign.business_profile.location}</span>
+                    <span>
+                      {[campaign.business_profile.city, campaign.business_profile.country].filter(Boolean).join(', ')}
+                    </span>
                   </div>
                 </>
               )}
