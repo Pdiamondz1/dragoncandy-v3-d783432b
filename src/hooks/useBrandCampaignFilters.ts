@@ -6,16 +6,12 @@ export const useBrandCampaignFilters = (campaigns: SponsorshipCampaign[]) => {
   const [filters, setFilters] = useState<BrandCampaignFilters>({
     searchTerm: '',
     location: '',
-    postal_code: '',
-    city: '',
-    country: '',
     industry: 'all',
     platforms: [],
     budgetMin: '',
     budgetMax: '',
     sortBy: 'created_at',
     sortOrder: 'desc',
-    _isLocationAutoFilled: false,
   });
 
   const filteredCampaigns = useMemo(() => {
@@ -32,40 +28,12 @@ export const useBrandCampaignFilters = (campaigns: SponsorshipCampaign[]) => {
       );
     }
 
-    // Location filter - smart filtering
-    if (filters._isLocationAutoFilled && filters.postal_code) {
-      const postalLower = filters.postal_code.toLowerCase();
+    // Location filter
+    if (filters.location) {
+      const locationLower = filters.location.toLowerCase();
       filtered = filtered.filter((campaign) =>
-        campaign.business_profile?.postal_code?.toLowerCase().includes(postalLower)
+        campaign.business_profile?.location?.toLowerCase().includes(locationLower)
       );
-    } else {
-      if (filters.postal_code) {
-        const postalLower = filters.postal_code.toLowerCase();
-        filtered = filtered.filter((campaign) =>
-          campaign.business_profile?.postal_code?.toLowerCase().includes(postalLower)
-        );
-      }
-
-      if (filters.city) {
-        const cityLower = filters.city.toLowerCase();
-        filtered = filtered.filter((campaign) =>
-          campaign.business_profile?.city?.toLowerCase().includes(cityLower)
-        );
-      }
-
-      if (filters.country) {
-        const countryLower = filters.country.toLowerCase();
-        filtered = filtered.filter((campaign) =>
-          campaign.business_profile?.country?.toLowerCase().includes(countryLower)
-        );
-      }
-
-      if (filters.location) {
-        const locationLower = filters.location.toLowerCase();
-        filtered = filtered.filter((campaign) =>
-          campaign.business_profile?.location?.toLowerCase().includes(locationLower)
-        );
-      }
     }
 
     // Industry filter
@@ -138,16 +106,12 @@ export const useBrandCampaignFilters = (campaigns: SponsorshipCampaign[]) => {
     setFilters({
       searchTerm: '',
       location: '',
-      postal_code: '',
-      city: '',
-      country: '',
       industry: 'all',
       platforms: [],
       budgetMin: '',
       budgetMax: '',
       sortBy: 'created_at',
       sortOrder: 'desc',
-      _isLocationAutoFilled: false,
     });
   };
 

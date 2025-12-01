@@ -131,9 +131,9 @@ export const useProfileData = () => {
       .subscribe();
 
     return () => {
-      supabase.removeChannel(subscription);
+      subscription.unsubscribe();
     };
-  }, [user, profile, fetchProfileData]);
+  }, [user, profile]);
 
   return { ...profileData, refetch: fetchProfileData };
 };
