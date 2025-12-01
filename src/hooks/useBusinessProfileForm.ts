@@ -9,6 +9,9 @@ export interface BusinessProfileFormData {
   industry: IndustryType | '';
   website_url: string;
   location: string;
+  postal_code: string;
+  city: string;
+  country: string;
   description: string;
   instagram_url: string;
   tiktok_url: string;
@@ -39,6 +42,9 @@ export const useBusinessProfileForm = () => {
     industry: '',
     website_url: '',
     location: '',
+    postal_code: '',
+    city: '',
+    country: '',
     description: '',
     instagram_url: '',
     tiktok_url: '',
@@ -67,6 +73,9 @@ export const useBusinessProfileForm = () => {
       industry: businessProfile.industry || '',
       website_url: businessProfile.website_url || '',
       location: businessProfile.location || '',
+      postal_code: businessProfile.postal_code || '',
+      city: businessProfile.city || '',
+      country: businessProfile.country || '',
       description: businessProfile.description || '',
       instagram_url: businessProfile.instagram_url || '',
       tiktok_url: businessProfile.tiktok_url || '',

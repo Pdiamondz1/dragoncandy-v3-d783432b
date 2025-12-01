@@ -102,7 +102,9 @@ export type Database = {
           brand_category: string | null
           budget_range: string | null
           business_name: string
+          city: string | null
           company_size: string | null
+          country: string | null
           created_at: string | null
           description: string | null
           employee_count_range: string | null
@@ -117,6 +119,7 @@ export type Database = {
           logo_url: string | null
           marketing_objectives: string | null
           other_social_url: string | null
+          postal_code: string | null
           preferred_collaboration_style: string | null
           profile_slug: string | null
           profile_visibility: string | null
@@ -137,7 +140,9 @@ export type Database = {
           brand_category?: string | null
           budget_range?: string | null
           business_name: string
+          city?: string | null
           company_size?: string | null
+          country?: string | null
           created_at?: string | null
           description?: string | null
           employee_count_range?: string | null
@@ -152,6 +157,7 @@ export type Database = {
           logo_url?: string | null
           marketing_objectives?: string | null
           other_social_url?: string | null
+          postal_code?: string | null
           preferred_collaboration_style?: string | null
           profile_slug?: string | null
           profile_visibility?: string | null
@@ -172,7 +178,9 @@ export type Database = {
           brand_category?: string | null
           budget_range?: string | null
           business_name?: string
+          city?: string | null
           company_size?: string | null
+          country?: string | null
           created_at?: string | null
           description?: string | null
           employee_count_range?: string | null
@@ -187,6 +195,7 @@ export type Database = {
           logo_url?: string | null
           marketing_objectives?: string | null
           other_social_url?: string | null
+          postal_code?: string | null
           preferred_collaboration_style?: string | null
           profile_slug?: string | null
           profile_visibility?: string | null
