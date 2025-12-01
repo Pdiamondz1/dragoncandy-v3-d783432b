@@ -9,7 +9,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
 import MobileOptimizedStarRating from './MobileOptimizedStarRating';
 import { useSubmitRating } from '@/hooks/useSubmitRating';
 import { CreateReviewData } from '@/types/reviews';
@@ -34,7 +33,6 @@ const ResponsiveRatingModal: React.FC<ResponsiveRatingModalProps> = ({
 }) => {
   const [rating, setRating] = useState(0);
   const [reviewText, setReviewText] = useState('');
-  const [isPublic, setIsPublic] = useState(true);
 
   const submitRating = useSubmitRating();
 
@@ -47,7 +45,7 @@ const ResponsiveRatingModal: React.FC<ResponsiveRatingModalProps> = ({
       rating,
       review_text: reviewText || undefined,
       review_type: reviewType,
-      is_public: isPublic,
+      is_public: true,
     };
 
     submitRating.mutate(reviewData, {
@@ -56,7 +54,6 @@ const ResponsiveRatingModal: React.FC<ResponsiveRatingModalProps> = ({
         // Reset form
         setRating(0);
         setReviewText('');
-        setIsPublic(true);
       },
     });
   };
@@ -94,17 +91,6 @@ const ResponsiveRatingModal: React.FC<ResponsiveRatingModalProps> = ({
                 onChange={(e) => setReviewText(e.target.value)}
                 rows={4}
                 className="mt-2 text-base md:text-sm"
-              />
-            </div>
-
-            <div className="flex items-center justify-between py-2">
-              <Label htmlFor="public-review" className="text-sm font-medium">
-                Make review public
-              </Label>
-              <Switch
-                id="public-review"
-                checked={isPublic}
-                onCheckedChange={setIsPublic}
               />
             </div>
           </div>

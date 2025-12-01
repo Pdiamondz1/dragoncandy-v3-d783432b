@@ -9,7 +9,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
 import StarRating from './StarRating';
 import { useSubmitRating } from '@/hooks/useSubmitRating';
 import { CreateReviewData } from '@/types/reviews';
@@ -33,7 +32,6 @@ const RatingModal: React.FC<RatingModalProps> = ({
 }) => {
   const [rating, setRating] = useState(0);
   const [reviewText, setReviewText] = useState('');
-  const [isPublic, setIsPublic] = useState(true);
 
   const submitRating = useSubmitRating();
 
@@ -48,7 +46,7 @@ const RatingModal: React.FC<RatingModalProps> = ({
       rating,
       review_text: reviewText || undefined,
       review_type: reviewType,
-      is_public: isPublic,
+      is_public: true,
     };
 
     submitRating.mutate(reviewData, {
@@ -57,7 +55,6 @@ const RatingModal: React.FC<RatingModalProps> = ({
         // Reset form
         setRating(0);
         setReviewText('');
-        setIsPublic(true);
       },
     });
   };
@@ -86,15 +83,6 @@ const RatingModal: React.FC<RatingModalProps> = ({
               onChange={(e) => setReviewText(e.target.value)}
               rows={4}
               className="mt-2"
-            />
-          </div>
-
-          <div className="flex items-center justify-between">
-            <Label htmlFor="public-review">Make review public</Label>
-            <Switch
-              id="public-review"
-              checked={isPublic}
-              onCheckedChange={setIsPublic}
             />
           </div>
 
