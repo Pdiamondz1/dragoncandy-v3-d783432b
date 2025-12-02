@@ -14,7 +14,9 @@ type NotificationType =
   | 'approval_pending'
   | 'content_liked'
   | 'completion_request'
-  | 'project_completion';
+  | 'project_completion'
+  | 'sponsorship_completion_request'
+  | 'sponsorship_completed';
 
 interface NotificationData {
   campaignTitle?: string;
@@ -28,7 +30,9 @@ interface NotificationData {
   reviewUrl?: string;
   updateDetails?: string;
   brandName?: string;
+  businessName?: string;
   sponsorshipAmount?: number;
+  sponsorshipId?: string;
   proposalStatus?: string;
   party?: string;
   creatorName?: string;

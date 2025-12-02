@@ -447,8 +447,11 @@ export type Database = {
       }
       campaign_sponsorships: {
         Row: {
+          brand_completion_status: string | null
           brand_id: string
+          business_completion_status: string | null
           campaign_id: string
+          completed_at: string | null
           created_at: string
           id: string
           payment_date: string | null
@@ -457,14 +460,18 @@ export type Database = {
           payment_status: string | null
           proposal_message: string | null
           restaurant_id: string
+          review_status: string | null
           sponsorship_amount: number | null
           status: string
           terms: Json | null
           updated_at: string
         }
         Insert: {
+          brand_completion_status?: string | null
           brand_id: string
+          business_completion_status?: string | null
           campaign_id: string
+          completed_at?: string | null
           created_at?: string
           id?: string
           payment_date?: string | null
@@ -473,14 +480,18 @@ export type Database = {
           payment_status?: string | null
           proposal_message?: string | null
           restaurant_id: string
+          review_status?: string | null
           sponsorship_amount?: number | null
           status?: string
           terms?: Json | null
           updated_at?: string
         }
         Update: {
+          brand_completion_status?: string | null
           brand_id?: string
+          business_completion_status?: string | null
           campaign_id?: string
+          completed_at?: string | null
           created_at?: string
           id?: string
           payment_date?: string | null
@@ -489,6 +500,7 @@ export type Database = {
           payment_status?: string | null
           proposal_message?: string | null
           restaurant_id?: string
+          review_status?: string | null
           sponsorship_amount?: number | null
           status?: string
           terms?: Json | null
@@ -1452,7 +1464,7 @@ export type Database = {
       }
       project_reviews: {
         Row: {
-          collaboration_id: string
+          collaboration_id: string | null
           communication_rating: number | null
           created_at: string | null
           id: string
@@ -1464,11 +1476,12 @@ export type Database = {
           review_type: string
           reviewee_id: string
           reviewer_id: string
+          sponsorship_id: string | null
           timeliness_rating: number | null
           updated_at: string | null
         }
         Insert: {
-          collaboration_id: string
+          collaboration_id?: string | null
           communication_rating?: number | null
           created_at?: string | null
           id?: string
@@ -1480,11 +1493,12 @@ export type Database = {
           review_type: string
           reviewee_id: string
           reviewer_id: string
+          sponsorship_id?: string | null
           timeliness_rating?: number | null
           updated_at?: string | null
         }
         Update: {
-          collaboration_id?: string
+          collaboration_id?: string | null
           communication_rating?: number | null
           created_at?: string | null
           id?: string
@@ -1496,6 +1510,7 @@ export type Database = {
           review_type?: string
           reviewee_id?: string
           reviewer_id?: string
+          sponsorship_id?: string | null
           timeliness_rating?: number | null
           updated_at?: string | null
         }
@@ -1505,6 +1520,13 @@ export type Database = {
             columns: ["collaboration_id"]
             isOneToOne: false
             referencedRelation: "campaign_collaborations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_reviews_sponsorship_id_fkey"
+            columns: ["sponsorship_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_sponsorships"
             referencedColumns: ["id"]
           },
         ]

@@ -1,12 +1,13 @@
 
 export interface ProjectReview {
   id: string;
-  collaboration_id: string;
+  collaboration_id?: string;
+  sponsorship_id?: string;
   reviewer_id: string;
   reviewee_id: string;
   rating: number;
   review_text?: string;
-  review_type: 'business_to_creator' | 'creator_to_business';
+  review_type: 'business_to_creator' | 'creator_to_business' | 'brand_to_business' | 'business_to_brand';
   communication_rating?: number;
   quality_rating?: number;
   timeliness_rating?: number;
@@ -26,11 +27,12 @@ export interface ReviewResponse {
 }
 
 export interface CreateReviewData {
-  collaboration_id: string;
+  collaboration_id?: string;
+  sponsorship_id?: string;
   reviewee_id: string;
   rating: number;
   review_text?: string;
-  review_type: 'business_to_creator' | 'creator_to_business';
+  review_type: 'business_to_creator' | 'creator_to_business' | 'brand_to_business' | 'business_to_brand';
   communication_rating?: number;
   quality_rating?: number;
   timeliness_rating?: number;
