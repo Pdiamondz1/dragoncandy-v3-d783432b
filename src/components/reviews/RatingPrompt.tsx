@@ -6,15 +6,17 @@ import { Star, X } from 'lucide-react';
 import RatingModal from './RatingModal';
 
 interface RatingPromptProps {
-  collaborationId: string;
+  collaborationId?: string;
+  sponsorshipId?: string;
   revieweeId: string;
   revieweeName: string;
-  reviewType: 'business_to_creator' | 'creator_to_business';
+  reviewType: 'business_to_creator' | 'creator_to_business' | 'brand_to_business' | 'business_to_brand';
   onDismiss: () => void;
 }
 
 const RatingPrompt: React.FC<RatingPromptProps> = ({
   collaborationId,
+  sponsorshipId,
   revieweeId,
   revieweeName,
   reviewType,
@@ -73,6 +75,7 @@ const RatingPrompt: React.FC<RatingPromptProps> = ({
         isOpen={showModal}
         onClose={() => setShowModal(false)}
         collaborationId={collaborationId}
+        sponsorshipId={sponsorshipId}
         revieweeId={revieweeId}
         revieweeName={revieweeName}
         reviewType={reviewType}
