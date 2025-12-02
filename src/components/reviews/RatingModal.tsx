@@ -16,16 +16,18 @@ import { CreateReviewData } from '@/types/reviews';
 interface RatingModalProps {
   isOpen: boolean;
   onClose: () => void;
-  collaborationId: string;
+  collaborationId?: string;
+  sponsorshipId?: string;
   revieweeId: string;
   revieweeName: string;
-  reviewType: 'business_to_creator' | 'creator_to_business';
+  reviewType: 'business_to_creator' | 'creator_to_business' | 'brand_to_business' | 'business_to_brand';
 }
 
 const RatingModal: React.FC<RatingModalProps> = ({
   isOpen,
   onClose,
   collaborationId,
+  sponsorshipId,
   revieweeId,
   revieweeName,
   reviewType
@@ -42,6 +44,7 @@ const RatingModal: React.FC<RatingModalProps> = ({
 
     const reviewData: CreateReviewData = {
       collaboration_id: collaborationId,
+      sponsorship_id: sponsorshipId,
       reviewee_id: revieweeId,
       rating,
       review_text: reviewText || undefined,
@@ -52,7 +55,6 @@ const RatingModal: React.FC<RatingModalProps> = ({
     submitRating.mutate(reviewData, {
       onSuccess: () => {
         onClose();
-        // Reset form
         setRating(0);
         setReviewText('');
       },

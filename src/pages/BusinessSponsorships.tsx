@@ -1,19 +1,31 @@
-import React from 'react';
+
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { DollarSign, MessageSquare, Calendar, TrendingUp } from 'lucide-react';
+import { DollarSign, MessageSquare, Calendar, TrendingUp, CheckCircle, Clock, Loader2 } from 'lucide-react';
 import { useSponsorshipProposals } from '@/hooks/useSponsorshipProposals';
+import { useSponsorshipComplete } from '@/hooks/useSponsorshipComplete';
 import SponsorshipProposalCard from '@/components/campaigns/SponsorshipProposalCard';
 import MarketplaceLoadingState from '@/components/campaigns/MarketplaceLoadingState';
+import SponsorshipRatingPromptManager from '@/components/reviews/SponsorshipRatingPromptManager';
+import ResponsiveRatingModal from '@/components/reviews/ResponsiveRatingModal';
 
 const BusinessSponsorships = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { proposals, isLoading, updateProposalStatus } = useSponsorshipProposals();
+  const { requestCompletion, requestingId } = useSponsorshipComplete();
+
+  const [ratingModal, setRatingModal] = useState<{
+    isOpen: boolean;
+    sponsorshipId: string;
+    revieweeId: string;
+    revieweeName: string;
+  } | null>(null);
 
   if (isLoading) {
     return <MarketplaceLoadingState />;
@@ -47,6 +59,64 @@ const BusinessSponsorships = () => {
     },
   ];
 
+  const getCompletionButton = (proposal: any) => {
+    const brandStatus = proposal.brand_completion_status || 'pending';
+    const businessStatus = proposal.business_completion_status || 'pending';
+    const isCompleted = !!proposal.completed_at;
+
+    if (isCompleted) {
+      return (
+        <Badge className="bg-green-100 text-green-800">
+          <CheckCircle className="h-3 w-3 mr-1" />
+          Completed
+        </Badge>
+      );
+    }
+
+    if (businessStatus === 'requested') {
+      return (
+        <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
+          <Clock className="h-3 w-3 mr-1" />
+          Awaiting Brand Approval
+        </Badge>
+      );
+    }
+
+    if (brandStatus === 'requested' && businessStatus === 'pending') {
+      return (
+        <Button
+          size="sm"
+          onClick={() => requestCompletion({ sponsorshipId: proposal.id, userRole: 'business' })}
+          disabled={requestingId === proposal.id}
+          className="bg-green-600 hover:bg-green-700"
+        >
+          {requestingId === proposal.id ? (
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+          ) : (
+            <CheckCircle className="h-4 w-4 mr-2" />
+          )}
+          Approve Completion
+        </Button>
+      );
+    }
+
+    return (
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={() => requestCompletion({ sponsorshipId: proposal.id, userRole: 'business' })}
+        disabled={requestingId === proposal.id}
+      >
+        {requestingId === proposal.id ? (
+          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+        ) : (
+          <CheckCircle className="h-4 w-4 mr-2" />
+        )}
+        Mark Complete
+      </Button>
+    );
+  };
+
   return (
     <DashboardLayout userRole="business_client">
       <div className="flex-1 p-8">
@@ -61,6 +131,8 @@ const BusinessSponsorships = () => {
               Manage brand sponsorship offers for your campaigns
             </p>
           </div>
+
+          <SponsorshipRatingPromptManager />
 
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -122,7 +194,9 @@ const BusinessSponsorships = () => {
                             Campaign: {proposal.campaigns?.title || 'Unknown Campaign'}
                           </p>
                         </div>
-                        <Badge className="bg-green-100 text-green-800">Accepted</Badge>
+                        <div className="flex items-center gap-2">
+                          {getCompletionButton(proposal)}
+                        </div>
                       </div>
                     </CardHeader>
                     <CardContent className="space-y-3">
@@ -191,6 +265,17 @@ const BusinessSponsorships = () => {
           )}
         </div>
       </div>
+
+      {ratingModal && (
+        <ResponsiveRatingModal
+          isOpen={ratingModal.isOpen}
+          onClose={() => setRatingModal(null)}
+          sponsorshipId={ratingModal.sponsorshipId}
+          revieweeId={ratingModal.revieweeId}
+          revieweeName={ratingModal.revieweeName}
+          reviewType="business_to_brand"
+        />
+      )}
     </DashboardLayout>
   );
 };
