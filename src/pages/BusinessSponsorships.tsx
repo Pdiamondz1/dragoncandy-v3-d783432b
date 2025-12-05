@@ -6,7 +6,7 @@ import DashboardLayout from '@/components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { DollarSign, MessageSquare, Calendar, TrendingUp, CheckCircle, Clock, Loader2 } from 'lucide-react';
+import { DollarSign, MessageSquare, Calendar, TrendingUp, CheckCircle, Clock, Loader2, Star } from 'lucide-react';
 import { useSponsorshipProposals } from '@/hooks/useSponsorshipProposals';
 import { useSponsorshipComplete } from '@/hooks/useSponsorshipComplete';
 import SponsorshipProposalCard from '@/components/campaigns/SponsorshipProposalCard';
@@ -58,6 +58,15 @@ const BusinessSponsorships = () => {
       bgColor: 'bg-green-100',
     },
   ];
+
+  const handleLeaveReview = (proposal: any) => {
+    setRatingModal({
+      isOpen: true,
+      sponsorshipId: proposal.id,
+      revieweeId: proposal.brand_profile?.user_id || '',
+      revieweeName: proposal.brand_profile?.business_name || 'Brand'
+    });
+  };
 
   const getCompletionButton = (proposal: any) => {
     const brandStatus = proposal.brand_completion_status || 'pending';
@@ -204,22 +213,29 @@ const BusinessSponsorships = () => {
                         <DollarSign className="h-5 w-5" />
                         ${proposal.sponsorship_amount?.toLocaleString() || 0}
                       </div>
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 flex-wrap">
                         <Button 
-                          className="flex-1" 
                           variant="outline"
                           onClick={() => navigate(`/dashboard/business/campaigns/${proposal.campaign_id}`)}
                         >
                           View Campaign
                         </Button>
                         <Button 
-                          className="flex-1"
                           variant="outline"
                           onClick={() => navigate(`/dashboard/business/messages`)}
                         >
                           <MessageSquare className="h-4 w-4 mr-2" />
                           Message Brand
                         </Button>
+                        {proposal.completed_at && (
+                          <Button
+                            onClick={() => handleLeaveReview(proposal)}
+                            className="bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-700 hover:to-purple-700"
+                          >
+                            <Star className="h-4 w-4 mr-2" />
+                            Leave Review
+                          </Button>
+                        )}
                       </div>
                     </CardContent>
                   </Card>
