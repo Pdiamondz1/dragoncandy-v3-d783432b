@@ -33,6 +33,7 @@ const BrandSponsorships = () => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'accepted': return 'bg-green-500';
+      case 'completed': return 'bg-green-600';
       case 'rejected': return 'bg-red-500';
       default: return 'bg-yellow-500';
     }
@@ -127,7 +128,7 @@ const BrandSponsorships = () => {
                       </CardDescription>
                     </div>
                     <div className="flex items-center gap-2">
-                      {sponsorship.status === 'accepted' && getCompletionButton(sponsorship)}
+                      {(sponsorship.status === 'accepted' || sponsorship.status === 'completed') && getCompletionButton(sponsorship)}
                       <Badge className={getStatusColor(sponsorship.status)}>
                         {sponsorship.status.charAt(0).toUpperCase() + sponsorship.status.slice(1)}
                       </Badge>
