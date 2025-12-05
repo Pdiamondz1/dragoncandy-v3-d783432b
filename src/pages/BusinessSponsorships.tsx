@@ -32,7 +32,7 @@ const BusinessSponsorships = () => {
   }
 
   const pendingProposals = proposals.filter(p => p.status === 'pending');
-  const acceptedProposals = proposals.filter(p => p.status === 'accepted');
+  const acceptedProposals = proposals.filter(p => p.status === 'accepted' || p.status === 'completed');
   const rejectedProposals = proposals.filter(p => p.status === 'rejected');
 
   const stats = [

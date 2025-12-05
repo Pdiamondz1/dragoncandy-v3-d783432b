@@ -11,7 +11,7 @@ export interface SponsorshipProposal {
   restaurant_id: string;
   sponsorship_amount: number;
   proposal_message: string;
-  status: 'pending' | 'accepted' | 'rejected';
+  status: 'pending' | 'accepted' | 'rejected' | 'completed';
   terms: any;
   created_at: string;
   updated_at: string;
