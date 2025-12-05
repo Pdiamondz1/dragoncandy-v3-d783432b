@@ -10,7 +10,7 @@ import { useBrandSponsorships } from '@/hooks/useBrandSponsorships';
 import { useSponsorshipComplete } from '@/hooks/useSponsorshipComplete';
 import SponsorshipRatingPromptManager from '@/components/reviews/SponsorshipRatingPromptManager';
 import ResponsiveRatingModal from '@/components/reviews/ResponsiveRatingModal';
-import { Target, DollarSign, Calendar, ExternalLink, Loader2, MessageSquare, CheckCircle, Clock } from 'lucide-react';
+import { Target, DollarSign, Calendar, ExternalLink, Loader2, MessageSquare, CheckCircle, Clock, Star } from 'lucide-react';
 import { format } from 'date-fns';
 
 const BrandSponsorships = () => {
@@ -37,6 +37,15 @@ const BrandSponsorships = () => {
       case 'rejected': return 'bg-red-500';
       default: return 'bg-yellow-500';
     }
+  };
+
+  const handleLeaveReview = (sponsorship: any) => {
+    setRatingModal({
+      isOpen: true,
+      sponsorshipId: sponsorship.id,
+      revieweeId: sponsorship.restaurant_profile?.user_id || '',
+      revieweeName: sponsorship.restaurant_profile?.business_name || 'Restaurant'
+    });
   };
 
   const getCompletionButton = (proposal: any) => {
@@ -187,7 +196,7 @@ const BrandSponsorships = () => {
                       </>
                     )}
                     
-                    <div className="flex gap-3 pt-4">
+                    <div className="flex gap-3 pt-4 flex-wrap">
                       <Button
                         variant="outline"
                         onClick={() => navigate(`/dashboard/brand/campaigns/${sponsorship.campaigns?.id}`)}
@@ -203,6 +212,16 @@ const BrandSponsorships = () => {
                         <MessageSquare className="h-4 w-4 mr-2" />
                         Message Restaurant
                       </Button>
+                      
+                      {sponsorship.completed_at && (
+                        <Button
+                          onClick={() => handleLeaveReview(sponsorship)}
+                          className="bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-700 hover:to-purple-700"
+                        >
+                          <Star className="h-4 w-4 mr-2" />
+                          Leave Review
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </CardContent>
