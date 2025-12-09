@@ -794,6 +794,69 @@ export type Database = {
         }
         Relationships: []
       }
+      discount_codes: {
+        Row: {
+          code: string
+          created_at: string
+          customer_email: string
+          customer_phone: string
+          email_sent: boolean | null
+          expires_at: string | null
+          id: string
+          is_redeemed: boolean
+          promotion_id: string
+          redeemed_at: string | null
+          redeemed_by: string | null
+          sms_sent: boolean | null
+          submission_id: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          customer_email: string
+          customer_phone: string
+          email_sent?: boolean | null
+          expires_at?: string | null
+          id?: string
+          is_redeemed?: boolean
+          promotion_id: string
+          redeemed_at?: string | null
+          redeemed_by?: string | null
+          sms_sent?: boolean | null
+          submission_id: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          customer_email?: string
+          customer_phone?: string
+          email_sent?: boolean | null
+          expires_at?: string | null
+          id?: string
+          is_redeemed?: boolean
+          promotion_id?: string
+          redeemed_at?: string | null
+          redeemed_by?: string | null
+          sms_sent?: boolean | null
+          submission_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "discount_codes_promotion_id_fkey"
+            columns: ["promotion_id"]
+            isOneToOne: false
+            referencedRelation: "promotions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "discount_codes_submission_id_fkey"
+            columns: ["submission_id"]
+            isOneToOne: false
+            referencedRelation: "promotion_submissions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_verification_tokens: {
         Row: {
           created_at: string | null
@@ -1527,6 +1590,136 @@ export type Database = {
             columns: ["sponsorship_id"]
             isOneToOne: false
             referencedRelation: "campaign_sponsorships"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      promotion_submissions: {
+        Row: {
+          created_at: string
+          customer_email: string
+          customer_name: string
+          customer_phone: string
+          id: string
+          marketing_rights_accepted: boolean
+          promotion_id: string
+          rejection_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          updated_at: string
+          video_duration: number | null
+          video_url: string
+        }
+        Insert: {
+          created_at?: string
+          customer_email: string
+          customer_name: string
+          customer_phone: string
+          id?: string
+          marketing_rights_accepted?: boolean
+          promotion_id: string
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+          video_duration?: number | null
+          video_url: string
+        }
+        Update: {
+          created_at?: string
+          customer_email?: string
+          customer_name?: string
+          customer_phone?: string
+          id?: string
+          marketing_rights_accepted?: boolean
+          promotion_id?: string
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+          video_duration?: number | null
+          video_url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "promotion_submissions_promotion_id_fkey"
+            columns: ["promotion_id"]
+            isOneToOne: false
+            referencedRelation: "promotions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      promotions: {
+        Row: {
+          business_id: string
+          created_at: string
+          currency: string | null
+          current_redemptions: number | null
+          description: string | null
+          discount_type: string
+          discount_value: number
+          end_date: string
+          id: string
+          max_redemptions: number | null
+          qr_code_url: string | null
+          start_date: string
+          status: string
+          terms_conditions: string | null
+          title: string
+          updated_at: string
+          user_id: string
+          video_max_duration: number | null
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          currency?: string | null
+          current_redemptions?: number | null
+          description?: string | null
+          discount_type: string
+          discount_value: number
+          end_date: string
+          id?: string
+          max_redemptions?: number | null
+          qr_code_url?: string | null
+          start_date: string
+          status?: string
+          terms_conditions?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+          video_max_duration?: number | null
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          currency?: string | null
+          current_redemptions?: number | null
+          description?: string | null
+          discount_type?: string
+          discount_value?: number
+          end_date?: string
+          id?: string
+          max_redemptions?: number | null
+          qr_code_url?: string | null
+          start_date?: string
+          status?: string
+          terms_conditions?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+          video_max_duration?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "promotions_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "business_profiles"
             referencedColumns: ["id"]
           },
         ]
