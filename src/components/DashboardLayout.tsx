@@ -40,7 +40,8 @@ import {
   Menu,
   Image,
   DollarSign,
-  Activity
+  Activity,
+  QrCode
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useLogout } from '@/hooks/useLogout';
@@ -66,6 +67,7 @@ const AppSidebar: React.FC<{ userRole: 'business_client' | 'content_creator' | '
     { icon: Users, label: 'Browse Creators', href: '/dashboard/business/creators' },
     { icon: Briefcase, label: 'Projects', href: '/dashboard/business/projects' },
     { icon: DollarSign, label: 'Sponsorships', href: '/dashboard/business/sponsorships' },
+    { icon: QrCode, label: 'Promotions', href: '/dashboard/business/promotions' },
     { icon: MessageSquare, label: 'Messages', href: '/dashboard/business/messages' },
     { icon: Settings, label: 'Settings', href: '/dashboard/business/settings' },
   ];
