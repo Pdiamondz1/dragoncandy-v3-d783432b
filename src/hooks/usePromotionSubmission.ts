@@ -1,0 +1,119 @@
+import { useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
+
+interface SubmissionData {
+  promotionId: string;
+  customerName: string;
+  customerEmail: string;
+  customerPhone: string;
+  videoFile: File;
+  marketingRightsAccepted: boolean;
+}
+
+export const usePromotionSubmission = () => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCheckingDuplicate, setIsCheckingDuplicate] = useState(false);
+
+  const checkExistingSubmission = async (promotionId: string, email: string, phone: string) => {
+    setIsCheckingDuplicate(true);
+    try {
+      const { data, error } = await supabase
+        .from('promotion_submissions')
+        .select('id')
+        .eq('promotion_id', promotionId)
+        .or(`customer_email.eq.${email},customer_phone.eq.${phone}`)
+        .maybeSingle();
+
+      if (error) throw error;
+      return !!data;
+    } catch (error) {
+      console.error('Error checking existing submission:', error);
+      return false;
+    } finally {
+      setIsCheckingDuplicate(false);
+    }
+  };
+
+  const submitPromotion = async (data: SubmissionData) => {
+    setIsSubmitting(true);
+    try {
+      // Check for existing submission
+      const hasExisting = await checkExistingSubmission(
+        data.promotionId,
+        data.customerEmail,
+        data.customerPhone
+      );
+
+      if (hasExisting) {
+        toast({
+          title: "Already Submitted",
+          description: "You have already submitted a video for this promotion.",
+          variant: "destructive",
+        });
+        return { success: false, reason: 'duplicate' };
+      }
+
+      // Upload video to storage
+      const fileExt = data.videoFile.name.split('.').pop();
+      const fileName = `${data.promotionId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('promotion-videos')
+        .upload(fileName, data.videoFile, {
+          cacheControl: '3600',
+          upsert: false,
+        });
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from('promotion-videos')
+        .getPublicUrl(fileName);
+
+      // Get video duration (approximate from file size, or use actual if available)
+      const videoDuration = Math.min(30, Math.ceil(data.videoFile.size / (1024 * 1024) * 10));
+
+      // Create submission record
+      const { error: insertError } = await supabase
+        .from('promotion_submissions')
+        .insert({
+          promotion_id: data.promotionId,
+          customer_name: data.customerName,
+          customer_email: data.customerEmail,
+          customer_phone: data.customerPhone,
+          video_url: urlData.publicUrl,
+          video_duration: videoDuration,
+          marketing_rights_accepted: data.marketingRightsAccepted,
+          status: 'pending',
+        });
+
+      if (insertError) throw insertError;
+
+      toast({
+        title: "Video Submitted!",
+        description: "Your video is now pending review. You'll receive your discount code soon!",
+      });
+
+      return { success: true };
+    } catch (error: any) {
+      console.error('Error submitting promotion:', error);
+      toast({
+        title: "Submission Failed",
+        description: error.message || "Failed to submit your video. Please try again.",
+        variant: "destructive",
+      });
+      return { success: false, reason: 'error' };
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return {
+    submitPromotion,
+    checkExistingSubmission,
+    isSubmitting,
+    isCheckingDuplicate,
+  };
+};
