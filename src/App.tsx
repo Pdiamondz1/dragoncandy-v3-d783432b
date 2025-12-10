@@ -45,6 +45,7 @@ import CreatorCampaignMarketplace from "./pages/CreatorCampaignMarketplace";
 import BusinessProposals from "./pages/BusinessProposals";
 import BusinessProjects from "./pages/BusinessProjects";
 import BusinessSponsorships from "./pages/BusinessSponsorships";
+import BusinessPromotionalTools from "./pages/BusinessPromotionalTools";
 import CreatorApplications from "./pages/CreatorApplications";
 import CreatorProjects from "./pages/CreatorProjects";
 import CreatorBrowse from "./pages/CreatorBrowse";
@@ -256,6 +257,15 @@ const App = () => {
                     <ProtectedRoute>
                       <BusinessRoute>
                         <BusinessSponsorships />
+                      </BusinessRoute>
+                    </ProtectedRoute>
+                  } />
+
+                  {/* Business Promotional Tools Route */}
+                  <Route path="/dashboard/business/promotions" element={
+                    <ProtectedRoute>
+                      <BusinessRoute>
+                        <BusinessPromotionalTools />
                       </BusinessRoute>
                     </ProtectedRoute>
                   } />
