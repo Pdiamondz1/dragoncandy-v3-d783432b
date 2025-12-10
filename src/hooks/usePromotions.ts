@@ -83,7 +83,7 @@ export const usePromotions = () => {
       if (!user?.id) return null;
       const { data, error } = await supabase
         .from('business_profiles')
-        .select('id')
+        .select('id, business_name')
         .eq('user_id', user.id)
         .single();
       if (error) throw error;
@@ -201,6 +201,10 @@ export const usePromotions = () => {
       status: 'approved' | 'rejected'; 
       rejectionReason?: string;
     }) => {
+      const submission = pendingSubmissions?.find(s => s.id === submissionId);
+      if (!submission) throw new Error('Submission not found');
+
+      // Update submission status
       const { error } = await supabase
         .from('promotion_submissions')
         .update({
@@ -212,31 +216,80 @@ export const usePromotions = () => {
         .eq('id', submissionId);
       
       if (error) throw error;
-      
-      // If approved, generate discount code (this will be handled by edge function later)
+
+      let discountCode: string | undefined;
+      let codeExpiresAt: string | undefined;
+
+      // If approved, generate discount code
       if (status === 'approved') {
-        const submission = pendingSubmissions?.find(s => s.id === submissionId);
-        if (submission) {
-          const code = generateDiscountCode();
-          const { error: codeError } = await supabase
-            .from('discount_codes')
-            .insert({
-              promotion_id: submission.promotion_id,
-              submission_id: submissionId,
-              code,
-              customer_email: submission.customer_email,
-              customer_phone: submission.customer_phone,
-            });
-          if (codeError) throw codeError;
-        }
+        discountCode = generateDiscountCode();
+        codeExpiresAt = submission.promotion?.end_date;
+
+        const { error: codeError } = await supabase
+          .from('discount_codes')
+          .insert({
+            promotion_id: submission.promotion_id,
+            submission_id: submissionId,
+            code: discountCode,
+            customer_email: submission.customer_email,
+            customer_phone: submission.customer_phone,
+            expires_at: codeExpiresAt,
+          });
+        if (codeError) throw codeError;
       }
+
+      // Send notification via edge function
+      try {
+        const { data: notificationResult, error: notificationError } = await supabase.functions.invoke(
+          'send-promotion-notification',
+          {
+            body: {
+              type: status === 'approved' ? 'video_approved' : 'video_rejected',
+              customerEmail: submission.customer_email,
+              customerPhone: submission.customer_phone,
+              customerName: submission.customer_name,
+              discountCode,
+              businessName: businessProfile?.business_name || 'Our Restaurant',
+              discountType: submission.promotion?.discount_type || 'percentage',
+              discountValue: submission.promotion?.discount_value || 0,
+              expiresAt: codeExpiresAt,
+              rejectionReason,
+            },
+          }
+        );
+
+        if (notificationError) {
+          console.error('Notification error:', notificationError);
+        } else {
+          console.log('Notification sent:', notificationResult);
+          
+          // Update email_sent and sms_sent flags if we have a discount code
+          if (status === 'approved' && discountCode) {
+            await supabase
+              .from('discount_codes')
+              .update({
+                email_sent: notificationResult?.emailSent || false,
+                sms_sent: notificationResult?.smsSent || false,
+              })
+              .eq('code', discountCode);
+          }
+        }
+      } catch (notifError) {
+        console.error('Failed to send notification:', notifError);
+        // Don't throw - the approval still succeeded
+      }
+
+      return { status, discountCode };
     },
-    onSuccess: (_, variables) => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['pending-submissions'] });
       queryClient.invalidateQueries({ queryKey: ['discount-codes'] });
-      toast.success(variables.status === 'approved' 
-        ? 'Submission approved! Discount code generated.' 
-        : 'Submission rejected.');
+      
+      if (result.status === 'approved') {
+        toast.success('Submission approved! Discount code sent to customer.');
+      } else {
+        toast.success('Submission rejected. Customer has been notified.');
+      }
     },
     onError: (error) => {
       console.error('Error reviewing submission:', error);
