@@ -2,8 +2,14 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Calendar, Gift, QrCode, Users, Pause, Play, Copy, Check } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Calendar, Gift, QrCode, Users, Pause, Play, Copy, Check, MoreVertical, Pencil, Trash2, Download, AlertTriangle } from 'lucide-react';
 import { format, isAfter, isBefore } from 'date-fns';
 import { Promotion } from '@/hooks/usePromotions';
 import { toast } from '@/hooks/use-toast';
@@ -13,14 +19,19 @@ interface PromotionCardProps {
   onPause?: () => void;
   onResume?: () => void;
   onViewQR?: () => void;
+  onEdit?: () => void;
+  onDelete?: () => void;
 }
 
 export const PromotionCard: React.FC<PromotionCardProps> = ({
   promotion,
   onPause,
   onResume,
+  onEdit,
+  onDelete,
 }) => {
   const [showQRModal, setShowQRModal] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [copied, setCopied] = useState(false);
   
   const now = new Date();
@@ -61,17 +72,74 @@ export const PromotionCard: React.FC<PromotionCardProps> = ({
     }
   };
 
+  const downloadQRCode = async () => {
+    try {
+      const response = await fetch(qrCodeUrl);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `promotion-qr-${promotion.title.replace(/\s+/g, '-').toLowerCase()}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      toast({ title: "QR Code downloaded!" });
+    } catch {
+      toast({ title: "Failed to download QR code", variant: "destructive" });
+    }
+  };
+
+  const redemptionProgress = promotion.max_redemptions 
+    ? Math.min(100, ((promotion.current_redemptions || 0) / promotion.max_redemptions) * 100)
+    : 0;
+  
+  const isNearlyFull = promotion.max_redemptions && 
+    (promotion.current_redemptions || 0) >= promotion.max_redemptions * 0.8;
+
   return (
     <>
       <Card className="hover:shadow-md transition-shadow">
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between">
-            <div>
+            <div className="flex-1">
               <CardTitle className="text-lg">{promotion.title}</CardTitle>
               <CardDescription className="mt-1">{promotion.description}</CardDescription>
             </div>
-            {getStatusBadge()}
+            <div className="flex items-center gap-2">
+              {getStatusBadge()}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {onEdit && (
+                    <DropdownMenuItem onClick={onEdit}>
+                      <Pencil className="h-4 w-4 mr-2" />
+                      Edit
+                    </DropdownMenuItem>
+                  )}
+                  {onDelete && (
+                    <DropdownMenuItem 
+                      onClick={() => setShowDeleteDialog(true)}
+                      className="text-destructive focus:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
+          {isNearlyFull && (
+            <div className="flex items-center gap-1 text-amber-600 text-xs mt-2">
+              <AlertTriangle className="h-3 w-3" />
+              <span>Nearly at max redemptions</span>
+            </div>
+          )}
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-2 gap-4 text-sm">
@@ -119,6 +187,33 @@ export const PromotionCard: React.FC<PromotionCardProps> = ({
         </CardContent>
       </Card>
 
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Promotion</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete "{promotion.title}"? This action cannot be undone 
+              and will remove all associated submissions and discount codes.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={() => {
+                onDelete?.();
+                setShowDeleteDialog(false);
+              }}
+            >
+              Delete Promotion
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* QR Code Modal */}
       <Dialog open={showQRModal} onOpenChange={setShowQRModal}>
         <DialogContent className="sm:max-w-md">
@@ -147,8 +242,9 @@ export const PromotionCard: React.FC<PromotionCardProps> = ({
               </Button>
               <Button 
                 className="flex-1"
-                onClick={() => window.open(qrCodeUrl, '_blank')}
+                onClick={downloadQRCode}
               >
+                <Download className="h-4 w-4 mr-2" />
                 Download QR
               </Button>
             </div>

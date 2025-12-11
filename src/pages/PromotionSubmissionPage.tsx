@@ -22,6 +22,8 @@ interface Promotion {
   end_date: string;
   status: string;
   video_max_duration: number | null;
+  max_redemptions: number | null;
+  current_redemptions: number | null;
   business_profiles: {
     business_name: string;
     logo_url: string | null;
@@ -60,6 +62,8 @@ export default function PromotionSubmissionPage() {
             end_date,
             status,
             video_max_duration,
+            max_redemptions,
+            current_redemptions,
             business_profiles (
               business_name,
               logo_url
@@ -82,6 +86,8 @@ export default function PromotionSubmissionPage() {
           setError(`This promotion starts on ${startDate.toLocaleDateString()}`);
         } else if (now > endDate) {
           setError('This promotion has ended');
+        } else if (data.max_redemptions && (data.current_redemptions || 0) >= data.max_redemptions) {
+          setError('This promotion has reached its maximum number of redemptions');
         } else {
           setPromotion(data);
         }
