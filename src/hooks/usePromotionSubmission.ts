@@ -54,8 +54,8 @@ export const usePromotionSubmission = () => {
         return { success: false, reason: 'duplicate' };
       }
 
-      // Upload video to storage
-      const fileExt = data.videoFile.name.split('.').pop();
+      // Upload video to storage - preserve original quality
+      const fileExt = data.videoFile.name.split('.').pop() || 'mp4';
       const fileName = `${data.promotionId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
 
       const { error: uploadError } = await supabase.storage
@@ -63,6 +63,7 @@ export const usePromotionSubmission = () => {
         .upload(fileName, data.videoFile, {
           cacheControl: '3600',
           upsert: false,
+          contentType: data.videoFile.type || 'video/mp4',
         });
 
       if (uploadError) throw uploadError;
