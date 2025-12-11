@@ -202,6 +202,7 @@ export const usePromotions = () => {
         .insert({
           user_id: user.id,
           business_id: businessProfile.id,
+          status: 'active', // Set to active by default so it appears immediately
           ...data,
         })
         .select()

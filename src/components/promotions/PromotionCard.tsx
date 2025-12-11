@@ -21,6 +21,8 @@ interface PromotionCardProps {
   onViewQR?: () => void;
   onEdit?: () => void;
   onDelete?: () => void;
+  showPublish?: boolean;
+  onPublish?: () => void;
 }
 
 export const PromotionCard: React.FC<PromotionCardProps> = ({
@@ -29,6 +31,8 @@ export const PromotionCard: React.FC<PromotionCardProps> = ({
   onResume,
   onEdit,
   onDelete,
+  showPublish,
+  onPublish,
 }) => {
   const [showQRModal, setShowQRModal] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -49,7 +53,10 @@ export const PromotionCard: React.FC<PromotionCardProps> = ({
   // Generate QR code URL using a free QR code API
   const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(promotionUrl)}`;
 
+  const isDraft = promotion.status === 'draft';
+
   const getStatusBadge = () => {
+    if (isDraft) return <Badge variant="outline">Draft</Badge>;
     if (isPaused) return <Badge variant="secondary">Paused</Badge>;
     if (isExpired) return <Badge variant="destructive">Expired</Badge>;
     if (isUpcoming) return <Badge variant="outline">Upcoming</Badge>;
@@ -164,15 +171,26 @@ export const PromotionCard: React.FC<PromotionCardProps> = ({
           </div>
 
           <div className="flex gap-2 pt-2">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="flex-1"
-              onClick={() => setShowQRModal(true)}
-            >
-              <QrCode className="h-4 w-4 mr-2" />
-              View QR
-            </Button>
+            {showPublish && onPublish ? (
+              <Button 
+                size="sm" 
+                className="flex-1"
+                onClick={onPublish}
+              >
+                <Play className="h-4 w-4 mr-2" />
+                Publish
+              </Button>
+            ) : (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="flex-1"
+                onClick={() => setShowQRModal(true)}
+              >
+                <QrCode className="h-4 w-4 mr-2" />
+                View QR
+              </Button>
+            )}
             {isActive && onPause && (
               <Button variant="outline" size="sm" onClick={onPause}>
                 <Pause className="h-4 w-4" />
