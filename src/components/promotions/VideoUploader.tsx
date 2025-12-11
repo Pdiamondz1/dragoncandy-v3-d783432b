@@ -1,7 +1,7 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Video, Upload, Camera, StopCircle, RotateCcw, Check } from 'lucide-react';
+import { Video, Upload, Camera, StopCircle, RotateCcw, Check, SwitchCamera, Smartphone } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 interface VideoUploaderProps {
@@ -20,6 +20,8 @@ export const VideoUploader: React.FC<VideoUploaderProps> = ({
   const [videoPreview, setVideoPreview] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [cameraActive, setCameraActive] = useState(false);
+  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('environment');
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -27,12 +29,18 @@ export const VideoUploader: React.FC<VideoUploaderProps> = ({
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const nativeCaptureRef = useRef<HTMLInputElement>(null);
 
-  const startCamera = async () => {
+  const startCamera = async (mode: 'user' | 'environment' = facingMode) => {
     try {
       setCameraError(null);
+      // Stop any existing stream first
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+      
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
+        video: { facingMode: mode, width: { ideal: 1280 }, height: { ideal: 720 } },
         audio: true,
       });
       streamRef.current = stream;
@@ -41,9 +49,11 @@ export const VideoUploader: React.FC<VideoUploaderProps> = ({
         videoRef.current.muted = true;
         videoRef.current.play();
       }
+      setCameraActive(true);
     } catch (error: any) {
       console.error('Camera error:', error);
-      setCameraError('Unable to access camera. Please use the upload option.');
+      setCameraError('Unable to access camera. Please use the upload option or camera app.');
+      setCameraActive(false);
     }
   };
 
@@ -54,6 +64,18 @@ export const VideoUploader: React.FC<VideoUploaderProps> = ({
     }
     if (videoRef.current) {
       videoRef.current.srcObject = null;
+    }
+    setCameraActive(false);
+  };
+
+  const switchCamera = async () => {
+    if (isRecording) return; // Don't allow switching during recording
+    
+    const newMode = facingMode === 'user' ? 'environment' : 'user';
+    setFacingMode(newMode);
+    
+    if (cameraActive) {
+      await startCamera(newMode);
     }
   };
 
@@ -152,6 +174,9 @@ export const VideoUploader: React.FC<VideoUploaderProps> = ({
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
+    if (nativeCaptureRef.current) {
+      nativeCaptureRef.current.value = '';
+    }
   };
 
   const confirmVideo = () => {
@@ -191,7 +216,19 @@ export const VideoUploader: React.FC<VideoUploaderProps> = ({
           </div>
         )}
 
-        {!videoPreview && !streamRef.current && !cameraError && (
+        {/* Camera switch button - only show when camera is active and not recording */}
+        {cameraActive && !isRecording && !videoPreview && (
+          <Button
+            variant="secondary"
+            size="icon"
+            onClick={switchCamera}
+            className="absolute top-4 right-4 bg-background/80 backdrop-blur-sm hover:bg-background/90"
+          >
+            <SwitchCamera className="w-5 h-5" />
+          </Button>
+        )}
+
+        {!videoPreview && !cameraActive && !cameraError && (
           <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground">
             <Video className="w-16 h-16 mb-2" />
             <p>Camera preview will appear here</p>
@@ -210,23 +247,34 @@ export const VideoUploader: React.FC<VideoUploaderProps> = ({
         {!videoPreview ? (
           <>
             {!isRecording ? (
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <Button
+                    onClick={startRecording}
+                    className="flex items-center gap-2"
+                    size="lg"
+                  >
+                    <Camera className="w-5 h-5" />
+                    Record Video
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => nativeCaptureRef.current?.click()}
+                    className="flex items-center gap-2"
+                    size="lg"
+                  >
+                    <Smartphone className="w-5 h-5" />
+                    Camera App
+                  </Button>
+                </div>
                 <Button
-                  onClick={startRecording}
-                  className="flex items-center gap-2"
-                  size="lg"
-                >
-                  <Camera className="w-5 h-5" />
-                  Record Video
-                </Button>
-                <Button
-                  variant="outline"
+                  variant="secondary"
                   onClick={() => fileInputRef.current?.click()}
-                  className="flex items-center gap-2"
+                  className="flex items-center gap-2 w-full"
                   size="lg"
                 >
                   <Upload className="w-5 h-5" />
-                  Upload Video
+                  Upload Existing Video
                 </Button>
               </div>
             ) : (
@@ -264,10 +312,21 @@ export const VideoUploader: React.FC<VideoUploaderProps> = ({
         )}
       </div>
 
+      {/* Hidden file input for upload */}
       <input
         ref={fileInputRef}
         type="file"
         accept="video/*"
+        onChange={handleFileUpload}
+        className="hidden"
+      />
+
+      {/* Native camera capture input - opens device camera app */}
+      <input
+        ref={nativeCaptureRef}
+        type="file"
+        accept="video/*"
+        capture="environment"
         onChange={handleFileUpload}
         className="hidden"
       />
