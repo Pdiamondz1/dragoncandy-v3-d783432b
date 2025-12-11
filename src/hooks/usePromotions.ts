@@ -72,6 +72,26 @@ export interface CreatePromotionData {
   terms_conditions?: string;
 }
 
+export interface UpdatePromotionData {
+  title?: string;
+  description?: string;
+  discount_type?: string;
+  discount_value?: number;
+  end_date?: string;
+  max_redemptions?: number | null;
+  video_max_duration?: number;
+  terms_conditions?: string;
+}
+
+export interface PromotionStats {
+  totalSubmissions: number;
+  approvedCount: number;
+  rejectedCount: number;
+  pendingCount: number;
+  redemptionCount: number;
+  totalCodes: number;
+}
+
 export const usePromotions = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -147,6 +167,31 @@ export const usePromotions = () => {
     enabled: !!user?.id && !!promotions?.length,
   });
 
+  // Fetch all submissions for stats
+  const { data: allSubmissions } = useQuery({
+    queryKey: ['all-submissions', user?.id],
+    queryFn: async () => {
+      if (!user?.id || !promotions?.length) return [];
+      const { data, error } = await supabase
+        .from('promotion_submissions')
+        .select('id, status, promotion_id')
+        .in('promotion_id', promotions?.map(p => p.id) || []);
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user?.id && !!promotions?.length,
+  });
+
+  // Calculate stats
+  const stats: PromotionStats = {
+    totalSubmissions: allSubmissions?.length || 0,
+    approvedCount: allSubmissions?.filter(s => s.status === 'approved').length || 0,
+    rejectedCount: allSubmissions?.filter(s => s.status === 'rejected').length || 0,
+    pendingCount: allSubmissions?.filter(s => s.status === 'pending').length || 0,
+    redemptionCount: discountCodes?.filter(c => c.is_redeemed).length || 0,
+    totalCodes: discountCodes?.length || 0,
+  };
+
   // Create promotion mutation
   const createPromotion = useMutation({
     mutationFn: async (data: CreatePromotionData) => {
@@ -187,6 +232,48 @@ export const usePromotions = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['promotions'] });
       toast.success('Promotion status updated');
+    },
+  });
+
+  // Update promotion details
+  const updatePromotion = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: UpdatePromotionData }) => {
+      const { error } = await supabase
+        .from('promotions')
+        .update(data)
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['promotions'] });
+      toast.success('Promotion updated successfully');
+    },
+    onError: (error) => {
+      console.error('Error updating promotion:', error);
+      toast.error('Failed to update promotion');
+    },
+  });
+
+  // Delete promotion
+  const deletePromotion = useMutation({
+    mutationFn: async (id: string) => {
+      // Delete discount codes first
+      await supabase.from('discount_codes').delete().eq('promotion_id', id);
+      // Delete submissions
+      await supabase.from('promotion_submissions').delete().eq('promotion_id', id);
+      // Delete promotion
+      const { error } = await supabase.from('promotions').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['promotions'] });
+      queryClient.invalidateQueries({ queryKey: ['pending-submissions'] });
+      queryClient.invalidateQueries({ queryKey: ['discount-codes'] });
+      toast.success('Promotion deleted');
+    },
+    onError: (error) => {
+      console.error('Error deleting promotion:', error);
+      toast.error('Failed to delete promotion');
     },
   });
 
@@ -350,9 +437,12 @@ export const usePromotions = () => {
     pendingSubmissions,
     discountCodes,
     businessProfile,
+    stats,
     isLoading: promotionsLoading || submissionsLoading || codesLoading,
     createPromotion,
     updatePromotionStatus,
+    updatePromotion,
+    deletePromotion,
     reviewSubmission,
     redeemCode,
   };

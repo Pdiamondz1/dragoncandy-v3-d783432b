@@ -1,33 +1,38 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { PlusCircle, QrCode } from 'lucide-react';
-import { usePromotions } from '@/hooks/usePromotions';
+import { usePromotions, Promotion, UpdatePromotionData } from '@/hooks/usePromotions';
 import { PromotionCard } from './PromotionCard';
 import { CreatePromotionModal } from './CreatePromotionModal';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { EditPromotionModal, EditPromotionFormData } from './EditPromotionModal';
+import { PromotionStats } from './PromotionStats';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export const ActivePromotionsTab: React.FC = () => {
-  const { promotions, isLoading, updatePromotionStatus } = usePromotions();
+  const { promotions, isLoading, updatePromotionStatus, updatePromotion, deletePromotion, stats } = usePromotions();
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [selectedPromotion, setSelectedPromotion] = useState<string | null>(null);
+  const [editingPromotion, setEditingPromotion] = useState<Promotion | null>(null);
 
   const activePromotions = promotions?.filter(p => 
     p.status === 'active' || p.status === 'paused'
   ) || [];
 
-  const selectedPromo = promotions?.find(p => p.id === selectedPromotion);
-
-  // Generate QR code URL (using a free QR API)
-  const getQRCodeUrl = (promotionId: string) => {
-    const promoUrl = `${window.location.origin}/promo/${promotionId}`;
-    return `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(promoUrl)}`;
+  const handleEditSave = async (data: EditPromotionFormData) => {
+    if (!editingPromotion) return;
+    
+    const updateData: UpdatePromotionData = {
+      title: data.title,
+      description: data.description,
+      discount_type: data.discount_type,
+      discount_value: data.discount_value,
+      end_date: data.end_date,
+      max_redemptions: data.max_redemptions,
+      video_max_duration: data.video_max_duration,
+      terms_conditions: data.terms_conditions,
+    };
+    
+    await updatePromotion.mutateAsync({ id: editingPromotion.id, data: updateData });
+    setEditingPromotion(null);
   };
 
   if (isLoading) {
@@ -35,6 +40,11 @@ export const ActivePromotionsTab: React.FC = () => {
       <div className="space-y-4">
         <div className="flex justify-end">
           <Skeleton className="h-10 w-40" />
+        </div>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {[1, 2, 3, 4].map(i => (
+            <Skeleton key={i} className="h-24" />
+          ))}
         </div>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {[1, 2, 3].map(i => (
@@ -47,6 +57,11 @@ export const ActivePromotionsTab: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Stats Overview */}
+      {stats && stats.totalSubmissions > 0 && (
+        <PromotionStats stats={stats} />
+      )}
+
       <div className="flex justify-between items-center">
         <div>
           <h3 className="text-lg font-semibold">Your Promotions</h3>
@@ -80,7 +95,8 @@ export const ActivePromotionsTab: React.FC = () => {
               promotion={promotion}
               onPause={() => updatePromotionStatus.mutate({ id: promotion.id, status: 'paused' })}
               onResume={() => updatePromotionStatus.mutate({ id: promotion.id, status: 'active' })}
-              onViewQR={() => setSelectedPromotion(promotion.id)}
+              onEdit={() => setEditingPromotion(promotion)}
+              onDelete={() => deletePromotion.mutate(promotion.id)}
             />
           ))}
         </div>
@@ -91,48 +107,13 @@ export const ActivePromotionsTab: React.FC = () => {
         onOpenChange={setShowCreateModal} 
       />
 
-      {/* QR Code Dialog */}
-      <Dialog open={!!selectedPromotion} onOpenChange={() => setSelectedPromotion(null)}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Promotion QR Code</DialogTitle>
-            <DialogDescription>
-              {selectedPromo?.title} - Print or display this QR code for customers to scan.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex flex-col items-center gap-4 py-4">
-            {selectedPromotion && (
-              <img 
-                src={getQRCodeUrl(selectedPromotion)} 
-                alt="QR Code"
-                className="w-64 h-64 border rounded-lg"
-              />
-            )}
-            <p className="text-sm text-muted-foreground text-center">
-              Customers scan this code to upload their video and receive a discount.
-            </p>
-          </div>
-          <div className="flex gap-2 justify-center">
-            <Button variant="outline" asChild>
-              <a 
-                href={selectedPromotion ? getQRCodeUrl(selectedPromotion) : '#'} 
-                download={`promotion-qr-${selectedPromotion}.png`}
-              >
-                Download QR
-              </a>
-            </Button>
-            <Button 
-              onClick={() => {
-                if (selectedPromotion) {
-                  window.open(`${window.location.origin}/promo/${selectedPromotion}`, '_blank');
-                }
-              }}
-            >
-              View Landing Page
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <EditPromotionModal
+        open={!!editingPromotion}
+        onOpenChange={(open) => !open && setEditingPromotion(null)}
+        promotion={editingPromotion}
+        onSave={handleEditSave}
+        isSaving={updatePromotion.isPending}
+      />
     </div>
   );
 };

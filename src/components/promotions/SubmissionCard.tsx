@@ -11,9 +11,10 @@ import {
   DialogHeader, 
   DialogTitle 
 } from '@/components/ui/dialog';
-import { Check, X, Play, User, Mail, Phone, Clock } from 'lucide-react';
+import { Check, X, Play, User, Mail, Phone, Clock, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { PromotionSubmission } from '@/hooks/usePromotions';
+import { useSignedVideoUrl } from '@/hooks/useSignedVideoUrl';
 
 interface SubmissionCardProps {
   submission: PromotionSubmission;
@@ -31,6 +32,7 @@ export const SubmissionCard: React.FC<SubmissionCardProps> = ({
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
   const [showVideoPreview, setShowVideoPreview] = useState(false);
+  const { signedUrl, isLoading: isLoadingUrl } = useSignedVideoUrl(submission.video_url);
 
   const handleReject = () => {
     onReject(rejectionReason);
@@ -113,12 +115,18 @@ export const SubmissionCard: React.FC<SubmissionCardProps> = ({
               Submitted by {submission.customer_name}
             </DialogDescription>
           </DialogHeader>
-          <div className="aspect-video bg-muted rounded-lg overflow-hidden">
-            <video 
-              src={submission.video_url} 
-              controls 
-              className="w-full h-full object-contain"
-            />
+          <div className="aspect-video bg-muted rounded-lg overflow-hidden flex items-center justify-center">
+            {isLoadingUrl ? (
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            ) : signedUrl ? (
+              <video 
+                src={signedUrl} 
+                controls 
+                className="w-full h-full object-contain"
+              />
+            ) : (
+              <p className="text-muted-foreground">Unable to load video</p>
+            )}
           </div>
         </DialogContent>
       </Dialog>
