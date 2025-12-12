@@ -148,6 +148,46 @@ export const usePromotions = () => {
     enabled: !!user?.id && !!promotions?.length,
   });
 
+  // Fetch approved submissions
+  const { data: approvedSubmissions, isLoading: approvedLoading } = useQuery({
+    queryKey: ['approved-submissions', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      const { data, error } = await supabase
+        .from('promotion_submissions')
+        .select(`
+          *,
+          promotion:promotions(*)
+        `)
+        .eq('status', 'approved')
+        .in('promotion_id', promotions?.map(p => p.id) || [])
+        .order('reviewed_at', { ascending: false });
+      if (error) throw error;
+      return data as PromotionSubmission[];
+    },
+    enabled: !!user?.id && !!promotions?.length,
+  });
+
+  // Fetch rejected submissions
+  const { data: rejectedSubmissions, isLoading: rejectedLoading } = useQuery({
+    queryKey: ['rejected-submissions', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      const { data, error } = await supabase
+        .from('promotion_submissions')
+        .select(`
+          *,
+          promotion:promotions(*)
+        `)
+        .eq('status', 'rejected')
+        .in('promotion_id', promotions?.map(p => p.id) || [])
+        .order('reviewed_at', { ascending: false });
+      if (error) throw error;
+      return data as PromotionSubmission[];
+    },
+    enabled: !!user?.id && !!promotions?.length,
+  });
+
   // Fetch discount codes for verification
   const { data: discountCodes, isLoading: codesLoading } = useQuery({
     queryKey: ['discount-codes', user?.id],
@@ -371,6 +411,8 @@ export const usePromotions = () => {
     },
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['pending-submissions'] });
+      queryClient.invalidateQueries({ queryKey: ['approved-submissions'] });
+      queryClient.invalidateQueries({ queryKey: ['rejected-submissions'] });
       queryClient.invalidateQueries({ queryKey: ['discount-codes'] });
       
       if (result.status === 'approved') {
@@ -436,10 +478,12 @@ export const usePromotions = () => {
   return {
     promotions,
     pendingSubmissions,
+    approvedSubmissions,
+    rejectedSubmissions,
     discountCodes,
     businessProfile,
     stats,
-    isLoading: promotionsLoading || submissionsLoading || codesLoading,
+    isLoading: promotionsLoading || submissionsLoading || codesLoading || approvedLoading || rejectedLoading,
     createPromotion,
     updatePromotionStatus,
     updatePromotion,
