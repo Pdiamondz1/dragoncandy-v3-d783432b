@@ -1,7 +1,7 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Video, Upload, Camera, StopCircle, RotateCcw, Check, SwitchCamera, Smartphone } from 'lucide-react';
+import { Video, Upload, Camera, StopCircle, RotateCcw, Check, SwitchCamera } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 interface VideoUploaderProps {
@@ -29,7 +29,7 @@ export const VideoUploader: React.FC<VideoUploaderProps> = ({
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const nativeCaptureRef = useRef<HTMLInputElement>(null);
+  
 
   const startCamera = async (mode: 'user' | 'environment' = facingMode) => {
     try {
@@ -174,9 +174,6 @@ export const VideoUploader: React.FC<VideoUploaderProps> = ({
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
-    if (nativeCaptureRef.current) {
-      nativeCaptureRef.current.value = '';
-    }
   };
 
   const confirmVideo = () => {
@@ -248,34 +245,27 @@ export const VideoUploader: React.FC<VideoUploaderProps> = ({
           <>
             {!isRecording ? (
               <div className="grid grid-cols-1 gap-3">
-                <div className="grid grid-cols-2 gap-3">
-                  <Button
-                    onClick={startRecording}
-                    className="flex items-center gap-2"
-                    size="lg"
-                  >
-                    <Camera className="w-5 h-5" />
-                    Record Video
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => nativeCaptureRef.current?.click()}
-                    className="flex items-center gap-2"
-                    size="lg"
-                  >
-                    <Smartphone className="w-5 h-5" />
-                    Camera App
-                  </Button>
-                </div>
                 <Button
-                  variant="secondary"
+                  onClick={startRecording}
+                  className="flex items-center gap-2"
+                  size="lg"
+                >
+                  <Camera className="w-5 h-5" />
+                  Record Video (Best Quality)
+                </Button>
+                <Button
+                  variant="outline"
                   onClick={() => fileInputRef.current?.click()}
                   className="flex items-center gap-2 w-full"
                   size="lg"
                 >
                   <Upload className="w-5 h-5" />
-                  Upload Existing Video
+                  Choose from Gallery / Camera App
                 </Button>
+                <p className="text-xs text-muted-foreground text-center">
+                  📱 "Record Video" captures in 720p HD directly in browser.<br />
+                  📷 "Choose from Gallery" lets you pick an existing video or open your camera app for full quality control.
+                </p>
               </div>
             ) : (
               <Button
@@ -321,15 +311,6 @@ export const VideoUploader: React.FC<VideoUploaderProps> = ({
         className="hidden"
       />
 
-      {/* Native camera capture input - opens device camera app */}
-      <input
-        ref={nativeCaptureRef}
-        type="file"
-        accept="video/*"
-        capture="environment"
-        onChange={handleFileUpload}
-        className="hidden"
-      />
 
       <p className="text-xs text-muted-foreground text-center">
         Max {maxDuration} seconds • Max {maxSizeMB}MB • MP4, MOV, or WebM
