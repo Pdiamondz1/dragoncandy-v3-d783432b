@@ -47,7 +47,7 @@ const handler = async (req: Request): Promise<Response> => {
             : `$${data.discountValue} OFF`;
 
           const emailResponse = await resend.emails.send({
-            from: "DragonCandy Promotions <onboarding@resend.dev>",
+            from: "DragonCandy Promotions <onboarding@notify.dragoncandy.io>",
             to: [data.customerEmail],
             subject: `🎉 Your Discount Code from ${data.businessName}!`,
             html: `
@@ -107,7 +107,7 @@ const handler = async (req: Request): Promise<Response> => {
           results.emailSent = true;
         } else if (data.type === 'video_rejected') {
           const emailResponse = await resend.emails.send({
-            from: "DragonCandy Promotions <onboarding@resend.dev>",
+            from: "DragonCandy Promotions <onboarding@notify.dragoncandy.io>",
             to: [data.customerEmail],
             subject: `Update on your video submission - ${data.businessName}`,
             html: `
