@@ -48,6 +48,7 @@ import { useLogout } from '@/hooks/useLogout';
 import { useProfileData } from '@/hooks/useProfileData';
 import NotificationDropdown from '@/components/notifications/NotificationDropdown';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { AIChatWidget } from '@/components/ai-assistant';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -219,6 +220,9 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, userRole })
             {children}
           </main>
         </SidebarInset>
+
+        {/* AI Assistant Widget */}
+        <AIChatWidget userRole={userRole} />
       </div>
     </SidebarProvider>
   );
