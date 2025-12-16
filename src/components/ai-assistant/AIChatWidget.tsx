@@ -67,7 +67,7 @@ export const AIChatWidget: React.FC<AIChatWidgetProps> = ({ userRole }) => {
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          "fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full shadow-lg",
+          "fixed bottom-6 left-6 z-50 w-14 h-14 rounded-full shadow-lg",
           "bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700",
           "flex items-center justify-center transition-all duration-300",
           "hover:scale-110 active:scale-95",
@@ -86,7 +86,7 @@ export const AIChatWidget: React.FC<AIChatWidgetProps> = ({ userRole }) => {
       {isOpen && (
         <div
           className={cn(
-            "fixed bottom-24 right-6 z-50 w-[380px] max-w-[calc(100vw-3rem)]",
+            "fixed bottom-24 left-6 z-50 w-[380px] max-w-[calc(100vw-3rem)]",
             "bg-background border border-border rounded-2xl shadow-2xl",
             "flex flex-col overflow-hidden",
             "animate-in slide-in-from-bottom-5 fade-in duration-300"
