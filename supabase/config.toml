@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.send-promotion-notification]
 verify_jwt = false
+
+[functions.chat-assistant]
+verify_jwt = false
