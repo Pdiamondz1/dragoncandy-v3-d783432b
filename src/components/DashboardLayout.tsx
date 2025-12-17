@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -49,6 +48,7 @@ import { useProfileData } from '@/hooks/useProfileData';
 import NotificationDropdown from '@/components/notifications/NotificationDropdown';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { AIChatWidget } from '@/components/ai-assistant';
+import { AIAssistantProvider } from '@/contexts/AIAssistantContext';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -157,74 +157,76 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, userRole })
   const isMobile = useIsMobile();
 
   return (
-    <SidebarProvider defaultOpen={!isMobile}>
-      <div className="min-h-screen flex w-full bg-background">
-        <AppSidebar userRole={userRole} />
-        
-        <SidebarInset className="flex-1">
-          {/* Header */}
-          <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-            <div className="flex h-14 items-center justify-between px-4 lg:px-6">
-              <div className="flex items-center gap-4">
-                <SidebarTrigger />
-                <h1 className="text-xl font-semibold text-foreground hidden sm:block">
-                  {userRole === 'business_client' ? 'Restaurant Dashboard' : userRole === 'brand' ? 'Brand Dashboard' : 'Creator Dashboard'}
-                </h1>
+    <AIAssistantProvider initialUserRole={userRole}>
+      <SidebarProvider defaultOpen={!isMobile}>
+        <div className="min-h-screen flex w-full bg-background">
+          <AppSidebar userRole={userRole} />
+          
+          <SidebarInset className="flex-1">
+            {/* Header */}
+            <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+              <div className="flex h-14 items-center justify-between px-4 lg:px-6">
+                <div className="flex items-center gap-4">
+                  <SidebarTrigger />
+                  <h1 className="text-xl font-semibold text-foreground hidden sm:block">
+                    {userRole === 'business_client' ? 'Restaurant Dashboard' : userRole === 'brand' ? 'Brand Dashboard' : 'Creator Dashboard'}
+                  </h1>
+                </div>
+
+                <div className="flex items-center gap-2 sm:gap-4">
+                  <NotificationDropdown />
+                  
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage src={avatarUrl} alt="Avatar" />
+                          <AvatarFallback>
+                            {displayName?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || 'U'}
+                          </AvatarFallback>
+                        </Avatar>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="w-56" align="end" forceMount>
+                      <DropdownMenuLabel className="font-normal">
+                        <div className="flex flex-col space-y-1">
+                          <p className="text-sm font-medium leading-none">
+                            {displayName || user?.user_metadata?.full_name || 'User'}
+                          </p>
+                          <p className="text-xs leading-none text-muted-foreground">
+                            {user?.email}
+                          </p>
+                        </div>
+                      </DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem asChild>
+                        <Link to={`/dashboard/${userRole === 'business_client' ? 'business' : userRole === 'brand' ? 'brand' : 'creator'}/settings`}>
+                          <Settings className="mr-2 h-4 w-4" />
+                          <span>Settings</span>
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={logout}>
+                        <LogOut className="mr-2 h-4 w-4" />
+                        <span>Log out</span>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
               </div>
+            </header>
 
-              <div className="flex items-center gap-2 sm:gap-4">
-                <NotificationDropdown />
-                
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                      <Avatar className="h-8 w-8">
-                        <AvatarImage src={avatarUrl} alt="Avatar" />
-                        <AvatarFallback>
-                          {displayName?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || 'U'}
-                        </AvatarFallback>
-                      </Avatar>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="w-56" align="end" forceMount>
-                    <DropdownMenuLabel className="font-normal">
-                      <div className="flex flex-col space-y-1">
-                        <p className="text-sm font-medium leading-none">
-                          {displayName || user?.user_metadata?.full_name || 'User'}
-                        </p>
-                        <p className="text-xs leading-none text-muted-foreground">
-                          {user?.email}
-                        </p>
-                      </div>
-                    </DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem asChild>
-                      <Link to={`/dashboard/${userRole === 'business_client' ? 'business' : userRole === 'brand' ? 'brand' : 'creator'}/settings`}>
-                        <Settings className="mr-2 h-4 w-4" />
-                        <span>Settings</span>
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={logout}>
-                      <LogOut className="mr-2 h-4 w-4" />
-                      <span>Log out</span>
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            </div>
-          </header>
+            {/* Page Content */}
+            <main className="flex-1">
+              {children}
+            </main>
+          </SidebarInset>
 
-          {/* Page Content */}
-          <main className="flex-1">
-            {children}
-          </main>
-        </SidebarInset>
-
-        {/* AI Assistant Widget */}
-        <AIChatWidget userRole={userRole} />
-      </div>
-    </SidebarProvider>
+          {/* AI Assistant Widget */}
+          <AIChatWidget userRole={userRole} />
+        </div>
+      </SidebarProvider>
+    </AIAssistantProvider>
   );
 };
 
