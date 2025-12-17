@@ -20,17 +20,15 @@ const CHAT_URL = `https://zocahiffooqdybdhguqv.supabase.co/functions/v1/chat-ass
 
 interface AIAssistantProviderProps {
   children: ReactNode;
-  initialUserRole?: string;
 }
 
 export const AIAssistantProvider: React.FC<AIAssistantProviderProps> = ({ 
-  children, 
-  initialUserRole = 'business_client' 
+  children
 }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [userRole, setUserRole] = useState(initialUserRole);
+  const [userRole, setUserRole] = useState('business_client');
 
   const sendMessage = useCallback(async (content: string) => {
     if (!content.trim() || isLoading) return;

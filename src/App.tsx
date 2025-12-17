@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { AIAssistantProvider } from "@/contexts/AIAssistantContext";
 import { AnalyticsProvider } from "@/components/analytics/AnalyticsProvider";
 import { PerformanceMonitor } from "@/components/analytics/PerformanceMonitor";
 import ErrorBoundary from "@/components/ErrorBoundary";
@@ -79,13 +80,14 @@ const App = () => {
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          <AnalyticsProvider>
-            <PerformanceMonitor />
-            <TooltipProvider>
-              <Toaster />
-              <Sonner />
-              <BrowserRouter>
-                <Routes>
+          <AIAssistantProvider>
+            <AnalyticsProvider>
+              <PerformanceMonitor />
+              <TooltipProvider>
+                <Toaster />
+                <Sonner />
+                <BrowserRouter>
+                  <Routes>
                   <Route path="/" element={<Index />} />
                   <Route path="/landing" element={<LandingPage />} />
                   <Route path="/auth" element={<AuthPage />} />
@@ -448,10 +450,11 @@ const App = () => {
                   
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />
-                </Routes>
-              </BrowserRouter>
-            </TooltipProvider>
-          </AnalyticsProvider>
+                  </Routes>
+                </BrowserRouter>
+              </TooltipProvider>
+            </AnalyticsProvider>
+          </AIAssistantProvider>
         </AuthProvider>
       </QueryClientProvider>
     </ErrorBoundary>
