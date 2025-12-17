@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -48,7 +48,7 @@ import { useProfileData } from '@/hooks/useProfileData';
 import NotificationDropdown from '@/components/notifications/NotificationDropdown';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { AIChatWidget } from '@/components/ai-assistant';
-import { AIAssistantProvider } from '@/contexts/AIAssistantContext';
+import { useAIAssistantContext } from '@/contexts/AIAssistantContext';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -155,12 +155,17 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, userRole })
   const logout = useLogout();
   const { avatarUrl, displayName } = useProfileData();
   const isMobile = useIsMobile();
+  const { setUserRole } = useAIAssistantContext();
+
+  // Update AI assistant role when userRole changes
+  useEffect(() => {
+    setUserRole(userRole);
+  }, [userRole, setUserRole]);
 
   return (
-    <AIAssistantProvider initialUserRole={userRole}>
-      <SidebarProvider defaultOpen={!isMobile}>
-        <div className="min-h-screen flex w-full bg-background">
-          <AppSidebar userRole={userRole} />
+    <SidebarProvider defaultOpen={!isMobile}>
+      <div className="min-h-screen flex w-full bg-background">
+        <AppSidebar userRole={userRole} />
           
           <SidebarInset className="flex-1">
             {/* Header */}
@@ -222,11 +227,10 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, userRole })
             </main>
           </SidebarInset>
 
-          {/* AI Assistant Widget */}
-          <AIChatWidget userRole={userRole} />
-        </div>
-      </SidebarProvider>
-    </AIAssistantProvider>
+        {/* AI Assistant Widget */}
+        <AIChatWidget userRole={userRole} />
+      </div>
+    </SidebarProvider>
   );
 };
 
