@@ -15,13 +15,13 @@ interface AIChatWidgetProps {
 const getRoleGreeting = (role: string): string => {
   switch (role) {
     case 'business_client':
-      return "Hi! I'm your Restaurant Assistant. I can help you create campaigns, find creators, manage promotions, and more. What would you like to do?";
+      return "Hey there! I'm Donny, your Restaurant Assistant. I can help you create campaigns, find creators, manage promotions, and more. What would you like to do?";
     case 'content_creator':
-      return "Hey there! I'm your Creator Assistant. I can help you find campaigns, manage projects, optimize your profile, and more. How can I help?";
+      return "Hey! I'm Donny, your Creator Assistant. I can help you find campaigns, manage projects, optimize your profile, and more. How can I help?";
     case 'brand':
-      return "Hello! I'm your Brand Assistant. I can help you discover sponsorship opportunities, find creators, and manage partnerships. What are you looking for?";
+      return "Hello! I'm Donny, your Brand Assistant. I can help you discover sponsorship opportunities, find creators, and manage partnerships. What are you looking for?";
     default:
-      return "Hi! I'm your DragonCandy Assistant. How can I help you today?";
+      return "Hi! I'm Donny, your DragonCandy Assistant. How can I help you today?";
   }
 };
 
@@ -100,8 +100,8 @@ export const AIChatWidget: React.FC<AIChatWidgetProps> = ({ userRole }) => {
                 <Sparkles className="w-4 h-4 text-white" />
               </div>
               <div>
-                <h3 className="font-semibold text-sm text-foreground">AI Assistant</h3>
-                <p className="text-xs text-muted-foreground">Powered by DragonCandy</p>
+                <h3 className="font-semibold text-sm text-foreground">Donny</h3>
+                <p className="text-xs text-muted-foreground">Your AI Assistant</p>
               </div>
             </div>
             <Button

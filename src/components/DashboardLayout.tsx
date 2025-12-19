@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -47,7 +47,7 @@ import { useLogout } from '@/hooks/useLogout';
 import { useProfileData } from '@/hooks/useProfileData';
 import NotificationDropdown from '@/components/notifications/NotificationDropdown';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { AIChatWidget } from '@/components/ai-assistant';
+import { AIChatWidget, AskBar, AIChatModal } from '@/components/ai-assistant';
 import { useAIAssistantContext } from '@/contexts/AIAssistantContext';
 
 interface DashboardLayoutProps {
@@ -156,11 +156,25 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, userRole })
   const { avatarUrl, displayName } = useProfileData();
   const isMobile = useIsMobile();
   const { setUserRole } = useAIAssistantContext();
+  const [isAIChatOpen, setIsAIChatOpen] = useState(false);
 
   // Update AI assistant role when userRole changes
   useEffect(() => {
     setUserRole(userRole);
   }, [userRole, setUserRole]);
+
+  // Keyboard shortcut for opening AI chat (Cmd/Ctrl + K)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setIsAIChatOpen(true);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   return (
     <SidebarProvider defaultOpen={!isMobile}>
@@ -219,6 +233,11 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, userRole })
                   </DropdownMenu>
                 </div>
               </div>
+
+              {/* Ask Bar */}
+              <div className="px-4 lg:px-6 pb-4">
+                <AskBar onClick={() => setIsAIChatOpen(true)} userRole={userRole} />
+              </div>
             </header>
 
             {/* Page Content */}
@@ -229,6 +248,13 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, userRole })
 
         {/* AI Assistant Widget */}
         <AIChatWidget userRole={userRole} />
+
+        {/* AI Chat Modal */}
+        <AIChatModal 
+          isOpen={isAIChatOpen} 
+          onClose={() => setIsAIChatOpen(false)} 
+          userRole={userRole} 
+        />
       </div>
     </SidebarProvider>
   );
