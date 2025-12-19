@@ -1,4 +1,3 @@
-
 import React from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,12 +12,15 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { PlusCircle, Settings, DollarSign, Target, Star, Clock } from 'lucide-react';
 import RatingPromptManager from '@/components/reviews/RatingPromptManager';
+import { AskBar } from '@/components/ai-assistant';
+import { useAIChatModal } from '@/contexts/AIChatModalContext';
 
 const CreatorDashboard = () => {
   const { user, profile } = useAuth();
   const { data: stats, isLoading: statsLoading } = useCreatorDashboardStats();
   const { data: activities, isLoading: activitiesLoading } = useCreatorRecentActivity();
   const { data: deadlines, isLoading: deadlinesLoading } = useCreatorUpcomingDeadlines();
+  const { openModal } = useAIChatModal();
 
   if (!profile) {
     return <div>Loading...</div>;
@@ -55,6 +57,9 @@ const CreatorDashboard = () => {
     <DashboardLayout userRole="content_creator">
       <div className="flex-1 p-8">
         <div className="max-w-7xl mx-auto space-y-8">
+          {/* Ask Bar */}
+          <AskBar onClick={openModal} userRole="content_creator" />
+          
           {/* Header */}
           <div className="flex items-center justify-between">
             <div>

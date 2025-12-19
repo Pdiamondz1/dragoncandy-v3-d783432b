@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -12,11 +11,14 @@ import { BusinessDashboardSideFeed } from '@/components/dragon-feed/BusinessDash
 import { FeedLightbox } from '@/components/dragon-feed/FeedLightbox';
 import { FeedMediaItem } from '@/hooks/useBusinessDragonFeed';
 import RatingPromptManager from '@/components/reviews/RatingPromptManager';
+import { AskBar } from '@/components/ai-assistant';
+import { useAIChatModal } from '@/contexts/AIChatModalContext';
 
 const BusinessDashboard = () => {
   const { profile } = useAuth();
   const navigate = useNavigate();
   const { proposals, isLoading: proposalsLoading, updateProposalStatus } = useSponsorshipProposals();
+  const { openModal } = useAIChatModal();
   const [selectedFeedItem, setSelectedFeedItem] = useState<FeedMediaItem | null>(null);
   const [currentFeedIndex, setCurrentFeedIndex] = useState(0);
   const [allFeedItems, setAllFeedItems] = useState<FeedMediaItem[]>([]);
@@ -89,6 +91,11 @@ const BusinessDashboard = () => {
         {/* Main Content Area */}
         <div className="flex-1 overflow-y-auto p-8">
           <div className="max-w-6xl mx-auto space-y-12">
+          
+          {/* Ask Bar */}
+          <div className="pt-4">
+            <AskBar onClick={openModal} userRole="business_client" />
+          </div>
           
           {/* Review Prompts */}
           <RatingPromptManager />
