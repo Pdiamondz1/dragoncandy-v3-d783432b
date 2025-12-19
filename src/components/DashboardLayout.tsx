@@ -48,7 +48,7 @@ import NotificationDropdown from '@/components/notifications/NotificationDropdow
 import { useIsMobile } from '@/hooks/use-mobile';
 import { AIChatWidget, AIChatModal } from '@/components/ai-assistant';
 import { useAIAssistantContext } from '@/contexts/AIAssistantContext';
-import { AIChatModalProvider, useAIChatModal } from '@/contexts/AIChatModalContext';
+import { useAIChatModal } from '@/contexts/AIChatModalContext';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -256,11 +256,7 @@ const DashboardLayoutInner: React.FC<DashboardLayoutProps> = ({ children, userRo
 };
 
 const DashboardLayout: React.FC<DashboardLayoutProps> = (props) => {
-  return (
-    <AIChatModalProvider>
-      <DashboardLayoutInner {...props} />
-    </AIChatModalProvider>
-  );
+  return <DashboardLayoutInner {...props} />;
 };
 
 export default DashboardLayout;
