@@ -6,10 +6,13 @@ import DashboardLayout from '@/components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Search, TrendingUp, Users, DollarSign, Target, Sparkles, Calendar, BarChart3, Loader2 } from 'lucide-react';
+import { AskBar } from '@/components/ai-assistant';
+import { useAIChatModal } from '@/contexts/AIChatModalContext';
 
 const BrandDashboard = () => {
   const { profile } = useAuth();
   const navigate = useNavigate();
+  const { openModal } = useAIChatModal();
   const { data: stats, isLoading: statsLoading } = useBrandDashboardStats();
 
   if (!profile) {
@@ -94,6 +97,9 @@ const BrandDashboard = () => {
     <DashboardLayout userRole="brand">
       <div className="flex-1 p-8">
         <div className="max-w-7xl mx-auto space-y-12">
+          
+          {/* Ask Bar */}
+          <AskBar onClick={openModal} userRole="brand" />
           
           {/* Welcome Header */}
           <div className="text-center space-y-4">

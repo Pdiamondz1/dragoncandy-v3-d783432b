@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -36,7 +36,6 @@ import {
   PlusCircle,
   Search,
   Briefcase,
-  Menu,
   Image,
   DollarSign,
   Activity,
@@ -47,8 +46,9 @@ import { useLogout } from '@/hooks/useLogout';
 import { useProfileData } from '@/hooks/useProfileData';
 import NotificationDropdown from '@/components/notifications/NotificationDropdown';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { AIChatWidget, AskBar, AIChatModal } from '@/components/ai-assistant';
+import { AIChatWidget, AIChatModal } from '@/components/ai-assistant';
 import { useAIAssistantContext } from '@/contexts/AIAssistantContext';
+import { AIChatModalProvider, useAIChatModal } from '@/contexts/AIChatModalContext';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -150,13 +150,13 @@ const AppSidebar: React.FC<{ userRole: 'business_client' | 'content_creator' | '
   );
 };
 
-const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, userRole }) => {
+const DashboardLayoutInner: React.FC<DashboardLayoutProps> = ({ children, userRole }) => {
   const { user } = useAuth();
   const logout = useLogout();
   const { avatarUrl, displayName } = useProfileData();
   const isMobile = useIsMobile();
   const { setUserRole } = useAIAssistantContext();
-  const [isAIChatOpen, setIsAIChatOpen] = useState(false);
+  const { isOpen: isAIChatOpen, openModal, closeModal } = useAIChatModal();
 
   // Update AI assistant role when userRole changes
   useEffect(() => {
@@ -168,13 +168,13 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, userRole })
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
-        setIsAIChatOpen(true);
+        openModal();
       }
     };
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [openModal]);
 
   return (
     <SidebarProvider defaultOpen={!isMobile}>
@@ -233,11 +233,6 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, userRole })
                   </DropdownMenu>
                 </div>
               </div>
-
-              {/* Ask Bar */}
-              <div className="px-4 lg:px-6 pb-4">
-                <AskBar onClick={() => setIsAIChatOpen(true)} userRole={userRole} />
-              </div>
             </header>
 
             {/* Page Content */}
@@ -252,11 +247,19 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, userRole })
         {/* AI Chat Modal */}
         <AIChatModal 
           isOpen={isAIChatOpen} 
-          onClose={() => setIsAIChatOpen(false)} 
+          onClose={closeModal} 
           userRole={userRole} 
         />
       </div>
     </SidebarProvider>
+  );
+};
+
+const DashboardLayout: React.FC<DashboardLayoutProps> = (props) => {
+  return (
+    <AIChatModalProvider>
+      <DashboardLayoutInner {...props} />
+    </AIChatModalProvider>
   );
 };
 
