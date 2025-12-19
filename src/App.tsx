@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { AIAssistantProvider } from "@/contexts/AIAssistantContext";
+import { AIChatModalProvider } from "@/contexts/AIChatModalContext";
 import { AnalyticsProvider } from "@/components/analytics/AnalyticsProvider";
 import { PerformanceMonitor } from "@/components/analytics/PerformanceMonitor";
 import ErrorBoundary from "@/components/ErrorBoundary";
@@ -81,6 +82,7 @@ const App = () => {
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
           <AIAssistantProvider>
+            <AIChatModalProvider>
             <AnalyticsProvider>
               <PerformanceMonitor />
               <TooltipProvider>
@@ -454,6 +456,7 @@ const App = () => {
                 </BrowserRouter>
               </TooltipProvider>
             </AnalyticsProvider>
+            </AIChatModalProvider>
           </AIAssistantProvider>
         </AuthProvider>
       </QueryClientProvider>
