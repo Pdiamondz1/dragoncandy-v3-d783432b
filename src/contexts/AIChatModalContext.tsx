@@ -10,8 +10,13 @@ const AIChatModalContext = createContext<AIChatModalContextType | undefined>(und
 
 export const useAIChatModal = () => {
   const context = useContext(AIChatModalContext);
+  // Return no-op functions if used outside provider (e.g., on auth pages)
   if (!context) {
-    throw new Error('useAIChatModal must be used within AIChatModalProvider');
+    return {
+      isOpen: false,
+      openModal: () => {},
+      closeModal: () => {},
+    };
   }
   return context;
 };
