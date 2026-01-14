@@ -1,56 +1,72 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
 
 interface InitiatePaymentParams {
   sponsorshipId: string;
   amount: number;
+  campaignTitle?: string;
+}
+
+interface VerifyPaymentParams {
+  sponsorshipId: string;
 }
 
 export const useSponsorshipPayment = () => {
-  const { user } = useAuth();
   const queryClient = useQueryClient();
 
   const initiatePayment = useMutation({
-    mutationFn: async ({ sponsorshipId, amount }: InitiatePaymentParams) => {
-      // TODO: Integrate with Stripe API
-      // For now, simulate payment initiation
-      console.log('Initiating payment for sponsorship:', sponsorshipId, 'Amount:', amount);
+    mutationFn: async ({ sponsorshipId, amount, campaignTitle }: InitiatePaymentParams) => {
+      console.log('Initiating Stripe checkout for sponsorship:', sponsorshipId, 'Amount:', amount);
 
-      // Update payment status to 'pending'
-      const { error } = await supabase
-        .from('campaign_sponsorships')
-        .update({ 
-          payment_status: 'pending',
-          payment_date: new Date().toISOString(),
-        })
-        .eq('id', sponsorshipId);
+      const { data, error } = await supabase.functions.invoke('create-sponsorship-checkout', {
+        body: { sponsorshipId, amount, campaignTitle },
+      });
 
       if (error) throw error;
+      if (!data?.url) throw new Error('No checkout URL returned');
 
-      // In a real implementation, you would:
-      // 1. Create a Stripe PaymentIntent
-      // 2. Store the payment_intent_id
-      // 3. Return the client_secret for frontend confirmation
+      // Open Stripe checkout in new tab
+      window.open(data.url, '_blank');
       
-      return { success: true, sponsorshipId };
+      return { success: true, sponsorshipId, sessionId: data.sessionId };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sponsorship-proposals'] });
       queryClient.invalidateQueries({ queryKey: ['brand-sponsorship-status'] });
       toast({
-        title: 'Payment Initiated',
-        description: 'Your sponsorship payment is being processed.',
+        title: 'Checkout Opened',
+        description: 'Complete your payment in the new tab.',
       });
     },
     onError: (error) => {
       console.error('Error initiating payment:', error);
       toast({
         title: 'Payment Error',
-        description: 'Failed to initiate payment. Please try again.',
+        description: 'Failed to initiate checkout. Please try again.',
         variant: 'destructive',
       });
+    },
+  });
+
+  const verifyPayment = useMutation({
+    mutationFn: async ({ sponsorshipId }: VerifyPaymentParams) => {
+      const { data, error } = await supabase.functions.invoke('verify-sponsorship-payment', {
+        body: { sponsorshipId },
+      });
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['sponsorship-proposals'] });
+      queryClient.invalidateQueries({ queryKey: ['brand-sponsorship-status'] });
+      if (data?.verified) {
+        toast({
+          title: 'Payment Confirmed',
+          description: 'Your sponsorship payment has been verified!',
+        });
+      }
     },
   });
 
@@ -89,6 +105,6 @@ export const useSponsorshipPayment = () => {
 
   return {
     initiatePayment,
-    confirmPayment,
+    verifyPayment,
   };
 };
