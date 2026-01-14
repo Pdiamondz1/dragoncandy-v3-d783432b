@@ -1,48 +1,89 @@
 import { Button } from '@/components/ui/button';
-import { CreditCard, Loader2 } from 'lucide-react';
+import { CreditCard, Loader2, CheckCircle, RefreshCw } from 'lucide-react';
 import { useSponsorshipPayment } from '@/hooks/useSponsorshipPayment';
 import { BrandSponsorshipStatus } from '@/hooks/useBrandSponsorshipStatus';
+import { Badge } from '@/components/ui/badge';
 
 interface PaymentButtonProps {
   sponsorship: BrandSponsorshipStatus;
+  campaignTitle?: string;
 }
 
-export const PaymentButton = ({ sponsorship }: PaymentButtonProps) => {
-  const { initiatePayment } = useSponsorshipPayment();
+export const PaymentButton = ({ sponsorship, campaignTitle }: PaymentButtonProps) => {
+  const { initiatePayment, verifyPayment } = useSponsorshipPayment();
 
   const handlePayment = () => {
     initiatePayment.mutate({
       sponsorshipId: sponsorship.id,
       amount: sponsorship.sponsorship_amount,
+      campaignTitle,
     });
   };
 
-  // Don't show button if payment is already completed
+  const handleVerify = () => {
+    verifyPayment.mutate({ sponsorshipId: sponsorship.id });
+  };
+
+  // Show paid badge if payment is completed
   if (sponsorship.payment_status === 'paid') {
-    return null;
+    return (
+      <Badge variant="default" className="bg-green-600 text-white">
+        <CheckCircle className="h-3 w-3 mr-1" />
+        Payment Complete
+      </Badge>
+    );
+  }
+
+  // Show verify button if payment is pending
+  if (sponsorship.payment_status === 'pending') {
+    return (
+      <div className="flex gap-2">
+        <Button
+          onClick={handleVerify}
+          disabled={verifyPayment.isPending}
+          variant="outline"
+          size="sm"
+        >
+          {verifyPayment.isPending ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              Verifying...
+            </>
+          ) : (
+            <>
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Verify Payment
+            </>
+          )}
+        </Button>
+        <Button
+          onClick={handlePayment}
+          disabled={initiatePayment.isPending}
+          size="sm"
+        >
+          <CreditCard className="h-4 w-4 mr-2" />
+          Retry Payment
+        </Button>
+      </div>
+    );
   }
 
   return (
     <Button
       onClick={handlePayment}
-      disabled={initiatePayment.isPending || sponsorship.payment_status === 'pending'}
+      disabled={initiatePayment.isPending}
       className="w-full"
       size="lg"
     >
       {initiatePayment.isPending ? (
         <>
           <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-          Processing...
-        </>
-      ) : sponsorship.payment_status === 'pending' ? (
-        <>
-          <CreditCard className="h-4 w-4 mr-2" />
-          Payment Pending...
+          Opening Checkout...
         </>
       ) : (
         <>
           <CreditCard className="h-4 w-4 mr-2" />
-          Proceed to Payment - ${sponsorship.sponsorship_amount.toLocaleString()}
+          Pay ${sponsorship.sponsorship_amount.toLocaleString()} (5% fee included)
         </>
       )}
     </Button>
