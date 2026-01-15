@@ -36,7 +36,7 @@ const CampaignWizard: React.FC = () => {
     { number: 1, title: 'Campaign Goal', active: true },
     { number: 2, title: 'AI Analysis', active: false },
     { number: 3, title: 'Customize', active: false },
-    { number: 4, title: 'Timeline & Budget', active: false },
+    { number: 4, title: 'DragonDash', active: false },
     { number: 5, title: 'Finalize', active: false },
   ];
 

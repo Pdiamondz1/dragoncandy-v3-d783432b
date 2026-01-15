@@ -1,29 +1,53 @@
-
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { CalendarIcon, DollarSign } from 'lucide-react';
+import { CalendarIcon, Rocket } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import DeliveryTypeSelector, { DeliveryType, deliveryOptions } from './DeliveryTypeSelector';
+import PricingTypeSelector, { PricingType } from './PricingTypeSelector';
 
 const timelineBudgetSchema = z.object({
   goals: z.string().min(10, 'Please describe your campaign goals (minimum 10 characters)'),
   deadline: z.date({
     required_error: 'Please select a campaign deadline',
   }),
-  budgetMin: z.number().min(100, 'Minimum budget must be at least $100'),
-  budgetMax: z.number().min(100, 'Maximum budget must be at least $100'),
-}).refine((data) => data.budgetMax >= data.budgetMin, {
-  message: 'Maximum budget must be greater than or equal to minimum budget',
+  deliveryType: z.enum(['standard', 'expedited', 'dragonrush']),
+  deliveryFee: z.number().min(0),
+  pricingType: z.enum(['fixed', 'bid_range']),
+  fixedPrice: z.number().optional(),
+  budgetMin: z.number().optional(),
+  budgetMax: z.number().optional(),
+}).refine((data) => {
+  if (data.pricingType === 'fixed') {
+    return data.fixedPrice && data.fixedPrice >= 50;
+  }
+  return true;
+}, {
+  message: 'Fixed price must be at least $50',
+  path: ['fixedPrice'],
+}).refine((data) => {
+  if (data.pricingType === 'bid_range') {
+    return data.budgetMin && data.budgetMin >= 100;
+  }
+  return true;
+}, {
+  message: 'Minimum budget must be at least $100',
+  path: ['budgetMin'],
+}).refine((data) => {
+  if (data.pricingType === 'bid_range') {
+    return data.budgetMax && data.budgetMax >= (data.budgetMin || 0);
+  }
+  return true;
+}, {
+  message: 'Maximum budget must be greater than or equal to minimum',
   path: ['budgetMax'],
 });
 
@@ -35,6 +59,10 @@ interface CampaignTimelineBudgetStepProps {
     deadline?: string;
     budget_min?: number;
     budget_max?: number;
+    delivery_type?: DeliveryType;
+    delivery_fee?: number;
+    pricing_type?: PricingType;
+    fixed_price?: number;
   };
   onContinue: (data: TimelineBudgetFormData) => void;
   onBackToCustomize: () => void;
@@ -45,43 +73,126 @@ const CampaignTimelineBudgetStep: React.FC<CampaignTimelineBudgetStepProps> = ({
   onContinue,
   onBackToCustomize,
 }) => {
+  const [deliveryType, setDeliveryType] = useState<DeliveryType>(
+    initialData?.delivery_type || 'standard'
+  );
+  const [deliveryFee, setDeliveryFee] = useState<number>(
+    initialData?.delivery_fee || 0
+  );
+  const [pricingType, setPricingType] = useState<PricingType>(
+    initialData?.pricing_type || 'bid_range'
+  );
+  const [fixedPrice, setFixedPrice] = useState<number>(
+    initialData?.fixed_price || 500
+  );
+  const [budgetMin, setBudgetMin] = useState<number>(
+    initialData?.budget_min || 500
+  );
+  const [budgetMax, setBudgetMax] = useState<number>(
+    initialData?.budget_max || 1000
+  );
+
+  // Force fixed pricing for DragonRush
+  useEffect(() => {
+    if (deliveryType === 'dragonrush') {
+      setPricingType('fixed');
+    }
+  }, [deliveryType]);
+
+  // Update delivery fee when type changes
+  const handleDeliveryTypeChange = (type: DeliveryType) => {
+    setDeliveryType(type);
+    const option = deliveryOptions.find(o => o.type === type);
+    setDeliveryFee(option?.feeAmount || 0);
+  };
+
   const form = useForm<TimelineBudgetFormData>({
     resolver: zodResolver(timelineBudgetSchema),
     defaultValues: {
       goals: initialData?.goals || '',
       deadline: initialData?.deadline ? new Date(initialData.deadline) : undefined,
-      budgetMin: initialData?.budget_min || 1500,
-      budgetMax: initialData?.budget_max || 2500,
+      deliveryType: deliveryType,
+      deliveryFee: deliveryFee,
+      pricingType: pricingType,
+      fixedPrice: fixedPrice,
+      budgetMin: budgetMin,
+      budgetMax: budgetMax,
     },
   });
 
+  // Sync form values with state
+  useEffect(() => {
+    form.setValue('deliveryType', deliveryType);
+    form.setValue('deliveryFee', deliveryFee);
+    form.setValue('pricingType', pricingType);
+    form.setValue('fixedPrice', fixedPrice);
+    form.setValue('budgetMin', budgetMin);
+    form.setValue('budgetMax', budgetMax);
+  }, [deliveryType, deliveryFee, pricingType, fixedPrice, budgetMin, budgetMax, form]);
+
   const handleSubmit = (data: TimelineBudgetFormData) => {
-    console.log('Timeline & Budget form data being sent:', data);
-    console.log('Initial data received:', initialData);
+    console.log('DragonDash Timeline & Budget form data:', data);
     onContinue(data);
   };
 
-  const budgetGuidelines = [
-    'Consider creator fees, ad spend, and production costs',
-    'Higher budgets attract more experienced creators',
-    'Budget range helps creators understand scope expectations',
-  ];
+  // Calculate AI recommended price based on delivery type
+  const getAiRecommendedPrice = () => {
+    switch (deliveryType) {
+      case 'dragonrush': return 750;
+      case 'expedited': return 600;
+      default: return 500;
+    }
+  };
 
   return (
     <div>
       <Card className="mb-6">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-gray-900 rounded-full flex items-center justify-center text-white text-sm font-semibold">
-              4
+            <div className="w-8 h-8 bg-gradient-to-r from-primary to-pink-500 rounded-full flex items-center justify-center text-white text-sm font-semibold">
+              <Rocket className="h-4 w-4" />
             </div>
-            Step 4: Timeline & Budget
+            Step 4: DragonDash Delivery & Pricing
           </CardTitle>
+          <p className="text-sm text-muted-foreground mt-1">
+            Choose your delivery speed and set your budget
+          </p>
         </CardHeader>
       </Card>
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+          {/* Delivery Type Selection */}
+          <Card>
+            <CardContent className="pt-6">
+              <DeliveryTypeSelector
+                value={deliveryType}
+                onChange={handleDeliveryTypeChange}
+                onFeeChange={setDeliveryFee}
+              />
+            </CardContent>
+          </Card>
+
+          {/* Pricing Type Selection */}
+          <Card>
+            <CardContent className="pt-6">
+              <PricingTypeSelector
+                value={pricingType}
+                onChange={setPricingType}
+                fixedPrice={fixedPrice}
+                onFixedPriceChange={setFixedPrice}
+                budgetMin={budgetMin}
+                budgetMax={budgetMax}
+                onBudgetMinChange={setBudgetMin}
+                onBudgetMaxChange={setBudgetMax}
+                deliveryFee={deliveryFee}
+                forceFixed={deliveryType === 'dragonrush'}
+                aiRecommendedPrice={getAiRecommendedPrice()}
+              />
+            </CardContent>
+          </Card>
+
+          {/* Goals & Deadline */}
           <Card>
             <CardContent className="pt-6 space-y-6">
               {/* Campaign Goals & Objectives */}
@@ -144,77 +255,13 @@ const CampaignTimelineBudgetStep: React.FC<CampaignTimelineBudgetStepProps> = ({
                         />
                       </PopoverContent>
                     </Popover>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-muted-foreground">
                       When do you need this campaign to be completed?
                     </p>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-
-              {/* Budget Range */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="budgetMin"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-base font-semibold flex items-center gap-1">
-                        <DollarSign className="h-4 w-4" />
-                        Minimum Budget ($)
-                      </FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          min="100"
-                          step="50"
-                          {...field}
-                          onChange={(e) => field.onChange(Number(e.target.value))}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="budgetMax"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-base font-semibold flex items-center gap-1">
-                        <DollarSign className="h-4 w-4" />
-                        Maximum Budget ($)
-                      </FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          min="100"
-                          step="50"
-                          {...field}
-                          onChange={(e) => field.onChange(Number(e.target.value))}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              {/* Budget Guidelines */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <h3 className="text-base font-semibold text-blue-900 mb-3">
-                  Budget Guidelines
-                </h3>
-                <ul className="space-y-2">
-                  {budgetGuidelines.map((guideline, index) => (
-                    <li key={index} className="flex items-start gap-2 text-sm text-blue-800">
-                      <span className="text-blue-500 mt-1">•</span>
-                      {guideline}
-                    </li>
-                  ))}
-                </ul>
-              </div>
             </CardContent>
           </Card>
 
@@ -225,7 +272,7 @@ const CampaignTimelineBudgetStep: React.FC<CampaignTimelineBudgetStepProps> = ({
             </Button>
             <Button 
               type="submit" 
-              className="bg-gray-900 hover:bg-gray-800 text-white"
+              className="bg-gradient-to-r from-primary to-pink-500 hover:from-primary/90 hover:to-pink-500/90 text-white"
             >
               Continue to Finalize
             </Button>
