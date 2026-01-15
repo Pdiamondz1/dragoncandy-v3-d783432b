@@ -5,6 +5,35 @@ import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { CampaignAnalysis } from '@/types/campaign';
 
+export interface TimelineBudgetData {
+  goals: string;
+  deadline: Date;
+  deliveryType: 'standard' | 'expedited' | 'dragonrush';
+  deliveryFee: number;
+  pricingType: 'fixed' | 'bid_range';
+  fixedPrice?: number;
+  budgetMin?: number;
+  budgetMax?: number;
+}
+
+export interface FinalCampaignData {
+  title: string;
+  description: string;
+  goals: string;
+  deliverables: string[];
+  platforms: string[];
+  style: string;
+  tone: string;
+  deadline: Date;
+  // DragonDash fields
+  deliveryType: 'standard' | 'expedited' | 'dragonrush';
+  deliveryFee: number;
+  pricingType: 'fixed' | 'bid_range';
+  fixedPrice?: number;
+  budgetMin?: number;
+  budgetMax?: number;
+}
+
 export const useCampaignWizard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -13,7 +42,8 @@ export const useCampaignWizard = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [campaignAnalysis, setCampaignAnalysis] = useState<CampaignAnalysis | null>(null);
   const [customizedCampaign, setCustomizedCampaign] = useState<any>(null);
-  const [finalCampaignData, setFinalCampaignData] = useState<any>(null);
+  const [timelineBudgetData, setTimelineBudgetData] = useState<TimelineBudgetData | null>(null);
+  const [finalCampaignData, setFinalCampaignData] = useState<FinalCampaignData | null>(null);
 
   const handleGenerateWithAI = async () => {
     if (!campaignGoal.trim()) {
@@ -83,8 +113,31 @@ export const useCampaignWizard = () => {
     setCurrentStep(3);
   };
 
-  const handleContinueFromTimelineBudget = (data: any) => {
-    setFinalCampaignData(data);
+  const handleContinueFromTimelineBudget = (data: TimelineBudgetData) => {
+    console.log('Timeline & Budget data received:', data);
+    setTimelineBudgetData(data);
+    
+    // Combine all data for the finalize step
+    const finalData: FinalCampaignData = {
+      title: customizedCampaign?.title || campaignAnalysis?.title || '',
+      description: customizedCampaign?.description || campaignAnalysis?.description || '',
+      goals: data.goals,
+      deliverables: customizedCampaign?.content_types || campaignAnalysis?.content_types || [],
+      platforms: customizedCampaign?.platforms || campaignAnalysis?.recommended_platforms || [],
+      style: customizedCampaign?.style || '',
+      tone: customizedCampaign?.tone || '',
+      deadline: data.deadline,
+      // DragonDash fields
+      deliveryType: data.deliveryType,
+      deliveryFee: data.deliveryFee,
+      pricingType: data.pricingType,
+      fixedPrice: data.fixedPrice,
+      budgetMin: data.budgetMin,
+      budgetMax: data.budgetMax,
+    };
+    
+    console.log('Final campaign data prepared:', finalData);
+    setFinalCampaignData(finalData);
     setCurrentStep(5);
   };
 
@@ -105,6 +158,7 @@ export const useCampaignWizard = () => {
     isGenerating,
     campaignAnalysis,
     customizedCampaign,
+    timelineBudgetData,
     finalCampaignData,
     handleGenerateWithAI,
     handleEditCampaignIdea,
@@ -117,3 +171,4 @@ export const useCampaignWizard = () => {
     handleBack,
   };
 };
+

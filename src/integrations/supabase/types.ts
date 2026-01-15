@@ -278,6 +278,9 @@ export type Database = {
           business_completion_status: string | null
           campaign_id: string
           completed_at: string | null
+          content_deadline: string | null
+          content_started_at: string | null
+          content_status: string | null
           contract_details: Json | null
           created_at: string
           creator_completion_status: string | null
@@ -286,6 +289,7 @@ export type Database = {
           id: string
           milestones: Json | null
           review_status: string | null
+          revision_count: number | null
           status: Database["public"]["Enums"]["collaboration_status"]
           updated_at: string
         }
@@ -294,6 +298,9 @@ export type Database = {
           business_completion_status?: string | null
           campaign_id: string
           completed_at?: string | null
+          content_deadline?: string | null
+          content_started_at?: string | null
+          content_status?: string | null
           contract_details?: Json | null
           created_at?: string
           creator_completion_status?: string | null
@@ -302,6 +309,7 @@ export type Database = {
           id?: string
           milestones?: Json | null
           review_status?: string | null
+          revision_count?: number | null
           status?: Database["public"]["Enums"]["collaboration_status"]
           updated_at?: string
         }
@@ -310,6 +318,9 @@ export type Database = {
           business_completion_status?: string | null
           campaign_id?: string
           completed_at?: string | null
+          content_deadline?: string | null
+          content_started_at?: string | null
+          content_status?: string | null
           contract_details?: Json | null
           created_at?: string
           creator_completion_status?: string | null
@@ -318,6 +329,7 @@ export type Database = {
           id?: string
           milestones?: Json | null
           review_status?: string | null
+          revision_count?: number | null
           status?: Database["public"]["Enums"]["collaboration_status"]
           updated_at?: string
         }
@@ -537,11 +549,17 @@ export type Database = {
           created_at: string
           deadline: string | null
           deliverables: string[] | null
+          delivery_fee: number | null
+          delivery_type: string | null
           description: string | null
+          escrow_payment_intent_id: string | null
+          escrow_status: string | null
+          fixed_price: number | null
           goals: string | null
           id: string
           open_for_sponsorship: boolean | null
           platforms: string[] | null
+          pricing_type: string | null
           status: Database["public"]["Enums"]["campaign_status"]
           style: string | null
           title: string
@@ -555,11 +573,17 @@ export type Database = {
           created_at?: string
           deadline?: string | null
           deliverables?: string[] | null
+          delivery_fee?: number | null
+          delivery_type?: string | null
           description?: string | null
+          escrow_payment_intent_id?: string | null
+          escrow_status?: string | null
+          fixed_price?: number | null
           goals?: string | null
           id?: string
           open_for_sponsorship?: boolean | null
           platforms?: string[] | null
+          pricing_type?: string | null
           status?: Database["public"]["Enums"]["campaign_status"]
           style?: string | null
           title: string
@@ -573,11 +597,17 @@ export type Database = {
           created_at?: string
           deadline?: string | null
           deliverables?: string[] | null
+          delivery_fee?: number | null
+          delivery_type?: string | null
           description?: string | null
+          escrow_payment_intent_id?: string | null
+          escrow_status?: string | null
+          fixed_price?: number | null
           goals?: string | null
           id?: string
           open_for_sponsorship?: boolean | null
           platforms?: string[] | null
+          pricing_type?: string | null
           status?: Database["public"]["Enums"]["campaign_status"]
           style?: string | null
           title?: string
@@ -697,6 +727,7 @@ export type Database = {
           max_projects_per_month: number | null
           min_project_budget: number | null
           other_social_url: string | null
+          pending_balance: number | null
           portfolio_urls: string[] | null
           postal_code: string | null
           preferred_project_duration: string | null
@@ -704,6 +735,8 @@ export type Database = {
           profile_visibility: string | null
           response_time: string | null
           skills: Database["public"]["Enums"]["creator_skill"][] | null
+          stripe_account_id: string | null
+          stripe_onboarding_complete: boolean | null
           tiktok_url: string | null
           timezone: string | null
           total_reviews: number | null
@@ -736,6 +769,7 @@ export type Database = {
           max_projects_per_month?: number | null
           min_project_budget?: number | null
           other_social_url?: string | null
+          pending_balance?: number | null
           portfolio_urls?: string[] | null
           postal_code?: string | null
           preferred_project_duration?: string | null
@@ -743,6 +777,8 @@ export type Database = {
           profile_visibility?: string | null
           response_time?: string | null
           skills?: Database["public"]["Enums"]["creator_skill"][] | null
+          stripe_account_id?: string | null
+          stripe_onboarding_complete?: boolean | null
           tiktok_url?: string | null
           timezone?: string | null
           total_reviews?: number | null
@@ -775,6 +811,7 @@ export type Database = {
           max_projects_per_month?: number | null
           min_project_budget?: number | null
           other_social_url?: string | null
+          pending_balance?: number | null
           portfolio_urls?: string[] | null
           postal_code?: string | null
           preferred_project_duration?: string | null
@@ -782,6 +819,8 @@ export type Database = {
           profile_visibility?: string | null
           response_time?: string | null
           skills?: Database["public"]["Enums"]["creator_skill"][] | null
+          stripe_account_id?: string | null
+          stripe_onboarding_complete?: boolean | null
           tiktok_url?: string | null
           timezone?: string | null
           total_reviews?: number | null

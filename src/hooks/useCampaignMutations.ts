@@ -18,6 +18,12 @@ export interface CreateCampaignData {
   tone?: string;
   status?: 'draft' | 'published';
   open_for_sponsorship?: boolean;
+  // DragonDash fields
+  delivery_type?: 'standard' | 'expedited' | 'dragonrush';
+  delivery_fee?: number;
+  pricing_type?: 'fixed' | 'bid_range';
+  fixed_price?: number;
+  escrow_status?: 'none' | 'pending' | 'held' | 'released' | 'refunded';
 }
 
 export const useCreateCampaign = () => {
