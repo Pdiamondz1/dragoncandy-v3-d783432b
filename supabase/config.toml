@@ -20,3 +20,15 @@ verify_jwt = false
 
 [functions.chat-assistant]
 verify_jwt = false
+
+[functions.create-campaign-escrow]
+verify_jwt = false
+
+[functions.create-creator-connect-account]
+verify_jwt = false
+
+[functions.check-creator-payout-status]
+verify_jwt = false
+
+[functions.release-creator-payout]
+verify_jwt = false

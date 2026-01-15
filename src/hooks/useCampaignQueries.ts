@@ -18,6 +18,13 @@ export interface Campaign {
   style?: string;
   tone?: string;
   open_for_sponsorship?: boolean;
+  // DragonDash fields
+  delivery_type?: 'standard' | 'expedited' | 'dragonrush';
+  delivery_fee?: number;
+  pricing_type?: 'fixed' | 'bid_range';
+  fixed_price?: number;
+  escrow_status?: 'none' | 'pending' | 'held' | 'released' | 'refunded';
+  escrow_payment_intent_id?: string;
   created_at: string;
   updated_at: string;
 }
