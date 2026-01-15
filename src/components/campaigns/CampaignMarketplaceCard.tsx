@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -15,6 +14,7 @@ import {
   XCircle
 } from 'lucide-react';
 import { PublicCampaign } from '@/hooks/usePublicCampaigns';
+import DeliveryBadge from './DeliveryBadge';
 
 interface CampaignMarketplaceCardProps {
   campaign: PublicCampaign;
@@ -41,7 +41,13 @@ const CampaignMarketplaceCard: React.FC<CampaignMarketplaceCardProps> = ({
     return new Date(dateString).toLocaleDateString();
   };
 
-  const getBudgetRange = () => {
+  const getBudgetDisplay = () => {
+    // Check if it's a fixed price campaign
+    if (campaign.pricing_type === 'fixed' && campaign.fixed_price) {
+      return `${formatCurrency(campaign.fixed_price)} Fixed`;
+    }
+    
+    // Otherwise show bid range
     if (campaign.budget_min && campaign.budget_max) {
       return `${formatCurrency(campaign.budget_min)} - ${formatCurrency(campaign.budget_max)}`;
     } else if (campaign.budget_max) {
@@ -55,7 +61,7 @@ const CampaignMarketplaceCard: React.FC<CampaignMarketplaceCardProps> = ({
   return (
     <Card className="hover:shadow-md transition-shadow cursor-pointer">
       <CardHeader>
-        <div className="flex items-start justify-between">
+        <div className="flex items-start justify-between gap-2">
           <div className="flex items-center gap-3 flex-1">
             <Avatar>
               <AvatarImage src={campaign.business_profile?.logo_url} />
@@ -64,8 +70,13 @@ const CampaignMarketplaceCard: React.FC<CampaignMarketplaceCardProps> = ({
               </AvatarFallback>
             </Avatar>
             <div className="flex-1">
-              <CardTitle className="text-lg line-clamp-1">{campaign.title}</CardTitle>
-              <div className="flex items-center gap-2 text-sm text-gray-600">
+              <div className="flex items-center gap-2 flex-wrap">
+                <CardTitle className="text-lg line-clamp-1">{campaign.title}</CardTitle>
+                {campaign.delivery_type && campaign.delivery_type !== 'standard' && (
+                  <DeliveryBadge deliveryType={campaign.delivery_type} size="sm" />
+                )}
+              </div>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <span>{campaign.business_profile?.business_name || 'Business'}</span>
                 {(campaign.business_profile?.city || campaign.business_profile?.country) && (
                   <>
@@ -81,28 +92,30 @@ const CampaignMarketplaceCard: React.FC<CampaignMarketplaceCardProps> = ({
               </div>
             </div>
           </div>
-          {campaign.user_applied && campaign.application_status && (
-            <>
-              {campaign.application_status === 'pending' && (
-                <Badge variant="secondary" className="bg-yellow-100 text-yellow-700">
-                  <Clock className="h-3 w-3 mr-1" />
-                  Applied
-                </Badge>
-              )}
-              {campaign.application_status === 'accepted' && (
-                <Badge className="bg-gradient-to-r from-pink-500 to-purple-600 text-white border-0">
-                  <CheckCircle className="h-3 w-3 mr-1" />
-                  Accepted
-                </Badge>
-              )}
-              {campaign.application_status === 'rejected' && (
-                <Badge variant="secondary" className="bg-red-100 text-red-700">
-                  <XCircle className="h-3 w-3 mr-1" />
-                  Rejected
-                </Badge>
-              )}
-            </>
-          )}
+          <div className="flex flex-col items-end gap-1">
+            {campaign.user_applied && campaign.application_status && (
+              <>
+                {campaign.application_status === 'pending' && (
+                  <Badge variant="secondary" className="bg-yellow-100 text-yellow-700">
+                    <Clock className="h-3 w-3 mr-1" />
+                    Applied
+                  </Badge>
+                )}
+                {campaign.application_status === 'accepted' && (
+                  <Badge className="bg-gradient-to-r from-pink-500 to-purple-600 text-white border-0">
+                    <CheckCircle className="h-3 w-3 mr-1" />
+                    Accepted
+                  </Badge>
+                )}
+                {campaign.application_status === 'rejected' && (
+                  <Badge variant="secondary" className="bg-red-100 text-red-700">
+                    <XCircle className="h-3 w-3 mr-1" />
+                    Rejected
+                  </Badge>
+                )}
+              </>
+            )}
+          </div>
         </div>
       </CardHeader>
 
@@ -134,8 +147,10 @@ const CampaignMarketplaceCard: React.FC<CampaignMarketplaceCardProps> = ({
           <div className="flex items-center gap-2">
             <DollarSign className="h-4 w-4 text-green-600" />
             <div>
-              <p className="text-xs text-gray-500">Budget</p>
-              <p className="font-medium">{getBudgetRange()}</p>
+              <p className="text-xs text-muted-foreground">
+                {campaign.pricing_type === 'fixed' ? 'Fixed Price' : 'Budget Range'}
+              </p>
+              <p className="font-medium">{getBudgetDisplay()}</p>
             </div>
           </div>
 
@@ -143,7 +158,7 @@ const CampaignMarketplaceCard: React.FC<CampaignMarketplaceCardProps> = ({
             <div className="flex items-center gap-2">
               <Calendar className="h-4 w-4 text-blue-600" />
               <div>
-                <p className="text-xs text-gray-500">Deadline</p>
+                <p className="text-xs text-muted-foreground">Deadline</p>
                 <p className="font-medium">{formatDate(campaign.deadline)}</p>
               </div>
             </div>
@@ -151,7 +166,7 @@ const CampaignMarketplaceCard: React.FC<CampaignMarketplaceCardProps> = ({
         </div>
 
         <div className="flex items-center justify-between pt-4 border-t">
-          <div className="flex items-center gap-4 text-sm text-gray-600">
+          <div className="flex items-center gap-4 text-sm text-muted-foreground">
             <div className="flex items-center gap-1">
               <Users className="h-4 w-4" />
               <span>{campaign.application_count || 0} applications</span>
