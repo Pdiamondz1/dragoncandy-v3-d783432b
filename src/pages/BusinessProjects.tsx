@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import DashboardLayout from '@/components/DashboardLayout';
@@ -16,6 +16,7 @@ import { useFileUploads } from '@/hooks/useFileUploads';
 import { formatFileSize } from '@/lib/fileUtils';
 import { cn } from '@/lib/utils';
 import RatingModal from '@/components/reviews/RatingModal';
+import { useToast } from '@/hooks/use-toast';
 
 interface ProjectCollaboration {
   id: string;
@@ -51,12 +52,17 @@ interface ProjectCollaboration {
 const BusinessProjects: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const [searchParams, setSearchParams] = useSearchParams();
   const highlightedProjectId = searchParams.get('highlight');
+  const paymentStatus = searchParams.get('payment');
+  const paymentCampaignId = searchParams.get('campaign_id');
   const highlightedRef = useRef<HTMLDivElement>(null);
   const [selectedProject, setSelectedProject] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<string>('overview');
   const [downloadingFileId, setDownloadingFileId] = useState<string | null>(null);
+  const [verifyingPayment, setVerifyingPayment] = useState(false);
   const { requestCompletion, requestingId } = useProjectComplete();
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [selectedReview, setSelectedReview] = useState<{
@@ -64,6 +70,69 @@ const BusinessProjects: React.FC = () => {
     revieweeId: string;
     revieweeName: string;
   } | null>(null);
+
+  // Handle payment verification on redirect from Stripe
+  useEffect(() => {
+    const verifyPayment = async () => {
+      if (!paymentStatus || !paymentCampaignId || verifyingPayment) return;
+      
+      if (paymentStatus === 'success') {
+        setVerifyingPayment(true);
+        toast({
+          title: 'Verifying payment...',
+          description: 'Please wait while we confirm your escrow payment.',
+        });
+        
+        try {
+          const { data, error } = await supabase.functions.invoke('verify-campaign-escrow', {
+            body: { campaignId: paymentCampaignId },
+          });
+          
+          if (error) throw error;
+          
+          if (data?.success) {
+            toast({
+              title: '🎉 Payment Confirmed!',
+              description: 'Your campaign is now published and visible to creators.',
+            });
+            // Invalidate campaigns query to refresh the list
+            queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+            queryClient.invalidateQueries({ queryKey: ['public-campaigns'] });
+          } else {
+            toast({
+              variant: 'destructive',
+              title: 'Payment Pending',
+              description: data?.message || 'Payment not yet confirmed. You can retry from your campaigns page.',
+            });
+          }
+        } catch (error) {
+          console.error('Payment verification error:', error);
+          toast({
+            variant: 'destructive',
+            title: 'Verification Failed',
+            description: 'Could not verify payment. Please check your campaigns page.',
+          });
+        } finally {
+          setVerifyingPayment(false);
+        }
+      } else if (paymentStatus === 'cancelled') {
+        toast({
+          title: 'Payment Cancelled',
+          description: 'Your campaign was saved as a draft. You can pay escrow later.',
+        });
+      }
+      
+      // Clean URL params after handling
+      setSearchParams(prev => {
+        const newParams = new URLSearchParams(prev);
+        newParams.delete('payment');
+        newParams.delete('campaign_id');
+        return newParams;
+      });
+    };
+    
+    verifyPayment();
+  }, [paymentStatus, paymentCampaignId]);
 
   // Fetch all collaborations for campaigns owned by this business
   const { data: projects, isLoading: projectsLoading } = useQuery({

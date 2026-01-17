@@ -61,8 +61,21 @@ export const usePublicCampaigns = (userId?: string) => {
         return [];
       }
 
-      // Get unique user IDs from campaigns
-      const userIds = [...new Set(campaigns.map(campaign => campaign.user_id))];
+      // Filter out fixed-price campaigns that haven't been paid (escrow_status !== 'held')
+      // Bid-range campaigns don't require upfront payment, so they're always visible
+      const visibleCampaigns = campaigns.filter(campaign => {
+        if (campaign.pricing_type === 'fixed') {
+          // Fixed-price campaigns must have escrow held to be visible
+          return campaign.escrow_status === 'held';
+        }
+        // Bid-range campaigns are always visible once published
+        return true;
+      });
+
+      console.log('Filtered visible campaigns:', visibleCampaigns.length, 'of', campaigns.length);
+
+      // Get unique user IDs from visible campaigns
+      const userIds = [...new Set(visibleCampaigns.map(campaign => campaign.user_id))];
 
       // Fetch business profiles for these users
       const { data: businessProfiles, error: profilesError } = await supabase
@@ -82,7 +95,7 @@ export const usePublicCampaigns = (userId?: string) => {
 
       // Get application counts and user application status if user is provided
       const enrichedCampaigns = await Promise.all(
-        campaigns.map(async (campaign) => {
+        visibleCampaigns.map(async (campaign) => {
           // Get application count
           const { count } = await supabase
             .from('campaign_applications')

@@ -24,6 +24,9 @@ verify_jwt = false
 [functions.create-campaign-escrow]
 verify_jwt = false
 
+[functions.verify-campaign-escrow]
+verify_jwt = false
+
 [functions.create-creator-connect-account]
 verify_jwt = false
 
