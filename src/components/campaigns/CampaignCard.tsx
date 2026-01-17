@@ -1,12 +1,14 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Calendar, DollarSign, Eye, Users, FileText, MessageSquare, Edit, UserCheck } from 'lucide-react';
+import { Calendar, DollarSign, Eye, Users, FileText, MessageSquare, Edit, UserCheck, CreditCard, Loader2, AlertCircle } from 'lucide-react';
 import { Campaign } from '@/hooks/useCampaigns';
 import { format } from 'date-fns';
 import { useCampaignApplicationsCount } from '@/hooks/useCampaignApplicationsCount';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 interface CampaignCardProps {
   campaign: Campaign;
@@ -20,6 +22,9 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
   onEdit 
 }) => {
   const { data: applicationCounts } = useCampaignApplicationsCount(campaign.id);
+  const { toast } = useToast();
+  const [isPayingEscrow, setIsPayingEscrow] = useState(false);
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'draft': return 'bg-gray-100 text-gray-800 border-gray-200';
@@ -31,7 +36,96 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
     }
   };
 
+  const getEscrowBadge = () => {
+    if (campaign.pricing_type !== 'fixed') return null;
+    
+    switch (campaign.escrow_status) {
+      case 'pending':
+        return (
+          <Badge className="bg-amber-100 text-amber-800 border-amber-200 text-xs flex items-center gap-1">
+            <AlertCircle className="h-3 w-3" />
+            Payment Pending
+          </Badge>
+        );
+      case 'held':
+        return (
+          <Badge className="bg-green-100 text-green-800 border-green-200 text-xs flex items-center gap-1">
+            <CreditCard className="h-3 w-3" />
+            Escrow Held
+          </Badge>
+        );
+      case 'released':
+        return (
+          <Badge className="bg-purple-100 text-purple-800 border-purple-200 text-xs flex items-center gap-1">
+            <CreditCard className="h-3 w-3" />
+            Paid Out
+          </Badge>
+        );
+      default:
+        return null;
+    }
+  };
+
+  const handlePayEscrow = async () => {
+    setIsPayingEscrow(true);
+    
+    // Open blank window immediately to avoid popup blocker
+    const checkoutWindow = window.open('about:blank', '_blank');
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('create-campaign-escrow', {
+        body: {
+          campaignId: campaign.id,
+          amount: campaign.fixed_price || 0,
+          deliveryFee: campaign.delivery_fee || 0,
+          campaignTitle: campaign.title,
+          deliveryType: campaign.delivery_type || 'standard',
+        },
+      });
+      
+      if (error) throw error;
+      
+      if (data?.url && checkoutWindow) {
+        checkoutWindow.location.href = data.url;
+        toast({
+          title: 'Opening Stripe Checkout',
+          description: 'Complete your payment to publish the campaign.',
+        });
+      } else if (data?.url) {
+        // Fallback if popup was blocked
+        toast({
+          title: 'Popup Blocked',
+          description: 'Click below to open payment.',
+          action: (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => window.open(data.url, '_blank')}
+            >
+              Open Payment
+            </Button>
+          ),
+        });
+      }
+    } catch (error) {
+      console.error('Escrow payment error:', error);
+      checkoutWindow?.close();
+      toast({
+        variant: 'destructive',
+        title: 'Payment Failed',
+        description: 'Could not initiate payment. Please try again.',
+      });
+    } finally {
+      setIsPayingEscrow(false);
+    }
+  };
+
   const formatBudget = () => {
+    // Show fixed price if it's a fixed campaign
+    if (campaign.pricing_type === 'fixed' && campaign.fixed_price) {
+      const total = campaign.fixed_price + (campaign.delivery_fee || 0);
+      return `$${total} (Fixed)`;
+    }
     if (campaign.budget_min && campaign.budget_max) {
       return `$${campaign.budget_min} - $${campaign.budget_max}`;
     }
@@ -59,8 +153,11 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
     }
   };
 
+  // Check if campaign needs escrow payment
+  const needsEscrowPayment = campaign.pricing_type === 'fixed' && campaign.escrow_status === 'pending';
+
   return (
-    <Card className="relative hover:shadow-lg transition-all duration-200 border-l-4 border-l-transparent hover:border-l-primary/50">
+    <Card className={`relative hover:shadow-lg transition-all duration-200 border-l-4 ${needsEscrowPayment ? 'border-l-amber-500 bg-amber-50/30' : 'border-l-transparent hover:border-l-primary/50'}`}>
       {/* Application Counter Badge - Top Right Corner */}
       {applicationCounts && applicationCounts.pending > 0 && (
         <div className="absolute -top-2 -right-2 z-10">
@@ -76,11 +173,12 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
             <CardTitle className="text-base sm:text-lg font-semibold line-clamp-2 mb-2">
               {campaign.title}
             </CardTitle>
-            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 flex-wrap">
               <Badge className={`${getStatusColor(campaign.status)} text-xs font-medium flex items-center gap-1 w-fit`}>
                 {getStatusIcon(campaign.status)}
                 {campaign.status.charAt(0).toUpperCase() + campaign.status.slice(1)}
               </Badge>
+              {getEscrowBadge()}
               <span className="text-xs text-muted-foreground">
                 {format(new Date(campaign.created_at), 'MMM dd, yyyy')}
               </span>
@@ -90,6 +188,37 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
       </CardHeader>
 
       <CardContent className="space-y-3 sm:space-y-4 pt-0">
+        {/* Escrow Payment Alert */}
+        {needsEscrowPayment && (
+          <div className="p-3 rounded-lg bg-amber-100 border border-amber-300">
+            <div className="flex items-center gap-2 text-amber-800 text-sm font-medium mb-2">
+              <AlertCircle className="h-4 w-4" />
+              Payment Required to Publish
+            </div>
+            <p className="text-xs text-amber-700 mb-2">
+              Complete escrow payment to make this campaign visible to creators.
+            </p>
+            <Button
+              size="sm"
+              className="w-full bg-amber-600 hover:bg-amber-700 text-white"
+              onClick={handlePayEscrow}
+              disabled={isPayingEscrow}
+            >
+              {isPayingEscrow ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <CreditCard className="h-4 w-4 mr-2" />
+                  Pay Escrow (${(campaign.fixed_price || 0) + (campaign.delivery_fee || 0)})
+                </>
+              )}
+            </Button>
+          </div>
+        )}
+
         <p className="text-sm text-muted-foreground line-clamp-2 min-h-[2.5rem]">
           {campaign.description || 'No description provided'}
         </p>

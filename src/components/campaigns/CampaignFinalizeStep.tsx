@@ -87,16 +87,34 @@ const CampaignFinalizeStep: React.FC<CampaignFinalizeStepProps> = ({
   const handleCreateCampaign = async (data: FinalizeFormData, forceStatus?: 'draft' | 'published') => {
     setIsCreating(true);
     
+    // For fixed-price campaigns that want to publish, open a blank window IMMEDIATELY
+    // This prevents popup blockers since it's synchronous with the user click
+    let checkoutWindow: Window | null = null;
+    const wantToPublish = forceStatus === 'published' || (!forceStatus && data.publishImmediately);
+    const isFixedPrice = campaignData.pricingType === 'fixed';
+    
+    if (wantToPublish && isFixedPrice) {
+      checkoutWindow = window.open('about:blank', '_blank');
+    }
+    
     try {
-      const status = forceStatus || (data.publishImmediately ? 'published' : 'draft');
-      
-      // Determine escrow status based on pricing type and publish status
+      // For fixed-price campaigns wanting to publish, save as draft with pending escrow
+      // The campaign will only become 'published' after payment verification
+      let status: 'draft' | 'published' = 'draft';
       let escrowStatus: 'none' | 'pending' = 'none';
-      if (status === 'published' && campaignData.pricingType === 'fixed') {
-        escrowStatus = 'pending'; // Fixed price campaigns need escrow on publish
+      
+      if (wantToPublish) {
+        if (isFixedPrice) {
+          // Fixed price: keep as draft until paid
+          status = 'draft';
+          escrowStatus = 'pending';
+        } else {
+          // Bid-range: can publish immediately (no upfront payment)
+          status = 'published';
+        }
       }
       
-      // Create the campaign first
+      // Create the campaign
       const campaign = await createCampaign.mutateAsync({
         title: data.title,
         description: data.description,
@@ -118,8 +136,8 @@ const CampaignFinalizeStep: React.FC<CampaignFinalizeStepProps> = ({
         escrow_status: escrowStatus,
       });
 
-      // If fixed price and published, trigger Stripe escrow checkout
-      if (status === 'published' && campaignData.pricingType === 'fixed') {
+      // If fixed price and user wants to publish, trigger Stripe escrow checkout
+      if (wantToPublish && isFixedPrice) {
         console.log('Initiating escrow payment for campaign:', campaign.id);
         
         const { data: checkoutData, error: checkoutError } = await supabase.functions.invoke(
@@ -137,27 +155,47 @@ const CampaignFinalizeStep: React.FC<CampaignFinalizeStepProps> = ({
         
         if (checkoutError) {
           console.error('Escrow checkout error:', checkoutError);
+          checkoutWindow?.close();
           toast({
             variant: 'destructive',
             title: 'Payment Setup Failed',
-            description: 'Campaign created but payment could not be initiated. Please try again from your campaigns page.',
+            description: 'Campaign saved as draft. You can pay escrow from your campaigns page.',
           });
           navigate('/dashboard/business/campaigns');
           return;
         }
         
         if (checkoutData?.url) {
-          toast({
-            title: 'Campaign Created!',
-            description: 'Complete your escrow payment in the new tab.',
-          });
-          window.open(checkoutData.url, '_blank');
+          if (checkoutWindow) {
+            // Redirect the already-open window to Stripe
+            checkoutWindow.location.href = checkoutData.url;
+            toast({
+              title: 'Campaign Created!',
+              description: 'Complete your escrow payment in the new tab to publish.',
+            });
+          } else {
+            // Fallback: popup was blocked, show link
+            toast({
+              title: 'Campaign Created!',
+              description: 'Popup blocked. Click below to complete payment.',
+              action: (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => window.open(checkoutData.url, '_blank')}
+                >
+                  Open Payment
+                </Button>
+              ),
+            });
+          }
         }
       }
 
       navigate('/dashboard/business/campaigns');
     } catch (error) {
       console.error('Failed to create campaign:', error);
+      checkoutWindow?.close();
       toast({
         variant: 'destructive',
         title: 'Error',
