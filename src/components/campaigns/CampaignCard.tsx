@@ -3,12 +3,13 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Calendar, DollarSign, Eye, Users, FileText, MessageSquare, Edit, UserCheck, CreditCard, Loader2, AlertCircle } from 'lucide-react';
+import { Calendar, DollarSign, Eye, Users, FileText, MessageSquare, Edit, UserCheck, CreditCard, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 import { Campaign } from '@/hooks/useCampaigns';
 import { format } from 'date-fns';
 import { useCampaignApplicationsCount } from '@/hooks/useCampaignApplicationsCount';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface CampaignCardProps {
   campaign: Campaign;
@@ -23,7 +24,9 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
 }) => {
   const { data: applicationCounts } = useCampaignApplicationsCount(campaign.id);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [isPayingEscrow, setIsPayingEscrow] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -66,8 +69,43 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
     }
   };
 
+  // Verify payment first before opening checkout
+  const handleVerifyPayment = async () => {
+    setIsVerifying(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('verify-campaign-escrow', {
+        body: { campaignId: campaign.id },
+      });
+
+      if (error) throw error;
+
+      if (data?.success && data?.status === 'held') {
+        toast({
+          title: 'Payment Already Verified!',
+          description: 'Your campaign is published and visible to creators.',
+        });
+        queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+        queryClient.invalidateQueries({ queryKey: ['public-campaigns'] });
+        return true; // Payment was already made
+      }
+      return false; // Payment not yet made
+    } catch (err) {
+      console.error('Verification check failed:', err);
+      return false;
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
   const handlePayEscrow = async () => {
     setIsPayingEscrow(true);
+    
+    // First, check if already paid (prevents duplicate charges)
+    const alreadyPaid = await handleVerifyPayment();
+    if (alreadyPaid) {
+      setIsPayingEscrow(false);
+      return;
+    }
     
     // Open blank window immediately to avoid popup blocker
     const checkoutWindow = window.open('about:blank', '_blank');
@@ -84,6 +122,17 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
       });
       
       if (error) throw error;
+
+      // Check if already paid (edge function returns this)
+      if (data?.alreadyPaid) {
+        checkoutWindow?.close();
+        toast({
+          title: 'Already Paid',
+          description: 'This campaign has already been paid for.',
+        });
+        queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+        return;
+      }
       
       if (data?.url && checkoutWindow) {
         checkoutWindow.location.href = data.url;
@@ -198,24 +247,39 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
             <p className="text-xs text-amber-700 mb-2">
               Complete escrow payment to make this campaign visible to creators.
             </p>
-            <Button
-              size="sm"
-              className="w-full bg-amber-600 hover:bg-amber-700 text-white"
-              onClick={handlePayEscrow}
-              disabled={isPayingEscrow}
-            >
-              {isPayingEscrow ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Processing...
-                </>
-              ) : (
-                <>
-                  <CreditCard className="h-4 w-4 mr-2" />
-                  Pay Escrow (${(campaign.fixed_price || 0) + (campaign.delivery_fee || 0)})
-                </>
-              )}
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                className="flex-1 bg-amber-600 hover:bg-amber-700 text-white"
+                onClick={handlePayEscrow}
+                disabled={isPayingEscrow || isVerifying}
+              >
+                {isPayingEscrow ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <CreditCard className="h-4 w-4 mr-2" />
+                    Pay (${(campaign.fixed_price || 0) + (campaign.delivery_fee || 0)})
+                  </>
+                )}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleVerifyPayment}
+                disabled={isVerifying || isPayingEscrow}
+                className="border-amber-300 text-amber-700 hover:bg-amber-50"
+              >
+                {isVerifying ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
           </div>
         )}
 

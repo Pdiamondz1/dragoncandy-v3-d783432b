@@ -17,7 +17,14 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Use service role key for reliable DB updates
   const supabaseClient = createClient(
+    Deno.env.get("SUPABASE_URL") ?? "",
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+  );
+
+  // Also create anon client for auth
+  const supabaseAnon = createClient(
     Deno.env.get("SUPABASE_URL") ?? "",
     Deno.env.get("SUPABASE_ANON_KEY") ?? ""
   );
@@ -33,7 +40,7 @@ serve(async (req) => {
     if (!authHeader) throw new Error("No authorization header provided");
 
     const token = authHeader.replace("Bearer ", "");
-    const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
+    const { data: userData, error: userError } = await supabaseAnon.auth.getUser(token);
     if (userError) throw new Error(`Authentication error: ${userError.message}`);
     
     const user = userData.user;
@@ -47,6 +54,33 @@ serve(async (req) => {
     
     const totalAmount = amount + (deliveryFee || 0);
     logStep("Request payload", { campaignId, amount, deliveryFee, totalAmount, campaignTitle, deliveryType });
+
+    // Verify campaign ownership
+    const { data: campaign, error: campaignError } = await supabaseClient
+      .from('campaigns')
+      .select('id, user_id, escrow_status')
+      .eq('id', campaignId)
+      .single();
+
+    if (campaignError || !campaign) {
+      throw new Error("Campaign not found");
+    }
+
+    if (campaign.user_id !== user.id) {
+      throw new Error("You are not authorized to pay for this campaign");
+    }
+
+    // If already paid, don't create new session
+    if (campaign.escrow_status === 'held' || campaign.escrow_status === 'released') {
+      logStep("Campaign already paid", { escrowStatus: campaign.escrow_status });
+      return new Response(JSON.stringify({ 
+        error: "Campaign already paid",
+        alreadyPaid: true 
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
 
@@ -73,7 +107,7 @@ serve(async (req) => {
     };
     const deliveryLabel = deliveryLabels[deliveryType] || 'Standard Delivery';
 
-    // Create checkout session
+    // Create checkout session with correct return URLs
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       customer_email: customerId ? undefined : user.email,
@@ -91,8 +125,9 @@ serve(async (req) => {
         },
       ],
       mode: "payment",
-      success_url: `${origin}/business/projects?payment=success&campaign_id=${campaignId}`,
-      cancel_url: `${origin}/business/projects?payment=cancelled`,
+      // Fixed: Use correct dashboard routes with session_id for verification
+      success_url: `${origin}/dashboard/business/campaigns?payment=success&campaign_id=${campaignId}&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${origin}/dashboard/business/campaigns?payment=cancelled&campaign_id=${campaignId}`,
       metadata: {
         campaign_id: campaignId,
         platform_fee: platformFee.toString(),
@@ -105,24 +140,31 @@ serve(async (req) => {
         metadata: {
           campaign_id: campaignId,
           platform_fee: platformFee.toString(),
+          user_id: user.id,
           type: 'campaign_escrow',
         },
       },
     });
 
-    logStep("Checkout session created", { sessionId: session.id, url: session.url });
+    logStep("Checkout session created", { 
+      sessionId: session.id, 
+      paymentIntent: session.payment_intent,
+      url: session.url 
+    });
 
-    // Update campaign with pending escrow status
+    // Store session.id (not payment_intent which may be null at this stage)
     const { error: updateError } = await supabaseClient
       .from('campaigns')
       .update({ 
         escrow_status: 'pending',
-        escrow_payment_intent_id: session.payment_intent as string,
+        escrow_payment_intent_id: session.id, // Store session ID for now
       })
       .eq('id', campaignId);
 
     if (updateError) {
       logStep("Warning: Failed to update campaign escrow status", { error: updateError.message });
+    } else {
+      logStep("Campaign updated with session ID", { sessionId: session.id });
     }
 
     return new Response(JSON.stringify({ url: session.url, sessionId: session.id }), {

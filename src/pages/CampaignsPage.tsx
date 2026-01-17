@@ -1,20 +1,90 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Plus, Filter } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Plus } from 'lucide-react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import CampaignsList from '@/components/campaigns/CampaignsList';
 import { useCampaigns } from '@/hooks/useCampaigns';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import { useQueryClient } from '@tanstack/react-query';
 
 const CampaignsPage: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [statusFilter, setStatusFilter] = useState<'all' | 'draft' | 'published' | 'active' | 'completed' | 'cancelled'>('all');
   const { campaigns } = useCampaigns(true); // Only show user's own campaigns
   const isMobile = useIsMobile();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [isVerifying, setIsVerifying] = useState(false);
+
+  // Handle payment verification from Stripe redirect
+  useEffect(() => {
+    const payment = searchParams.get('payment');
+    const campaignId = searchParams.get('campaign_id');
+    const sessionId = searchParams.get('session_id');
+
+    if (payment === 'success' && campaignId && !isVerifying) {
+      setIsVerifying(true);
+      
+      const verifyPayment = async () => {
+        try {
+          console.log('Verifying payment for campaign:', campaignId, 'session:', sessionId);
+          
+          const { data, error } = await supabase.functions.invoke('verify-campaign-escrow', {
+            body: { campaignId, sessionId },
+          });
+
+          if (error) {
+            console.error('Verification error:', error);
+            toast({
+              variant: 'destructive',
+              title: 'Verification Failed',
+              description: 'Could not verify payment. Please try again or contact support.',
+            });
+          } else if (data?.success) {
+            toast({
+              title: 'Payment Verified!',
+              description: 'Your campaign is now published and visible to creators.',
+            });
+            // Refresh campaigns data
+            queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+            queryClient.invalidateQueries({ queryKey: ['public-campaigns'] });
+          } else if (data?.status === 'pending') {
+            toast({
+              title: 'Payment Processing',
+              description: 'Your payment is still being processed. Please wait a moment and refresh.',
+            });
+          }
+        } catch (err) {
+          console.error('Payment verification failed:', err);
+          toast({
+            variant: 'destructive',
+            title: 'Error',
+            description: 'Something went wrong. Please refresh the page.',
+          });
+        } finally {
+          // Clean up URL params
+          setSearchParams({});
+          setIsVerifying(false);
+        }
+      };
+
+      verifyPayment();
+    } else if (payment === 'cancelled' && campaignId) {
+      toast({
+        title: 'Payment Cancelled',
+        description: 'You can complete the payment anytime from your campaign card.',
+      });
+      // Clean up URL params
+      setSearchParams({});
+    }
+  }, [searchParams, queryClient, toast, setSearchParams, isVerifying]);
 
   // Calculate counts for each status
   const getCounts = () => {
