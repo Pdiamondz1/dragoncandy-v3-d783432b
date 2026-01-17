@@ -14,6 +14,7 @@ import { format } from 'date-fns';
 import { useCampaigns } from '@/hooks/useCampaigns';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 import DeliveryBadge from './DeliveryBadge';
 import type { DeliveryType } from './DeliveryTypeSelector';
 import type { PricingType } from './PricingTypeSelector';
@@ -95,7 +96,8 @@ const CampaignFinalizeStep: React.FC<CampaignFinalizeStepProps> = ({
         escrowStatus = 'pending'; // Fixed price campaigns need escrow on publish
       }
       
-      await createCampaign.mutateAsync({
+      // Create the campaign first
+      const campaign = await createCampaign.mutateAsync({
         title: data.title,
         description: data.description,
         goals: campaignData.goals,
@@ -116,18 +118,51 @@ const CampaignFinalizeStep: React.FC<CampaignFinalizeStepProps> = ({
         escrow_status: escrowStatus,
       });
 
-      // TODO: If fixed price and published, redirect to escrow payment flow
+      // If fixed price and published, trigger Stripe escrow checkout
       if (status === 'published' && campaignData.pricingType === 'fixed') {
-        toast({
-          title: 'Campaign Created!',
-          description: 'Redirecting to complete escrow payment...',
-        });
-        // For now, just navigate to campaigns. Escrow payment will be added in Phase 3
+        console.log('Initiating escrow payment for campaign:', campaign.id);
+        
+        const { data: checkoutData, error: checkoutError } = await supabase.functions.invoke(
+          'create-campaign-escrow',
+          {
+            body: {
+              campaignId: campaign.id,
+              amount: campaignData.fixedPrice || 0,
+              deliveryFee: campaignData.deliveryFee,
+              campaignTitle: data.title,
+              deliveryType: campaignData.deliveryType,
+            },
+          }
+        );
+        
+        if (checkoutError) {
+          console.error('Escrow checkout error:', checkoutError);
+          toast({
+            variant: 'destructive',
+            title: 'Payment Setup Failed',
+            description: 'Campaign created but payment could not be initiated. Please try again from your campaigns page.',
+          });
+          navigate('/dashboard/business/campaigns');
+          return;
+        }
+        
+        if (checkoutData?.url) {
+          toast({
+            title: 'Campaign Created!',
+            description: 'Complete your escrow payment in the new tab.',
+          });
+          window.open(checkoutData.url, '_blank');
+        }
       }
 
       navigate('/dashboard/business/campaigns');
     } catch (error) {
       console.error('Failed to create campaign:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to create campaign. Please try again.',
+      });
     } finally {
       setIsCreating(false);
     }
