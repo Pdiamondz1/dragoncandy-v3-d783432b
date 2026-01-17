@@ -40,11 +40,11 @@ serve(async (req) => {
     if (!user) throw new Error("User not authenticated");
     logStep("User authenticated", { userId: user.id });
 
-    const { campaignId } = await req.json();
+    const { campaignId, sessionId } = await req.json();
     if (!campaignId) {
       throw new Error("Missing required field: campaignId");
     }
-    logStep("Request payload", { campaignId });
+    logStep("Request payload", { campaignId, sessionId });
 
     // Fetch the campaign and verify ownership
     const { data: campaign, error: campaignError } = await supabaseClient
@@ -64,7 +64,7 @@ serve(async (req) => {
     logStep("Campaign found", { 
       campaignId: campaign.id, 
       escrowStatus: campaign.escrow_status,
-      paymentIntentId: campaign.escrow_payment_intent_id 
+      storedId: campaign.escrow_payment_intent_id 
     });
 
     // If already held/released, return success
@@ -80,48 +80,94 @@ serve(async (req) => {
       });
     }
 
-    // If no payment intent, can't verify
-    if (!campaign.escrow_payment_intent_id) {
-      throw new Error("No payment intent found for this campaign. Please initiate payment first.");
-    }
-
-    // Initialize Stripe and check payment status
+    // Initialize Stripe
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
     
-    // The escrow_payment_intent_id might be null initially (set by checkout session)
-    // We need to check if it's a checkout session or payment intent
     let paymentSucceeded = false;
+    let actualPaymentIntentId: string | null = null;
     
-    try {
-      // First try as payment intent
-      const paymentIntent = await stripe.paymentIntents.retrieve(campaign.escrow_payment_intent_id);
-      logStep("Payment intent retrieved", { 
-        intentId: paymentIntent.id, 
-        status: paymentIntent.status 
-      });
-      paymentSucceeded = paymentIntent.status === 'succeeded';
-    } catch (e) {
-      // Might be a checkout session ID, try to retrieve it
-      logStep("Not a payment intent, trying as checkout session");
+    // Priority 1: Use sessionId from URL if provided
+    if (sessionId) {
+      logStep("Trying verification with provided sessionId", { sessionId });
       try {
-        const session = await stripe.checkout.sessions.retrieve(campaign.escrow_payment_intent_id);
-        logStep("Checkout session retrieved", { 
-          sessionId: session.id, 
+        const session = await stripe.checkout.sessions.retrieve(sessionId);
+        logStep("Session retrieved", { 
           paymentStatus: session.payment_status,
-          paymentIntent: session.payment_intent
+          paymentIntent: session.payment_intent,
+          metadata: session.metadata
         });
-        paymentSucceeded = session.payment_status === 'paid';
         
-        // Update the campaign with the actual payment intent ID
-        if (session.payment_intent) {
-          await supabaseClient
-            .from('campaigns')
-            .update({ escrow_payment_intent_id: session.payment_intent as string })
-            .eq('id', campaignId);
+        if (session.payment_status === 'paid') {
+          paymentSucceeded = true;
+          actualPaymentIntentId = session.payment_intent as string;
         }
-      } catch (e2) {
-        logStep("Could not retrieve as session either", { error: String(e2) });
-        throw new Error("Could not verify payment status. Please contact support.");
+      } catch (e) {
+        logStep("Could not retrieve session from URL param", { error: String(e) });
+      }
+    }
+
+    // Priority 2: Use stored escrow_payment_intent_id
+    if (!paymentSucceeded && campaign.escrow_payment_intent_id) {
+      const storedId = campaign.escrow_payment_intent_id;
+      logStep("Trying verification with stored ID", { storedId });
+      
+      // Check if it's a session ID (starts with cs_)
+      if (storedId.startsWith('cs_')) {
+        try {
+          const session = await stripe.checkout.sessions.retrieve(storedId);
+          logStep("Stored session retrieved", { 
+            paymentStatus: session.payment_status,
+            paymentIntent: session.payment_intent
+          });
+          
+          if (session.payment_status === 'paid') {
+            paymentSucceeded = true;
+            actualPaymentIntentId = session.payment_intent as string;
+          }
+        } catch (e) {
+          logStep("Could not retrieve as session", { error: String(e) });
+        }
+      } 
+      // Check if it's a payment intent ID (starts with pi_)
+      else if (storedId.startsWith('pi_')) {
+        try {
+          const paymentIntent = await stripe.paymentIntents.retrieve(storedId);
+          logStep("Payment intent retrieved", { 
+            status: paymentIntent.status 
+          });
+          
+          if (paymentIntent.status === 'succeeded') {
+            paymentSucceeded = true;
+            actualPaymentIntentId = storedId;
+          }
+        } catch (e) {
+          logStep("Could not retrieve as payment intent", { error: String(e) });
+        }
+      }
+    }
+
+    // Priority 3: Search Stripe for payments with this campaign_id in metadata
+    if (!paymentSucceeded) {
+      logStep("Searching Stripe for payments by campaign metadata");
+      try {
+        const paymentIntents = await stripe.paymentIntents.search({
+          query: `metadata['campaign_id']:'${campaignId}' AND status:'succeeded'`,
+          limit: 1,
+        });
+        
+        if (paymentIntents.data.length > 0) {
+          const pi = paymentIntents.data[0];
+          logStep("Found payment via metadata search", { 
+            paymentIntentId: pi.id,
+            amount: pi.amount 
+          });
+          paymentSucceeded = true;
+          actualPaymentIntentId = pi.id;
+        } else {
+          logStep("No matching payment found in Stripe");
+        }
+      } catch (e) {
+        logStep("Stripe search failed", { error: String(e) });
       }
     }
 
@@ -142,7 +188,8 @@ serve(async (req) => {
       .from('campaigns')
       .update({ 
         escrow_status: 'held',
-        status: 'published'
+        status: 'published',
+        escrow_payment_intent_id: actualPaymentIntentId, // Store the real PI ID
       })
       .eq('id', campaignId);
 
@@ -151,7 +198,10 @@ serve(async (req) => {
       throw new Error("Failed to update campaign status");
     }
 
-    logStep("Campaign published successfully", { campaignId });
+    logStep("Campaign published successfully", { 
+      campaignId,
+      paymentIntentId: actualPaymentIntentId 
+    });
 
     return new Response(JSON.stringify({ 
       success: true, 
