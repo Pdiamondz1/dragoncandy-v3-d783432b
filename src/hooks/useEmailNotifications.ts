@@ -16,7 +16,8 @@ type NotificationType =
   | 'completion_request'
   | 'project_completion'
   | 'sponsorship_completion_request'
-  | 'sponsorship_completed';
+  | 'sponsorship_completed'
+  | 'content_started';
 
 interface NotificationData {
   campaignTitle?: string;
@@ -41,6 +42,7 @@ interface NotificationData {
   projectId?: string;
   actionUrl?: string;
   requesterName?: string;
+  deliveryTime?: string;
 }
 
 export const useEmailNotifications = () => {

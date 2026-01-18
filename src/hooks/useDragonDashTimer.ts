@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useEmailNotifications } from '@/hooks/useEmailNotifications';
 
 interface TimerData {
   contentStartedAt: string | null;
@@ -23,6 +24,7 @@ export const useDragonDashTimer = (collaborationId: string | null) => {
   const [timerData, setTimerData] = useState<TimerData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const { sendNotification } = useEmailNotifications();
 
   const formatTimeRemaining = (ms: number): string => {
     if (ms <= 0) return 'Expired';
@@ -120,10 +122,18 @@ export const useDragonDashTimer = (collaborationId: string | null) => {
     if (!collaborationId) return false;
 
     try {
-      // First get the campaign's delivery type
+      // Fetch collaboration with campaign and creator details for notification
       const { data: collab, error: fetchError } = await supabase
         .from('campaign_collaborations')
-        .select('campaign:campaigns(delivery_type)')
+        .select(`
+          campaign:campaigns(
+            id,
+            title,
+            delivery_type,
+            user_id
+          ),
+          creator:profiles!creator_id(full_name)
+        `)
         .eq('id', collaborationId)
         .single();
 
@@ -151,6 +161,22 @@ export const useDragonDashTimer = (collaborationId: string | null) => {
         description: `You have ${formatTimeRemaining(duration)} to complete this content.`,
       });
 
+      // Send email notification to business client
+      const deliveryLabels: Record<string, string> = {
+        standard: '72 hours',
+        expedited: '8-12 hours',
+        dragonrush: '1-3 hours',
+      };
+
+      sendNotification('content_started', undefined, undefined, {
+        campaignTitle: collab.campaign?.title,
+        campaignId: collab.campaign?.id,
+        recipientUserId: collab.campaign?.user_id,
+        creatorName: collab.creator?.full_name || 'A creator',
+        deliveryTime: deliveryLabels[deliveryType] || '72 hours',
+        projectId: collaborationId,
+      });
+
       await fetchTimerData();
       return true;
     } catch (error) {
@@ -162,7 +188,7 @@ export const useDragonDashTimer = (collaborationId: string | null) => {
       });
       return false;
     }
-  }, [collaborationId, toast, fetchTimerData]);
+  }, [collaborationId, toast, fetchTimerData, sendNotification]);
 
   // Fetch initial data
   useEffect(() => {
