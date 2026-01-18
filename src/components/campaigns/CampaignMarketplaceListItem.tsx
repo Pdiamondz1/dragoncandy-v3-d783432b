@@ -46,11 +46,20 @@ const CampaignMarketplaceListItem: React.FC<CampaignMarketplaceListItemProps> = 
   };
 
   const getBudgetRange = () => {
+    // Check for fixed-price campaigns first (DragonDash)
+    if (campaign.pricing_type === 'fixed' && campaign.fixed_price) {
+      return `${formatCurrency(campaign.fixed_price)} Fixed`;
+    }
+    
+    // Bid-range campaigns
     if (campaign.budget_max) {
       if (campaign.budget_min) {
         return `${formatCurrency(campaign.budget_min)} - ${formatCurrency(campaign.budget_max)}`;
       }
       return `Up to ${formatCurrency(campaign.budget_max)}`;
+    }
+    if (campaign.budget_min) {
+      return `From ${formatCurrency(campaign.budget_min)}`;
     }
     return 'Budget not specified';
   };
