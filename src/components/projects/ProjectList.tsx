@@ -18,6 +18,7 @@ import {
   Star
 } from 'lucide-react';
 import ProjectFileUpload from '@/components/projects/ProjectFileUpload';
+import ProjectTimerSection from '@/components/projects/ProjectTimerSection';
 import { useProjectComplete } from '@/hooks/useProjectComplete';
 import { useSearchParams } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -37,12 +38,19 @@ interface ProjectCollaboration {
   completed_at?: string | null;
   created_at: string;
   updated_at: string;
+  // DragonDash timer fields
+  content_started_at?: string | null;
+  content_deadline?: string | null;
+  content_status?: string | null;
   campaigns: {
     title: string;
     description?: string;
     deadline?: string;
     budget_min?: number;
     budget_max?: number;
+    fixed_price?: number;
+    pricing_type?: string;
+    delivery_type?: string;
     deliverables?: string[];
   };
 }
@@ -77,12 +85,15 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, showProgress, onMes
       }, 100);
     }
   }, [highlightedProjectId]);
-  const formatCurrency = (min?: number, max?: number) => {
-    if (!min && !max) return 'Not specified';
-    if (min && max && min !== max) {
-      return `$${min.toLocaleString()} - $${max.toLocaleString()}`;
+  const formatBudget = (campaign: ProjectCollaboration['campaigns']) => {
+    if (campaign.pricing_type === 'fixed' && campaign.fixed_price) {
+      return `$${campaign.fixed_price.toLocaleString()} Fixed`;
     }
-    return `$${(min || max || 0).toLocaleString()}`;
+    if (!campaign.budget_min && !campaign.budget_max) return 'Not specified';
+    if (campaign.budget_min && campaign.budget_max && campaign.budget_min !== campaign.budget_max) {
+      return `$${campaign.budget_min.toLocaleString()} - $${campaign.budget_max.toLocaleString()}`;
+    }
+    return `$${(campaign.budget_min || campaign.budget_max || 0).toLocaleString()}`;
   };
 
   const formatDate = (dateString?: string) => {
@@ -270,11 +281,19 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, showProgress, onMes
                     <div>
                       <p className="text-xs text-muted-foreground">Budget</p>
                       <p className="text-sm font-medium">
-                        {formatCurrency(project.campaigns.budget_min, project.campaigns.budget_max)}
+                        {formatBudget(project.campaigns)}
                       </p>
                     </div>
                   </div>
                 </div>
+
+                {/* DragonDash Timer Section */}
+                {project.status === 'active' && project.campaigns.delivery_type && (
+                  <ProjectTimerSection
+                    collaborationId={project.id}
+                    deliveryType={project.campaigns.delivery_type}
+                  />
+                )}
 
                 {project.campaigns.deliverables && project.campaigns.deliverables.length > 0 && (
                   <div>
