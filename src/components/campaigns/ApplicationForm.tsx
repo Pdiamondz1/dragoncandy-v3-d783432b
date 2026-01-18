@@ -5,7 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { DollarSign, Clock, MessageSquare } from 'lucide-react';
+import { DollarSign, Clock, MessageSquare, Calendar } from 'lucide-react';
 import { useCreateApplication } from '@/hooks/useCreateApplication';
 import { Campaign } from '@/hooks/useCampaignQueries';
 
@@ -56,6 +56,24 @@ const ApplicationForm: React.FC<ApplicationFormProps> = ({
     }).format(amount);
   };
 
+  const formatDeadline = (deadline: string | undefined) => {
+    if (!deadline) return null;
+    return new Date(deadline).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  };
+
+  const getDeliveryLabel = (deliveryType: string | undefined) => {
+    switch (deliveryType) {
+      case 'dragonrush': return 'DragonRush (1-3 hours)';
+      case 'expedited': return 'Expedited (8-12 hours)';
+      case 'standard': return 'Standard (72 hours)';
+      default: return null;
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Campaign Summary */}
@@ -74,10 +92,31 @@ const ApplicationForm: React.FC<ApplicationFormProps> = ({
             <Badge variant={campaign.status === 'published' ? 'default' : 'secondary'}>
               {campaign.status}
             </Badge>
+            {campaign.deadline && (
+              <Badge variant="outline" className="flex items-center gap-1">
+                <Calendar className="h-3 w-3" />
+                Due: {formatDeadline(campaign.deadline)}
+              </Badge>
+            )}
+            {campaign.delivery_type && getDeliveryLabel(campaign.delivery_type) && (
+              <Badge variant="outline" className="flex items-center gap-1">
+                <Clock className="h-3 w-3" />
+                {getDeliveryLabel(campaign.delivery_type)}
+              </Badge>
+            )}
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-3">
           <p className="text-sm text-gray-600">{campaign.description}</p>
+          
+          {/* DragonRush urgency warning */}
+          {campaign.delivery_type === 'dragonrush' && (
+            <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
+              <p className="text-sm text-orange-800 font-medium">
+                ⚡ DragonRush Campaign - Content needed within 1-3 hours of acceptance!
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
 
