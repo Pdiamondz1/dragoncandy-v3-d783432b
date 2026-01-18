@@ -64,7 +64,12 @@ const ApplicationForm: React.FC<ApplicationFormProps> = ({
           <CardTitle className="text-lg">{campaign.title}</CardTitle>
           <div className="flex flex-wrap gap-2">
             <Badge variant="outline">
-              {formatCurrency(campaign.budget_min)} - {formatCurrency(campaign.budget_max)}
+              {campaign.pricing_type === 'fixed' && campaign.fixed_price
+                ? `${formatCurrency(campaign.fixed_price)} Fixed`
+                : campaign.budget_max
+                  ? `${formatCurrency(campaign.budget_min)} - ${formatCurrency(campaign.budget_max)}`
+                  : 'Budget not specified'
+              }
             </Badge>
             <Badge variant={campaign.status === 'published' ? 'default' : 'secondary'}>
               {campaign.status}
@@ -114,21 +119,34 @@ const ApplicationForm: React.FC<ApplicationFormProps> = ({
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="proposed-rate" className="flex items-center gap-2">
-                <DollarSign className="h-4 w-4" />
-                Proposed Rate (Optional)
-              </Label>
-              <Input
-                id="proposed-rate"
-                type="number"
-                placeholder="Enter your proposed rate in USD"
-                value={proposedRate || ''}
-                onChange={(e) => setProposedRate(e.target.value ? Number(e.target.value) : undefined)}
-                min="0"
-                step="0.01"
-              />
-            </div>
+            {/* Show fixed price confirmation for fixed-price campaigns */}
+            {campaign.pricing_type === 'fixed' && campaign.fixed_price && (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                <p className="text-sm text-green-800">
+                  <DollarSign className="h-4 w-4 inline mr-1" />
+                  This is a fixed-price campaign. You will receive <strong>{formatCurrency(campaign.fixed_price)}</strong> upon successful completion.
+                </p>
+              </div>
+            )}
+
+            {/* Only show proposed rate for bid-range campaigns */}
+            {campaign.pricing_type !== 'fixed' && (
+              <div className="space-y-2">
+                <Label htmlFor="proposed-rate" className="flex items-center gap-2">
+                  <DollarSign className="h-4 w-4" />
+                  Proposed Rate (Optional)
+                </Label>
+                <Input
+                  id="proposed-rate"
+                  type="number"
+                  placeholder="Enter your proposed rate in USD"
+                  value={proposedRate || ''}
+                  onChange={(e) => setProposedRate(e.target.value ? Number(e.target.value) : undefined)}
+                  min="0"
+                  step="0.01"
+                />
+              </div>
+            )}
 
             <div className="flex gap-3 pt-4">
               <Button 
