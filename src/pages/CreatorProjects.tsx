@@ -24,12 +24,19 @@ interface ProjectCollaboration {
   completed_at?: string | null;
   created_at: string;
   updated_at: string;
+  // DragonDash timer fields
+  content_started_at?: string | null;
+  content_deadline?: string | null;
+  content_status?: string | null;
   campaigns: {
     title: string;
     description?: string;
     deadline?: string;
     budget_min?: number;
     budget_max?: number;
+    fixed_price?: number;
+    pricing_type?: string;
+    delivery_type?: string;
     deliverables?: string[];
   };
 }
@@ -52,6 +59,9 @@ const CreatorProjects: React.FC = () => {
             deadline,
             budget_min,
             budget_max,
+            fixed_price,
+            pricing_type,
+            delivery_type,
             deliverables
           )
         `)
