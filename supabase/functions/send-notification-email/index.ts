@@ -28,7 +28,8 @@ type NotificationType =
   | 'completion_request'
   | 'project_completion'
   | 'sponsorship_completion_request'
-  | 'sponsorship_completed';
+  | 'sponsorship_completed'
+  | 'content_started';
 
 interface NotificationEmailRequest {
   to?: string;
@@ -62,6 +63,7 @@ interface NotificationEmailRequest {
     requesterName?: string;
     projectId?: string;
     actionUrl?: string;
+    deliveryTime?: string;
   };
 }
 
@@ -524,6 +526,36 @@ const handler = async (req: Request): Promise<Response> => {
               <p style="text-align: center; margin-top: 40px;">
                 <a href="${data.actionUrl || `${baseUrl}/dashboard`}" style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600; font-size: 16px;">
                   Leave a Review
+                </a>
+              </p>
+            </div>
+          </div>
+        `,
+      },
+      content_started: {
+        subject: `🚀 Creator Started Working on "${data.campaignTitle}"`,
+        html: `
+          <div style="font-family: 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: linear-gradient(135deg, #10B981 0%, #059669 100%); padding: 40px 20px; text-align: center; border-radius: 12px 12px 0 0;">
+              <h1 style="color: white; margin: 0; font-size: 28px;">🚀 Content Creation Started!</h1>
+            </div>
+            
+            <div style="background: white; padding: 40px 20px;">
+              <p style="font-size: 16px; color: #374151; line-height: 1.6;">Hi ${rn},</p>
+              
+              <p style="font-size: 16px; color: #374151; line-height: 1.6;"><strong>${data.creatorName}</strong> has started working on your campaign <strong>"${data.campaignTitle}"</strong>!</p>
+              
+              <div style="background: #F0FDF4; border-left: 4px solid #10B981; padding: 16px; margin: 24px 0; border-radius: 4px;">
+                <p style="margin: 0; color: #065F46; font-weight: 600;">⏱️ Delivery Window: ${data.deliveryTime || '72 hours'}</p>
+                <p style="margin: 8px 0 0 0; color: #065F46; font-size: 14px;">The creator is committed to delivering content within this timeframe.</p>
+              </div>
+
+              <p style="font-size: 16px; color: #374151; line-height: 1.6;">You'll receive another notification when the creator submits their content for your review.</p>
+
+              <p style="text-align: center; margin-top: 40px;">
+                <a href="${baseUrl}/dashboard/business/projects/${data.projectId}" 
+                   style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600;">
+                  View Project
                 </a>
               </p>
             </div>
