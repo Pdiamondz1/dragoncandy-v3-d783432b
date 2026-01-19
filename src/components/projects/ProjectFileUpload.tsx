@@ -66,7 +66,7 @@ const ProjectFileUpload: React.FC<ProjectFileUploadProps> = ({
           <DialogTitle>Upload Deliverables for {campaignTitle}</DialogTitle>
         </DialogHeader>
         
-        <div className="space-y-4">
+        <div className="space-y-4 max-h-[70vh] overflow-y-auto">
           <FileUploadDropzone
             onDrop={handleFileDrop}
             acceptedFiles={selectedFiles}
