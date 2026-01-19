@@ -22,6 +22,16 @@ export const useFileUploadNotification = () => {
 
       if (!campaign) return;
 
+      // Get the collaboration for this campaign (needed for correct project URL)
+      const { data: collaboration } = await supabase
+        .from('campaign_collaborations')
+        .select('id, creator_id')
+        .eq('campaign_id', campaignId)
+        .eq('status', 'active')
+        .single();
+
+      if (!collaboration) return;
+
       // Get uploader profile
       const { data: uploaderProfile } = await supabase
         .from('profiles')
@@ -41,15 +51,6 @@ export const useFileUploadNotification = () => {
         notificationType = 'file_uploaded_by_creator';
       } else {
         // Restaurant uploaded → notify creator
-        // Get the creator from campaign_collaborations
-        const { data: collaboration } = await supabase
-          .from('campaign_collaborations')
-          .select('creator_id')
-          .eq('campaign_id', campaignId)
-          .eq('status', 'active')
-          .single();
-
-        if (!collaboration) return;
         recipientId = collaboration.creator_id;
         notificationType = 'file_uploaded_by_restaurant';
       }
@@ -72,6 +73,7 @@ export const useFileUploadNotification = () => {
           data: {
             campaignTitle: campaign.title || campaignTitle,
             campaignId,
+            collaborationId: collaboration.id,
             uploaderName,
             fileCount,
           },
