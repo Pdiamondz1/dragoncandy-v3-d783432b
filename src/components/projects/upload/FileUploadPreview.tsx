@@ -32,14 +32,16 @@ const FileUploadPreview: React.FC<FileUploadPreviewProps> = ({
     <div className="space-y-2">
       <h4 className="font-medium text-gray-700">Files to upload:</h4>
       {files.map((file) => (
-        <div key={file.name} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-          {getFileIcon(file)}
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-gray-700 truncate">{file.name}</p>
+        <div key={file.name} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg overflow-hidden">
+          <div className="flex-shrink-0 text-gray-500">
+            {getFileIcon(file)}
+          </div>
+          <div className="flex-1 min-w-0 overflow-hidden">
+            <p className="text-sm font-medium text-gray-700 truncate max-w-full">{file.name}</p>
             <p className="text-xs text-gray-500">{formatFileSize(file.size)}</p>
           </div>
           {uploadProgress[file.name] !== undefined && (
-            <div className="w-24">
+            <div className="w-24 flex-shrink-0">
               <Progress value={uploadProgress[file.name]} className="h-2" />
             </div>
           )}
