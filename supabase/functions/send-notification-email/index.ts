@@ -38,6 +38,7 @@ interface NotificationEmailRequest {
   data: {
     campaignTitle?: string;
     campaignId?: string;
+    collaborationId?: string;
     recipientUserId?: string; // optional user id to resolve recipient email server-side
     applicantName?: string;
     applicationStatus?: string;
@@ -417,7 +418,7 @@ const handler = async (req: Request): Promise<Response> => {
               <p style="font-size: 16px; color: #374151;">Hi ${rn},</p>
               <p style="font-size: 16px; color: #374151; line-height: 1.6;"><strong>${data.uploaderName}</strong> has uploaded <strong>${data.fileCount} new ${data.fileCount === 1 ? 'file' : 'files'}</strong> to your campaign <strong>"${data.campaignTitle}"</strong>.</p>
               <div style="background: #F0F9FF; border-left: 4px solid #0EA5E9; padding: 16px; margin: 24px 0; border-radius: 4px;"><p style="margin: 0; color: #075985; font-weight: 600;">✅ Ready for Review</p><p style="margin: 8px 0 0 0; color: #075985; font-size: 14px;">The creator has submitted their work. Please review and provide feedback.</p></div>
-              <p style="text-align: center; margin-top: 40px;"><a href="${baseUrl}/dashboard/projects/${data.campaignId}" style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600; font-size: 16px;">Review Files</a></p>
+              <p style="text-align: center; margin-top: 40px;"><a href="${baseUrl}/projects/${data.collaborationId}" style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600; font-size: 16px;">Review Files</a></p>
             </div>
           </div>
         `,
@@ -433,7 +434,7 @@ const handler = async (req: Request): Promise<Response> => {
               <p style="font-size: 16px; color: #374151;">Hi ${rn},</p>
               <p style="font-size: 16px; color: #374151; line-height: 1.6;"><strong>${data.uploaderName}</strong> has uploaded <strong>${data.fileCount} new ${data.fileCount === 1 ? 'file' : 'files'}</strong> for campaign <strong>"${data.campaignTitle}"</strong>.</p>
               <div style="background: #FEF3C7; border-left: 4px solid #F59E0B; padding: 16px; margin: 24px 0; border-radius: 4px;"><p style="margin: 0; color: #92400E; font-weight: 600;">📋 Reference Materials</p><p style="margin: 8px 0 0 0; color: #92400E; font-size: 14px;">New reference files are available to help with your content creation.</p></div>
-              <p style="text-align: center; margin-top: 40px;"><a href="${baseUrl}/dashboard/creator/projects/${data.campaignId}" style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600; font-size: 16px;">View Files</a></p>
+              <p style="text-align: center; margin-top: 40px;"><a href="${baseUrl}/projects/${data.collaborationId}" style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600; font-size: 16px;">View Files</a></p>
             </div>
           </div>
         `,
@@ -553,7 +554,7 @@ const handler = async (req: Request): Promise<Response> => {
               <p style="font-size: 16px; color: #374151; line-height: 1.6;">You'll receive another notification when the creator submits their content for your review.</p>
 
               <p style="text-align: center; margin-top: 40px;">
-                <a href="${baseUrl}/dashboard/business/projects/${data.projectId}" 
+                <a href="${baseUrl}/projects/${data.projectId}" 
                    style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600;">
                   View Project
                 </a>
