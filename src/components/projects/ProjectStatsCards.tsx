@@ -1,7 +1,7 @@
-
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
-import { Briefcase, CheckCircle, DollarSign } from 'lucide-react';
+import { Briefcase, CheckCircle, DollarSign, ArrowRight } from 'lucide-react';
 
 interface ProjectCollaboration {
   id: string;
@@ -37,7 +37,7 @@ const ProjectStatsCards: React.FC<ProjectStatsCardsProps> = ({ projects }) => {
               <Briefcase className="h-6 w-6 text-blue-600" />
             </div>
             <div>
-              <p className="text-sm text-gray-600">Active Projects</p>
+              <p className="text-sm text-muted-foreground">Active Projects</p>
               <p className="text-2xl font-bold">{activeProjects.length}</p>
             </div>
           </div>
@@ -51,28 +51,31 @@ const ProjectStatsCards: React.FC<ProjectStatsCardsProps> = ({ projects }) => {
               <CheckCircle className="h-6 w-6 text-green-600" />
             </div>
             <div>
-              <p className="text-sm text-gray-600">Completed</p>
+              <p className="text-sm text-muted-foreground">Completed</p>
               <p className="text-2xl font-bold">{completedProjects.length}</p>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex items-center gap-4">
-            <div className="p-2 bg-purple-100 rounded-lg">
-              <DollarSign className="h-6 w-6 text-purple-600" />
+      <Link to="/dashboard/creator/earnings">
+        <Card className="hover:border-primary cursor-pointer transition-colors group">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-4">
+              <div className="p-2 bg-purple-100 rounded-lg">
+                <DollarSign className="h-6 w-6 text-purple-600" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm text-muted-foreground">Total Earnings</p>
+                <p className="text-2xl font-bold">
+                  {projects.length > 0 ? formatCurrency(totalEarnings) : '$0'}
+                </p>
+              </div>
+              <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
             </div>
-            <div>
-              <p className="text-sm text-gray-600">Total Earnings</p>
-              <p className="text-2xl font-bold">
-                {projects.length > 0 ? formatCurrency(totalEarnings) : '$0'}
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </Link>
     </div>
   );
 };

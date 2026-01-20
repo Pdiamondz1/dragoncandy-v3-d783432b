@@ -87,6 +87,7 @@ const AppSidebar: React.FC<{ userRole: 'business_client' | 'content_creator' | '
     { icon: Search, label: 'Browse Campaigns', href: '/dashboard/creator/campaigns' },
     { icon: Briefcase, label: 'My Applications', href: '/dashboard/creator/applications' },
     { icon: Target, label: 'My Projects', href: '/dashboard/creator/projects' },
+    { icon: DollarSign, label: 'Earnings', href: '/dashboard/creator/earnings' },
     { icon: MessageSquare, label: 'Messages', href: '/dashboard/creator/messages' },
     { icon: Settings, label: 'Settings', href: '/dashboard/creator/settings' },
   ];

@@ -10,6 +10,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import ProjectStatsCards from '@/components/projects/ProjectStatsCards';
 import ProjectList from '@/components/projects/ProjectList';
+import CreatorPayoutBanner from '@/components/projects/CreatorPayoutBanner';
 
 interface ProjectCollaboration {
   id: string;
@@ -131,11 +132,14 @@ const CreatorProjects: React.FC = () => {
     <DashboardLayout userRole="content_creator">
       <div className="flex-1 p-8">
         <div className="max-w-7xl mx-auto space-y-6">
+          {/* Payout Banner */}
+          {user && <CreatorPayoutBanner creatorId={user.id} />}
+
           {/* Header */}
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">My Projects</h1>
-              <p className="text-gray-600">Manage your active campaigns and track deliverables</p>
+              <h1 className="text-3xl font-bold text-foreground">My Projects</h1>
+              <p className="text-muted-foreground">Manage your active campaigns and track deliverables</p>
             </div>
           </div>
 
