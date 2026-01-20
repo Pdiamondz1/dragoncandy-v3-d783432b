@@ -30,7 +30,11 @@ export const useFileUploadNotification = () => {
         .eq('status', 'active')
         .single();
 
-      if (!collaboration) return;
+      if (!collaboration) {
+        console.warn('No active collaboration found for campaign:', campaignId);
+        return;
+      }
+      console.log('Found collaboration for file upload notification:', collaboration.id);
 
       // Get uploader profile
       const { data: uploaderProfile } = await supabase
