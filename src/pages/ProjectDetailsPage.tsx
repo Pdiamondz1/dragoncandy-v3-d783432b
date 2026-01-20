@@ -100,7 +100,7 @@ const ProjectDetailsPage: React.FC = () => {
               <Button 
                 variant="ghost" 
                 size="sm"
-                onClick={() => navigate(-1)}
+                onClick={() => navigate(isBusinessClient ? '/business/projects' : '/creator/projects')}
               >
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back
