@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Download, MessageCircle, User, Calendar, FileText, Loader2, CheckCircle2, Clock, AlertCircle, Zap, Star } from 'lucide-react';
+import { Download, MessageCircle, User, Calendar, FileText, Loader2, CheckCircle2, Clock, AlertCircle, Zap, Star, DollarSign } from 'lucide-react';
 import { useProjectComplete } from '@/hooks/useProjectComplete';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useFileUploads } from '@/hooks/useFileUploads';
@@ -435,12 +435,12 @@ const BusinessProjects: React.FC = () => {
                               {requestingId === project.id ? (
                                 <>
                                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                  Approving...
+                                  Processing Payment...
                                 </>
                               ) : (
                                 <>
-                                  <CheckCircle2 className="h-4 w-4 mr-2" />
-                                  Approve & Complete
+                                  <DollarSign className="h-4 w-4 mr-2" />
+                                  Approve & Release Payment
                                 </>
                               )}
                             </Button>

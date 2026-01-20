@@ -43,6 +43,8 @@ interface NotificationData {
   actionUrl?: string;
   requesterName?: string;
   deliveryTime?: string;
+  paymentMethod?: string; // 'stripe_transfer' or 'pending_balance'
+  isRecipient?: boolean; // true if recipient received payment, false if they paid
 }
 
 export const useEmailNotifications = () => {
