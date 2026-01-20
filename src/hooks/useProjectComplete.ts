@@ -44,12 +44,14 @@ export const useProjectComplete = () => {
 
       if (creatorError) throw creatorError;
 
-      // Update completion status
+      // Update completion status - also set content_status to 'submitted' when creator marks complete
       const { data, error } = await supabase
         .from('campaign_collaborations')
         .update({ 
           [statusField]: 'requested',
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
+          // If creator marks complete, also mark content as submitted
+          ...(userRole === 'content_creator' && { content_status: 'submitted' })
         })
         .eq('id', collaborationId)
         .select()
@@ -71,6 +73,7 @@ export const useProjectComplete = () => {
             review_status: 'pending',
             business_completion_status: 'approved',
             creator_completion_status: 'approved',
+            content_status: 'approved',
             completed_at: new Date().toISOString()
           })
           .eq('id', collaborationId)
@@ -79,10 +82,34 @@ export const useProjectComplete = () => {
 
         if (completeError) throw completeError;
 
-        // Send completion confirmation emails to both parties
+        // Trigger payout release
+        let payoutSuccess = false;
+        let payoutAmount = 0;
+        let payoutMethod = '';
+
+        try {
+          const { data: payoutResult, error: payoutError } = await supabase.functions
+            .invoke('release-creator-payout', {
+              body: { collaborationId }
+            });
+
+          if (payoutError) {
+            console.error('Payout release failed:', payoutError);
+          } else if (payoutResult?.success) {
+            payoutSuccess = true;
+            payoutAmount = payoutResult.amount || 0;
+            payoutMethod = payoutResult.method || 'pending_balance';
+            console.log('Payout released successfully:', payoutResult);
+          }
+        } catch (payoutErr) {
+          console.error('Payout error:', payoutErr);
+          // Don't throw - project completion is valid, payout can be retried
+        }
+
+        // Send completion confirmation emails to both parties with payment info
         const campaignData = collaboration.campaigns as any;
 
-        // Email to business owner
+        // Email to business owner (payer)
         await sendNotification(
           'project_completion',
           '', // Will fetch from profile
@@ -91,11 +118,14 @@ export const useProjectComplete = () => {
             recipientUserId: campaignData.user_id,
             campaignTitle: campaignData.title,
             projectId: collaborationId,
-            actionUrl: `${window.location.origin}/dashboard/business/projects?highlight=${collaborationId}`
+            actionUrl: `${window.location.origin}/dashboard/business/projects?highlight=${collaborationId}`,
+            amount: payoutSuccess ? payoutAmount : undefined,
+            paymentMethod: payoutSuccess ? payoutMethod : undefined,
+            isRecipient: false, // Business paid, not received
           }
         );
 
-        // Email to creator
+        // Email to creator (payment recipient)
         await sendNotification(
           'project_completion',
           '', // Will fetch from profile
@@ -104,11 +134,15 @@ export const useProjectComplete = () => {
             recipientUserId: collaboration.creator_id,
             campaignTitle: campaignData.title,
             projectId: collaborationId,
-            actionUrl: `${window.location.origin}/dashboard/creator/projects?highlight=${collaborationId}`
+            actionUrl: `${window.location.origin}/dashboard/creator/projects?highlight=${collaborationId}`,
+            amount: payoutSuccess ? payoutAmount : undefined,
+            paymentMethod: payoutSuccess ? payoutMethod : undefined,
+            isRecipient: true, // Creator is the payment recipient
           }
         );
 
-        return completedData;
+        // Return completed data with payout info for toast
+        return { ...completedData, payoutSuccess, payoutAmount };
       }
 
       // Only one party requested - send notification to the other party
@@ -142,15 +176,19 @@ export const useProjectComplete = () => {
 
       return data;
     },
-    onSuccess: (data) => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ['projects'] });
       queryClient.invalidateQueries({ queryKey: ['creator-projects'] });
+      queryClient.invalidateQueries({ queryKey: ['business-projects'] });
       queryClient.invalidateQueries({ queryKey: ['project-completion'] });
+      queryClient.invalidateQueries({ queryKey: ['campaigns'] });
 
       if (data.status === 'completed') {
         toast({
-          title: "Project completed!",
-          description: "Both parties have approved completion. Please leave a review.",
+          title: "Project completed! 🎉",
+          description: data.payoutSuccess 
+            ? `Payment of $${data.payoutAmount?.toFixed(2)} has been released to the creator. Please leave a review.`
+            : "Both parties have approved completion. Please leave a review.",
         });
       } else {
         toast({

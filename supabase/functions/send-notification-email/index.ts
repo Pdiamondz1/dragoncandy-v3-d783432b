@@ -65,6 +65,8 @@ interface NotificationEmailRequest {
     projectId?: string;
     actionUrl?: string;
     deliveryTime?: string;
+    paymentMethod?: string; // 'stripe_transfer' or 'pending_balance'
+    isRecipient?: boolean; // true if recipient received payment, false if they paid
   };
 }
 
@@ -463,7 +465,7 @@ const handler = async (req: Request): Promise<Response> => {
         `,
       },
       project_completion: {
-        subject: `Project Completed! 🎉`,
+        subject: `Project Completed${data.amount ? ' - Payment Released!' : ''} 🎉`,
         html: `
           <div style="font-family: 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto;">
             <div style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); padding: 40px 20px; text-align: center; border-radius: 12px 12px 0 0;">
@@ -476,6 +478,18 @@ const handler = async (req: Request): Promise<Response> => {
                 <p style="margin: 0; color: #065F46; font-weight: 600;">✅ Both parties have approved completion</p>
                 <p style="margin: 8px 0 0 0; color: #065F46; font-size: 14px;">This collaboration is now officially complete. Time to celebrate and leave a review!</p>
               </div>
+              ${data.amount ? `
+              <div style="background: #EFF6FF; border-left: 4px solid #3B82F6; padding: 16px; margin: 24px 0; border-radius: 4px;">
+                <p style="margin: 0; color: #1E40AF; font-weight: 600;">💰 Payment ${data.isRecipient ? 'Released' : 'Processed'}: $${data.amount.toFixed(2)}</p>
+                <p style="margin: 8px 0 0 0; color: #1E40AF; font-size: 14px;">
+                  ${data.isRecipient 
+                    ? (data.paymentMethod === 'stripe_transfer' 
+                        ? 'Funds have been transferred to your Stripe account.' 
+                        : 'Payment has been added to your pending balance. Complete Stripe onboarding to withdraw.')
+                    : 'Payment has been released to the creator.'}
+                </p>
+              </div>
+              ` : ''}
               <p style="font-size: 16px; color: #374151; line-height: 1.6;">We'd love to hear about your experience. Your feedback helps build trust in the DragonCandy community.</p>
               <p style="text-align: center; margin-top: 40px;">
                 <a href="${data.actionUrl || `${baseUrl}/dashboard`}" style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600; font-size: 16px;">
