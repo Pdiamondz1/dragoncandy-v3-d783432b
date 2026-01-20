@@ -15,7 +15,10 @@ import {
   Loader2,
   AlertCircle,
   Zap,
-  Star
+  Star,
+  Send,
+  RotateCcw,
+  FileCheck
 } from 'lucide-react';
 import ProjectFileUpload from '@/components/projects/ProjectFileUpload';
 import ProjectTimerSection from '@/components/projects/ProjectTimerSection';
@@ -24,6 +27,8 @@ import { useSearchParams } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import RatingModal from '@/components/reviews/RatingModal';
 import { supabase } from '@/integrations/supabase/client';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 
 interface ProjectCollaboration {
   id: string;
@@ -63,16 +68,85 @@ interface ProjectListProps {
 
 const ProjectList: React.FC<ProjectListProps> = ({ projects, showProgress, onMessageClick }) => {
   const { requestCompletion, requestingId } = useProjectComplete();
+  const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const highlightedProjectId = searchParams.get('highlight');
   const highlightedRef = useRef<HTMLDivElement>(null);
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
+  const [submittingProjectId, setSubmittingProjectId] = useState<string | null>(null);
   const [selectedReview, setSelectedReview] = useState<{
     collaborationId: string;
     revieweeId: string;
     revieweeName: string;
     businessUserId: string;
   } | null>(null);
+
+  // Submit content for review mutation
+  const submitContentMutation = useMutation({
+    mutationFn: async ({ collaborationId, campaignId }: { collaborationId: string; campaignId: string }) => {
+      setSubmittingProjectId(collaborationId);
+      
+      const { error } = await supabase
+        .from('campaign_collaborations')
+        .update({
+          content_status: 'submitted',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', collaborationId);
+
+      if (error) throw error;
+
+      // Notify the business
+      const { data: collaboration } = await supabase
+        .from('campaign_collaborations')
+        .select('campaigns!inner(user_id, title)')
+        .eq('id', collaborationId)
+        .single();
+
+      if (collaboration) {
+        const campaignData = collaboration.campaigns as any;
+        const currentUser = (await supabase.auth.getUser()).data.user;
+        if (currentUser) {
+          await supabase
+            .from('messages')
+            .insert({
+              sender_id: currentUser.id,
+              recipient_id: campaignData.user_id,
+              campaign_id: campaignId,
+              content: `📦 Content has been submitted for review on "${campaignData.title}". Please review and approve or request revisions.`,
+              category: 'content_submission'
+            });
+        }
+      }
+    },
+    onSuccess: () => {
+      toast.success('Content submitted for review!');
+      queryClient.invalidateQueries({ queryKey: ['creator-projects'] });
+      queryClient.invalidateQueries({ queryKey: ['collaboration'] });
+      setSubmittingProjectId(null);
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to submit content: ${error.message}`);
+      setSubmittingProjectId(null);
+    }
+  });
+
+  const getContentStatusConfig = (status: string | null) => {
+    switch (status) {
+      case 'pending':
+        return { label: 'Not Started', variant: 'secondary' as const, icon: Clock, canSubmit: false };
+      case 'in_progress':
+        return { label: 'In Progress', variant: 'default' as const, icon: Clock, canSubmit: true };
+      case 'submitted':
+        return { label: 'Awaiting Review', variant: 'outline' as const, icon: FileCheck, canSubmit: false };
+      case 'revision_requested':
+        return { label: 'Revision Requested', variant: 'destructive' as const, icon: RotateCcw, canSubmit: true };
+      case 'approved':
+        return { label: 'Approved', variant: 'default' as const, icon: CheckCircle2, canSubmit: false };
+      default:
+        return { label: null, variant: 'outline' as const, icon: null, canSubmit: false };
+    }
+  };
 
   // Auto-scroll to highlighted project
   useEffect(() => {
@@ -213,6 +287,9 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, showProgress, onMes
           const needsApproval = project.business_completion_status === 'requested' && 
                                project.creator_completion_status !== 'requested';
           const statusInfo = getCompletionStatus(project);
+          const contentStatusConfig = getContentStatusConfig(project.content_status);
+          const ContentStatusIcon = contentStatusConfig.icon;
+          const isRevisionRequested = project.content_status === 'revision_requested';
 
           return (
             <Card 
@@ -221,13 +298,14 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, showProgress, onMes
               className={cn(
                 "transition-all duration-300",
                 needsApproval && "border-2 border-amber-400 bg-amber-50/50 dark:bg-amber-950/20",
+                isRevisionRequested && !needsApproval && "border-2 border-orange-400 bg-orange-50/50 dark:bg-orange-950/20",
                 isHighlighted && "ring-2 ring-amber-500 ring-offset-2"
               )}
             >
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 flex-wrap">
                       <CardTitle className="text-lg">
                         {project.campaigns.title}
                       </CardTitle>
@@ -237,16 +315,30 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, showProgress, onMes
                           Action Required
                         </Badge>
                       )}
+                      {isRevisionRequested && !needsApproval && (
+                        <Badge variant="destructive" className="animate-pulse">
+                          <RotateCcw className="h-3 w-3 mr-1" />
+                          Revision Needed
+                        </Badge>
+                      )}
                     </div>
                     <p className="text-sm text-muted-foreground">
                       Started {formatDate(project.created_at)}
                     </p>
                   </div>
-                  {statusInfo.showBadge && (
-                    <Badge variant={statusInfo.variant}>
-                      {statusInfo.text}
-                    </Badge>
-                  )}
+                  <div className="flex flex-col gap-1 items-end">
+                    {statusInfo.showBadge && (
+                      <Badge variant={statusInfo.variant}>
+                        {statusInfo.text}
+                      </Badge>
+                    )}
+                    {contentStatusConfig.label && project.status === 'active' && (
+                      <Badge variant={contentStatusConfig.variant} className="text-xs">
+                        {ContentStatusIcon && <ContentStatusIcon className="h-3 w-3 mr-1" />}
+                        {contentStatusConfig.label}
+                      </Badge>
+                    )}
+                  </div>
                 </div>
               </CardHeader>
               
@@ -308,6 +400,16 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, showProgress, onMes
                   </div>
                 )}
 
+                {/* Revision Alert */}
+                {isRevisionRequested && project.status === 'active' && (
+                  <Alert className="border-orange-300 bg-orange-50 dark:bg-orange-950/30">
+                    <RotateCcw className="h-4 w-4 text-orange-600" />
+                    <AlertDescription className="text-orange-800 dark:text-orange-300">
+                      The business has requested revisions. Check your messages for feedback details, then resubmit when ready.
+                    </AlertDescription>
+                  </Alert>
+                )}
+
                 {project.status === 'active' && (
                   <div className="flex gap-2 pt-4 border-t flex-wrap">
                     {needsApproval ? (
@@ -350,6 +452,33 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, showProgress, onMes
                         )}
                       </Button>
                     )}
+                    
+                    {/* Submit for Review Button */}
+                    {contentStatusConfig.canSubmit && (
+                      <Button
+                        onClick={() => submitContentMutation.mutate({ 
+                          collaborationId: project.id, 
+                          campaignId: project.campaign_id 
+                        })}
+                        disabled={submittingProjectId === project.id}
+                        variant={isRevisionRequested ? "default" : "secondary"}
+                        size="sm"
+                        className={isRevisionRequested ? "bg-orange-600 hover:bg-orange-700" : ""}
+                      >
+                        {submittingProjectId === project.id ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Submitting...
+                          </>
+                        ) : (
+                          <>
+                            <Send className="h-4 w-4 mr-2" />
+                            {isRevisionRequested ? 'Resubmit' : 'Submit for Review'}
+                          </>
+                        )}
+                      </Button>
+                    )}
+                    
                     <ProjectFileUpload
                       campaignId={project.campaign_id}
                       campaignTitle={project.campaigns.title}
