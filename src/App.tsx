@@ -50,6 +50,7 @@ import BusinessSponsorships from "./pages/BusinessSponsorships";
 import BusinessPromotionalTools from "./pages/BusinessPromotionalTools";
 import CreatorApplications from "./pages/CreatorApplications";
 import CreatorProjects from "./pages/CreatorProjects";
+import CreatorEarnings from "./pages/CreatorEarnings";
 import CreatorBrowse from "./pages/CreatorBrowse";
 import BusinessDragonFeed from "./pages/BusinessDragonFeed";
 import CreatorDragonFeed from "./pages/CreatorDragonFeed";
@@ -381,6 +382,11 @@ const App = () => {
                   <Route path="/dashboard/creator/projects" element={
                     <ProtectedRoute>
                       <CreatorProjects />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/dashboard/creator/earnings" element={
+                    <ProtectedRoute>
+                      <CreatorEarnings />
                     </ProtectedRoute>
                   } />
 
