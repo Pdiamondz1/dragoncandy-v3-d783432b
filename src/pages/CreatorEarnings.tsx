@@ -111,18 +111,35 @@ const CreatorEarnings: React.FC = () => {
   // Setup Stripe mutation
   const setupStripeMutation = useMutation({
     mutationFn: async () => {
+      // Open blank window synchronously to bypass popup blocker
+      const stripeWindow = window.open('about:blank', '_blank');
+      
       const { data, error } = await supabase.functions.invoke('create-creator-connect-account');
-      if (error) throw error;
-      return data;
+      if (error) {
+        stripeWindow?.close();
+        throw error;
+      }
+      
+      return { data, stripeWindow };
     },
-    onSuccess: (data) => {
-      if (data?.onboardingUrl) {
-        window.open(data.onboardingUrl, '_blank');
+    onSuccess: ({ data, stripeWindow }) => {
+      if (data?.url && stripeWindow) {
+        stripeWindow.location.href = data.url;
         toast({
           title: 'Stripe Setup Started',
           description: 'Complete your setup in the new tab.',
         });
+      } else if (data?.url) {
+        // Fallback if popup was blocked
+        window.location.href = data.url;
+      } else {
+        toast({
+          title: 'Error',
+          description: 'Failed to get Stripe onboarding link.',
+          variant: 'destructive',
+        });
       }
+      queryClient.invalidateQueries({ queryKey: ['creator-payout-status'] });
     },
     onError: (error) => {
       console.error('Stripe setup error:', error);
