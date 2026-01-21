@@ -27,17 +27,21 @@ const CreatorPayoutBanner: React.FC<CreatorPayoutBannerProps> = ({ creatorId }) 
   const { data: payoutStatus, isLoading } = useQuery({
     queryKey: ['creator-payout-status', creatorId],
     queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke('check-creator-payout-status', {
-        body: { creatorId }
-      });
+      // Edge function uses auth header, no need to pass creatorId in body
+      const { data, error } = await supabase.functions.invoke('check-creator-payout-status');
 
       if (error) throw error;
-      return data as {
-        stripeOnboardingComplete: boolean;
-        pendingBalance: number;
-        stripeAccountId: string | null;
-        chargesEnabled?: boolean;
-        payoutsEnabled?: boolean;
+      
+      // Map Edge Function response fields correctly
+      // check-creator-payout-status returns: hasAccount, accountId, onboardingComplete, 
+      // availableBalance, pendingBalance (Stripe), platformPendingBalance (platform wallet)
+      return {
+        onboardingComplete: data?.onboardingComplete ?? false,
+        pendingBalance: data?.platformPendingBalance ?? 0, // Platform wallet balance
+        stripeAccountId: data?.accountId ?? null,
+        hasAccount: data?.hasAccount ?? false,
+        chargesEnabled: data?.chargesEnabled ?? false,
+        payoutsEnabled: data?.payoutsEnabled ?? false,
       };
     },
     enabled: !!creatorId,
@@ -47,17 +51,29 @@ const CreatorPayoutBanner: React.FC<CreatorPayoutBannerProps> = ({ creatorId }) 
   // Create or get Stripe Connect account
   const setupPayout = useMutation({
     mutationFn: async () => {
-      const { data, error } = await supabase.functions.invoke('create-creator-connect-account', {
-        body: { creatorId }
-      });
+      // Open blank window synchronously to bypass popup blocker
+      const stripeWindow = window.open('about:blank', '_blank');
+      
+      const { data, error } = await supabase.functions.invoke('create-creator-connect-account');
 
-      if (error) throw error;
-      return data as { onboardingUrl: string };
+      if (error) {
+        stripeWindow?.close();
+        throw error;
+      }
+      
+      return { data, stripeWindow };
     },
-    onSuccess: (data) => {
-      // Open Stripe onboarding in new tab
-      window.open(data.onboardingUrl, '_blank');
-      toast.success('Stripe onboarding opened in a new tab');
+    onSuccess: ({ data, stripeWindow }) => {
+      // Edge function returns { url, accountId, isNew }
+      if (data?.url && stripeWindow) {
+        stripeWindow.location.href = data.url;
+        toast.success('Stripe onboarding opened in a new tab');
+      } else if (data?.url) {
+        // Fallback if popup was blocked
+        window.location.href = data.url;
+      } else {
+        toast.error('Failed to get Stripe onboarding link');
+      }
     },
     onError: (error: Error) => {
       toast.error(`Failed to start payout setup: ${error.message}`);
@@ -79,12 +95,12 @@ const CreatorPayoutBanner: React.FC<CreatorPayoutBannerProps> = ({ creatorId }) 
   }
 
   // Already fully set up and no pending balance
-  if (payoutStatus?.stripeOnboardingComplete && !payoutStatus.pendingBalance) {
+  if (payoutStatus?.onboardingComplete && !payoutStatus.pendingBalance) {
     return null; // Don't show banner if everything is good
   }
 
   // Has pending balance but onboarding not complete
-  if (payoutStatus?.pendingBalance && payoutStatus.pendingBalance > 0 && !payoutStatus.stripeOnboardingComplete) {
+  if (payoutStatus?.pendingBalance && payoutStatus.pendingBalance > 0 && !payoutStatus.onboardingComplete) {
     return (
       <Alert className="border-amber-300 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30">
         <Wallet className="h-5 w-5 text-amber-600" />
@@ -119,7 +135,7 @@ const CreatorPayoutBanner: React.FC<CreatorPayoutBannerProps> = ({ creatorId }) 
   }
 
   // Onboarding not complete (but no pending balance yet)
-  if (!payoutStatus?.stripeOnboardingComplete) {
+  if (!payoutStatus?.onboardingComplete) {
     return (
       <Alert className="border-blue-200 bg-blue-50 dark:bg-blue-950/20">
         <Wallet className="h-5 w-5 text-blue-600" />
@@ -154,7 +170,7 @@ const CreatorPayoutBanner: React.FC<CreatorPayoutBannerProps> = ({ creatorId }) 
   }
 
   // Has pending balance and setup is complete - show success state
-  if (payoutStatus?.stripeOnboardingComplete && payoutStatus.pendingBalance && payoutStatus.pendingBalance > 0) {
+  if (payoutStatus?.onboardingComplete && payoutStatus.pendingBalance && payoutStatus.pendingBalance > 0) {
     return (
       <Alert className="border-green-200 bg-green-50 dark:bg-green-950/20">
         <CheckCircle2 className="h-5 w-5 text-green-600" />
