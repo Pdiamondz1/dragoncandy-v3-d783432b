@@ -55,12 +55,23 @@ const CreatorEarnings: React.FC = () => {
         throw error;
       }
       
+      // Map Edge Function response to our interface
+      // check-creator-payout-status returns: hasAccount, accountId, onboardingComplete, 
+      // availableBalance, pendingBalance (Stripe), platformPendingBalance (platform wallet)
+      const onboardingComplete = data?.onboardingComplete ?? false;
+      
       return {
-        hasStripeAccount: !!data?.stripeAccountId,
-        onboardingComplete: data?.onboardingComplete ?? false,
-        stripeAccountId: data?.stripeAccountId ?? null,
-        availableBalance: data?.availableBalance ?? 0,
-        pendingBalance: data?.pendingBalance ?? 0,
+        hasStripeAccount: data?.hasAccount ?? !!data?.accountId,
+        onboardingComplete,
+        stripeAccountId: data?.accountId ?? null,
+        // If onboarding not complete, show platform pending balance (money held for them)
+        // If onboarding complete, show Stripe available balance
+        availableBalance: onboardingComplete ? (data?.availableBalance ?? 0) : 0,
+        // If onboarding not complete, pending = platform wallet balance
+        // If onboarding complete, pending = Stripe pending balance
+        pendingBalance: onboardingComplete 
+          ? (data?.pendingBalance ?? 0) 
+          : (data?.platformPendingBalance ?? 0),
       };
     },
     enabled: !!user,
@@ -95,12 +106,22 @@ const CreatorEarnings: React.FC = () => {
         const amount = campaign?.fixed_price || campaign?.budget_min || campaign?.budget_max || 0;
         const platformFee = amount * 0.05; // 5% platform fee
         
+        // Status logic:
+        // - 'pending': escrow not released yet (business hasn't approved)
+        // - 'processing': escrow released but awaiting Stripe onboarding or transfer
+        // - 'paid': escrow released and creator has Stripe connected
+        let status: 'paid' | 'pending' | 'processing' = 'pending';
+        if (campaign?.escrow_status === 'released') {
+          // Money has been released, but where is it?
+          status = 'processing'; // Default to processing - in platform wallet or Stripe pending
+        }
+        
         return {
           id: collab.id,
           campaignTitle: campaign?.title || 'Unknown Campaign',
           amount: amount - platformFee,
           platformFee,
-          status: campaign?.escrow_status === 'released' ? 'paid' : 'pending',
+          status,
           date: collab.completed_at || '',
         };
       });
@@ -183,13 +204,17 @@ const CreatorEarnings: React.FC = () => {
   const totalEarnings = earnings.reduce((sum, e) => sum + e.amount, 0);
   const totalFees = earnings.reduce((sum, e) => sum + e.platformFee, 0);
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string, hasStripeSetup?: boolean) => {
     switch (status) {
       case 'paid':
         return <Badge className="bg-green-100 text-green-800">Paid</Badge>;
       case 'pending':
         return <Badge className="bg-yellow-100 text-yellow-800">Pending</Badge>;
       case 'processing':
+        // If not onboarded, show more helpful label
+        if (!hasStripeSetup) {
+          return <Badge className="bg-amber-100 text-amber-800">In Wallet</Badge>;
+        }
         return <Badge className="bg-blue-100 text-blue-800">Processing</Badge>;
       default:
         return <Badge variant="secondary">{status}</Badge>;
@@ -436,7 +461,7 @@ const CreatorEarnings: React.FC = () => {
                         <span className="font-semibold text-foreground">
                           {formatCurrency(payment.amount)}
                         </span>
-                        {getStatusBadge(payment.status)}
+                        {getStatusBadge(payment.status, payoutStatus?.onboardingComplete)}
                       </div>
                     </div>
                   ))}
