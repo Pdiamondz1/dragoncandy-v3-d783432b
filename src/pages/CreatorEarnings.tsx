@@ -16,7 +16,8 @@ import {
   TrendingUp,
   Loader2,
   CreditCard,
-  Building2
+  Building2,
+  ArrowUpRight
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -29,6 +30,7 @@ interface PayoutStatus {
   stripeAccountId: string | null;
   availableBalance: number;
   pendingBalance: number;
+  platformPendingBalance: number;
 }
 
 interface PaymentHistoryItem {
@@ -36,9 +38,27 @@ interface PaymentHistoryItem {
   campaignTitle: string;
   amount: number;
   platformFee: number;
-  status: 'paid' | 'pending' | 'processing';
+  escrowStatus: string;
   date: string;
 }
+
+// Compute display status at render time based on escrow status and payout state
+const getPaymentDisplayStatus = (
+  escrowStatus: string, 
+  onboardingComplete: boolean, 
+  hasPlatformPendingBalance: boolean
+): 'paid' | 'pending' | 'in_wallet' => {
+  if (escrowStatus !== 'released') {
+    return 'pending'; // Business hasn't approved yet
+  }
+  
+  // Escrow is released - where is the money?
+  if (!onboardingComplete || hasPlatformPendingBalance) {
+    return 'in_wallet'; // In platform wallet, awaiting withdrawal
+  }
+  
+  return 'paid'; // Money has been transferred to Stripe
+};
 
 const CreatorEarnings: React.FC = () => {
   const { user } = useAuth();
@@ -55,26 +75,20 @@ const CreatorEarnings: React.FC = () => {
         throw error;
       }
       
-      // Map Edge Function response to our interface
-      // check-creator-payout-status returns: hasAccount, accountId, onboardingComplete, 
-      // availableBalance, pendingBalance (Stripe), platformPendingBalance (platform wallet)
       const onboardingComplete = data?.onboardingComplete ?? false;
+      const platformPendingBalance = data?.platformPendingBalance ?? 0;
       
       return {
         hasStripeAccount: data?.hasAccount ?? !!data?.accountId,
         onboardingComplete,
         stripeAccountId: data?.accountId ?? null,
-        // If onboarding not complete, show platform pending balance (money held for them)
-        // If onboarding complete, show Stripe available balance
         availableBalance: onboardingComplete ? (data?.availableBalance ?? 0) : 0,
-        // If onboarding not complete, pending = platform wallet balance
-        // If onboarding complete, pending = Stripe pending balance
-        pendingBalance: onboardingComplete 
-          ? (data?.pendingBalance ?? 0) 
-          : (data?.platformPendingBalance ?? 0),
+        pendingBalance: data?.pendingBalance ?? 0,
+        platformPendingBalance,
       };
     },
     enabled: !!user,
+    refetchInterval: 30000, // Refresh every 30 seconds
   });
 
   // Fetch earnings history from completed projects
@@ -106,22 +120,12 @@ const CreatorEarnings: React.FC = () => {
         const amount = campaign?.fixed_price || campaign?.budget_min || campaign?.budget_max || 0;
         const platformFee = amount * 0.05; // 5% platform fee
         
-        // Status logic:
-        // - 'pending': escrow not released yet (business hasn't approved)
-        // - 'processing': escrow released but awaiting Stripe onboarding or transfer
-        // - 'paid': escrow released and creator has Stripe connected
-        let status: 'paid' | 'pending' | 'processing' = 'pending';
-        if (campaign?.escrow_status === 'released') {
-          // Money has been released, but where is it?
-          status = 'processing'; // Default to processing - in platform wallet or Stripe pending
-        }
-        
         return {
           id: collab.id,
           campaignTitle: campaign?.title || 'Unknown Campaign',
           amount: amount - platformFee,
           platformFee,
-          status,
+          escrowStatus: campaign?.escrow_status || 'pending',
           date: collab.completed_at || '',
         };
       });
@@ -132,7 +136,6 @@ const CreatorEarnings: React.FC = () => {
   // Setup Stripe mutation
   const setupStripeMutation = useMutation({
     mutationFn: async () => {
-      // Open blank window synchronously to bypass popup blocker
       const stripeWindow = window.open('about:blank', '_blank');
       
       const { data, error } = await supabase.functions.invoke('create-creator-connect-account');
@@ -151,7 +154,6 @@ const CreatorEarnings: React.FC = () => {
           description: 'Complete your setup in the new tab.',
         });
       } else if (data?.url) {
-        // Fallback if popup was blocked
         window.location.href = data.url;
       } else {
         toast({
@@ -167,6 +169,33 @@ const CreatorEarnings: React.FC = () => {
       toast({
         title: 'Setup Failed',
         description: 'Failed to start Stripe setup. Please try again.',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Withdraw to Stripe mutation
+  const withdrawMutation = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.functions.invoke('withdraw-pending-balance');
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: (data) => {
+      toast({
+        title: 'Withdrawal Complete!',
+        description: data?.message || `Successfully transferred funds to your Stripe account.`,
+      });
+      // Refresh both payout status and earnings
+      queryClient.invalidateQueries({ queryKey: ['creator-payout-status'] });
+      queryClient.invalidateQueries({ queryKey: ['creator-earnings-history'] });
+    },
+    onError: (error) => {
+      console.error('Withdraw error:', error);
+      toast({
+        title: 'Withdrawal Failed',
+        description: error instanceof Error ? error.message : 'Failed to withdraw funds. Please try again.',
         variant: 'destructive',
       });
     },
@@ -203,19 +232,19 @@ const CreatorEarnings: React.FC = () => {
 
   const totalEarnings = earnings.reduce((sum, e) => sum + e.amount, 0);
   const totalFees = earnings.reduce((sum, e) => sum + e.platformFee, 0);
+  
+  // Check if there's platform pending balance
+  const hasPlatformPendingBalance = (payoutStatus?.platformPendingBalance ?? 0) > 0;
+  const canWithdraw = payoutStatus?.onboardingComplete && hasPlatformPendingBalance;
 
-  const getStatusBadge = (status: string, hasStripeSetup?: boolean) => {
+  const getStatusBadge = (status: 'paid' | 'pending' | 'in_wallet') => {
     switch (status) {
       case 'paid':
         return <Badge className="bg-green-100 text-green-800">Paid</Badge>;
       case 'pending':
         return <Badge className="bg-yellow-100 text-yellow-800">Pending</Badge>;
-      case 'processing':
-        // If not onboarded, show more helpful label
-        if (!hasStripeSetup) {
-          return <Badge className="bg-amber-100 text-amber-800">In Wallet</Badge>;
-        }
-        return <Badge className="bg-blue-100 text-blue-800">Processing</Badge>;
+      case 'in_wallet':
+        return <Badge className="bg-amber-100 text-amber-800">In Wallet</Badge>;
       default:
         return <Badge variant="secondary">{status}</Badge>;
     }
@@ -231,21 +260,21 @@ const CreatorEarnings: React.FC = () => {
             <p className="text-muted-foreground">Track your earnings and manage payouts</p>
           </div>
 
-          {/* Stripe Setup Banner */}
+          {/* Stripe Setup Banner - only show if not onboarded */}
           {!isLoadingStatus && payoutStatus && !payoutStatus.onboardingComplete && (
-            <Alert className={payoutStatus.pendingBalance > 0 ? 'border-amber-500 bg-amber-50' : 'border-primary'}>
-              <AlertCircle className={`h-4 w-4 ${payoutStatus.pendingBalance > 0 ? 'text-amber-600' : 'text-primary'}`} />
+            <Alert className={hasPlatformPendingBalance ? 'border-amber-500 bg-amber-50' : 'border-primary'}>
+              <AlertCircle className={`h-4 w-4 ${hasPlatformPendingBalance ? 'text-amber-600' : 'text-primary'}`} />
               <AlertTitle>
-                {payoutStatus.pendingBalance > 0 
-                  ? `You have ${formatCurrency(payoutStatus.pendingBalance)} pending!`
+                {hasPlatformPendingBalance 
+                  ? `You have ${formatCurrency(payoutStatus.platformPendingBalance)} ready to withdraw!`
                   : 'Set Up Your Payout Method'
                 }
               </AlertTitle>
               <AlertDescription className="flex items-center justify-between">
                 <span>
                   {payoutStatus.hasStripeAccount 
-                    ? 'Complete your Stripe verification to receive payments directly.'
-                    : 'Connect your Stripe account to receive payments for completed projects.'
+                    ? 'Complete your Stripe verification to withdraw your earnings.'
+                    : 'Connect your Stripe account to withdraw your earnings.'
                   }
                 </span>
                 <Button 
@@ -265,9 +294,37 @@ const CreatorEarnings: React.FC = () => {
             </Alert>
           )}
 
+          {/* Withdraw Banner - show when onboarded AND has platform pending balance */}
+          {!isLoadingStatus && payoutStatus?.onboardingComplete && hasPlatformPendingBalance && (
+            <Alert className="border-green-500 bg-green-50">
+              <Wallet className="h-4 w-4 text-green-600" />
+              <AlertTitle className="text-green-800">
+                {formatCurrency(payoutStatus.platformPendingBalance)} Available for Withdrawal
+              </AlertTitle>
+              <AlertDescription className="flex items-center justify-between">
+                <span className="text-green-700">
+                  Your earnings are ready to be transferred to your Stripe account.
+                </span>
+                <Button 
+                  onClick={() => withdrawMutation.mutate()}
+                  disabled={withdrawMutation.isPending}
+                  size="sm"
+                  className="ml-4 bg-green-600 hover:bg-green-700"
+                >
+                  {withdrawMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <ArrowUpRight className="h-4 w-4 mr-2" />
+                  )}
+                  Withdraw to Stripe
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
+
           {/* Balance Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Available Balance */}
+            {/* Available Balance (Stripe) */}
             <Card>
               <CardContent className="p-6">
                 <div className="flex items-center gap-4">
@@ -275,7 +332,7 @@ const CreatorEarnings: React.FC = () => {
                     <Wallet className="h-6 w-6 text-green-600" />
                   </div>
                   <div className="flex-1">
-                    <p className="text-sm text-muted-foreground">Available Balance</p>
+                    <p className="text-sm text-muted-foreground">Stripe Balance</p>
                     {isLoadingStatus ? (
                       <Skeleton className="h-8 w-24" />
                     ) : (
@@ -283,30 +340,47 @@ const CreatorEarnings: React.FC = () => {
                         {formatCurrency(payoutStatus?.availableBalance || 0)}
                       </p>
                     )}
-                    <p className="text-xs text-muted-foreground">Ready to withdraw</p>
+                    <p className="text-xs text-muted-foreground">In your Stripe account</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Pending Balance */}
-            <Card>
+            {/* Platform Wallet Balance */}
+            <Card className={canWithdraw ? 'ring-2 ring-green-500' : ''}>
               <CardContent className="p-6">
                 <div className="flex items-center gap-4">
                   <div className="p-3 bg-amber-100 rounded-lg">
                     <Clock className="h-6 w-6 text-amber-600" />
                   </div>
                   <div className="flex-1">
-                    <p className="text-sm text-muted-foreground">Pending Balance</p>
+                    <p className="text-sm text-muted-foreground">Platform Wallet</p>
                     {isLoadingStatus ? (
                       <Skeleton className="h-8 w-24" />
                     ) : (
                       <p className="text-2xl font-bold text-amber-600">
-                        {formatCurrency(payoutStatus?.pendingBalance || 0)}
+                        {formatCurrency(payoutStatus?.platformPendingBalance || 0)}
                       </p>
                     )}
-                    <p className="text-xs text-muted-foreground">Awaiting processing</p>
+                    <p className="text-xs text-muted-foreground">
+                      {canWithdraw ? 'Ready to withdraw' : 'Awaiting withdrawal'}
+                    </p>
                   </div>
+                  {canWithdraw && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => withdrawMutation.mutate()}
+                      disabled={withdrawMutation.isPending}
+                      className="border-green-500 text-green-600 hover:bg-green-50"
+                    >
+                      {withdrawMutation.isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <ArrowUpRight className="h-4 w-4" />
+                      )}
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -387,7 +461,7 @@ const CreatorEarnings: React.FC = () => {
                     <div>
                       <p className="font-medium text-foreground">Not Connected</p>
                       <p className="text-sm text-muted-foreground">
-                        Set up Stripe to receive direct payouts
+                        Set up Stripe to withdraw your earnings
                       </p>
                     </div>
                   </div>
@@ -441,30 +515,38 @@ const CreatorEarnings: React.FC = () => {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {earnings.map((payment) => (
-                    <div
-                      key={payment.id}
-                      className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
-                    >
-                      <div className="flex-1">
-                        <p className="font-medium text-foreground">{payment.campaignTitle}</p>
-                        <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
-                          <span>
-                            {payment.date ? format(new Date(payment.date), 'MMM d, yyyy') : 'Date unknown'}
+                  {earnings.map((payment) => {
+                    const displayStatus = getPaymentDisplayStatus(
+                      payment.escrowStatus,
+                      payoutStatus?.onboardingComplete ?? false,
+                      hasPlatformPendingBalance
+                    );
+                    
+                    return (
+                      <div
+                        key={payment.id}
+                        className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+                      >
+                        <div className="flex-1">
+                          <p className="font-medium text-foreground">{payment.campaignTitle}</p>
+                          <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
+                            <span>
+                              {payment.date ? format(new Date(payment.date), 'MMM d, yyyy') : 'Date unknown'}
+                            </span>
+                            <span className="text-xs">
+                              Fee: {formatCurrency(payment.platformFee)}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <span className="font-semibold text-foreground">
+                            {formatCurrency(payment.amount)}
                           </span>
-                          <span className="text-xs">
-                            Fee: {formatCurrency(payment.platformFee)}
-                          </span>
+                          {getStatusBadge(displayStatus)}
                         </div>
                       </div>
-                      <div className="flex items-center gap-4">
-                        <span className="font-semibold text-foreground">
-                          {formatCurrency(payment.amount)}
-                        </span>
-                        {getStatusBadge(payment.status, payoutStatus?.onboardingComplete)}
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </CardContent>

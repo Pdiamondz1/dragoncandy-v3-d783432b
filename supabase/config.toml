@@ -35,3 +35,6 @@ verify_jwt = false
 
 [functions.release-creator-payout]
 verify_jwt = false
+
+[functions.withdraw-pending-balance]
+verify_jwt = false
