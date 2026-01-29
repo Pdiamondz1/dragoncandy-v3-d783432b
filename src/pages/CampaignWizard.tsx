@@ -1,4 +1,3 @@
-
 import React from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,6 +9,7 @@ import CampaignGoalStep from '@/components/campaigns/CampaignGoalStep';
 import CampaignWizardSidebar from '@/components/campaigns/CampaignWizardSidebar';
 import CampaignTimelineBudgetStep from '@/components/campaigns/CampaignTimelineBudgetStep';
 import CampaignFinalizeStep from '@/components/campaigns/CampaignFinalizeStep';
+import DeliveryTierStep from '@/components/campaigns/DeliveryTierStep';
 import { useCampaignWizard } from '@/hooks/useCampaignWizard';
 
 const CampaignWizard: React.FC = () => {
@@ -21,6 +21,9 @@ const CampaignWizard: React.FC = () => {
     campaignAnalysis,
     customizedCampaign,
     finalCampaignData,
+    deliveryTier,
+    deliveryFee,
+    handleContinueFromDeliveryTier,
     handleGenerateWithAI,
     handleEditCampaignIdea,
     handleApproveAndCustomize,
@@ -33,7 +36,8 @@ const CampaignWizard: React.FC = () => {
   } = useCampaignWizard();
 
   const steps = [
-    { number: 1, title: 'Campaign Goal', active: true },
+    { number: 0, title: 'Delivery', active: true },
+    { number: 1, title: 'Campaign Goal', active: false },
     { number: 2, title: 'AI Analysis', active: false },
     { number: 3, title: 'Customize', active: false },
     { number: 4, title: 'DragonDash', active: false },
@@ -45,6 +49,14 @@ const CampaignWizard: React.FC = () => {
       <div className="flex-1 p-6 bg-gray-50">
         <div className="max-w-4xl mx-auto">
           <CampaignWizardHeader currentStep={currentStep} steps={steps} />
+
+          {/* Step 0: Delivery Tier */}
+          {currentStep === 0 && (
+            <DeliveryTierStep
+              initialTier={deliveryTier}
+              onContinue={handleContinueFromDeliveryTier}
+            />
+          )}
 
           {/* Step 1: Campaign Goal */}
           {currentStep === 1 && (
@@ -96,7 +108,7 @@ const CampaignWizard: React.FC = () => {
             />
           )}
 
-          {/* Step 4: Timeline & Budget */}
+          {/* Step 4: Timeline & Budget (DragonDash) */}
           {currentStep === 4 && customizedCampaign && (
             <CampaignTimelineBudgetStep
               initialData={{
@@ -106,6 +118,8 @@ const CampaignWizard: React.FC = () => {
                 deadline: undefined,
                 budget_min: undefined,
                 budget_max: undefined,
+                delivery_type: deliveryTier, // Pre-populate from Step 0
+                delivery_fee: deliveryFee,
               }}
               onContinue={handleContinueFromTimelineBudget}
               onBackToCustomize={handleBackToCustomize}

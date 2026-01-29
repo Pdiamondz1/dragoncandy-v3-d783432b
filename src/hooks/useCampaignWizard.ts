@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { CampaignAnalysis } from '@/types/campaign';
+import { DeliveryType } from '@/components/campaigns/DeliveryTypeSelector';
 
 export interface TimelineBudgetData {
   goals: string;
@@ -37,13 +38,17 @@ export interface FinalCampaignData {
 export const useCampaignWizard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [currentStep, setCurrentStep] = useState(1);
+  const [currentStep, setCurrentStep] = useState(0);
   const [campaignGoal, setCampaignGoal] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [campaignAnalysis, setCampaignAnalysis] = useState<CampaignAnalysis | null>(null);
   const [customizedCampaign, setCustomizedCampaign] = useState<any>(null);
   const [timelineBudgetData, setTimelineBudgetData] = useState<TimelineBudgetData | null>(null);
   const [finalCampaignData, setFinalCampaignData] = useState<FinalCampaignData | null>(null);
+  
+  // Step 0: Delivery Tier state
+  const [deliveryTier, setDeliveryTier] = useState<DeliveryType>('standard');
+  const [deliveryFee, setDeliveryFee] = useState(0);
 
   const handleGenerateWithAI = async () => {
     if (!campaignGoal.trim()) {
@@ -81,7 +86,7 @@ export const useCampaignWizard = () => {
 
       console.log('Campaign analysis generated successfully:', data.analysis);
       setCampaignAnalysis(data.analysis);
-      setCurrentStep(2);
+      setCurrentStep(2); // Step 2: AI Analysis
       toast.success('Campaign analysis generated successfully!');
 
     } catch (error) {
@@ -92,25 +97,36 @@ export const useCampaignWizard = () => {
     }
   };
 
+  // Step 0: Delivery Tier handlers
+  const handleContinueFromDeliveryTier = (tier: DeliveryType, fee: number) => {
+    setDeliveryTier(tier);
+    setDeliveryFee(fee);
+    setCurrentStep(1); // Move to Campaign Goal
+  };
+
+  const handleBackToDeliveryTier = () => {
+    setCurrentStep(0);
+  };
+
   const handleEditCampaignIdea = () => {
-    setCurrentStep(1);
+    setCurrentStep(1); // Back to Campaign Goal (Step 1)
   };
 
   const handleApproveAndCustomize = () => {
-    setCurrentStep(3);
+    setCurrentStep(3); // Move to Customize (Step 3)
   };
 
   const handleBackToAnalysis = () => {
-    setCurrentStep(2);
+    setCurrentStep(2); // Back to AI Analysis (Step 2)
   };
 
   const handleContinueFromCustomize = (data: any) => {
     setCustomizedCampaign(data);
-    setCurrentStep(4);
+    setCurrentStep(4); // Move to DragonDash (Step 4)
   };
 
   const handleBackToCustomize = () => {
-    setCurrentStep(3);
+    setCurrentStep(3); // Back to Customize (Step 3)
   };
 
   const handleContinueFromTimelineBudget = (data: TimelineBudgetData) => {
@@ -138,11 +154,11 @@ export const useCampaignWizard = () => {
     
     console.log('Final campaign data prepared:', finalData);
     setFinalCampaignData(finalData);
-    setCurrentStep(5);
+    setCurrentStep(5); // Move to Finalize (Step 5)
   };
 
   const handleBackToTimelineBudget = () => {
-    setCurrentStep(4);
+    setCurrentStep(4); // Back to DragonDash (Step 4)
   };
 
   const handleBack = () => {
@@ -160,6 +176,12 @@ export const useCampaignWizard = () => {
     customizedCampaign,
     timelineBudgetData,
     finalCampaignData,
+    // Step 0 state
+    deliveryTier,
+    deliveryFee,
+    // Handlers
+    handleContinueFromDeliveryTier,
+    handleBackToDeliveryTier,
     handleGenerateWithAI,
     handleEditCampaignIdea,
     handleApproveAndCustomize,
