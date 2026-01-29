@@ -125,6 +125,9 @@ const BusinessDashboard = () => {
                     <p className="text-gray-600">
                       Use our AI-powered campaign wizard to define your goals and find the perfect creators
                     </p>
+                    <p className="text-gray-600 mt-2">
+                      Get content delivered to you fast for your campaign with DragonDash.
+                    </p>
                   </div>
                   <Button 
                     size="lg" 
@@ -132,7 +135,7 @@ const BusinessDashboard = () => {
                     onClick={() => navigate('/dashboard/business/campaigns/create')}
                   >
                     <Zap className="w-5 h-5 mr-2" />
-                    Start Campaign Wizard
+                    DragonDash
                   </Button>
                 </div>
               </CardContent>
