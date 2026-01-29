@@ -27,31 +27,31 @@ const CampaignWizardHeader: React.FC<CampaignWizardHeaderProps> = ({
       </div>
 
       {/* Progress Steps */}
-      <div className="flex justify-center mb-8">
-        <div className="flex items-center space-x-4">
+      <div className="flex justify-center mb-8 overflow-x-auto">
+        <div className="flex items-center space-x-2 md:space-x-4">
           {steps.map((step, index) => (
             <div key={step.number} className="flex items-center">
               <div className="flex flex-col items-center">
                 <div className={`
-                  w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold
+                  w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center text-xs md:text-sm font-semibold
                   ${step.number <= currentStep 
-                    ? 'bg-blue-600 text-white' 
-                    : 'bg-gray-200 text-gray-600'
+                    ? 'bg-primary text-primary-foreground' 
+                    : 'bg-muted text-muted-foreground'
                   }
                 `}>
                   {step.number}
                 </div>
                 <span className={`
-                  text-xs mt-1 font-medium
-                  ${step.number <= currentStep ? 'text-blue-600' : 'text-gray-500'}
+                  text-[10px] md:text-xs mt-1 font-medium whitespace-nowrap
+                  ${step.number <= currentStep ? 'text-primary' : 'text-muted-foreground'}
                 `}>
                   {step.title}
                 </span>
               </div>
               {index < steps.length - 1 && (
                 <div className={`
-                  w-8 h-0.5 ml-4
-                  ${step.number < currentStep ? 'bg-blue-600' : 'bg-gray-200'}
+                  w-4 md:w-8 h-0.5 ml-2 md:ml-4
+                  ${step.number < currentStep ? 'bg-primary' : 'bg-muted'}
                 `} />
               )}
             </div>
