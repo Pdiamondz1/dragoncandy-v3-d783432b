@@ -1,115 +1,183 @@
 
-# Add "Project Status" Button to Campaign Cards
+# Add Delete Campaign Button and Unlike from Inspiration Page
 
 ## Overview
 
-Add a "Project Status" button to campaign cards when a creator has been assigned (i.e., when there's at least one accepted application). Clicking this button redirects to the Business Projects page.
+Two features for restaurant users:
+1. **Delete Campaign** - Allow restaurants to delete campaigns that have no assigned creators
+2. **Unlike from Inspiration** - The unlike functionality already exists on the Inspiration page (I can see it in `BusinessActivity.tsx` lines 162-177), but we can improve the UX by not requiring a full page reload
 
 ---
 
-## How We Know a Creator is Assigned
+## Feature 1: Delete Campaign Button
 
-The `useCampaignApplicationsCount` hook already returns an `accepted` count for each campaign. When `accepted > 0`, it means at least one creator has been assigned to the campaign.
+### Current State
+- `useDeleteCampaign` hook already exists in `useCampaignMutations.ts` (lines 358-391)
+- RLS policy allows users to delete their own campaigns
+- Campaign card has no delete button currently
 
----
+### Condition for Deletion
+A campaign can only be deleted when:
+- `applicationCounts.accepted === 0` (no creator assigned)
 
-## File to Modify
+### File to Modify
 
 **`src/components/campaigns/CampaignCard.tsx`**
 
+### Changes
+
+1. **Add imports**
+   - Add `Trash2` icon from lucide-react
+   - Add `useDeleteCampaign` hook
+   - Add `AlertDialog` components for confirmation
+
+2. **Add state for delete confirmation**
+   ```tsx
+   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+   ```
+
+3. **Get delete mutation**
+   ```tsx
+   const deleteCampaign = useDeleteCampaign();
+   ```
+
+4. **Add delete handler**
+   ```tsx
+   const handleDelete = async () => {
+     await deleteCampaign.mutateAsync(campaign.id);
+     setShowDeleteConfirm(false);
+   };
+   ```
+
+5. **Add delete button in CardFooter** (only when no creator assigned)
+   ```tsx
+   {(!applicationCounts || applicationCounts.accepted === 0) && (
+     <Button 
+       variant="destructive" 
+       size="sm" 
+       className="text-xs"
+       onClick={() => setShowDeleteConfirm(true)}
+     >
+       <Trash2 className="h-3 w-3 mr-1" />
+       Delete
+     </Button>
+   )}
+   ```
+
+6. **Add AlertDialog for confirmation**
+   ```tsx
+   <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+     <AlertDialogContent>
+       <AlertDialogHeader>
+         <AlertDialogTitle>Delete Campaign</AlertDialogTitle>
+         <AlertDialogDescription>
+           Are you sure you want to delete "{campaign.title}"? 
+           This action cannot be undone.
+         </AlertDialogDescription>
+       </AlertDialogHeader>
+       <AlertDialogFooter>
+         <AlertDialogCancel>Cancel</AlertDialogCancel>
+         <AlertDialogAction onClick={handleDelete}>
+           Delete
+         </AlertDialogAction>
+       </AlertDialogFooter>
+     </AlertDialogContent>
+   </AlertDialog>
+   ```
+
+### Button Placement
+| Scenario | Buttons Shown |
+|----------|---------------|
+| No applications | View Details, Delete, Edit |
+| Has accepted creator | View Details, Project Status, Edit |
+| Has pending but no accepted | Review Applications, Delete, Edit |
+
 ---
 
-## Changes
+## Feature 2: Improve Unlike on Inspiration Page
 
-### 1. Add Import
+### Current State
+The unlike functionality already exists (lines 29-72 in `BusinessActivity.tsx`), but it uses `window.location.reload()` which is jarring.
 
-Add `FolderOpen` icon from lucide-react for the button:
+### File to Modify
 
-```tsx
-import { ..., FolderOpen } from 'lucide-react';
-```
+**`src/pages/BusinessActivity.tsx`**
 
-Add `useNavigate` from react-router-dom:
+### Changes
 
-```tsx
-import { useNavigate } from 'react-router-dom';
-```
+1. **Add local state management for liked items**
+   ```tsx
+   const [localLikedItems, setLocalLikedItems] = useState<FeedMediaItem[]>([]);
+   
+   useEffect(() => {
+     if (likedItems) {
+       setLocalLikedItems(likedItems);
+     }
+   }, [likedItems]);
+   ```
 
-### 2. Add Navigation Hook
+2. **Update handleUnlike to remove item locally instead of reloading**
+   ```tsx
+   const handleUnlike = async (contentId: string, creatorId: string, e: React.MouseEvent) => {
+     e.stopPropagation();
+     setUnlikingIds(prev => new Set(prev).add(contentId));
+     
+     try {
+       const { data: { user } } = await supabase.auth.getUser();
+       if (!user) return;
 
-Inside the component, add:
+       await supabase.from('analytics_events').insert({
+         event_type: 'dragon_feed_like',
+         user_id: user.id,
+         page_url: window.location.href,
+         user_agent: navigator.userAgent,
+         event_data: {
+           content_id: contentId,
+           creator_id: creatorId,
+           action: 'unlike'
+         }
+       });
 
-```tsx
-const navigate = useNavigate();
-```
+       // Remove item from local state (no page reload)
+       setLocalLikedItems(prev => prev.filter(item => item.id !== contentId));
+       
+       toast({
+         title: "Removed from Inspiration",
+         description: "Content removed from your saved items",
+       });
+     } catch (err) {
+       // ... error handling
+     } finally {
+       setUnlikingIds(prev => {
+         const next = new Set(prev);
+         next.delete(contentId);
+         return next;
+       });
+     }
+   };
+   ```
 
-### 3. Add "Project Status" Button in CardFooter
-
-Update the CardFooter section (lines 360-390) to include the new button when `applicationCounts?.accepted > 0`:
-
-```tsx
-<CardFooter className="flex flex-col sm:flex-row gap-2 pt-4 border-t border-border">
-  {/* Existing View Details button */}
-  <Button variant="outline" size="sm" ... />
-  
-  {/* NEW: Project Status button - shown when creator is assigned */}
-  {applicationCounts && applicationCounts.accepted > 0 && (
-    <Button 
-      variant="secondary" 
-      size="sm" 
-      className="flex-1 text-xs w-full sm:w-auto"
-      onClick={() => navigate('/dashboard/business/projects')}
-    >
-      <FolderOpen className="h-3 w-3 mr-1" />
-      Project Status
-    </Button>
-  )}
-  
-  {/* Existing Edit button */}
-  {onEdit && <Button variant="default" size="sm" ... />}
-</CardFooter>
-```
-
----
-
-## Visual Result
-
-### Before (No accepted applications)
-```
-[ View Details ]  [ Edit ]
-```
-
-### After (When creator is assigned)
-```
-[ View Details ]  [ Project Status ]  [ Edit ]
-```
-
----
-
-## Button Design
-
-| Property | Value |
-|----------|-------|
-| Variant | `secondary` (subtle, not primary focus) |
-| Icon | `FolderOpen` (represents project folder) |
-| Text | "Project Status" |
-| Redirect | `/dashboard/business/projects` |
+3. **Use localLikedItems in render instead of likedItems**
 
 ---
 
 ## Technical Summary
 
-| Change | Description |
-|--------|-------------|
-| Import | Add `FolderOpen` icon and `useNavigate` |
-| Logic | Check `applicationCounts.accepted > 0` |
-| Button | New secondary button redirecting to projects page |
-| Placement | Between "View Details" and "Edit" buttons |
+| File | Change |
+|------|--------|
+| `CampaignCard.tsx` | Add Delete button with confirmation dialog |
+| `BusinessActivity.tsx` | Improve unlike UX - remove page reload |
 
 ---
 
-## No Breaking Changes
+## Delete Button Visual
 
-- Existing button behavior remains unchanged
-- Only adds a new button when the condition is met
-- Simple redirect, no additional API calls needed
+```
+Before (no accepted applications):
+[ View Details ]  [ Edit ]
+
+After (no accepted applications):
+[ View Details ]  [ Delete ]  [ Edit ]
+```
+
+The Delete button uses `variant="destructive"` (red) to clearly indicate its action.
