@@ -30,11 +30,17 @@ const BusinessSettings = () => {
 
     const loadProfile = async () => {
       try {
-        const { data: businessProfile } = await supabase
+        const { data: businessProfile, error } = await supabase
           .from('business_profiles')
           .select('*')
           .eq('user_id', user.id)
+          .eq('account_type', 'restaurant')
           .maybeSingle();
+
+        if (error) {
+          console.error('Error loading profile:', error);
+          return;
+        }
 
         if (businessProfile) {
           setFormDataFromProfile(businessProfile);
@@ -45,7 +51,7 @@ const BusinessSettings = () => {
     };
 
     loadProfile();
-  }, [user, navigate, setFormDataFromProfile]);
+  }, [user?.id, navigate, setFormDataFromProfile]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

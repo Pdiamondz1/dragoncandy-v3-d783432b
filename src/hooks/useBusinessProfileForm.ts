@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import type { Database } from '@/integrations/supabase/types';
 
 type IndustryType = Database['public']['Enums']['industry_type'];
@@ -36,6 +36,7 @@ export interface BusinessProfileFormData {
 
 export const useBusinessProfileForm = () => {
   const [logoFile, setLogoFile] = useState<File | null>(null);
+  const hasLoadedRef = useRef(false);
   
   const [formData, setFormData] = useState<BusinessProfileFormData>({
     business_name: '',
@@ -63,11 +64,14 @@ export const useBusinessProfileForm = () => {
     profile_visibility: 'public'
   });
 
-  const handleInputChange = (field: string, value: string) => {
+  const handleInputChange = useCallback((field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-  };
+  }, []);
 
-  const setFormDataFromProfile = (businessProfile: any) => {
+  const setFormDataFromProfile = useCallback((businessProfile: any) => {
+    // Only load profile data once to prevent overwriting user edits
+    if (hasLoadedRef.current) return;
+    
     setFormData({
       business_name: businessProfile.business_name || '',
       industry: businessProfile.industry || '',
@@ -93,13 +97,20 @@ export const useBusinessProfileForm = () => {
       timezone: businessProfile.timezone || '',
       profile_visibility: businessProfile.profile_visibility || 'public'
     });
-  };
+    
+    hasLoadedRef.current = true;
+  }, []);
+
+  const resetLoaded = useCallback(() => {
+    hasLoadedRef.current = false;
+  }, []);
 
   return {
     formData,
     logoFile,
     handleInputChange,
     setLogoFile,
-    setFormDataFromProfile
+    setFormDataFromProfile,
+    resetLoaded
   };
 };
