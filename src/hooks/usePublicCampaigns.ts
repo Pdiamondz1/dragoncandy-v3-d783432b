@@ -22,20 +22,35 @@ export const usePublicCampaigns = (userId?: string) => {
     queryFn: async () => {
       console.log('Fetching public campaigns for user:', userId);
       
-      // First, get campaigns that have active collaborations
+      // First, get campaigns that have active or completed collaborations
       const { data: assignedCampaigns, error: assignedError } = await supabase
         .from('campaign_collaborations')
         .select('campaign_id')
-        .eq('status', 'active');
+        .in('status', ['active', 'completed']);
 
       if (assignedError) {
         console.error('Error fetching assigned campaigns:', assignedError);
         throw assignedError;
       }
 
-      // Extract campaign IDs that are already assigned
-      const assignedCampaignIds = (assignedCampaigns || []).map(c => c.campaign_id);
-      console.log('Assigned campaign IDs:', assignedCampaignIds);
+      // Also get campaigns with accepted applications (before collaboration is created)
+      const { data: acceptedApplications, error: acceptedError } = await supabase
+        .from('campaign_applications')
+        .select('campaign_id')
+        .eq('status', 'accepted');
+
+      if (acceptedError) {
+        console.error('Error fetching accepted applications:', acceptedError);
+        throw acceptedError;
+      }
+
+      // Combine and deduplicate campaign IDs that should be excluded
+      const assignedCampaignIds = [
+        ...(assignedCampaigns || []).map(c => c.campaign_id),
+        ...(acceptedApplications || []).map(a => a.campaign_id)
+      ];
+      const uniqueAssignedIds = [...new Set(assignedCampaignIds)];
+      console.log('Excluded campaign IDs:', uniqueAssignedIds);
 
       // Get published campaigns excluding assigned ones
       let query = supabase
@@ -43,9 +58,9 @@ export const usePublicCampaigns = (userId?: string) => {
         .select('*')
         .eq('status', 'published');
 
-      // Only add the not.in filter if there are assigned campaigns
-      if (assignedCampaignIds.length > 0) {
-        query = query.not('id', 'in', `(${assignedCampaignIds.join(',')})`);
+      // Only add the not.in filter if there are campaigns to exclude
+      if (uniqueAssignedIds.length > 0) {
+        query = query.not('id', 'in', `(${uniqueAssignedIds.join(',')})`);
       }
 
       const { data: campaigns, error: campaignsError } = await query
