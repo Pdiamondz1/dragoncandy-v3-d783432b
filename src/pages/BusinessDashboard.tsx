@@ -4,7 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Search, BarChart3, Users, Target, Zap, CheckCircle, DollarSign } from 'lucide-react';
+import { BarChart3, Users, Target, Flame, DollarSign } from 'lucide-react';
 import { useSponsorshipProposals } from '@/hooks/useSponsorshipProposals';
 import SponsorshipProposalCard from '@/components/campaigns/SponsorshipProposalCard';
 import { BusinessDashboardSideFeed } from '@/components/dragon-feed/BusinessDashboardSideFeed';
@@ -110,32 +110,39 @@ const BusinessDashboard = () => {
             </p>
           </div>
 
-          {/* Create Campaign CTA */}
+          {/* Create Campaign CTA - DragonDash Branded */}
           <div className="text-center">
-            <Card className="max-w-2xl mx-auto bg-gradient-to-br from-pink-50 to-indigo-50 border-pink-200">
+            <Card className="max-w-2xl mx-auto bg-gradient-to-br from-orange-50 via-pink-50 to-red-50 border-pink-300 shadow-lg">
               <CardContent className="p-8">
                 <div className="space-y-6">
-                  <div className="w-16 h-16 bg-pink-600 rounded-full flex items-center justify-center mx-auto">
-                    <PlusCircle className="w-8 h-8 text-white" />
+                  {/* Flame Icon */}
+                  <div className="w-16 h-16 bg-gradient-to-br from-orange-500 to-pink-600 rounded-full flex items-center justify-center mx-auto shadow-lg">
+                    <Flame className="w-8 h-8 text-white" />
                   </div>
+                  
+                  {/* Title & Subtitle */}
                   <div>
-                    <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                      Create Your First Campaign
+                    <h2 className="text-3xl font-bold bg-gradient-to-r from-orange-600 to-pink-600 bg-clip-text text-transparent mb-1">
+                      DragonDash
                     </h2>
-                    <p className="text-gray-600">
-                      Use our AI-powered campaign wizard to define your goals and find the perfect creators
-                    </p>
-                    <p className="text-gray-600 mt-2">
-                      Get content delivered to you fast for your campaign with DragonDash.
+                    <p className="text-lg text-gray-700 font-medium">
+                      Fast Content, On Demand
                     </p>
                   </div>
+                  
+                  {/* Description */}
+                  <p className="text-gray-600">
+                    Need content in hours, not days? Choose your delivery speed and let our creators deliver quality content fast.
+                  </p>
+                  
+                  {/* CTA Button */}
                   <Button 
                     size="lg" 
-                    className="bg-pink-600 hover:bg-pink-700 text-white px-8 py-3"
+                    className="bg-gradient-to-r from-orange-500 to-pink-600 hover:from-orange-600 hover:to-pink-700 text-white px-8 py-3 shadow-lg"
                     onClick={() => navigate('/dashboard/business/campaigns/create')}
                   >
-                    <Zap className="w-5 h-5 mr-2" />
-                    DragonDash
+                    <Flame className="w-5 h-5 mr-2" />
+                    Start a DragonDash
                   </Button>
                 </div>
               </CardContent>
