@@ -1,85 +1,78 @@
 
 
-# Add "Back to Browse Creators" Button on Direct Conversation Page
+# Filter Out Campaigns with Accepted Creators from Browse
 
 ## Problem
 
-When a restaurant or brand user clicks **Contact** on a creator card in the **Browse Creators** page, they're taken to the direct conversation page. Currently, the only back button goes to "Messages", but users want to return to **Browse Creators** to continue browsing.
+Campaigns that already have an accepted creator are still appearing in the Browse Campaigns marketplace for content creators. This includes:
+- Campaigns with **active** collaborations (creator currently working on project)
+- Campaigns with **completed** collaborations (project finished)
+- Potentially campaigns with **accepted** applications (before collaboration is created)
+
+## Root Cause
+
+In `src/hooks/usePublicCampaigns.ts`, the current filtering logic (lines 26-48) only excludes campaigns with `active` collaborations:
+
+```ts
+const { data: assignedCampaigns } = await supabase
+  .from('campaign_collaborations')
+  .select('campaign_id')
+  .eq('status', 'active');  // Only filters 'active' - misses 'completed'
+```
+
+This misses campaigns with:
+1. `completed` collaboration status
+2. Accepted applications that haven't yet been converted to collaborations
+
+---
 
 ## Solution
 
-Add a secondary navigation option on the Direct Conversation page that lets users go back to Browse Creators when they came from that page. We'll use URL state to track where the user came from.
+Update the query to exclude campaigns that have **any** collaboration OR have an **accepted** application.
 
 ---
 
-## Implementation Plan
+## Implementation
 
-### 1. Pass "from" state when navigating from CreatorCard
+### File: `src/hooks/usePublicCampaigns.ts`
 
-**File:** `src/components/creator-browse/CreatorCard.tsx`
+**Changes:**
 
-Update the `navigate` calls in `handleContact` to include state indicating the user came from the creators browse page:
+1. **Expand collaboration filter** to include all statuses (`active` AND `completed`):
+   ```ts
+   const { data: assignedCampaigns } = await supabase
+     .from('campaign_collaborations')
+     .select('campaign_id')
+     .in('status', ['active', 'completed']);
+   ```
 
-```tsx
-// Navigate based on user role - include state about origin
-if (profile?.role === 'business_client') {
-  navigate(`/dashboard/business/messages/direct/${conversationId}`, { 
-    state: { from: 'browse-creators', backPath: '/dashboard/business/creators' } 
-  });
-} else if (profile?.role === 'brand') {
-  navigate(`/dashboard/brand/messages/direct/${conversationId}`, { 
-    state: { from: 'browse-creators', backPath: '/dashboard/brand/creators' } 
-  });
-}
-```
+2. **Add accepted applications filter** to also exclude campaigns where an application was accepted:
+   ```ts
+   const { data: acceptedApplications } = await supabase
+     .from('campaign_applications')
+     .select('campaign_id')
+     .eq('status', 'accepted');
+   ```
 
-### 2. Update DirectConversationPage to handle "from" state
-
-**File:** `src/pages/DirectConversationPage.tsx`
-
-Add logic to detect when the user came from Browse Creators and show the appropriate back button:
-
-1. Import `useLocation` from react-router-dom
-2. Extract the `state` from location
-3. Conditionally render a "Back to Browse Creators" button when `state?.from === 'browse-creators'`
-
-```tsx
-const location = useLocation();
-const navigationState = location.state as { from?: string; backPath?: string } | null;
-
-// In the header section:
-{navigationState?.from === 'browse-creators' && navigationState?.backPath && (
-  <Button
-    variant="outline"
-    size="sm"
-    onClick={() => navigate(navigationState.backPath!)}
-    className="flex items-center gap-2"
-  >
-    <ArrowLeft className="h-4 w-4" />
-    Back to Browse Creators
-  </Button>
-)}
-```
-
-### 3. Keep existing "Back to Messages" button
-
-The existing button will remain available so users always have a path to their messages.
+3. **Combine both exclusion lists** before filtering campaigns:
+   ```ts
+   const assignedCampaignIds = [
+     ...(assignedCampaigns || []).map(c => c.campaign_id),
+     ...(acceptedApplications || []).map(a => a.campaign_id)
+   ];
+   // Remove duplicates
+   const uniqueAssignedIds = [...new Set(assignedCampaignIds)];
+   ```
 
 ---
 
-## UI Layout After Change
+## Technical Details
 
-```
-Header area:
-┌─────────────────────────────────────────────────────────┐
-│ [← Back to Browse Creators]  [← Back to Messages]       │
-│                                                         │
-│ 💬 Direct Conversation                                  │
-│    Direct message conversation                          │
-└─────────────────────────────────────────────────────────┘
-```
-
-When user came from Browse Creators, both buttons show. Otherwise, only "Back to Messages" shows.
+| Current Behavior | New Behavior |
+|------------------|--------------|
+| Only filters campaigns with `active` collaborations | Filters campaigns with `active` OR `completed` collaborations |
+| Doesn't check application status | Also filters campaigns with `accepted` applications |
+| Some assigned campaigns still visible | All assigned/completed campaigns hidden |
 
 ---
 
@@ -87,18 +80,14 @@ When user came from Browse Creators, both buttons show. Otherwise, only "Back to
 
 | File | Change |
 |------|--------|
-| `src/components/creator-browse/CreatorCard.tsx` | Pass navigation state with origin info |
-| `src/pages/DirectConversationPage.tsx` | Read state and conditionally show "Back to Browse Creators" button |
+| `src/hooks/usePublicCampaigns.ts` | Update exclusion query to include completed collaborations and accepted applications |
 
 ---
 
-## User Flow After Implementation
+## Expected Result
 
-1. User is on Browse Creators page
-2. Clicks "Contact" on a creator card
-3. Taken to Direct Conversation page
-4. Sees **two** back buttons:
-   - "Back to Browse Creators" (returns to browsing)
-   - "Back to Messages" (goes to messages list)
-5. Can continue browsing creators or go to messages
+After this change:
+- Creators will only see campaigns that are truly available
+- Campaigns with an assigned creator (accepted application or active/completed collaboration) will not appear
+- The marketplace shows only campaigns they can actually apply to
 
