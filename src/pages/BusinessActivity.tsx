@@ -102,7 +102,7 @@ const BusinessActivity = () => {
         <div className="mb-8">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-foreground">My Activity</h1>
+              <h1 className="text-3xl font-bold text-foreground">Inspiration</h1>
               <p className="text-muted-foreground mt-1">Content you've liked from creators</p>
             </div>
             <Badge variant="secondary" className="text-sm">
