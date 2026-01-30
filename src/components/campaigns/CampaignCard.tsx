@@ -3,7 +3,9 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Calendar, DollarSign, Eye, Users, FileText, MessageSquare, Edit, UserCheck, CreditCard, Loader2, AlertCircle, RefreshCw, FolderOpen } from 'lucide-react';
+import { Calendar, DollarSign, Eye, Users, FileText, MessageSquare, Edit, UserCheck, CreditCard, Loader2, AlertCircle, RefreshCw, FolderOpen, Trash2 } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { useDeleteCampaign } from '@/hooks/useCampaignMutations';
 import { useNavigate } from 'react-router-dom';
 import { Campaign } from '@/hooks/useCampaigns';
 import { format } from 'date-fns';
@@ -29,6 +31,19 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
   const queryClient = useQueryClient();
   const [isPayingEscrow, setIsPayingEscrow] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const deleteCampaign = useDeleteCampaign();
+
+  const handleDelete = async () => {
+    try {
+      await deleteCampaign.mutateAsync(campaign.id);
+      setShowDeleteConfirm(false);
+    } catch (error) {
+      console.error('Failed to delete campaign:', error);
+    }
+  };
+
+  const canDelete = !applicationCounts || applicationCounts.accepted === 0;
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -389,6 +404,22 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
             Project Status
           </Button>
         )}
+        {canDelete && (
+          <Button 
+            variant="destructive" 
+            size="sm" 
+            className="text-xs"
+            onClick={() => setShowDeleteConfirm(true)}
+            disabled={deleteCampaign.isPending}
+          >
+            {deleteCampaign.isPending ? (
+              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+            ) : (
+              <Trash2 className="h-3 w-3 mr-1" />
+            )}
+            Delete
+          </Button>
+        )}
         {onEdit && (
           <Button 
             variant="default" 
@@ -401,6 +432,26 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
           </Button>
         )}
       </CardFooter>
+
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Campaign</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{campaign.title}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 };

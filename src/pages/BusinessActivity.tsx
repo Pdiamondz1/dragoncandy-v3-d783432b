@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
 import { useBusinessActivity } from '@/hooks/useBusinessActivity';
 import { Card, CardContent } from '@/components/ui/card';
@@ -15,9 +15,16 @@ import { format } from 'date-fns';
 
 const BusinessActivity = () => {
   const { likedItems, loading, error } = useBusinessActivity();
+  const [localLikedItems, setLocalLikedItems] = useState<FeedMediaItem[]>([]);
   const [selectedItem, setSelectedItem] = useState<FeedMediaItem | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [unlikingIds, setUnlikingIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (likedItems) {
+      setLocalLikedItems(likedItems);
+    }
+  }, [likedItems]);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -47,15 +54,13 @@ const BusinessActivity = () => {
         }
       });
 
+      // Remove item from local state (no page reload)
+      setLocalLikedItems(prev => prev.filter(item => item.id !== contentId));
+      
       toast({
-        title: "Removed from liked",
-        description: "Content removed from your activity",
+        title: "Removed from Inspiration",
+        description: "Content removed from your saved items",
       });
-
-      // Refresh the page to update the list
-      setTimeout(() => {
-        window.location.reload();
-      }, 500);
     } catch (err) {
       console.error('Failed to unlike:', err);
       toast({
@@ -106,13 +111,13 @@ const BusinessActivity = () => {
               <p className="text-muted-foreground mt-1">Content you've liked from creators</p>
             </div>
             <Badge variant="secondary" className="text-sm">
-              {likedItems.length} {likedItems.length === 1 ? 'item' : 'items'} liked
+              {localLikedItems.length} {localLikedItems.length === 1 ? 'item' : 'items'} saved
             </Badge>
           </div>
         </div>
 
         {/* Content Grid */}
-        {likedItems.length === 0 ? (
+        {localLikedItems.length === 0 ? (
           <div className="text-center py-16">
             <Heart className="h-16 w-16 text-muted-foreground mx-auto mb-4 opacity-50" />
             <h3 className="text-xl font-semibold text-foreground mb-2">No liked content yet</h3>
@@ -123,7 +128,7 @@ const BusinessActivity = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {likedItems.map((item, index) => (
+            {localLikedItems.map((item, index) => (
               <Card 
                 key={item.id} 
                 className="group overflow-hidden hover:shadow-lg transition-all duration-300 cursor-pointer"
@@ -213,7 +218,7 @@ const BusinessActivity = () => {
       {selectedItem && (
         <FeedLightbox
           item={selectedItem}
-          allItems={likedItems}
+          allItems={localLikedItems}
           currentIndex={currentIndex}
           onClose={() => setSelectedItem(null)}
           onNavigate={setCurrentIndex}
