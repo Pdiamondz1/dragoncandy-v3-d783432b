@@ -1,86 +1,104 @@
 
-## Goal
-Fix the “can’t type / can’t edit” behavior on **Restaurant Dashboard → Settings → Business Profile** so users can freely edit fields and save changes.
 
-## What’s most likely happening (root cause)
-In `src/pages/BusinessSettings.tsx`, the profile-loading `useEffect` includes `setFormDataFromProfile` in its dependency array:
+# Add "Back to Browse Creators" Button on Direct Conversation Page
 
-```ts
-useEffect(() => { ... }, [user, navigate, setFormDataFromProfile]);
+## Problem
+
+When a restaurant or brand user clicks **Contact** on a creator card in the **Browse Creators** page, they're taken to the direct conversation page. Currently, the only back button goes to "Messages", but users want to return to **Browse Creators** to continue browsing.
+
+## Solution
+
+Add a secondary navigation option on the Direct Conversation page that lets users go back to Browse Creators when they came from that page. We'll use URL state to track where the user came from.
+
+---
+
+## Implementation Plan
+
+### 1. Pass "from" state when navigating from CreatorCard
+
+**File:** `src/components/creator-browse/CreatorCard.tsx`
+
+Update the `navigate` calls in `handleContact` to include state indicating the user came from the creators browse page:
+
+```tsx
+// Navigate based on user role - include state about origin
+if (profile?.role === 'business_client') {
+  navigate(`/dashboard/business/messages/direct/${conversationId}`, { 
+    state: { from: 'browse-creators', backPath: '/dashboard/business/creators' } 
+  });
+} else if (profile?.role === 'brand') {
+  navigate(`/dashboard/brand/messages/direct/${conversationId}`, { 
+    state: { from: 'browse-creators', backPath: '/dashboard/brand/creators' } 
+  });
+}
 ```
 
-But in `src/hooks/useBusinessProfileForm.ts`, `setFormDataFromProfile` is **not memoized** (it’s created inline on every render). That means:
-- Every keystroke triggers state update → component re-renders
-- `setFormDataFromProfile` becomes a new function reference
-- The `useEffect` re-runs
-- It re-fetches the profile and **resets the form state back to the DB values**
-- This feels like “I can’t type” (because your input keeps snapping back)
+### 2. Update DirectConversationPage to handle "from" state
 
-There is also a secondary issue: `BusinessSettings.tsx` loads from `business_profiles` with only `.eq('user_id', user.id).maybeSingle()` and **does not filter `account_type`**. If a user ever has both `restaurant` + `brand` rows, this can lead to wrong row selection or multiple-row issues.
+**File:** `src/pages/DirectConversationPage.tsx`
 
-## Plan (code changes)
+Add logic to detect when the user came from Browse Creators and show the appropriate back button:
 
-### 1) Fix form reset loop by stabilizing `setFormDataFromProfile`
-**File:** `src/hooks/useBusinessProfileForm.ts`
+1. Import `useLocation` from react-router-dom
+2. Extract the `state` from location
+3. Conditionally render a "Back to Browse Creators" button when `state?.from === 'browse-creators'`
 
-- Add a `hasLoadedRef` guard like you already do in `useCreatorProfileForm`.
-- Wrap `setFormDataFromProfile` in `useCallback` so it has a stable identity.
-- Prevent overwriting user edits after initial load.
+```tsx
+const location = useLocation();
+const navigationState = location.state as { from?: string; backPath?: string } | null;
 
-Implementation approach:
-- `const hasLoadedRef = useRef(false)`
-- `const setFormDataFromProfile = useCallback((businessProfile) => { if (hasLoadedRef.current) return; ...; hasLoadedRef.current = true; }, [])`
-- Optionally add a `resetLoaded()` function if we ever need to force reload.
-
-This ensures the page can load profile values once, and then user typing won’t be overwritten.
-
-### 2) Ensure Business Settings loads the restaurant profile specifically
-**File:** `src/pages/BusinessSettings.tsx`
-
-Update the query in `loadProfile` to:
-- Filter by `account_type = 'restaurant'` to match the settings page role
-- Use `.maybeSingle()` safely and log/handle errors
-
-Change:
-```ts
-.from('business_profiles')
-.select('*')
-.eq('user_id', user.id)
-.eq('account_type', 'restaurant')
-.maybeSingle();
+// In the header section:
+{navigationState?.from === 'browse-creators' && navigationState?.backPath && (
+  <Button
+    variant="outline"
+    size="sm"
+    onClick={() => navigate(navigationState.backPath!)}
+    className="flex items-center gap-2"
+  >
+    <ArrowLeft className="h-4 w-4" />
+    Back to Browse Creators
+  </Button>
+)}
 ```
 
-This prevents loading the wrong profile data and prevents ambiguity if the user has multiple `business_profiles` rows.
+### 3. Keep existing "Back to Messages" button
 
-### 3) Make the effect run only when it should (once per user session)
-**File:** `src/pages/BusinessSettings.tsx`
+The existing button will remain available so users always have a path to their messages.
 
-After step (1), `setFormDataFromProfile` becomes stable. We will:
-- Keep it in deps (safe now), OR
-- Remove it from deps and rely on `user.id` changes only (also safe)
+---
 
-Preferred approach:
-- Keep dependencies minimal: `[user?.id, navigate]`
-- Call `setFormDataFromProfile` after fetch (the callback is guarded anyway)
+## UI Layout After Change
 
-This removes any remaining chance of re-fetching on keystrokes.
+```
+Header area:
+┌─────────────────────────────────────────────────────────┐
+│ [← Back to Browse Creators]  [← Back to Messages]       │
+│                                                         │
+│ 💬 Direct Conversation                                  │
+│    Direct message conversation                          │
+└─────────────────────────────────────────────────────────┘
+```
 
-### 4) Quick verification checklist (manual)
-1. Log in as a restaurant user.
-2. Go to `/dashboard/business/settings`.
-3. Click inside “Business Name” and type: confirm the text stays (doesn’t revert).
-4. Edit several fields (website, postal code, description).
-5. Click “Update Profile”.
-6. Refresh the page and confirm changes persisted.
+When user came from Browse Creators, both buttons show. Otherwise, only "Back to Messages" shows.
 
-## Out of scope (but noted)
-- reCAPTCHA uses `import.meta.env.VITE_RECAPTCHA_SITE_KEY` in `src/components/auth/ReCaptcha.tsx`. If that key is not correctly provided at runtime, login/signup can be flaky. This is separate from the “can’t type in settings” bug, but if you still see “CAPTCHA error” toasts, we should address that next.
+---
 
-## Files to change
-- `src/hooks/useBusinessProfileForm.ts`
-- `src/pages/BusinessSettings.tsx`
+## Files to Modify
 
-## Expected result
-- Users can type into settings fields normally (no snapping back).
-- Settings page consistently loads the correct restaurant profile.
-- Saving continues to work (and now the form is usable to make changes).
+| File | Change |
+|------|--------|
+| `src/components/creator-browse/CreatorCard.tsx` | Pass navigation state with origin info |
+| `src/pages/DirectConversationPage.tsx` | Read state and conditionally show "Back to Browse Creators" button |
+
+---
+
+## User Flow After Implementation
+
+1. User is on Browse Creators page
+2. Clicks "Contact" on a creator card
+3. Taken to Direct Conversation page
+4. Sees **two** back buttons:
+   - "Back to Browse Creators" (returns to browsing)
+   - "Back to Messages" (goes to messages list)
+5. Can continue browsing creators or go to messages
+
