@@ -1,85 +1,86 @@
 
-# Fix Profile Settings Update - RLS Policy Update
+## Goal
+Fix the “can’t type / can’t edit” behavior on **Restaurant Dashboard → Settings → Business Profile** so users can freely edit fields and save changes.
 
-## Problem Analysis
+## What’s most likely happening (root cause)
+In `src/pages/BusinessSettings.tsx`, the profile-loading `useEffect` includes `setFormDataFromProfile` in its dependency array:
 
-Users are unable to update their profiles in the settings pages. After investigating the database RLS (Row Level Security) policies, I found that the UPDATE policies for both `business_profiles` and `creator_profiles` tables are missing the `WITH CHECK` clause.
-
-### Current State
-
-The UPDATE policy currently has:
-```sql
-CREATE POLICY "Users can update their own business profile"
-ON public.business_profiles FOR UPDATE
-USING (auth.uid() = user_id);
--- Missing: WITH CHECK clause
+```ts
+useEffect(() => { ... }, [user, navigate, setFormDataFromProfile]);
 ```
 
-For UPDATE operations in PostgreSQL RLS:
-- **USING** clause: Determines which existing rows can be selected for updating
-- **WITH CHECK** clause: Determines what values the updated row can have
+But in `src/hooks/useBusinessProfileForm.ts`, `setFormDataFromProfile` is **not memoized** (it’s created inline on every render). That means:
+- Every keystroke triggers state update → component re-renders
+- `setFormDataFromProfile` becomes a new function reference
+- The `useEffect` re-runs
+- It re-fetches the profile and **resets the form state back to the DB values**
+- This feels like “I can’t type” (because your input keeps snapping back)
 
-While PostgreSQL documentation states that `WITH CHECK` defaults to `USING` when omitted, in practice this can cause updates to fail silently in certain Supabase configurations.
+There is also a secondary issue: `BusinessSettings.tsx` loads from `business_profiles` with only `.eq('user_id', user.id).maybeSingle()` and **does not filter `account_type`**. If a user ever has both `restaurant` + `brand` rows, this can lead to wrong row selection or multiple-row issues.
 
----
+## Plan (code changes)
 
-## Solution
+### 1) Fix form reset loop by stabilizing `setFormDataFromProfile`
+**File:** `src/hooks/useBusinessProfileForm.ts`
 
-Add the missing `WITH CHECK` clause to the UPDATE policies for both `business_profiles` and `creator_profiles` tables.
+- Add a `hasLoadedRef` guard like you already do in `useCreatorProfileForm`.
+- Wrap `setFormDataFromProfile` in `useCallback` so it has a stable identity.
+- Prevent overwriting user edits after initial load.
 
----
+Implementation approach:
+- `const hasLoadedRef = useRef(false)`
+- `const setFormDataFromProfile = useCallback((businessProfile) => { if (hasLoadedRef.current) return; ...; hasLoadedRef.current = true; }, [])`
+- Optionally add a `resetLoaded()` function if we ever need to force reload.
 
-## Database Migration
+This ensures the page can load profile values once, and then user typing won’t be overwritten.
 
-Create a new migration file with the following SQL:
+### 2) Ensure Business Settings loads the restaurant profile specifically
+**File:** `src/pages/BusinessSettings.tsx`
 
-```sql
--- Drop existing UPDATE policies
-DROP POLICY IF EXISTS "Users can update their own business profile" 
-ON public.business_profiles;
+Update the query in `loadProfile` to:
+- Filter by `account_type = 'restaurant'` to match the settings page role
+- Use `.maybeSingle()` safely and log/handle errors
 
-DROP POLICY IF EXISTS "Users can update their own creator profile" 
-ON public.creator_profiles;
-
--- Recreate UPDATE policies with explicit WITH CHECK clause
-CREATE POLICY "Users can update their own business profile"
-ON public.business_profiles FOR UPDATE
-TO authenticated
-USING (auth.uid() = user_id)
-WITH CHECK (auth.uid() = user_id);
-
-CREATE POLICY "Users can update their own creator profile"
-ON public.creator_profiles FOR UPDATE
-TO authenticated
-USING (auth.uid() = user_id)
-WITH CHECK (auth.uid() = user_id);
+Change:
+```ts
+.from('business_profiles')
+.select('*')
+.eq('user_id', user.id)
+.eq('account_type', 'restaurant')
+.maybeSingle();
 ```
 
----
+This prevents loading the wrong profile data and prevents ambiguity if the user has multiple `business_profiles` rows.
 
-## Technical Details
+### 3) Make the effect run only when it should (once per user session)
+**File:** `src/pages/BusinessSettings.tsx`
 
-| Change | Description |
-|--------|-------------|
-| Add `TO authenticated` | Explicitly restrict to authenticated users |
-| Add `WITH CHECK` | Verify new row values satisfy ownership check |
-| Both clauses use same condition | `auth.uid() = user_id` |
+After step (1), `setFormDataFromProfile` becomes stable. We will:
+- Keep it in deps (safe now), OR
+- Remove it from deps and rely on `user.id` changes only (also safe)
 
----
+Preferred approach:
+- Keep dependencies minimal: `[user?.id, navigate]`
+- Call `setFormDataFromProfile` after fetch (the callback is guarded anyway)
 
-## What This Fixes
+This removes any remaining chance of re-fetching on keystrokes.
 
-After applying this migration:
-1. Business users can update their business profile settings
-2. Creator users can update their creator profile settings
-3. The RLS policy explicitly allows authenticated users to modify their own data
+### 4) Quick verification checklist (manual)
+1. Log in as a restaurant user.
+2. Go to `/dashboard/business/settings`.
+3. Click inside “Business Name” and type: confirm the text stays (doesn’t revert).
+4. Edit several fields (website, postal code, description).
+5. Click “Update Profile”.
+6. Refresh the page and confirm changes persisted.
 
----
+## Out of scope (but noted)
+- reCAPTCHA uses `import.meta.env.VITE_RECAPTCHA_SITE_KEY` in `src/components/auth/ReCaptcha.tsx`. If that key is not correctly provided at runtime, login/signup can be flaky. This is separate from the “can’t type in settings” bug, but if you still see “CAPTCHA error” toasts, we should address that next.
 
-## Files to Create/Modify
+## Files to change
+- `src/hooks/useBusinessProfileForm.ts`
+- `src/pages/BusinessSettings.tsx`
 
-| File | Action |
-|------|--------|
-| `supabase/migrations/[timestamp]_fix_profile_update_policies.sql` | Create new migration |
-
-No code changes are needed - this is purely a database policy fix.
+## Expected result
+- Users can type into settings fields normally (no snapping back).
+- Settings page consistently loads the correct restaurant profile.
+- Saving continues to work (and now the form is usable to make changes).
