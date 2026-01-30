@@ -3,7 +3,8 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Calendar, DollarSign, Eye, Users, FileText, MessageSquare, Edit, UserCheck, CreditCard, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
+import { Calendar, DollarSign, Eye, Users, FileText, MessageSquare, Edit, UserCheck, CreditCard, Loader2, AlertCircle, RefreshCw, FolderOpen } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Campaign } from '@/hooks/useCampaigns';
 import { format } from 'date-fns';
 import { useCampaignApplicationsCount } from '@/hooks/useCampaignApplicationsCount';
@@ -24,6 +25,7 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
 }) => {
   const { data: applicationCounts } = useCampaignApplicationsCount(campaign.id);
   const { toast } = useToast();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [isPayingEscrow, setIsPayingEscrow] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
@@ -376,6 +378,17 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
             </>
           )}
         </Button>
+        {applicationCounts && applicationCounts.accepted > 0 && (
+          <Button 
+            variant="secondary" 
+            size="sm" 
+            className="flex-1 text-xs w-full sm:w-auto"
+            onClick={() => navigate('/dashboard/business/projects')}
+          >
+            <FolderOpen className="h-3 w-3 mr-1" />
+            Project Status
+          </Button>
+        )}
         {onEdit && (
           <Button 
             variant="default" 
