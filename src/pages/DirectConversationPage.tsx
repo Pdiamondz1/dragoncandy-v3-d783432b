@@ -1,9 +1,9 @@
 import React from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { ArrowLeft, MessageSquare } from 'lucide-react';
+import { ArrowLeft, MessageSquare, Users } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import ConversationMessageThread from '@/components/messages/ConversationMessageThread';
 import { useConversations } from '@/hooks/useConversations';
@@ -12,8 +12,12 @@ import { supabase } from '@/integrations/supabase/client';
 const DirectConversationPage: React.FC = () => {
   const { conversationId } = useParams<{ conversationId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const { data: conversations = [] } = useConversations();
+  
+  // Check if user came from browse creators page
+  const navigationState = location.state as { from?: string; backPath?: string } | null;
 
   const userRole = user?.user_metadata?.role || 'business_client';
 
@@ -67,6 +71,19 @@ const DirectConversationPage: React.FC = () => {
         <div className="max-w-7xl mx-auto">
           {/* Header */}
           <div className="flex items-center gap-4 mb-6">
+            {/* Show "Back to Browse Creators" when user came from that page */}
+            {navigationState?.from === 'browse-creators' && navigationState?.backPath && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate(navigationState.backPath!)}
+                className="flex items-center gap-2"
+              >
+                <Users className="h-4 w-4" />
+                Back to Browse Creators
+              </Button>
+            )}
+            
             <Button
               variant="outline"
               size="sm"

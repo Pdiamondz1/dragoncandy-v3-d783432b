@@ -134,11 +134,15 @@ export const CreatorCard: React.FC<CreatorCardProps> = ({ creator }) => {
       // Create or get existing conversation
       const conversationId = await createConversation.mutateAsync(creator.user_id);
       
-      // Navigate based on user role
+      // Navigate based on user role - include state about origin
       if (profile?.role === 'business_client') {
-        navigate(`/dashboard/business/messages/direct/${conversationId}`);
+        navigate(`/dashboard/business/messages/direct/${conversationId}`, { 
+          state: { from: 'browse-creators', backPath: '/dashboard/business/creators' } 
+        });
       } else if (profile?.role === 'brand') {
-        navigate(`/dashboard/brand/messages/direct/${conversationId}`);
+        navigate(`/dashboard/brand/messages/direct/${conversationId}`, { 
+          state: { from: 'browse-creators', backPath: '/dashboard/brand/creators' } 
+        });
       } else {
         // Fallback to generic messages route
         navigate(`/messages/direct/${conversationId}`);
