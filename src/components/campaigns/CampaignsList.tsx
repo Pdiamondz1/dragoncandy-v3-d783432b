@@ -20,7 +20,7 @@ const CampaignsList: React.FC<CampaignsListProps> = ({
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {[...Array(6)].map((_, i) => (
           <div key={i} className="h-64 bg-gray-100 rounded-lg animate-pulse" />
         ))}
@@ -77,7 +77,7 @@ const CampaignsList: React.FC<CampaignsListProps> = ({
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       {filteredCampaigns.map((campaign) => (
         <CampaignCard
           key={campaign.id}
