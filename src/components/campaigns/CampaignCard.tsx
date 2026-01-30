@@ -359,11 +359,11 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
         )}
       </CardContent>
 
-      <CardFooter className="flex flex-col sm:flex-row gap-2 pt-4 border-t border-border">
+      <CardFooter className="flex flex-wrap gap-2 pt-4 border-t border-border">
         <Button 
           variant="outline" 
           size="sm" 
-          className="flex-1 text-xs w-full sm:w-auto"
+          className="text-xs"
           onClick={() => onViewDetails?.(campaign)}
         >
           {applicationCounts && applicationCounts.pending > 0 ? (
@@ -382,7 +382,7 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
           <Button 
             variant="secondary" 
             size="sm" 
-            className="flex-1 text-xs w-full sm:w-auto"
+            className="text-xs"
             onClick={() => navigate('/dashboard/business/projects')}
           >
             <FolderOpen className="h-3 w-3 mr-1" />
@@ -393,7 +393,7 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
           <Button 
             variant="default" 
             size="sm" 
-            className="flex-1 text-xs w-full sm:w-auto"
+            className="text-xs"
             onClick={() => onEdit(campaign)}
           >
             <Edit className="h-3 w-3 mr-1" />
