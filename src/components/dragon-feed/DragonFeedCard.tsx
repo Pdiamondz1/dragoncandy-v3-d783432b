@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Play, Pause, Heart, MessageSquare, User } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 interface PortfolioMedia {
   id: string;
@@ -27,6 +28,7 @@ export const DragonFeedCard: React.FC<DragonFeedCardProps> = ({ media }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   const handleLoad = () => setLoaded(true);
   const handleError = () => setError(true);
@@ -101,6 +103,50 @@ export const DragonFeedCard: React.FC<DragonFeedCardProps> = ({ media }) => {
       navigate(`/creator/${media.creatorSlug}`);
     } else if (media.creatorId) {
       navigate(`/creator/${media.creatorId}`);
+    }
+  };
+
+  const handleMessage = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        toast({
+          title: "Authentication required",
+          description: "Please log in to send messages.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const { data: conversationId, error } = await supabase.rpc(
+        'create_or_get_direct_conversation',
+        {
+          user1_uuid: user.id,
+          user2_uuid: media.creatorId
+        }
+      );
+
+      if (error) throw error;
+
+      toast({
+        title: "Opening conversation",
+        description: `Starting a conversation with ${media.creatorName}`,
+      });
+
+      const userRole = user.user_metadata?.role || 'business_client';
+      const rolePrefix = userRole === 'brand' ? 'brand' : 'business';
+      
+      navigate(`/dashboard/${rolePrefix}/messages/direct/${conversationId}`);
+    } catch (error) {
+      console.error('Failed to create conversation:', error);
+      toast({
+        title: "Error",
+        description: "Failed to start conversation. Please try again.",
+        variant: "destructive"
+      });
     }
   };
 
@@ -202,6 +248,7 @@ export const DragonFeedCard: React.FC<DragonFeedCardProps> = ({ media }) => {
             size="sm" 
             variant="secondary"
             className="h-8 w-8 p-0 bg-white/90 hover:bg-white"
+            onClick={handleMessage}
           >
             <MessageSquare className="h-4 w-4 text-muted-foreground" />
           </Button>
