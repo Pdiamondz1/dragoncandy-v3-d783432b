@@ -1,109 +1,82 @@
 
+# Fix Campaign Location Filters
 
-# Fix Dragon Feed Message Button
+## Problem Analysis
 
-## Problem
+The location filters (Postal/Zip Code, City, Country) on the Creator Browse Campaigns page are not working because:
 
-On the Dragon Feed page (`/dashboard/business/dragon-feed`), the message button on each content card does nothing when clicked. This is because the button has no `onClick` handler.
+1. **Data Gap**: Many business profiles have the structured location fields (`postal_code`, `city`, `country`) empty or NULL
+2. **Legacy Data**: Older businesses only have the `legacy_location` field populated (e.g., "Hoboken, NJ" or "ontario,canada")
 
-## Root Cause
+**Database Evidence:**
 
-In `src/components/dragon-feed/DragonFeedCard.tsx`, the message button (lines 201-207) is missing its click handler:
+| Business | postal_code | city | country | legacy_location |
+|----------|-------------|------|---------|-----------------|
+| Harbormill Automation | 07030 | Hoboken | United States | Hoboken, New Jersey |
+| Antique Bar & Bakery | NULL | NULL | NULL | Hoboken, NJ |
+| Dragon LLCQ! | "" | "" | "" | ontario,canada |
 
-```tsx
-<Button
-  size="sm" 
-  variant="secondary"
-  className="h-8 w-8 p-0 bg-white/90 hover:bg-white"
->  {/* <-- No onClick! */}
-  <MessageSquare className="h-4 w-4 text-muted-foreground" />
-</Button>
-```
-
-Meanwhile, the similar component in `BusinessDashboardSideFeed.tsx` has a working `handleMessage` function that properly creates a conversation and navigates to it.
+The filtering code only checks `postal_code`, `city`, and `country` - it doesn't fall back to the `legacy_location` field.
 
 ---
 
 ## Solution
 
-Add the `handleMessage` function to `DragonFeedCard.tsx` and connect it to the message button.
+Enhance the filtering logic in two places:
+
+1. **Data Layer** (`usePublicCampaigns.ts`): Include `legacy_location` in the business profile data passed to the frontend
+2. **Filter Logic** (`useCampaignMarketplaceFilters.ts`): Add fallback logic to check `legacy_location` when structured fields are empty
 
 ---
 
-## Implementation
+## Implementation Details
 
-### File: `src/components/dragon-feed/DragonFeedCard.tsx`
+### File 1: `src/hooks/usePublicCampaigns.ts`
 
-**Changes:**
+**Change**: Add `location` (legacy field) to the business profile query and response.
 
-1. **Add imports** for `useToast` hook:
-   ```tsx
-   import { useToast } from '@/hooks/use-toast';
-   ```
+```text
+Current query (line 98):
+.select('user_id, business_name, logo_url, postal_code, city, country')
 
-2. **Add `toast` to the component** at the top of the component function:
-   ```tsx
-   const { toast } = useToast();
-   ```
+Updated query:
+.select('user_id, business_name, logo_url, postal_code, city, country, location')
 
-3. **Add the `handleMessage` function** (after `toggleLike`):
-   ```tsx
-   const handleMessage = async (e: React.MouseEvent) => {
-     e.stopPropagation();
-     
-     try {
-       const { data: { user } } = await supabase.auth.getUser();
-       
-       if (!user) {
-         toast({
-           title: "Authentication required",
-           description: "Please log in to send messages.",
-           variant: "destructive"
-         });
-         return;
-       }
+Update interface to include:
+business_profile?: {
+  business_name: string;
+  logo_url?: string;
+  postal_code?: string;
+  city?: string;
+  country?: string;
+  location?: string;  // <-- Add legacy field
+};
+```
 
-       const { data: conversationId, error } = await supabase.rpc(
-         'create_or_get_direct_conversation',
-         {
-           user1_uuid: user.id,
-           user2_uuid: media.creatorId
-         }
-       );
+### File 2: `src/hooks/useCampaignMarketplaceFilters.ts`
 
-       if (error) throw error;
+**Change**: Add fallback logic to check `legacy_location` when filtering.
 
-       toast({
-         title: "Opening conversation",
-         description: `Starting a conversation with ${media.creatorName}`,
-       });
+The enhanced filter logic will:
 
-       const userRole = user.user_metadata?.role || 'business_client';
-       const rolePrefix = userRole === 'brand' ? 'brand' : 'business';
-       
-       navigate(`/dashboard/${rolePrefix}/messages/direct/${conversationId}`);
-     } catch (error) {
-       console.error('Failed to create conversation:', error);
-       toast({
-         title: "Error",
-         description: "Failed to start conversation. Please try again.",
-         variant: "destructive"
-       });
-     }
-   };
-   ```
+1. First check the structured field (`postal_code`, `city`, or `country`)
+2. If empty/null, fall back to checking if the filter value exists in `legacy_location`
 
-4. **Add onClick to the message button**:
-   ```tsx
-   <Button
-     size="sm" 
-     variant="secondary"
-     className="h-8 w-8 p-0 bg-white/90 hover:bg-white"
-     onClick={handleMessage}
-   >
-     <MessageSquare className="h-4 w-4 text-muted-foreground" />
-   </Button>
-   ```
+```text
+Example for city filter:
+
+Current:
+campaign.business_profile?.city?.toLowerCase().includes(cityLower)
+
+Enhanced:
+const cityField = campaign.business_profile?.city?.toLowerCase();
+const legacyField = campaign.business_profile?.location?.toLowerCase();
+
+// Match if structured field contains the search term
+// OR if structured field is empty and legacy field contains the search term
+return (cityField && cityField.includes(cityLower)) ||
+       (!cityField && legacyField && legacyField.includes(cityLower));
+```
 
 ---
 
@@ -111,15 +84,15 @@ Add the `handleMessage` function to `DragonFeedCard.tsx` and connect it to the m
 
 | File | Change |
 |------|--------|
-| `src/components/dragon-feed/DragonFeedCard.tsx` | Add `handleMessage` function and connect to button |
+| `src/hooks/usePublicCampaigns.ts` | Add `location` field to business profile query and response |
+| `src/hooks/useCampaignMarketplaceFilters.ts` | Add legacy location fallback in filter logic |
 
 ---
 
-## Expected Behavior After Fix
+## Expected Result
 
-1. User hovers over a content card on Dragon Feed
-2. Clicks the message (chat bubble) button
-3. A toast appears: "Opening conversation - Starting a conversation with [Creator Name]"
-4. User is navigated to `/dashboard/business/messages/direct/[conversationId]`
-5. They can now message the creator directly
-
+After this fix:
+- Entering "Hoboken" in the City filter will show both:
+  - Campaigns from "Harbormill Automation" (has `city: "Hoboken"`)
+  - Campaigns from "Antique Bar & Bakery" (has `legacy_location: "Hoboken, NJ"`)
+- The same fallback applies to postal code and country filters
