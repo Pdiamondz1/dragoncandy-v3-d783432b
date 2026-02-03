@@ -1,17 +1,20 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft, Edit, Users, Target, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Edit, Users, Target, AlertCircle, Send, CheckCircle, FolderOpen } from 'lucide-react';
 import { useCampaign } from '@/hooks/useCampaigns';
 import CampaignDetailsOverview from '@/components/campaigns/CampaignDetailsOverview';
 import ApplicationsListFixed from '@/components/campaigns/ApplicationsListFixed';
 import CreatorMatchingSection from '@/components/campaigns/CreatorMatchingSection';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/hooks/useAuth';
+import { useCreatorApplicationStatus } from '@/hooks/useCreatorApplicationStatus';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import ApplicationForm from '@/components/campaigns/ApplicationForm';
 
 const CampaignDetailsPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -19,11 +22,22 @@ const CampaignDetailsPage: React.FC = () => {
   const location = useLocation();
   const { user } = useAuth();
   const { campaign, isLoading, error } = useCampaign(id!);
+  const [showApplicationDialog, setShowApplicationDialog] = useState(false);
   
   // Determine user role based on current route
   const isCreatorView = location.pathname.includes('/creator/');
   const userRole = isCreatorView ? 'content_creator' : 'business_client';
   const isOwnCampaign = campaign?.user_id === user?.id;
+  
+  // Check if creator has already applied
+  const { hasApplied, applicationStatus, isLoading: isCheckingStatus } = useCreatorApplicationStatus(id);
+  
+  // Determine what button to show for creators
+  const canApply = isCreatorView && !isOwnCampaign && campaign?.status === 'published' && !hasApplied;
+  const showAppliedBadge = isCreatorView && hasApplied && applicationStatus === 'pending';
+  const showAcceptedButton = isCreatorView && hasApplied && applicationStatus === 'accepted';
+  const canReapply = isCreatorView && hasApplied && applicationStatus === 'rejected';
+
 
   if (isLoading) {
     return (
@@ -94,6 +108,38 @@ const CampaignDetailsPage: React.FC = () => {
                 Edit Campaign
               </Button>
             )}
+            
+            {/* Creator Apply Button */}
+            {canApply && (
+              <Button onClick={() => setShowApplicationDialog(true)}>
+                <Send className="h-4 w-4 mr-2" />
+                Apply to Campaign
+              </Button>
+            )}
+            
+            {/* Show Applied Badge for pending */}
+            {showAppliedBadge && (
+              <Button variant="secondary" disabled>
+                <CheckCircle className="h-4 w-4 mr-2" />
+                Applied (Pending)
+              </Button>
+            )}
+            
+            {/* Show View Project for accepted */}
+            {showAcceptedButton && (
+              <Button onClick={() => navigate('/dashboard/creator/projects')}>
+                <FolderOpen className="h-4 w-4 mr-2" />
+                View Project
+              </Button>
+            )}
+            
+            {/* Show Reapply for rejected */}
+            {canReapply && (
+              <Button onClick={() => setShowApplicationDialog(true)} variant="outline">
+                <Send className="h-4 w-4 mr-2" />
+                Apply Again
+              </Button>
+            )}
           </div>
 
           {/* Campaign Tabs */}
@@ -135,6 +181,22 @@ const CampaignDetailsPage: React.FC = () => {
           </Tabs>
         </div>
       </div>
+      
+      {/* Application Dialog for Creators */}
+      <Dialog open={showApplicationDialog} onOpenChange={setShowApplicationDialog}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Apply to Campaign</DialogTitle>
+          </DialogHeader>
+          {campaign && (
+            <ApplicationForm
+              campaign={campaign}
+              onSuccess={() => setShowApplicationDialog(false)}
+              onCancel={() => setShowApplicationDialog(false)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 };
