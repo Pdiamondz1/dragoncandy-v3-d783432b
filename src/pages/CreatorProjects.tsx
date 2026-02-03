@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import ProjectStatsCards from '@/components/projects/ProjectStatsCards';
 import ProjectList from '@/components/projects/ProjectList';
 import CreatorPayoutBanner from '@/components/projects/CreatorPayoutBanner';
+import { useToast } from '@/hooks/use-toast';
 
 interface ProjectCollaboration {
   id: string;
@@ -45,6 +46,7 @@ interface ProjectCollaboration {
 const CreatorProjects: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   const { data: projects = [], isLoading, error } = useQuery({
     queryKey: ['creator-projects', user?.id],
@@ -83,8 +85,49 @@ const CreatorProjects: React.FC = () => {
   const activeProjects = projects.filter(project => project.status === 'active');
   const completedProjects = projects.filter(project => project.status === 'completed');
 
-  const handleMessageClick = (campaignId: string) => {
-    navigate(`/messages?campaign=${campaignId}`);
+  const handleMessageClick = async (campaignId: string) => {
+    try {
+      // Get the business owner's user_id from the campaign
+      const { data: campaignData, error: campaignError } = await supabase
+        .from('campaigns')
+        .select('user_id')
+        .eq('id', campaignId)
+        .single();
+
+      if (campaignError || !campaignData) {
+        throw new Error('Could not find campaign');
+      }
+
+      if (!user) {
+        toast({
+          title: "Authentication required",
+          description: "Please log in to send messages.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Create or get direct conversation with the business owner
+      const { data: conversationId, error: conversationError } = await supabase.rpc(
+        'create_or_get_direct_conversation',
+        {
+          user1_uuid: user.id,
+          user2_uuid: campaignData.user_id
+        }
+      );
+
+      if (conversationError) throw conversationError;
+
+      // Navigate directly to the DM conversation
+      navigate(`/dashboard/creator/messages/direct/${conversationId}`);
+    } catch (error) {
+      console.error('Failed to open conversation:', error);
+      toast({
+        title: "Error",
+        description: "Failed to open conversation. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   if (isLoading) {
