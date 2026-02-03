@@ -61,33 +61,50 @@ export const useCampaignMarketplaceFilters = (campaigns: PublicCampaign[]) => {
       );
     }
 
-    // Smart Location Filtering
+    // Smart Location Filtering with legacy fallback
+    // Helper function to check location with fallback to legacy location field
+    const matchesLocation = (
+      campaign: PublicCampaign,
+      structuredField: string | undefined,
+      searchTerm: string
+    ): boolean => {
+      const searchLower = searchTerm.toLowerCase();
+      const fieldValue = structuredField?.toLowerCase();
+      const legacyLocation = campaign.business_profile?.location?.toLowerCase();
+
+      // Match if structured field contains search term
+      if (fieldValue && fieldValue.includes(searchLower)) {
+        return true;
+      }
+      // Fallback: if structured field is empty, check legacy location
+      if (!fieldValue && legacyLocation && legacyLocation.includes(searchLower)) {
+        return true;
+      }
+      return false;
+    };
+
     if (filters._isLocationAutoFilled && filters.postal_code) {
       // When postal code is auto-filled, only filter by postal code
-      const postalLower = filters.postal_code.toLowerCase();
       filtered = filtered.filter(campaign =>
-        campaign.business_profile?.postal_code?.toLowerCase().includes(postalLower)
+        matchesLocation(campaign, campaign.business_profile?.postal_code, filters.postal_code)
       );
     } else {
       // Manual location filtering - each field works independently
       if (filters.postal_code) {
-        const postalLower = filters.postal_code.toLowerCase();
         filtered = filtered.filter(campaign =>
-          campaign.business_profile?.postal_code?.toLowerCase().includes(postalLower)
+          matchesLocation(campaign, campaign.business_profile?.postal_code, filters.postal_code)
         );
       }
 
       if (filters.city) {
-        const cityLower = filters.city.toLowerCase();
         filtered = filtered.filter(campaign =>
-          campaign.business_profile?.city?.toLowerCase().includes(cityLower)
+          matchesLocation(campaign, campaign.business_profile?.city, filters.city)
         );
       }
 
       if (filters.country) {
-        const countryLower = filters.country.toLowerCase();
         filtered = filtered.filter(campaign =>
-          campaign.business_profile?.country?.toLowerCase().includes(countryLower)
+          matchesLocation(campaign, campaign.business_profile?.country, filters.country)
         );
       }
     }

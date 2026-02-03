@@ -10,6 +10,7 @@ export interface PublicCampaign extends Campaign {
     postal_code?: string;
     city?: string;
     country?: string;
+    location?: string; // Legacy location field for fallback filtering
   };
   application_count?: number;
   user_applied?: boolean;
@@ -95,7 +96,7 @@ export const usePublicCampaigns = (userId?: string) => {
       // Fetch business profiles for these users
       const { data: businessProfiles, error: profilesError } = await supabase
         .from('business_profiles')
-        .select('user_id, business_name, logo_url, postal_code, city, country')
+        .select('user_id, business_name, logo_url, postal_code, city, country, location')
         .in('user_id', userIds);
 
       if (profilesError) {
@@ -144,6 +145,7 @@ export const usePublicCampaigns = (userId?: string) => {
               postal_code: businessProfile.postal_code,
               city: businessProfile.city,
               country: businessProfile.country,
+              location: businessProfile.location,
             } : undefined,
             application_count: count || 0,
             user_applied: userApplied,
