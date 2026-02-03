@@ -1,18 +1,34 @@
 
-import React from 'react';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Clock, DollarSign, Building, MessageSquare } from 'lucide-react';
+import { Clock, DollarSign, Building, MessageSquare, FolderOpen, X } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import ApplicationStatusBadge from '@/components/campaigns/ApplicationStatusBadge';
 import ContactRestaurantModal from '@/components/creator-profile/ContactRestaurantModal';
 import { CampaignApplication } from '@/types/applications';
+import { useWithdrawApplication } from '@/hooks/useWithdrawApplication';
 
 interface DetailedApplicationCardProps {
   application: CampaignApplication;
 }
 
 const DetailedApplicationCard: React.FC<DetailedApplicationCardProps> = ({ application }) => {
+  const navigate = useNavigate();
+  const [showWithdrawDialog, setShowWithdrawDialog] = useState(false);
+  const withdrawApplication = useWithdrawApplication();
+  
   const formatCurrency = (amount: number | null) => {
     if (!amount) return 'Not specified';
     return new Intl.NumberFormat('en-US', {
@@ -25,8 +41,17 @@ const DetailedApplicationCard: React.FC<DetailedApplicationCardProps> = ({ appli
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString();
   };
+  
+  const handleWithdraw = () => {
+    withdrawApplication.mutate({
+      applicationId: application.id,
+      campaignTitle: application.campaign?.title,
+    });
+    setShowWithdrawDialog(false);
+  };
 
   return (
+    <>
     <Card>
       <CardHeader>
         <div className="flex items-start justify-between">
@@ -94,10 +119,31 @@ const DetailedApplicationCard: React.FC<DetailedApplicationCardProps> = ({ appli
           )}
         </div>
 
-        {/* Message Restaurant Button (for accepted applications) */}
+        {/* Pending Application Actions */}
+        {application.status === 'pending' && (
+          <div className="pt-4 border-t">
+            <Button 
+              variant="outline" 
+              className="w-full text-destructive border-destructive hover:bg-destructive hover:text-destructive-foreground"
+              onClick={() => setShowWithdrawDialog(true)}
+            >
+              <X className="h-4 w-4 mr-2" />
+              Withdraw Application
+            </Button>
+          </div>
+        )}
+
+        {/* Accepted Application Actions */}
         {application.status === 'accepted' && 
          application.campaign?.business_profile && (
-          <div className="pt-4 border-t">
+          <div className="pt-4 border-t space-y-2">
+            <Button 
+              className="w-full" 
+              onClick={() => navigate('/dashboard/creator/projects')}
+            >
+              <FolderOpen className="h-4 w-4 mr-2" />
+              View Project
+            </Button>
             <ContactRestaurantModal
               restaurant={{
                 user_id: application.campaign.business_profile.user_id,
@@ -107,7 +153,7 @@ const DetailedApplicationCard: React.FC<DetailedApplicationCardProps> = ({ appli
               }}
               campaignTitle={application.campaign.title}
               trigger={
-                <Button className="w-full" variant="default">
+                <Button className="w-full" variant="outline">
                   <MessageSquare className="h-4 w-4 mr-2" />
                   Message {application.campaign.business_profile.business_name}
                 </Button>
@@ -117,6 +163,29 @@ const DetailedApplicationCard: React.FC<DetailedApplicationCardProps> = ({ appli
         )}
       </CardContent>
     </Card>
+    
+    {/* Withdraw Confirmation Dialog */}
+    <AlertDialog open={showWithdrawDialog} onOpenChange={setShowWithdrawDialog}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Withdraw Application?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Are you sure you want to withdraw your application for "{application.campaign?.title}"? 
+            This action cannot be undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction 
+            onClick={handleWithdraw}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            Withdraw
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 };
 
