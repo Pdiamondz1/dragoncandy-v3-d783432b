@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -18,6 +20,7 @@ const BrandSponsorships = () => {
   const navigate = useNavigate();
   const { sponsorships, isLoading } = useBrandSponsorships();
   const { requestCompletion, requestingId } = useSponsorshipComplete();
+  const { toast } = useToast();
   
   const [ratingModal, setRatingModal] = useState<{
     isOpen: boolean;
@@ -36,6 +39,29 @@ const BrandSponsorships = () => {
       case 'completed': return 'bg-green-600';
       case 'rejected': return 'bg-red-500';
       default: return 'bg-yellow-500';
+    }
+  };
+
+  const handleMessageRestaurant = async (sponsorship: any) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const restaurantUserId = sponsorship.restaurant_profile?.user_id;
+      if (!restaurantUserId) {
+        toast({ title: "Error", description: "Restaurant profile not found.", variant: "destructive" });
+        return;
+      }
+
+      const { data: conversationId, error } = await supabase.rpc(
+        'create_or_get_direct_conversation',
+        { user1_uuid: user.id, user2_uuid: restaurantUserId }
+      );
+      if (error) throw error;
+
+      navigate(`/dashboard/brand/messages/direct/${conversationId}`);
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to start conversation.", variant: "destructive" });
     }
   };
 
@@ -207,7 +233,7 @@ const BrandSponsorships = () => {
                       
                       <Button
                         variant="outline"
-                        onClick={() => navigate(`/dashboard/brand/messages`)}
+                        onClick={() => handleMessageRestaurant(sponsorship)}
                       >
                         <MessageSquare className="h-4 w-4 mr-2" />
                         Message Restaurant
