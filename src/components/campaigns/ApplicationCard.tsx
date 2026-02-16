@@ -1,13 +1,17 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Check, X, Clock, DollarSign, User } from 'lucide-react';
+import { Check, X, Clock, DollarSign, User, ArrowRightLeft } from 'lucide-react';
 import { useManageApplication } from '@/hooks/useManageApplication';
 import { CampaignApplication } from '@/types/applications';
 import ApplicationStatusBadge from './ApplicationStatusBadge';
 import { JointApprovalCard } from './JointApprovalCard';
+import CounterOfferModal from './CounterOfferModal';
+import CounterOfferThread from './CounterOfferThread';
+import { useCounterOffers } from '@/hooks/useCounterOffers';
+import { useAuth } from '@/hooks/useAuth';
 
 interface ApplicationCardProps {
   application: CampaignApplication;
@@ -23,6 +27,9 @@ const ApplicationCard: React.FC<ApplicationCardProps> = ({
   userRole
 }) => {
   const manageApplication = useManageApplication();
+  const [showCounterModal, setShowCounterModal] = useState(false);
+  const { data: counterOffers = [] } = useCounterOffers(application.id);
+  const { user } = useAuth();
 
   const handleAccept = async () => {
     await manageApplication.mutateAsync({
@@ -125,7 +132,11 @@ const ApplicationCard: React.FC<ApplicationCardProps> = ({
           )}
         </div>
 
-        {showActions && application.status === 'pending' && (
+        {counterOffers.length > 0 && (
+          <CounterOfferThread counterOffers={counterOffers} currentUserId={user?.id} />
+        )}
+
+        {showActions && (application.status === 'pending' || application.status === 'counter_offered') && (
           <>
             {isSponsored && userRole ? (
               <div className="pt-4 border-t">
@@ -140,15 +151,27 @@ const ApplicationCard: React.FC<ApplicationCardProps> = ({
                   onClick={handleAccept}
                   disabled={manageApplication.isPending}
                   className="flex-1"
+                  size="sm"
                 >
                   <Check className="h-4 w-4 mr-2" />
                   Accept
+                </Button>
+                <Button
+                  onClick={() => setShowCounterModal(true)}
+                  variant="secondary"
+                  disabled={manageApplication.isPending}
+                  className="flex-1"
+                  size="sm"
+                >
+                  <ArrowRightLeft className="h-4 w-4 mr-2" />
+                  Counter
                 </Button>
                 <Button
                   onClick={handleReject}
                   variant="outline"
                   disabled={manageApplication.isPending}
                   className="flex-1"
+                  size="sm"
                 >
                   <X className="h-4 w-4 mr-2" />
                   Reject
@@ -157,6 +180,15 @@ const ApplicationCard: React.FC<ApplicationCardProps> = ({
             )}
           </>
         )}
+
+        <CounterOfferModal
+          open={showCounterModal}
+          onOpenChange={setShowCounterModal}
+          applicationId={application.id}
+          senderRole="business"
+          currentRate={application.proposed_rate}
+          currentTimeline={application.proposed_timeline}
+        />
       </CardContent>
     </Card>
   );
