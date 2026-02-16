@@ -17,7 +17,9 @@ type NotificationType =
   | 'project_completion'
   | 'sponsorship_completion_request'
   | 'sponsorship_completed'
-  | 'content_started';
+  | 'content_started'
+  | 'counter_offer'
+  | 'counter_offer_response';
 
 interface NotificationData {
   campaignTitle?: string;

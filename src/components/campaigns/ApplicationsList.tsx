@@ -1,5 +1,7 @@
 
 import React, { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -23,6 +25,14 @@ interface ApplicationsListProps {
 const ApplicationsList: React.FC<ApplicationsListProps> = ({ campaignId }) => {
   const { data: applications = [], isLoading, error } = useCampaignApplications(campaignId);
   const { filters, filteredApplications, updateFilter, resetFilters } = useApplicationFilters(applications);
+  const { data: campaignData } = useQuery({
+    queryKey: ['campaign-escrow', campaignId],
+    queryFn: async () => {
+      const { data } = await supabase.from('campaigns').select('escrow_status').eq('id', campaignId).single();
+      return data;
+    },
+    enabled: !!campaignId,
+  });
   const [selectedApplicationIds, setSelectedApplicationIds] = useState<string[]>([]);
   const [selectedApplication, setSelectedApplication] = useState<CampaignApplication | null>(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
@@ -205,6 +215,7 @@ const ApplicationsList: React.FC<ApplicationsListProps> = ({ campaignId }) => {
                         <ApplicationCard
                           application={application}
                           showActions={true}
+                          campaignEscrowStatus={campaignData?.escrow_status}
                         />
                       </div>
                       <div className="flex flex-col gap-2">

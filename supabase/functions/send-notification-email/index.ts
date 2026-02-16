@@ -29,7 +29,9 @@ type NotificationType =
   | 'project_completion'
   | 'sponsorship_completion_request'
   | 'sponsorship_completed'
-  | 'content_started';
+  | 'content_started'
+  | 'counter_offer'
+  | 'counter_offer_response';
 
 interface NotificationEmailRequest {
   to?: string;
@@ -575,6 +577,39 @@ const handler = async (req: Request): Promise<Response> => {
               </p>
             </div>
           </div>
+        `,
+      },
+      counter_offer: {
+        subject: `New Counter Offer for "${data.campaignTitle}"`,
+        html: `
+          <p>Hi ${rn},</p>
+          <p>You've received a <strong>counter offer</strong> for campaign <strong>"${data.campaignTitle}"</strong>.</p>
+          ${data.amount ? `<p>Proposed rate: <strong>$${data.amount}</strong></p>` : ''}
+          ${data.message ? `<blockquote style="border-left: 4px solid #F59E0B; padding-left: 16px; margin: 20px 0; color: #374151;">${data.message}</blockquote>` : ''}
+          <p>You can accept, decline, or counter back with your own terms.</p>
+          <p style="margin-top: 30px;">
+            <a href="${baseUrl}/dashboard/creator/applications" 
+               style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block;">
+              Review Counter Offer
+            </a>
+          </p>
+        `,
+      },
+      counter_offer_response: {
+        subject: `Counter Offer ${data.applicationStatus === 'accepted' ? 'Accepted' : 'Declined'} - "${data.campaignTitle}"`,
+        html: `
+          <p>Hi ${rn},</p>
+          <p>Your counter offer for campaign <strong>"${data.campaignTitle}"</strong> has been <strong>${data.applicationStatus}</strong>.</p>
+          ${data.applicationStatus === 'accepted'
+            ? `<p>Great news! The terms have been agreed upon. Please proceed with escrow payment to start the project.</p>
+               <p style="margin-top: 30px;">
+                 <a href="${baseUrl}/dashboard/business/campaigns/${data.campaignId}" 
+                    style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block;">
+                   View Campaign & Pay Escrow
+                 </a>
+               </p>`
+            : `<p>The other party has declined your terms. You may try submitting a new counter offer.</p>`
+          }
         `,
       },
     };

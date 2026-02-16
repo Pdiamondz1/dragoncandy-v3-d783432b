@@ -205,13 +205,14 @@ const DetailedApplicationCard: React.FC<DetailedApplicationCardProps> = ({ appli
         {application.status === 'accepted' && 
          application.campaign?.business_profile && (
           <div className="pt-4 border-t space-y-2">
-            <Button 
-              className="w-full" 
-              onClick={() => navigate('/dashboard/creator/projects')}
-            >
-              <FolderOpen className="h-4 w-4 mr-2" />
-              View Project
-            </Button>
+            <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-2">
+              <p className="text-sm font-medium text-green-800">
+                ✅ Your application has been accepted!
+              </p>
+              <p className="text-xs text-green-700 mt-1">
+                The restaurant will pay escrow to finalize the project. You'll see the project in your dashboard once payment is confirmed.
+              </p>
+            </div>
             <ContactRestaurantModal
               restaurant={{
                 user_id: application.campaign.business_profile.user_id,

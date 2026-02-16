@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Check, X, Clock, DollarSign, User, ArrowRightLeft } from 'lucide-react';
+import { Check, X, Clock, DollarSign, User, ArrowRightLeft, CreditCard, Loader2 } from 'lucide-react';
 import { useManageApplication } from '@/hooks/useManageApplication';
 import { CampaignApplication } from '@/types/applications';
 import ApplicationStatusBadge from './ApplicationStatusBadge';
@@ -12,22 +12,27 @@ import CounterOfferModal from './CounterOfferModal';
 import CounterOfferThread from './CounterOfferThread';
 import { useCounterOffers } from '@/hooks/useCounterOffers';
 import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
 
 interface ApplicationCardProps {
   application: CampaignApplication;
   showActions?: boolean;
   isSponsored?: boolean;
   userRole?: 'brand' | 'restaurant';
+  campaignEscrowStatus?: string | null;
 }
 
 const ApplicationCard: React.FC<ApplicationCardProps> = ({ 
   application, 
   showActions = false,
   isSponsored = false,
-  userRole
+  userRole,
+  campaignEscrowStatus
 }) => {
   const manageApplication = useManageApplication();
   const [showCounterModal, setShowCounterModal] = useState(false);
+  const [isPayingEscrow, setIsPayingEscrow] = useState(false);
   const { data: counterOffers = [] } = useCounterOffers(application.id);
   const { user } = useAuth();
 
@@ -45,6 +50,54 @@ const ApplicationCard: React.FC<ApplicationCardProps> = ({
     });
   };
 
+  const handlePayEscrow = async () => {
+    setIsPayingEscrow(true);
+    try {
+      // Determine the agreed amount from the latest accepted counter-offer or proposed rate
+      const acceptedOffer = counterOffers.find(o => o.status === 'accepted');
+      const agreedAmount = acceptedOffer?.proposed_rate || application.proposed_rate;
+
+      if (!agreedAmount) {
+        toast({ title: 'No agreed amount found', description: 'Cannot proceed with payment.', variant: 'destructive' });
+        return;
+      }
+
+      // Open blank tab synchronously to avoid popup blocker
+      const newTab = window.open('about:blank', '_blank');
+
+      const { data, error } = await supabase.functions.invoke('create-campaign-escrow', {
+        body: {
+          campaignId: application.campaign_id,
+          amount: agreedAmount,
+          deliveryFee: 0,
+          campaignTitle: application.campaign?.title || 'Campaign',
+          deliveryType: 'standard',
+        },
+      });
+
+      if (error) throw error;
+
+      if (data?.alreadyPaid) {
+        toast({ title: 'Already paid', description: 'Escrow has already been paid for this campaign.' });
+        newTab?.close();
+        return;
+      }
+
+      if (data?.url) {
+        if (newTab) {
+          newTab.location.href = data.url;
+        } else {
+          window.location.href = data.url;
+        }
+      }
+    } catch (error) {
+      console.error('Failed to initiate escrow payment:', error);
+      toast({ title: 'Payment failed', description: 'Please try again.', variant: 'destructive' });
+    } finally {
+      setIsPayingEscrow(false);
+    }
+  };
+
   const formatCurrency = (amount: number | null) => {
     if (!amount) return 'Not specified';
     return new Intl.NumberFormat('en-US', {
@@ -57,6 +110,10 @@ const ApplicationCard: React.FC<ApplicationCardProps> = ({
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString();
   };
+
+  // Determine agreed amount for display
+  const acceptedOffer = counterOffers.find(o => o.status === 'accepted');
+  const agreedAmount = acceptedOffer?.proposed_rate || application.proposed_rate;
 
   return (
     <Card>
@@ -73,7 +130,7 @@ const ApplicationCard: React.FC<ApplicationCardProps> = ({
               <CardTitle className="text-lg">
                 {application.creator_profile?.creator_name || 'Anonymous Creator'}
               </CardTitle>
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-muted-foreground">
                 Applied on {formatDate(application.created_at)}
               </p>
             </div>
@@ -86,7 +143,7 @@ const ApplicationCard: React.FC<ApplicationCardProps> = ({
         {application.creator_profile?.bio && (
           <div>
             <h4 className="font-medium mb-1">About</h4>
-            <p className="text-sm text-gray-600">{application.creator_profile.bio}</p>
+            <p className="text-sm text-muted-foreground">{application.creator_profile.bio}</p>
           </div>
         )}
 
@@ -105,7 +162,7 @@ const ApplicationCard: React.FC<ApplicationCardProps> = ({
 
         <div>
           <h4 className="font-medium mb-1">Introduction Message</h4>
-          <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded">
+          <p className="text-sm text-muted-foreground bg-muted p-3 rounded">
             {application.intro_message || 'No message provided'}
           </p>
         </div>
@@ -115,7 +172,7 @@ const ApplicationCard: React.FC<ApplicationCardProps> = ({
             <div className="flex items-center gap-2">
               <Clock className="h-4 w-4 text-blue-600" />
               <div>
-                <p className="text-xs text-gray-500">Proposed Timeline</p>
+                <p className="text-xs text-muted-foreground">Proposed Timeline</p>
                 <p className="text-sm font-medium">{application.proposed_timeline}</p>
               </div>
             </div>
@@ -125,7 +182,7 @@ const ApplicationCard: React.FC<ApplicationCardProps> = ({
             <div className="flex items-center gap-2">
               <DollarSign className="h-4 w-4 text-green-600" />
               <div>
-                <p className="text-xs text-gray-500">Proposed Rate</p>
+                <p className="text-xs text-muted-foreground">Proposed Rate</p>
                 <p className="text-sm font-medium">{formatCurrency(application.proposed_rate)}</p>
               </div>
             </div>
@@ -134,6 +191,48 @@ const ApplicationCard: React.FC<ApplicationCardProps> = ({
 
         {counterOffers.length > 0 && (
           <CounterOfferThread counterOffers={counterOffers} currentUserId={user?.id} />
+        )}
+
+        {/* Accepted: Show Pay Escrow button if escrow not yet held */}
+        {application.status === 'accepted' && campaignEscrowStatus !== 'held' && campaignEscrowStatus !== 'released' && (
+          <div className="pt-4 border-t">
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-3">
+              <p className="text-sm font-medium text-amber-800">
+                💳 Payment required to start the project
+              </p>
+              <p className="text-xs text-amber-700 mt-1">
+                Pay the agreed amount of {formatCurrency(agreedAmount || 0)} into escrow. The creator will begin work after payment is confirmed.
+              </p>
+            </div>
+            <Button
+              onClick={handlePayEscrow}
+              disabled={isPayingEscrow}
+              className="w-full"
+              size="lg"
+            >
+              {isPayingEscrow ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Opening Checkout...
+                </>
+              ) : (
+                <>
+                  <CreditCard className="h-4 w-4 mr-2" />
+                  Pay Escrow {agreedAmount ? `- ${formatCurrency(agreedAmount)}` : ''}
+                </>
+              )}
+            </Button>
+          </div>
+        )}
+
+        {/* Accepted & Escrow paid */}
+        {application.status === 'accepted' && (campaignEscrowStatus === 'held' || campaignEscrowStatus === 'released') && (
+          <div className="pt-4 border-t">
+            <Badge variant="default" className="bg-green-600 text-white">
+              <Check className="h-3 w-3 mr-1" />
+              Escrow Paid — Project Active
+            </Badge>
+          </div>
         )}
 
         {showActions && (application.status === 'pending' || application.status === 'counter_offered') && (

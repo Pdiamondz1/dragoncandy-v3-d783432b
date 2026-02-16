@@ -30,22 +30,8 @@ export const useManageApplication = () => {
         throw error;
       }
 
-      // If accepted, create collaboration record
-      if (status === 'accepted') {
-        const { error: collaborationError } = await supabase
-          .from('campaign_collaborations')
-          .insert({
-            campaign_id: data.campaign_id,
-            creator_id: data.creator_id,
-            application_id: data.id,
-            status: 'active',
-          });
-
-        if (collaborationError) {
-          console.error('Error creating collaboration:', collaborationError);
-          throw collaborationError;
-        }
-      }
+      // Note: Collaboration is NOT created here anymore.
+      // It will be created after the restaurant pays escrow (verify-campaign-escrow).
 
       console.log('Updated application:', data);
       return data;
@@ -87,7 +73,7 @@ export const useManageApplication = () => {
       toast({
         title: `Application ${data.status}!`,
         description: data.status === 'accepted' 
-          ? 'A new collaboration has been created and the creator has been notified.' 
+          ? 'Please proceed with escrow payment to start the project.' 
           : 'The creator has been notified.',
       });
     },

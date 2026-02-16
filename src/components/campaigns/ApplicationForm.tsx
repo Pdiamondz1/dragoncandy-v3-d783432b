@@ -173,7 +173,7 @@ const ApplicationForm: React.FC<ApplicationFormProps> = ({
               <div className="space-y-2">
                 <Label htmlFor="proposed-rate" className="flex items-center gap-2">
                   <DollarSign className="h-4 w-4" />
-                  Proposed Rate (Optional)
+                  Proposed Rate *
                 </Label>
                 <Input
                   id="proposed-rate"
@@ -183,6 +183,7 @@ const ApplicationForm: React.FC<ApplicationFormProps> = ({
                   onChange={(e) => setProposedRate(e.target.value ? Number(e.target.value) : undefined)}
                   min="0"
                   step="0.01"
+                  required
                 />
               </div>
             )}

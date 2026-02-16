@@ -39,7 +39,7 @@ const CounterOfferModal: React.FC<CounterOfferModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!message.trim()) return;
+    if (!message.trim() || !proposedRate) return;
 
     await createCounterOffer.mutateAsync({
       applicationId,
@@ -72,7 +72,7 @@ const CounterOfferModal: React.FC<CounterOfferModalProps> = ({
           <div className="space-y-2">
             <Label htmlFor="rate" className="flex items-center gap-1">
               <DollarSign className="h-3.5 w-3.5" />
-              Proposed Rate
+              Proposed Rate *
             </Label>
             <Input
               id="rate"
@@ -81,6 +81,7 @@ const CounterOfferModal: React.FC<CounterOfferModalProps> = ({
               value={proposedRate}
               onChange={(e) => setProposedRate(e.target.value)}
               min={0}
+              required
             />
           </div>
 
@@ -113,7 +114,7 @@ const CounterOfferModal: React.FC<CounterOfferModalProps> = ({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={!message.trim() || createCounterOffer.isPending}>
+            <Button type="submit" disabled={!message.trim() || !proposedRate || createCounterOffer.isPending}>
               {createCounterOffer.isPending ? 'Sending...' : 'Send Counter Offer'}
             </Button>
           </DialogFooter>

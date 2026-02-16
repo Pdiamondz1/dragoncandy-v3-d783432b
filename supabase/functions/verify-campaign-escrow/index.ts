@@ -27,7 +27,6 @@ serve(async (req) => {
 
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
     if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
-    logStep("Stripe key verified");
 
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) throw new Error("No authorization header provided");
@@ -41,130 +40,75 @@ serve(async (req) => {
     logStep("User authenticated", { userId: user.id });
 
     const { campaignId, sessionId } = await req.json();
-    if (!campaignId) {
-      throw new Error("Missing required field: campaignId");
-    }
+    if (!campaignId) throw new Error("Missing required field: campaignId");
     logStep("Request payload", { campaignId, sessionId });
 
-    // Fetch the campaign and verify ownership
     const { data: campaign, error: campaignError } = await supabaseClient
       .from('campaigns')
       .select('id, user_id, escrow_payment_intent_id, escrow_status, status, title')
       .eq('id', campaignId)
       .single();
 
-    if (campaignError || !campaign) {
-      throw new Error("Campaign not found");
-    }
+    if (campaignError || !campaign) throw new Error("Campaign not found");
+    if (campaign.user_id !== user.id) throw new Error("You are not authorized to verify this campaign");
 
-    if (campaign.user_id !== user.id) {
-      throw new Error("You are not authorized to verify this campaign");
-    }
+    logStep("Campaign found", { escrowStatus: campaign.escrow_status });
 
-    logStep("Campaign found", { 
-      campaignId: campaign.id, 
-      escrowStatus: campaign.escrow_status,
-      storedId: campaign.escrow_payment_intent_id 
-    });
-
-    // If already held/released, return success
     if (campaign.escrow_status === 'held' || campaign.escrow_status === 'released') {
-      logStep("Escrow already verified", { escrowStatus: campaign.escrow_status });
-      return new Response(JSON.stringify({ 
-        success: true, 
-        message: "Escrow already verified",
-        status: campaign.escrow_status 
-      }), {
+      return new Response(JSON.stringify({ success: true, message: "Escrow already verified", status: campaign.escrow_status }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
       });
     }
 
-    // Initialize Stripe
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
-    
     let paymentSucceeded = false;
     let actualPaymentIntentId: string | null = null;
-    
-    // Priority 1: Use sessionId from URL if provided
+
+    // Priority 1: sessionId from URL
     if (sessionId) {
-      logStep("Trying verification with provided sessionId", { sessionId });
       try {
         const session = await stripe.checkout.sessions.retrieve(sessionId);
-        logStep("Session retrieved", { 
-          paymentStatus: session.payment_status,
-          paymentIntent: session.payment_intent,
-          metadata: session.metadata
-        });
-        
         if (session.payment_status === 'paid') {
           paymentSucceeded = true;
           actualPaymentIntentId = session.payment_intent as string;
         }
       } catch (e) {
-        logStep("Could not retrieve session from URL param", { error: String(e) });
+        logStep("Session retrieval failed", { error: String(e) });
       }
     }
 
-    // Priority 2: Use stored escrow_payment_intent_id
+    // Priority 2: stored escrow_payment_intent_id
     if (!paymentSucceeded && campaign.escrow_payment_intent_id) {
       const storedId = campaign.escrow_payment_intent_id;
-      logStep("Trying verification with stored ID", { storedId });
-      
-      // Check if it's a session ID (starts with cs_)
       if (storedId.startsWith('cs_')) {
         try {
           const session = await stripe.checkout.sessions.retrieve(storedId);
-          logStep("Stored session retrieved", { 
-            paymentStatus: session.payment_status,
-            paymentIntent: session.payment_intent
-          });
-          
           if (session.payment_status === 'paid') {
             paymentSucceeded = true;
             actualPaymentIntentId = session.payment_intent as string;
           }
-        } catch (e) {
-          logStep("Could not retrieve as session", { error: String(e) });
-        }
-      } 
-      // Check if it's a payment intent ID (starts with pi_)
-      else if (storedId.startsWith('pi_')) {
+        } catch (e) { /* skip */ }
+      } else if (storedId.startsWith('pi_')) {
         try {
-          const paymentIntent = await stripe.paymentIntents.retrieve(storedId);
-          logStep("Payment intent retrieved", { 
-            status: paymentIntent.status 
-          });
-          
-          if (paymentIntent.status === 'succeeded') {
+          const pi = await stripe.paymentIntents.retrieve(storedId);
+          if (pi.status === 'succeeded') {
             paymentSucceeded = true;
             actualPaymentIntentId = storedId;
           }
-        } catch (e) {
-          logStep("Could not retrieve as payment intent", { error: String(e) });
-        }
+        } catch (e) { /* skip */ }
       }
     }
 
-    // Priority 3: Search Stripe for payments with this campaign_id in metadata
+    // Priority 3: Stripe metadata search
     if (!paymentSucceeded) {
-      logStep("Searching Stripe for payments by campaign metadata");
       try {
-        const paymentIntents = await stripe.paymentIntents.search({
+        const pis = await stripe.paymentIntents.search({
           query: `metadata['campaign_id']:'${campaignId}' AND status:'succeeded'`,
           limit: 1,
         });
-        
-        if (paymentIntents.data.length > 0) {
-          const pi = paymentIntents.data[0];
-          logStep("Found payment via metadata search", { 
-            paymentIntentId: pi.id,
-            amount: pi.amount 
-          });
+        if (pis.data.length > 0) {
           paymentSucceeded = true;
-          actualPaymentIntentId = pi.id;
-        } else {
-          logStep("No matching payment found in Stripe");
+          actualPaymentIntentId = pis.data[0].id;
         }
       } catch (e) {
         logStep("Stripe search failed", { error: String(e) });
@@ -172,44 +116,64 @@ serve(async (req) => {
     }
 
     if (!paymentSucceeded) {
-      logStep("Payment not yet succeeded");
-      return new Response(JSON.stringify({ 
-        success: false, 
-        message: "Payment not yet completed. Please complete the payment.",
-        status: 'pending'
-      }), {
+      return new Response(JSON.stringify({ success: false, message: "Payment not yet completed.", status: 'pending' }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
       });
     }
 
-    // Payment succeeded! Update campaign to published and escrow held
+    // Payment succeeded! Update campaign
     const { error: updateError } = await supabaseClient
       .from('campaigns')
-      .update({ 
-        escrow_status: 'held',
-        status: 'published',
-        escrow_payment_intent_id: actualPaymentIntentId, // Store the real PI ID
-      })
+      .update({ escrow_status: 'held', status: 'published', escrow_payment_intent_id: actualPaymentIntentId })
       .eq('id', campaignId);
 
-    if (updateError) {
-      logStep("Error updating campaign", { error: updateError.message });
-      throw new Error("Failed to update campaign status");
+    if (updateError) throw new Error("Failed to update campaign status");
+
+    // Create collaboration from accepted application (using service role - no RLS issues)
+    const { data: acceptedApp } = await supabaseClient
+      .from('campaign_applications')
+      .select('id, creator_id, campaign_id')
+      .eq('campaign_id', campaignId)
+      .eq('status', 'accepted')
+      .limit(1)
+      .single();
+
+    if (acceptedApp) {
+      // Check if collaboration already exists
+      const { data: existingCollab } = await supabaseClient
+        .from('campaign_collaborations')
+        .select('id')
+        .eq('campaign_id', campaignId)
+        .eq('creator_id', acceptedApp.creator_id)
+        .limit(1)
+        .single();
+
+      if (!existingCollab) {
+        const { error: collabError } = await supabaseClient
+          .from('campaign_collaborations')
+          .insert({
+            campaign_id: campaignId,
+            creator_id: acceptedApp.creator_id,
+            application_id: acceptedApp.id,
+            status: 'active',
+          });
+
+        if (collabError) {
+          logStep("WARNING: Failed to create collaboration", { error: collabError.message });
+        } else {
+          logStep("Collaboration created successfully", { creatorId: acceptedApp.creator_id });
+        }
+      } else {
+        logStep("Collaboration already exists");
+      }
+    } else {
+      logStep("No accepted application found for collaboration creation");
     }
 
-    logStep("Campaign published successfully", { 
-      campaignId,
-      paymentIntentId: actualPaymentIntentId 
-    });
+    logStep("Campaign published successfully", { campaignId, paymentIntentId: actualPaymentIntentId });
 
-    return new Response(JSON.stringify({ 
-      success: true, 
-      message: "Payment verified! Campaign is now published.",
-      status: 'held'
-    }), {
+    return new Response(JSON.stringify({ success: true, message: "Payment verified! Campaign is now published.", status: 'held' }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 200,
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
