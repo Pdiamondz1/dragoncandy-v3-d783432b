@@ -57,8 +57,6 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
   };
 
   const getEscrowBadge = () => {
-    if (campaign.pricing_type !== 'fixed') return null;
-    
     switch (campaign.escrow_status) {
       case 'pending':
         return (
@@ -220,7 +218,7 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
   };
 
   // Check if campaign needs escrow payment
-  const needsEscrowPayment = campaign.pricing_type === 'fixed' && campaign.escrow_status === 'pending';
+  const needsEscrowPayment = campaign.escrow_status === 'pending';
 
   return (
     <Card className={`relative hover:shadow-lg transition-all duration-200 border-l-4 ${needsEscrowPayment ? 'border-l-amber-500 bg-amber-50/30' : 'border-l-transparent hover:border-l-primary/50'}`}>
