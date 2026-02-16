@@ -1,187 +1,121 @@
 
 
-# Add Counter-Offer / Bidding System to Campaign Applications
+# Fix Counter-Offer Bidding System - Multiple Issues
 
-## Problem
+## Issues Identified
 
-Currently, when a creator applies to a campaign, the restaurant/brand can only **Accept** or **Reject**. There is no way to negotiate -- if the proposed rate or timeline doesn't match, the only option is rejection. This loses potential deals that could have been saved through negotiation.
+### 1. Proposed Rate should be REQUIRED for bid-type campaigns
+Currently the "Proposed Rate" field is optional in both the Application Form and Counter Offer Modal. For bid-range campaigns, the rate is the core negotiation point and must be required.
 
-## Solution Overview
+### 2. No email notifications for counter-offers
+When a counter-offer is sent, no email notification goes to the other party. The `useCreateCounterOffer` and `useRespondToCounterOffer` hooks don't call the email notification system.
 
-Add a **Counter-Offer** flow where restaurants/brands can propose different terms (rate, timeline, message) instead of outright rejecting. Creators can then accept, reject, or counter back. This creates a back-and-forth negotiation until both parties agree.
+### 3. Creator accepting counter-offer causes RLS error
+**Root cause:** When a creator accepts a counter-offer, `useRespondToCounterOffer` tries to INSERT into `campaign_collaborations`. However, the RLS policy on that table only allows **campaign owners** (restaurants/businesses) to create collaborations -- not creators. This causes a permission error.
 
-## How It Works
+### 4. Missing escrow payment flow after acceptance
+Currently, when either side accepts a counter-offer, it immediately creates a collaboration and marks the application as "accepted." This skips the payment step entirely. The correct flow should be:
 
-1. Creator applies with a proposed rate/timeline
-2. Restaurant/Brand reviews and can: **Accept**, **Reject**, or **Counter-Offer**
-3. If counter-offered, the creator sees the new terms and can: **Accept**, **Decline**, or **Counter** back
-4. The negotiation continues until one side accepts or declines
-5. On acceptance, the collaboration is created as normal
+1. Negotiation finalizes (one side accepts the counter-offer)
+2. Application moves to a "negotiation_finalized" or "accepted" state
+3. The **restaurant/business must pay escrow** at the agreed-upon rate before the project appears for the creator
+4. Only after payment verification does the collaboration become active
 
-## Database Changes
+---
 
-### New table: `application_counter_offers`
+## Solution
 
-| Column | Type | Description |
-|--------|------|-------------|
-| id | uuid (PK) | Auto-generated |
-| application_id | uuid (FK) | Links to campaign_applications |
-| sender_id | uuid | The user making the counter-offer |
-| sender_role | text | 'business' or 'creator' |
-| proposed_rate | numeric | Counter-offered rate |
-| proposed_timeline | text | Counter-offered timeline |
-| message | text | Explanation/negotiation message |
-| status | text | 'pending', 'accepted', 'declined' (default: 'pending') |
-| created_at | timestamptz | Auto-generated |
+### Flow After Counter-Offer Acceptance
 
-### Update `campaign_applications` table
-
-- Add new status value: extend the `application_status` enum to include `'counter_offered'`
-
-### RLS Policies
-
-- **SELECT**: Application creator or campaign owner can view counter-offers
-- **INSERT**: Application creator or campaign owner can create counter-offers
-- **UPDATE**: Only the recipient (not the sender) can update status
-
-## Frontend Changes
-
-### 1. New Component: `CounterOfferModal`
-A dialog where the business enters their counter-offer (rate, timeline, message). Opens when they click "Counter Offer" instead of Accept/Reject.
-
-### 2. New Component: `CounterOfferThread`
-Displays the negotiation history as a threaded conversation showing each offer/counter-offer with amounts and timelines.
-
-### 3. New Hook: `useCounterOffers`
-- Fetches counter-offers for an application
-- Mutations to create and respond to counter-offers
-
-### 4. Update `ApplicationCard` (business view)
-Add a third "Counter Offer" button alongside Accept/Reject for pending applications.
-
-### 5. Update `DetailedApplicationCard` (creator view)
-- Show counter-offer notification when status is `counter_offered`
-- Display the business's proposed terms
-- Allow creator to Accept, Decline, or Counter back
-
-### 6. Update `CreatorApplicationsCard` (campaign details view)
-Show counter-offer status badge and negotiation thread.
-
-### 7. Update `useManageApplication` hook
-Add `counter_offered` as a valid status transition.
-
-### 8. Update `CampaignApplication` type
-Add `counter_offered` to the status union type.
-
-### 9. Update `ApplicationStatusBadge`
-Add styling for the new `counter_offered` status (amber/orange color).
-
-## Files to Create
-
-| File | Purpose |
-|------|---------|
-| `src/components/campaigns/CounterOfferModal.tsx` | Modal form for submitting counter-offers |
-| `src/components/campaigns/CounterOfferThread.tsx` | Displays negotiation history |
-| `src/hooks/useCounterOffers.ts` | Fetch and manage counter-offers |
-
-## Files to Modify
-
-| File | Change |
-|------|---------|
-| `src/types/applications.ts` | Add `'counter_offered'` to status type |
-| `src/components/campaigns/ApplicationCard.tsx` | Add Counter Offer button |
-| `src/components/applications/DetailedApplicationCard.tsx` | Show counter-offer UI for creators |
-| `src/components/campaigns/CreatorApplicationsCard.tsx` | Show counter-offer status |
-| `src/components/campaigns/ApplicationStatusBadge.tsx` | Add counter_offered badge style |
-| `src/hooks/useManageApplication.ts` | Support counter_offered status |
-| `src/pages/CreatorApplications.tsx` | Add counter_offered filter tab |
-
-## Database Migration (SQL)
-
-```sql
--- Add 'counter_offered' to the application_status enum
-ALTER TYPE application_status ADD VALUE IF NOT EXISTS 'counter_offered';
-
--- Create counter-offers table
-CREATE TABLE public.application_counter_offers (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  application_id uuid NOT NULL REFERENCES campaign_applications(id) ON DELETE CASCADE,
-  sender_id uuid NOT NULL,
-  sender_role text NOT NULL CHECK (sender_role IN ('business', 'creator')),
-  proposed_rate numeric,
-  proposed_timeline text,
-  message text NOT NULL,
-  status text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'declined')),
-  created_at timestamptz NOT NULL DEFAULT now()
-);
-
--- Enable RLS
-ALTER TABLE public.application_counter_offers ENABLE ROW LEVEL SECURITY;
-
--- SELECT: participants can view counter-offers for their applications
-CREATE POLICY "Users can view counter-offers for their applications"
-ON public.application_counter_offers FOR SELECT
-USING (
-  EXISTS (
-    SELECT 1 FROM campaign_applications ca
-    WHERE ca.id = application_counter_offers.application_id
-    AND (
-      ca.creator_id = auth.uid()
-      OR EXISTS (
-        SELECT 1 FROM campaigns c
-        WHERE c.id = ca.campaign_id AND c.user_id = auth.uid()
-      )
-    )
-  )
-);
-
--- INSERT: participants can create counter-offers
-CREATE POLICY "Users can create counter-offers for their applications"
-ON public.application_counter_offers FOR INSERT
-WITH CHECK (
-  sender_id = auth.uid()
-  AND EXISTS (
-    SELECT 1 FROM campaign_applications ca
-    WHERE ca.id = application_counter_offers.application_id
-    AND (
-      ca.creator_id = auth.uid()
-      OR EXISTS (
-        SELECT 1 FROM campaigns c
-        WHERE c.id = ca.campaign_id AND c.user_id = auth.uid()
-      )
-    )
-  )
-);
-
--- UPDATE: only the other party (not sender) can accept/decline
-CREATE POLICY "Recipients can respond to counter-offers"
-ON public.application_counter_offers FOR UPDATE
-USING (
-  sender_id != auth.uid()
-  AND EXISTS (
-    SELECT 1 FROM campaign_applications ca
-    WHERE ca.id = application_counter_offers.application_id
-    AND (
-      ca.creator_id = auth.uid()
-      OR EXISTS (
-        SELECT 1 FROM campaigns c
-        WHERE c.id = ca.campaign_id AND c.user_id = auth.uid()
-      )
-    )
-  )
-);
+```text
+Counter-offer accepted
+       |
+       v
+Application status -> "accepted"
+       |
+       v
+Restaurant sees "Pay Escrow" button (agreed amount from final counter-offer)
+       |
+       v
+Stripe Checkout (create-campaign-escrow edge function)
+       |
+       v
+Payment verified -> Campaign escrow_status = "held"
+       |
+       v
+Collaboration created -> Creator sees project
 ```
 
-## User Experience
+---
 
-**Business/Restaurant sees a pending application:**
-- Three buttons: Accept | Counter Offer | Reject
-- Clicking "Counter Offer" opens a modal to propose new rate, timeline, and a message
+## Implementation Details
 
-**Creator sees a counter-offered application:**
-- Application status shows "Counter Offered" in amber
-- The counter-offer details are displayed (proposed rate, timeline, message)
-- Three buttons: Accept Offer | Counter Back | Decline
-- Accepting creates the collaboration at the agreed terms
-- "Counter Back" opens the same modal for the creator to propose different terms
+### File 1: `src/components/campaigns/CounterOfferModal.tsx`
+- Make "Proposed Rate" **required** (add `required` attribute and validation)
+- Update label to "Proposed Rate *"
+
+### File 2: `src/components/campaigns/ApplicationForm.tsx`
+- Make "Proposed Rate" **required** for bid-range campaigns (not optional)
+- Update label to "Proposed Rate *"
+- Add validation to prevent submission without a rate
+
+### File 3: `src/hooks/useCounterOffers.ts` (major rework)
+
+**`useCreateCounterOffer`:**
+- Add email notification to the other party when a counter-offer is sent
+- Fetch the other party's email and send a `counter_offer` notification
+
+**`useRespondToCounterOffer`:**
+- Remove the collaboration creation logic entirely
+- When **accepted**: only update the counter-offer status and the application status to "accepted"
+- Do NOT create a collaboration here -- that happens after payment
+- Send email notification about acceptance/decline
+- The restaurant will then see the "Pay Escrow" button on their campaign details
+
+### File 4: `src/hooks/useManageApplication.ts`
+- When accepting an application (including after counter-offer), do NOT create a collaboration immediately
+- Instead, just update the application status to "accepted"
+- The collaboration should only be created after escrow payment is verified
+
+### File 5: `src/components/campaigns/ApplicationCard.tsx` (business/restaurant view)
+- When application status is "accepted" and campaign `escrow_status` is not "held":
+  - Show a "Pay Escrow" button with the agreed amount (from the latest accepted counter-offer or the application's proposed rate)
+  - Use the existing `create-campaign-escrow` edge function
+- When escrow is already paid, show "Paid" badge and normal collaboration flow
+
+### File 6: `src/hooks/useEmailNotifications.ts`
+- Add `'counter_offer'` and `'counter_offer_response'` to the `NotificationType` union type
+
+### File 7: `supabase/functions/send-notification-email/index.ts`
+- Add email templates for `counter_offer` and `counter_offer_response` notification types
+
+### File 8: Update `verify-campaign-escrow` edge function
+- After successful payment verification, create the collaboration record (using service role key)
+- This ensures the collaboration is only created after the business has paid
+
+---
+
+## Files to Create/Modify
+
+| File | Change |
+|------|--------|
+| `src/components/campaigns/CounterOfferModal.tsx` | Make rate required |
+| `src/components/campaigns/ApplicationForm.tsx` | Make rate required for bid campaigns |
+| `src/hooks/useCounterOffers.ts` | Add email notifications, remove collaboration creation from accept |
+| `src/hooks/useManageApplication.ts` | Remove collaboration creation (defer to payment) |
+| `src/components/campaigns/ApplicationCard.tsx` | Add "Pay Escrow" button for accepted applications |
+| `src/hooks/useEmailNotifications.ts` | Add counter_offer notification types |
+| `supabase/functions/send-notification-email/index.ts` | Add counter-offer email templates |
+| `supabase/functions/verify-campaign-escrow/index.ts` | Create collaboration after payment verification |
+
+---
+
+## Expected Result
+
+1. **Proposed Rate is required** in both application form (for bid campaigns) and counter-offer modal
+2. **Email notifications** are sent when counter-offers are made and responded to
+3. **Creator can accept** without RLS errors (no more collaboration insert from creator side)
+4. **After acceptance**, the restaurant sees a "Pay Escrow" button with the agreed amount
+5. **After payment**, the collaboration is created automatically and the project appears for the creator
+6. The entire flow mirrors the existing DragonDash escrow flow but uses the negotiated rate
 
