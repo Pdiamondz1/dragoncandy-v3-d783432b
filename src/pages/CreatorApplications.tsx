@@ -17,6 +17,7 @@ const CreatorApplications: React.FC = () => {
   );
 
   const pendingApplications = filteredApplications.filter(app => app.status === 'pending');
+  const counterOfferedApplications = filteredApplications.filter(app => app.status === 'counter_offered');
   const acceptedApplications = filteredApplications.filter(app => app.status === 'accepted');
   const rejectedApplications = filteredApplications.filter(app => app.status === 'rejected');
 
@@ -89,6 +90,7 @@ const CreatorApplications: React.FC = () => {
           <ApplicationsTabsContent
             filteredApplications={filteredApplications}
             pendingApplications={pendingApplications}
+            counterOfferedApplications={counterOfferedApplications}
             acceptedApplications={acceptedApplications}
             rejectedApplications={rejectedApplications}
             searchTerm={searchTerm}

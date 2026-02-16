@@ -14,7 +14,7 @@ export const useManageApplication = () => {
       status,
     }: {
       applicationId: string;
-      status: 'accepted' | 'rejected';
+      status: 'accepted' | 'rejected' | 'counter_offered';
     }) => {
       console.log('Updating application status:', { applicationId, status });
       

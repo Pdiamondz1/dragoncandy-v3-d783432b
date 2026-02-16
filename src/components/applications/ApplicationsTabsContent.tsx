@@ -8,6 +8,7 @@ import { CampaignApplication } from '@/types/applications';
 interface ApplicationsTabsContentProps {
   filteredApplications: CampaignApplication[];
   pendingApplications: CampaignApplication[];
+  counterOfferedApplications?: CampaignApplication[];
   acceptedApplications: CampaignApplication[];
   rejectedApplications: CampaignApplication[];
   searchTerm: string;
@@ -16,15 +17,21 @@ interface ApplicationsTabsContentProps {
 const ApplicationsTabsContent: React.FC<ApplicationsTabsContentProps> = ({
   filteredApplications,
   pendingApplications,
+  counterOfferedApplications = [],
   acceptedApplications,
   rejectedApplications,
   searchTerm,
 }) => {
+  const hasCounterOffers = counterOfferedApplications.length > 0;
+
   return (
     <Tabs defaultValue="all" className="space-y-6">
-      <TabsList className="grid w-full grid-cols-4">
+      <TabsList className={`grid w-full ${hasCounterOffers ? 'grid-cols-5' : 'grid-cols-4'}`}>
         <TabsTrigger value="all">All ({filteredApplications.length})</TabsTrigger>
         <TabsTrigger value="pending">Pending ({pendingApplications.length})</TabsTrigger>
+        {hasCounterOffers && (
+          <TabsTrigger value="counter_offered">Counter ({counterOfferedApplications.length})</TabsTrigger>
+        )}
         <TabsTrigger value="accepted">Accepted ({acceptedApplications.length})</TabsTrigger>
         <TabsTrigger value="rejected">Rejected ({rejectedApplications.length})</TabsTrigger>
       </TabsList>
@@ -55,6 +62,16 @@ const ApplicationsTabsContent: React.FC<ApplicationsTabsContentProps> = ({
           </div>
         )}
       </TabsContent>
+
+      {hasCounterOffers && (
+        <TabsContent value="counter_offered" className="space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {counterOfferedApplications.map((application) => (
+              <DetailedApplicationCard key={application.id} application={application} />
+            ))}
+          </div>
+        </TabsContent>
+      )}
 
       <TabsContent value="accepted" className="space-y-4">
         {acceptedApplications.length === 0 ? (

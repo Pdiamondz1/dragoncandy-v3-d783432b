@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Check, X, Clock } from 'lucide-react';
 
 interface ApplicationStatusBadgeProps {
-  status: 'pending' | 'accepted' | 'rejected';
+  status: 'pending' | 'accepted' | 'rejected' | 'counter_offered';
   showIcon?: boolean;
 }
 
@@ -34,6 +34,13 @@ const ApplicationStatusBadge: React.FC<ApplicationStatusBadgeProps> = ({
           label: 'Rejected',
           icon: X,
           className: 'bg-red-100 text-red-800 border-red-200',
+        };
+      case 'counter_offered':
+        return {
+          variant: 'secondary' as const,
+          label: 'Counter Offered',
+          icon: Clock,
+          className: 'bg-amber-100 text-amber-800 border-amber-200',
         };
       default:
         return {

@@ -50,6 +50,50 @@ export type Database = {
         }
         Relationships: []
       }
+      application_counter_offers: {
+        Row: {
+          application_id: string
+          created_at: string
+          id: string
+          message: string
+          proposed_rate: number | null
+          proposed_timeline: string | null
+          sender_id: string
+          sender_role: string
+          status: string
+        }
+        Insert: {
+          application_id: string
+          created_at?: string
+          id?: string
+          message: string
+          proposed_rate?: number | null
+          proposed_timeline?: string | null
+          sender_id: string
+          sender_role: string
+          status?: string
+        }
+        Update: {
+          application_id?: string
+          created_at?: string
+          id?: string
+          message?: string
+          proposed_rate?: number | null
+          proposed_timeline?: string | null
+          sender_id?: string
+          sender_role?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "application_counter_offers_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_applications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       beta_feedback: {
         Row: {
           browser_info: string | null
@@ -2057,7 +2101,11 @@ export type Database = {
       }
     }
     Enums: {
-      application_status: "pending" | "accepted" | "rejected"
+      application_status:
+        | "pending"
+        | "accepted"
+        | "rejected"
+        | "counter_offered"
       campaign_status:
         | "draft"
         | "published"
@@ -2221,7 +2269,12 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      application_status: ["pending", "accepted", "rejected"],
+      application_status: [
+        "pending",
+        "accepted",
+        "rejected",
+        "counter_offered",
+      ],
       campaign_status: [
         "draft",
         "published",

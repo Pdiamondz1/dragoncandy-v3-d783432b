@@ -6,7 +6,7 @@ export interface CampaignApplication {
   intro_message?: string;
   proposed_timeline?: string;
   proposed_rate?: number;
-  status: 'pending' | 'accepted' | 'rejected';
+  status: 'pending' | 'accepted' | 'rejected' | 'counter_offered';
   created_at: string;
   updated_at: string;
   brand_approval_status?: 'pending' | 'approved' | 'rejected';
