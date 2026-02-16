@@ -440,6 +440,7 @@ const RestaurantCampaignDetails = () => {
                       showActions={true}
                       isSponsored={hasAcceptedSponsorship}
                       userRole={hasAcceptedSponsorship ? "restaurant" : undefined}
+                      campaignEscrowStatus={campaign?.escrow_status}
                     />
                   );
                 })}

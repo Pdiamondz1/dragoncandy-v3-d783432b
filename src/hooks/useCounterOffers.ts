@@ -2,6 +2,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { useEmailNotifications } from '@/hooks/useEmailNotifications';
 
 export interface CounterOffer {
   id: string;
@@ -35,6 +36,7 @@ export const useCounterOffers = (applicationId: string | undefined) => {
 
 export const useCreateCounterOffer = () => {
   const queryClient = useQueryClient();
+  const { sendNotification } = useEmailNotifications();
 
   return useMutation({
     mutationFn: async ({
@@ -76,13 +78,47 @@ export const useCreateCounterOffer = () => {
         .single();
 
       if (error) throw error;
-      return data;
+      return { data, senderRole, applicationId };
     },
-    onSuccess: () => {
+    onSuccess: async ({ data, senderRole, applicationId }) => {
       queryClient.invalidateQueries({ queryKey: ['counter-offers'] });
       queryClient.invalidateQueries({ queryKey: ['campaign-applications'] });
       queryClient.invalidateQueries({ queryKey: ['creator-applications'] });
       toast({ title: 'Counter offer sent!', description: 'The other party will be notified.' });
+
+      // Send email notification to the other party
+      try {
+        const { data: application } = await supabase
+          .from('campaign_applications')
+          .select('creator_id, campaign_id')
+          .eq('id', applicationId)
+          .single();
+
+        if (!application) return;
+
+        const { data: campaign } = await supabase
+          .from('campaigns')
+          .select('title, user_id')
+          .eq('id', application.campaign_id)
+          .single();
+
+        // Determine recipient: if sender is business, notify creator; vice versa
+        const recipientUserId = senderRole === 'business' 
+          ? application.creator_id 
+          : campaign?.user_id;
+
+        if (recipientUserId && campaign) {
+          await sendNotification('counter_offer', undefined, undefined, {
+            campaignTitle: campaign.title,
+            campaignId: application.campaign_id,
+            recipientUserId,
+            message: data.message,
+            amount: data.proposed_rate || undefined,
+          });
+        }
+      } catch (e) {
+        console.error('Failed to send counter-offer notification:', e);
+      }
     },
     onError: (error) => {
       console.error('Counter offer failed:', error);
@@ -93,6 +129,7 @@ export const useCreateCounterOffer = () => {
 
 export const useRespondToCounterOffer = () => {
   const queryClient = useQueryClient();
+  const { sendNotification } = useEmailNotifications();
 
   return useMutation({
     mutationFn: async ({
@@ -112,42 +149,62 @@ export const useRespondToCounterOffer = () => {
 
       if (offerError) throw offerError;
 
-      // If accepted, update application status to accepted and create collaboration
+      // If accepted, update application status to accepted (NO collaboration creation here)
       if (response === 'accepted') {
-        const { data: appData, error: appError } = await supabase
+        const { error: appError } = await supabase
           .from('campaign_applications')
           .update({ status: 'accepted' as any })
-          .eq('id', applicationId)
-          .select()
-          .single();
+          .eq('id', applicationId);
 
         if (appError) throw appError;
-
-        // Create collaboration
-        const { error: collabError } = await supabase
-          .from('campaign_collaborations')
-          .insert({
-            campaign_id: appData.campaign_id,
-            creator_id: appData.creator_id,
-            application_id: appData.id,
-            status: 'active',
-          });
-
-        if (collabError) throw collabError;
       }
 
-      return { response };
+      return { response, applicationId };
     },
-    onSuccess: (data) => {
+    onSuccess: async ({ response, applicationId }) => {
       queryClient.invalidateQueries({ queryKey: ['counter-offers'] });
       queryClient.invalidateQueries({ queryKey: ['campaign-applications'] });
       queryClient.invalidateQueries({ queryKey: ['creator-applications'] });
       toast({
-        title: data.response === 'accepted' ? 'Offer accepted!' : 'Offer declined',
-        description: data.response === 'accepted'
-          ? 'A collaboration has been created.'
+        title: response === 'accepted' ? 'Offer accepted!' : 'Offer declined',
+        description: response === 'accepted'
+          ? 'The restaurant will now proceed with escrow payment to start the project.'
           : 'The other party will be notified.',
       });
+
+      // Send email notification
+      try {
+        const { data: application } = await supabase
+          .from('campaign_applications')
+          .select('creator_id, campaign_id')
+          .eq('id', applicationId)
+          .single();
+
+        if (!application) return;
+
+        const { data: campaign } = await supabase
+          .from('campaigns')
+          .select('title, user_id')
+          .eq('id', application.campaign_id)
+          .single();
+
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user || !campaign) return;
+
+        // Notify the counter-offer sender (the other party)
+        const recipientUserId = user.id === application.creator_id
+          ? campaign.user_id
+          : application.creator_id;
+
+        await sendNotification('counter_offer_response', undefined, undefined, {
+          campaignTitle: campaign.title,
+          campaignId: application.campaign_id,
+          recipientUserId,
+          applicationStatus: response,
+        });
+      } catch (e) {
+        console.error('Failed to send response notification:', e);
+      }
     },
     onError: (error) => {
       console.error('Response failed:', error);
