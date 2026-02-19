@@ -33,10 +33,16 @@ serve(async (req) => {
     if (!sponsorshipId) throw new Error("Missing sponsorshipId");
     logStep("Verifying payment for sponsorship", { sponsorshipId });
 
-    // Get the sponsorship record
+    // Get the sponsorship record with related data
     const { data: sponsorship, error: fetchError } = await supabaseClient
       .from('campaign_sponsorships')
-      .select('payment_intent_id, payment_status')
+      .select(`
+        payment_intent_id, payment_status, sponsorship_amount,
+        brand_id, restaurant_id, campaign_id,
+        campaigns (title),
+        brand_profile:business_profiles!brand_id (business_name, user_id),
+        restaurant_profile:business_profiles!restaurant_id (business_name, user_id)
+      `)
       .eq('id', sponsorshipId)
       .single();
 
@@ -67,6 +73,66 @@ serve(async (req) => {
 
       if (updateError) {
         logStep("Warning: Failed to update payment status", { error: updateError.message });
+      }
+
+      // Send email notifications to both parties
+      try {
+        const campaignTitle = (sponsorship as any).campaigns?.title || 'Campaign';
+        const brandName = (sponsorship as any).brand_profile?.business_name || 'Brand';
+        const brandUserId = (sponsorship as any).brand_profile?.user_id;
+        const restaurantName = (sponsorship as any).restaurant_profile?.business_name || 'Restaurant';
+        const restaurantUserId = (sponsorship as any).restaurant_profile?.user_id;
+        const amount = sponsorship.sponsorship_amount;
+
+        logStep("Sending payment confirmation emails", { brandUserId, restaurantUserId });
+
+        // Send to brand
+        if (brandUserId) {
+          await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/send-notification-email`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+            },
+            body: JSON.stringify({
+              type: 'sponsorship_payment_confirmed',
+              data: {
+                recipientUserId: brandUserId,
+                campaignTitle,
+                sponsorshipAmount: amount,
+                brandName,
+                businessName: restaurantName,
+                isRecipient: false,
+              },
+            }),
+          });
+        }
+
+        // Send to restaurant
+        if (restaurantUserId) {
+          await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/send-notification-email`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+            },
+            body: JSON.stringify({
+              type: 'sponsorship_payment_confirmed',
+              data: {
+                recipientUserId: restaurantUserId,
+                campaignTitle,
+                sponsorshipAmount: amount,
+                brandName,
+                businessName: restaurantName,
+                isRecipient: true,
+              },
+            }),
+          });
+        }
+
+        logStep("Payment confirmation emails sent");
+      } catch (emailError) {
+        logStep("Warning: Failed to send payment emails", { error: String(emailError) });
       }
 
       return new Response(JSON.stringify({ verified: true, status: 'paid' }), {

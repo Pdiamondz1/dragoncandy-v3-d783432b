@@ -19,21 +19,36 @@ export const useSponsorshipPayment = () => {
     mutationFn: async ({ sponsorshipId, amount, campaignTitle }: InitiatePaymentParams) => {
       console.log('Initiating Stripe checkout for sponsorship:', sponsorshipId, 'Amount:', amount);
 
+      // Pre-open blank tab synchronously to avoid pop-up blockers
+      const stripeTab = window.open('about:blank', '_blank');
+
       const { data, error } = await supabase.functions.invoke('create-sponsorship-checkout', {
         body: { sponsorshipId, amount, campaignTitle },
       });
 
-      if (error) throw error;
-      if (!data?.url) throw new Error('No checkout URL returned');
+      if (error) {
+        stripeTab?.close();
+        throw error;
+      }
+      if (!data?.url) {
+        stripeTab?.close();
+        throw new Error('No checkout URL returned');
+      }
 
-      // Open Stripe checkout in new tab
-      window.open(data.url, '_blank');
+      // Redirect the pre-opened tab to the Stripe checkout URL
+      if (stripeTab) {
+        stripeTab.location.href = data.url;
+      } else {
+        // Fallback: if pop-up was still blocked, redirect current window
+        window.location.href = data.url;
+      }
       
       return { success: true, sponsorshipId, sessionId: data.sessionId };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sponsorship-proposals'] });
       queryClient.invalidateQueries({ queryKey: ['brand-sponsorship-status'] });
+      queryClient.invalidateQueries({ queryKey: ['brand-sponsorships'] });
       toast({
         title: 'Checkout Opened',
         description: 'Complete your payment in the new tab.',
@@ -61,45 +76,13 @@ export const useSponsorshipPayment = () => {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['sponsorship-proposals'] });
       queryClient.invalidateQueries({ queryKey: ['brand-sponsorship-status'] });
+      queryClient.invalidateQueries({ queryKey: ['brand-sponsorships'] });
       if (data?.verified) {
         toast({
           title: 'Payment Confirmed',
           description: 'Your sponsorship payment has been verified!',
         });
       }
-    },
-  });
-
-  const confirmPayment = useMutation({
-    mutationFn: async ({ sponsorshipId }: { sponsorshipId: string }) => {
-      // Update payment status to 'paid'
-      const { error } = await supabase
-        .from('campaign_sponsorships')
-        .update({ 
-          payment_status: 'paid',
-          payment_date: new Date().toISOString(),
-        })
-        .eq('id', sponsorshipId);
-
-      if (error) throw error;
-      
-      return { success: true };
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['sponsorship-proposals'] });
-      queryClient.invalidateQueries({ queryKey: ['brand-sponsorship-status'] });
-      toast({
-        title: 'Payment Confirmed',
-        description: 'Your sponsorship payment has been confirmed!',
-      });
-    },
-    onError: (error) => {
-      console.error('Error confirming payment:', error);
-      toast({
-        title: 'Payment Error',
-        description: 'Failed to confirm payment.',
-        variant: 'destructive',
-      });
     },
   });
 

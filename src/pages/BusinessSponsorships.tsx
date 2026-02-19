@@ -203,7 +203,29 @@ const BusinessSponsorships = () => {
                             Campaign: {proposal.campaigns?.title || 'Unknown Campaign'}
                           </p>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {/* Payment Status Badge */}
+                          {(() => {
+                            const ps = proposal.payment_status || 'unpaid';
+                            if (ps === 'paid') return (
+                              <Badge className="bg-green-100 text-green-800">
+                                <DollarSign className="h-3 w-3 mr-1" />
+                                Payment Received
+                              </Badge>
+                            );
+                            if (ps === 'pending') return (
+                              <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
+                                <Clock className="h-3 w-3 mr-1" />
+                                Payment Processing
+                              </Badge>
+                            );
+                            return (
+                              <Badge variant="secondary" className="bg-amber-100 text-amber-800">
+                                <Clock className="h-3 w-3 mr-1" />
+                                Awaiting Brand Payment
+                              </Badge>
+                            );
+                          })()}
                           {getCompletionButton(proposal)}
                         </div>
                       </div>

@@ -31,7 +31,8 @@ type NotificationType =
   | 'sponsorship_completed'
   | 'content_started'
   | 'counter_offer'
-  | 'counter_offer_response';
+  | 'counter_offer_response'
+  | 'sponsorship_payment_confirmed';
 
 interface NotificationEmailRequest {
   to?: string;
@@ -610,6 +611,39 @@ const handler = async (req: Request): Promise<Response> => {
                </p>`
             : `<p>The other party has declined your terms. You may try submitting a new counter offer.</p>`
           }
+        `,
+      },
+      sponsorship_payment_confirmed: {
+        subject: data.isRecipient 
+          ? `💰 Sponsorship Payment Received - $${data.sponsorshipAmount}`
+          : `✅ Sponsorship Payment Confirmed - $${data.sponsorshipAmount}`,
+        html: `
+          <div style="font-family: 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: linear-gradient(135deg, #10B981 0%, #059669 100%); padding: 40px 20px; text-align: center; border-radius: 12px 12px 0 0;">
+              <h1 style="color: white; margin: 0; font-size: 28px;">${data.isRecipient ? '💰 Payment Received!' : '✅ Payment Confirmed!'}</h1>
+            </div>
+            <div style="background: white; padding: 40px 20px; border-radius: 0 0 12px 12px;">
+              <p style="font-size: 16px; color: #374151;">Hi ${rn},</p>
+              ${data.isRecipient 
+                ? `<p style="font-size: 16px; color: #374151; line-height: 1.6;"><strong>${data.brandName}</strong> has completed their sponsorship payment of <strong>$${data.sponsorshipAmount?.toLocaleString()}</strong> for campaign <strong>"${data.campaignTitle}"</strong>.</p>`
+                : `<p style="font-size: 16px; color: #374151; line-height: 1.6;">Your sponsorship payment of <strong>$${data.sponsorshipAmount?.toLocaleString()}</strong> for campaign <strong>"${data.campaignTitle}"</strong> has been successfully processed.</p>`
+              }
+              <div style="background: #ECFDF5; border-left: 4px solid #10B981; padding: 16px; margin: 24px 0; border-radius: 4px;">
+                <p style="margin: 0; color: #065F46; font-weight: 600;">✅ Payment Verified</p>
+                <p style="margin: 8px 0 0 0; color: #065F46; font-size: 14px;">
+                  ${data.isRecipient 
+                    ? 'The sponsorship is now fully funded. You can proceed with the campaign collaboration.'
+                    : 'Your sponsorship is now active. The restaurant has been notified of your payment.'}
+                </p>
+              </div>
+              <p style="text-align: center; margin-top: 40px;">
+                <a href="${baseUrl}/dashboard/${data.isRecipient ? 'business' : 'brand'}/sponsorships" 
+                   style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600; font-size: 16px;">
+                  View Sponsorship
+                </a>
+              </p>
+            </div>
+          </div>
         `,
       },
     };

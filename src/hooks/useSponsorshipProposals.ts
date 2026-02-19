@@ -19,6 +19,8 @@ export interface SponsorshipProposal {
   business_completion_status?: string;
   completed_at?: string;
   review_status?: string;
+  payment_status?: string;
+  payment_date?: string;
   campaigns?: {
     id: string;
     title: string;

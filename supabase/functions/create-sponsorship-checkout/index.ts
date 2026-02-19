@@ -81,8 +81,8 @@ serve(async (req) => {
         },
       ],
       mode: "payment",
-      success_url: `${origin}/brand/sponsorships?payment=success&sponsorship_id=${sponsorshipId}`,
-      cancel_url: `${origin}/brand/sponsorships?payment=cancelled`,
+      success_url: `${origin}/dashboard/brand/sponsorships?payment=success&sponsorship_id=${sponsorshipId}`,
+      cancel_url: `${origin}/dashboard/brand/sponsorships?payment=cancelled`,
       metadata: {
         sponsorship_id: sponsorshipId,
         platform_fee: platformFee.toString(),

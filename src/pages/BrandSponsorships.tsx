@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -10,16 +10,19 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useBrandSponsorships } from '@/hooks/useBrandSponsorships';
 import { useSponsorshipComplete } from '@/hooks/useSponsorshipComplete';
+import { useSponsorshipPayment } from '@/hooks/useSponsorshipPayment';
 import SponsorshipRatingPromptManager from '@/components/reviews/SponsorshipRatingPromptManager';
 import ResponsiveRatingModal from '@/components/reviews/ResponsiveRatingModal';
-import { Target, DollarSign, Calendar, ExternalLink, Loader2, MessageSquare, CheckCircle, Clock, Star } from 'lucide-react';
+import { Target, DollarSign, Calendar, ExternalLink, Loader2, MessageSquare, CheckCircle, Clock, Star, CreditCard, RefreshCw } from 'lucide-react';
 import { format } from 'date-fns';
 
 const BrandSponsorships = () => {
   const { profile } = useAuth();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { sponsorships, isLoading } = useBrandSponsorships();
   const { requestCompletion, requestingId } = useSponsorshipComplete();
+  const { initiatePayment, verifyPayment } = useSponsorshipPayment();
   const { toast } = useToast();
   
   const [ratingModal, setRatingModal] = useState<{
@@ -28,6 +31,18 @@ const BrandSponsorships = () => {
     revieweeId: string;
     revieweeName: string;
   } | null>(null);
+
+  // Auto-verify payment on redirect from Stripe
+  useEffect(() => {
+    const paymentStatus = searchParams.get('payment');
+    const sponsorshipId = searchParams.get('sponsorship_id');
+    
+    if (paymentStatus === 'success' && sponsorshipId) {
+      verifyPayment.mutate({ sponsorshipId });
+      // Clean up URL params
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams]);
 
   if (!profile) {
     return <div>Loading...</div>;
@@ -72,6 +87,77 @@ const BrandSponsorships = () => {
       revieweeId: sponsorship.restaurant_profile?.user_id || '',
       revieweeName: sponsorship.restaurant_profile?.business_name || 'Restaurant'
     });
+  };
+
+  const handlePayment = (sponsorship: any) => {
+    initiatePayment.mutate({
+      sponsorshipId: sponsorship.id,
+      amount: sponsorship.sponsorship_amount || 0,
+      campaignTitle: sponsorship.campaigns?.title,
+    });
+  };
+
+  const handleVerifyPayment = (sponsorship: any) => {
+    verifyPayment.mutate({ sponsorshipId: sponsorship.id });
+  };
+
+  const getPaymentSection = (sponsorship: any) => {
+    if (sponsorship.status !== 'accepted' && sponsorship.status !== 'completed') return null;
+
+    const paymentStatus = sponsorship.payment_status || 'unpaid';
+
+    if (paymentStatus === 'paid') {
+      return (
+        <Badge className="bg-green-100 text-green-800">
+          <CheckCircle className="h-3 w-3 mr-1" />
+          Payment Complete
+        </Badge>
+      );
+    }
+
+    if (paymentStatus === 'pending') {
+      return (
+        <div className="flex gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => handleVerifyPayment(sponsorship)}
+            disabled={verifyPayment.isPending}
+          >
+            {verifyPayment.isPending ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4 mr-2" />
+            )}
+            Verify Payment
+          </Button>
+          <Button
+            size="sm"
+            onClick={() => handlePayment(sponsorship)}
+            disabled={initiatePayment.isPending}
+          >
+            <CreditCard className="h-4 w-4 mr-2" />
+            Retry Payment
+          </Button>
+        </div>
+      );
+    }
+
+    // unpaid
+    return (
+      <Button
+        onClick={() => handlePayment(sponsorship)}
+        disabled={initiatePayment.isPending}
+        className="bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-700 hover:to-purple-700"
+      >
+        {initiatePayment.isPending ? (
+          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+        ) : (
+          <CreditCard className="h-4 w-4 mr-2" />
+        )}
+        Pay ${sponsorship.sponsorship_amount?.toLocaleString() || 0}
+      </Button>
+    );
   };
 
   const getCompletionButton = (proposal: any) => {
@@ -162,7 +248,7 @@ const BrandSponsorships = () => {
                         {sponsorship.restaurant_profile?.business_name || 'Restaurant'}
                       </CardDescription>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap justify-end">
                       {(sponsorship.status === 'accepted' || sponsorship.status === 'completed') && getCompletionButton(sponsorship)}
                       <Badge className={getStatusColor(sponsorship.status)}>
                         {sponsorship.status.charAt(0).toUpperCase() + sponsorship.status.slice(1)}
@@ -211,6 +297,20 @@ const BrandSponsorships = () => {
                         </div>
                       </div>
                     </div>
+
+                    {/* Payment Section */}
+                    {getPaymentSection(sponsorship) && (
+                      <>
+                        <Separator />
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <CreditCard className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-sm font-medium">Payment Status</span>
+                          </div>
+                          {getPaymentSection(sponsorship)}
+                        </div>
+                      </>
+                    )}
 
                     {sponsorship.proposal_message && (
                       <>
