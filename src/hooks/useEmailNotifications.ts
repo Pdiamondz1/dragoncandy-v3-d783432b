@@ -19,7 +19,8 @@ type NotificationType =
   | 'sponsorship_completed'
   | 'content_started'
   | 'counter_offer'
-  | 'counter_offer_response';
+  | 'counter_offer_response'
+  | 'sponsorship_payment_confirmed';
 
 interface NotificationData {
   campaignTitle?: string;
@@ -45,8 +46,8 @@ interface NotificationData {
   actionUrl?: string;
   requesterName?: string;
   deliveryTime?: string;
-  paymentMethod?: string; // 'stripe_transfer' or 'pending_balance'
-  isRecipient?: boolean; // true if recipient received payment, false if they paid
+  paymentMethod?: string;
+  isRecipient?: boolean;
 }
 
 export const useEmailNotifications = () => {
