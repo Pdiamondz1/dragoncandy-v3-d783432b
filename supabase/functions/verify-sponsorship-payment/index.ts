@@ -47,17 +47,28 @@ serve(async (req) => {
       .single();
 
     if (fetchError) throw new Error(`Failed to fetch sponsorship: ${fetchError.message}`);
-    if (!sponsorship?.payment_intent_id) {
+    const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
+
+    // Resolve the PaymentIntent ID
+    let resolvedPaymentIntentId: string | null = sponsorship.payment_intent_id;
+
+    if (resolvedPaymentIntentId?.startsWith('cs_')) {
+      // It's a Checkout Session ID - retrieve the session to get the real PaymentIntent
+      logStep("Resolving Checkout Session to PaymentIntent", { sessionId: resolvedPaymentIntentId });
+      const checkoutSession = await stripe.checkout.sessions.retrieve(resolvedPaymentIntentId);
+      resolvedPaymentIntentId = checkoutSession.payment_intent as string | null;
+      logStep("Resolved PaymentIntent from session", { paymentIntentId: resolvedPaymentIntentId });
+    }
+
+    if (!resolvedPaymentIntentId) {
       return new Response(JSON.stringify({ verified: false, status: 'no_payment_intent' }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
       });
     }
 
-    const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
-
     // Check payment intent status
-    const paymentIntent = await stripe.paymentIntents.retrieve(sponsorship.payment_intent_id);
+    const paymentIntent = await stripe.paymentIntents.retrieve(resolvedPaymentIntentId);
     logStep("Payment intent status", { status: paymentIntent.status });
 
     if (paymentIntent.status === 'succeeded') {
