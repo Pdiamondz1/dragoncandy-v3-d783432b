@@ -38,3 +38,12 @@ verify_jwt = false
 
 [functions.withdraw-pending-balance]
 verify_jwt = false
+
+[functions.create-sponsorship-checkout]
+verify_jwt = false
+
+[functions.verify-sponsorship-payment]
+verify_jwt = false
+
+[functions.get-stripe-dashboard-link]
+verify_jwt = false
