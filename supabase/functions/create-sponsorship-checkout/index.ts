@@ -22,6 +22,12 @@ serve(async (req) => {
     Deno.env.get("SUPABASE_ANON_KEY") ?? ""
   );
 
+  // Service-role client for DB updates (bypasses RLS)
+  const adminClient = createClient(
+    Deno.env.get("SUPABASE_URL") ?? "",
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+  );
+
   try {
     logStep("Function started");
 
@@ -98,12 +104,12 @@ serve(async (req) => {
 
     logStep("Checkout session created", { sessionId: session.id, url: session.url });
 
-    // Update sponsorship with pending payment status
-    const { error: updateError } = await supabaseClient
+    // Update sponsorship with pending payment status (use admin client to bypass RLS)
+    const { error: updateError } = await adminClient
       .from('campaign_sponsorships')
       .update({ 
         payment_status: 'pending',
-        payment_intent_id: session.payment_intent as string,
+        payment_intent_id: session.id, // Store Checkout Session ID (always available)
       })
       .eq('id', sponsorshipId);
 
