@@ -56,9 +56,10 @@ serve(async (req) => {
       return new Response(JSON.stringify({ 
         hasAccount: false,
         onboardingComplete: false,
-        pendingBalance: businessProfile?.pending_balance || 0,
+        pendingBalance: 0,
         chargesEnabled: false,
         payoutsEnabled: false,
+        platformPendingBalance: businessProfile?.pending_balance || 0,
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
