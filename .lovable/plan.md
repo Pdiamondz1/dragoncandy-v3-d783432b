@@ -1,42 +1,51 @@
 
 
-# Fix: Restaurant Pending Balance Visibility Before Stripe Connection
+# Fix: Sponsorship Payment Not Being Recorded After Stripe Checkout
 
-## The Bug
+## Root Cause
 
-The `check-restaurant-payout-status` Edge Function returns inconsistent field names depending on whether a Stripe account exists:
+Two bugs prevent the payment from being tracked:
 
-- **No Stripe account**: Returns `pendingBalance` (line 59) with the DB value
-- **Stripe connected**: Returns `platformPendingBalance` (line ~107) with the DB value
+1. **RLS blocks the database update in `create-sponsorship-checkout`**: The function uses `SUPABASE_ANON_KEY` to update `campaign_sponsorships` with the `payment_intent_id` and `payment_status: 'pending'`. RLS silently blocks this update (0 rows affected, no error), so the record stays at `payment_status: unpaid` with no `payment_intent_id`.
 
-The frontend `RestaurantPaymentSettings.tsx` only checks `platformPendingBalance` to show the wallet section. So when there is no Stripe account, the pending balance is invisible even if funds exist.
+2. **`verify-sponsorship-payment` cannot verify without a `payment_intent_id`**: Since the ID was never saved, verification immediately returns "no payment intent found" without checking Stripe.
+
+3. **Bonus issue**: `session.payment_intent` can be `null` at Checkout Session creation time in newer Stripe API versions, making it unreliable to store at creation.
 
 ## Fix
 
-### 1. Edge Function: `check-restaurant-payout-status/index.ts`
+### 1. `create-sponsorship-checkout/index.ts`
+- Use a **separate service-role Supabase client** for the database update (same pattern used in `verify-campaign-escrow` and other edge functions)
+- Store `session.id` (the Checkout Session ID) instead of `session.payment_intent` since the session ID is always available at creation time
 
-Update the "no Stripe account" response (line 56-65) to include `platformPendingBalance` alongside `pendingBalance` for consistency:
-
-```typescript
-return new Response(JSON.stringify({ 
-  hasAccount: false,
-  onboardingComplete: false,
-  pendingBalance: 0,
-  chargesEnabled: false,
-  payoutsEnabled: false,
-  platformPendingBalance: businessProfile?.pending_balance || 0,
-}), ...);
-```
-
-This ensures `platformPendingBalance` is always returned regardless of Stripe account status.
+### 2. `verify-sponsorship-payment/index.ts`
+- When `payment_intent_id` starts with `cs_` (a Checkout Session ID), use `stripe.checkout.sessions.retrieve()` to get the actual PaymentIntent
+- Also handle the case where `payment_intent_id` is null by looking up recent Checkout Sessions by sponsorship metadata as a fallback
 
 ### Files to Modify
 
 | File | Change |
 |------|--------|
-| `supabase/functions/check-restaurant-payout-status/index.ts` | Add `platformPendingBalance` to the no-Stripe-account response |
+| `supabase/functions/create-sponsorship-checkout/index.ts` | Use service-role key for DB update; store `session.id` instead of `session.payment_intent` |
+| `supabase/functions/verify-sponsorship-payment/index.ts` | Handle Checkout Session IDs (`cs_` prefix) by retrieving the session first to get the PaymentIntent |
+
+### Technical Details
+
+**create-sponsorship-checkout** change:
+```text
+- Line 20-24: Add a second Supabase client using SUPABASE_SERVICE_ROLE_KEY for DB operations
+- Line 102-108: Use the service-role client for the update
+- Line 106: Change from session.payment_intent to session.id
+```
+
+**verify-sponsorship-payment** change:
+```text
+- Lines 50-55: Instead of returning early when payment_intent_id is missing,
+  handle cs_ prefixed IDs by retrieving the Checkout Session to get the real PaymentIntent
+```
 
 ### Result
-
-Restaurants will see their pending balance in the Payment Settings card even before connecting Stripe, with a clear message prompting them to connect Stripe to withdraw the funds.
-
+After this fix, when a brand completes Stripe Checkout:
+1. The Checkout Session ID is reliably saved to the database
+2. On redirect back, auto-verification retrieves the session, finds the PaymentIntent, confirms payment succeeded, and updates the status to "paid"
+3. The UI correctly shows "Payment Complete" instead of "Pay $1,200"
