@@ -47,3 +47,12 @@ verify_jwt = false
 
 [functions.get-stripe-dashboard-link]
 verify_jwt = false
+
+[functions.create-restaurant-connect-account]
+verify_jwt = false
+
+[functions.release-sponsorship-payout]
+verify_jwt = false
+
+[functions.check-restaurant-payout-status]
+verify_jwt = false

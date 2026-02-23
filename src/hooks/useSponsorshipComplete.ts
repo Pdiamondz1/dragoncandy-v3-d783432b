@@ -2,10 +2,12 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { useEmailNotifications } from './useEmailNotifications';
+import { useAuth } from './useAuth';
 
 export const useSponsorshipComplete = () => {
   const queryClient = useQueryClient();
   const { sendNotification } = useEmailNotifications();
+  const { user } = useAuth();
 
   const requestCompletion = useMutation({
     mutationFn: async ({ 
@@ -162,16 +164,34 @@ export const useSponsorshipComplete = () => {
 
       return data;
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       queryClient.invalidateQueries({ queryKey: ['sponsorships'] });
       queryClient.invalidateQueries({ queryKey: ['brand-sponsorships'] });
       queryClient.invalidateQueries({ queryKey: ['business-sponsorships'] });
       queryClient.invalidateQueries({ queryKey: ['sponsorship-completion'] });
 
       if (data.status === 'completed') {
+        // Trigger payout to restaurant
+        try {
+          const { data: sessionData } = await supabase.auth.getSession();
+          const token = sessionData?.session?.access_token;
+          if (token) {
+            const response = await supabase.functions.invoke('release-sponsorship-payout', {
+              body: { sponsorshipId: data.id },
+            });
+            if (response.error) {
+              console.error('Payout error:', response.error);
+            } else {
+              console.log('Sponsorship payout triggered:', response.data);
+            }
+          }
+        } catch (payoutError) {
+          console.error('Failed to trigger sponsorship payout:', payoutError);
+        }
+
         toast({
           title: "Sponsorship completed!",
-          description: "Both parties have approved completion. Please leave a review.",
+          description: "Both parties have approved completion. Payment is being processed. Please leave a review.",
         });
       } else {
         toast({

@@ -6,6 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import DashboardLayout from '@/components/DashboardLayout';
 import { BusinessSettingsHeader } from '@/components/business-profile/BusinessSettingsHeader';
 import { BusinessSettingsForm } from '@/components/business-profile/BusinessSettingsForm';
+import { RestaurantPaymentSettings } from '@/components/business-profile/RestaurantPaymentSettings';
 import { useBusinessProfileForm } from '@/hooks/useBusinessProfileForm';
 import { useBusinessProfileSubmit } from '@/hooks/useBusinessProfileSubmit';
 
@@ -66,8 +67,9 @@ const BusinessSettings = () => {
   return (
     <DashboardLayout userRole="business_client">
       <div className="flex-1 p-8">
-        <div className="max-w-2xl">
+        <div className="max-w-2xl space-y-6">
           <BusinessSettingsHeader />
+          <RestaurantPaymentSettings />
           <BusinessSettingsForm
             formData={formData}
             logoFile={logoFile}

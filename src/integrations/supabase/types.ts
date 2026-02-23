@@ -163,12 +163,15 @@ export type Database = {
           logo_url: string | null
           marketing_objectives: string | null
           other_social_url: string | null
+          pending_balance: number | null
           postal_code: string | null
           preferred_collaboration_style: string | null
           profile_slug: string | null
           profile_visibility: string | null
           sample_content_urls: string[] | null
           sponsorship_budget: number | null
+          stripe_account_id: string | null
+          stripe_onboarding_complete: boolean | null
           tiktok_url: string | null
           timezone: string | null
           total_reviews: number | null
@@ -201,12 +204,15 @@ export type Database = {
           logo_url?: string | null
           marketing_objectives?: string | null
           other_social_url?: string | null
+          pending_balance?: number | null
           postal_code?: string | null
           preferred_collaboration_style?: string | null
           profile_slug?: string | null
           profile_visibility?: string | null
           sample_content_urls?: string[] | null
           sponsorship_budget?: number | null
+          stripe_account_id?: string | null
+          stripe_onboarding_complete?: boolean | null
           tiktok_url?: string | null
           timezone?: string | null
           total_reviews?: number | null
@@ -239,12 +245,15 @@ export type Database = {
           logo_url?: string | null
           marketing_objectives?: string | null
           other_social_url?: string | null
+          pending_balance?: number | null
           postal_code?: string | null
           preferred_collaboration_style?: string | null
           profile_slug?: string | null
           profile_visibility?: string | null
           sample_content_urls?: string[] | null
           sponsorship_budget?: number | null
+          stripe_account_id?: string | null
+          stripe_onboarding_complete?: boolean | null
           tiktok_url?: string | null
           timezone?: string | null
           total_reviews?: number | null
