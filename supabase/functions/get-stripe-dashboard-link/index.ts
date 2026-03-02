@@ -41,29 +41,37 @@ serve(async (req) => {
 
     logStep('User authenticated', { userId: user.id });
 
-    // Get creator profile with Stripe account ID
-    const { data: creatorProfile, error: profileError } = await supabaseClient
+    // Try creator profile first
+    let stripeAccountId: string | null = null;
+
+    const { data: creatorProfile } = await supabaseClient
       .from('creator_profiles')
       .select('stripe_account_id, stripe_onboarding_complete')
       .eq('user_id', user.id)
       .single();
 
-    if (profileError || !creatorProfile) {
-      logStep('Creator profile not found', { error: profileError });
-      throw new Error("Creator profile not found");
+    if (creatorProfile?.stripe_account_id && creatorProfile?.stripe_onboarding_complete) {
+      stripeAccountId = creatorProfile.stripe_account_id;
+      logStep('Found creator Stripe account', { accountId: stripeAccountId });
     }
 
-    if (!creatorProfile.stripe_account_id) {
-      logStep('No Stripe account connected');
-      throw new Error("No Stripe account connected. Please set up your payout account first.");
+    // Fallback: check business_profiles (restaurant)
+    if (!stripeAccountId) {
+      const { data: businessProfile } = await supabaseClient
+        .from('business_profiles')
+        .select('stripe_account_id, stripe_onboarding_complete')
+        .eq('user_id', user.id)
+        .single();
+
+      if (businessProfile?.stripe_account_id && businessProfile?.stripe_onboarding_complete) {
+        stripeAccountId = businessProfile.stripe_account_id;
+        logStep('Found restaurant Stripe account', { accountId: stripeAccountId });
+      }
     }
 
-    if (!creatorProfile.stripe_onboarding_complete) {
-      logStep('Stripe onboarding not complete');
-      throw new Error("Stripe onboarding not complete. Please complete your account setup first.");
+    if (!stripeAccountId) {
+      throw new Error("No connected Stripe account found. Please set up your payout account first.");
     }
-
-    logStep('Found Stripe account', { accountId: creatorProfile.stripe_account_id });
 
     // Initialize Stripe
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
@@ -71,7 +79,7 @@ serve(async (req) => {
     });
 
     // Create login link for the Express account
-    const loginLink = await stripe.accounts.createLoginLink(creatorProfile.stripe_account_id);
+    const loginLink = await stripe.accounts.createLoginLink(stripeAccountId);
 
     logStep('Dashboard link created successfully');
 

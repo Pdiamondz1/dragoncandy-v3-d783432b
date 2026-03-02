@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { CreditCard, ExternalLink, AlertCircle, CheckCircle2, Clock, Wallet } from 'lucide-react';
+import { CreditCard, ExternalLink, AlertCircle, CheckCircle2, Clock, Wallet, LayoutDashboard, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
@@ -17,6 +17,32 @@ interface PayoutStatus {
   pendingBalance: number;
   platformPendingBalance: number;
 }
+
+const ViewStripeDashboardButton = () => {
+  const [loading, setLoading] = useState(false);
+
+  const handleClick = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('get-stripe-dashboard-link');
+      if (error) throw error;
+      if (data?.url) {
+        window.open(data.url, '_blank');
+      }
+    } catch (err: any) {
+      toast({ title: 'Failed to open dashboard', description: err.message || 'Please try again.', variant: 'destructive' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Button onClick={handleClick} disabled={loading} variant="outline" size="sm">
+      {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <LayoutDashboard className="w-4 h-4 mr-2" />}
+      {loading ? 'Opening...' : 'View Stripe Dashboard'}
+    </Button>
+  );
+};
 
 export const RestaurantPaymentSettings = () => {
   const { user } = useAuth();
@@ -145,10 +171,11 @@ export const RestaurantPaymentSettings = () => {
         )}
 
         {payoutStatus?.hasAccount && payoutStatus.onboardingComplete && (
-          <div className="rounded-lg border border-green-200 bg-green-50 p-3">
+          <div className="rounded-lg border border-green-200 bg-green-50 p-3 space-y-3">
             <p className="text-sm text-green-800">
               ✓ Your Stripe account is fully set up and ready to receive sponsorship payments.
             </p>
+            <ViewStripeDashboardButton />
           </div>
         )}
 
