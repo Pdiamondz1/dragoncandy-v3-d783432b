@@ -24,6 +24,7 @@ import DragonDashTimer from '@/components/projects/DragonDashTimer';
 import StartContentButton from '@/components/projects/StartContentButton';
 import ProjectFileUpload from '@/components/projects/ProjectFileUpload';
 import { useFileUploads } from '@/hooks/useFileUploads';
+import ProtectedFilePreview from '@/components/projects/ProtectedFilePreview';
 import { useDragonDashTimer } from '@/hooks/useDragonDashTimer';
 import { formatDistanceToNow, format } from 'date-fns';
 
@@ -263,23 +264,12 @@ const ProjectDetailsPage: React.FC = () => {
               {files && files.length > 0 ? (
                 <div className="grid gap-3">
                   {files.map((file: any) => (
-                    <div 
+                    <ProtectedFilePreview
                       key={file.id}
-                      className="flex items-center justify-between p-3 rounded-lg border bg-muted/30"
-                    >
-                      <div className="flex items-center gap-3">
-                        <FileCheck className="h-5 w-5 text-muted-foreground" />
-                        <div>
-                          <p className="font-medium text-sm">{file.original_filename}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {(file.file_size / 1024 / 1024).toFixed(2)} MB
-                          </p>
-                        </div>
-                      </div>
-                      <Button variant="outline" size="sm">
-                        Download
-                      </Button>
-                    </div>
+                      file={file}
+                      contentStatus={collaboration.content_status}
+                      isBusinessClient={isBusinessClient}
+                    />
                   ))}
                 </div>
               ) : (
