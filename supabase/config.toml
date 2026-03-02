@@ -56,3 +56,6 @@ verify_jwt = false
 
 [functions.check-restaurant-payout-status]
 verify_jwt = false
+
+[functions.get-watermarked-preview]
+verify_jwt = false
