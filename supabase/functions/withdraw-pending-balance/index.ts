@@ -40,30 +40,52 @@ serve(async (req) => {
     if (!user) throw new Error("User not authenticated");
     logStep("User authenticated", { userId: user.id });
 
-    // Get creator profile with Stripe info and pending balance
-    const { data: creatorProfile, error: profileError } = await supabaseClient
+    // Try creator profile first
+    let profileTable = 'creator_profiles';
+    let stripeAccountId: string | null = null;
+    let onboardingComplete = false;
+    let pendingBalanceValue = 0;
+
+    const { data: creatorProfile } = await supabaseClient
       .from('creator_profiles')
       .select('stripe_account_id, stripe_onboarding_complete, pending_balance')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
 
-    if (profileError) {
-      throw new Error(`Failed to fetch creator profile: ${profileError.message}`);
+    if (creatorProfile?.stripe_account_id) {
+      stripeAccountId = creatorProfile.stripe_account_id;
+      onboardingComplete = creatorProfile.stripe_onboarding_complete ?? false;
+      pendingBalanceValue = creatorProfile.pending_balance ?? 0;
+      profileTable = 'creator_profiles';
+    } else {
+      // Fallback: check business_profiles (restaurant)
+      const { data: businessProfile } = await supabaseClient
+        .from('business_profiles')
+        .select('stripe_account_id, stripe_onboarding_complete, pending_balance')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (businessProfile?.stripe_account_id) {
+        stripeAccountId = businessProfile.stripe_account_id;
+        onboardingComplete = businessProfile.stripe_onboarding_complete ?? false;
+        pendingBalanceValue = businessProfile.pending_balance ?? 0;
+        profileTable = 'business_profiles';
+      }
     }
 
-    logStep("Creator profile fetched", { 
-      hasStripeAccount: !!creatorProfile?.stripe_account_id,
-      onboardingComplete: creatorProfile?.stripe_onboarding_complete,
-      pendingBalance: creatorProfile?.pending_balance
+    logStep("Profile fetched", { 
+      profileTable,
+      hasStripeAccount: !!stripeAccountId,
+      onboardingComplete,
+      pendingBalance: pendingBalanceValue
     });
 
-    // Validate Stripe is connected
-    if (!creatorProfile?.stripe_account_id || !creatorProfile?.stripe_onboarding_complete) {
+    if (!stripeAccountId || !onboardingComplete) {
       throw new Error("Please complete Stripe setup before withdrawing funds");
     }
 
     // Validate there's money to withdraw
-    const pendingBalance = creatorProfile.pending_balance || 0;
+    const pendingBalance = pendingBalanceValue;
     if (pendingBalance <= 0) {
       throw new Error("No funds available to withdraw");
     }
@@ -71,7 +93,7 @@ serve(async (req) => {
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
 
     // Verify the Stripe account is still valid and can receive funds
-    const account = await stripe.accounts.retrieve(creatorProfile.stripe_account_id);
+    const account = await stripe.accounts.retrieve(stripeAccountId);
     logStep("Retrieved Stripe account", { 
       accountId: account.id, 
       chargesEnabled: account.charges_enabled,
@@ -85,19 +107,19 @@ serve(async (req) => {
     // Convert to cents for Stripe
     const amountInCents = Math.round(pendingBalance * 100);
 
-    // Create a transfer to the creator's connected account
+    // Create a transfer to the connected account
     logStep("Creating transfer", { 
       amount: amountInCents, 
-      destination: creatorProfile.stripe_account_id 
+      destination: stripeAccountId 
     });
 
     const transfer = await stripe.transfers.create({
       amount: amountInCents,
       currency: 'usd',
-      destination: creatorProfile.stripe_account_id,
+      destination: stripeAccountId,
       description: `DragonCandy platform wallet withdrawal`,
       metadata: {
-        creator_user_id: user.id,
+        user_id: user.id,
         withdrawal_type: 'pending_balance',
       },
     });
@@ -106,7 +128,7 @@ serve(async (req) => {
 
     // Reset the pending balance to 0
     const { error: updateError } = await supabaseClient
-      .from('creator_profiles')
+      .from(profileTable)
       .update({ pending_balance: 0 })
       .eq('user_id', user.id);
 
