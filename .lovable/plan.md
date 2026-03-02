@@ -1,51 +1,25 @@
 
 
-# Fix: Sponsorship Payment Not Being Recorded After Stripe Checkout
+# Add "View Stripe Dashboard" Button for Restaurants
 
-## Root Cause
+## What's Needed
 
-Two bugs prevent the payment from being tracked:
+The existing `get-stripe-dashboard-link` Edge Function only looks up `creator_profiles` for the Stripe account ID. Restaurants store their Stripe account in `business_profiles` instead. We need to update the function to also check restaurant profiles, and add the button to the restaurant Payment Settings UI.
 
-1. **RLS blocks the database update in `create-sponsorship-checkout`**: The function uses `SUPABASE_ANON_KEY` to update `campaign_sponsorships` with the `payment_intent_id` and `payment_status: 'pending'`. RLS silently blocks this update (0 rows affected, no error), so the record stays at `payment_status: unpaid` with no `payment_intent_id`.
+## Changes
 
-2. **`verify-sponsorship-payment` cannot verify without a `payment_intent_id`**: Since the ID was never saved, verification immediately returns "no payment intent found" without checking Stripe.
+### 1. Edge Function: `supabase/functions/get-stripe-dashboard-link/index.ts`
 
-3. **Bonus issue**: `session.payment_intent` can be `null` at Checkout Session creation time in newer Stripe API versions, making it unreliable to store at creation.
+Add a fallback: if no creator profile is found, check `business_profiles` for a restaurant account with `stripe_account_id` and `stripe_onboarding_complete`. This makes the single function work for both user types.
 
-## Fix
+### 2. Frontend: `src/components/business-profile/RestaurantPaymentSettings.tsx`
 
-### 1. `create-sponsorship-checkout/index.ts`
-- Use a **separate service-role Supabase client** for the database update (same pattern used in `verify-campaign-escrow` and other edge functions)
-- Store `session.id` (the Checkout Session ID) instead of `session.payment_intent` since the session ID is always available at creation time
-
-### 2. `verify-sponsorship-payment/index.ts`
-- When `payment_intent_id` starts with `cs_` (a Checkout Session ID), use `stripe.checkout.sessions.retrieve()` to get the actual PaymentIntent
-- Also handle the case where `payment_intent_id` is null by looking up recent Checkout Sessions by sponsorship metadata as a fallback
+Add a "View Stripe Dashboard" button in the connected state section (after the green success message, line 147-153). On click, it invokes `get-stripe-dashboard-link` and opens the returned URL in a new tab.
 
 ### Files to Modify
 
 | File | Change |
 |------|--------|
-| `supabase/functions/create-sponsorship-checkout/index.ts` | Use service-role key for DB update; store `session.id` instead of `session.payment_intent` |
-| `supabase/functions/verify-sponsorship-payment/index.ts` | Handle Checkout Session IDs (`cs_` prefix) by retrieving the session first to get the PaymentIntent |
+| `supabase/functions/get-stripe-dashboard-link/index.ts` | After creator_profiles lookup fails, try `business_profiles` for restaurant Stripe account |
+| `src/components/business-profile/RestaurantPaymentSettings.tsx` | Add "View Stripe Dashboard" button when Stripe is fully connected |
 
-### Technical Details
-
-**create-sponsorship-checkout** change:
-```text
-- Line 20-24: Add a second Supabase client using SUPABASE_SERVICE_ROLE_KEY for DB operations
-- Line 102-108: Use the service-role client for the update
-- Line 106: Change from session.payment_intent to session.id
-```
-
-**verify-sponsorship-payment** change:
-```text
-- Lines 50-55: Instead of returning early when payment_intent_id is missing,
-  handle cs_ prefixed IDs by retrieving the Checkout Session to get the real PaymentIntent
-```
-
-### Result
-After this fix, when a brand completes Stripe Checkout:
-1. The Checkout Session ID is reliably saved to the database
-2. On redirect back, auto-verification retrieves the session, finds the PaymentIntent, confirms payment succeeded, and updates the status to "paid"
-3. The UI correctly shows "Payment Complete" instead of "Pay $1,200"
