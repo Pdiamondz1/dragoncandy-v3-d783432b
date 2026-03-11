@@ -23,7 +23,12 @@ export const CreatorPortfolioFeed = () => {
   // Only show feed if we have real content from the database
   if (loading || error || portfolioMedia.length === 0) {
     if (import.meta.env.DEV) console.log('🚫 DragonFeed: No real content available, not rendering feed');
-    return null;
+    return (
+      <>
+        <div className="fixed-sidebar fixed-sidebar-left w-40 lg:w-64" style={{ zIndex: 0 }} />
+        <div className="fixed-sidebar fixed-sidebar-right w-40 lg:w-64" style={{ zIndex: 0 }} />
+      </>
+    );
   }
 
   if (import.meta.env.DEV) console.log(`📊 DragonFeed: Using ${portfolioMedia.length} real media items`);
