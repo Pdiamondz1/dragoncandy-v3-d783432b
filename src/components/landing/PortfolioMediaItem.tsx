@@ -28,7 +28,7 @@ export const PortfolioMediaItem = ({ url, type, creatorName, className = '' }: P
   }
 
   return (
-    <div className={`relative rounded-3xl overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-[1.02] bg-muted ${className}`}>
+    <div className={`relative rounded-3xl overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-[1.02] bg-muted ${className}`} style={{ contain: 'layout size' }}>
       {/* Loading placeholder */}
       {!loaded && (
         <div className="absolute inset-0 bg-muted animate-pulse flex items-center justify-center">
