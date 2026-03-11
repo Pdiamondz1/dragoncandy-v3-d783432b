@@ -24,7 +24,7 @@ export const PortfolioMediaItem = ({ url, type, creatorName, className = '' }: P
   // Don't render broken media, but log for debugging
   if (error) {
     if (import.meta.env.DEV) console.log('🚫 PortfolioMediaItem: Skipping broken media:', url);
-    return null;
+    return <div className={`relative rounded-3xl overflow-hidden bg-muted ${className}`} />;
   }
 
   return (
