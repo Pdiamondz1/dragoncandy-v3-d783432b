@@ -24,11 +24,11 @@ export const PortfolioMediaItem = ({ url, type, creatorName, className = '' }: P
   // Don't render broken media, but log for debugging
   if (error) {
     if (import.meta.env.DEV) console.log('🚫 PortfolioMediaItem: Skipping broken media:', url);
-    return null;
+    return <div className={`relative rounded-3xl overflow-hidden bg-muted ${className}`} />;
   }
 
   return (
-    <div className={`relative rounded-3xl overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-[1.02] bg-muted ${className}`}>
+    <div className={`relative rounded-3xl overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-[1.02] bg-muted ${className}`} style={{ contain: 'layout size' }}>
       {/* Loading placeholder */}
       {!loaded && (
         <div className="absolute inset-0 bg-muted animate-pulse flex items-center justify-center">
