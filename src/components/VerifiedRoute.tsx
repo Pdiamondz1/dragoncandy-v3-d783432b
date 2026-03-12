@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
@@ -9,6 +9,13 @@ interface VerifiedRouteProps {
 
 const VerifiedRoute: React.FC<VerifiedRouteProps> = ({ children }) => {
   const { isAuthenticated, loading, profile } = useAuth();
+  const emailNotVerified = !loading && isAuthenticated && profile?.email_verified !== true;
+
+  useEffect(() => {
+    if (emailNotVerified) {
+      toast.error('Please verify your email to continue. Check your inbox for the verification link.');
+    }
+  }, [emailNotVerified]);
 
   if (loading) {
     return (
@@ -22,8 +29,7 @@ const VerifiedRoute: React.FC<VerifiedRouteProps> = ({ children }) => {
     return <Navigate to="/auth" replace />;
   }
 
-  if (profile?.email_verified !== true) {
-    toast.error('Please verify your email to continue. Check your inbox for the verification link.');
+  if (emailNotVerified) {
     return <Navigate to="/auth?mode=login" replace />;
   }
 

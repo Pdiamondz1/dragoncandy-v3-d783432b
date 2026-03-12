@@ -50,17 +50,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Timeout mechanism to prevent infinite loading
   useEffect(() => {
-    console.log('🔧 AuthProvider: Setting up 10-second timeout fallback');
     const timeout = setTimeout(() => {
-      console.warn('⚠️ AuthProvider: Timeout reached, forcing loading to false');
-      if (loading) {
-        setLoading(false);
-        setError('Authentication timeout - continuing without authentication');
-      }
+      setLoading((prev) => {
+        if (prev) {
+          setError('Authentication timeout - continuing without authentication');
+          return false;
+        }
+        return prev;
+      });
     }, 10000); // 10 second timeout
 
     return () => clearTimeout(timeout);
-  }, [loading]);
+  }, []);
 
   const createProfileFromMetadata = (user: User): Profile | null => {
     const role = user.user_metadata?.role;
@@ -235,54 +236,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
     );
 
-    // Then check for existing session
-    console.log('🔍 AuthProvider: Checking for existing session...');
-    supabase.auth.getSession().then(async ({ data: { session }, error: sessionError }) => {
-      if (sessionError) {
-        console.error('❌ AuthProvider: Session check failed:', sessionError);
-        setError('Session check failed');
-        setLoading(false);
-        return;
-      }
-
-      console.log('🔍 AuthProvider: Initial session check result:', session?.user?.email || 'no session');
-      
-      try {
-        setSession(session);
-        setUser(session?.user ?? null);
-        
-        if (session?.user) {
-          console.log('👤 AuthProvider: Initial session found, fetching profile...');
-          let profileData = await fetchProfile(session.user.id);
-          
-          // If no profile in database but we have user metadata, create profile from metadata
-          if (!profileData && session.user.user_metadata?.role) {
-            console.log('📋 AuthProvider: No database profile, using metadata');
-            profileData = createProfileFromMetadata(session.user);
-          }
-          
-          setProfile(profileData);
-        }
-      } catch (error) {
-        console.error('❌ AuthProvider: Initial session processing failed:', error);
-        
-        // Try metadata fallback
-        if (session?.user?.user_metadata?.role) {
-          console.log('🔄 AuthProvider: Initial session error, trying metadata fallback');
-          const metadataProfile = createProfileFromMetadata(session.user);
-          setProfile(metadataProfile);
-        } else {
-          setError('Initial authentication failed');
-        }
-      } finally {
-        setLoading(false);
-      }
-    }).catch((error) => {
-      console.error('❌ AuthProvider: getSession promise failed:', error);
-      setError('Session initialization failed');
-      setLoading(false);
-    });
-
     return () => {
       console.log('🧹 AuthProvider: Cleaning up auth subscription');
       subscription.unsubscribe();
@@ -320,8 +273,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       // Only business clients can have campaigns migrated
       if (anonymousCampaignData && finalCampaignData) {
-        const campaignData = JSON.parse(anonymousCampaignData);
-        const finalData = JSON.parse(finalCampaignData);
+        let campaignData: ReturnType<typeof JSON.parse>;
+        let finalData: ReturnType<typeof JSON.parse>;
+        try {
+          campaignData = JSON.parse(anonymousCampaignData);
+          finalData = JSON.parse(finalCampaignData);
+        } catch {
+          console.error('❌ AuthProvider: Invalid campaign data in localStorage, clearing');
+          localStorage.removeItem('anonymous_campaign_data');
+          localStorage.removeItem('anonymous_campaign_final');
+          return;
+        }
         
         console.log('📦 AuthProvider: Creating campaign from anonymous data');
         
