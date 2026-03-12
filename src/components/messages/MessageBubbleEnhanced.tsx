@@ -82,8 +82,8 @@ const MessageBubbleEnhanced: React.FC<MessageBubbleEnhancedProps> = ({
   };
 
   return (
-    <div 
-      className={`flex gap-3 p-4 hover:bg-gray-50 group ${isOwnMessage ? 'flex-row-reverse' : ''}`}
+    <div
+      className={`flex gap-3 px-3 py-2 group ${isOwnMessage ? 'flex-row-reverse' : ''}`}
     >
       {/* Avatar */}
       <UserPresenceIndicator
@@ -131,10 +131,10 @@ const MessageBubbleEnhanced: React.FC<MessageBubbleEnhancedProps> = ({
 
         {/* Message bubble */}
         <div
-          className={`inline-block px-4 py-2 rounded-lg max-w-full ${
+          className={`inline-block px-5 py-2 rounded-full max-w-full ${
             isOwnMessage
-              ? 'bg-blue-600 text-white'
-              : 'bg-gray-100 text-gray-900'
+              ? 'bg-teal-400 text-white'
+              : 'bg-pink-300 text-gray-900'
           }`}
         >
           <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>

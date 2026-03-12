@@ -180,17 +180,17 @@ const MessageInputEnhanced: React.FC<MessageInputEnhancedProps> = ({
   }, [sendTypingIndicator]);
 
   return (
-    <div className="border-t bg-white">
+    <div className="bg-[#A8A8A0] border-t border-[#909090]">
       {/* Reply indicator */}
       {replyingTo && (
-        <div className="flex items-center justify-between p-3 bg-gray-50 border-b">
+        <div className="flex items-center justify-between px-4 py-2 bg-[#959590] border-b border-[#909090]">
           <div className="flex items-center gap-2">
-            <Reply className="h-4 w-4 text-gray-500" />
-            <span className="text-sm text-gray-600">
+            <Reply className="h-4 w-4 text-white" />
+            <span className="text-sm text-white">
               Replying to {replyingTo.sender_profile?.full_name || 'Unknown User'}
             </span>
           </div>
-          <Button variant="ghost" size="sm" onClick={onCancelReply}>
+          <Button variant="ghost" size="sm" onClick={onCancelReply} className="text-white hover:text-gray-200">
             <X className="h-4 w-4" />
           </Button>
         </div>
@@ -198,22 +198,22 @@ const MessageInputEnhanced: React.FC<MessageInputEnhancedProps> = ({
 
       {/* File attachment preview */}
       {file && (
-        <div className="flex items-center justify-between p-3 bg-blue-50 border-b">
+        <div className="flex items-center justify-between px-4 py-2 bg-teal-900/30 border-b border-[#909090]">
           <div className="flex items-center gap-2">
-            <Paperclip className="h-4 w-4 text-blue-600" />
-            <span className="text-sm text-blue-700">{file.name}</span>
-            <span className="text-xs text-gray-500">
+            <Paperclip className="h-4 w-4 text-teal-300" />
+            <span className="text-sm text-white">{file.name}</span>
+            <span className="text-xs text-gray-300">
               ({(file.size / 1024 / 1024).toFixed(2)} MB)
             </span>
           </div>
-          <Button variant="ghost" size="sm" onClick={removeFile}>
+          <Button variant="ghost" size="sm" onClick={removeFile} className="text-white">
             <X className="h-4 w-4" />
           </Button>
         </div>
       )}
 
       {/* Message input */}
-      <form onSubmit={handleSubmit} className="flex gap-2 p-4">
+      <form onSubmit={handleSubmit} className="flex items-center gap-3 px-4 py-3">
         <Input
           type="file"
           ref={fileInputRef}
@@ -221,16 +221,15 @@ const MessageInputEnhanced: React.FC<MessageInputEnhancedProps> = ({
           className="hidden"
           accept="image/*,video/*,.pdf,.doc,.docx,.txt"
         />
-        
-        <Button
+
+        <button
           type="button"
-          variant="ghost"
-          size="sm"
           onClick={() => fileInputRef.current?.click()}
           disabled={disabled || uploading}
+          className="w-10 h-10 rounded-full bg-gray-900 flex items-center justify-center flex-shrink-0 hover:bg-gray-700 transition-colors disabled:opacity-40"
         >
-          <Paperclip className="h-4 w-4" />
-        </Button>
+          <span className="text-white text-xl font-light leading-none">+</span>
+        </button>
 
         <Textarea
           value={message}
@@ -238,18 +237,17 @@ const MessageInputEnhanced: React.FC<MessageInputEnhancedProps> = ({
           onKeyPress={handleKeyPress}
           placeholder={placeholder}
           disabled={disabled || uploading}
-          className="min-h-[40px] max-h-[120px] resize-none"
+          className="flex-1 min-h-[40px] max-h-[120px] resize-none rounded-full bg-white border-0 px-5 py-2 text-sm focus-visible:ring-1 focus-visible:ring-teal-400"
           rows={1}
         />
         
-        <Button 
-          type="submit" 
+        <button
+          type="submit"
           disabled={(!message.trim() && !file) || disabled || uploading}
-          size="sm"
-          className="self-end"
+          className="w-10 h-10 rounded-full bg-gray-900 flex items-center justify-center flex-shrink-0 hover:bg-gray-700 transition-colors disabled:opacity-40"
         >
-          <Send className="h-4 w-4" />
-        </Button>
+          <Send className="h-4 w-4 text-white" />
+        </button>
       </form>
     </div>
   );

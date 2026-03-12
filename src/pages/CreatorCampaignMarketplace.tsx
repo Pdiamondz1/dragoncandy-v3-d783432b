@@ -72,8 +72,8 @@ const CreatorCampaignMarketplace = () => {
 
   return (
     <DashboardLayout userRole="content_creator">
-      <div className="flex-1 p-8">
-        <div className="max-w-7xl mx-auto space-y-6">
+      <div className="flex-1 bg-[#A8A8A0] min-h-screen p-4">
+        <div className="max-w-2xl mx-auto space-y-4">
           {/* Header */}
           <MarketplaceHeader totalCampaigns={campaigns.length} />
 

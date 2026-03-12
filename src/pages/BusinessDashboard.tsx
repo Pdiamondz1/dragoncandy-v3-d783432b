@@ -4,7 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { BarChart3, Users, Target, Flame, DollarSign } from 'lucide-react';
+import { BarChart3, Users, Target, DollarSign } from 'lucide-react';
 import { useSponsorshipProposals } from '@/hooks/useSponsorshipProposals';
 import SponsorshipProposalCard from '@/components/campaigns/SponsorshipProposalCard';
 import { BusinessDashboardSideFeed } from '@/components/dragon-feed/BusinessDashboardSideFeed';
@@ -101,47 +101,46 @@ const BusinessDashboard = () => {
           <RatingPromptManager />
           
           {/* Welcome Header */}
-          <div className="text-center space-y-4">
-            <h1 className="text-4xl font-bold text-gray-900">
-              Welcome back, {profile.business_name}!
+          <div className="text-center space-y-4 rounded-2xl bg-[#F9C8E0] py-6 px-4">
+            <h1 className="text-3xl font-bold uppercase text-teal-500">
+              Welcome Back, {profile.business_name}
             </h1>
-            <p className="text-xl text-gray-600">
+            <p className="text-base text-gray-700 font-medium">
               Ready to create amazing content with talented creators?
             </p>
           </div>
 
           {/* Create Campaign CTA - DragonDash Branded */}
           <div className="text-center">
-            <Card className="max-w-2xl mx-auto bg-gradient-to-br from-orange-50 via-pink-50 to-red-50 border-pink-300 shadow-lg">
+            <Card className="max-w-2xl mx-auto bg-white border border-teal-300 shadow-sm rounded-2xl">
               <CardContent className="p-8">
                 <div className="space-y-6">
-                  {/* Flame Icon */}
-                  <div className="w-16 h-16 bg-gradient-to-br from-orange-500 to-pink-600 rounded-full flex items-center justify-center mx-auto shadow-lg">
-                    <Flame className="w-8 h-8 text-white" />
+                  {/* Teal Plus Icon */}
+                  <div className="w-16 h-16 bg-teal-400 rounded-full flex items-center justify-center mx-auto shadow">
+                    <span className="text-white text-3xl font-bold leading-none">+</span>
                   </div>
-                  
+
                   {/* Title & Subtitle */}
                   <div>
-                    <h2 className="text-3xl font-bold bg-gradient-to-r from-orange-600 to-pink-600 bg-clip-text text-transparent mb-1">
+                    <h2 className="text-2xl font-bold text-gray-900 mb-1">
                       DragonDash
                     </h2>
-                    <p className="text-lg text-gray-700 font-medium">
+                    <p className="text-base text-gray-600">
                       Fast Content, On Demand
                     </p>
                   </div>
-                  
+
                   {/* Description */}
-                  <p className="text-gray-600">
+                  <p className="text-gray-600 text-sm">
                     Need content in hours, not days? Choose your delivery speed and let our creators deliver quality content fast.
                   </p>
-                  
+
                   {/* CTA Button */}
-                  <Button 
-                    size="lg" 
-                    className="bg-gradient-to-r from-orange-500 to-pink-600 hover:from-orange-600 hover:to-pink-700 text-white px-8 py-3 shadow-lg"
+                  <Button
+                    size="lg"
+                    className="w-full rounded-full bg-teal-400 hover:bg-teal-500 text-white font-bold"
                     onClick={() => navigate('/dashboard/business/campaigns/create')}
                   >
-                    <Flame className="w-5 h-5 mr-2" />
                     Start a DragonDash
                   </Button>
                 </div>
@@ -216,27 +215,20 @@ const BusinessDashboard = () => {
           {/* Quick Actions */}
           <div className="space-y-8">
             <div className="text-center">
-              <h2 className="text-3xl font-bold text-gray-900 mb-4">Quick Actions</h2>
-              <p className="text-gray-600">Manage your campaigns and discover new opportunities</p>
+              <h2 className="text-2xl font-bold uppercase text-teal-500 mb-2">Quick Actions</h2>
+              <p className="text-gray-600 text-sm">Manage your campaigns and discover new opportunities</p>
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {quickActions.map((action, index) => (
-                <Card key={index} className="hover:shadow-lg transition-shadow cursor-pointer" onClick={action.action}>
+                <Card key={index} className="text-center hover:shadow-lg transition-shadow cursor-pointer border border-teal-300 rounded-2xl" onClick={action.action}>
                   <CardContent className="p-6">
-                    <div className="flex items-center space-x-4">
-                      <div className="flex-shrink-0">
-                        {action.icon}
-                      </div>
-                      <div>
-                        <h3 className="text-lg font-semibold text-gray-900">
-                          {action.title}
-                        </h3>
-                        <p className="text-sm text-gray-600">
-                          {action.description}
-                        </p>
-                      </div>
-                    </div>
+                    <h3 className="text-lg font-bold text-gray-900 mb-2">
+                      {action.title}
+                    </h3>
+                    <p className="text-sm text-gray-600">
+                      {action.description}
+                    </p>
                   </CardContent>
                 </Card>
               ))}

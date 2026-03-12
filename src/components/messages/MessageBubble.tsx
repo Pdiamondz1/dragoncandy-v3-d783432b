@@ -54,10 +54,10 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
         isOwn ? "items-end" : "items-start"
       )}>
         <div className={cn(
-          "rounded-lg px-4 py-2 break-words",
-          isOwn 
-            ? "bg-blue-600 text-white" 
-            : "bg-gray-100 text-gray-900"
+          "rounded-full px-5 py-2 break-words",
+          isOwn
+            ? "bg-teal-400 text-white"
+            : "bg-pink-300 text-gray-900"
         )}>
           <p className="text-sm whitespace-pre-wrap">{message.content}</p>
         </div>

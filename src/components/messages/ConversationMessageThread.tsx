@@ -1,7 +1,6 @@
-import React, { useEffect, useState } from 'react';
-import { Card } from '@/components/ui/card';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Search } from 'lucide-react';
+import { Phone, Search } from 'lucide-react';
 import MessageList from './MessageList';
 import MessageInputEnhanced from './MessageInputEnhanced';
 import MessageSearch from './MessageSearch';
@@ -60,40 +59,47 @@ const ConversationMessageThread: React.FC<ConversationMessageThreadProps> = ({
   };
 
   return (
-    <div className="flex h-[600px]">
-      <Card className="flex flex-col flex-1">
-        {conversationTitle && (
-          <div className="p-4 border-b bg-muted flex items-center justify-between">
-            <div>
-              <h3 className="font-medium">{conversationTitle}</h3>
-              <p className="text-sm text-muted-foreground">Direct conversation</p>
+    <div className="flex flex-col h-[calc(100vh-120px)] bg-[#A8A8A0]">
+      {/* Top bar: white bg, teal name, "Recently Active", pink phone button */}
+      {conversationTitle && (
+        <div className="flex items-center justify-between px-4 py-3 bg-white border-b border-gray-200">
+          <div className="text-center flex-1">
+            <h3 className="font-semibold text-teal-400 text-base">{conversationTitle}</h3>
+            <p className="text-xs text-gray-600 font-medium">Recently Active</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-9 h-9 rounded-full bg-pink-400 flex items-center justify-center">
+              <Phone className="h-4 w-4 text-white" />
             </div>
             <Button
-              variant="outline"
+              variant="ghost"
               size="sm"
               onClick={() => setShowSearch(!showSearch)}
+              className="h-8 w-8 p-0"
             >
-              <Search className="h-4 w-4" />
+              <Search className="h-4 w-4 text-gray-500" />
             </Button>
           </div>
-        )}
-        
-        <MessageList 
+        </div>
+      )}
+
+      <div className="flex-1 overflow-hidden flex flex-col">
+        <MessageList
           conversationId={conversationId}
-          messages={messages} 
+          messages={messages}
           isLoading={isLoading}
           onReply={handleReply}
         />
-        
-        <MessageInputEnhanced 
+
+        <MessageInputEnhanced
           conversationId={conversationId}
           onSendMessage={handleSendMessage}
           disabled={sendMessage.isPending}
-          placeholder="Type your message..."
+          placeholder="Enter Text Here...."
           replyingTo={replyingTo}
           onCancelReply={handleCancelReply}
         />
-      </Card>
+      </div>
 
       {/* Search panel */}
       {showSearch && conversationId && (

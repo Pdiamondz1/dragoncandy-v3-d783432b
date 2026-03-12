@@ -226,7 +226,7 @@ export const AuthForm = ({ mode, onError }: AuthFormProps) => {
       {mode === "signup" && (
         <>
           <div>
-            <Label htmlFor="fullName" className="mb-1 block text-pink-700">Full Name</Label>
+            <Label htmlFor="fullName" className="mb-1 block text-white">Full Name</Label>
             <Input
               id="fullName"
               type="text"
@@ -236,12 +236,12 @@ export const AuthForm = ({ mode, onError }: AuthFormProps) => {
               onChange={e => setFullName(e.target.value)}
               placeholder="John Doe"
               disabled={loading}
-              className="bg-pink-50 border-pink-200 focus-visible:ring-pink-300/70 text-base"
+              className="rounded-full px-5 bg-white border-gray-300 focus-visible:ring-teal-300/70 text-base"
             />
           </div>
 
           <div>
-            <Label htmlFor="role" className="mb-1 block text-pink-700 font-semibold">
+            <Label htmlFor="role" className="mb-1 block text-white font-semibold">
               Select your role
             </Label>
             <RadioGroup
@@ -274,7 +274,7 @@ export const AuthForm = ({ mode, onError }: AuthFormProps) => {
       )}
 
       <div>
-        <Label htmlFor="email" className="mb-1 block text-pink-700">Email</Label>
+        <Label htmlFor="email" className="mb-1 block text-white">Email</Label>
         <Input
           id="email"
           type="email"
@@ -284,12 +284,12 @@ export const AuthForm = ({ mode, onError }: AuthFormProps) => {
           onChange={e => setEmail(e.target.value)}
           placeholder="you@email.com"
           disabled={loading}
-          className="bg-pink-50 border-pink-200 focus-visible:ring-pink-300/70 text-base"
+          className="rounded-full px-5 bg-white border-gray-300 focus-visible:ring-teal-300/70 text-base"
         />
       </div>
 
       <div>
-        <Label htmlFor="password" className="mb-1 block text-pink-700">Password</Label>
+        <Label htmlFor="password" className="mb-1 block text-white">Password</Label>
         <Input
           id="password"
           type="password"
@@ -299,7 +299,7 @@ export const AuthForm = ({ mode, onError }: AuthFormProps) => {
           onChange={e => setPassword(e.target.value)}
           placeholder="Your password"
           disabled={loading}
-          className="bg-pink-50 border-pink-200 focus-visible:ring-pink-300/70 text-base"
+          className="rounded-full px-5 bg-white border-gray-300 focus-visible:ring-teal-300/70 text-base"
         />
       </div>
 
@@ -324,7 +324,7 @@ export const AuthForm = ({ mode, onError }: AuthFormProps) => {
 
       <Button
         type="submit"
-        className="w-full mt-1 font-bold text-lg bg-pink-600 hover:bg-pink-700 transition-colors py-3"
+        className="w-full mt-1 font-bold text-lg rounded-full bg-teal-400 hover:bg-teal-500 text-white transition-colors py-3"
         disabled={loading}
       >
         {loading ? (mode === "signup" ? "Signing up..." : "Logging in...") : (mode === "signup" ? "Sign Up" : "Log In")}
