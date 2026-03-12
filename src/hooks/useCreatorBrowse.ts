@@ -76,7 +76,7 @@ export const useCreatorBrowse = () => {
       console.log('Fetching available creators');
       const { data, error } = await supabase
         .from('creator_profiles')
-        .select('*')
+        .select('id, user_id, creator_name, avatar_url, bio, skills, portfolio_urls, location, city, country, postal_code, availability, base_rate_per_hour, instagram_url, tiktok_url, youtube_url, facebook_url, linkedin_url, x_url, other_social_url, website_url, average_rating, profile_slug, total_reviews')
         .eq('is_completed', true)
         .order('created_at', { ascending: false });
 

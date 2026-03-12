@@ -186,6 +186,7 @@ export const useCreateCampaign = () => {
 };
 
 export const useUpdateCampaign = () => {
+  const { user } = useAuth();
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -195,6 +196,7 @@ export const useUpdateCampaign = () => {
         .from('campaigns')
         .update(updates)
         .eq('id', id)
+        .eq('user_id', user!.id)
         .select()
         .single();
 
@@ -356,6 +358,7 @@ export const useUpdateCampaign = () => {
 };
 
 export const useDeleteCampaign = () => {
+  const { user } = useAuth();
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -364,7 +367,8 @@ export const useDeleteCampaign = () => {
       const { error } = await supabase
         .from('campaigns')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .eq('user_id', user!.id);
 
       if (error) {
         console.error('Error deleting campaign:', error);

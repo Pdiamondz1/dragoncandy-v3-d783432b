@@ -67,7 +67,8 @@ export const useOptimizedAnalytics = () => {
 
       const { data: events, error } = await supabase
         .from('analytics_events')
-        .select('*')
+        .select('id, event_type, event_data, created_at, user_id')
+        .eq('user_id', user!.id)
         .gte('created_at', startDate.toISOString())
         .lte('created_at', endDate.toISOString())
         .order('created_at', { ascending: false });

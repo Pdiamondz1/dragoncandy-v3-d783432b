@@ -41,7 +41,7 @@ export const useBetaOnboarding = () => {
         // Fetch onboarding steps
         const { data: stepsData, error: stepsError } = await supabase
           .from('onboarding_steps')
-          .select('*')
+          .select('id, title, description, component, order, is_optional, target_roles')
           .order('order');
 
         if (stepsError) {
@@ -52,7 +52,7 @@ export const useBetaOnboarding = () => {
         // Fetch user progress
         const { data: progressData, error: progressError } = await supabase
           .from('user_onboarding_progress')
-          .select('*')
+          .select('step_id, completed_at, skipped_at')
           .eq('user_id', user.id);
 
         if (progressError) {

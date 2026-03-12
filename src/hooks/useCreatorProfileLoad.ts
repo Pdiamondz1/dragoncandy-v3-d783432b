@@ -21,7 +21,7 @@ export const useCreatorProfileLoad = (setFormDataFromProfile: (profile: any) => 
       try {
         const { data: creatorProfile } = await supabase
           .from('creator_profiles')
-          .select('*')
+          .select('id, user_id, creator_name, avatar_url, bio, skills, portfolio_urls, location, city, country, postal_code, availability, base_rate_per_hour, instagram_url, tiktok_url, youtube_url, facebook_url, linkedin_url, x_url, other_social_url, website_url, profile_slug, is_completed')
           .eq('user_id', user.id)
           .single();
 

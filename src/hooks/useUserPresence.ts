@@ -22,7 +22,7 @@ export const useUserPresence = () => {
       console.log('Fetching user presence data');
       const { data, error } = await supabase
         .from('user_presence')
-        .select('*')
+        .select('id, user_id, status, last_seen, updated_at')
         .order('updated_at', { ascending: false });
 
       if (error) {
