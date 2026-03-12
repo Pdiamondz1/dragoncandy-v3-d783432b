@@ -29,6 +29,16 @@ serve(async (req) => {
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
     if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
 
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) throw new Error("No authorization header provided");
+
+    const token = authHeader.replace("Bearer ", "");
+    const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
+    if (userError) throw new Error(`Authentication error: ${userError.message}`);
+    const user = userData.user;
+    if (!user) throw new Error("User not authenticated");
+    logStep("User authenticated", { userId: user.id });
+
     const { sponsorshipId } = await req.json();
     if (!sponsorshipId) throw new Error("Missing sponsorshipId");
     logStep("Verifying payment for sponsorship", { sponsorshipId });
@@ -47,6 +57,11 @@ serve(async (req) => {
       .single();
 
     if (fetchError) throw new Error(`Failed to fetch sponsorship: ${fetchError.message}`);
+
+    // Verify the caller is the brand on this sponsorship
+    const brandUserId = (sponsorship as any).brand_profile?.user_id;
+    if (brandUserId !== user.id) throw new Error("Not authorized to verify this sponsorship");
+
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
 
     // Resolve the PaymentIntent ID
@@ -83,7 +98,7 @@ serve(async (req) => {
         .eq('id', sponsorshipId);
 
       if (updateError) {
-        logStep("Warning: Failed to update payment status", { error: updateError.message });
+        throw new Error(`Failed to update sponsorship payment status: ${updateError.message}`);
       }
 
       // Send email notifications to both parties

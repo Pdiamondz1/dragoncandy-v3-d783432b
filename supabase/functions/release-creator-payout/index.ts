@@ -113,7 +113,8 @@ serve(async (req) => {
 
     // Check if creator has completed Stripe onboarding
     if (creatorProfile?.stripe_account_id && creatorProfile?.stripe_onboarding_complete) {
-      // Transfer funds to creator's connected account
+      // Transfer funds to creator's connected account.
+      // Idempotency key prevents duplicate transfers on retry.
       const transfer = await stripe.transfers.create({
         amount: Math.round(creatorPayout * 100), // Convert to cents
         currency: 'usd',
@@ -123,25 +124,33 @@ serve(async (req) => {
           campaign_id: campaign.id,
           platform_fee: platformFee.toString(),
         },
-      });
+      }, { idempotencyKey: `payout_${collaborationId}` });
 
       logStep("Transfer created", { transferId: transfer.id, amount: creatorPayout });
 
       // Update collaboration status
-      await supabaseClient
+      const { error: collabUpdateError } = await supabaseClient
         .from('campaign_collaborations')
-        .update({ 
+        .update({
           status: 'completed',
           completed_at: new Date().toISOString(),
           content_status: 'approved',
         })
         .eq('id', collaborationId);
 
+      if (collabUpdateError) {
+        throw new Error(`Transfer succeeded but failed to update collaboration status: ${collabUpdateError.message}`);
+      }
+
       // Update campaign escrow status
-      await supabaseClient
+      const { error: campaignUpdateError } = await supabaseClient
         .from('campaigns')
         .update({ escrow_status: 'released' })
         .eq('id', campaign.id);
+
+      if (campaignUpdateError) {
+        throw new Error(`Transfer succeeded but failed to update campaign escrow status: ${campaignUpdateError.message}`);
+      }
 
       return new Response(JSON.stringify({ 
         success: true,

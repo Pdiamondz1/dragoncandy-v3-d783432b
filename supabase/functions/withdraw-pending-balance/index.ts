@@ -107,35 +107,45 @@ serve(async (req) => {
     // Convert to cents for Stripe
     const amountInCents = Math.round(pendingBalance * 100);
 
-    // Create a transfer to the connected account
-    logStep("Creating transfer", { 
-      amount: amountInCents, 
-      destination: stripeAccountId 
-    });
-
-    const transfer = await stripe.transfers.create({
-      amount: amountInCents,
-      currency: 'usd',
-      destination: stripeAccountId,
-      description: `DragonCandy platform wallet withdrawal`,
-      metadata: {
-        user_id: user.id,
-        withdrawal_type: 'pending_balance',
-      },
-    });
-
-    logStep("Transfer created", { transferId: transfer.id, amount: transfer.amount });
-
-    // Reset the pending balance to 0
-    const { error: updateError } = await supabaseClient
+    // Atomic guard: zero the balance only if it still matches the amount we read.
+    // This prevents a second concurrent request from also withdrawing the same funds.
+    const { data: zeroResult, error: zeroError } = await supabaseClient
       .from(profileTable)
       .update({ pending_balance: 0 })
-      .eq('user_id', user.id);
+      .eq('user_id', user.id)
+      .eq('pending_balance', pendingBalance) // Only update if balance hasn't changed
+      .select('pending_balance');
 
-    if (updateError) {
-      logStep("WARNING: Failed to reset pending_balance", { error: updateError.message });
-      // Don't throw - the transfer already happened
+    if (zeroError || !zeroResult?.length) {
+      throw new Error("Withdrawal already in progress or balance has changed. Please try again.");
     }
+
+    // Create a transfer to the connected account.
+    // Idempotency key is scoped to this user + exact amount so retries don't double-pay.
+    logStep("Creating transfer", { amount: amountInCents, destination: stripeAccountId });
+
+    let transfer: Stripe.Transfer;
+    try {
+      transfer = await stripe.transfers.create({
+        amount: amountInCents,
+        currency: 'usd',
+        destination: stripeAccountId,
+        description: `DragonCandy platform wallet withdrawal`,
+        metadata: {
+          user_id: user.id,
+          withdrawal_type: 'pending_balance',
+        },
+      }, { idempotencyKey: `withdraw_${user.id}_${amountInCents}` });
+    } catch (stripeError) {
+      // Transfer failed — restore the balance so the user can try again
+      await supabaseClient
+        .from(profileTable)
+        .update({ pending_balance: pendingBalance })
+        .eq('user_id', user.id);
+      throw stripeError;
+    }
+
+    logStep("Transfer created", { transferId: transfer.id, amount: transfer.amount });
 
     logStep("Withdrawal complete", { 
       transferId: transfer.id, 
