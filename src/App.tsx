@@ -38,7 +38,6 @@ import CampaignWizard from "./pages/CampaignWizard";
 import AnonymousCampaignWizard from "./pages/AnonymousCampaignWizard";
 import CampaignDetailsPage from "./pages/CampaignDetailsPage";
 import CampaignEditPage from "./pages/CampaignEditPage";
-import MessagesPage from "./pages/MessagesPage";
 import DirectMessagesPage from "./pages/DirectMessagesPage";
 import DirectConversationPage from "./pages/DirectConversationPage";
 import CampaignMessagesPage from "./pages/CampaignMessagesPage";
