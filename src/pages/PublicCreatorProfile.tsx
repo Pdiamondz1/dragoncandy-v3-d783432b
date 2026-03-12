@@ -2,9 +2,30 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { User, Star, ArrowLeft } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
+import { 
+  User, 
+  MapPin, 
+  Globe, 
+  Clock, 
+  DollarSign, 
+  Star, 
+  MessageSquare,
+  ExternalLink,
+  Instagram,
+  Facebook,
+  Linkedin,
+  Twitter,
+  Youtube,
+  Calendar,
+  Languages,
+  Briefcase,
+  ArrowLeft
+} from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import PublicProfileReviews from '@/components/profiles/PublicProfileReviews';
 import ContactCreatorModal from '@/components/creator-profile/ContactCreatorModal';
@@ -132,6 +153,28 @@ const PublicCreatorProfile = () => {
     }
   };
 
+  const getSocialLinks = () => {
+    const links = [];
+    if (profile?.instagram_url) links.push({ icon: Instagram, url: profile.instagram_url, name: 'Instagram' });
+    if (profile?.tiktok_url) links.push({ icon: User, url: profile.tiktok_url, name: 'TikTok' });
+    if (profile?.youtube_url) links.push({ icon: Youtube, url: profile.youtube_url, name: 'YouTube' });
+    if (profile?.facebook_url) links.push({ icon: Facebook, url: profile.facebook_url, name: 'Facebook' });
+    if (profile?.linkedin_url) links.push({ icon: Linkedin, url: profile.linkedin_url, name: 'LinkedIn' });
+    if (profile?.x_url) links.push({ icon: Twitter, url: profile.x_url, name: 'X (Twitter)' });
+    return links;
+  };
+
+  const formatRate = (rate?: number) => {
+    if (!rate) return 'Rate on request';
+    return `$${rate}/hour`;
+  };
+
+  const formatExperience = (years?: number) => {
+    if (!years) return 'Experience level not specified';
+    if (years === 0) return 'Just starting out';
+    if (years >= 10) return '10+ years experience';
+    return `${years} year${years > 1 ? 's' : ''} experience`;
+  };
 
   if (loading) {
     return (
@@ -168,125 +211,264 @@ const PublicCreatorProfile = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#A8A8A0] max-w-md mx-auto">
-      {/* Hero Section — full-bleed background image */}
-      <div
-        className="relative h-72 bg-gray-700"
-        style={portfolioUrls[0] ? {
-          backgroundImage: `url(${portfolioUrls[0]})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-        } : undefined}
-      >
-        {/* Top nav overlay */}
-        <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-4 pt-4 z-10">
-          <button onClick={handleGoBack} className="text-white">
-            <ArrowLeft className="h-6 w-6" />
-          </button>
-          <button className="text-white text-xl font-light">✕</button>
-        </div>
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="max-w-4xl mx-auto px-4 space-y-6">
+        {/* Back Button */}
+        <Button 
+          variant="ghost" 
+          onClick={handleGoBack}
+          className="mb-4"
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back
+        </Button>
+        {/* Header */}
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-start gap-6">
+              <Avatar className="h-20 w-20">
+                <AvatarImage src={profile.avatar_url} />
+                <AvatarFallback>
+                  <User className="h-10 w-10" />
+                </AvatarFallback>
+              </Avatar>
+              
+              <div className="flex-1">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                      {profile.creator_name}
+                    </h1>
+                    <div className="flex items-center gap-4 text-sm text-gray-600 mb-4">
+                      <div className="flex items-center gap-1">
+                        <Briefcase className="h-4 w-4" />
+                        <span>{formatExperience(profile.years_of_experience)}</span>
+                      </div>
+                      {profile.location && (
+                        <div className="flex items-center gap-1">
+                          <MapPin className="h-4 w-4" />
+                          <span>{profile.location}</span>
+                        </div>
+                      )}
+                      {profile.timezone && (
+                        <div className="flex items-center gap-1">
+                          <Clock className="h-4 w-4" />
+                          <span>{profile.timezone}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div className="flex gap-2">
+                    <ContactCreatorModal 
+                      creator={{
+                        id: profile.id,
+                        user_id: profile.user_id,
+                        creator_name: profile.creator_name,
+                        avatar_url: profile.avatar_url,
+                        bio: profile.bio,
+                        response_time: profile.response_time
+                      }}
+                    />
+                    {profile.website_url && (
+                      <Button variant="outline" asChild>
+                        <a href={profile.website_url} target="_blank" rel="noopener noreferrer">
+                          <ExternalLink className="h-4 w-4 mr-2" />
+                          Website
+                        </a>
+                      </Button>
+                    )}
+                  </div>
+                </div>
 
-        {/* Profile card overlaid at bottom of hero */}
-        <div className="absolute bottom-0 left-4 right-4 translate-y-1/2 z-20">
-          <div className="bg-white rounded-3xl px-4 py-3 flex items-center gap-3 shadow-lg">
-            <Avatar className="h-14 w-14 ring-2 ring-teal-400 flex-shrink-0">
-              <AvatarImage src={profile.avatar_url} />
-              <AvatarFallback><User className="h-7 w-7" /></AvatarFallback>
-            </Avatar>
-            <div>
-              <h1 className="text-lg font-bold text-gray-900 leading-tight">{profile.creator_name}</h1>
-              <div className="flex items-center gap-1">
-                <Star className="h-3 w-3 text-yellow-400 fill-yellow-400" />
-                <span className="text-xs text-pink-600 font-medium">4.5 RATING</span>
+                {profile.bio && (
+                  <p className="text-gray-700 leading-relaxed">
+                    {profile.bio}
+                  </p>
+                )}
               </div>
-              {profile.location && (
-                <p className="text-xs text-gray-600 font-semibold uppercase tracking-wide">{profile.location}</p>
-              )}
             </div>
-          </div>
-        </div>
-      </div>
+          </CardContent>
+        </Card>
 
-      {/* Content below hero */}
-      <div className="pt-12 pb-8 px-4 space-y-6 bg-white">
-        {/* Stats row */}
-        <div className="grid grid-cols-3 divide-x divide-pink-300 text-center pt-2">
-          <div className="px-2">
-            <p className="text-4xl font-black text-gray-900">50</p>
-            <p className="text-xs text-gray-600">Projects Completed</p>
-          </div>
-          <div className="px-2">
-            <p className="text-4xl font-black text-gray-900">50</p>
-            <p className="text-xs text-gray-600">Reels Completed</p>
-          </div>
-          <div className="px-2">
-            <p className="text-4xl font-black text-gray-900">50</p>
-            <p className="text-xs text-gray-600">Projects Completed</p>
-          </div>
-        </div>
-
-        {/* Bio */}
-        {profile.bio && (
-          <p className="text-sm text-gray-600 leading-relaxed">{profile.bio}</p>
-        )}
-
-        {/* Skills */}
+        {/* Skills & Expertise */}
         {profile.skills && profile.skills.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {profile.skills.map((skill, i) => (
-              <Badge key={i} variant="secondary" className="rounded-full">
-                {skill.replace('_', ' ')}
-              </Badge>
-            ))}
-          </div>
+          <Card>
+            <CardHeader>
+              <CardTitle>Skills & Expertise</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-wrap gap-2">
+                {profile.skills.map((skill, index) => (
+                  <Badge key={index} variant="secondary">
+                    {skill.replace('_', ' ')}
+                  </Badge>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         )}
 
-        {/* Reviews */}
-        <div>
-          <h2 className="text-xl font-bold text-gray-900 text-center mb-4">Reviews</h2>
-          <PublicProfileReviews
-            profileId={profile.user_id}
-            profileType="creator"
-          />
+        {/* Professional Details */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <DollarSign className="h-5 w-5" />
+                Rates & Availability
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <span className="text-sm font-medium text-gray-500">Hourly Rate</span>
+                <p>{formatRate(profile.base_rate_per_hour)}</p>
+              </div>
+              
+              {profile.min_project_budget && (
+                <div>
+                  <span className="text-sm font-medium text-gray-500">Minimum Project Budget</span>
+                  <p>${profile.min_project_budget}</p>
+                </div>
+              )}
+              
+              {profile.response_time && (
+                <div>
+                  <span className="text-sm font-medium text-gray-500">Response Time</span>
+                  <p className="capitalize">{profile.response_time.replace('-', ' ')}</p>
+                </div>
+              )}
+              
+              {profile.max_projects_per_month && (
+                <div>
+                  <span className="text-sm font-medium text-gray-500">Capacity</span>
+                  <p>{profile.max_projects_per_month} projects per month</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Calendar className="h-5 w-5" />
+                Work Preferences
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {profile.preferred_project_duration && (
+                <div>
+                  <span className="text-sm font-medium text-gray-500">Preferred Project Duration</span>
+                  <p className="capitalize">{profile.preferred_project_duration.replace('-', ' ')}</p>
+                </div>
+              )}
+              
+              {profile.languages_spoken && profile.languages_spoken.length > 0 && (
+                <div>
+                  <span className="text-sm font-medium text-gray-500">Languages</span>
+                  <p>{profile.languages_spoken.join(', ')}</p>
+                </div>
+              )}
+              
+              <div>
+                <span className="text-sm font-medium text-gray-500">Member Since</span>
+                <p>{new Date(profile.created_at).toLocaleDateString('en-US', { 
+                  year: 'numeric', 
+                  month: 'long' 
+                })}</p>
+              </div>
+            </CardContent>
+          </Card>
         </div>
+
+        {/* Collaboration Preferences */}
+        {profile.collaboration_preferences && (
+          <Card>
+            <CardHeader>
+              <CardTitle>How I Work</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-gray-700 leading-relaxed">
+                {profile.collaboration_preferences}
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Availability */}
+        {profile.availability && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Current Availability</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-gray-700 leading-relaxed">
+                {profile.availability}
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Reviews & Ratings Section */}
+        <PublicProfileReviews 
+          profileId={profile.user_id}
+          profileType="creator"
+        />
+
+        {/* Social Links */}
+        {getSocialLinks().length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Connect With Me</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex gap-4">
+                {getSocialLinks().map(({ icon: Icon, url, name }) => (
+                  <Button key={name} variant="outline" size="sm" asChild>
+                    <a href={url} target="_blank" rel="noopener noreferrer">
+                      <Icon className="h-4 w-4 mr-2" />
+                      {name}
+                    </a>
+                  </Button>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Portfolio */}
-        {portfolioUrls.length > 1 && (
-          <div>
-            <h2 className="text-lg font-bold text-gray-900 mb-3">Portfolio</h2>
-            <div className="grid grid-cols-3 gap-2">
-              {portfolioUrls.slice(1).map((url, index) => (
-                <div key={index} className="aspect-square bg-gray-100 rounded-xl overflow-hidden">
-                  <img
-                    src={url}
-                    alt={`Portfolio item ${index + 2}`}
-                    className="w-full h-full object-cover"
-                    loading="lazy"
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
+        {portfolioUrls.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Portfolio</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {portfolioUrls.map((url, index) => (
+                  <div key={index} className="aspect-square bg-gray-100 rounded-lg overflow-hidden group cursor-pointer">
+                    <img 
+                      src={url} 
+                      alt={`Portfolio item ${index + 1}`}
+                      className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                        const parent = target.parentElement;
+                        if (parent) {
+                          parent.innerHTML = `
+                            <div class="w-full h-full flex items-center justify-center bg-gray-200">
+                              <span class="text-gray-500 text-sm">Image unavailable</span>
+                            </div>
+                          `;
+                        }
+                      }}
+                      loading="lazy"
+                    />
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         )}
-      </div>
-
-      {/* CTA Button */}
-      <div className="px-4 py-4 bg-white border-t border-gray-100">
-        <ContactCreatorModal
-          creator={{
-            id: profile.id,
-            user_id: profile.user_id,
-            creator_name: profile.creator_name,
-            avatar_url: profile.avatar_url,
-            bio: profile.bio,
-            response_time: profile.response_time
-          }}
-          trigger={
-            <button className="w-full rounded-full bg-teal-400 text-white font-bold uppercase tracking-wider py-4 text-base hover:bg-teal-500 transition-colors">
-              Get In Touch
-            </button>
-          }
-        />
       </div>
     </div>
   );

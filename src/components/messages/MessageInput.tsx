@@ -71,29 +71,24 @@ const MessageInput: React.FC<MessageInputProps> = ({
   }, [sendTypingIndicator]);
 
   return (
-    <form onSubmit={handleSubmit} className="flex items-center gap-3 px-4 py-3 bg-[#A8A8A0] border-t border-[#909090]">
-      <button
-        type="button"
-        className="w-10 h-10 rounded-full bg-gray-900 flex items-center justify-center flex-shrink-0 hover:bg-gray-700 transition-colors"
-      >
-        <span className="text-white text-xl font-light leading-none">+</span>
-      </button>
+    <form onSubmit={handleSubmit} className="flex gap-2 p-4 border-t bg-white">
       <Textarea
         value={message}
         onChange={handleInputChange}
         onKeyPress={handleKeyPress}
-        placeholder="Enter Text Here...."
+        placeholder={placeholder}
         disabled={disabled}
-        className="flex-1 min-h-[40px] max-h-[120px] resize-none rounded-full bg-white border-0 px-5 py-2 text-sm focus-visible:ring-1 focus-visible:ring-teal-400"
+        className="min-h-[40px] max-h-[120px] resize-none"
         rows={1}
       />
-      <button
-        type="submit"
+      <Button 
+        type="submit" 
         disabled={!message.trim() || disabled}
-        className="w-10 h-10 rounded-full bg-gray-900 flex items-center justify-center flex-shrink-0 hover:bg-gray-700 transition-colors disabled:opacity-40"
+        size="sm"
+        className="self-end"
       >
-        <Send className="h-4 w-4 text-white" />
-      </button>
+        <Send className="h-4 w-4" />
+      </Button>
     </form>
   );
 };

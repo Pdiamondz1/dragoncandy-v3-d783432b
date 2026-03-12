@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { MapPin } from 'lucide-react';
+import { TrendingUp } from 'lucide-react';
 
 interface MarketplaceHeaderProps {
   totalCampaigns: number;
@@ -8,13 +8,19 @@ interface MarketplaceHeaderProps {
 
 const MarketplaceHeader: React.FC<MarketplaceHeaderProps> = ({ totalCampaigns }) => {
   return (
-    <div className="pt-2 pb-1">
-      <h1 className="text-2xl font-bold text-gray-900">
-        Available Campaigns
-      </h1>
-      <div className="flex items-center gap-1 text-gray-700 mt-0.5">
-        <MapPin className="h-3.5 w-3.5 text-pink-500" />
-        <span className="text-sm">{totalCampaigns} campaigns near you</span>
+    <div className="flex items-center justify-between">
+      <div>
+        <h1 className="text-3xl font-bold text-gray-900">
+          Browse Campaigns
+        </h1>
+        <p className="text-gray-600">
+          Discover exciting campaigns and grow your creative business
+        </p>
+      </div>
+      
+      <div className="flex items-center gap-2 text-sm text-gray-600">
+        <TrendingUp className="h-4 w-4" />
+        <span>{totalCampaigns} campaigns available</span>
       </div>
     </div>
   );
