@@ -135,7 +135,7 @@ const BusinessProjects: React.FC = () => {
   }, [paymentStatus, paymentCampaignId]);
 
   // Fetch all collaborations for campaigns owned by this business
-  const { data: projects, isLoading: projectsLoading } = useQuery({
+  const { data: projects, isLoading: projectsLoading, isError: projectsError } = useQuery({
     queryKey: ['business-projects', user?.id],
     queryFn: async () => {
       if (!user) return [];
@@ -323,6 +323,22 @@ const BusinessProjects: React.FC = () => {
               </Card>
             ))}
           </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (projectsError) {
+    return (
+      <DashboardLayout userRole="business_client">
+        <div className="p-4 lg:p-6 max-w-full overflow-hidden space-y-6">
+          <h1 className="text-3xl font-bold truncate">My Projects</h1>
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              Unable to load your projects. Please refresh the page or try again later.
+            </AlertDescription>
+          </Alert>
         </div>
       </DashboardLayout>
     );

@@ -19,21 +19,15 @@ const CreatorMatchingSection: React.FC<CreatorMatchingSectionProps> = ({ campaig
   const [activeTab, setActiveTab] = useState('ai-matches');
 
   // Fetch all available creators as fallback
-  const { data: availableCreators = [], isLoading: creatorsLoading } = useQuery({
+  const { data: availableCreators = [], isLoading: creatorsLoading, isError: creatorsError } = useQuery({
     queryKey: ['available-creators'],
     queryFn: async () => {
-      console.log('Fetching available creators...');
       const { data, error } = await supabase
         .from('creator_profiles')
-        .select('*')
+        .select('id, user_id, creator_name, avatar_url, bio, skills, location, base_rate_per_hour, instagram_url, tiktok_url, youtube_url, facebook_url, linkedin_url, x_url')
         .eq('is_completed', true);
 
-      if (error) {
-        console.error('Error fetching creators:', error);
-        throw error;
-      }
-
-      console.log('Available creators:', data);
+      if (error) throw error;
       return data || [];
     },
   });
@@ -145,6 +139,16 @@ const CreatorMatchingSection: React.FC<CreatorMatchingSectionProps> = ({ campaig
                   <RefreshCw className="h-4 w-4 animate-spin" />
                   Loading available creators...
                 </div>
+              </CardContent>
+            </Card>
+          ) : creatorsError ? (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <AlertCircle className="h-12 w-12 text-destructive mb-4" />
+                <h3 className="text-lg font-semibold mb-2">Unable to load creators</h3>
+                <p className="text-muted-foreground text-center max-w-md">
+                  There was a problem fetching creator profiles. Please try refreshing the page.
+                </p>
               </CardContent>
             </Card>
           ) : hasAvailableCreators ? (

@@ -4,8 +4,9 @@ import { useAuth } from '@/hooks/useAuth';
 import { useBrandDashboardStats } from '@/hooks/useBrandDashboardStats';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { Search, TrendingUp, Users, DollarSign, Target, Sparkles, Calendar, BarChart3, Loader2 } from 'lucide-react';
+import { Search, TrendingUp, Users, DollarSign, Target, Sparkles, Calendar, BarChart3, Loader2, AlertCircle } from 'lucide-react';
 import { AskBar } from '@/components/ai-assistant';
 import { useAIChatModal } from '@/contexts/AIChatModalContext';
 
@@ -13,7 +14,7 @@ const BrandDashboard = () => {
   const { profile } = useAuth();
   const navigate = useNavigate();
   const { openModal } = useAIChatModal();
-  const { data: stats, isLoading: statsLoading } = useBrandDashboardStats();
+  const { data: stats, isLoading: statsLoading, isError: statsError } = useBrandDashboardStats();
 
   if (!profile) {
     return <div>Loading...</div>;
@@ -238,6 +239,11 @@ const BrandDashboard = () => {
                 <div className="flex items-center justify-center py-8">
                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 </div>
+              ) : statsError ? (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>Unable to load budget data. Please refresh the page.</AlertDescription>
+                </Alert>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div className="space-y-2">

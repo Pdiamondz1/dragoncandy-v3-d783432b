@@ -65,7 +65,7 @@ const CreatorEarnings: React.FC = () => {
   const queryClient = useQueryClient();
 
   // Fetch payout status
-  const { data: payoutStatus, isLoading: isLoadingStatus } = useQuery({
+  const { data: payoutStatus, isLoading: isLoadingStatus, isError: isStatusError } = useQuery({
     queryKey: ['creator-payout-status', user?.id],
     queryFn: async (): Promise<PayoutStatus> => {
       const { data, error } = await supabase.functions.invoke('check-creator-payout-status');
@@ -92,7 +92,7 @@ const CreatorEarnings: React.FC = () => {
   });
 
   // Fetch earnings history from completed projects
-  const { data: earnings = [], isLoading: isLoadingEarnings } = useQuery({
+  const { data: earnings = [], isLoading: isLoadingEarnings, isError: isEarningsError } = useQuery({
     queryKey: ['creator-earnings-history', user?.id],
     queryFn: async (): Promise<PaymentHistoryItem[]> => {
       const { data, error } = await supabase
@@ -426,6 +426,12 @@ const CreatorEarnings: React.FC = () => {
                     <Skeleton className="h-3 w-48" />
                   </div>
                 </div>
+              ) : isStatusError ? (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Unable to load payout status</AlertTitle>
+                  <AlertDescription>Could not connect to the payment service. Please refresh the page.</AlertDescription>
+                </Alert>
               ) : payoutStatus?.onboardingComplete ? (
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
@@ -505,6 +511,12 @@ const CreatorEarnings: React.FC = () => {
                     </div>
                   ))}
                 </div>
+              ) : isEarningsError ? (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Unable to load payment history</AlertTitle>
+                  <AlertDescription>There was a problem fetching your earnings. Please refresh the page.</AlertDescription>
+                </Alert>
               ) : earnings.length === 0 ? (
                 <div className="text-center py-12">
                   <DollarSign className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
