@@ -104,7 +104,7 @@ const AuthPage = () => {
 
       // Fallback
       navigate('/', { replace: true });
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error checking profile completion:', error);
       navigate('/', { replace: true });
     }

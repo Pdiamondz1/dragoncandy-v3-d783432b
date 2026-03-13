@@ -1,65 +1,15 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import {
-  LayoutDashboard,
-  Heart,
-  Play,
-  Plus,
-  List,
-  Megaphone,
-  User,
-} from 'lucide-react';
+import type { UserRole } from '@/types/user';
+import { getBottomNav } from '@/lib/navConfig';
 
 interface MobileBottomNavProps {
-  userRole: 'business_client' | 'content_creator' | 'brand';
+  userRole: UserRole;
 }
-
-type NavItem = {
-  icon: React.ElementType;
-  href: string;
-  label: string;
-  isCenter?: boolean;
-};
-
-const businessItems: NavItem[] = [
-  { icon: LayoutDashboard, label: 'Home', href: '/dashboard/business' },
-  { icon: Heart, label: 'Feed', href: '/dashboard/business/dragon-feed' },
-  { icon: Play, label: 'Inspiration', href: '/dashboard/business/activity' },
-  { icon: Plus, label: 'Create', href: '/dashboard/business/campaigns/create', isCenter: true },
-  { icon: List, label: 'Campaigns', href: '/dashboard/business/campaigns' },
-  { icon: Megaphone, label: 'Promotions', href: '/dashboard/business/promotions' },
-  { icon: User, label: 'Profile', href: '/dashboard/business/settings' },
-];
-
-const creatorItems: NavItem[] = [
-  { icon: LayoutDashboard, label: 'Home', href: '/dashboard/creator' },
-  { icon: Heart, label: 'Applied', href: '/dashboard/creator/applications' },
-  { icon: Play, label: 'Projects', href: '/dashboard/creator/projects' },
-  { icon: Plus, label: 'Browse', href: '/dashboard/creator/campaigns', isCenter: true },
-  { icon: List, label: 'Campaigns', href: '/dashboard/creator/campaigns' },
-  { icon: Megaphone, label: 'Earnings', href: '/dashboard/creator/earnings' },
-  { icon: User, label: 'Profile', href: '/dashboard/creator/settings' },
-];
-
-const brandItems: NavItem[] = [
-  { icon: LayoutDashboard, label: 'Home', href: '/dashboard/brand' },
-  { icon: Heart, label: 'Creators', href: '/dashboard/brand/creators' },
-  { icon: Play, label: 'Discover', href: '/dashboard/brand/discover-campaigns' },
-  { icon: Plus, label: 'Add', href: '/dashboard/brand/discover-campaigns', isCenter: true },
-  { icon: List, label: 'Sponsors', href: '/dashboard/brand/sponsorships' },
-  { icon: Megaphone, label: 'Analytics', href: '/dashboard/brand/analytics' },
-  { icon: User, label: 'Profile', href: '/dashboard/brand/settings' },
-];
 
 export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ userRole }) => {
   const location = useLocation();
-
-  const items =
-    userRole === 'business_client'
-      ? businessItems
-      : userRole === 'brand'
-      ? brandItems
-      : creatorItems;
+  const items = getBottomNav(userRole);
 
   const isActive = (href: string) =>
     location.pathname === href || location.pathname.startsWith(href + '/');
@@ -74,7 +24,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ userRole }) =>
           if (item.isCenter) {
             return (
               <Link
-                key={item.href + item.label}
+                key={`${item.href}-${item.label}`}
                 to={item.href}
                 className="flex flex-col items-center -mt-4"
                 aria-label={item.label}
@@ -88,14 +38,12 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ userRole }) =>
 
           return (
             <Link
-              key={item.href + item.label}
+              key={`${item.href}-${item.label}`}
               to={item.href}
               className="flex flex-col items-center gap-0.5 py-1 min-w-0"
               aria-label={item.label}
             >
-              <Icon
-                className={`h-5 w-5 ${active ? 'text-dc-teal' : 'text-[#888888]'}`}
-              />
+              <Icon className={`h-5 w-5 ${active ? 'text-dc-teal' : 'text-[#888888]'}`} />
               <span
                 className={`text-[10px] leading-tight truncate ${
                   active ? 'text-dc-teal font-semibold' : 'text-[#888888]'

@@ -6,8 +6,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { toast } from "@/hooks/use-toast";
 import ReCaptcha, { ReCaptchaHandle } from "./ReCaptcha";
-
-type Role = "business_client" | "content_creator" | "brand";
+import type { UserRole as Role } from "@/types/user";
 
 interface AuthFormProps {
   mode: "login" | "signup";

@@ -1,12 +1,12 @@
-
-import { useState } from "react";
+import React from "react";
 import { useNavigate } from "react-router-dom";
-import { Menu, X } from "lucide-react";
+import { Menu } from "lucide-react";
 import dragonCandyLogo from "@/assets/dragon-candy-logo.png";
+import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
-export const Header = () => {
+export const Header: React.FC = () => {
   const navigate = useNavigate();
-  const [open, setOpen] = useState(false);
 
   return (
     <header className="flex items-center justify-between py-4">
@@ -17,35 +17,33 @@ export const Header = () => {
         onClick={() => navigate('/')}
       />
 
-      <button
-        onClick={() => setOpen(!open)}
-        className="p-2 rounded-full hover:bg-gray-100 transition-colors"
-        aria-label="Toggle menu"
-      >
-        {open ? (
-          <X className="h-6 w-6 text-dc-pink-accent" />
-        ) : (
-          <Menu className="h-6 w-6 text-dc-pink-accent" />
-        )}
-      </button>
-
-      {/* Dropdown sheet */}
-      {open && (
-        <div className="absolute top-16 right-4 z-50 bg-white rounded-2xl shadow-xl border border-gray-100 p-4 w-48 flex flex-col gap-2">
+      <Sheet>
+        <SheetTrigger asChild>
           <button
-            className="w-full text-left px-4 py-2 rounded-full text-[#555555] hover:bg-dc-teal/10 hover:text-dc-teal font-medium text-sm"
-            onClick={() => { navigate('/auth?mode=login'); setOpen(false); }}
+            className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+            aria-label="Toggle menu"
           >
-            Log in
+            <Menu className="h-6 w-6 text-dc-pink-accent" />
           </button>
-          <button
-            className="w-full text-left px-4 py-2 rounded-full bg-dc-teal text-white font-bold text-sm"
-            onClick={() => { navigate('/auth?mode=signup'); setOpen(false); }}
-          >
-            Sign up
-          </button>
-        </div>
-      )}
+        </SheetTrigger>
+        <SheetContent side="right" className="w-56 pt-8">
+          <div className="flex flex-col gap-3">
+            <Button
+              variant="ghost"
+              className="w-full justify-start rounded-full text-[#555555] hover:text-dc-teal"
+              onClick={() => navigate('/auth?mode=login')}
+            >
+              Log in
+            </Button>
+            <Button
+              className="w-full rounded-full bg-dc-teal text-white font-bold hover:bg-dc-teal-dark"
+              onClick={() => navigate('/auth?mode=signup')}
+            >
+              Sign up
+            </Button>
+          </div>
+        </SheetContent>
+      </Sheet>
     </header>
   );
 };

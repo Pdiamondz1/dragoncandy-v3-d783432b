@@ -26,21 +26,7 @@ import {
   SidebarInset,
   useSidebar,
 } from '@/components/ui/sidebar';
-import {
-  LayoutDashboard,
-  Target,
-  Users,
-  MessageSquare,
-  Settings,
-  LogOut,
-  PlusCircle,
-  Search,
-  Briefcase,
-  Image,
-  DollarSign,
-  Activity,
-  QrCode
-} from 'lucide-react';
+import { Settings, LogOut, PlusCircle } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useLogout } from '@/hooks/useLogout';
 import { useProfileData } from '@/hooks/useProfileData';
@@ -51,73 +37,43 @@ import { useAIAssistantContext } from '@/contexts/AIAssistantContext';
 import { useAIChatModal } from '@/contexts/AIChatModalContext';
 import { MobileBottomNav } from '@/components/MobileBottomNav';
 import { MobileTopNav } from '@/components/MobileTopNav';
+import type { UserRole } from '@/types/user';
+import { getSidebarNav, getSettingsHref, getDashboardLabel } from '@/lib/navConfig';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
-  userRole: 'business_client' | 'content_creator' | 'brand';
+  userRole: UserRole;
 }
 
-const AppSidebar: React.FC<{ userRole: 'business_client' | 'content_creator' | 'brand' }> = ({ userRole }) => {
+interface AppSidebarProps {
+  userRole: UserRole;
+}
+
+const AppSidebar: React.FC<AppSidebarProps> = ({ userRole }) => {
   const location = useLocation();
   const { state } = useSidebar();
   const collapsed = state === 'collapsed';
+  const navItems = getSidebarNav(userRole);
 
-  const businessNavItems = [
-    { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard/business' },
-    { icon: Target, label: 'My Campaigns', href: '/dashboard/business/campaigns' },
-    { icon: Image, label: 'Dragon Feed', href: '/dashboard/business/dragon-feed' },
-    { icon: Activity, label: 'Inspiration', href: '/dashboard/business/activity' },
-    { icon: Users, label: 'Browse Creators', href: '/dashboard/business/creators' },
-    { icon: Briefcase, label: 'Projects', href: '/dashboard/business/projects' },
-    { icon: DollarSign, label: 'Sponsorships', href: '/dashboard/business/sponsorships' },
-    { icon: QrCode, label: 'Promotions', href: '/dashboard/business/promotions' },
-    { icon: MessageSquare, label: 'Messages', href: '/dashboard/business/messages' },
-    { icon: Settings, label: 'Settings', href: '/dashboard/business/settings' },
-  ];
-
-  const brandNavItems = [
-    { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard/brand' },
-    { icon: Search, label: 'Discover Campaigns', href: '/dashboard/brand/discover-campaigns' },
-    { icon: Target, label: 'Sponsorships', href: '/dashboard/brand/sponsorships' },
-    { icon: Users, label: 'Browse Creators', href: '/dashboard/brand/creators' },
-    { icon: MessageSquare, label: 'Messages', href: '/dashboard/brand/messages' },
-    { icon: Settings, label: 'Settings', href: '/dashboard/brand/settings' },
-  ];
-
-  const creatorNavItems = [
-    { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard/creator' },
-    { icon: Search, label: 'Browse Campaigns', href: '/dashboard/creator/campaigns' },
-    { icon: Briefcase, label: 'My Applications', href: '/dashboard/creator/applications' },
-    { icon: Target, label: 'My Projects', href: '/dashboard/creator/projects' },
-    { icon: DollarSign, label: 'Earnings', href: '/dashboard/creator/earnings' },
-    { icon: MessageSquare, label: 'Messages', href: '/dashboard/creator/messages' },
-    { icon: Settings, label: 'Settings', href: '/dashboard/creator/settings' },
-  ];
-
-  const navItems = userRole === 'business_client'
-    ? businessNavItems
-    : userRole === 'brand'
-    ? brandNavItems
-    : creatorNavItems;
-
-  const isActiveRoute = (href: string) => {
-    return location.pathname === href || location.pathname.startsWith(href + '/');
-  };
+  const isActiveRoute = (href: string) =>
+    location.pathname === href || location.pathname.startsWith(href + '/');
 
   return (
-    <Sidebar className={collapsed ? "w-14" : "w-60"} collapsible="icon">
-      {/* Header — white bg, teal bottom border */}
+    <Sidebar className={collapsed ? 'w-14' : 'w-60'} collapsible="icon">
       <SidebarHeader className="border-b border-dc-teal/30 bg-white">
         <div className="flex items-center justify-center px-2 py-2">
           <Link to="/">
-            <img src={dragonCandyLogo} alt="DragonCandy" className={collapsed ? "h-8" : "w-full max-w-[180px]"} />
+            <img
+              src={dragonCandyLogo}
+              alt="DragonCandy"
+              className={collapsed ? 'h-8' : 'w-full max-w-[180px]'}
+            />
           </Link>
         </div>
       </SidebarHeader>
 
       <SidebarContent className="bg-white">
         <SidebarGroup>
-          {/* ALL CAPS teal group label */}
           <SidebarGroupLabel className="text-dc-teal text-xs font-bold tracking-widest uppercase">
             Navigation
           </SidebarGroupLabel>
@@ -156,7 +112,7 @@ const AppSidebar: React.FC<{ userRole: 'business_client' | 'content_creator' | '
               <Link to="/dashboard/business/campaigns/create">
                 <Button
                   className="w-full bg-dc-teal text-white hover:bg-dc-teal-dark rounded-full font-semibold"
-                  size={collapsed ? "icon" : "default"}
+                  size={collapsed ? 'icon' : 'default'}
                 >
                   <PlusCircle className="h-4 w-4" />
                   {!collapsed && <span className="ml-2">New Campaign</span>}
@@ -212,7 +168,7 @@ const DashboardLayoutInner: React.FC<DashboardLayoutProps> = ({ children, userRo
                 <div className="flex items-center gap-4">
                   <SidebarTrigger />
                   <h1 className="text-xl font-semibold text-foreground hidden sm:block">
-                    {userRole === 'business_client' ? 'Business Dashboard' : userRole === 'brand' ? 'Brand Dashboard' : 'Creator Dashboard'}
+                    {getDashboardLabel(userRole)}
                   </h1>
                 </div>
 
@@ -225,7 +181,9 @@ const DashboardLayoutInner: React.FC<DashboardLayoutProps> = ({ children, userRo
                         <Avatar className="h-8 w-8 ring-2 ring-dc-teal">
                           <AvatarImage src={avatarUrl} alt="Avatar" />
                           <AvatarFallback>
-                            {displayName?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || 'U'}
+                            {displayName?.charAt(0).toUpperCase() ||
+                              user?.email?.charAt(0).toUpperCase() ||
+                              'U'}
                           </AvatarFallback>
                         </Avatar>
                       </Button>
@@ -243,7 +201,7 @@ const DashboardLayoutInner: React.FC<DashboardLayoutProps> = ({ children, userRo
                       </DropdownMenuLabel>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem asChild>
-                        <Link to={`/dashboard/${userRole === 'business_client' ? 'business' : userRole === 'brand' ? 'brand' : 'creator'}/settings`}>
+                        <Link to={getSettingsHref(userRole)}>
                           <Settings className="mr-2 h-4 w-4" />
                           <span>Settings</span>
                         </Link>
@@ -260,7 +218,6 @@ const DashboardLayoutInner: React.FC<DashboardLayoutProps> = ({ children, userRo
             </header>
           )}
 
-          {/* Page Content */}
           <main className={isMobile ? 'flex-1 pb-20' : 'flex-1'}>
             {children}
           </main>
@@ -269,15 +226,8 @@ const DashboardLayoutInner: React.FC<DashboardLayoutProps> = ({ children, userRo
         {/* Mobile bottom nav */}
         {isMobile && <MobileBottomNav userRole={userRole} />}
 
-        {/* AI Assistant Widget */}
         <AIChatWidget userRole={userRole} />
-
-        {/* AI Chat Modal */}
-        <AIChatModal
-          isOpen={isAIChatOpen}
-          onClose={closeModal}
-          userRole={userRole}
-        />
+        <AIChatModal isOpen={isAIChatOpen} onClose={closeModal} userRole={userRole} />
       </div>
     </SidebarProvider>
   );

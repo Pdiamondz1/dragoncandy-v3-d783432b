@@ -1,16 +1,15 @@
+import React from 'react';
 import { Link } from 'react-router-dom';
 import { Menu, Settings, LogOut, LayoutDashboard, MessageSquare } from 'lucide-react';
 import dragonCandyLogo from '@/assets/dragon-candy-logo.png';
-import {
-  Sheet,
-  SheetContent,
-  SheetTrigger,
-} from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useLogout } from '@/hooks/useLogout';
+import type { UserRole } from '@/types/user';
+import { getDashboardHref, getSettingsHref, getMessagesHref } from '@/lib/navConfig';
 
 interface MobileTopNavProps {
   bgClass?: string;
-  userRole?: 'business_client' | 'content_creator' | 'brand';
+  userRole?: UserRole;
 }
 
 export const MobileTopNav: React.FC<MobileTopNavProps> = ({
@@ -19,30 +18,9 @@ export const MobileTopNav: React.FC<MobileTopNavProps> = ({
 }) => {
   const logout = useLogout();
 
-  const dashboardHref =
-    userRole === 'business_client'
-      ? '/dashboard/business'
-      : userRole === 'brand'
-      ? '/dashboard/brand'
-      : userRole === 'content_creator'
-      ? '/dashboard/creator'
-      : '/';
-
-  const settingsHref =
-    userRole === 'business_client'
-      ? '/dashboard/business/settings'
-      : userRole === 'brand'
-      ? '/dashboard/brand/settings'
-      : userRole === 'content_creator'
-      ? '/dashboard/creator/settings'
-      : '/';
-
-  const messagesHref =
-    userRole === 'business_client'
-      ? '/dashboard/business/messages'
-      : userRole === 'brand'
-      ? '/dashboard/brand/messages'
-      : '/dashboard/creator/messages';
+  const dashboardHref = userRole ? getDashboardHref(userRole) : '/';
+  const settingsHref = userRole ? getSettingsHref(userRole) : '/';
+  const messagesHref = userRole ? getMessagesHref(userRole) : '/';
 
   return (
     <header className={`sticky top-0 z-40 flex items-center justify-between px-4 py-3 ${bgClass} border-b border-border`}>
