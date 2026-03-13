@@ -1,8 +1,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Send } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Send, Plus } from 'lucide-react';
 import { useTypingIndicator } from '@/hooks/useTypingIndicator';
 
 interface MessageInputProps {
@@ -12,11 +11,11 @@ interface MessageInputProps {
   placeholder?: string;
 }
 
-const MessageInput: React.FC<MessageInputProps> = ({ 
+const MessageInput: React.FC<MessageInputProps> = ({
   campaignId,
-  onSendMessage, 
+  onSendMessage,
   disabled = false,
-  placeholder = "Type your message..." 
+  placeholder = "Type your message..."
 }) => {
   const [message, setMessage] = useState('');
   const { sendTypingIndicator } = useTypingIndicator(campaignId);
@@ -32,20 +31,20 @@ const MessageInput: React.FC<MessageInputProps> = ({
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === 'Enter') {
       e.preventDefault();
       handleSubmit(e);
     }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setMessage(value);
 
     // Send typing indicator
     if (value.trim()) {
       sendTypingIndicator(true);
-      
+
       // Clear existing timeout
       if (typingTimeoutRef.current) {
         clearTimeout(typingTimeoutRef.current);
@@ -71,24 +70,28 @@ const MessageInput: React.FC<MessageInputProps> = ({
   }, [sendTypingIndicator]);
 
   return (
-    <form onSubmit={handleSubmit} className="flex gap-2 p-4 border-t bg-white">
-      <Textarea
+    <form onSubmit={handleSubmit} className="flex items-center gap-2 px-4 py-3 border-t border-gray-200 bg-white">
+      <button
+        type="button"
+        className="h-9 w-9 rounded-full bg-gray-900 flex items-center justify-center flex-shrink-0"
+      >
+        <Plus className="h-4 w-4 text-white" />
+      </button>
+      <Input
         value={message}
         onChange={handleInputChange}
         onKeyPress={handleKeyPress}
         placeholder={placeholder}
         disabled={disabled}
-        className="min-h-[40px] max-h-[120px] resize-none"
-        rows={1}
+        className="rounded-full px-5 border border-dc-pink/40 flex-1 h-9"
       />
-      <Button 
-        type="submit" 
+      <button
+        type="submit"
         disabled={!message.trim() || disabled}
-        size="sm"
-        className="self-end"
+        className="h-9 w-9 rounded-full bg-gray-900 flex items-center justify-center flex-shrink-0 disabled:opacity-40"
       >
-        <Send className="h-4 w-4" />
-      </Button>
+        <Send className="h-4 w-4 text-white" />
+      </button>
     </form>
   );
 };

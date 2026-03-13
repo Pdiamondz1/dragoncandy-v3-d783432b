@@ -157,9 +157,9 @@ const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto bg-dc-gray">
         <DialogHeader>
-          <DialogTitle>Creator Profile</DialogTitle>
+          <DialogTitle className="text-dc-teal font-extrabold uppercase text-xl text-center">Creator Portfolio</DialogTitle>
         </DialogHeader>
 
         {loading ? (
@@ -401,14 +401,14 @@ const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
             {portfolioUrls.length > 0 && (
               <div>
                 <h3 className="text-lg font-semibold mb-3">Portfolio</h3>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                <div className="grid grid-cols-3 gap-2 rounded-xl overflow-hidden">
                   {portfolioUrls.map((url, index) => (
                     <a
                       key={index}
                       href={url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="aspect-square rounded-lg overflow-hidden hover:opacity-80 transition-opacity"
+                      className="aspect-square overflow-hidden hover:opacity-80 transition-opacity"
                     >
                       <img
                         src={url}

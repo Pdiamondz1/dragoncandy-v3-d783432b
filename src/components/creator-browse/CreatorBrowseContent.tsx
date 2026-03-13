@@ -135,7 +135,7 @@ export const CreatorBrowseContent: React.FC<CreatorBrowseContentProps> = ({
                 </CardContent>
               </Card>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 {filteredCreators.map((creator) => (
                   <CreatorCard key={creator.id} creator={creator} />
                 ))}

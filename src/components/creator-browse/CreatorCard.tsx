@@ -1,22 +1,14 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { useCreateDirectConversation } from '@/hooks/useConversations';
 import { supabase } from '@/integrations/supabase/client';
 import CreatorProfileModal from './CreatorProfileModal';
-import { 
-  MapPin, 
-  DollarSign, 
-  User, 
-  MessageSquare,
-  ExternalLink
-} from 'lucide-react';
+import { User } from 'lucide-react';
 
 interface CreatorProfile {
   id: string;
@@ -111,11 +103,6 @@ export const CreatorCard: React.FC<CreatorCardProps> = ({ creator }) => {
     loadAvatarUrl();
   }, [creator.avatar_url]);
 
-  const formatRate = (rate?: number) => {
-    if (!rate) return 'Rate not specified';
-    return `$${rate}/hour`;
-  };
-
   const handleViewProfile = () => {
     setIsModalOpen(true);
   };
@@ -162,146 +149,32 @@ export const CreatorCard: React.FC<CreatorCardProps> = ({ creator }) => {
     }
   };
 
-  const getSocialPlatforms = (creator: CreatorProfile) => {
-    const platforms = [];
-    if (creator.instagram_url) platforms.push('Instagram');
-    if (creator.tiktok_url) platforms.push('TikTok');
-    if (creator.youtube_url) platforms.push('YouTube');
-    if (creator.facebook_url) platforms.push('Facebook');
-    if (creator.linkedin_url) platforms.push('LinkedIn');
-    if (creator.x_url) platforms.push('X');
-    return platforms;
-  };
-
   return (
     <>
-      <Card className="hover:shadow-lg transition-shadow overflow-hidden">
-        {/* Hero Section with Portfolio Background */}
-        <div 
-          className="relative h-40 bg-gradient-to-br from-primary/20 to-secondary/20"
-          style={portfolioImageUrl ? {
-            backgroundImage: `url(${portfolioImageUrl})`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-          } : undefined}
-        >
-          {/* Dark gradient overlay for text readability */}
-          <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/30 to-black/60" />
-          
-          {/* Creator Info on Hero */}
-          <div className="absolute bottom-0 left-0 right-0 px-6 pb-10">
-            <h3 className="text-xl font-semibold text-white mb-1 truncate">
-              {creator.creator_name}
-            </h3>
-            {creator.location && (
-              <div className="flex items-center gap-1 text-white/90">
-                <MapPin className="h-3 w-3" />
-                <span className="text-sm truncate">{creator.location}</span>
-              </div>
-            )}
-          </div>
-
-          {/* Profile Picture positioned at bottom center */}
-          <div className="absolute -bottom-8 left-1/2 -translate-x-1/2">
-            <div 
-              className="cursor-pointer hover:opacity-90 transition-opacity"
-              onClick={handleViewProfile}
-            >
-              <Avatar className="h-16 w-16 ring-4 ring-background">
-                <AvatarImage src={avatarUrl || undefined} />
-                <AvatarFallback>
-                  <User className="h-8 w-8" />
-                </AvatarFallback>
-              </Avatar>
-            </div>
-          </div>
-        </div>
-
-        {/* Card Body Content */}
-        <CardContent className="pt-10 space-y-4">
-        {creator.bio && (
-          <p className="text-sm text-gray-600 line-clamp-3">
-            {creator.bio}
-          </p>
-        )}
-
-        {creator.skills && creator.skills.length > 0 && (
+      <Card className="flex flex-row overflow-hidden rounded-3xl bg-white shadow-sm hover:shadow-md transition-shadow">
+        {/* Left: square portfolio thumbnail */}
+        <div
+          className="w-28 h-28 flex-shrink-0 m-4 rounded-2xl overflow-hidden bg-gray-100 bg-cover bg-center"
+          style={portfolioImageUrl ? { backgroundImage: `url(${portfolioImageUrl})` } : undefined}
+        />
+        {/* Right: name, bio, CTA */}
+        <div className="flex flex-col justify-between flex-1 py-4 pr-4 gap-2 min-w-0">
           <div>
-            <h4 className="font-medium mb-2 text-sm">Skills</h4>
-            <div className="flex flex-wrap gap-1">
-              {creator.skills.slice(0, 3).map((skill, index) => (
-                <Badge key={index} variant="outline" className="text-xs">
-                  {skill}
-                </Badge>
-              ))}
-              {creator.skills.length > 3 && (
-                <Badge variant="outline" className="text-xs">
-                  +{creator.skills.length - 3} more
-                </Badge>
-              )}
-            </div>
+            <h3 className="text-base font-bold text-[#111111] truncate">{creator.creator_name}</h3>
+            <p className="text-xs text-[#555555] line-clamp-2 mt-0.5 leading-relaxed">
+              {creator.bio || 'Content creator'}
+            </p>
           </div>
-        )}
-
-        {getSocialPlatforms(creator).length > 0 && (
-          <div>
-            <h4 className="font-medium mb-2 text-sm">Platforms</h4>
-            <div className="flex flex-wrap gap-1">
-              {getSocialPlatforms(creator).slice(0, 3).map((platform, index) => (
-                <Badge key={index} variant="secondary" className="text-xs">
-                  {platform}
-                </Badge>
-              ))}
-              {getSocialPlatforms(creator).length > 3 && (
-                <Badge variant="secondary" className="text-xs">
-                  +{getSocialPlatforms(creator).length - 3} more
-                </Badge>
-              )}
-            </div>
-          </div>
-        )}
-
-        <div className="flex items-center justify-between pt-2 border-t">
-          <div className="flex items-center gap-2">
-            <DollarSign className="h-4 w-4 text-green-600" />
-            <span className="text-sm font-medium">
-              {formatRate(creator.base_rate_per_hour)}
-            </span>
-          </div>
-          
-          {creator.availability && (
-            <Badge 
-              variant={creator.availability === 'Available' ? 'default' : 'secondary'}
-              className="text-xs"
-            >
-              {creator.availability}
-            </Badge>
-          )}
-        </div>
-
-        <div className="flex gap-2 pt-2">
-          <Button 
-            size="sm" 
-            className="flex-1" 
-            onClick={handleContact}
-            disabled={createConversation.isPending}
+          <Button
+            size="sm"
+            className="rounded-full bg-dc-teal text-white text-xs self-start px-4 hover:bg-dc-teal-dark"
+            onClick={handleViewProfile}
           >
-            <MessageSquare className="h-4 w-4 mr-2" />
-            {createConversation.isPending ? 'Starting...' : 'Contact'}
-          </Button>
-          <Button size="sm" variant="outline" className="flex-1" onClick={handleViewProfile}>
-            <ExternalLink className="h-4 w-4 mr-2" />
-            View Profile
+            View Portfolio
           </Button>
         </div>
-      </CardContent>
-    </Card>
-
-    <CreatorProfileModal
-      creator={creator}
-      isOpen={isModalOpen}
-      onClose={() => setIsModalOpen(false)}
-    />
-  </>
+      </Card>
+      <CreatorProfileModal creator={creator} isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+    </>
   );
 };

@@ -178,7 +178,7 @@ const PublicCreatorProfile = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 py-8">
+      <div className="min-h-screen bg-dc-gray py-8">
         <div className="max-w-4xl mx-auto px-4">
           <div className="animate-pulse space-y-6">
             <div className="h-32 bg-gray-200 rounded-lg"></div>
@@ -191,7 +191,7 @@ const PublicCreatorProfile = () => {
 
   if (notFound || !profile) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-dc-gray flex items-center justify-center">
         <Card className="max-w-md mx-auto">
           <CardContent className="flex flex-col items-center justify-center py-12">
             <User className="h-12 w-12 text-gray-400 mb-4" />
@@ -211,13 +211,13 @@ const PublicCreatorProfile = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen bg-dc-gray py-8">
       <div className="max-w-4xl mx-auto px-4 space-y-6">
         {/* Back Button */}
-        <Button 
-          variant="ghost" 
+        <Button
+          variant="ghost"
           onClick={handleGoBack}
-          className="mb-4"
+          className="mb-4 text-dc-teal"
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back
@@ -226,7 +226,7 @@ const PublicCreatorProfile = () => {
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-start gap-6">
-              <Avatar className="h-20 w-20">
+              <Avatar className="h-20 w-20 ring-2 ring-dc-teal">
                 <AvatarImage src={profile.avatar_url} />
                 <AvatarFallback>
                   <User className="h-10 w-10" />
@@ -236,7 +236,7 @@ const PublicCreatorProfile = () => {
               <div className="flex-1">
                 <div className="flex items-start justify-between">
                   <div>
-                    <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                    <h1 className="text-3xl font-extrabold text-dc-teal uppercase mb-2">
                       {profile.creator_name}
                     </h1>
                     <div className="flex items-center gap-4 text-sm text-gray-600 mb-4">
@@ -295,12 +295,12 @@ const PublicCreatorProfile = () => {
         {profile.skills && profile.skills.length > 0 && (
           <Card>
             <CardHeader>
-              <CardTitle>Skills & Expertise</CardTitle>
+              <CardTitle className="text-dc-teal font-semibold">Skills & Expertise</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex flex-wrap gap-2">
                 {profile.skills.map((skill, index) => (
-                  <Badge key={index} variant="secondary">
+                  <Badge key={index} className="bg-dc-teal/10 text-dc-teal border border-dc-teal/30 rounded-full">
                     {skill.replace('_', ' ')}
                   </Badge>
                 ))}
@@ -313,7 +313,7 @@ const PublicCreatorProfile = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-dc-teal font-semibold">
                 <DollarSign className="h-5 w-5" />
                 Rates & Availability
               </CardTitle>
@@ -349,7 +349,7 @@ const PublicCreatorProfile = () => {
 
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-dc-teal font-semibold">
                 <Calendar className="h-5 w-5" />
                 Work Preferences
               </CardTitle>
@@ -384,7 +384,7 @@ const PublicCreatorProfile = () => {
         {profile.collaboration_preferences && (
           <Card>
             <CardHeader>
-              <CardTitle>How I Work</CardTitle>
+              <CardTitle className="text-dc-teal font-semibold">How I Work</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-gray-700 leading-relaxed">
@@ -398,7 +398,7 @@ const PublicCreatorProfile = () => {
         {profile.availability && (
           <Card>
             <CardHeader>
-              <CardTitle>Current Availability</CardTitle>
+              <CardTitle className="text-dc-teal font-semibold">Current Availability</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-gray-700 leading-relaxed">
@@ -418,12 +418,12 @@ const PublicCreatorProfile = () => {
         {getSocialLinks().length > 0 && (
           <Card>
             <CardHeader>
-              <CardTitle>Connect With Me</CardTitle>
+              <CardTitle className="text-dc-teal font-semibold">Connect With Me</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex gap-4">
                 {getSocialLinks().map(({ icon: Icon, url, name }) => (
-                  <Button key={name} variant="outline" size="sm" asChild>
+                  <Button key={name} variant="outline" size="sm" className="border-dc-teal text-dc-teal rounded-full" asChild>
                     <a href={url} target="_blank" rel="noopener noreferrer">
                       <Icon className="h-4 w-4 mr-2" />
                       {name}
@@ -439,12 +439,12 @@ const PublicCreatorProfile = () => {
         {portfolioUrls.length > 0 && (
           <Card>
             <CardHeader>
-              <CardTitle>Portfolio</CardTitle>
+              <CardTitle className="text-dc-teal font-semibold">Portfolio</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 {portfolioUrls.map((url, index) => (
-                  <div key={index} className="aspect-square bg-gray-100 rounded-lg overflow-hidden group cursor-pointer">
+                  <div key={index} className="aspect-square bg-gray-100 rounded-xl overflow-hidden group cursor-pointer">
                     <img 
                       src={url} 
                       alt={`Portfolio item ${index + 1}`}
