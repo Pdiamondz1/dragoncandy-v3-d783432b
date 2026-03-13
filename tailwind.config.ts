@@ -19,6 +19,15 @@ export default {
 		},
 		extend: {
 			colors: {
+				dc: {
+					teal: '#4DD9C0',
+					'teal-dark': '#00E5CC',
+					pink: '#F9A8D4',
+					'pink-accent': '#EC4899',
+					'pink-bg': '#F9C8E0',
+					gray: '#A8A8A0',
+					yellow: '#FACC15',
+				},
 				border: 'hsl(var(--border))',
 				input: 'hsl(var(--input))',
 				ring: 'hsl(var(--ring))',

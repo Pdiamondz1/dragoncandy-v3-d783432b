@@ -7,6 +7,7 @@ import { AuthHeader } from "@/components/auth/AuthHeader";
 import { AuthForm } from "@/components/auth/AuthForm";
 import { AuthModeToggle } from "@/components/auth/AuthModeToggle";
 import { toast } from 'sonner';
+import dragonCandyLogo from '@/assets/dragon-candy-logo.png';
 
 const AuthPage = () => {
   const [searchParams] = useSearchParams();
@@ -112,30 +113,40 @@ const AuthPage = () => {
   const handleModeChange = (newMode: "login" | "signup") => {
     setMode(newMode);
     setError(null);
-    // Update URL to reflect the mode change
     navigate(`/auth?mode=${newMode}`, { replace: true });
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-pink-50 py-8 px-2">
-      <div className="w-full max-w-md bg-white dark:bg-zinc-900 rounded-2xl shadow-xl px-8 pt-8 pb-10 border border-pink-200">
-        <AuthHeader />
+    <div className="min-h-screen flex flex-col bg-dc-gray px-4 py-8">
+      {/* Top nav — logo + hamburger placeholder */}
+      <div className="flex items-center justify-between mb-6">
+        <Link to="/">
+          <img src={dragonCandyLogo} alt="DragonCandy" className="h-8" />
+        </Link>
+      </div>
 
-        <h2 className="text-2xl md:text-3xl font-bold mb-6 text-center text-pink-700">
-          {mode === "signup" ? "Sign Up for DragonCandy" : "Log In"}
-        </h2>
+      {/* Heading */}
+      <h1 className="text-2xl font-extrabold text-white uppercase text-center mb-6 tracking-wide">
+        Welcome to Dragon Candy
+      </h1>
+
+      {/* Card */}
+      <div className="w-full max-w-md mx-auto">
+        <AuthHeader />
 
         <AuthForm mode={mode} onError={setError} />
 
         {error && (
-          <div className="text-sm text-red-600 bg-red-50 dark:bg-red-900/20 px-2 py-1 rounded mt-2">
+          <div className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-xl mt-3">
             {error}
           </div>
         )}
 
         {mode === "login" && (
           <div className="mt-4 text-sm text-center">
-            <Link to="/auth/forgot" className="underline">Forgot your password?</Link>
+            <Link to="/auth/forgot" className="text-white underline underline-offset-2">
+              Forgot your password?
+            </Link>
           </div>
         )}
 

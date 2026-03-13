@@ -9,12 +9,12 @@ interface AuthModeToggleProps {
 
 export const AuthModeToggle = ({ mode, onModeChange, loading }: AuthModeToggleProps) => {
   return (
-    <div className="mt-6 text-center text-sm">
+    <div className="mt-6 text-center text-sm text-white">
       {mode === "signup" ? (
         <>
           Already have an account?{" "}
           <button
-            className="text-pink-600 font-semibold underline underline-offset-2"
+            className="font-semibold underline underline-offset-2 text-dc-teal"
             type="button"
             onClick={() => onModeChange("login")}
             disabled={loading}
@@ -26,7 +26,7 @@ export const AuthModeToggle = ({ mode, onModeChange, loading }: AuthModeTogglePr
         <>
           Don&apos;t have an account?{" "}
           <button
-            className="text-pink-600 font-semibold underline underline-offset-2"
+            className="font-semibold underline underline-offset-2 text-dc-teal"
             type="button"
             onClick={() => onModeChange("signup")}
             disabled={loading}

@@ -1,7 +1,6 @@
 
 import React, { useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -33,7 +32,7 @@ export const AuthForm = ({ mode, onError }: AuthFormProps) => {
     try {
       // Get reCAPTCHA token with timestamp
       const tokenData = captchaRef.current?.getTokenWithAge();
-      
+
       if (!tokenData || !tokenData.token) {
         onError("Please complete the CAPTCHA verification.");
         setLoading(false);
@@ -43,7 +42,7 @@ export const AuthForm = ({ mode, onError }: AuthFormProps) => {
       // Check token age (Google tokens expire after 2 minutes)
       const tokenAgeSeconds = (Date.now() - tokenData.issuedAt) / 1000;
       const MAX_TOKEN_AGE = 100; // 100 seconds to be safe
-      
+
       if (tokenAgeSeconds > MAX_TOKEN_AGE) {
         console.warn(`⏰ Token too old: ${tokenAgeSeconds.toFixed(1)}s`);
         onError("CAPTCHA expired. Please verify again.");
@@ -69,11 +68,10 @@ export const AuthForm = ({ mode, onError }: AuthFormProps) => {
 
       if (verificationError || !verificationData?.success) {
         console.error('❌ reCAPTCHA verification failed:', verificationError || verificationData);
-        
-        // Parse error codes for specific messages
+
         const errorCodes = verificationData?.errorCodes || [];
         let errorMessage = "CAPTCHA verification failed. Please try again.";
-        
+
         if (errorCodes.includes('invalid-input-secret')) {
           errorMessage = "Server configuration error. Please contact support.";
         } else if (errorCodes.includes('timeout-or-duplicate')) {
@@ -81,7 +79,7 @@ export const AuthForm = ({ mode, onError }: AuthFormProps) => {
         } else if (errorCodes.includes('invalid-input-response')) {
           errorMessage = "Invalid CAPTCHA response. Please try again.";
         }
-        
+
         onError(errorMessage);
         toast({
           title: "Verification Failed",
@@ -104,11 +102,11 @@ export const AuthForm = ({ mode, onError }: AuthFormProps) => {
         }
 
         console.log('📝 AuthForm: Signing up user with role:', role);
-        
+
         const { data, error: signupError } = await supabase.auth.signUp({
           email,
           password,
-          options: { 
+          options: {
             emailRedirectTo: `${window.location.origin}/`,
             data: {
               role: role,
@@ -131,7 +129,7 @@ export const AuthForm = ({ mode, onError }: AuthFormProps) => {
         // Send verification email
         if (data.user) {
           const userName = fullName || email.split('@')[0];
-          
+
           try {
             const { error: emailError } = await supabase.functions.invoke('send-verification-email', {
               body: {
@@ -162,18 +160,17 @@ export const AuthForm = ({ mode, onError }: AuthFormProps) => {
           await supabase.auth.signOut();
         }
 
-        // Reset CAPTCHA after successful signup
         captchaRef.current?.reset();
         setLoading(false);
       } else {
         // Login mode
         console.log('🔑 AuthForm: Logging in user');
-        
+
         const { data, error: loginError } = await supabase.auth.signInWithPassword({
           email,
           password
         });
-        
+
         if (loginError) {
           console.error('❌ AuthForm: Login error:', loginError);
           onError(loginError.message);
@@ -193,7 +190,6 @@ export const AuthForm = ({ mode, onError }: AuthFormProps) => {
             .single();
 
           if (profile && !profile.email_verified) {
-            // Sign out if not verified
             await supabase.auth.signOut();
             onError('Please verify your email before logging in. Check your inbox for the verification link.');
             captchaRef.current?.reset();
@@ -201,19 +197,16 @@ export const AuthForm = ({ mode, onError }: AuthFormProps) => {
             return;
           }
         }
-        
-        // Success toast for login
+
         toast({
           title: "Welcome back!",
           description: "You have been logged in successfully.",
         });
 
-        // Reset CAPTCHA after successful login
         captchaRef.current?.reset();
-
         // The AuthContext will handle the redirect automatically via useEffect
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('❌ AuthForm: Unexpected error:', err);
       onError("Something went wrong. Please try again.");
       captchaRef.current?.reset();
@@ -222,11 +215,11 @@ export const AuthForm = ({ mode, onError }: AuthFormProps) => {
   };
 
   return (
-    <form className="space-y-5" onSubmit={handleSubmit}>
+    <form className="space-y-4" onSubmit={handleSubmit}>
       {mode === "signup" && (
         <>
           <div>
-            <Label htmlFor="fullName" className="mb-1 block text-pink-700">Full Name</Label>
+            <Label htmlFor="fullName" className="mb-1 block text-white font-semibold">Full Name</Label>
             <Input
               id="fullName"
               type="text"
@@ -236,35 +229,35 @@ export const AuthForm = ({ mode, onError }: AuthFormProps) => {
               onChange={e => setFullName(e.target.value)}
               placeholder="John Doe"
               disabled={loading}
-              className="bg-pink-50 border-pink-200 focus-visible:ring-pink-300/70 text-base"
+              className="rounded-full px-6 py-3 bg-white border-0 text-base h-auto"
             />
           </div>
 
           <div>
-            <Label htmlFor="role" className="mb-1 block text-pink-700 font-semibold">
+            <Label htmlFor="role" className="mb-1 block text-white font-semibold">
               Select your role
             </Label>
             <RadioGroup
               id="role"
               value={role}
-              onValueChange={setRole as any}
-              className="flex flex-col gap-3 mb-2"
+              onValueChange={setRole as (value: string) => void}
+              className="flex flex-col gap-2 mb-2"
             >
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="business_client" id="business_client" />
-                <Label htmlFor="business_client" className="text-base cursor-pointer">
+              <div className="flex items-center space-x-2 bg-white/20 rounded-full px-4 py-2">
+                <RadioGroupItem value="business_client" id="business_client" className="border-white text-white" />
+                <Label htmlFor="business_client" className="text-white cursor-pointer text-base">
                   Restaurant / Business Client
                 </Label>
               </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="brand" id="brand" />
-                <Label htmlFor="brand" className="text-base cursor-pointer">
+              <div className="flex items-center space-x-2 bg-white/20 rounded-full px-4 py-2">
+                <RadioGroupItem value="brand" id="brand" className="border-white text-white" />
+                <Label htmlFor="brand" className="text-white cursor-pointer text-base">
                   Brand / Sponsor
                 </Label>
               </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="content_creator" id="content_creator" />
-                <Label htmlFor="content_creator" className="text-base cursor-pointer">
+              <div className="flex items-center space-x-2 bg-white/20 rounded-full px-4 py-2">
+                <RadioGroupItem value="content_creator" id="content_creator" className="border-white text-white" />
+                <Label htmlFor="content_creator" className="text-white cursor-pointer text-base">
                   Content Creator
                 </Label>
               </div>
@@ -274,7 +267,7 @@ export const AuthForm = ({ mode, onError }: AuthFormProps) => {
       )}
 
       <div>
-        <Label htmlFor="email" className="mb-1 block text-pink-700">Email</Label>
+        <Label htmlFor="email" className="mb-1 block text-white font-semibold">Email</Label>
         <Input
           id="email"
           type="email"
@@ -284,12 +277,12 @@ export const AuthForm = ({ mode, onError }: AuthFormProps) => {
           onChange={e => setEmail(e.target.value)}
           placeholder="you@email.com"
           disabled={loading}
-          className="bg-pink-50 border-pink-200 focus-visible:ring-pink-300/70 text-base"
+          className="rounded-full px-6 py-3 bg-white border-0 text-base h-auto"
         />
       </div>
 
       <div>
-        <Label htmlFor="password" className="mb-1 block text-pink-700">Password</Label>
+        <Label htmlFor="password" className="mb-1 block text-white font-semibold">Password</Label>
         <Input
           id="password"
           type="password"
@@ -299,12 +292,12 @@ export const AuthForm = ({ mode, onError }: AuthFormProps) => {
           onChange={e => setPassword(e.target.value)}
           placeholder="Your password"
           disabled={loading}
-          className="bg-pink-50 border-pink-200 focus-visible:ring-pink-300/70 text-base"
+          className="rounded-full px-6 py-3 bg-white border-0 text-base h-auto"
         />
       </div>
 
       {/* reCAPTCHA Widget */}
-      <ReCaptcha 
+      <ReCaptcha
         ref={captchaRef}
         onExpired={() => {
           toast({
@@ -322,13 +315,23 @@ export const AuthForm = ({ mode, onError }: AuthFormProps) => {
         }}
       />
 
-      <Button
-        type="submit"
-        className="w-full mt-1 font-bold text-lg bg-pink-600 hover:bg-pink-700 transition-colors py-3"
-        disabled={loading}
-      >
-        {loading ? (mode === "signup" ? "Signing up..." : "Logging in...") : (mode === "signup" ? "Sign Up" : "Log In")}
-      </Button>
+      {mode === "login" ? (
+        <button
+          type="submit"
+          className="w-full rounded-full bg-white text-dc-teal font-bold text-base py-3 disabled:opacity-60 hover:bg-gray-50 transition-colors"
+          disabled={loading}
+        >
+          {loading ? "Logging in..." : "Log In"}
+        </button>
+      ) : (
+        <button
+          type="submit"
+          className="w-full rounded-full bg-dc-teal text-white font-bold text-base py-3 disabled:opacity-60 hover:bg-dc-teal-dark transition-colors"
+          disabled={loading}
+        >
+          {loading ? "Signing up..." : "Sign Up"}
+        </button>
+      )}
     </form>
   );
 };

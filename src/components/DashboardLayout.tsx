@@ -26,12 +26,12 @@ import {
   SidebarInset,
   useSidebar,
 } from '@/components/ui/sidebar';
-import { 
-  LayoutDashboard, 
-  Target, 
-  Users, 
-  MessageSquare, 
-  Settings, 
+import {
+  LayoutDashboard,
+  Target,
+  Users,
+  MessageSquare,
+  Settings,
   LogOut,
   PlusCircle,
   Search,
@@ -49,6 +49,8 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { AIChatWidget, AIChatModal } from '@/components/ai-assistant';
 import { useAIAssistantContext } from '@/contexts/AIAssistantContext';
 import { useAIChatModal } from '@/contexts/AIChatModalContext';
+import { MobileBottomNav } from '@/components/MobileBottomNav';
+import { MobileTopNav } from '@/components/MobileTopNav';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -92,8 +94,8 @@ const AppSidebar: React.FC<{ userRole: 'business_client' | 'content_creator' | '
     { icon: Settings, label: 'Settings', href: '/dashboard/creator/settings' },
   ];
 
-  const navItems = userRole === 'business_client' 
-    ? businessNavItems 
+  const navItems = userRole === 'business_client'
+    ? businessNavItems
     : userRole === 'brand'
     ? brandNavItems
     : creatorNavItems;
@@ -104,7 +106,8 @@ const AppSidebar: React.FC<{ userRole: 'business_client' | 'content_creator' | '
 
   return (
     <Sidebar className={collapsed ? "w-14" : "w-60"} collapsible="icon">
-      <SidebarHeader className="border-b border-sidebar-border">
+      {/* Header — white bg, teal bottom border */}
+      <SidebarHeader className="border-b border-dc-teal/30 bg-white">
         <div className="flex items-center justify-center px-2 py-2">
           <Link to="/">
             <img src={dragonCandyLogo} alt="DragonCandy" className={collapsed ? "h-8" : "w-full max-w-[180px]"} />
@@ -112,18 +115,31 @@ const AppSidebar: React.FC<{ userRole: 'business_client' | 'content_creator' | '
         </div>
       </SidebarHeader>
 
-      <SidebarContent>
+      <SidebarContent className="bg-white">
         <SidebarGroup>
-          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+          {/* ALL CAPS teal group label */}
+          <SidebarGroupLabel className="text-dc-teal text-xs font-bold tracking-widest uppercase">
+            Navigation
+          </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {navItems.map((item) => {
                 const isActive = isActiveRoute(item.href);
                 return (
                   <SidebarMenuItem key={item.href}>
-                    <SidebarMenuButton asChild isActive={isActive}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={isActive}
+                      className={
+                        isActive
+                          ? 'bg-dc-teal/15 text-dc-teal font-semibold'
+                          : 'text-[#555555] hover:bg-dc-teal/10 hover:text-dc-teal'
+                      }
+                    >
                       <Link to={item.href} className="flex items-center gap-3">
-                        <item.icon className="h-5 w-5" />
+                        <item.icon
+                          className={`h-5 w-5 ${isActive ? 'text-dc-teal' : 'text-[#555555]'}`}
+                        />
                         {!collapsed && <span>{item.label}</span>}
                       </Link>
                     </SidebarMenuButton>
@@ -138,7 +154,10 @@ const AppSidebar: React.FC<{ userRole: 'business_client' | 'content_creator' | '
           <SidebarGroup>
             <SidebarGroupContent className="px-4">
               <Link to="/dashboard/business/campaigns/create">
-                <Button className="w-full" size={collapsed ? "icon" : "default"}>
+                <Button
+                  className="w-full bg-dc-teal text-white hover:bg-dc-teal-dark rounded-full font-semibold"
+                  size={collapsed ? "icon" : "default"}
+                >
                   <PlusCircle className="h-4 w-4" />
                   {!collapsed && <span className="ml-2">New Campaign</span>}
                 </Button>
@@ -159,12 +178,10 @@ const DashboardLayoutInner: React.FC<DashboardLayoutProps> = ({ children, userRo
   const { setUserRole } = useAIAssistantContext();
   const { isOpen: isAIChatOpen, openModal, closeModal } = useAIChatModal();
 
-  // Update AI assistant role when userRole changes
   useEffect(() => {
     setUserRole(userRole);
   }, [userRole, setUserRole]);
 
-  // Keyboard shortcut for opening AI chat (Cmd/Ctrl + K)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
@@ -172,7 +189,6 @@ const DashboardLayoutInner: React.FC<DashboardLayoutProps> = ({ children, userRo
         openModal();
       }
     };
-
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [openModal]);
@@ -180,26 +196,33 @@ const DashboardLayoutInner: React.FC<DashboardLayoutProps> = ({ children, userRo
   return (
     <SidebarProvider defaultOpen={!isMobile}>
       <div className="min-h-screen flex w-full bg-background">
-        <AppSidebar userRole={userRole} />
-          
-          <SidebarInset className="flex-1">
-            {/* Header */}
+        {/* Sidebar — desktop only */}
+        <div className="hidden md:block">
+          <AppSidebar userRole={userRole} />
+        </div>
+
+        <SidebarInset className="flex-1">
+          {/* Mobile top nav */}
+          {isMobile && <MobileTopNav userRole={userRole} />}
+
+          {/* Desktop header */}
+          {!isMobile && (
             <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
               <div className="flex h-14 items-center justify-between px-4 lg:px-6">
                 <div className="flex items-center gap-4">
                   <SidebarTrigger />
                   <h1 className="text-xl font-semibold text-foreground hidden sm:block">
-                    {userRole === 'business_client' ? 'Restaurant Dashboard' : userRole === 'brand' ? 'Brand Dashboard' : 'Creator Dashboard'}
+                    {userRole === 'business_client' ? 'Business Dashboard' : userRole === 'brand' ? 'Brand Dashboard' : 'Creator Dashboard'}
                   </h1>
                 </div>
 
                 <div className="flex items-center gap-2 sm:gap-4">
                   <NotificationDropdown />
-                  
+
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                        <Avatar className="h-8 w-8">
+                        <Avatar className="h-8 w-8 ring-2 ring-dc-teal">
                           <AvatarImage src={avatarUrl} alt="Avatar" />
                           <AvatarFallback>
                             {displayName?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || 'U'}
@@ -235,21 +258,25 @@ const DashboardLayoutInner: React.FC<DashboardLayoutProps> = ({ children, userRo
                 </div>
               </div>
             </header>
+          )}
 
-            {/* Page Content */}
-            <main className="flex-1">
-              {children}
-            </main>
-          </SidebarInset>
+          {/* Page Content */}
+          <main className={isMobile ? 'flex-1 pb-20' : 'flex-1'}>
+            {children}
+          </main>
+        </SidebarInset>
+
+        {/* Mobile bottom nav */}
+        {isMobile && <MobileBottomNav userRole={userRole} />}
 
         {/* AI Assistant Widget */}
         <AIChatWidget userRole={userRole} />
 
         {/* AI Chat Modal */}
-        <AIChatModal 
-          isOpen={isAIChatOpen} 
-          onClose={closeModal} 
-          userRole={userRole} 
+        <AIChatModal
+          isOpen={isAIChatOpen}
+          onClose={closeModal}
+          userRole={userRole}
         />
       </div>
     </SidebarProvider>

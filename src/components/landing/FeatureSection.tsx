@@ -4,17 +4,17 @@ import { FeatureCard } from "./FeatureCard";
 
 const features = [
   {
-    icon: <Sparkles className="text-pink-500 w-12 h-12" />,
-    title: "AI-Powered Editing",
-    description: "Transform your content with intelligent AI editing tools and suggestions.",
+    icon: <Sparkles className="text-dc-teal w-8 h-8" />,
+    title: "AI-Powered Marketing",
+    description: "Intelligent tools to create and optimize content campaigns automatically.",
   },
   {
-    icon: <Users className="text-pink-500 w-12 h-12" />,
+    icon: <Users className="text-dc-teal w-8 h-8" />,
     title: "Creator Marketplace",
     description: "Connect with talented creators for professional content collaboration.",
   },
   {
-    icon: <TrendingUp className="text-pink-500 w-12 h-12" />,
+    icon: <TrendingUp className="text-dc-teal w-8 h-8" />,
     title: "Campaign Management",
     description: "Manage campaigns, track performance, and optimize for maximum impact.",
   },
@@ -22,7 +22,7 @@ const features = [
 
 export const FeatureSection = () => {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-10 max-w-6xl mx-auto mb-8">
+    <div className="flex flex-col gap-4 mb-8">
       {features.map((feature, index) => (
         <FeatureCard
           key={index}
