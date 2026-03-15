@@ -57,33 +57,24 @@ const CreatorDashboard = () => {
     <DashboardLayout userRole="content_creator">
       <div className="flex-1 p-8">
         <div className="max-w-7xl mx-auto space-y-8">
+          {/* Pink Welcome Header */}
+          <div className="bg-dc-pink-bg -mx-8 -mt-8 px-8 pt-6 pb-6 mb-6">
+            <h1 className="text-xl font-extrabold text-dc-teal uppercase tracking-wide text-center">
+              Welcome Back, {profile.creator_name || profile.full_name}!
+            </h1>
+            <p className="text-sm text-[#111111] text-center mt-1">Ready to create amazing content?</p>
+          </div>
+
           {/* Ask Bar */}
           <AskBar onClick={openModal} userRole="content_creator" />
-          
-          {/* Header */}
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">
-                Welcome back, {profile.creator_name || profile.full_name}
-              </h1>
-              <p className="text-gray-600 mt-2">
-                Here's what's happening with your creator account today.
-              </p>
-            </div>
-            <div className="flex items-center space-x-4">
-              <Link to="/dashboard/creator/settings">
-                <Button variant="outline">
-                  <Settings className="h-4 w-4 mr-2" />
-                  Settings
-                </Button>
-              </Link>
-              <Link to="/dashboard/creator/campaigns">
-                <Button>
-                  <PlusCircle className="h-4 w-4 mr-2" />
-                  Browse Campaigns
-                </Button>
-              </Link>
-            </div>
+
+          {/* Browse Campaigns CTA */}
+          <div className="flex justify-end">
+            <Link to="/dashboard/creator/campaigns">
+              <Button className="rounded-full bg-dc-teal text-white hover:bg-dc-teal-dark">
+                <PlusCircle className="h-4 w-4 mr-2" /> Browse Campaigns
+              </Button>
+            </Link>
           </div>
 
           {/* Rating Prompts */}
@@ -91,61 +82,69 @@ const CreatorDashboard = () => {
 
           {/* Stats Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <Card>
+            <Card className="border-2 border-dc-teal rounded-2xl">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-                <DollarSign className="h-4 w-4 text-muted-foreground" />
+                <div className="bg-dc-teal/10 rounded-lg p-1">
+                  <DollarSign className="h-4 w-4 text-dc-teal" />
+                </div>
               </CardHeader>
               <CardContent>
                 {statsLoading ? (
                   <Skeleton className="h-8 w-24" />
                 ) : (
-                  <div className="text-2xl font-bold">{formatCurrency(stats?.totalRevenue || 0)}</div>
+                  <div className="text-2xl font-extrabold text-dc-teal">{formatCurrency(stats?.totalRevenue || 0)}</div>
                 )}
                 <p className="text-xs text-muted-foreground">From completed projects</p>
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="border-2 border-dc-teal rounded-2xl">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Campaigns Applied</CardTitle>
-                <Target className="h-4 w-4 text-muted-foreground" />
+                <div className="bg-dc-teal/10 rounded-lg p-1">
+                  <Target className="h-4 w-4 text-dc-teal" />
+                </div>
               </CardHeader>
               <CardContent>
                 {statsLoading ? (
                   <Skeleton className="h-8 w-16" />
                 ) : (
-                  <div className="text-2xl font-bold">{stats?.campaignsApplied || 0}</div>
+                  <div className="text-2xl font-extrabold text-dc-teal">{stats?.campaignsApplied || 0}</div>
                 )}
                 <p className="text-xs text-muted-foreground">Total applications submitted</p>
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="border-2 border-dc-teal rounded-2xl">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Projects Completed</CardTitle>
-                <Clock className="h-4 w-4 text-muted-foreground" />
+                <div className="bg-dc-teal/10 rounded-lg p-1">
+                  <Clock className="h-4 w-4 text-dc-teal" />
+                </div>
               </CardHeader>
               <CardContent>
                 {statsLoading ? (
                   <Skeleton className="h-8 w-12" />
                 ) : (
-                  <div className="text-2xl font-bold">{stats?.projectsCompleted || 0}</div>
+                  <div className="text-2xl font-extrabold text-dc-teal">{stats?.projectsCompleted || 0}</div>
                 )}
                 <p className="text-xs text-muted-foreground">Successfully delivered</p>
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="border-2 border-dc-teal rounded-2xl">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Average Rating</CardTitle>
-                <Star className="h-4 w-4 text-muted-foreground" />
+                <div className="bg-dc-teal/10 rounded-lg p-1">
+                  <Star className="h-4 w-4 text-dc-teal" />
+                </div>
               </CardHeader>
               <CardContent>
                 {statsLoading ? (
                   <Skeleton className="h-8 w-16" />
                 ) : (
-                  <div className="text-2xl font-bold">
+                  <div className="text-2xl font-extrabold text-dc-teal">
                     {stats?.averageRating ? stats.averageRating.toFixed(1) : 'N/A'}
                   </div>
                 )}
@@ -158,7 +157,7 @@ const CreatorDashboard = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card>
               <CardHeader>
-                <CardTitle>Recent Activity</CardTitle>
+                <CardTitle className="text-dc-teal font-semibold">Recent Activity</CardTitle>
               </CardHeader>
               <CardContent>
                 {activitiesLoading ? (
@@ -192,20 +191,20 @@ const CreatorDashboard = () => {
 
             <Card>
               <CardHeader>
-                <CardTitle>Quick Actions</CardTitle>
+                <CardTitle className="text-dc-teal font-semibold">Quick Actions</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <Button className="w-full" variant="outline" asChild>
+                <Button className="w-full rounded-full bg-dc-teal text-white hover:bg-dc-teal-dark" asChild>
                   <Link to="/dashboard/creator/campaigns">
                     Browse New Campaigns
                   </Link>
                 </Button>
-                <Button className="w-full" variant="outline" asChild>
+                <Button className="w-full rounded-full" variant="outline" asChild>
                   <Link to="/dashboard/creator/projects">
                     View Active Projects
                   </Link>
                 </Button>
-                <Button className="w-full" variant="outline" asChild>
+                <Button className="w-full rounded-full" variant="outline" asChild>
                   <Link to="/reviews">
                     Manage Reviews
                   </Link>
@@ -218,7 +217,7 @@ const CreatorDashboard = () => {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <Card className="lg:col-span-2">
               <CardHeader>
-                <CardTitle>Upcoming Deadlines</CardTitle>
+                <CardTitle className="text-dc-teal font-semibold">Upcoming Deadlines</CardTitle>
               </CardHeader>
               <CardContent>
                 {deadlinesLoading ? (
@@ -252,7 +251,7 @@ const CreatorDashboard = () => {
 
             <Card>
               <CardHeader>
-                <CardTitle>Calendar</CardTitle>
+                <CardTitle className="text-dc-teal font-semibold">Calendar</CardTitle>
               </CardHeader>
               <CardContent>
                 <Calendar />

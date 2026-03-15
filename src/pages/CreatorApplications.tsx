@@ -47,10 +47,10 @@ const CreatorApplications: React.FC = () => {
           <div className="max-w-7xl mx-auto">
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12">
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                <h3 className="text-lg font-semibold text-dc-teal mb-2">
                   Failed to load applications
                 </h3>
-                <p className="text-gray-600">
+                <p className="text-muted-foreground">
                   There was an error loading your applications.
                 </p>
               </CardContent>
@@ -68,8 +68,8 @@ const CreatorApplications: React.FC = () => {
           {/* Header */}
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">My Applications</h1>
-              <p className="text-gray-600">Track your campaign applications and their status</p>
+              <h1 className="text-3xl font-extrabold text-dc-teal uppercase">My Applications</h1>
+              <p className="text-muted-foreground">Track your campaign applications and their status</p>
             </div>
           </div>
 

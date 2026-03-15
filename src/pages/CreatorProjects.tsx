@@ -157,10 +157,10 @@ const CreatorProjects: React.FC = () => {
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12">
                 <AlertCircle className="h-12 w-12 text-red-400 mb-4" />
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                <h3 className="text-lg font-semibold text-dc-teal mb-2">
                   Failed to load projects
                 </h3>
-                <p className="text-gray-600">
+                <p className="text-muted-foreground">
                   There was an error loading your projects.
                 </p>
               </CardContent>
@@ -181,7 +181,7 @@ const CreatorProjects: React.FC = () => {
           {/* Header */}
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-foreground">My Projects</h1>
+              <h1 className="text-3xl font-extrabold text-dc-teal uppercase">My Projects</h1>
               <p className="text-muted-foreground">Manage your active campaigns and track deliverables</p>
             </div>
           </div>

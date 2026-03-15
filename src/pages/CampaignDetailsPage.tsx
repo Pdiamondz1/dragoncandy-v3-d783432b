@@ -90,20 +90,21 @@ const CampaignDetailsPage: React.FC = () => {
               <Button
                 variant="ghost"
                 size="sm"
+                className="text-dc-teal"
                 onClick={() => navigate(isCreatorView ? '/dashboard/creator/campaigns' : '/dashboard/business/campaigns')}
               >
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back to Campaigns
               </Button>
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">{campaign.title}</h1>
+                <h1 className="text-3xl font-extrabold text-dc-teal uppercase">{campaign.title}</h1>
                 <p className="text-gray-600">
                   {isCreatorView ? 'Campaign Details' : 'Campaign Details & Management'}
                 </p>
               </div>
             </div>
             {isOwnCampaign && (
-              <Button onClick={() => navigate(`/dashboard/business/campaigns/${campaign.id}/edit`)}>
+              <Button variant="outline" className="rounded-full border-dc-teal text-dc-teal" onClick={() => navigate(`/dashboard/business/campaigns/${campaign.id}/edit`)}>
                 <Edit className="h-4 w-4 mr-2" />
                 Edit Campaign
               </Button>
@@ -111,7 +112,7 @@ const CampaignDetailsPage: React.FC = () => {
             
             {/* Creator Apply Button */}
             {canApply && (
-              <Button onClick={() => setShowApplicationDialog(true)}>
+              <Button className="rounded-full bg-dc-teal text-white hover:bg-dc-teal-dark" onClick={() => setShowApplicationDialog(true)}>
                 <Send className="h-4 w-4 mr-2" />
                 Apply to Campaign
               </Button>
@@ -127,7 +128,7 @@ const CampaignDetailsPage: React.FC = () => {
             
             {/* Show View Project for accepted */}
             {showAcceptedButton && (
-              <Button onClick={() => navigate('/dashboard/creator/projects')}>
+              <Button className="rounded-full bg-dc-teal text-white hover:bg-dc-teal-dark" onClick={() => navigate('/dashboard/creator/projects')}>
                 <FolderOpen className="h-4 w-4 mr-2" />
                 View Project
               </Button>
@@ -135,7 +136,7 @@ const CampaignDetailsPage: React.FC = () => {
             
             {/* Show Reapply for rejected */}
             {canReapply && (
-              <Button onClick={() => setShowApplicationDialog(true)} variant="outline">
+              <Button variant="outline" className="rounded-full border-dc-teal text-dc-teal" onClick={() => setShowApplicationDialog(true)}>
                 <Send className="h-4 w-4 mr-2" />
                 Apply Again
               </Button>
