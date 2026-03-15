@@ -4,6 +4,8 @@ import { toast } from '@/hooks/use-toast';
 import { useEmailNotifications } from './useEmailNotifications';
 import { useAuth } from './useAuth';
 
+type SponsorshipCampaign = { id: string; title: string; user_id: string };
+
 export const useSponsorshipComplete = () => {
   const queryClient = useQueryClient();
   const { sendNotification } = useEmailNotifications();
@@ -90,7 +92,7 @@ export const useSponsorshipComplete = () => {
 
         if (completeError) throw completeError;
 
-        const campaignData = sponsorship.campaigns as any;
+        const campaignData = sponsorship.campaigns as unknown as SponsorshipCampaign;
 
         // Send completion confirmation email to brand
         await sendNotification(
@@ -126,7 +128,7 @@ export const useSponsorshipComplete = () => {
       }
 
       // Only one party requested - send notification to the other party
-      const campaignData = sponsorship.campaigns as any;
+      const campaignData = sponsorship.campaigns as unknown as SponsorshipCampaign;
 
       if (userRole === 'brand') {
         // Notify business owner
@@ -181,8 +183,6 @@ export const useSponsorshipComplete = () => {
             });
             if (response.error) {
               console.error('Payout error:', response.error);
-            } else {
-              console.log('Sponsorship payout triggered:', response.data);
             }
           }
         } catch (payoutError) {

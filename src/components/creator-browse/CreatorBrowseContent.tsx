@@ -80,7 +80,7 @@ export const CreatorBrowseContent: React.FC<CreatorBrowseContentProps> = ({
   }
 
   const [viewMode, setViewMode] = useState<'grid' | 'map' | 'split'>(() => {
-    return (localStorage.getItem('creator-view-mode') as any) || 'split';
+    return (localStorage.getItem('creator-view-mode') as 'grid' | 'map' | 'split' | null) || 'split';
   });
 
   useEffect(() => {

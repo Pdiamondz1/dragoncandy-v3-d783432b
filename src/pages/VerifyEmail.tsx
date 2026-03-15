@@ -23,13 +23,11 @@ const VerifyEmail = () => {
       }
 
       try {
-        console.log('VerifyEmail: invoking edge function via supabase.functions.invoke');
         const { data, error } = await supabase.functions.invoke('verify-email', {
           body: { token },
         });
 
         if (error || !data?.success) {
-          console.warn('VerifyEmail: invoke failed, redirecting to GET function endpoint', { error, data });
           const redirect = encodeURIComponent(window.location.origin);
           window.location.replace(`https://zocahiffooqdybdhguqv.supabase.co/functions/v1/verify-email?token=${token}&redirect=${redirect}`);
           return;

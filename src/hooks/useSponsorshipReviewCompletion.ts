@@ -2,6 +2,8 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 
+type SponsorshipCampaign = { title: string };
+
 interface SponsorshipForReview {
   id: string;
   campaignTitle: string;
@@ -91,7 +93,7 @@ export const useSponsorshipReviewCompletion = () => {
         if (restaurantProfile) {
           sponsorshipsForReview.push({
             id: sponsorship.id,
-            campaignTitle: (sponsorship.campaigns as any)?.title || 'Unknown Campaign',
+            campaignTitle: (sponsorship.campaigns as unknown as SponsorshipCampaign)?.title || 'Unknown Campaign',
             otherPartyName: restaurantProfile.business_name,
             otherPartyId: restaurantProfile.user_id,
             userRole: 'brand',
@@ -115,7 +117,7 @@ export const useSponsorshipReviewCompletion = () => {
         if (brandProfile) {
           sponsorshipsForReview.push({
             id: sponsorship.id,
-            campaignTitle: (sponsorship.campaigns as any)?.title || 'Unknown Campaign',
+            campaignTitle: (sponsorship.campaigns as unknown as SponsorshipCampaign)?.title || 'Unknown Campaign',
             otherPartyName: brandProfile.business_name,
             otherPartyId: brandProfile.user_id,
             userRole: 'business',

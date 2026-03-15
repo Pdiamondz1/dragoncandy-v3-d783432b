@@ -29,7 +29,6 @@ const AuthPage = () => {
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      console.log('User is authenticated, checking profile completion');
       checkProfileCompletion();
     }
   }, [isAuthenticated]);
@@ -46,7 +45,6 @@ const AuthPage = () => {
 
       // Check email verification first
       if (profile && profile.email_verified !== true) {
-        console.log('Email not verified, signing out');
         await supabase.auth.signOut();
         setError('Please verify your email before continuing. Check your inbox for the verification link.');
         return;

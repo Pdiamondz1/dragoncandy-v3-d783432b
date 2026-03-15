@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
+type CollaborationCampaign = { id: string; title: string; user_id: string };
+
 export interface CollaborationDetails {
   id: string;
   campaign_id: string;
@@ -93,7 +95,7 @@ export function useCollaboration(collaborationId: string) {
         .single();
 
       // Fetch business profile
-      const campaignData = data.campaigns as any;
+      const campaignData = data.campaigns as unknown as CollaborationCampaign;
       const { data: businessProfile } = await supabase
         .from('business_profiles')
         .select('user_id, business_name, logo_url')

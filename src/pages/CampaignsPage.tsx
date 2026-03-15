@@ -34,8 +34,6 @@ const CampaignsPage: React.FC = () => {
       
       const verifyPayment = async () => {
         try {
-          console.log('Verifying payment for campaign:', campaignId, 'session:', sessionId);
-          
           const { data, error } = await supabase.functions.invoke('verify-campaign-escrow', {
             body: { campaignId, sessionId },
           });
@@ -125,7 +123,7 @@ const CampaignsPage: React.FC = () => {
           </div>
 
           {/* Filter Tabs */}
-          <Tabs value={statusFilter} onValueChange={(value) => setStatusFilter(value as any)} className="mb-6">
+          <Tabs value={statusFilter} onValueChange={(value) => setStatusFilter(value as typeof statusFilter)} className="mb-6">
             {isMobile ? (
               // Mobile: Horizontal scrolling tabs
               <div className="relative">

@@ -12,10 +12,7 @@ const ProfileOnboarding = () => {
   const [debugInfo, setDebugInfo] = useState<string>('');
 
   useEffect(() => {
-    console.log('🔄 ProfileOnboarding: Component mounted', { user: !!user, loading });
-    
     if (!loading && !user) {
-      console.log('🚫 ProfileOnboarding: No user, redirecting to auth');
       navigate('/auth');
       return;
     }
@@ -23,30 +20,25 @@ const ProfileOnboarding = () => {
     const handleUserRedirect = async () => {
       if (!user || loading || redirecting) return;
 
-      console.log('👤 ProfileOnboarding: Handling user redirect for:', user.email);
       setRedirecting(true);
 
       try {
         // First, check user metadata for role (set during signup)
         const userRole = user.user_metadata?.role;
-        console.log('📋 ProfileOnboarding: User metadata role:', userRole);
         setDebugInfo(`User metadata role: ${userRole}`);
 
         if (userRole) {
           // If we have role from metadata, redirect immediately
           if (userRole === 'business_client') {
-            console.log('🏢 ProfileOnboarding: Redirecting to business profile setup');
             navigate('/profile/business');
             return;
           } else if (userRole === 'content_creator') {
-            console.log('🎨 ProfileOnboarding: Redirecting to creator profile setup');
             navigate('/profile/creator');
             return;
           }
         }
 
         // Fallback: check database profile
-        console.log('🔍 ProfileOnboarding: Checking database profile...');
         const { data: profile, error } = await supabase
           .from('profiles')
           .select('role')
@@ -56,25 +48,20 @@ const ProfileOnboarding = () => {
         if (error) {
           console.error('❌ ProfileOnboarding: Error fetching profile:', error);
           setDebugInfo(`Database error: ${error.message}`);
-          
+
           // For authenticated users, redirect to auth to restart the flow
-          console.log('🔄 ProfileOnboarding: Profile fetch failed, redirecting to auth');
           navigate('/auth');
           return;
         }
 
         if (profile?.role) {
-          console.log('📋 ProfileOnboarding: Database role found:', profile.role);
           setDebugInfo(`Database role: ${profile.role}`);
-          
+
           if (profile.role === 'business_client') {
-            console.log('🏢 ProfileOnboarding: Redirecting to business profile setup');
             navigate('/profile/business');
           } else if (profile.role === 'brand') {
-            console.log('✨ ProfileOnboarding: Redirecting to brand profile setup');
             navigate('/profile/brand');
           } else if (profile.role === 'content_creator') {
-            console.log('🎨 ProfileOnboarding: Redirecting to creator profile setup');
             navigate('/profile/creator');
           }
         } else {

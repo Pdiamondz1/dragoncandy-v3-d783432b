@@ -12,18 +12,14 @@ export const PortfolioMediaItem = ({ url, type, creatorName, className = '' }: P
   const [error, setError] = useState(false);
 
   const handleLoad = () => {
-    if (import.meta.env.DEV) console.log('✅ PortfolioMediaItem loaded successfully:', url);
     setLoaded(true);
   };
 
-  const handleError = (e: any) => {
-    if (import.meta.env.DEV) console.error('❌ PortfolioMediaItem failed to load:', url, e);
+  const handleError = (_e: any) => {
     setError(true);
   };
 
-  // Don't render broken media, but log for debugging
   if (error) {
-    if (import.meta.env.DEV) console.log('🚫 PortfolioMediaItem: Skipping broken media:', url);
     return <div className={`relative rounded-3xl overflow-hidden bg-muted ${className}`} />;
   }
 

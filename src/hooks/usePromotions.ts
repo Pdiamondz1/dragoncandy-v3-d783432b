@@ -389,8 +389,6 @@ export const usePromotions = () => {
         if (notificationError) {
           console.error('Notification error:', notificationError);
         } else {
-          console.log('Notification sent:', notificationResult);
-          
           // Update email_sent and sms_sent flags if we have a discount code
           if (status === 'approved' && discountCode) {
             await supabase

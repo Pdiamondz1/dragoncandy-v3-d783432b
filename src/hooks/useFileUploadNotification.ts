@@ -31,10 +31,8 @@ export const useFileUploadNotification = () => {
         .single();
 
       if (!collaboration) {
-        console.warn('No active collaboration found for campaign:', campaignId);
         return;
       }
-      console.log('Found collaboration for file upload notification:', collaboration.id);
 
       // Get uploader profile
       const { data: uploaderProfile } = await supabase
@@ -84,7 +82,6 @@ export const useFileUploadNotification = () => {
         },
       });
 
-      console.log(`File upload notification sent to ${recipientProfile.email}`);
     } catch (error) {
       console.error('Failed to send file upload notification:', error);
     }

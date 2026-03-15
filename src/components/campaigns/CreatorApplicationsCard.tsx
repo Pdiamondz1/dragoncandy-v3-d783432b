@@ -139,8 +139,8 @@ export const CreatorApplicationsCard = ({ campaignId }: CreatorApplicationsCardP
 
                   <div className="space-y-3 mt-3">
                     {isSponsored && userRole && application.status === 'pending' && (
-                      <JointApprovalCard 
-                        application={application as any} 
+                      <JointApprovalCard
+                        application={application}
                         userRole={userRole}
                       />
                     )}

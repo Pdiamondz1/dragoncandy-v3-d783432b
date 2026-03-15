@@ -11,17 +11,8 @@ import ApplicationsListFixed from '@/components/campaigns/ApplicationsListFixed'
 const BusinessProposals = () => {
   const { campaignId } = useParams<{ campaignId: string }>();
 
-  console.log('BusinessProposals: Rendering with campaignId:', campaignId);
-
   const { campaigns = [], isLoading: campaignLoading, error: campaignError } = useCampaigns();
   const campaign = campaigns.find(c => c.id === campaignId);
-
-  console.log('BusinessProposals: Data state:', {
-    campaignId,
-    campaign: !!campaign,
-    isLoading: campaignLoading,
-    error: campaignError?.message,
-  });
 
   if (campaignLoading) {
     return (

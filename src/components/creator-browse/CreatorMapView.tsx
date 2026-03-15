@@ -73,8 +73,7 @@ export const CreatorMapView: React.FC<CreatorMapViewProps> = ({
       };
       
       const hasLocation = !!(f.postal_code || f.city || f.country);
-      console.log('[Map] Debounced update', { filters: f, hasLocation, geocodedCount: geocodedCreators.length });
-      
+
       // Guard against very short inputs
       if (f.postal_code && f.postal_code.length < 3) return;
       if (f.city && f.city.length < 3) return;
@@ -98,11 +97,9 @@ export const CreatorMapView: React.FC<CreatorMapViewProps> = ({
       
       // If location filters are active, geocode and center
       if (hasLocation) {
-        console.log('[Map] Geocoding location filter', f);
         const result = await geocodingService.geocodeLocation(f.postal_code, f.city, f.country);
-        
+
         if (result) {
-          console.log('[Map] Geocoded location', result);
           const zoom = f.postal_code ? 12 : f.city ? 10 : 5;
           map.setCenter(result);
           map.setZoom(zoom);
@@ -114,10 +111,8 @@ export const CreatorMapView: React.FC<CreatorMapViewProps> = ({
       
       // Otherwise fit all geocoded creators
       if (geocodedCreators.length > 0) {
-        console.log('[Map] Fitting all creators', geocodedCreators.length);
         fitAllMarkers(geocodedCreators.map(c => ({ lat: c.lat, lng: c.lng })));
       } else {
-        console.log('[Map] No creators, reset to default');
         map.setCenter(DEFAULT_MAP_CENTER);
         map.setZoom(DEFAULT_MAP_ZOOM);
         setMapCenter(DEFAULT_MAP_CENTER);
@@ -129,12 +124,10 @@ export const CreatorMapView: React.FC<CreatorMapViewProps> = ({
   }, [filters, map]);
 
   const onLoad = useCallback((map: google.maps.Map) => {
-    console.log('🗺️ [Map] Google Map loaded successfully', { mapObject: !!map });
     setMap(map);
   }, []);
 
   const onUnmount = useCallback(() => {
-    console.log('🗺️ [Map] Google Map unmounting, clearing state');
     setMap(null);
   }, []);
 

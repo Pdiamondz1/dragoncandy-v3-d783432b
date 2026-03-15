@@ -2,6 +2,15 @@
 import React, { useEffect } from 'react';
 import { useAnalyticsContext } from './AnalyticsProvider';
 
+interface MemoryInfo {
+  usedJSHeapSize: number;
+  totalJSHeapSize: number;
+  jsHeapSizeLimit: number;
+}
+interface PerformanceWithMemory extends Performance {
+  readonly memory?: MemoryInfo;
+}
+
 export const PerformanceMonitor: React.FC = () => {
   const { trackPerformance, trackEvent } = useAnalyticsContext();
 
@@ -20,7 +29,7 @@ export const PerformanceMonitor: React.FC = () => {
     // Monitor memory usage (if available)
     const checkMemoryUsage = () => {
       if ('memory' in performance) {
-        const memory = (performance as any).memory;
+        const memory = (performance as PerformanceWithMemory).memory;
         trackPerformance('memory_used', memory.usedJSHeapSize, {
           total_heap: memory.totalJSHeapSize,
           heap_limit: memory.jsHeapSizeLimit

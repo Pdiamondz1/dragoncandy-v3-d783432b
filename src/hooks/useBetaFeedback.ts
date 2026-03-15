@@ -1,6 +1,7 @@
 
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import type { Database } from '@/integrations/supabase/types';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 
@@ -28,8 +29,9 @@ export const useBetaFeedback = () => {
     setSubmitting(true);
 
     try {
+      // beta_feedback exists in DB but is not yet reflected in auto-generated Supabase types
       const { error } = await supabase
-        .from('beta_feedback' as any)
+        .from('beta_feedback' as unknown as keyof Database['public']['Tables'])
         .insert([{
           ...feedback,
           user_id: user.id,

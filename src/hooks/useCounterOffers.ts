@@ -58,7 +58,7 @@ export const useCreateCounterOffer = () => {
       // Update application status to counter_offered
       const { error: statusError } = await supabase
         .from('campaign_applications')
-        .update({ status: 'counter_offered' as any })
+        .update({ status: 'counter_offered' as 'counter_offered' })
         .eq('id', applicationId);
 
       if (statusError) throw statusError;
@@ -153,7 +153,7 @@ export const useRespondToCounterOffer = () => {
       if (response === 'accepted') {
         const { error: appError } = await supabase
           .from('campaign_applications')
-          .update({ status: 'accepted' as any })
+          .update({ status: 'accepted' as 'accepted' })
           .eq('id', applicationId);
 
         if (appError) throw appError;

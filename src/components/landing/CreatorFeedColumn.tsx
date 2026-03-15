@@ -33,16 +33,6 @@ export const CreatorFeedColumn = ({ mediaItems, direction, className = '' }: Cre
       if (container && !isPaused) {
         const maxScroll = container.scrollHeight - container.clientHeight;
         
-        // Debug logging - remove after testing
-        if (import.meta.env.DEV && Math.random() < 0.01) { // Log occasionally in dev only
-          console.log(`🎭 Animation Debug [${direction}]:`, {
-            maxScroll,
-            currentScroll: container.scrollTop,
-            clientHeight: container.clientHeight,
-            scrollHeight: container.scrollHeight
-          });
-        }
-        
         if (maxScroll > 50) { // Ensure sufficient scrollable content
           if (isUpward) {
             container.scrollTop += scrollSpeed;
@@ -85,14 +75,6 @@ export const CreatorFeedColumn = ({ mediaItems, direction, className = '' }: Cre
     const result = [];
     for (let i = 0; i < loopCopies; i++) {
       result.push(...mediaItems);
-    }
-    
-    if (import.meta.env.DEV) {
-      console.log('🔄 Loop Duplication:', {
-        originalLength: mediaItems.length,
-        loopCopies,
-        finalLength: result.length
-      });
     }
     
     return result;

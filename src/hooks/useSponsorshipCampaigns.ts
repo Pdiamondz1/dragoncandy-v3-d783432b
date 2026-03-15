@@ -31,8 +31,6 @@ export const useSponsorshipCampaigns = (brandUserId?: string) => {
   return useQuery({
     queryKey: ['sponsorship-campaigns', brandUserId],
     queryFn: async () => {
-      console.log('Fetching campaigns open for sponsorship');
-      
       // Get campaigns open for sponsorship
       const { data: campaigns, error: campaignsError } = await supabase
         .from('campaigns')
@@ -47,7 +45,6 @@ export const useSponsorshipCampaigns = (brandUserId?: string) => {
       }
 
       if (!campaigns || campaigns.length === 0) {
-        console.log('No sponsorship campaigns found');
         return [];
       }
 
@@ -103,7 +100,6 @@ export const useSponsorshipCampaigns = (brandUserId?: string) => {
         })
       );
 
-      console.log('Fetched sponsorship campaigns:', enrichedCampaigns);
       return enrichedCampaigns as SponsorshipCampaign[];
     },
     enabled: true,

@@ -239,8 +239,8 @@ const ApplicationCard: React.FC<ApplicationCardProps> = ({
           <>
             {isSponsored && userRole ? (
               <div className="pt-4 border-t">
-                <JointApprovalCard 
-                  application={application as any} 
+                <JointApprovalCard
+                  application={application}
                   userRole={userRole}
                 />
               </div>

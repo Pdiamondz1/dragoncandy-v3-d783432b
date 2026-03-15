@@ -29,11 +29,6 @@ export class GeocodingService {
   constructor() {
     this.cache = this.loadCache();
     this.postalCache = this.loadPostalCache();
-    try {
-      const count = Object.keys(this.cache).length;
-      const postalCount = Object.keys(this.postalCache).length;
-      console.log('[Geocoding] Service initialized. Cache entries:', count, 'Postal cache:', postalCount);
-    } catch {}
   }
 
   private loadCache(): GeocodingCache {
@@ -98,7 +93,6 @@ export class GeocodingService {
     const cacheKey = this.getCacheKey(postal_code, city, country);
     
     if (this.cache[cacheKey]) {
-      console.log('[Geocoding] Cache hit', { cacheKey, address: this.cache[cacheKey].address });
       return this.cache[cacheKey];
     }
 
@@ -114,15 +108,11 @@ export class GeocodingService {
     try {
       const { GOOGLE_MAPS_API_KEY } = await import('./googleMapsConfig');
       const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(query)}&key=${GOOGLE_MAPS_API_KEY}`;
-      const maskedUrl = url.replace(GOOGLE_MAPS_API_KEY, '***');
-      console.log('[Geocoding] Fetching Google Geocode:', { query, url: maskedUrl });
-      
+
       const response = await fetch(url);
       const data = await response.json();
-      console.log('[Geocoding] Google response status:', data.status, 'results:', data.results?.length ?? 0);
 
       if (data.status !== 'OK') {
-        console.warn('[Geocoding] Google status not OK', { status: data.status, error: data.error_message, query });
         return null;
       }
 
@@ -133,11 +123,9 @@ export class GeocodingService {
           lng: result.geometry.location.lng,
           address: result.formatted_address
         };
-        console.log('[Geocoding] Google geocode success', { address: geocodedResult.address, lat: geocodedResult.lat, lng: geocodedResult.lng });
 
         this.cache[cacheKey] = geocodedResult;
         this.saveCache();
-        console.log('[Geocoding] Cached result', { cacheKey });
 
         return geocodedResult;
       }
@@ -156,7 +144,6 @@ export class GeocodingService {
     
     // Check postal-specific cache
     if (this.postalCache[cacheKey]) {
-      console.log('[Geocoding] Postal lookup cache hit', { postalCode });
       const cached = this.postalCache[cacheKey];
       return { city: cached.city, country: cached.country };
     }
@@ -164,13 +151,11 @@ export class GeocodingService {
     try {
       const { GOOGLE_MAPS_API_KEY } = await import('./googleMapsConfig');
       const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(postalCode)}&key=${GOOGLE_MAPS_API_KEY}`;
-      console.log('[Geocoding] Looking up postal code:', postalCode);
-      
+
       const response = await fetch(url);
       const data = await response.json();
 
       if (data.status !== 'OK' || !data.results?.[0]) {
-        console.warn('[Geocoding] Postal lookup failed', { status: data.status, postalCode });
         return null;
       }
 
@@ -200,8 +185,7 @@ export class GeocodingService {
         };
         this.postalCache[cacheKey] = postalResult;
         this.savePostalCache();
-        
-        console.log('[Geocoding] Postal lookup success', { postalCode, city, country });
+
         return { city, country };
       }
 
@@ -220,28 +204,22 @@ export class GeocodingService {
       country?: string;
     }>
   ): Promise<Map<string, GeocodingResult>> {
-    console.log('[Geocoding] Batch geocode start', { count: creators.length });
     const results = new Map<string, GeocodingResult>();
 
     for (const creator of creators) {
-      console.log('[Geocoding] Geocoding creator', { id: creator.id, postal_code: creator.postal_code, city: creator.city, country: creator.country });
       const result = await this.geocodeLocation(
         creator.postal_code,
         creator.city,
         creator.country
       );
-      
+
       if (result) {
-        console.log('[Geocoding] Success for creator', { id: creator.id, lat: result.lat, lng: result.lng });
         results.set(creator.id, result);
-      } else {
-        console.warn('[Geocoding] No result for creator', { id: creator.id });
       }
 
       await new Promise(resolve => setTimeout(resolve, 25));
     }
 
-    console.log('[Geocoding] Batch geocode complete', { results: results.size });
     return results;
   }
 }

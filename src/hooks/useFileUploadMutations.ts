@@ -28,11 +28,6 @@ export const useCreateFileUpload = () => {
         throw new Error('User must be authenticated to upload files');
       }
 
-      console.log('Creating file upload record:', {
-        ...fileData,
-        uploaded_by: user.id
-      });
-
       // Test auth connection first
       const { data: testAuth } = await supabase.auth.getUser();
       if (!testAuth.user) {
@@ -64,7 +59,6 @@ export const useCreateFileUpload = () => {
         }
       }
 
-      console.log('File upload record created successfully:', data);
       return data;
     },
     onSuccess: () => {

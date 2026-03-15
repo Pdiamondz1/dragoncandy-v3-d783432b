@@ -18,11 +18,11 @@ import CreatorProfileModal from './CreatorProfileModal';
 import { CampaignApplication } from '@/types/applications';
 import { useManageApplication } from '@/hooks/useManageApplication';
 
-interface ApplicationsListProps {
+interface CampaignApplicationsManagerProps {
   campaignId: string;
 }
 
-const ApplicationsList: React.FC<ApplicationsListProps> = ({ campaignId }) => {
+const CampaignApplicationsManager: React.FC<CampaignApplicationsManagerProps> = ({ campaignId }) => {
   const { data: applications = [], isLoading, error } = useCampaignApplications(campaignId);
   const { filters, filteredApplications, updateFilter, resetFilters } = useApplicationFilters(applications);
   const { data: campaignData } = useQuery({
@@ -182,7 +182,7 @@ const ApplicationsList: React.FC<ApplicationsListProps> = ({ campaignId }) => {
                   {applications.length === 0 ? 'No applications yet' : 'No applications match your filters'}
                 </h3>
                 <p className="text-gray-600 text-center max-w-md">
-                  {applications.length === 0 
+                  {applications.length === 0
                     ? 'When creators apply to your campaign, their applications will appear here for review.'
                     : 'Try adjusting your filters to see more applications.'
                   }
@@ -291,4 +291,4 @@ const ApplicationsList: React.FC<ApplicationsListProps> = ({ campaignId }) => {
   );
 };
 
-export default ApplicationsList;
+export default CampaignApplicationsManager;

@@ -69,11 +69,8 @@ export const useSubmitSponsorshipProposal = () => {
       return data;
     },
     onSuccess: async (data, variables) => {
-      console.log('✅ Sponsorship proposal submitted successfully:', data);
-      
       // Optimistic cache update for instant UI feedback
       if (user?.id) {
-        console.log('🔄 Setting optimistic cache data for campaign:', variables.campaignId);
         queryClient.setQueryData([
           'brand-sponsorship-status',
           variables.campaignId,
@@ -82,8 +79,7 @@ export const useSubmitSponsorshipProposal = () => {
       }
 
       // Invalidate and refetch all sponsorship status queries
-      console.log('🔄 Invalidating and refetching sponsorship queries...');
-      await queryClient.invalidateQueries({ 
+      await queryClient.invalidateQueries({
         queryKey: ['brand-sponsorship-status'],
         refetchType: 'active' // Force active queries to refetch immediately
       });
@@ -94,10 +90,7 @@ export const useSubmitSponsorshipProposal = () => {
       });
       
       // Send email notification to restaurant owner
-      console.log('📧 Starting email notification process...');
       try {
-        console.log('📧 Fetching campaign details for campaign ID:', variables.campaignId);
-        
         // Get campaign details
         const { data: campaign, error: campaignError } = await supabase
           .from('campaigns')
@@ -109,10 +102,8 @@ export const useSubmitSponsorshipProposal = () => {
           console.error('❌ Error fetching campaign:', campaignError);
           throw campaignError;
         }
-        console.log('✅ Campaign fetched:', campaign);
 
         // Get restaurant owner's profile
-        console.log('📧 Fetching restaurant profile for user:', campaign?.user_id);
         const { data: restaurantProfile, error: restaurantProfileError } = await supabase
           .from('business_profiles')
           .select('business_name, user_id')
@@ -123,9 +114,7 @@ export const useSubmitSponsorshipProposal = () => {
         if (restaurantProfileError) {
           console.error('❌ Error fetching restaurant profile:', restaurantProfileError);
         }
-        console.log('✅ Restaurant profile fetched:', restaurantProfile);
 
-        console.log('📧 Fetching restaurant user email...');
         const { data: restaurantUser, error: restaurantUserError } = await supabase
           .from('profiles')
           .select('email, full_name')
@@ -135,10 +124,8 @@ export const useSubmitSponsorshipProposal = () => {
         if (restaurantUserError) {
           console.error('❌ Error fetching restaurant user:', restaurantUserError);
         }
-        console.log('✅ Restaurant user fetched:', restaurantUser);
 
         // Get brand name
-        console.log('📧 Fetching brand profile for user:', user?.id);
         const { data: brandProfile, error: brandProfileError } = await supabase
           .from('business_profiles')
           .select('business_name')
@@ -149,7 +136,6 @@ export const useSubmitSponsorshipProposal = () => {
         if (brandProfileError) {
           console.error('❌ Error fetching brand profile:', brandProfileError);
         }
-        console.log('✅ Brand profile fetched:', brandProfile);
 
         // Always attempt to send the email; server will resolve recipient if email is missing
         const recipientEmail = restaurantUser?.email || undefined;
@@ -168,15 +154,8 @@ export const useSubmitSponsorshipProposal = () => {
           }
         );
         
-        console.log('📧 Email notification result:', emailResult);
-
       } catch (error) {
         console.error('❌ Failed to send email notification:', error);
-        console.error('❌ Error details:', {
-          name: error?.name,
-          message: error?.message,
-          stack: error?.stack
-        });
         // Don't block the success flow if email fails
       }
 
