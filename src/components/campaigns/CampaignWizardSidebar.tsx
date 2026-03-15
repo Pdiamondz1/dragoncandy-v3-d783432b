@@ -53,7 +53,7 @@ const CampaignWizardSidebar: React.FC = () => {
       {/* Tips Card */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-blue-600">
+          <CardTitle className="flex items-center gap-2 text-dc-teal">
             <Lightbulb className="h-5 w-5" />
             Tips for Better AI Campaign Generation
           </CardTitle>
@@ -62,10 +62,10 @@ const CampaignWizardSidebar: React.FC = () => {
           {tips.map((tip, index) => (
             <div key={index} className="space-y-2">
               <div className="flex items-center gap-2">
-                <tip.icon className="h-4 w-4 text-blue-500" />
+                <tip.icon className="h-4 w-4 text-dc-teal" />
                 <span className="font-medium text-sm">{tip.title}</span>
               </div>
-              <p className="text-xs text-gray-600 ml-6">{tip.description}</p>
+              <p className="text-xs text-muted-foreground ml-6">{tip.description}</p>
             </div>
           ))}
         </CardContent>
@@ -74,7 +74,7 @@ const CampaignWizardSidebar: React.FC = () => {
       {/* Examples Card */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-green-600">Example Prompts That Work Well</CardTitle>
+          <CardTitle className="text-dc-teal">Example Prompts That Work Well</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {examples.map((example, index) => (
@@ -82,7 +82,7 @@ const CampaignWizardSidebar: React.FC = () => {
               <Badge variant="outline" className="text-xs">
                 {example.category}
               </Badge>
-              <p className="text-xs text-gray-700 italic leading-relaxed">
+              <p className="text-xs text-muted-foreground italic leading-relaxed">
                 {example.content}
               </p>
             </div>
