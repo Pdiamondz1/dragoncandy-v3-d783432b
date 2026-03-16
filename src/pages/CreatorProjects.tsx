@@ -51,6 +51,7 @@ const CreatorProjects: React.FC = () => {
   const { data: projects = [], isLoading, error } = useQuery({
     queryKey: ['creator-projects', user?.id],
     queryFn: async () => {
+      console.log('Fetching projects for creator:', user?.id);
       const { data, error } = await supabase
         .from('campaign_collaborations')
         .select(`
@@ -75,6 +76,7 @@ const CreatorProjects: React.FC = () => {
         throw error;
       }
 
+      console.log('Fetched projects:', data);
       return data as ProjectCollaboration[];
     },
     enabled: !!user,
@@ -155,10 +157,10 @@ const CreatorProjects: React.FC = () => {
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12">
                 <AlertCircle className="h-12 w-12 text-red-400 mb-4" />
-                <h3 className="text-lg font-semibold text-dc-teal mb-2">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
                   Failed to load projects
                 </h3>
-                <p className="text-muted-foreground">
+                <p className="text-gray-600">
                   There was an error loading your projects.
                 </p>
               </CardContent>
@@ -179,7 +181,7 @@ const CreatorProjects: React.FC = () => {
           {/* Header */}
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-extrabold text-dc-teal uppercase">My Projects</h1>
+              <h1 className="text-3xl font-bold text-foreground">My Projects</h1>
               <p className="text-muted-foreground">Manage your active campaigns and track deliverables</p>
             </div>
           </div>

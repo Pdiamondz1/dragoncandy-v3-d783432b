@@ -221,7 +221,7 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
   const needsEscrowPayment = campaign.escrow_status === 'pending';
 
   return (
-    <Card className={`relative hover:shadow-lg transition-all duration-200 border-l-4 ${needsEscrowPayment ? 'border-l-amber-500 bg-amber-50/30' : 'border-l-transparent hover:border-l-dc-teal/50'}`}>
+    <Card className={`relative hover:shadow-lg transition-all duration-200 border-l-4 ${needsEscrowPayment ? 'border-l-amber-500 bg-amber-50/30' : 'border-l-transparent hover:border-l-primary/50'}`}>
       {/* Application Counter Badge - Top Right Corner */}
       {applicationCounts && applicationCounts.pending > 0 && (
         <div className="absolute -top-2 -right-2 z-10">
@@ -234,7 +234,7 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="flex-1 min-w-0 pr-4">
-            <CardTitle className="text-base sm:text-lg font-semibold line-clamp-2 mb-2 text-dc-teal">
+            <CardTitle className="text-base sm:text-lg font-semibold line-clamp-2 mb-2">
               {campaign.title}
             </CardTitle>
             <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 flex-wrap">
@@ -305,12 +305,12 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
         {/* Key Metrics */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
           <div className="flex items-center gap-2 text-sm">
-            <DollarSign className="h-4 w-4 text-dc-teal" />
+            <DollarSign className="h-4 w-4 text-emerald-600" />
             <span className="text-muted-foreground truncate">{formatBudget()}</span>
           </div>
           
           <div className="flex items-center gap-2 text-sm">
-            <FileText className="h-4 w-4 text-dc-teal" />
+            <FileText className="h-4 w-4 text-blue-600" />
             <span className="text-muted-foreground">
               {getContentItemsCount()} item{getContentItemsCount() !== 1 ? 's' : ''}
             </span>
@@ -318,7 +318,7 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
 
           {/* Total Applications Count (subtle) */}
           <div className="flex items-center gap-2 text-sm">
-            <UserCheck className="h-4 w-4 text-dc-teal" />
+            <UserCheck className="h-4 w-4 text-purple-600" />
             <span className="text-muted-foreground">
               {applicationCounts?.total || 0} application{(applicationCounts?.total || 0) !== 1 ? 's' : ''}
             </span>
@@ -326,7 +326,7 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
 
           {campaign.deadline && (
             <div className="flex items-center gap-2 text-sm">
-              <Calendar className="h-4 w-4 text-dc-teal" />
+              <Calendar className="h-4 w-4 text-orange-600" />
               <span className="text-muted-foreground">
                 Due {format(new Date(campaign.deadline), 'MMM dd, yyyy')}
               </span>
@@ -373,10 +373,10 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
       </CardContent>
 
       <CardFooter className="flex flex-wrap gap-2 pt-4 border-t border-border">
-        <Button
-          variant="outline"
-          size="sm"
-          className="text-xs rounded-full"
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className="text-xs"
           onClick={() => onViewDetails?.(campaign)}
         >
           {applicationCounts && applicationCounts.pending > 0 ? (
@@ -392,10 +392,10 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
           )}
         </Button>
         {applicationCounts && applicationCounts.accepted > 0 && (
-          <Button
-            variant="secondary"
-            size="sm"
-            className="text-xs rounded-full"
+          <Button 
+            variant="secondary" 
+            size="sm" 
+            className="text-xs"
             onClick={() => navigate('/dashboard/business/projects')}
           >
             <FolderOpen className="h-3 w-3 mr-1" />
@@ -403,10 +403,10 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
           </Button>
         )}
         {canDelete && (
-          <Button
-            variant="destructive"
-            size="sm"
-            className="text-xs rounded-full"
+          <Button 
+            variant="destructive" 
+            size="sm" 
+            className="text-xs"
             onClick={() => setShowDeleteConfirm(true)}
             disabled={deleteCampaign.isPending}
           >
@@ -419,9 +419,10 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
           </Button>
         )}
         {onEdit && (
-          <Button
-            size="sm"
-            className="text-xs bg-dc-teal text-white rounded-full hover:bg-dc-teal-dark"
+          <Button 
+            variant="default" 
+            size="sm" 
+            className="text-xs"
             onClick={() => onEdit(campaign)}
           >
             <Edit className="h-3 w-3 mr-1" />

@@ -67,7 +67,7 @@ export const CreatorProfileSetupForm = ({
 
       <Button
         type="submit"
-        className="w-full bg-dc-teal hover:bg-dc-teal-dark rounded-full"
+        className="w-full bg-pink-600 hover:bg-pink-700"
         disabled={loading || !isFormValid}
       >
         {loading ? 'Creating Profile...' : 'Complete Profile Setup'}

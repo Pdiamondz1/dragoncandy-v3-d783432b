@@ -98,17 +98,16 @@ const ProjectDetailsPage: React.FC = () => {
           {/* Header */}
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div className="flex items-center gap-4">
-              <Button
-                variant="ghost"
+              <Button 
+                variant="ghost" 
                 size="sm"
-                className="text-dc-teal"
                 onClick={() => navigate(isBusinessClient ? '/dashboard/business/projects' : '/dashboard/creator/projects')}
               >
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back
               </Button>
               <div>
-                <h1 className="text-2xl font-extrabold text-dc-teal">{collaboration.campaign.title}</h1>
+                <h1 className="text-2xl font-bold">{collaboration.campaign.title}</h1>
                 <p className="text-muted-foreground">
                   {isBusinessClient 
                     ? `Working with ${collaboration.creator_profile?.creator_name || 'Creator'}`
@@ -128,13 +127,6 @@ const ProjectDetailsPage: React.FC = () => {
               <Badge variant={collaboration.status === 'completed' ? 'secondary' : 'default'}>
                 {collaboration.status}
               </Badge>
-              <Button
-                className="rounded-full bg-dc-teal text-white hover:bg-dc-teal-dark"
-                onClick={() => navigate(`/messages/${collaboration.campaign_id}`)}
-              >
-                <MessageSquare className="h-4 w-4 mr-2" />
-                Open Messages
-              </Button>
             </div>
           </div>
 
@@ -156,11 +148,11 @@ const ProjectDetailsPage: React.FC = () => {
             {/* Project Details */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg text-dc-teal font-semibold">Project Details</CardTitle>
+                <CardTitle className="text-lg">Project Details</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center gap-3">
-                  <User className="h-5 w-5 text-dc-teal" />
+                  <User className="h-5 w-5 text-muted-foreground" />
                   <div>
                     <p className="text-sm text-muted-foreground">
                       {isBusinessClient ? 'Creator' : 'Client'}
@@ -176,7 +168,7 @@ const ProjectDetailsPage: React.FC = () => {
 
                 {collaboration.campaign.deadline && (
                   <div className="flex items-center gap-3">
-                    <Calendar className="h-5 w-5 text-dc-teal" />
+                    <Calendar className="h-5 w-5 text-muted-foreground" />
                     <div>
                       <p className="text-sm text-muted-foreground">Deadline</p>
                       <p className="font-medium">
@@ -187,7 +179,7 @@ const ProjectDetailsPage: React.FC = () => {
                 )}
 
                 <div className="flex items-center gap-3">
-                  <DollarSign className="h-5 w-5 text-dc-teal" />
+                  <DollarSign className="h-5 w-5 text-muted-foreground" />
                   <div>
                     <p className="text-sm text-muted-foreground">Project Value</p>
                     <p className="font-medium">
@@ -202,7 +194,7 @@ const ProjectDetailsPage: React.FC = () => {
                 </div>
 
                 <div className="flex items-center gap-3">
-                  <Clock className="h-5 w-5 text-dc-teal" />
+                  <Clock className="h-5 w-5 text-muted-foreground" />
                   <div>
                     <p className="text-sm text-muted-foreground">Started</p>
                     <p className="font-medium">
@@ -251,7 +243,7 @@ const ProjectDetailsPage: React.FC = () => {
           {/* Files Section */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg text-dc-teal font-semibold">Deliverables</CardTitle>
+              <CardTitle className="text-lg">Deliverables</CardTitle>
               <CardDescription>
                 {isCreator 
                   ? 'Upload your content files here'
@@ -292,7 +284,6 @@ const ProjectDetailsPage: React.FC = () => {
           <div className="flex gap-3 flex-wrap">
             <Button
               variant="outline"
-              className="rounded-full border-dc-teal text-dc-teal"
               onClick={() => navigate(`/messages/${collaboration.campaign_id}`)}
             >
               <MessageSquare className="h-4 w-4 mr-2" />

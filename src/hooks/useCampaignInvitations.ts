@@ -19,6 +19,7 @@ export const useCampaignInvitations = (campaignId: string) => {
   return useQuery({
     queryKey: ['campaign-invitations', campaignId],
     queryFn: async () => {
+      console.log('Fetching invitations for campaign:', campaignId);
       const { data, error } = await supabase
         .from('campaign_invitations')
         .select('*')
@@ -30,6 +31,7 @@ export const useCampaignInvitations = (campaignId: string) => {
         throw error;
       }
 
+      console.log('Fetched campaign invitations:', data);
       return data as CampaignInvitation[];
     },
     enabled: !!campaignId,
@@ -41,15 +43,17 @@ export const useInviteCreator = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({
-      campaignId,
-      creatorId,
-      message
-    }: {
-      campaignId: string;
-      creatorId: string;
-      message?: string;
+    mutationFn: async ({ 
+      campaignId, 
+      creatorId, 
+      message 
+    }: { 
+      campaignId: string; 
+      creatorId: string; 
+      message?: string; 
     }) => {
+      console.log('Inviting creator:', { campaignId, creatorId, message });
+      
       const { data, error } = await supabase
         .from('campaign_invitations')
         .insert({
@@ -66,6 +70,7 @@ export const useInviteCreator = () => {
         throw error;
       }
 
+      console.log('Creator invited:', data);
       return data as CampaignInvitation;
     },
     onSuccess: (data, variables) => {

@@ -33,6 +33,7 @@ export const useCampaignMatches = (campaignId: string) => {
   return useQuery({
     queryKey: ['campaign-matches', campaignId],
     queryFn: async () => {
+      console.log('Fetching matches for campaign:', campaignId);
       const { data, error } = await supabase
         .from('campaign_matches')
         .select(`
@@ -61,6 +62,8 @@ export const useCampaignMatches = (campaignId: string) => {
         throw error;
       }
 
+      console.log('Raw campaign matches data:', data);
+
       // Transform the data to match our interface
       const transformedData = data?.map((match: any) => ({
         id: match.id,
@@ -85,6 +88,7 @@ export const useCampaignMatches = (campaignId: string) => {
         }
       })) || [];
 
+      console.log('Transformed campaign matches:', transformedData);
       return transformedData as CreatorMatch[];
     },
     enabled: !!campaignId,
@@ -96,6 +100,8 @@ export const useGenerateMatches = () => {
 
   return useMutation({
     mutationFn: async (campaignId: string) => {
+      console.log('Generating matches for campaign:', campaignId);
+      
       const { data, error } = await supabase.functions.invoke('match-creators', {
         body: { campaignId }
       });
@@ -105,6 +111,7 @@ export const useGenerateMatches = () => {
         throw error;
       }
 
+      console.log('Generated matches:', data);
       return data;
     },
     onSuccess: (data, campaignId) => {

@@ -80,7 +80,7 @@ export const CreatorBrowseContent: React.FC<CreatorBrowseContentProps> = ({
   }
 
   const [viewMode, setViewMode] = useState<'grid' | 'map' | 'split'>(() => {
-    return (localStorage.getItem('creator-view-mode') as 'grid' | 'map' | 'split' | null) || 'split';
+    return (localStorage.getItem('creator-view-mode') as any) || 'split';
   });
 
   useEffect(() => {
@@ -135,7 +135,7 @@ export const CreatorBrowseContent: React.FC<CreatorBrowseContentProps> = ({
                 </CardContent>
               </Card>
             ) : (
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
                 {filteredCreators.map((creator) => (
                   <CreatorCard key={creator.id} creator={creator} />
                 ))}

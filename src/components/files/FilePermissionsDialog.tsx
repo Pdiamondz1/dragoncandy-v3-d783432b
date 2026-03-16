@@ -61,7 +61,7 @@ const FilePermissionsDialog: React.FC<FilePermissionsDialogProps> = ({
     }
   };
 
-  const getPermissionColor = (type: string): 'secondary' | 'default' | 'outline' | 'destructive' => {
+  const getPermissionColor = (type: string) => {
     switch (type) {
       case 'view': return 'secondary';
       case 'download': return 'default';
@@ -161,7 +161,7 @@ const FilePermissionsDialog: React.FC<FilePermissionsDialogProps> = ({
                           </p>
                           <div className="flex items-center gap-2 mt-1">
                             <Badge 
-                              variant={getPermissionColor(permission.permission_type)}
+                              variant={getPermissionColor(permission.permission_type) as any}
                               className="text-xs"
                             >
                               {getPermissionIcon(permission.permission_type)}

@@ -36,6 +36,7 @@ const BrandProfileSetup = () => {
           .maybeSingle();
 
         if (brandProfile?.is_completed) {
+          console.log('🎯 Brand profile already completed, redirecting to dashboard');
           navigate('/dashboard/brand');
         }
       }

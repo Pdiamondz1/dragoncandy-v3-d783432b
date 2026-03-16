@@ -21,6 +21,7 @@ const getSignedUrl = async (path: string): Promise<string | null> => {
     .from('profile-assets')
     .createSignedUrl(path, 3600);
   if (error || !data?.signedUrl) {
+    if (import.meta.env.DEV) console.error('❌ UniquePortfolio: Signed URL error for', path, error);
     return null;
   }
   const url = data.signedUrl;
@@ -38,7 +39,8 @@ export const useUniqueCreatorPortfolio = () => {
     const fetchPortfolioMedia = async () => {
       try {
         setLoading(true);
-
+        console.log('🎥 UniquePortfolio: Starting portfolio media fetch...');
+        
         // Fetch creator profiles with portfolio URLs who allow DragonFeed display
         const { data: creators, error: fetchError } = await supabase
           .from('creator_profiles')
@@ -53,7 +55,10 @@ export const useUniqueCreatorPortfolio = () => {
           throw fetchError;
         }
 
+        console.log('📊 UniquePortfolio: Found creators:', creators?.length || 0, creators);
+
         if (!creators || creators.length === 0) {
+          console.log('⚠️ UniquePortfolio: No eligible creators found');
           setPortfolioMedia([]);
           return;
         }
@@ -85,9 +90,14 @@ export const useUniqueCreatorPortfolio = () => {
           .map(r => r.value)
           .filter((v): v is PortfolioMedia => !!v);
 
+        console.log('🎬 UniquePortfolio: Total unique media items:', mediaItems.length);
+
         // Return unique items only - no duplication for grid view
         const uniqueMedia = mediaItems.sort(() => Math.random() - 0.5); // Simple shuffle for variety
         setPortfolioMedia(uniqueMedia);
+        
+        if (import.meta.env.DEV) console.log('🎯 UniquePortfolio: Final unique portfolio media set:', uniqueMedia.length, 'items');
+        
       } catch (err) {
         console.error('💥 UniquePortfolio: Critical error:', err);
         setError(err instanceof Error ? err.message : 'Failed to load portfolio media');

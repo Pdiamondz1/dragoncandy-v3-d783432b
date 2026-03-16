@@ -5,8 +5,24 @@ import { CreatorFeedColumn } from './CreatorFeedColumn';
 export const CreatorPortfolioFeed = () => {
   const { portfolioMedia, loading, error } = useCreatorPortfolioFeed();
 
+  // Debug logging to see current state
+  if (import.meta.env.DEV) {
+    console.log('🖥️ CreatorPortfolioFeed Debug:', {
+      loading,
+      error,
+      portfolioMediaLength: portfolioMedia.length,
+      portfolioMedia
+    });
+  }
+
+  // Enhanced debug - always render for now to see what's happening
+  if (import.meta.env.DEV) {
+    console.log('🔍 CreatorPortfolioFeed: About to render, component mounted');
+  }
+  
   // Only show feed if we have real content from the database
   if (loading || error || portfolioMedia.length === 0) {
+    if (import.meta.env.DEV) console.log('🚫 DragonFeed: No real content available, not rendering feed');
     return (
       <>
         <div className="fixed-sidebar fixed-sidebar-left w-40 lg:w-64" style={{ zIndex: 0 }} />
@@ -14,6 +30,8 @@ export const CreatorPortfolioFeed = () => {
       </>
     );
   }
+
+  if (import.meta.env.DEV) console.log(`📊 DragonFeed: Using ${portfolioMedia.length} real media items`);
 
   // Smart column distribution logic
   let leftColumnItems: typeof portfolioMedia;
@@ -29,6 +47,8 @@ export const CreatorPortfolioFeed = () => {
     leftColumnItems = portfolioMedia.slice(0, midpoint);
     rightColumnItems = portfolioMedia.slice(midpoint);
   }
+
+  if (import.meta.env.DEV) console.log(`🎯 DragonFeed Distribution: Left column: ${leftColumnItems.length} items, Right column: ${rightColumnItems.length} items`);
 
   return (
     <>

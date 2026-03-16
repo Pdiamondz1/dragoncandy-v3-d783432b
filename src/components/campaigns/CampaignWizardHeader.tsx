@@ -20,8 +20,8 @@ const CampaignWizardHeader: React.FC<CampaignWizardHeaderProps> = ({
     <>
       {/* Header */}
       <div className="text-center mb-8">
-        <h1 className="text-3xl font-extrabold text-dc-teal uppercase mb-2">Campaign Wizard</h1>
-        <p className="text-muted-foreground">
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">Campaign Wizard</h1>
+        <p className="text-gray-600">
           Let DragonCandy AI analyze your goals and create the perfect campaign structure
         </p>
       </div>
@@ -34,8 +34,8 @@ const CampaignWizardHeader: React.FC<CampaignWizardHeaderProps> = ({
               <div className="flex flex-col items-center">
                 <div className={`
                   w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center text-xs md:text-sm font-semibold
-                  ${step.number <= currentStep
-                    ? 'bg-dc-teal text-white'
+                  ${step.number <= currentStep 
+                    ? 'bg-primary text-primary-foreground' 
                     : 'bg-muted text-muted-foreground'
                   }
                 `}>
@@ -43,7 +43,7 @@ const CampaignWizardHeader: React.FC<CampaignWizardHeaderProps> = ({
                 </div>
                 <span className={`
                   text-[10px] md:text-xs mt-1 font-medium whitespace-nowrap
-                  ${step.number <= currentStep ? 'text-dc-teal' : 'text-muted-foreground'}
+                  ${step.number <= currentStep ? 'text-primary' : 'text-muted-foreground'}
                 `}>
                   {step.title}
                 </span>
@@ -51,7 +51,7 @@ const CampaignWizardHeader: React.FC<CampaignWizardHeaderProps> = ({
               {index < steps.length - 1 && (
                 <div className={`
                   w-4 md:w-8 h-0.5 ml-2 md:ml-4
-                  ${step.number < currentStep ? 'bg-dc-teal' : 'bg-muted'}
+                  ${step.number < currentStep ? 'bg-primary' : 'bg-muted'}
                 `} />
               )}
             </div>

@@ -21,6 +21,8 @@ export const usePublicCampaigns = (userId?: string) => {
   return useQuery({
     queryKey: ['public-campaigns', userId],
     queryFn: async () => {
+      console.log('Fetching public campaigns for user:', userId);
+      
       // First, get campaigns that have active or completed collaborations
       const { data: assignedCampaigns, error: assignedError } = await supabase
         .from('campaign_collaborations')
@@ -49,6 +51,7 @@ export const usePublicCampaigns = (userId?: string) => {
         ...(acceptedApplications || []).map(a => a.campaign_id)
       ];
       const uniqueAssignedIds = [...new Set(assignedCampaignIds)];
+      console.log('Excluded campaign IDs:', uniqueAssignedIds);
 
       // Get published campaigns excluding assigned ones
       let query = supabase
@@ -70,6 +73,7 @@ export const usePublicCampaigns = (userId?: string) => {
       }
 
       if (!campaigns || campaigns.length === 0) {
+        console.log('No campaigns found');
         return [];
       }
 
@@ -84,6 +88,7 @@ export const usePublicCampaigns = (userId?: string) => {
         return true;
       });
 
+      console.log('Filtered visible campaigns:', visibleCampaigns.length, 'of', campaigns.length);
 
       // Get unique user IDs from visible campaigns
       const userIds = [...new Set(visibleCampaigns.map(campaign => campaign.user_id))];
@@ -149,6 +154,7 @@ export const usePublicCampaigns = (userId?: string) => {
         })
       );
 
+      console.log('Fetched public campaigns:', enrichedCampaigns);
       return enrichedCampaigns as PublicCampaign[];
     },
     enabled: true,

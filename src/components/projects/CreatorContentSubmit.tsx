@@ -1,6 +1,4 @@
 import React from 'react';
-
-type CollaborationCampaign = { user_id: string; title: string };
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -102,7 +100,7 @@ const CreatorContentSubmit: React.FC<CreatorContentSubmitProps> = ({
         .single();
 
       if (collaboration) {
-        const campaignData = collaboration.campaigns as unknown as CollaborationCampaign;
+        const campaignData = collaboration.campaigns as any;
         await supabase
           .from('messages')
           .insert({

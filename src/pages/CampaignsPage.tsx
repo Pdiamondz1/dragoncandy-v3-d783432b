@@ -34,6 +34,8 @@ const CampaignsPage: React.FC = () => {
       
       const verifyPayment = async () => {
         try {
+          console.log('Verifying payment for campaign:', campaignId, 'session:', sessionId);
+          
           const { data, error } = await supabase.functions.invoke('verify-campaign-escrow', {
             body: { campaignId, sessionId },
           });
@@ -107,14 +109,14 @@ const CampaignsPage: React.FC = () => {
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
             <div>
-              <h1 className="text-2xl sm:text-3xl font-extrabold text-dc-teal uppercase">Campaigns</h1>
+              <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Campaigns</h1>
               <p className="text-muted-foreground mt-1">
                 Manage your content campaigns and track their progress
               </p>
             </div>
-            <Button
+            <Button 
               onClick={() => navigate('/dashboard/business/campaigns/create')}
-              className="inline-flex items-center w-full sm:w-auto rounded-full bg-dc-teal text-white hover:bg-dc-teal-dark"
+              className="inline-flex items-center w-full sm:w-auto"
               size={isMobile ? "default" : "default"}
             >
               <Plus className="h-4 w-4 mr-2" />
@@ -123,43 +125,43 @@ const CampaignsPage: React.FC = () => {
           </div>
 
           {/* Filter Tabs */}
-          <Tabs value={statusFilter} onValueChange={(value) => setStatusFilter(value as typeof statusFilter)} className="mb-6">
+          <Tabs value={statusFilter} onValueChange={(value) => setStatusFilter(value as any)} className="mb-6">
             {isMobile ? (
               // Mobile: Horizontal scrolling tabs
               <div className="relative">
                 <ScrollArea className="w-full whitespace-nowrap">
                   <TabsList className="inline-flex h-9 items-center justify-start rounded-lg bg-muted p-1 text-muted-foreground w-max">
-                    <TabsTrigger value="all" className="flex items-center gap-1 px-3 py-1 text-sm data-[state=active]:bg-dc-teal data-[state=active]:text-white">
+                    <TabsTrigger value="all" className="flex items-center gap-1 px-3 py-1 text-sm">
                       All
                       <span className="px-1.5 py-0.5 text-xs bg-background rounded-full min-w-[18px] text-center">
                         {counts.all}
                       </span>
                     </TabsTrigger>
-                    <TabsTrigger value="draft" className="flex items-center gap-1 px-3 py-1 text-sm data-[state=active]:bg-dc-teal data-[state=active]:text-white">
+                    <TabsTrigger value="draft" className="flex items-center gap-1 px-3 py-1 text-sm">
                       Drafts
                       <span className="px-1.5 py-0.5 text-xs bg-background rounded-full min-w-[18px] text-center">
                         {counts.draft}
                       </span>
                     </TabsTrigger>
-                    <TabsTrigger value="published" className="flex items-center gap-1 px-3 py-1 text-sm data-[state=active]:bg-dc-teal data-[state=active]:text-white">
+                    <TabsTrigger value="published" className="flex items-center gap-1 px-3 py-1 text-sm">
                       Published
                       <span className="px-1.5 py-0.5 text-xs bg-background rounded-full min-w-[18px] text-center">
                         {counts.published}
                       </span>
                     </TabsTrigger>
-                    <TabsTrigger value="active" className="flex items-center gap-1 px-3 py-1 text-sm data-[state=active]:bg-dc-teal data-[state=active]:text-white">
+                    <TabsTrigger value="active" className="flex items-center gap-1 px-3 py-1 text-sm">
                       Active
                       <span className="px-1.5 py-0.5 text-xs bg-background rounded-full min-w-[18px] text-center">
                         {counts.active}
                       </span>
                     </TabsTrigger>
-                    <TabsTrigger value="completed" className="flex items-center gap-1 px-3 py-1 text-sm data-[state=active]:bg-dc-teal data-[state=active]:text-white">
+                    <TabsTrigger value="completed" className="flex items-center gap-1 px-3 py-1 text-sm">
                       Completed
                       <span className="px-1.5 py-0.5 text-xs bg-background rounded-full min-w-[18px] text-center">
                         {counts.completed}
                       </span>
                     </TabsTrigger>
-                    <TabsTrigger value="cancelled" className="flex items-center gap-1 px-3 py-1 text-sm data-[state=active]:bg-dc-teal data-[state=active]:text-white">
+                    <TabsTrigger value="cancelled" className="flex items-center gap-1 px-3 py-1 text-sm">
                       Cancelled
                       <span className="px-1.5 py-0.5 text-xs bg-background rounded-full min-w-[18px] text-center">
                         {counts.cancelled}
@@ -171,37 +173,37 @@ const CampaignsPage: React.FC = () => {
             ) : (
               // Desktop: Grid layout
               <TabsList className="grid w-full grid-cols-6">
-                <TabsTrigger value="all" className="flex items-center gap-2 data-[state=active]:bg-dc-teal data-[state=active]:text-white">
+                <TabsTrigger value="all" className="flex items-center gap-2">
                   All
                   <span className="px-2 py-1 text-xs bg-muted rounded-full min-w-[20px] text-center">
                     {counts.all}
                   </span>
                 </TabsTrigger>
-                <TabsTrigger value="draft" className="flex items-center gap-2 data-[state=active]:bg-dc-teal data-[state=active]:text-white">
+                <TabsTrigger value="draft" className="flex items-center gap-2">
                   Drafts
                   <span className="px-2 py-1 text-xs bg-muted rounded-full min-w-[20px] text-center">
                     {counts.draft}
                   </span>
                 </TabsTrigger>
-                <TabsTrigger value="published" className="flex items-center gap-2 data-[state=active]:bg-dc-teal data-[state=active]:text-white">
+                <TabsTrigger value="published" className="flex items-center gap-2">
                   Published
                   <span className="px-2 py-1 text-xs bg-muted rounded-full min-w-[20px] text-center">
                     {counts.published}
                   </span>
                 </TabsTrigger>
-                <TabsTrigger value="active" className="flex items-center gap-2 data-[state=active]:bg-dc-teal data-[state=active]:text-white">
+                <TabsTrigger value="active" className="flex items-center gap-2">
                   Active
                   <span className="px-2 py-1 text-xs bg-muted rounded-full min-w-[20px] text-center">
                     {counts.active}
                   </span>
                 </TabsTrigger>
-                <TabsTrigger value="completed" className="flex items-center gap-2 data-[state=active]:bg-dc-teal data-[state=active]:text-white">
+                <TabsTrigger value="completed" className="flex items-center gap-2">
                   Completed
                   <span className="px-2 py-1 text-xs bg-muted rounded-full min-w-[20px] text-center">
                     {counts.completed}
                   </span>
                 </TabsTrigger>
-                <TabsTrigger value="cancelled" className="flex items-center gap-2 data-[state=active]:bg-dc-teal data-[state=active]:text-white">
+                <TabsTrigger value="cancelled" className="flex items-center gap-2">
                   Cancelled
                   <span className="px-2 py-1 text-xs bg-muted rounded-full min-w-[20px] text-center">
                     {counts.cancelled}

@@ -17,6 +17,8 @@ export const useSponsorshipPayment = () => {
 
   const initiatePayment = useMutation({
     mutationFn: async ({ sponsorshipId, amount, campaignTitle }: InitiatePaymentParams) => {
+      console.log('Initiating Stripe checkout for sponsorship:', sponsorshipId, 'Amount:', amount);
+
       // Pre-open blank tab synchronously to avoid pop-up blockers
       const stripeTab = window.open('about:blank', '_blank');
 

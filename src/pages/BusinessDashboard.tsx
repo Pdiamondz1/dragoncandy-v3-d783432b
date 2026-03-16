@@ -4,7 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { BarChart3, Users, Target, Plus, DollarSign } from 'lucide-react';
+import { BarChart3, Users, Target, Flame, DollarSign } from 'lucide-react';
 import { useSponsorshipProposals } from '@/hooks/useSponsorshipProposals';
 import SponsorshipProposalCard from '@/components/campaigns/SponsorshipProposalCard';
 import { BusinessDashboardSideFeed } from '@/components/dragon-feed/BusinessDashboardSideFeed';
@@ -45,19 +45,19 @@ const BusinessDashboard = () => {
     {
       title: "View Campaigns",
       description: "Manage your active and past campaigns",
-      icon: <Target className="h-6 w-6 text-dc-teal" />,
+      icon: <Target className="h-6 w-6 text-blue-600" />,
       action: () => navigate('/dashboard/business/campaigns')
     },
     {
       title: "Browse Creators",
       description: "Discover talented content creators",
-      icon: <Users className="h-6 w-6 text-dc-teal" />,
+      icon: <Users className="h-6 w-6 text-green-600" />,
       action: () => navigate('/dashboard/business/creators')
     },
     {
       title: "View Analytics",
       description: "Track your campaign performance",
-      icon: <BarChart3 className="h-6 w-6 text-dc-teal" />,
+      icon: <BarChart3 className="h-6 w-6 text-purple-600" />,
       action: () => navigate('/dashboard/analytics')
     }
   ];
@@ -91,55 +91,58 @@ const BusinessDashboard = () => {
         {/* Main Content Area */}
         <div className="flex-1 overflow-y-auto p-8">
           <div className="max-w-6xl mx-auto space-y-12">
-
-          {/* Pink Welcome Header */}
-          <div className="bg-dc-pink-bg -mx-8 -mt-8 px-8 pt-6 pb-6 mb-6">
-            <h1 className="text-xl font-extrabold text-dc-teal uppercase tracking-wide text-center">
-              Welcome Back, {profile.business_name}!
-            </h1>
-            <p className="text-sm text-[#111111] text-center mt-1">Create content and drive revenue</p>
-          </div>
-
+          
           {/* Ask Bar */}
           <div className="pt-4">
             <AskBar onClick={openModal} userRole="business_client" />
           </div>
-
+          
           {/* Review Prompts */}
           <RatingPromptManager />
+          
+          {/* Welcome Header */}
+          <div className="text-center space-y-4">
+            <h1 className="text-4xl font-bold text-gray-900">
+              Welcome back, {profile.business_name}!
+            </h1>
+            <p className="text-xl text-gray-600">
+              Ready to create amazing content with talented creators?
+            </p>
+          </div>
 
           {/* Create Campaign CTA - DragonDash Branded */}
           <div className="text-center">
-            <Card className="max-w-2xl mx-auto border-2 border-dc-teal rounded-3xl bg-white shadow-sm">
+            <Card className="max-w-2xl mx-auto bg-gradient-to-br from-orange-50 via-pink-50 to-red-50 border-pink-300 shadow-lg">
               <CardContent className="p-8">
                 <div className="space-y-6">
-                  {/* Plus Icon */}
-                  <div className="w-16 h-16 bg-dc-teal rounded-full flex items-center justify-center mx-auto shadow-lg">
-                    <Plus className="w-8 h-8 text-white" />
+                  {/* Flame Icon */}
+                  <div className="w-16 h-16 bg-gradient-to-br from-orange-500 to-pink-600 rounded-full flex items-center justify-center mx-auto shadow-lg">
+                    <Flame className="w-8 h-8 text-white" />
                   </div>
-
+                  
                   {/* Title & Subtitle */}
                   <div>
-                    <h2 className="text-3xl font-bold text-[#111111] mb-1">
+                    <h2 className="text-3xl font-bold bg-gradient-to-r from-orange-600 to-pink-600 bg-clip-text text-transparent mb-1">
                       DragonDash
                     </h2>
                     <p className="text-lg text-gray-700 font-medium">
                       Fast Content, On Demand
                     </p>
                   </div>
-
+                  
                   {/* Description */}
                   <p className="text-gray-600">
                     Need content in hours, not days? Choose your delivery speed and let our creators deliver quality content fast.
                   </p>
-
+                  
                   {/* CTA Button */}
-                  <Button
-                    size="lg"
-                    className="bg-dc-teal text-white rounded-full hover:bg-dc-teal-dark px-8 py-3"
+                  <Button 
+                    size="lg" 
+                    className="bg-gradient-to-r from-orange-500 to-pink-600 hover:from-orange-600 hover:to-pink-700 text-white px-8 py-3 shadow-lg"
                     onClick={() => navigate('/dashboard/business/campaigns/create')}
                   >
-                    DragonDash
+                    <Flame className="w-5 h-5 mr-2" />
+                    Start a DragonDash
                   </Button>
                 </div>
               </CardContent>
@@ -149,7 +152,7 @@ const BusinessDashboard = () => {
           {/* How It Works */}
           <div className="space-y-8">
             <div className="text-center">
-              <h2 className="text-3xl font-extrabold text-dc-teal uppercase mb-4">How It Works</h2>
+              <h2 className="text-3xl font-bold text-gray-900 mb-4">How It Works</h2>
               <p className="text-gray-600">Simple steps to launch your next successful campaign</p>
             </div>
             
@@ -157,7 +160,7 @@ const BusinessDashboard = () => {
               {howItWorksSteps.map((step, index) => (
                 <Card key={index} className="text-center hover:shadow-lg transition-shadow">
                   <CardContent className="p-6">
-                    <div className="w-12 h-12 bg-dc-teal text-white rounded-full flex items-center justify-center mx-auto mb-4 text-lg font-bold">
+                    <div className="w-12 h-12 bg-pink-600 text-white rounded-full flex items-center justify-center mx-auto mb-4 text-lg font-bold">
                       {step.number}
                     </div>
                     <h3 className="text-lg font-semibold text-gray-900 mb-2">
@@ -175,10 +178,10 @@ const BusinessDashboard = () => {
           {/* Sponsorship Proposals Section */}
           {pendingProposals.length > 0 && (
             <div className="space-y-6">
-              <Card className="border-2 border-dc-teal bg-white">
+              <Card className="border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <DollarSign className="h-5 w-5 text-dc-teal" />
+                    <DollarSign className="h-5 w-5 text-blue-600" />
                     Sponsorship Proposals ({pendingProposals.length})
                   </CardTitle>
                 </CardHeader>
@@ -213,13 +216,13 @@ const BusinessDashboard = () => {
           {/* Quick Actions */}
           <div className="space-y-8">
             <div className="text-center">
-              <h2 className="text-3xl font-extrabold text-dc-teal uppercase mb-4">Quick Actions</h2>
-              <p className="text-gray-600 text-center">Manage your campaigns and discover new opportunities</p>
+              <h2 className="text-3xl font-bold text-gray-900 mb-4">Quick Actions</h2>
+              <p className="text-gray-600">Manage your campaigns and discover new opportunities</p>
             </div>
-
+            
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {quickActions.map((action, index) => (
-                <Card key={index} className="border-2 border-dc-teal rounded-2xl hover:shadow-md cursor-pointer" onClick={action.action}>
+                <Card key={index} className="hover:shadow-lg transition-shadow cursor-pointer" onClick={action.action}>
                   <CardContent className="p-6">
                     <div className="flex items-center space-x-4">
                       <div className="flex-shrink-0">

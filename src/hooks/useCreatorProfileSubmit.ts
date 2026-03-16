@@ -82,10 +82,14 @@ export const useCreatorProfileSubmit = () => {
         avatar_url: avatarUrl,
         skills: selectedSkills,
         allow_portfolio_in_feed: formData.allow_portfolio_in_feed,
-        updated_at: new Date().toISOString(),
-        portfolio_urls: portfolioUrls,
-        ...(!isUpdate && { is_completed: true }),
+        updated_at: new Date().toISOString()
       };
+
+      // Add portfolio URLs for all profiles and is_completed only for new profiles
+      (profileData as any).portfolio_urls = portfolioUrls;
+      if (!isUpdate) {
+        (profileData as any).is_completed = true;
+      }
 
       // Save profile data
       const { error } = isUpdate

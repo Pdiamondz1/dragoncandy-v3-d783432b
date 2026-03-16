@@ -353,7 +353,9 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, showProgress, onMes
                     <ProjectFileUpload
                       campaignId={project.campaign_id}
                       campaignTitle={project.campaigns.title}
-                      onUploadComplete={() => {}}
+                      onUploadComplete={() => {
+                        console.log('Upload completed for campaign:', project.campaign_id);
+                      }}
                     />
                     <Button 
                       size="sm" 

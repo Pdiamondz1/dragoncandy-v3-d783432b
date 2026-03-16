@@ -145,7 +145,7 @@ const BusinessProfileSetup = () => {
   };
 
   return (
-    <div className="min-h-screen bg-dc-gray py-8">
+    <div className="min-h-screen bg-pink-50 py-8">
       <div className="max-w-2xl mx-auto px-4">
         {/* Header */}
         <div className="text-center mb-8 relative">
@@ -156,20 +156,20 @@ const BusinessProfileSetup = () => {
           >
             Logout
           </Button>
-          <div className="rounded-full bg-dc-teal/15 p-3 mx-auto mb-4 w-16 h-16 flex items-center justify-center">
-            <Sparkles className="text-dc-teal w-8 h-8" />
+          <div className="rounded-full bg-pink-100 p-3 mx-auto mb-4 w-16 h-16 flex items-center justify-center">
+            <Sparkles className="text-pink-600 w-8 h-8" />
           </div>
-          <h1 className="text-3xl font-extrabold text-dc-teal uppercase mb-2">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
             Complete Your Business Profile
           </h1>
-          <p className="text-[#555555]">
+          <p className="text-gray-600">
             Tell us about your business to get started with DragonCandy
           </p>
         </div>
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-dc-teal font-semibold">Business Information</CardTitle>
+            <CardTitle>Business Information</CardTitle>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
@@ -201,7 +201,7 @@ const BusinessProfileSetup = () => {
               {/* Submit Button */}
               <Button
                 type="submit"
-                className="w-full bg-dc-teal hover:bg-dc-teal-dark rounded-full"
+                className="w-full bg-pink-600 hover:bg-pink-700"
                 disabled={loading || !formData.business_name || !formData.industry}
               >
                 {loading ? 'Creating Profile...' : 'Complete Profile Setup'}

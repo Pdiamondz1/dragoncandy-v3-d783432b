@@ -3,8 +3,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { useEmailNotifications } from './useEmailNotifications';
 
-type CollaborationCampaign = { id: string; title: string; user_id: string };
-
 export const useProjectComplete = () => {
   const queryClient = useQueryClient();
   const { sendNotification } = useEmailNotifications();
@@ -101,6 +99,7 @@ export const useProjectComplete = () => {
             payoutSuccess = true;
             payoutAmount = payoutResult.amount || 0;
             payoutMethod = payoutResult.method || 'pending_balance';
+            console.log('Payout released successfully:', payoutResult);
           }
         } catch (payoutErr) {
           console.error('Payout error:', payoutErr);
@@ -108,7 +107,7 @@ export const useProjectComplete = () => {
         }
 
         // Send completion confirmation emails to both parties with payment info
-        const campaignData = collaboration.campaigns as unknown as CollaborationCampaign;
+        const campaignData = collaboration.campaigns as any;
 
         // Email to business owner (payer)
         await sendNotification(
@@ -154,8 +153,8 @@ export const useProjectComplete = () => {
           '', // Will fetch from profile
           '', // Will fetch from profile
           {
-            recipientUserId: (collaboration.campaigns as unknown as CollaborationCampaign).user_id,
-            campaignTitle: (collaboration.campaigns as unknown as CollaborationCampaign).title,
+            recipientUserId: (collaboration.campaigns as any).user_id,
+            campaignTitle: (collaboration.campaigns as any).title,
             requesterName: creatorProfile.creator_name,
             actionUrl: `${window.location.origin}/dashboard/business/projects?highlight=${collaborationId}`
           }
@@ -168,7 +167,7 @@ export const useProjectComplete = () => {
           creatorProfile.creator_name,
           {
             recipientUserId: collaboration.creator_id,
-            campaignTitle: (collaboration.campaigns as unknown as CollaborationCampaign).title,
+            campaignTitle: (collaboration.campaigns as any).title,
             requesterName: 'Business Owner',
             actionUrl: `${window.location.origin}/dashboard/creator/projects?highlight=${collaborationId}`
           }
@@ -177,7 +176,7 @@ export const useProjectComplete = () => {
 
       return data;
     },
-    onSuccess: (data: { status?: string; payoutSuccess?: boolean; payoutAmount?: number }) => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ['projects'] });
       queryClient.invalidateQueries({ queryKey: ['creator-projects'] });
       queryClient.invalidateQueries({ queryKey: ['business-projects'] });

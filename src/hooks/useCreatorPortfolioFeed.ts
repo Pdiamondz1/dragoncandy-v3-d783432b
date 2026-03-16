@@ -19,6 +19,7 @@ const getSignedUrl = async (path: string): Promise<string | null> => {
     .from('profile-assets')
     .createSignedUrl(path, 3600);
   if (error || !data?.signedUrl) {
+    if (import.meta.env.DEV) console.error('❌ DragonFeed: Signed URL error for', path, error);
     return null;
   }
   const url = data.signedUrl;
@@ -67,6 +68,17 @@ const createSmartFeed = (mediaItems: PortfolioMedia[]): PortfolioMedia[] => {
   // Limit total feed length
   const limitedFeed = finalShuffled.slice(0, MAX_FEED_LENGTH);
   
+  if (import.meta.env.DEV) {
+  if (import.meta.env.DEV) {
+    console.log('🧠 Smart Feed Logic:', {
+      originalItems: mediaItems.length,
+      duplicationFactor,
+      distributedItems: distributedItems.length,
+      finalFeedLength: limitedFeed.length
+    });
+  }
+  }
+
   return limitedFeed;
 };
 
@@ -79,7 +91,8 @@ export const useCreatorPortfolioFeed = () => {
     const fetchPortfolioMedia = async () => {
       try {
         setLoading(true);
-
+        console.log('🎥 DragonFeed: Starting portfolio media fetch...');
+        
         // Fetch creator profiles with portfolio URLs who allow DragonFeed display
         const { data: creators, error: fetchError } = await supabase
           .from('creator_profiles')
@@ -94,7 +107,10 @@ export const useCreatorPortfolioFeed = () => {
           throw fetchError;
         }
 
+        console.log('📊 DragonFeed: Found creators:', creators?.length || 0, creators);
+
         if (!creators || creators.length === 0) {
+          console.log('⚠️ DragonFeed: No eligible creators found');
           setPortfolioMedia([]);
           return;
         }
@@ -125,6 +141,8 @@ export const useCreatorPortfolioFeed = () => {
           .filter((v): v is PortfolioMedia => !!v);
 
 
+        console.log('🎬 DragonFeed: Total media items before processing:', mediaItems.length);
+
         // Smart content distribution algorithm
         const processedMedia = createSmartFeed(mediaItems);
         // Progressive load: show a small subset immediately, then full feed next tick
@@ -133,6 +151,8 @@ export const useCreatorPortfolioFeed = () => {
         if (processedMedia.length > initialCount) {
           setTimeout(() => setPortfolioMedia(processedMedia), 0);
         }
+        if (import.meta.env.DEV) console.log('🎯 DragonFeed: Final portfolio media set:', processedMedia.length, 'items');
+        
       } catch (err) {
         console.error('💥 DragonFeed: Critical error:', err);
         setError(err instanceof Error ? err.message : 'Failed to load portfolio media');

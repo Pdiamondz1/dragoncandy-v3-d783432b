@@ -19,6 +19,7 @@ export const useUserPresence = () => {
   const query = useQuery({
     queryKey: ['user-presence'],
     queryFn: async () => {
+      console.log('Fetching user presence data');
       const { data, error } = await supabase
         .from('user_presence')
         .select('id, user_id, status, last_seen, updated_at')
@@ -38,6 +39,7 @@ export const useUserPresence = () => {
   useEffect(() => {
     if (!user) return;
 
+    console.log('Setting up presence subscription');
     const channel = supabase
       .channel('user-presence-changes')
       .on(
@@ -47,13 +49,15 @@ export const useUserPresence = () => {
           schema: 'public',
           table: 'user_presence'
         },
-        () => {
+        (payload) => {
+          console.log('Presence update received:', payload);
           queryClient.invalidateQueries({ queryKey: ['user-presence'] });
         }
       )
       .subscribe();
 
     return () => {
+      console.log('Cleaning up presence subscription');
       supabase.removeChannel(channel);
     };
   }, [user, queryClient]);
@@ -69,6 +73,7 @@ export const useUpdatePresence = () => {
     mutationFn: async (status: 'online' | 'offline' | 'busy' | 'away') => {
       if (!user) throw new Error('User not authenticated');
       
+      console.log('Updating presence status to:', status);
       const { data, error } = await supabase
         .from('user_presence')
         .upsert({

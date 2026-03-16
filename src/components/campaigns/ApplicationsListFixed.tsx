@@ -51,6 +51,14 @@ const ApplicationsListFixed: React.FC<ApplicationsListFixedProps> = ({ campaignI
   // Only consider it sponsored if campaign is open for sponsorship AND has an accepted sponsor
   const isSponsored = (campaign?.open_for_sponsorship && hasActiveSponsor) || false;
 
+  console.log('ApplicationsListFixed: Rendering with data:', {
+    campaignId,
+    applicationsCount: applications.length,
+    isLoading,
+    error: error?.message,
+    applications
+  });
+
   if (isLoading) {
     return (
       <Card>

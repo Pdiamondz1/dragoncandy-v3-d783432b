@@ -70,7 +70,7 @@ const BrandSettings = () => {
     <DashboardLayout userRole="brand">
       <div className="p-8 max-w-4xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-4xl font-extrabold text-dc-teal uppercase mb-2">Brand Settings</h1>
+          <h1 className="text-4xl font-bold mb-2">Brand Settings</h1>
           <p className="text-muted-foreground">
             Manage your brand profile and preferences
           </p>
@@ -79,7 +79,7 @@ const BrandSettings = () => {
         <div className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-dc-teal font-semibold">
+              <CardTitle className="flex items-center gap-2">
                 <Building2 className="h-5 w-5" />
                 Brand Profile
               </CardTitle>
@@ -131,7 +131,7 @@ const BrandSettings = () => {
                   />
                 </div>
                 
-                <Button type="submit" className="bg-dc-teal text-white rounded-full hover:bg-dc-teal-dark" disabled={loading}>
+                <Button type="submit" disabled={loading}>
                   {loading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -147,7 +147,7 @@ const BrandSettings = () => {
 
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-dc-teal font-semibold">
+              <CardTitle className="flex items-center gap-2">
                 <DollarSign className="h-5 w-5" />
                 Sponsorship Budget
               </CardTitle>
@@ -171,7 +171,7 @@ const BrandSettings = () => {
                   </p>
                 </div>
                 
-                <Button type="submit" className="bg-dc-teal text-white rounded-full hover:bg-dc-teal-dark" disabled={loading}>
+                <Button type="submit" disabled={loading}>
                   {loading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -187,7 +187,7 @@ const BrandSettings = () => {
 
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-dc-teal font-semibold">
+              <CardTitle className="flex items-center gap-2">
                 <Settings className="h-5 w-5" />
                 Notification Preferences
               </CardTitle>

@@ -15,6 +15,7 @@ export default function LandingPage() {
   // Redirect authenticated users to their dashboard
   useEffect(() => {
     if (!loading && user) {
+      console.log('🔄 LandingPage: Authenticated user detected, redirecting to dashboard...');
       navigate('/', { replace: true });
     }
   }, [user, loading, navigate]);

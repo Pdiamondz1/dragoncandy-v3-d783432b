@@ -24,25 +24,25 @@ const BrandDashboard = () => {
     {
       title: "Active Sponsorships",
       value: statsLoading ? "..." : stats?.activeSponsorships.toString() || "0",
-      icon: <Target className="h-5 w-5 text-dc-teal" />,
+      icon: <Target className="h-5 w-5 text-primary" />,
       description: "Currently sponsored campaigns"
     },
     {
       title: "Campaigns Discovered",
       value: statsLoading ? "..." : stats?.campaignsDiscovered.toString() || "0",
-      icon: <Search className="h-5 w-5 text-dc-teal" />,
+      icon: <Search className="h-5 w-5 text-primary" />,
       description: "Available opportunities"
     },
     {
       title: "Creators Connected",
       value: statsLoading ? "..." : stats?.creatorsConnected.toString() || "0",
-      icon: <Users className="h-5 w-5 text-dc-teal" />,
+      icon: <Users className="h-5 w-5 text-primary" />,
       description: "In your network"
     },
     {
       title: "Marketing ROI",
       value: statsLoading ? "..." : `${stats?.marketingROI || 0}%`,
-      icon: <TrendingUp className="h-5 w-5 text-dc-teal" />,
+      icon: <TrendingUp className="h-5 w-5 text-primary" />,
       description: "Average return"
     }
   ];
@@ -51,26 +51,23 @@ const BrandDashboard = () => {
     {
       title: "Discover Campaigns",
       description: "Browse restaurant campaigns seeking brand partnerships",
-      icon: <Search className="h-6 w-6 text-dc-teal" />,
+      icon: <Search className="h-6 w-6 text-blue-600" />,
       action: () => navigate('/dashboard/brand/discover-campaigns'),
-      buttonText: "Browse Campaigns",
-      primary: true
+      buttonText: "Browse Campaigns"
     },
     {
       title: "Creator Directory",
       description: "Find local content creators for brand collaborations",
-      icon: <Users className="h-6 w-6 text-dc-teal" />,
+      icon: <Users className="h-6 w-6 text-green-600" />,
       action: () => navigate('/dashboard/brand/creators'),
-      buttonText: "Browse Creators",
-      primary: false
+      buttonText: "Browse Creators"
     },
     {
       title: "Analytics & ROI",
       description: "Track sponsorship performance and brand awareness",
-      icon: <BarChart3 className="h-6 w-6 text-dc-teal" />,
+      icon: <BarChart3 className="h-6 w-6 text-purple-600" />,
       action: () => navigate('/dashboard/brand/analytics'),
-      buttonText: "View Analytics",
-      primary: false
+      buttonText: "View Analytics"
     }
   ];
 
@@ -101,17 +98,19 @@ const BrandDashboard = () => {
     <DashboardLayout userRole="brand">
       <div className="flex-1 p-8">
         <div className="max-w-7xl mx-auto space-y-12">
-
-          {/* Pink Welcome Header */}
-          <div className="bg-dc-pink-bg -mx-8 -mt-8 px-8 pt-6 pb-6 mb-6">
-            <h1 className="text-xl font-extrabold text-dc-teal uppercase tracking-wide text-center">
-              Welcome Back, {profile.business_name || 'Brand Partner'}!
-            </h1>
-            <p className="text-sm text-[#111111] text-center mt-1">Connect with creators and amplify your brand</p>
-          </div>
-
+          
           {/* Ask Bar */}
           <AskBar onClick={openModal} userRole="brand" />
+          
+          {/* Welcome Header */}
+          <div className="text-center space-y-4">
+            <h1 className="text-4xl font-bold text-foreground">
+              Welcome back, {profile.business_name || 'Brand Partner'}!
+            </h1>
+            <p className="text-xl text-muted-foreground">
+              Connect with local restaurants and creators to amplify your brand
+            </p>
+          </div>
 
           {/* Quick Stats */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -119,13 +118,13 @@ const BrandDashboard = () => {
               <Card key={index} className="hover:shadow-lg transition-shadow">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between mb-2">
-                    <div className="p-2 bg-dc-teal/10 rounded-lg">
+                    <div className="p-2 bg-primary/10 rounded-lg">
                       {stat.icon}
                     </div>
                   </div>
                   <div className="space-y-1">
                     <p className="text-sm text-muted-foreground">{stat.title}</p>
-                    <p className="text-3xl font-extrabold text-dc-teal">{stat.value}</p>
+                    <p className="text-3xl font-bold text-foreground">{stat.value}</p>
                     <p className="text-xs text-muted-foreground">{stat.description}</p>
                   </div>
                 </CardContent>
@@ -135,23 +134,23 @@ const BrandDashboard = () => {
 
           {/* Main CTA - Discover Campaigns */}
           <div className="text-center">
-            <Card className="max-w-2xl mx-auto border-2 border-dc-teal rounded-3xl bg-white shadow-sm">
+            <Card className="max-w-2xl mx-auto bg-gradient-to-br from-primary/10 to-accent/10 border-primary/20">
               <CardContent className="p-8">
                 <div className="space-y-6">
-                  <div className="w-16 h-16 bg-dc-teal rounded-full flex items-center justify-center mx-auto">
-                    <Sparkles className="w-8 h-8 text-white" />
+                  <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center mx-auto">
+                    <Sparkles className="w-8 h-8 text-primary-foreground" />
                   </div>
                   <div>
-                    <h2 className="text-2xl font-bold text-[#111111] mb-2">
+                    <h2 className="text-2xl font-bold text-foreground mb-2">
                       Start Discovering Opportunities
                     </h2>
                     <p className="text-muted-foreground">
                       Find restaurant campaigns and local creators that align with your brand values
                     </p>
                   </div>
-                  <Button
-                    size="lg"
-                    className="bg-dc-teal text-white rounded-full px-8 hover:bg-dc-teal-dark"
+                  <Button 
+                    size="lg" 
+                    className="px-8 py-3"
                     onClick={() => navigate('/dashboard/brand/discover-campaigns')}
                   >
                     <Search className="w-5 h-5 mr-2" />
@@ -165,15 +164,15 @@ const BrandDashboard = () => {
           {/* How It Works */}
           <div className="space-y-8">
             <div className="text-center">
-              <h2 className="text-3xl font-extrabold text-dc-teal uppercase mb-4">How Brand Sponsorship Works</h2>
+              <h2 className="text-3xl font-bold text-foreground mb-4">How Brand Sponsorship Works</h2>
               <p className="text-muted-foreground">Simple steps to amplify your brand through local partnerships</p>
             </div>
-
+            
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {howItWorksSteps.map((step, index) => (
                 <Card key={index} className="text-center hover:shadow-lg transition-shadow">
                   <CardContent className="p-6">
-                    <div className="w-12 h-12 bg-dc-teal text-white rounded-full flex items-center justify-center mx-auto mb-4 text-lg font-bold">
+                    <div className="w-12 h-12 bg-primary text-primary-foreground rounded-full flex items-center justify-center mx-auto mb-4 text-lg font-bold">
                       {step.number}
                     </div>
                     <h3 className="text-lg font-semibold text-foreground mb-2">
@@ -191,10 +190,10 @@ const BrandDashboard = () => {
           {/* Quick Actions */}
           <div className="space-y-8">
             <div className="text-center">
-              <h2 className="text-3xl font-extrabold text-dc-teal uppercase mb-4">Quick Actions</h2>
+              <h2 className="text-3xl font-bold text-foreground mb-4">Quick Actions</h2>
               <p className="text-muted-foreground">Manage your brand partnerships and discover new opportunities</p>
             </div>
-
+            
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {quickActions.map((action, index) => (
                 <Card key={index} className="hover:shadow-lg transition-shadow">
@@ -213,22 +212,13 @@ const BrandDashboard = () => {
                           </p>
                         </div>
                       </div>
-                      {action.primary ? (
-                        <Button
-                          className="w-full rounded-full bg-dc-teal text-white hover:bg-dc-teal-dark"
-                          onClick={action.action}
-                        >
-                          {action.buttonText}
-                        </Button>
-                      ) : (
-                        <Button
-                          variant="outline"
-                          className="w-full rounded-full"
-                          onClick={action.action}
-                        >
-                          {action.buttonText}
-                        </Button>
-                      )}
+                      <Button 
+                        variant="outline" 
+                        className="w-full"
+                        onClick={action.action}
+                      >
+                        {action.buttonText}
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -237,9 +227,9 @@ const BrandDashboard = () => {
           </div>
 
           {/* Budget Overview */}
-          <Card className="border-2 border-dc-teal">
+          <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-dc-teal font-semibold">
+              <CardTitle className="flex items-center gap-2">
                 <DollarSign className="h-5 w-5" />
                 Marketing Budget Overview
               </CardTitle>
@@ -276,7 +266,7 @@ const BrandDashboard = () => {
                   </div>
                   <div className="space-y-2">
                     <p className="text-sm text-muted-foreground">Available</p>
-                    <p className="text-2xl font-bold text-dc-teal">
+                    <p className="text-2xl font-bold text-primary">
                       ${stats?.availableBudget.toLocaleString() || 0}
                     </p>
                     <p className="text-xs text-muted-foreground">Ready to allocate</p>

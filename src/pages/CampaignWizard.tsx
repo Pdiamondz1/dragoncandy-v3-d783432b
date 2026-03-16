@@ -46,7 +46,7 @@ const CampaignWizard: React.FC = () => {
 
   return (
     <DashboardLayout userRole="business_client">
-      <div className="flex-1 p-6 bg-dc-gray">
+      <div className="flex-1 p-6 bg-gray-50">
         <div className="max-w-4xl mx-auto">
           <CampaignWizardHeader currentStep={currentStep} steps={steps} />
 
@@ -79,13 +79,13 @@ const CampaignWizard: React.FC = () => {
               <Card className="mb-6">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <div className="w-8 h-8 bg-dc-teal rounded-full flex items-center justify-center text-white text-sm font-semibold">
+                    <div className="w-8 h-8 bg-gray-900 rounded-full flex items-center justify-center text-white text-sm font-semibold">
                       2
                     </div>
                     Step 2: AI Campaign Analysis
-                    <Brain className="h-5 w-5 text-dc-teal ml-2" />
+                    <Brain className="h-5 w-5 text-blue-500 ml-2" />
                   </CardTitle>
-                  <p className="text-muted-foreground text-sm">
+                  <p className="text-gray-600 text-sm">
                     DragonCandy AI has analyzed your campaign goal and generated a comprehensive strategy
                   </p>
                 </CardHeader>

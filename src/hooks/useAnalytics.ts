@@ -33,6 +33,10 @@ export const useAnalytics = () => {
         .from('analytics_events')
         .insert([analyticsEvent]);
 
+      // Log to console in development
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Analytics Event:', analyticsEvent);
+      }
     } catch (error) {
       console.error('Failed to track analytics event:', error);
     }

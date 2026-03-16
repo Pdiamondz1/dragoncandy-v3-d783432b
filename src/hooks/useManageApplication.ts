@@ -16,6 +16,8 @@ export const useManageApplication = () => {
       applicationId: string;
       status: 'accepted' | 'rejected' | 'counter_offered';
     }) => {
+      console.log('Updating application status:', { applicationId, status });
+      
       const { data, error } = await supabase
         .from('campaign_applications')
         .update({ status })
@@ -31,6 +33,7 @@ export const useManageApplication = () => {
       // Note: Collaboration is NOT created here anymore.
       // It will be created after the restaurant pays escrow (verify-campaign-escrow).
 
+      console.log('Updated application:', data);
       return data;
     },
     onSuccess: async (data) => {

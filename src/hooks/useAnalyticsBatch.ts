@@ -33,6 +33,8 @@ export const useAnalyticsBatch = () => {
     batchQueue.current = [];
 
     try {
+      console.log(`Flushing ${eventsToSend.length} analytics events`);
+      
       const insertData: AnalyticsEventInsert[] = eventsToSend.map(event => ({
         event_type: event.event_type,
         event_data: event.event_data || {},
@@ -49,6 +51,8 @@ export const useAnalyticsBatch = () => {
         console.error('Failed to flush analytics batch:', error);
         // Re-add failed events back to queue for retry
         batchQueue.current.unshift(...eventsToSend);
+      } else {
+        console.log('Successfully flushed analytics batch');
       }
     } catch (error) {
       console.error('Error flushing analytics batch:', error);

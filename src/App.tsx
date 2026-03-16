@@ -66,6 +66,7 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: (failureCount, error) => {
+        console.error('🔄 Query failed:', error);
         return failureCount < 2; // Retry up to 2 times
       },
       staleTime: 5 * 60 * 1000, // 5 minutes
@@ -74,6 +75,8 @@ const queryClient = new QueryClient({
 });
 
 const App = () => {
+  console.log('🚀 App: Starting DragonCandy application');
+  
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
@@ -220,7 +223,7 @@ const App = () => {
                     </ProtectedRoute>
                   } />
                   
-                  {/* Business campaign details view */}
+                  {/* Restaurant Campaign Details (different from creator campaign details) */}
                   <Route path="/dashboard/business/campaigns/:id/details" element={
                     <ProtectedRoute>
                       <BusinessRoute>

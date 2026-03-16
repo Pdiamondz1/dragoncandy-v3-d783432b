@@ -45,7 +45,7 @@ const CreatorProfileSetup = () => {
   };
 
   return (
-    <div className="min-h-screen bg-dc-gray py-8">
+    <div className="min-h-screen bg-pink-50 py-8">
       <div className="max-w-2xl mx-auto px-4">
         {/* Header with logout button */}
         <div className="text-center mb-8 relative">
@@ -61,7 +61,7 @@ const CreatorProfileSetup = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-dc-teal font-semibold">Creator Information</CardTitle>
+            <CardTitle>Creator Information</CardTitle>
           </CardHeader>
           <CardContent>
             <CreatorProfileSetupForm

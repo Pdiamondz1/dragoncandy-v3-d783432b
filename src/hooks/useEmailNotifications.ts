@@ -73,6 +73,7 @@ export const useEmailNotifications = () => {
         return { success: false, error };
       }
 
+      console.log('Notification email sent successfully:', result);
       return { success: true, data: result };
     } catch (error) {
       console.error('Error sending notification email:', error);
@@ -100,6 +101,7 @@ export const useEmailNotifications = () => {
         return { success: false, error };
       }
 
+      console.log('Welcome email sent successfully:', data);
       return { success: true, data };
     } catch (error) {
       console.error('Error sending welcome email:', error);

@@ -28,7 +28,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
     
     if (message.read_at) {
       return (
-        <CheckCheck className="h-3 w-3 text-white/70" />
+        <CheckCheck className="h-3 w-3 text-blue-500" />
       );
     } else {
       return (
@@ -54,10 +54,10 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
         isOwn ? "items-end" : "items-start"
       )}>
         <div className={cn(
-          "rounded-full px-5 py-2 break-words",
-          isOwn
-            ? "bg-dc-teal text-white"
-            : "bg-dc-pink text-[#111111]"
+          "rounded-lg px-4 py-2 break-words",
+          isOwn 
+            ? "bg-blue-600 text-white" 
+            : "bg-gray-100 text-gray-900"
         )}>
           <p className="text-sm whitespace-pre-wrap">{message.content}</p>
         </div>

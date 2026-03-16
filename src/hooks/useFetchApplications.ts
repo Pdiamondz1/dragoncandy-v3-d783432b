@@ -9,7 +9,10 @@ export const useCampaignApplications = (campaignId: string) => {
   return useQuery({
     queryKey: ['campaign-applications', campaignId],
     queryFn: async () => {
+      console.log('📋 useCampaignApplications: Fetching applications for campaign:', campaignId);
+      
       if (!campaignId) {
+        console.warn('📋 useCampaignApplications: No campaignId provided');
         return [];
       }
 
@@ -25,7 +28,10 @@ export const useCampaignApplications = (campaignId: string) => {
         throw applicationsError;
       }
 
+      console.log('📋 useCampaignApplications: Raw applications:', applications);
+
       if (!applications || applications.length === 0) {
+        console.log('📋 useCampaignApplications: No applications found');
         return [];
       }
 
@@ -40,6 +46,7 @@ export const useCampaignApplications = (campaignId: string) => {
               .single();
 
             if (profileError) {
+              console.warn('⚠️ useCampaignApplications: Creator profile not found for:', app.creator_id, profileError);
               // Return application without profile data
               return {
                 ...app,
@@ -77,6 +84,7 @@ export const useCampaignApplications = (campaignId: string) => {
         })
       );
 
+      console.log('✅ useCampaignApplications: Enriched applications:', enrichedApplications);
       return enrichedApplications as CampaignApplication[];
     },
     enabled: !!campaignId && !!user,
@@ -91,7 +99,10 @@ export const useCreatorApplications = () => {
   return useQuery({
     queryKey: ['creator-applications', user?.id],
     queryFn: async () => {
+      console.log('🎨 useCreatorApplications: Fetching applications for creator:', user?.id);
+      
       if (!user?.id) {
+        console.warn('🎨 useCreatorApplications: No user ID provided');
         return [];
       }
 
@@ -118,6 +129,7 @@ export const useCreatorApplications = () => {
       }
 
       if (!data || data.length === 0) {
+        console.log('🎨 useCreatorApplications: No applications found');
         return [];
       }
 
@@ -127,6 +139,8 @@ export const useCreatorApplications = () => {
           .map(app => app.campaign?.user_id)
           .filter(Boolean)
       )] as string[];
+
+      console.log('🎨 useCreatorApplications: Fetching business profiles for:', campaignOwnerIds);
 
       // Fetch all business profiles for these campaign owners in one query
       const { data: businessProfiles, error: businessError } = await supabase
@@ -143,6 +157,8 @@ export const useCreatorApplications = () => {
       const businessProfileMap = new Map(
         (businessProfiles || []).map(bp => [bp.user_id, bp])
       );
+
+      console.log('✅ useCreatorApplications: Fetched business profiles:', businessProfiles?.length || 0);
 
       // Fetch creator's own profile once and add it to all applications
       const { data: creatorProfile } = await supabase
@@ -173,6 +189,7 @@ export const useCreatorApplications = () => {
         } : undefined
       }));
 
+      console.log('✅ useCreatorApplications: Fetched creator applications with business profiles:', enrichedApplications);
       return enrichedApplications as CampaignApplication[];
     },
     enabled: !!user,

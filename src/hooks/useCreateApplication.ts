@@ -26,6 +26,15 @@ export const useCreateApplication = () => {
       portfolioFiles?: File[];
       relevantExperience?: string;
     }) => {
+      console.log('Creating application:', { 
+        campaignId, 
+        introMessage, 
+        proposedTimeline, 
+        proposedRate,
+        portfolioFiles: portfolioFiles?.length || 0,
+        relevantExperience
+      });
+      
       // For now, we'll store the application without portfolio files
       // Portfolio integration with Supabase storage would be implemented in a future iteration
       const { data, error } = await supabase
@@ -45,6 +54,7 @@ export const useCreateApplication = () => {
         throw error;
       }
 
+      console.log('Created application:', data);
       return data;
     },
     onSuccess: async (data) => {
