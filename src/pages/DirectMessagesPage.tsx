@@ -16,7 +16,7 @@ const DirectMessagesPage: React.FC = () => {
 
   return (
     <DashboardLayout userRole={userRole as 'business_client' | 'content_creator'}>
-      <div className="flex-1 p-6 bg-gradient-to-br from-background to-muted/20">
+      <div className="flex-1 p-6 bg-[#A8A8A0] min-h-screen overflow-x-hidden">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
           <div className="mb-8">

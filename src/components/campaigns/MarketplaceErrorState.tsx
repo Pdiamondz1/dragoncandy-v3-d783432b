@@ -8,7 +8,7 @@ import { Search } from 'lucide-react';
 const MarketplaceErrorState: React.FC = () => {
   return (
     <DashboardLayout userRole="content_creator">
-      <div className="flex-1 p-8">
+      <div className="flex-1 p-8 bg-[#A8A8A0] min-h-screen overflow-x-hidden">
         <div className="max-w-7xl mx-auto">
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12">

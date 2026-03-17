@@ -10,11 +10,15 @@ import { getDashboardHref, getSettingsHref, getMessagesHref } from '@/lib/navCon
 interface MobileTopNavProps {
   bgClass?: string;
   userRole?: UserRole;
+  showWelcome?: boolean;
+  displayName?: string;
 }
 
 export const MobileTopNav: React.FC<MobileTopNavProps> = ({
   bgClass = 'bg-background',
   userRole,
+  showWelcome = false,
+  displayName,
 }) => {
   const logout = useLogout();
 
@@ -27,6 +31,15 @@ export const MobileTopNav: React.FC<MobileTopNavProps> = ({
       <Link to="/">
         <img src={dragonCandyLogo} alt="DragonCandy" className="h-8" />
       </Link>
+
+      {showWelcome && displayName && (
+        <div className="flex-1 text-center px-2">
+          <p className="text-xs font-bold text-dc-teal uppercase leading-tight truncate">
+            Welcome Back, {displayName}
+          </p>
+          <p className="text-xs text-[#555555]">Create content and drive revenue</p>
+        </div>
+      )}
 
       <Sheet>
         <SheetTrigger asChild>

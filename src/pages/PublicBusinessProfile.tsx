@@ -122,7 +122,7 @@ const PublicBusinessProfile = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 py-8">
+      <div className="min-h-screen bg-[#A8A8A0] py-8">
         <div className="max-w-4xl mx-auto px-4">
           <div className="animate-pulse space-y-6">
             <div className="h-32 bg-gray-200 rounded-lg"></div>
@@ -135,7 +135,7 @@ const PublicBusinessProfile = () => {
 
   if (notFound || !profile) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-[#A8A8A0] flex items-center justify-center">
         <Card className="max-w-md mx-auto">
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Building2 className="h-12 w-12 text-gray-400 mb-4" />
@@ -155,7 +155,7 @@ const PublicBusinessProfile = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen bg-[#A8A8A0] py-8">
       <div className="max-w-4xl mx-auto px-4 space-y-6">
         {/* Header */}
         <Card>

@@ -27,7 +27,7 @@ const DirectConversationPage: React.FC = () => {
   if (!conversationId) {
     return (
       <DashboardLayout userRole={userRole as 'business_client' | 'content_creator'}>
-        <div className="flex-1 p-6">
+        <div className="flex-1 p-6 bg-[#A8A8A0] min-h-screen overflow-x-hidden">
           <div className="text-center">
             <p>Conversation not found</p>
             <Button onClick={() => {

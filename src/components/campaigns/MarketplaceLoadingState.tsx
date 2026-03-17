@@ -5,7 +5,7 @@ import DashboardLayout from '@/components/DashboardLayout';
 const MarketplaceLoadingState: React.FC = () => {
   return (
     <DashboardLayout userRole="content_creator">
-      <div className="flex-1 p-8">
+      <div className="flex-1 p-8 bg-[#A8A8A0] min-h-screen overflow-x-hidden">
         <div className="max-w-7xl mx-auto">
           <div className="animate-pulse space-y-6">
             <div className="h-8 bg-gray-200 rounded w-1/3"></div>

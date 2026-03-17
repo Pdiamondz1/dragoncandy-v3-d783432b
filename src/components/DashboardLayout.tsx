@@ -131,8 +131,12 @@ const DashboardLayoutInner: React.FC<DashboardLayoutProps> = ({ children, userRo
   const logout = useLogout();
   const { avatarUrl, displayName } = useProfileData();
   const isMobile = useIsMobile();
+  const location = useLocation();
   const { setUserRole } = useAIAssistantContext();
   const { isOpen: isAIChatOpen, openModal, closeModal } = useAIChatModal();
+
+  const topNavBgClass = userRole === 'business_client' ? 'bg-[#F9C8E0]' : 'bg-[#A8A8A0]';
+  const showWelcome = userRole === 'business_client' && location.pathname === '/dashboard/business';
 
   useEffect(() => {
     setUserRole(userRole);
@@ -159,7 +163,14 @@ const DashboardLayoutInner: React.FC<DashboardLayoutProps> = ({ children, userRo
 
         <SidebarInset className="flex-1">
           {/* Mobile top nav */}
-          {isMobile && <MobileTopNav userRole={userRole} />}
+          {isMobile && (
+            <MobileTopNav
+              userRole={userRole}
+              bgClass={topNavBgClass}
+              showWelcome={showWelcome}
+              displayName={displayName}
+            />
+          )}
 
           {/* Desktop header */}
           {!isMobile && (

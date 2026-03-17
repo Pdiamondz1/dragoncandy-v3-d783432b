@@ -29,7 +29,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ userRole }) =>
                 className="flex flex-col items-center -mt-4"
                 aria-label={item.label}
               >
-                <span className="bg-dc-teal rounded-full p-3 shadow-lg flex items-center justify-center">
+                <span className="bg-dc-teal rounded-full p-4 shadow-lg flex items-center justify-center">
                   <Icon className="h-6 w-6 text-white" />
                 </span>
               </Link>
