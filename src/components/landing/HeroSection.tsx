@@ -24,7 +24,7 @@ export const HeroSection: React.FC = () => {
         </Button>
         <Button
           variant="outline"
-          className="w-full rounded-full bg-white text-dc-pink-accent font-bold py-3 text-base border-gray-300 hover:bg-gray-50"
+          className="w-full rounded-full bg-white text-dc-pink-accent font-bold py-3 text-base border-2 border-gray-800 hover:bg-gray-50"
           onClick={() => navigate('/auth?mode=login')}
         >
           Learn More

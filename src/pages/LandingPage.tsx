@@ -21,12 +21,12 @@ export default function LandingPage() {
   }, [user, loading, navigate]);
 
   return (
-    <div className="min-h-screen bg-white relative">
+    <div className="min-h-screen bg-white relative overflow-x-hidden">
       {/* Creator Portfolio Feed - Behind main content */}
       <CreatorPortfolioFeed />
 
       {/* Main content — mobile-first, centered column */}
-      <div className="relative z-10 max-w-md mx-auto px-4">
+      <div className="relative z-10 max-w-md md:max-w-2xl lg:max-w-5xl mx-auto px-4 md:px-8">
         <Header />
 
         <main className="py-8">
