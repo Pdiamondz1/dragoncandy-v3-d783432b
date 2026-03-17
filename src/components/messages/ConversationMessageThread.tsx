@@ -60,7 +60,7 @@ const ConversationMessageThread: React.FC<ConversationMessageThreadProps> = ({
   };
 
   return (
-    <div className="flex h-[600px]">
+    <div className="flex h-[calc(100vh-280px)] md:h-[600px]">
       <Card className="flex flex-col flex-1">
         {conversationTitle && (
           <div className="p-4 border-b bg-muted flex items-center justify-between">

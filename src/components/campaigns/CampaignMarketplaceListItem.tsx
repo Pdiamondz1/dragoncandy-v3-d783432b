@@ -68,7 +68,7 @@ const CampaignMarketplaceListItem: React.FC<CampaignMarketplaceListItemProps> = 
   const remainingPlatforms = (campaign.platforms?.length || 0) - 3;
 
   return (
-    <Card className="group overflow-hidden hover:shadow-lg transition-all duration-300 hover:border-primary/50 h-full flex flex-col">
+    <Card className="group overflow-hidden hover:shadow-lg transition-all duration-300 hover:border-primary/50 h-full flex flex-col w-full max-w-full">
       {/* Hero Section with Business Branding */}
       <div className="relative h-32 bg-gradient-to-br from-primary/10 via-primary/5 to-background overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-background/90" />
@@ -180,22 +180,22 @@ const CampaignMarketplaceListItem: React.FC<CampaignMarketplaceListItemProps> = 
 
         {/* Action Buttons */}
         <div className="flex flex-col gap-2 pt-4 border-t border-border">
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             size="sm"
             onClick={() => onViewDetails(campaign.id)}
-            className="w-full"
+            className="w-full rounded-full"
           >
             View Details
           </Button>
-          <Button 
+          <Button
             size="sm"
-            onClick={() => campaign.application_status === 'accepted' 
-              ? onViewDetails(campaign.id) 
+            onClick={() => campaign.application_status === 'accepted'
+              ? onViewDetails(campaign.id)
               : onApply(campaign.id)
             }
             disabled={campaign.application_status === 'pending'}
-            className="w-full"
+            className="w-full rounded-full sm:max-w-sm sm:mx-auto"
           >
             {campaign.application_status === 'accepted' && 'View Project'}
             {campaign.application_status === 'pending' && 'Applied'}

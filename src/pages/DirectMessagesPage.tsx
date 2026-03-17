@@ -17,7 +17,7 @@ const DirectMessagesPage: React.FC = () => {
   return (
     <DashboardLayout userRole={userRole as 'business_client' | 'content_creator'}>
       <div className="flex-1 p-6 bg-[#A8A8A0] min-h-screen overflow-x-hidden">
-        <div className="max-w-7xl mx-auto">
+        <div className="max-w-5xl mx-auto">
           {/* Header */}
           <div className="mb-8">
             <div className="flex items-center gap-4 mb-2">
@@ -31,7 +31,7 @@ const DirectMessagesPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-240px)]">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-auto lg:h-[calc(100vh-240px)]">
             {/* Conversations List */}
           <div className="lg:col-span-1">
             <DirectMessagesList />
@@ -40,7 +40,7 @@ const DirectMessagesPage: React.FC = () => {
             {/* Message Thread Placeholder */}
             <div className="lg:col-span-2">
               <Card className="h-full border-border/50 shadow-lg">
-                <CardContent className="flex flex-col items-center justify-center h-full p-12">
+                <CardContent className="flex flex-col items-center justify-center h-full p-6 md:p-12">
                   <div className="text-center space-y-4">
                     <div className="p-6 bg-muted/30 rounded-full w-fit mx-auto">
                       <Users className="h-12 w-12 text-muted-foreground" />
