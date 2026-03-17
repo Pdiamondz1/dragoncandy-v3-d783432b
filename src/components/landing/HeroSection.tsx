@@ -6,7 +6,7 @@ export const HeroSection: React.FC = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="text-center py-6">
+    <div className="text-center py-8 md:py-12">
       <h1 className="text-4xl font-extrabold text-dc-teal uppercase leading-tight mb-4 tracking-tight">
         Unleash Your<br />Creativity
       </h1>

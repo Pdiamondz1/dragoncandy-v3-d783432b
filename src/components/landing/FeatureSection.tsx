@@ -22,7 +22,7 @@ const features = [
 
 export const FeatureSection = () => {
   return (
-    <div className="flex flex-col gap-4 mb-8">
+    <div className="grid grid-cols-3 gap-3 mb-8">
       {features.map((feature, index) => (
         <FeatureCard
           key={index}
