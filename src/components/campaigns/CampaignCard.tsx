@@ -60,21 +60,21 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
     switch (campaign.escrow_status) {
       case 'pending':
         return (
-          <Badge className="bg-amber-100 text-amber-800 border-amber-200 text-xs flex items-center gap-1 w-fit max-w-full">
+          <Badge className="bg-amber-100 text-amber-800 border-amber-200 text-xs flex items-center gap-1">
             <AlertCircle className="h-3 w-3" />
             Payment Pending
           </Badge>
         );
       case 'held':
         return (
-          <Badge className="bg-green-100 text-green-800 border-green-200 text-xs flex items-center gap-1 w-fit max-w-full">
+          <Badge className="bg-green-100 text-green-800 border-green-200 text-xs flex items-center gap-1">
             <CreditCard className="h-3 w-3" />
             Escrow Held
           </Badge>
         );
       case 'released':
         return (
-          <Badge className="bg-purple-100 text-purple-800 border-purple-200 text-xs flex items-center gap-1 w-fit max-w-full">
+          <Badge className="bg-purple-100 text-purple-800 border-purple-200 text-xs flex items-center gap-1">
             <CreditCard className="h-3 w-3" />
             Paid Out
           </Badge>
@@ -221,7 +221,7 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
   const needsEscrowPayment = campaign.escrow_status === 'pending';
 
   return (
-    <Card className={`relative hover:shadow-lg transition-all duration-200 border-l-4 overflow-hidden w-full max-w-full ${needsEscrowPayment ? 'border-l-amber-500 bg-amber-50/30' : 'border-l-transparent hover:border-l-primary/50'}`}>
+    <Card className={`relative hover:shadow-lg transition-all duration-200 border-l-4 ${needsEscrowPayment ? 'border-l-amber-500 bg-amber-50/30' : 'border-l-transparent hover:border-l-primary/50'}`}>
       {/* Application Counter Badge - Top Right Corner */}
       {applicationCounts && applicationCounts.pending > 0 && (
         <div className="absolute -top-2 -right-2 z-10">
@@ -251,7 +251,7 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-3 sm:space-y-4 pt-0 overflow-hidden">
+      <CardContent className="space-y-3 sm:space-y-4 pt-0">
         {/* Escrow Payment Alert */}
         {needsEscrowPayment && (
           <div className="p-3 rounded-lg bg-amber-100 border border-amber-300">

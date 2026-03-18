@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Plus } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import CampaignsList from '@/components/campaigns/CampaignsList';
@@ -104,19 +104,20 @@ const CampaignsPage: React.FC = () => {
 
   return (
     <DashboardLayout userRole="business_client">
-      <div className="flex-1 p-4 sm:p-6 overflow-x-hidden w-full max-w-full">
-        <div className="max-w-7xl mx-auto w-full">
+      <div className="flex-1 p-4 sm:p-6">
+        <div className="max-w-7xl mx-auto">
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
             <div>
               <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Campaigns</h1>
-              <p className="text-muted-foreground mt-1 w-full">
+              <p className="text-muted-foreground mt-1">
                 Manage your content campaigns and track their progress
               </p>
             </div>
-            <Button
+            <Button 
               onClick={() => navigate('/dashboard/business/campaigns/create')}
-              className="flex items-center justify-center w-full sm:w-auto"
+              className="inline-flex items-center w-full sm:w-auto"
+              size={isMobile ? "default" : "default"}
             >
               <Plus className="h-4 w-4 mr-2" />
               {isMobile ? "Create" : "Create Campaign"}
@@ -127,45 +128,47 @@ const CampaignsPage: React.FC = () => {
           <Tabs value={statusFilter} onValueChange={(value) => setStatusFilter(value as any)} className="mb-6">
             {isMobile ? (
               // Mobile: Horizontal scrolling tabs
-              <div className="overflow-x-auto pb-1 scrollbar-hide">
-                <TabsList className="inline-flex h-9 items-center justify-start rounded-lg bg-muted p-1 text-muted-foreground w-max">
-                  <TabsTrigger value="all" className="flex items-center gap-1 px-3 py-1 text-sm">
-                    All
-                    <span className="px-1.5 py-0.5 text-xs bg-background rounded-full min-w-[18px] text-center">
-                      {counts.all}
-                    </span>
-                  </TabsTrigger>
-                  <TabsTrigger value="draft" className="flex items-center gap-1 px-3 py-1 text-sm">
-                    Drafts
-                    <span className="px-1.5 py-0.5 text-xs bg-background rounded-full min-w-[18px] text-center">
-                      {counts.draft}
-                    </span>
-                  </TabsTrigger>
-                  <TabsTrigger value="published" className="flex items-center gap-1 px-3 py-1 text-sm">
-                    Published
-                    <span className="px-1.5 py-0.5 text-xs bg-background rounded-full min-w-[18px] text-center">
-                      {counts.published}
-                    </span>
-                  </TabsTrigger>
-                  <TabsTrigger value="active" className="flex items-center gap-1 px-3 py-1 text-sm">
-                    Active
-                    <span className="px-1.5 py-0.5 text-xs bg-background rounded-full min-w-[18px] text-center">
-                      {counts.active}
-                    </span>
-                  </TabsTrigger>
-                  <TabsTrigger value="completed" className="flex items-center gap-1 px-3 py-1 text-sm">
-                    Completed
-                    <span className="px-1.5 py-0.5 text-xs bg-background rounded-full min-w-[18px] text-center">
-                      {counts.completed}
-                    </span>
-                  </TabsTrigger>
-                  <TabsTrigger value="cancelled" className="flex items-center gap-1 px-3 py-1 text-sm">
-                    Cancelled
-                    <span className="px-1.5 py-0.5 text-xs bg-background rounded-full min-w-[18px] text-center">
-                      {counts.cancelled}
-                    </span>
-                  </TabsTrigger>
-                </TabsList>
+              <div className="relative">
+                <ScrollArea className="w-full whitespace-nowrap">
+                  <TabsList className="inline-flex h-9 items-center justify-start rounded-lg bg-muted p-1 text-muted-foreground w-max">
+                    <TabsTrigger value="all" className="flex items-center gap-1 px-3 py-1 text-sm">
+                      All
+                      <span className="px-1.5 py-0.5 text-xs bg-background rounded-full min-w-[18px] text-center">
+                        {counts.all}
+                      </span>
+                    </TabsTrigger>
+                    <TabsTrigger value="draft" className="flex items-center gap-1 px-3 py-1 text-sm">
+                      Drafts
+                      <span className="px-1.5 py-0.5 text-xs bg-background rounded-full min-w-[18px] text-center">
+                        {counts.draft}
+                      </span>
+                    </TabsTrigger>
+                    <TabsTrigger value="published" className="flex items-center gap-1 px-3 py-1 text-sm">
+                      Published
+                      <span className="px-1.5 py-0.5 text-xs bg-background rounded-full min-w-[18px] text-center">
+                        {counts.published}
+                      </span>
+                    </TabsTrigger>
+                    <TabsTrigger value="active" className="flex items-center gap-1 px-3 py-1 text-sm">
+                      Active
+                      <span className="px-1.5 py-0.5 text-xs bg-background rounded-full min-w-[18px] text-center">
+                        {counts.active}
+                      </span>
+                    </TabsTrigger>
+                    <TabsTrigger value="completed" className="flex items-center gap-1 px-3 py-1 text-sm">
+                      Completed
+                      <span className="px-1.5 py-0.5 text-xs bg-background rounded-full min-w-[18px] text-center">
+                        {counts.completed}
+                      </span>
+                    </TabsTrigger>
+                    <TabsTrigger value="cancelled" className="flex items-center gap-1 px-3 py-1 text-sm">
+                      Cancelled
+                      <span className="px-1.5 py-0.5 text-xs bg-background rounded-full min-w-[18px] text-center">
+                        {counts.cancelled}
+                      </span>
+                    </TabsTrigger>
+                  </TabsList>
+                </ScrollArea>
               </div>
             ) : (
               // Desktop: Grid layout
