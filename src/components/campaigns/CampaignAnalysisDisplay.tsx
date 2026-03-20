@@ -2,18 +2,25 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { 
-  Target, 
-  Users, 
-  Calendar, 
-  Palette, 
-  MessageSquare, 
-  CheckSquare, 
+import {
+  Target,
+  Users,
+  Calendar,
+  Palette,
+  MessageSquare,
+  CheckSquare,
   DollarSign,
   Edit,
-  ArrowRight 
+  ArrowRight,
+  Lightbulb,
+  Hash,
+  Type,
+  Clock,
+  Eye,
+  Copy
 } from 'lucide-react';
 import { CampaignAnalysis } from '@/types/campaign';
+import { toast } from 'sonner';
 
 interface CampaignAnalysisDisplayProps {
   analysis: CampaignAnalysis;
@@ -204,6 +211,179 @@ const CampaignAnalysisDisplay: React.FC<CampaignAnalysisDisplayProps> = ({
           </div>
         </CardContent>
       </Card>
+
+      {/* Creative Brief Section */}
+      {(analysis.content_ideas || analysis.hashtags || analysis.captions || analysis.posting_schedule || analysis.style_direction) && (
+        <div className="space-y-6">
+          <div className="border-t pt-6">
+            <h3 className="text-xl font-semibold text-center mb-6 flex items-center justify-center gap-2">
+              <Lightbulb className="h-6 w-6 text-yellow-500" />
+              Creative Brief
+            </h3>
+          </div>
+
+          {/* Content Ideas */}
+          {analysis.content_ideas && analysis.content_ideas.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Lightbulb className="h-5 w-5 text-yellow-500" />
+                  Content Ideas ({analysis.content_ideas.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {analysis.content_ideas.map((idea, index) => (
+                    <div key={index} className="border rounded-lg p-4 bg-gray-50">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-semibold text-gray-900">{idea.concept}</span>
+                        <Badge variant="secondary" className="text-xs">{idea.format}</Badge>
+                      </div>
+                      <p className="text-sm text-gray-600 mb-2">{idea.description}</p>
+                      {idea.estimated_duration && (
+                        <div className="flex items-center gap-1 text-xs text-gray-500">
+                          <Clock className="h-3 w-3" />
+                          {idea.estimated_duration}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Hashtags & Captions side by side */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {analysis.hashtags && analysis.hashtags.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <Hash className="h-5 w-5 text-blue-500" />
+                    Hashtags
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="ml-auto h-8"
+                      onClick={() => {
+                        navigator.clipboard.writeText(analysis.hashtags!.join(' '));
+                        toast.success('Hashtags copied!');
+                      }}
+                    >
+                      <Copy className="h-3 w-3 mr-1" />
+                      Copy All
+                    </Button>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-wrap gap-2">
+                    {analysis.hashtags.map((tag, index) => (
+                      <Badge key={index} variant="outline" className="text-sm cursor-pointer hover:bg-blue-50"
+                        onClick={() => {
+                          navigator.clipboard.writeText(tag);
+                          toast.success(`Copied ${tag}`);
+                        }}
+                      >
+                        {tag}
+                      </Badge>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {analysis.captions && analysis.captions.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <Type className="h-5 w-5 text-purple-500" />
+                    Ready-to-Post Captions
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {analysis.captions.map((caption, index) => (
+                      <div key={index} className="border rounded-lg p-3 bg-gray-50 relative group">
+                        <p className="text-sm text-gray-700 pr-8">{caption}</p>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="absolute top-2 right-2 h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={() => {
+                            navigator.clipboard.writeText(caption);
+                            toast.success('Caption copied!');
+                          }}
+                        >
+                          <Copy className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+
+          {/* Posting Schedule & Style Direction */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {analysis.posting_schedule && analysis.posting_schedule.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <Calendar className="h-5 w-5 text-teal-500" />
+                    Posting Schedule
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {analysis.posting_schedule.map((entry, index) => (
+                      <div key={index} className="border rounded-lg p-3">
+                        <div className="font-semibold text-gray-900 mb-1">{entry.platform}</div>
+                        <div className="text-sm text-gray-600 space-y-1">
+                          <div><span className="font-medium">Frequency:</span> {entry.frequency}</div>
+                          <div><span className="font-medium">Best times:</span> {entry.best_times}</div>
+                          <div><span className="font-medium">Content mix:</span> {entry.content_mix}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {analysis.style_direction && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <Eye className="h-5 w-5 text-pink-500" />
+                    Style Direction
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    <div>
+                      <span className="font-medium text-gray-900">Visual Style:</span>
+                      <p className="text-sm text-gray-600">{analysis.style_direction.visual_style}</p>
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-900">Mood:</span>
+                      <p className="text-sm text-gray-600">{analysis.style_direction.mood}</p>
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-900">Color Palette:</span>
+                      <p className="text-sm text-gray-600">{analysis.style_direction.color_palette}</p>
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-900">Reference:</span>
+                      <p className="text-sm text-gray-600">{analysis.style_direction.references}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Action Buttons */}
       <div className="flex flex-col sm:flex-row gap-4 justify-center">

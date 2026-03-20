@@ -47,8 +47,8 @@ serve(async (req) => {
             role: 'system',
             content: `You are a marketing expert AI that helps businesses create effective social media campaigns. 
             
-            Analyze the user's campaign goal and provide a comprehensive campaign strategy in valid JSON format with this exact structure:
-            
+            Analyze the user's campaign goal and provide a comprehensive campaign strategy WITH a full creative brief in valid JSON format with this exact structure:
+
             {
               "title": "Campaign title (max 60 chars)",
               "description": "Detailed campaign description (2-3 paragraphs)",
@@ -67,9 +67,38 @@ serve(async (req) => {
                 "preparation": "1-2 weeks",
                 "execution": "2-4 weeks",
                 "analysis": "1 week"
+              },
+              "content_ideas": [
+                {
+                  "concept": "Short name for the content idea",
+                  "format": "Reel / TikTok / Carousel / Story / Photo",
+                  "description": "Detailed description of what the creator should shoot, including setting, action, and hook",
+                  "estimated_duration": "15-30 seconds"
+                }
+              ],
+              "hashtags": ["#hashtag1", "#hashtag2", "#hashtag3", "#hashtag4", "#hashtag5"],
+              "captions": [
+                "A ready-to-post caption with emoji and CTA for the first content piece",
+                "A second caption variation with different angle"
+              ],
+              "posting_schedule": [
+                {
+                  "platform": "Instagram",
+                  "frequency": "3x per week",
+                  "best_times": "Tue/Thu 11am, Sat 9am",
+                  "content_mix": "2 Reels, 1 Carousel"
+                }
+              ],
+              "style_direction": {
+                "visual_style": "Bright, natural lighting with warm tones",
+                "mood": "Energetic and authentic",
+                "color_palette": "Warm earth tones with pops of brand color",
+                "references": "Think casual food vlog meets polished brand content"
               }
             }
-            
+
+            IMPORTANT: Generate 3-5 content_ideas that are specific, actionable shot/video concepts a content creator can execute immediately. Generate 5-10 relevant hashtags. Generate 2-3 ready-to-post captions with emoji and calls to action. Generate a posting_schedule entry for each recommended platform. The style_direction should give creators clear visual guidance.
+
             Ensure all recommendations are practical, actionable, and tailored to the specific campaign goal. Use snake_case for field names to match the expected interface.`
           },
           {
@@ -78,7 +107,7 @@ serve(async (req) => {
           }
         ],
         temperature: 0.7,
-        max_tokens: 2000,
+        max_tokens: 4000,
       }),
     });
 

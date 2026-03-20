@@ -1,4 +1,18 @@
 
+export interface ContentIdea {
+  concept: string;
+  format: string;
+  description: string;
+  estimated_duration?: string;
+}
+
+export interface PostingScheduleEntry {
+  platform: string;
+  frequency: string;
+  best_times: string;
+  content_mix: string;
+}
+
 export interface CampaignAnalysis {
   title: string;
   description: string;
@@ -17,6 +31,17 @@ export interface CampaignAnalysis {
     preparation: string;
     execution: string;
     analysis: string;
+  };
+  // Creative Brief fields (AI-generated)
+  content_ideas?: ContentIdea[];
+  hashtags?: string[];
+  captions?: string[];
+  posting_schedule?: PostingScheduleEntry[];
+  style_direction?: {
+    visual_style: string;
+    mood: string;
+    color_palette: string;
+    references: string;
   };
 }
 
