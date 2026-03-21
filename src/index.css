@@ -2,21 +2,24 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. */
+/* ── DragonCandy Design System ─────────────────────────────────────────────── */
 
 @layer base {
   html {
     height: 100%;
     overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
-  
+
   body {
     height: 100%;
     overflow-x: hidden;
     position: relative;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
 
-  /* Ensure fixed positioning works correctly */
+  /* Fixed sidebar positioning for landing page portfolio columns */
   .fixed-sidebar {
     position: fixed !important;
     top: 76px !important;
@@ -33,6 +36,7 @@
     right: 0 !important;
   }
 
+  /* ── Light mode tokens ─────────────────────────────────────────────────── */
   :root {
     --background: 0 0% 100%;
     --foreground: 0 0% 7%;
@@ -69,22 +73,16 @@
 
     /* Sidebar — teal brand */
     --sidebar-background: 0 0% 100%;
-
     --sidebar-foreground: 0 0% 20%;
-
     --sidebar-primary: 171 60% 58%;
-
     --sidebar-primary-foreground: 0 0% 100%;
-
     --sidebar-accent: 171 60% 95%;
-
     --sidebar-accent-foreground: 0 0% 7%;
-
     --sidebar-border: 171 30% 88%;
-
     --sidebar-ring: 171 60% 58%;
   }
 
+  /* ── Dark mode tokens ──────────────────────────────────────────────────── */
   .dark {
     /* Deep Charcoal background — #1A1A2E */
     --background: 240 27% 14%;
@@ -138,15 +136,104 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  /* Smoother focus rings globally */
+  *:focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background transition-shadow duration-200;
+  }
+
+  /* Better heading rhythm */
+  h1, h2, h3, h4, h5, h6 {
+    @apply tracking-tight;
+  }
 }
+
+/* ── Component utilities ───────────────────────────────────────────────────── */
 
 @layer utilities {
   .scrollbar-hide {
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
-  
+
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
+
+  /* Teal-to-pink gradient text */
+  .text-gradient {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(135deg, #4DD9C0 0%, #F9A8D4 50%, #EC4899 100%);
+  }
+
+  /* Subtle teal glow for cards on hover */
+  .glow-teal {
+    box-shadow: 0 0 20px rgba(77, 217, 192, 0.15), 0 0 60px rgba(77, 217, 192, 0.05);
+  }
+
+  /* Glass morphism card */
+  .glass {
+    @apply bg-white/80 dark:bg-card/80 backdrop-blur-xl;
+  }
+
+  /* Smooth page enter animation */
+  .animate-fade-in {
+    animation: fadeIn 0.4s ease-out;
+  }
+
+  .animate-fade-in-up {
+    animation: fadeInUp 0.5s ease-out;
+  }
+
+  .animate-fade-in-up-delay-1 {
+    animation: fadeInUp 0.5s ease-out 0.1s both;
+  }
+
+  .animate-fade-in-up-delay-2 {
+    animation: fadeInUp 0.5s ease-out 0.2s both;
+  }
+
+  .animate-fade-in-up-delay-3 {
+    animation: fadeInUp 0.5s ease-out 0.3s both;
+  }
+
+  /* Subtle float for hero elements */
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+
+  /* Shimmer loading effect */
+  .animate-shimmer {
+    background: linear-gradient(90deg, transparent 0%, rgba(77, 217, 192, 0.08) 50%, transparent 100%);
+    background-size: 200% 100%;
+    animation: shimmer 2s infinite;
+  }
+}
+
+/* ── Keyframes ─────────────────────────────────────────────────────────────── */
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
 }

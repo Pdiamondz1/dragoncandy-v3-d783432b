@@ -25,11 +25,11 @@ export default function LandingPage() {
       {/* Creator Portfolio Feed - Behind main content */}
       <CreatorPortfolioFeed />
 
-      {/* Main content — mobile-first, centered column */}
-      <div className="relative z-10 max-w-md md:max-w-2xl lg:max-w-5xl mx-auto px-4 md:px-8">
+      {/* Main content — mobile-first, scales up elegantly on desktop */}
+      <div className="relative z-10 max-w-md md:max-w-2xl lg:max-w-5xl xl:max-w-6xl mx-auto px-4 md:px-8 lg:px-12">
         <Header />
 
-        <main className="py-8">
+        <main className="py-6 md:py-10 lg:py-12">
           <HeroSection />
           <FeatureSection />
           <BottomCTA />

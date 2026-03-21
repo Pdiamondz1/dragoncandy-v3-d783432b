@@ -61,9 +61,9 @@ const AppSidebar: React.FC<AppSidebarProps> = ({ userRole }) => {
 
   return (
     <Sidebar className={collapsed ? 'w-14' : 'w-60'} collapsible="icon">
-      <SidebarHeader className="border-b border-dc-teal/30 bg-white">
-        <div className="flex items-center justify-center px-2 py-2">
-          <Link to="/">
+      <SidebarHeader className="border-b border-sidebar-border bg-sidebar">
+        <div className="flex items-center justify-center px-2 py-3">
+          <Link to="/" className="transition-transform duration-200 hover:scale-105">
             <img
               src={dragonCandyLogo}
               alt="DragonCandy"
@@ -73,9 +73,9 @@ const AppSidebar: React.FC<AppSidebarProps> = ({ userRole }) => {
         </div>
       </SidebarHeader>
 
-      <SidebarContent className="bg-white">
+      <SidebarContent className="bg-sidebar">
         <SidebarGroup>
-          <SidebarGroupLabel className="text-dc-teal text-xs font-bold tracking-widest uppercase">
+          <SidebarGroupLabel className="text-dc-teal text-[10px] font-bold tracking-[0.2em] uppercase px-3">
             Navigation
           </SidebarGroupLabel>
           <SidebarGroupContent>
@@ -89,15 +89,17 @@ const AppSidebar: React.FC<AppSidebarProps> = ({ userRole }) => {
                       isActive={isActive}
                       className={
                         isActive
-                          ? 'bg-dc-teal/15 text-dc-teal font-semibold'
-                          : 'text-[#555555] hover:bg-dc-teal/10 hover:text-dc-teal'
+                          ? 'bg-dc-teal/12 text-dc-teal font-semibold border-r-2 border-dc-teal'
+                          : 'text-muted-foreground hover:bg-muted hover:text-foreground transition-colors duration-200'
                       }
                     >
-                      <Link to={item.href} className="flex items-center gap-3">
+                      <Link to={item.href} className="flex items-center gap-3 px-3">
                         <item.icon
-                          className={`h-5 w-5 ${isActive ? 'text-dc-teal' : 'text-[#555555]'}`}
+                          className={`h-[18px] w-[18px] transition-colors duration-200 ${
+                            isActive ? 'text-dc-teal' : 'text-muted-foreground'
+                          }`}
                         />
-                        {!collapsed && <span>{item.label}</span>}
+                        {!collapsed && <span className="text-sm">{item.label}</span>}
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -109,10 +111,10 @@ const AppSidebar: React.FC<AppSidebarProps> = ({ userRole }) => {
 
         {userRole === 'business_client' && (
           <SidebarGroup>
-            <SidebarGroupContent className="px-4">
+            <SidebarGroupContent className="px-4 pt-2">
               <Link to="/dashboard/business/campaigns/create">
                 <Button
-                  className="w-full bg-dc-teal text-white hover:bg-dc-teal-dark rounded-full font-semibold"
+                  className="w-full bg-dc-teal text-white hover:bg-dc-teal-dark hover:shadow-glow-teal rounded-full font-semibold transition-all duration-300"
                   size={collapsed ? 'icon' : 'default'}
                 >
                   <PlusCircle className="h-4 w-4" />
@@ -173,27 +175,31 @@ const DashboardLayoutInner: React.FC<DashboardLayoutProps> = ({ children, userRo
             />
           )}
 
-          {/* Desktop header */}
+          {/* Desktop header — refined with glass effect */}
           {!isMobile && (
-            <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-              <div className="flex h-14 items-center justify-between px-4 lg:px-6">
+            <header className="sticky top-0 z-40 border-b border-border/50 bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60">
+              <div className="flex h-16 items-center justify-between px-6 lg:px-8">
                 <div className="flex items-center gap-4">
-                  <SidebarTrigger />
-                  <h1 className="text-xl font-semibold text-foreground hidden sm:block">
-                    {getDashboardLabel(userRole)}
-                  </h1>
+                  <SidebarTrigger className="hover:bg-muted transition-colors duration-200" />
+                  <div className="hidden sm:block">
+                    <h1 className="text-lg font-semibold text-foreground tracking-tight">
+                      {getDashboardLabel(userRole)}
+                    </h1>
+                  </div>
                 </div>
 
-                <div className="flex items-center gap-2 sm:gap-4">
+                <div className="flex items-center gap-3">
                   <ThemeToggle />
                   <NotificationDropdown />
 
+                  <div className="w-px h-6 bg-border mx-1" />
+
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                        <Avatar className="h-8 w-8 ring-2 ring-dc-teal">
+                      <Button variant="ghost" className="relative h-9 w-9 rounded-full hover:ring-2 hover:ring-dc-teal/30 transition-all duration-200">
+                        <Avatar className="h-9 w-9 ring-2 ring-dc-teal/60">
                           <AvatarImage src={avatarUrl} alt="Avatar" />
-                          <AvatarFallback>
+                          <AvatarFallback className="bg-dc-teal/10 text-dc-teal font-semibold text-sm">
                             {displayName?.charAt(0).toUpperCase() ||
                               user?.email?.charAt(0).toUpperCase() ||
                               'U'}
@@ -214,13 +220,13 @@ const DashboardLayoutInner: React.FC<DashboardLayoutProps> = ({ children, userRo
                       </DropdownMenuLabel>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem asChild>
-                        <Link to={getSettingsHref(userRole)}>
+                        <Link to={getSettingsHref(userRole)} className="cursor-pointer">
                           <Settings className="mr-2 h-4 w-4" />
                           <span>Settings</span>
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={logout}>
+                      <DropdownMenuItem onClick={logout} className="cursor-pointer text-red-600 dark:text-red-400 focus:text-red-600">
                         <LogOut className="mr-2 h-4 w-4" />
                         <span>Log out</span>
                       </DropdownMenuItem>
@@ -231,7 +237,7 @@ const DashboardLayoutInner: React.FC<DashboardLayoutProps> = ({ children, userRo
             </header>
           )}
 
-          <main className={isMobile ? 'flex-1 pb-20' : 'flex-1'}>
+          <main className={`${isMobile ? 'flex-1 pb-20' : 'flex-1 p-6 lg:p-8'} animate-fade-in`}>
             {children}
           </main>
         </SidebarInset>
