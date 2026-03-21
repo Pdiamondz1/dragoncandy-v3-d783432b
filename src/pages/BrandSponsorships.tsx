@@ -222,7 +222,7 @@ const BrandSponsorships = () => {
     <DashboardLayout userRole="brand">
       <div className="p-8 max-w-7xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-2">Brand Sponsorships</h1>
+          <h1 className="text-4xl font-bold mb-2 text-foreground">Brand Sponsorships</h1>
           <p className="text-muted-foreground">
             Manage your sponsorship proposals and active partnerships
           </p>
@@ -358,7 +358,7 @@ const BrandSponsorships = () => {
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-16">
               <Target className="h-16 w-16 text-muted-foreground mb-4" />
-              <h3 className="text-xl font-semibold mb-2">No Sponsorships Yet</h3>
+              <h3 className="text-xl font-semibold mb-2 text-foreground">No Sponsorships Yet</h3>
               <p className="text-muted-foreground mb-6 text-center max-w-md">
                 Start by discovering restaurant campaigns that are open for brand sponsorship
               </p>

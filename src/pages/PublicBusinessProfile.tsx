@@ -122,11 +122,11 @@ const PublicBusinessProfile = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#A8A8A0] py-8">
+      <div className="min-h-screen bg-muted py-8">
         <div className="max-w-4xl mx-auto px-4">
           <div className="animate-pulse space-y-6">
-            <div className="h-32 bg-gray-200 rounded-lg"></div>
-            <div className="h-64 bg-gray-200 rounded-lg"></div>
+            <div className="h-32 bg-muted rounded-lg"></div>
+            <div className="h-64 bg-muted rounded-lg"></div>
           </div>
         </div>
       </div>
@@ -135,14 +135,14 @@ const PublicBusinessProfile = () => {
 
   if (notFound || !profile) {
     return (
-      <div className="min-h-screen bg-[#A8A8A0] flex items-center justify-center">
+      <div className="min-h-screen bg-muted flex items-center justify-center">
         <Card className="max-w-md mx-auto">
           <CardContent className="flex flex-col items-center justify-center py-12">
-            <Building2 className="h-12 w-12 text-gray-400 mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+            <Building2 className="h-12 w-12 text-muted-foreground mb-4" />
+            <h3 className="text-lg font-semibold text-foreground mb-2">
               Business Profile Not Found
             </h3>
-            <p className="text-gray-600 text-center mb-6">
+            <p className="text-muted-foreground text-center mb-6">
               The business profile you're looking for doesn't exist or is set to private.
             </p>
             <Button onClick={() => navigate('/')}>
@@ -155,7 +155,7 @@ const PublicBusinessProfile = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#A8A8A0] py-8">
+    <div className="min-h-screen bg-muted py-8">
       <div className="max-w-4xl mx-auto px-4 space-y-6">
         {/* Header */}
         <Card>
@@ -171,10 +171,10 @@ const PublicBusinessProfile = () => {
               <div className="flex-1">
                 <div className="flex items-start justify-between">
                   <div>
-                    <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                    <h1 className="text-3xl font-bold text-foreground mb-2">
                       {profile.business_name}
                     </h1>
-                    <div className="flex items-center gap-4 text-sm text-gray-600 mb-4">
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
                       {profile.industry && (
                         <Badge variant="secondary" className="capitalize">
                           {profile.industry.replace('_', ' ')}
@@ -212,7 +212,7 @@ const PublicBusinessProfile = () => {
                 </div>
 
                 {profile.description && (
-                  <p className="text-gray-700 leading-relaxed">
+                  <p className="text-foreground leading-relaxed">
                     {profile.description}
                   </p>
                 )}
@@ -233,28 +233,28 @@ const PublicBusinessProfile = () => {
             <CardContent className="space-y-4">
               {profile.company_size && (
                 <div>
-                  <span className="text-sm font-medium text-gray-500">Company Size</span>
+                  <span className="text-sm font-medium text-muted-foreground">Company Size</span>
                   <p className="capitalize">{profile.company_size.replace('-', ' ')}</p>
                 </div>
               )}
-              
+
               {profile.founded_year && (
                 <div>
-                  <span className="text-sm font-medium text-gray-500">Founded</span>
+                  <span className="text-sm font-medium text-muted-foreground">Founded</span>
                   <p>{profile.founded_year}</p>
                 </div>
               )}
-              
+
               {profile.employee_count_range && (
                 <div>
-                  <span className="text-sm font-medium text-gray-500">Team Size</span>
+                  <span className="text-sm font-medium text-muted-foreground">Team Size</span>
                   <p>{profile.employee_count_range} employees</p>
                 </div>
               )}
-              
+
               {profile.budget_range && (
                 <div>
-                  <span className="text-sm font-medium text-gray-500">Typical Project Budget</span>
+                  <span className="text-sm font-medium text-muted-foreground">Typical Project Budget</span>
                   <p>{profile.budget_range.replace('-', ' - ').replace('k', ',000').replace('+', '+')}</p>
                 </div>
               )}
@@ -271,13 +271,13 @@ const PublicBusinessProfile = () => {
             <CardContent className="space-y-4">
               {profile.preferred_collaboration_style && (
                 <div>
-                  <span className="text-sm font-medium text-gray-500">Preferred Style</span>
+                  <span className="text-sm font-medium text-muted-foreground">Preferred Style</span>
                   <p className="capitalize">{profile.preferred_collaboration_style.replace('-', ' ')}</p>
                 </div>
               )}
-              
+
               <div>
-                <span className="text-sm font-medium text-gray-500">Member Since</span>
+                <span className="text-sm font-medium text-muted-foreground">Member Since</span>
                 <p>{new Date(profile.created_at).toLocaleDateString('en-US', { 
                   year: 'numeric', 
                   month: 'long' 
@@ -323,7 +323,7 @@ const PublicBusinessProfile = () => {
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 {profile.sample_content_urls.map((url, index) => (
-                  <div key={index} className="aspect-square bg-gray-100 rounded-lg overflow-hidden">
+                  <div key={index} className="aspect-square bg-muted rounded-lg overflow-hidden">
                     <img 
                       src={url} 
                       alt={`Sample content ${index + 1}`}

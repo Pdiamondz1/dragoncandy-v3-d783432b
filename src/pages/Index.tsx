@@ -137,14 +137,14 @@ export default function Index() {
   // Show loading with debug info in development
   if (loading) {
     const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname.includes('lovable');
-    
+
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-background">
         <div className="text-center space-y-4">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-pink-600 mx-auto"></div>
-          <div className="text-lg font-medium text-gray-900">Loading DragonCandy...</div>
+          <div className="text-lg font-medium text-foreground">Loading DragonCandy...</div>
           {isDevelopment && (
-            <div className="mt-8 p-4 bg-gray-100 rounded-lg text-sm text-gray-600 max-w-md">
+            <div className="mt-8 p-4 bg-muted rounded-lg text-sm text-muted-foreground max-w-md">
               <div className="font-medium mb-2">Debug Info:</div>
               <div>{debugInfo}</div>
               {error && (
@@ -160,10 +160,10 @@ export default function Index() {
   // Show error state with fallback option
   if (error) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-background">
         <div className="text-center space-y-4 max-w-md">
           <div className="text-xl font-medium text-red-600">Something went wrong</div>
-          <div className="text-gray-600">{error}</div>
+          <div className="text-muted-foreground">{error}</div>
           <button
             onClick={() => navigate('/landing')}
             className="px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors"

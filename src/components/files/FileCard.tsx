@@ -32,11 +32,11 @@ const FileCard: React.FC<FileCardProps> = ({
         onClick={() => onSelect(file)}
       >
         <div className="space-y-3">
-          <div className="aspect-square bg-gray-100 rounded-lg flex items-center justify-center">
+          <div className="aspect-square bg-muted rounded-lg flex items-center justify-center">
             {file.mime_type.startsWith('image/') ? (
               <FilePreview file={file} className="w-full h-full object-cover rounded-lg" />
             ) : (
-              <File className="h-8 w-8 text-gray-400" />
+              <File className="h-8 w-8 text-muted-foreground" />
             )}
           </div>
           
@@ -44,7 +44,7 @@ const FileCard: React.FC<FileCardProps> = ({
             <h4 className="font-medium text-sm truncate" title={file.original_filename}>
               {file.original_filename}
             </h4>
-            <div className="flex items-center justify-between text-xs text-gray-500">
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
               <span>{formatFileSize(file.file_size)}</span>
               <Badge variant="secondary" className="text-xs">
                 {getFileTypeCategory(file.mime_type)}
@@ -98,15 +98,15 @@ const FileCard: React.FC<FileCardProps> = ({
         {file.mime_type.startsWith('image/') ? (
           <FilePreview file={file} className="w-12 h-12 object-cover rounded" />
         ) : (
-          <div className="w-12 h-12 bg-gray-100 rounded flex items-center justify-center">
-            <File className="h-6 w-6 text-gray-400" />
+          <div className="w-12 h-12 bg-muted rounded flex items-center justify-center">
+            <File className="h-6 w-6 text-muted-foreground" />
           </div>
         )}
       </div>
       
       <div className="flex-1 min-w-0">
         <h4 className="font-medium truncate">{file.original_filename}</h4>
-        <div className="flex items-center gap-4 text-sm text-gray-500 mt-1">
+        <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
           <span>{formatFileSize(file.file_size)}</span>
           <Badge variant="secondary" className="text-xs">
             {getFileTypeCategory(file.mime_type)}

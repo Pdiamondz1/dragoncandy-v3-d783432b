@@ -26,11 +26,11 @@ const ReviewCard: React.FC<ReviewCardProps> = ({ review }) => {
             <div className="flex items-center justify-between">
               <div>
                 <h4 className="font-medium">{review.reviewer.full_name}</h4>
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-muted-foreground">
                   {review.collaboration.campaign.title}
                 </p>
               </div>
-              <span className="text-sm text-gray-500">
+              <span className="text-sm text-muted-foreground">
                 {formatDistanceToNow(new Date(review.created_at), { addSuffix: true })}
               </span>
             </div>
@@ -44,25 +44,25 @@ const ReviewCard: React.FC<ReviewCardProps> = ({ review }) => {
               <div className="grid grid-cols-2 gap-4 text-sm">
                 {review.communication_rating && (
                   <div className="flex items-center justify-between">
-                    <span className="text-gray-600">Communication</span>
+                    <span className="text-muted-foreground">Communication</span>
                     <StarRating rating={review.communication_rating} readonly size="sm" />
                   </div>
                 )}
                 {review.quality_rating && (
                   <div className="flex items-center justify-between">
-                    <span className="text-gray-600">Quality</span>
+                    <span className="text-muted-foreground">Quality</span>
                     <StarRating rating={review.quality_rating} readonly size="sm" />
                   </div>
                 )}
                 {review.timeliness_rating && (
                   <div className="flex items-center justify-between">
-                    <span className="text-gray-600">Timeliness</span>
+                    <span className="text-muted-foreground">Timeliness</span>
                     <StarRating rating={review.timeliness_rating} readonly size="sm" />
                   </div>
                 )}
                 {review.professionalism_rating && (
                   <div className="flex items-center justify-between">
-                    <span className="text-gray-600">Professionalism</span>
+                    <span className="text-muted-foreground">Professionalism</span>
                     <StarRating rating={review.professionalism_rating} readonly size="sm" />
                   </div>
                 )}
@@ -70,7 +70,7 @@ const ReviewCard: React.FC<ReviewCardProps> = ({ review }) => {
             )}
 
             {review.review_text && (
-              <p className="text-gray-700 leading-relaxed">{review.review_text}</p>
+              <p className="text-foreground leading-relaxed">{review.review_text}</p>
             )}
           </div>
         </div>

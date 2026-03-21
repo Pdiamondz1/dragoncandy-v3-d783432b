@@ -32,7 +32,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
       );
     } else {
       return (
-        <Check className="h-3 w-3 text-gray-400" />
+        <Check className="h-3 w-3 text-muted-foreground" />
       );
     }
   };
@@ -55,15 +55,15 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
       )}>
         <div className={cn(
           "rounded-lg px-4 py-2 break-words",
-          isOwn 
-            ? "bg-blue-600 text-white" 
-            : "bg-gray-100 text-gray-900"
+          isOwn
+            ? "bg-blue-600 text-white"
+            : "bg-muted text-foreground"
         )}>
           <p className="text-sm whitespace-pre-wrap">{message.content}</p>
         </div>
         
         <div className={cn(
-          "flex items-center gap-2 mt-1 text-xs text-gray-500",
+          "flex items-center gap-2 mt-1 text-xs text-muted-foreground",
           isOwn ? "flex-row-reverse" : "flex-row"
         )}>
           <span>{formatTime(message.created_at)}</span>

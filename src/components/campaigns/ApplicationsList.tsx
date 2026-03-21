@@ -42,7 +42,7 @@ const ApplicationsList: React.FC<ApplicationsListProps> = ({ campaignId }) => {
     return (
       <Card>
         <CardContent className="flex items-center justify-center py-8">
-          <div className="text-gray-500">Loading applications...</div>
+          <div className="text-muted-foreground">Loading applications...</div>
         </CardContent>
       </Card>
     );
@@ -115,7 +115,7 @@ const ApplicationsList: React.FC<ApplicationsListProps> = ({ campaignId }) => {
                 <Users className="h-8 w-8 text-blue-600" />
                 <div>
                   <p className="text-2xl font-bold">{applications.length}</p>
-                  <p className="text-sm text-gray-600">Total Applications</p>
+                  <p className="text-sm text-muted-foreground">Total Applications</p>
                 </div>
               </CardContent>
             </Card>
@@ -127,7 +127,7 @@ const ApplicationsList: React.FC<ApplicationsListProps> = ({ campaignId }) => {
                 </div>
                 <div>
                   <p className="text-2xl font-bold">{pendingCount}</p>
-                  <p className="text-sm text-gray-600">Pending Review</p>
+                  <p className="text-sm text-muted-foreground">Pending Review</p>
                 </div>
               </CardContent>
             </Card>
@@ -139,7 +139,7 @@ const ApplicationsList: React.FC<ApplicationsListProps> = ({ campaignId }) => {
                 </div>
                 <div>
                   <p className="text-2xl font-bold">{acceptedCount}</p>
-                  <p className="text-sm text-gray-600">Accepted</p>
+                  <p className="text-sm text-muted-foreground">Accepted</p>
                 </div>
               </CardContent>
             </Card>
@@ -151,7 +151,7 @@ const ApplicationsList: React.FC<ApplicationsListProps> = ({ campaignId }) => {
                 </div>
                 <div>
                   <p className="text-2xl font-bold">{rejectedCount}</p>
-                  <p className="text-sm text-gray-600">Rejected</p>
+                  <p className="text-sm text-muted-foreground">Rejected</p>
                 </div>
               </CardContent>
             </Card>
@@ -177,12 +177,12 @@ const ApplicationsList: React.FC<ApplicationsListProps> = ({ campaignId }) => {
           {filteredApplications.length === 0 ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12">
-                <Users className="h-12 w-12 text-gray-400 mb-4" />
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                <Users className="h-12 w-12 text-muted-foreground mb-4" />
+                <h3 className="text-lg font-semibold text-foreground mb-2">
                   {applications.length === 0 ? 'No applications yet' : 'No applications match your filters'}
                 </h3>
-                <p className="text-gray-600 text-center max-w-md">
-                  {applications.length === 0 
+                <p className="text-muted-foreground text-center max-w-md">
+                  {applications.length === 0
                     ? 'When creators apply to your campaign, their applications will appear here for review.'
                     : 'Try adjusting your filters to see more applications.'
                   }
@@ -240,7 +240,7 @@ const ApplicationsList: React.FC<ApplicationsListProps> = ({ campaignId }) => {
           <Card>
             <CardHeader>
               <CardTitle>Application Analytics</CardTitle>
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-muted-foreground">
                 Insights into your campaign's application performance
               </p>
             </CardHeader>
@@ -254,12 +254,12 @@ const ApplicationsList: React.FC<ApplicationsListProps> = ({ campaignId }) => {
           <Card>
             <CardHeader>
               <CardTitle>Application Settings</CardTitle>
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-muted-foreground">
                 Configure how applications are handled for this campaign
               </p>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="text-center py-8 text-gray-500">
+              <div className="text-center py-8 text-muted-foreground">
                 <Settings className="h-12 w-12 mx-auto mb-4" />
                 <h3 className="text-lg font-medium mb-2">Settings Coming Soon</h3>
                 <p>Advanced application settings will be available here, including:</p>

@@ -63,10 +63,10 @@ const CreatorDashboard = () => {
           {/* Header */}
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">
+              <h1 className="text-3xl font-bold text-foreground">
                 Welcome back, {profile.creator_name || profile.full_name}
               </h1>
-              <p className="text-gray-600 mt-2">
+              <p className="text-muted-foreground mt-2">
                 Here's what's happening with your creator account today.
               </p>
             </div>
@@ -224,7 +224,7 @@ const CreatorDashboard = () => {
                 {deadlinesLoading ? (
                   <div className="space-y-4">
                     {[...Array(3)].map((_, i) => (
-                      <div key={i} className="border-l-4 border-gray-200 pl-4">
+                      <div key={i} className="border-l-4 border-border pl-4">
                         <Skeleton className="h-5 w-48 mb-2" />
                         <Skeleton className="h-4 w-24" />
                       </div>
@@ -235,7 +235,7 @@ const CreatorDashboard = () => {
                     {deadlines.map((deadline) => (
                       <div key={deadline.id} className={`border-l-4 ${getDeadlineColor(deadline.daysUntilDeadline)} pl-4`}>
                         <h4 className="font-medium">{deadline.title}</h4>
-                        <p className="text-sm text-gray-600">
+                        <p className="text-sm text-muted-foreground">
                           Due in {deadline.daysUntilDeadline} {deadline.daysUntilDeadline === 1 ? 'day' : 'days'}
                         </p>
                       </div>

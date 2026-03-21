@@ -53,12 +53,12 @@ const FileCommentsPanel: React.FC<FileCommentsPanelProps> = ({
             <span className="font-medium text-sm">
               {comment.user_profile?.full_name || 'Anonymous'}
             </span>
-            <span className="text-xs text-gray-500">
+            <span className="text-xs text-muted-foreground">
               {new Date(comment.created_at).toLocaleString()}
             </span>
           </div>
           
-          <p className="text-sm text-gray-700">{comment.comment_text}</p>
+          <p className="text-sm text-foreground">{comment.comment_text}</p>
           
           {!isReply && (
             <Button
@@ -92,9 +92,9 @@ const FileCommentsPanel: React.FC<FileCommentsPanelProps> = ({
         </div>
       ) : (
         <div className="text-center py-8">
-          <MessageSquare className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-          <p className="text-gray-500">No comments yet</p>
-          <p className="text-sm text-gray-400">Be the first to leave a comment</p>
+          <MessageSquare className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+          <p className="text-muted-foreground">No comments yet</p>
+          <p className="text-sm text-muted-foreground">Be the first to leave a comment</p>
         </div>
       )}
 

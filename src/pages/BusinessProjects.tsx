@@ -328,9 +328,9 @@ const BusinessProjects: React.FC = () => {
             {[1, 2, 3].map(i => (
               <Card key={i} className="animate-pulse">
                 <CardContent className="p-6">
-                  <div className="h-6 bg-gray-200 rounded mb-4"></div>
-                  <div className="h-4 bg-gray-200 rounded mb-2"></div>
-                  <div className="h-4 bg-gray-200 rounded w-2/3"></div>
+                  <div className="h-6 bg-muted rounded mb-4"></div>
+                  <div className="h-4 bg-muted rounded mb-2"></div>
+                  <div className="h-4 bg-muted rounded w-2/3"></div>
                 </CardContent>
               </Card>
             ))}
@@ -369,9 +369,9 @@ const BusinessProjects: React.FC = () => {
         {!projects || projects.length === 0 ? (
           <Card>
             <CardContent className="p-12 text-center">
-              <FileText className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+              <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
               <h3 className="text-lg font-medium mb-2">No Projects Yet</h3>
-              <p className="text-gray-600 mb-4">
+              <p className="text-muted-foreground mb-4">
                 Once creators are assigned to your campaigns, they'll appear here.
               </p>
               <Button onClick={() => navigate('/dashboard/business/campaigns')}>
@@ -653,7 +653,7 @@ const BusinessProjects: React.FC = () => {
                             <div className="flex items-center justify-between">
                               <div className="space-y-1">
                                 <h4 className="font-medium">{file.original_filename}</h4>
-                                <div className="flex items-center gap-4 text-sm text-gray-600">
+                                <div className="flex items-center gap-4 text-sm text-muted-foreground">
                                   <span>{formatFileSize(file.file_size)}</span>
                                   <span>Uploaded {new Date(file.created_at).toLocaleDateString()}</span>
                                   {file.uploader_profile?.full_name && (
@@ -681,8 +681,8 @@ const BusinessProjects: React.FC = () => {
                   ) : (
                     <Card>
                       <CardContent className="p-8 text-center">
-                        <FileText className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-                        <p className="text-gray-600">No deliverables uploaded yet for this project.</p>
+                        <FileText className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                        <p className="text-muted-foreground">No deliverables uploaded yet for this project.</p>
                       </CardContent>
                     </Card>
                   )}
@@ -690,8 +690,8 @@ const BusinessProjects: React.FC = () => {
               ) : (
                 <Card>
                   <CardContent className="p-8 text-center">
-                    <FileText className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-                    <p className="text-gray-600">Select a project to view its deliverables.</p>
+                    <FileText className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                    <p className="text-muted-foreground">Select a project to view its deliverables.</p>
                   </CardContent>
                 </Card>
               )}

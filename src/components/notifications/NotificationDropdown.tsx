@@ -91,7 +91,7 @@ const NotificationDropdown: React.FC = () => {
         
         {notifications.length === 0 ? (
           <DropdownMenuItem disabled>
-            <div className="flex flex-col items-center py-4 text-gray-500">
+            <div className="flex flex-col items-center py-4 text-muted-foreground">
               <Bell className="h-8 w-8 mb-2" />
               <span>No notifications yet</span>
             </div>
@@ -112,12 +112,12 @@ const NotificationDropdown: React.FC = () => {
                     {!notification.read && (
                       <div className="h-2 w-2 bg-blue-600 rounded-full" />
                     )}
-                    <span className="text-xs text-gray-500">
+                    <span className="text-xs text-muted-foreground">
                       {formatTimeAgo(notification.created_at)}
                     </span>
                   </div>
                 </div>
-                <span className="text-sm text-gray-600">{notification.message}</span>
+                <span className="text-sm text-muted-foreground">{notification.message}</span>
               </DropdownMenuItem>
             ))}
           </div>

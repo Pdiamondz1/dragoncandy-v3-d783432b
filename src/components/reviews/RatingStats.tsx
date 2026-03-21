@@ -13,13 +13,13 @@ const RatingStats: React.FC<RatingStatsProps> = ({ revieweeId, reviewType }) => 
   const { data: stats, isLoading, error } = useReviewStats(revieweeId, reviewType);
 
   if (isLoading || !stats) {
-    return <div className="animate-pulse h-32 bg-gray-100 rounded" />;
+    return <div className="animate-pulse h-32 bg-muted rounded" />;
   }
 
   if (error) {
     console.error('RatingStats error:', error);
     return (
-      <div className="text-center py-6 text-gray-500">
+      <div className="text-center py-6 text-muted-foreground">
         <p>Unable to load ratings</p>
       </div>
     );
@@ -27,7 +27,7 @@ const RatingStats: React.FC<RatingStatsProps> = ({ revieweeId, reviewType }) => 
 
   if (stats.total_reviews === 0) {
     return (
-      <div className="text-center py-6 text-gray-500">
+      <div className="text-center py-6 text-muted-foreground">
         <p className="mb-1">No ratings yet</p>
         <p className="text-sm">Ratings will appear here after completed collaborations.</p>
       </div>
@@ -40,7 +40,7 @@ const RatingStats: React.FC<RatingStatsProps> = ({ revieweeId, reviewType }) => 
         <div className="text-center">
           <div className="text-3xl font-bold">{stats.average_rating}</div>
           <StarRating rating={Math.round(stats.average_rating)} readonly />
-          <div className="text-sm text-gray-500 mt-1">
+          <div className="text-sm text-muted-foreground mt-1">
             {stats.total_reviews} review{stats.total_reviews !== 1 ? 's' : ''}
           </div>
         </div>
@@ -55,7 +55,7 @@ const RatingStats: React.FC<RatingStatsProps> = ({ revieweeId, reviewType }) => 
                 <span className="w-3">{rating}</span>
                 <StarRating rating={1} readonly size="sm" />
                 <Progress value={percentage} className="flex-1" />
-                <span className="w-8 text-gray-500">{count}</span>
+                <span className="w-8 text-muted-foreground">{count}</span>
               </div>
             );
           })}

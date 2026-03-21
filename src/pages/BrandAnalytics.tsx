@@ -47,7 +47,7 @@ const BrandAnalytics = () => {
     <DashboardLayout userRole="brand">
       <div className="p-8 max-w-7xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-2">Brand Analytics</h1>
+          <h1 className="text-4xl font-bold mb-2 text-foreground">Brand Analytics</h1>
           <p className="text-muted-foreground">
             Track your sponsorship performance and ROI metrics
           </p>

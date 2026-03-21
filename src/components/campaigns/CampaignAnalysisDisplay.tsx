@@ -54,7 +54,7 @@ const CampaignAnalysisDisplay: React.FC<CampaignAnalysisDisplayProps> = ({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-gray-700">{analysis.description}</p>
+            <p className="text-foreground">{analysis.description}</p>
           </CardContent>
         </Card>
 
@@ -70,7 +70,7 @@ const CampaignAnalysisDisplay: React.FC<CampaignAnalysisDisplayProps> = ({
               {analysis.goals.map((goal, index) => (
                 <div key={index} className="flex items-center gap-2">
                   <CheckSquare className="h-4 w-4 text-green-500" />
-                  <span className="text-gray-700">{goal}</span>
+                  <span className="text-foreground">{goal}</span>
                 </div>
               ))}
             </div>
@@ -88,7 +88,7 @@ const CampaignAnalysisDisplay: React.FC<CampaignAnalysisDisplayProps> = ({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-gray-700">{analysis.target_audience}</p>
+            <p className="text-foreground">{analysis.target_audience}</p>
           </CardContent>
         </Card>
 
@@ -141,7 +141,7 @@ const CampaignAnalysisDisplay: React.FC<CampaignAnalysisDisplayProps> = ({
           <CardContent>
             <div className="space-y-2">
               {analysis.key_messages.map((message, index) => (
-                <div key={index} className="text-sm text-gray-700">
+                <div key={index} className="text-sm text-foreground">
                   • {message}
                 </div>
               ))}
@@ -163,9 +163,9 @@ const CampaignAnalysisDisplay: React.FC<CampaignAnalysisDisplayProps> = ({
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
-                  <div><strong>Preparation:</strong> {analysis.timeline_recommendations.preparation}</div>
-                  <div><strong>Execution:</strong> {analysis.timeline_recommendations.execution}</div>
-                  <div><strong>Analysis:</strong> {analysis.timeline_recommendations.analysis}</div>
+                  <div className="text-foreground"><strong>Preparation:</strong> {analysis.timeline_recommendations.preparation}</div>
+                  <div className="text-foreground"><strong>Execution:</strong> {analysis.timeline_recommendations.execution}</div>
+                  <div className="text-foreground"><strong>Analysis:</strong> {analysis.timeline_recommendations.analysis}</div>
                 </div>
               </CardContent>
             </Card>
@@ -184,7 +184,7 @@ const CampaignAnalysisDisplay: React.FC<CampaignAnalysisDisplayProps> = ({
                   <div className="text-lg font-semibold">
                     ${analysis.budget_recommendations.min} - ${analysis.budget_recommendations.max}
                   </div>
-                  <p className="text-sm text-gray-600">{analysis.budget_recommendations.reasoning}</p>
+                  <p className="text-sm text-muted-foreground">{analysis.budget_recommendations.reasoning}</p>
                 </div>
               </CardContent>
             </Card>
@@ -205,7 +205,7 @@ const CampaignAnalysisDisplay: React.FC<CampaignAnalysisDisplayProps> = ({
             {analysis.success_metrics.map((metric, index) => (
               <div key={index} className="flex items-center gap-2">
                 <CheckSquare className="h-4 w-4 text-teal-500" />
-                <span className="text-gray-700">{metric}</span>
+                <span className="text-foreground">{metric}</span>
               </div>
             ))}
           </div>
@@ -234,14 +234,14 @@ const CampaignAnalysisDisplay: React.FC<CampaignAnalysisDisplayProps> = ({
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {analysis.content_ideas.map((idea, index) => (
-                    <div key={index} className="border rounded-lg p-4 bg-gray-50">
+                    <div key={index} className="border rounded-lg p-4 bg-muted">
                       <div className="flex items-center justify-between mb-2">
-                        <span className="font-semibold text-gray-900">{idea.concept}</span>
+                        <span className="font-semibold text-foreground">{idea.concept}</span>
                         <Badge variant="secondary" className="text-xs">{idea.format}</Badge>
                       </div>
-                      <p className="text-sm text-gray-600 mb-2">{idea.description}</p>
+                      <p className="text-sm text-muted-foreground mb-2">{idea.description}</p>
                       {idea.estimated_duration && (
-                        <div className="flex items-center gap-1 text-xs text-gray-500">
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
                           <Clock className="h-3 w-3" />
                           {idea.estimated_duration}
                         </div>
@@ -278,7 +278,7 @@ const CampaignAnalysisDisplay: React.FC<CampaignAnalysisDisplayProps> = ({
                 <CardContent>
                   <div className="flex flex-wrap gap-2">
                     {analysis.hashtags.map((tag, index) => (
-                      <Badge key={index} variant="outline" className="text-sm cursor-pointer hover:bg-blue-50"
+                      <Badge key={index} variant="outline" className="text-sm cursor-pointer hover:bg-muted"
                         onClick={() => {
                           navigator.clipboard.writeText(tag);
                           toast.success(`Copied ${tag}`);
@@ -303,8 +303,8 @@ const CampaignAnalysisDisplay: React.FC<CampaignAnalysisDisplayProps> = ({
                 <CardContent>
                   <div className="space-y-3">
                     {analysis.captions.map((caption, index) => (
-                      <div key={index} className="border rounded-lg p-3 bg-gray-50 relative group">
-                        <p className="text-sm text-gray-700 pr-8">{caption}</p>
+                      <div key={index} className="border rounded-lg p-3 bg-muted relative group">
+                        <p className="text-sm text-foreground pr-8">{caption}</p>
                         <Button
                           variant="ghost"
                           size="sm"
@@ -338,8 +338,8 @@ const CampaignAnalysisDisplay: React.FC<CampaignAnalysisDisplayProps> = ({
                   <div className="space-y-4">
                     {analysis.posting_schedule.map((entry, index) => (
                       <div key={index} className="border rounded-lg p-3">
-                        <div className="font-semibold text-gray-900 mb-1">{entry.platform}</div>
-                        <div className="text-sm text-gray-600 space-y-1">
+                        <div className="font-semibold text-foreground mb-1">{entry.platform}</div>
+                        <div className="text-sm text-muted-foreground space-y-1">
                           <div><span className="font-medium">Frequency:</span> {entry.frequency}</div>
                           <div><span className="font-medium">Best times:</span> {entry.best_times}</div>
                           <div><span className="font-medium">Content mix:</span> {entry.content_mix}</div>
@@ -362,20 +362,20 @@ const CampaignAnalysisDisplay: React.FC<CampaignAnalysisDisplayProps> = ({
                 <CardContent>
                   <div className="space-y-3">
                     <div>
-                      <span className="font-medium text-gray-900">Visual Style:</span>
-                      <p className="text-sm text-gray-600">{analysis.style_direction.visual_style}</p>
+                      <span className="font-medium text-foreground">Visual Style:</span>
+                      <p className="text-sm text-muted-foreground">{analysis.style_direction.visual_style}</p>
                     </div>
                     <div>
-                      <span className="font-medium text-gray-900">Mood:</span>
-                      <p className="text-sm text-gray-600">{analysis.style_direction.mood}</p>
+                      <span className="font-medium text-foreground">Mood:</span>
+                      <p className="text-sm text-muted-foreground">{analysis.style_direction.mood}</p>
                     </div>
                     <div>
-                      <span className="font-medium text-gray-900">Color Palette:</span>
-                      <p className="text-sm text-gray-600">{analysis.style_direction.color_palette}</p>
+                      <span className="font-medium text-foreground">Color Palette:</span>
+                      <p className="text-sm text-muted-foreground">{analysis.style_direction.color_palette}</p>
                     </div>
                     <div>
-                      <span className="font-medium text-gray-900">Reference:</span>
-                      <p className="text-sm text-gray-600">{analysis.style_direction.references}</p>
+                      <span className="font-medium text-foreground">Reference:</span>
+                      <p className="text-sm text-muted-foreground">{analysis.style_direction.references}</p>
                     </div>
                   </div>
                 </CardContent>

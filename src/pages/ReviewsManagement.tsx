@@ -30,8 +30,8 @@ const ReviewsManagement = () => {
         <div className="max-w-6xl mx-auto space-y-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Reviews & Ratings</h1>
-              <p className="text-gray-600 mt-2">Manage your reviews and track your reputation</p>
+              <h1 className="text-3xl font-bold text-foreground">Reviews & Ratings</h1>
+              <p className="text-muted-foreground mt-2">Manage your reviews and track your reputation</p>
             </div>
             <Button variant="outline" className="flex items-center gap-2">
               <Download className="h-4 w-4" />
@@ -57,7 +57,7 @@ const ReviewsManagement = () => {
             <CardContent className="p-6">
               <div className="flex gap-4 items-center">
                 <div className="flex-1 relative">
-                  <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                   <Input
                     placeholder="Search reviews..."
                     value={searchQuery}

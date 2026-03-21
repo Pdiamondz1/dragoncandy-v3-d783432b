@@ -15,7 +15,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ userRole }) =>
     location.pathname === href || location.pathname.startsWith(href + '/');
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-white border-t border-gray-200">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-card border-t border-border">
       <div className="flex items-end justify-around px-1 pb-2 pt-1">
         {items.map((item) => {
           const Icon = item.icon;

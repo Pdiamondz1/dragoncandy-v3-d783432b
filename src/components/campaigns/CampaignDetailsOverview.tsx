@@ -37,7 +37,7 @@ const CampaignDetailsOverview: React.FC<CampaignDetailsOverviewProps> = ({ campa
           <div>
             <h3 className="font-semibold text-lg mb-2">{campaign.title}</h3>
             {campaign.description && (
-              <p className="text-gray-600 text-sm mb-4">{campaign.description}</p>
+              <p className="text-muted-foreground text-sm mb-4">{campaign.description}</p>
             )}
             <Badge variant={campaign.status === 'published' ? 'default' : 'secondary'}>
               {campaign.status.charAt(0).toUpperCase() + campaign.status.slice(1)}
@@ -47,7 +47,7 @@ const CampaignDetailsOverview: React.FC<CampaignDetailsOverviewProps> = ({ campa
           {campaign.goals && (
             <div>
               <h4 className="font-medium mb-2">Goals</h4>
-              <p className="text-sm text-gray-600">{campaign.goals}</p>
+              <p className="text-sm text-muted-foreground">{campaign.goals}</p>
             </div>
           )}
 
@@ -87,7 +87,7 @@ const CampaignDetailsOverview: React.FC<CampaignDetailsOverviewProps> = ({ campa
             <DollarSign className="h-5 w-5 text-green-600" />
             <div>
               <p className="font-medium">Budget Range</p>
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-muted-foreground">
                 {formatCurrency(campaign.budget_min)} - {formatCurrency(campaign.budget_max)}
               </p>
             </div>
@@ -97,7 +97,7 @@ const CampaignDetailsOverview: React.FC<CampaignDetailsOverviewProps> = ({ campa
             <Calendar className="h-5 w-5 text-blue-600" />
             <div>
               <p className="font-medium">Deadline</p>
-              <p className="text-sm text-gray-600">{formatDate(campaign.deadline)}</p>
+              <p className="text-sm text-muted-foreground">{formatDate(campaign.deadline)}</p>
             </div>
           </div>
 
@@ -106,7 +106,7 @@ const CampaignDetailsOverview: React.FC<CampaignDetailsOverviewProps> = ({ campa
               <Palette className="h-5 w-5 text-purple-600" />
               <div>
                 <p className="font-medium">Style</p>
-                <p className="text-sm text-gray-600 capitalize">{campaign.style}</p>
+                <p className="text-sm text-muted-foreground capitalize">{campaign.style}</p>
               </div>
             </div>
           )}
@@ -116,7 +116,7 @@ const CampaignDetailsOverview: React.FC<CampaignDetailsOverviewProps> = ({ campa
               <Volume2 className="h-5 w-5 text-orange-600" />
               <div>
                 <p className="font-medium">Tone</p>
-                <p className="text-sm text-gray-600 capitalize">{campaign.tone}</p>
+                <p className="text-sm text-muted-foreground capitalize">{campaign.tone}</p>
               </div>
             </div>
           )}

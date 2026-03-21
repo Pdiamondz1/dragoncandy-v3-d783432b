@@ -102,10 +102,10 @@ const BusinessDashboard = () => {
           
           {/* Welcome Header */}
           <div className="text-center space-y-4">
-            <h1 className="text-4xl font-bold text-gray-900">
+            <h1 className="text-4xl font-bold text-foreground">
               Welcome back, {profile.business_name}!
             </h1>
-            <p className="text-xl text-gray-600">
+            <p className="text-xl text-muted-foreground">
               Ready to create amazing content with talented creators?
             </p>
           </div>
@@ -125,13 +125,13 @@ const BusinessDashboard = () => {
                     <h2 className="text-3xl font-bold bg-gradient-to-r from-orange-600 to-pink-600 bg-clip-text text-transparent mb-1">
                       DragonDash
                     </h2>
-                    <p className="text-lg text-gray-700 font-medium">
+                    <p className="text-lg text-muted-foreground font-medium">
                       Fast Content, On Demand
                     </p>
                   </div>
                   
                   {/* Description */}
-                  <p className="text-gray-600">
+                  <p className="text-muted-foreground">
                     Need content in hours, not days? Choose your delivery speed and let our creators deliver quality content fast.
                   </p>
                   
@@ -152,8 +152,8 @@ const BusinessDashboard = () => {
           {/* How It Works */}
           <div className="space-y-8">
             <div className="text-center">
-              <h2 className="text-3xl font-bold text-gray-900 mb-4">How It Works</h2>
-              <p className="text-gray-600">Simple steps to launch your next successful campaign</p>
+              <h2 className="text-3xl font-bold text-foreground mb-4">How It Works</h2>
+              <p className="text-muted-foreground">Simple steps to launch your next successful campaign</p>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -163,10 +163,10 @@ const BusinessDashboard = () => {
                     <div className="w-12 h-12 bg-pink-600 text-white rounded-full flex items-center justify-center mx-auto mb-4 text-lg font-bold">
                       {step.number}
                     </div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    <h3 className="text-lg font-semibold text-foreground mb-2">
                       {step.title}
                     </h3>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-muted-foreground">
                       {step.description}
                     </p>
                   </CardContent>
@@ -216,8 +216,8 @@ const BusinessDashboard = () => {
           {/* Quick Actions */}
           <div className="space-y-8">
             <div className="text-center">
-              <h2 className="text-3xl font-bold text-gray-900 mb-4">Quick Actions</h2>
-              <p className="text-gray-600">Manage your campaigns and discover new opportunities</p>
+              <h2 className="text-3xl font-bold text-foreground mb-4">Quick Actions</h2>
+              <p className="text-muted-foreground">Manage your campaigns and discover new opportunities</p>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -229,10 +229,10 @@ const BusinessDashboard = () => {
                         {action.icon}
                       </div>
                       <div>
-                        <h3 className="text-lg font-semibold text-gray-900">
+                        <h3 className="text-lg font-semibold text-foreground">
                           {action.title}
                         </h3>
-                        <p className="text-sm text-gray-600">
+                        <p className="text-sm text-muted-foreground">
                           {action.description}
                         </p>
                       </div>

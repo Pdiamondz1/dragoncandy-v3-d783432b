@@ -52,10 +52,10 @@ export const CreatorBrowseContent: React.FC<CreatorBrowseContentProps> = ({
     return (
       <div className="space-y-6">
         <div className="animate-pulse space-y-6">
-          <div className="h-8 bg-gray-200 rounded w-1/3"></div>
+          <div className="h-8 bg-muted rounded w-1/3"></div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {[1, 2, 3, 4, 5, 6].map((i) => (
-              <div key={i} className="h-64 bg-gray-200 rounded"></div>
+              <div key={i} className="h-64 bg-muted rounded"></div>
             ))}
           </div>
         </div>
@@ -68,10 +68,10 @@ export const CreatorBrowseContent: React.FC<CreatorBrowseContentProps> = ({
       <Card>
         <CardContent className="flex flex-col items-center justify-center py-12">
           <Users className="h-12 w-12 text-red-400 mb-4" />
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">
+          <h3 className="text-lg font-semibold text-foreground mb-2">
             Failed to load creators
           </h3>
-          <p className="text-gray-600">
+          <p className="text-muted-foreground">
             There was an error loading the creator profiles.
           </p>
         </CardContent>
@@ -126,7 +126,7 @@ export const CreatorBrowseContent: React.FC<CreatorBrowseContentProps> = ({
               <Card>
                 <CardContent className="flex flex-col items-center justify-center py-12">
                   <Search className="h-12 w-12 text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">
+                  <h3 className="text-lg font-semibold text-foreground mb-2">
                     No creators found
                   </h3>
                   <p className="text-muted-foreground">

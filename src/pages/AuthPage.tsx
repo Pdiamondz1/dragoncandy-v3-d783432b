@@ -117,7 +117,7 @@ const AuthPage = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-dc-gray px-4 py-8">
+    <div className="min-h-screen flex flex-col bg-muted dark:bg-background px-4 py-8">
       {/* Top nav — logo + hamburger placeholder */}
       <div className="flex items-center justify-between mb-6">
         <Link to="/">

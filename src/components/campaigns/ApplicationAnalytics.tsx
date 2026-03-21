@@ -52,7 +52,7 @@ const ApplicationAnalytics: React.FC<ApplicationAnalyticsProps> = ({ application
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">{recentApplications}</div>
-          <p className="text-xs text-gray-600">applications in last 24h</p>
+          <p className="text-xs text-muted-foreground">applications in last 24h</p>
           <div className="flex gap-1 mt-2">
             <Badge variant="outline" className="text-xs">
               {totalApplications} total
@@ -68,7 +68,7 @@ const ApplicationAnalytics: React.FC<ApplicationAnalyticsProps> = ({ application
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">{responseRate.toFixed(1)}%</div>
-          <p className="text-xs text-gray-600">applications reviewed</p>
+          <p className="text-xs text-muted-foreground">applications reviewed</p>
           <div className="flex gap-1 mt-2">
             <Badge variant="secondary" className="text-xs">
               {pendingCount} pending
@@ -84,7 +84,7 @@ const ApplicationAnalytics: React.FC<ApplicationAnalyticsProps> = ({ application
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">{acceptanceRate.toFixed(1)}%</div>
-          <p className="text-xs text-gray-600">of reviewed applications</p>
+          <p className="text-xs text-muted-foreground">of reviewed applications</p>
           <div className="flex gap-1 mt-2">
             <Badge variant="default" className="text-xs">
               {acceptedCount} accepted
@@ -105,7 +105,7 @@ const ApplicationAnalytics: React.FC<ApplicationAnalyticsProps> = ({ application
           <div className="text-2xl font-bold">
             {averageRate > 0 ? formatCurrency(averageRate) : 'N/A'}
           </div>
-          <p className="text-xs text-gray-600">across all applications</p>
+          <p className="text-xs text-muted-foreground">across all applications</p>
           <div className="flex gap-1 mt-2">
             <Badge variant="outline" className="text-xs">
               {applications.filter(app => app.proposed_rate).length} with rates
@@ -121,7 +121,7 @@ const ApplicationAnalytics: React.FC<ApplicationAnalyticsProps> = ({ application
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">{totalApplications}</div>
-          <p className="text-xs text-gray-600">unique creators applied</p>
+          <p className="text-xs text-muted-foreground">unique creators applied</p>
           <div className="flex gap-1 mt-2">
             <Badge variant="outline" className="text-xs">
               100% unique

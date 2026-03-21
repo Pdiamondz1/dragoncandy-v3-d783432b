@@ -56,10 +56,10 @@ const MessageThread: React.FC<MessageThreadProps> = ({
     <div className="flex h-[600px]">
       <Card className="flex flex-col flex-1">
         {campaignTitle && (
-          <div className="p-4 border-b bg-gray-50 flex items-center justify-between">
+          <div className="p-4 border-b bg-muted flex items-center justify-between">
             <div>
-              <h3 className="font-medium text-gray-900">{campaignTitle}</h3>
-              <p className="text-sm text-gray-600">Campaign Discussion</p>
+              <h3 className="font-medium text-foreground">{campaignTitle}</h3>
+              <p className="text-sm text-muted-foreground">Campaign Discussion</p>
             </div>
             <Button
               variant="outline"

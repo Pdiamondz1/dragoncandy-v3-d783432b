@@ -37,14 +37,14 @@ export const MobileTopNav: React.FC<MobileTopNavProps> = ({
           <p className="text-xs font-bold text-dc-teal uppercase leading-tight truncate">
             Welcome Back, {displayName}
           </p>
-          <p className="text-xs text-[#555555]">Create content and drive revenue</p>
+          <p className="text-xs text-muted-foreground">Create content and drive revenue</p>
         </div>
       )}
 
       <Sheet>
         <SheetTrigger asChild>
           <button
-            className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+            className="p-2 rounded-full hover:bg-muted transition-colors"
             aria-label="Open menu"
           >
             <Menu className="h-6 w-6 text-foreground" />

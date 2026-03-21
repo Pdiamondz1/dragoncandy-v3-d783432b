@@ -317,7 +317,7 @@ export const AuthForm = ({ mode, onError }: AuthFormProps) => {
       {mode === "login" ? (
         <button
           type="submit"
-          className="w-full rounded-full bg-white text-dc-teal font-bold text-base py-3 disabled:opacity-60 hover:bg-gray-50 transition-colors"
+          className="w-full rounded-full bg-white text-dc-teal font-bold text-base py-3 disabled:opacity-60 hover:bg-muted transition-colors"
           disabled={loading}
         >
           {loading ? "Logging in..." : "Log In"}

@@ -107,7 +107,7 @@ const ApplicationForm: React.FC<ApplicationFormProps> = ({
           </div>
         </CardHeader>
         <CardContent className="space-y-3">
-          <p className="text-sm text-gray-600">{campaign.description}</p>
+          <p className="text-sm text-muted-foreground">{campaign.description}</p>
           
           {/* DragonRush urgency warning */}
           {campaign.delivery_type === 'dragonrush' && (
@@ -124,7 +124,7 @@ const ApplicationForm: React.FC<ApplicationFormProps> = ({
       <Card>
         <CardHeader>
           <CardTitle>Submit Your Application</CardTitle>
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-muted-foreground">
             Tell the business owner why you're the perfect fit for this campaign.
           </p>
         </CardHeader>

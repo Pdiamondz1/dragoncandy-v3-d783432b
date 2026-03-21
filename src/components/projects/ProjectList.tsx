@@ -183,11 +183,11 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, showProgress, onMes
     return (
       <Card>
         <CardContent className="flex flex-col items-center justify-center py-12">
-          <Briefcase className="h-12 w-12 text-gray-400 mb-4" />
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">
+          <Briefcase className="h-12 w-12 text-muted-foreground mb-4" />
+          <h3 className="text-lg font-semibold text-foreground mb-2">
             No projects found
           </h3>
-          <p className="text-gray-600">
+          <p className="text-muted-foreground">
             Complete applications to start working on campaigns.
           </p>
         </CardContent>

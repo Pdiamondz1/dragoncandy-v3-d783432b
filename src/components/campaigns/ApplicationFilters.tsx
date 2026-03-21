@@ -23,14 +23,14 @@ const ApplicationFiltersComponent: React.FC<ApplicationFiltersProps> = ({
   filteredCount,
 }) => {
   return (
-    <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
+    <div className="space-y-4 p-4 bg-muted rounded-lg">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Filter className="h-4 w-4" />
           <span className="font-medium">Filters</span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-600">
+          <span className="text-sm text-muted-foreground">
             {filteredCount} of {totalCount} applications
           </span>
           <Button variant="ghost" size="sm" onClick={onReset}>
@@ -44,7 +44,7 @@ const ApplicationFiltersComponent: React.FC<ApplicationFiltersProps> = ({
         <div>
           <Label htmlFor="search">Search</Label>
           <div className="relative">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
             <Input
               id="search"
               placeholder="Search creators..."

@@ -106,21 +106,21 @@ const ProfileOnboarding = () => {
     const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname.includes('lovable');
     
     return (
-      <div className="min-h-screen flex items-center justify-center bg-pink-50">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center max-w-md">
           <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-pink-600 mx-auto mb-4"></div>
-          <div className="rounded-full bg-pink-100 p-3 mx-auto mb-4 w-16 h-16 flex items-center justify-center">
-            <Sparkles className="text-pink-600 w-8 h-8" />
+          <div className="rounded-full bg-muted p-3 mx-auto mb-4 w-16 h-16 flex items-center justify-center">
+            <Sparkles className="text-foreground w-8 h-8" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">
+          <h1 className="text-2xl font-bold text-foreground mb-2">
             Welcome to DragonCandy!
           </h1>
-          <p className="text-gray-600 mb-4">
+          <p className="text-muted-foreground mb-4">
             {loading ? 'Loading your account...' : 'Redirecting you to complete your profile setup...'}
           </p>
           
           {isDevelopment && debugInfo && (
-            <div className="mt-4 p-3 bg-gray-100 rounded-lg text-sm text-gray-600">
+            <div className="mt-4 p-3 bg-muted rounded-lg text-sm text-muted-foreground">
               <div className="font-medium mb-1">Debug Info:</div>
               <div>{debugInfo}</div>
             </div>
@@ -132,15 +132,15 @@ const ProfileOnboarding = () => {
 
   // This should rarely render since we redirect in useEffect
   return (
-    <div className="min-h-screen flex items-center justify-center bg-pink-50">
+    <div className="min-h-screen flex items-center justify-center bg-background">
       <div className="text-center">
-        <div className="rounded-full bg-pink-100 p-3 mx-auto mb-4 w-16 h-16 flex items-center justify-center">
-          <Sparkles className="text-pink-600 w-8 h-8" />
+        <div className="rounded-full bg-muted p-3 mx-auto mb-4 w-16 h-16 flex items-center justify-center">
+          <Sparkles className="text-foreground w-8 h-8" />
         </div>
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">
+        <h1 className="text-2xl font-bold text-foreground mb-2">
           Welcome to DragonCandy!
         </h1>
-        <p className="text-gray-600">
+        <p className="text-muted-foreground">
           Setting up your profile...
         </p>
       </div>

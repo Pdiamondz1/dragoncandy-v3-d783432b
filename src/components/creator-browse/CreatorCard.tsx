@@ -220,7 +220,7 @@ export const CreatorCard: React.FC<CreatorCardProps> = ({ creator }) => {
         {/* Card Body Content */}
         <CardContent className="pt-10 space-y-4">
         {creator.bio && (
-          <p className="text-sm text-gray-600 line-clamp-3">
+          <p className="text-sm text-muted-foreground line-clamp-3">
             {creator.bio}
           </p>
         )}

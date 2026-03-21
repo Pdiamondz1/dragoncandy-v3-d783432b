@@ -27,7 +27,7 @@ export const AnonymousCampaignLayout: React.FC<AnonymousCampaignLayoutProps> = (
       {/* Main content with higher z-index and proper spacing for sidebars */}
       <div className="relative z-10 ml-40 lg:ml-64 mr-40 lg:mr-64">
         {/* Header */}
-        <header className="bg-white/95 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-20 rounded-b-2xl shadow-lg">
+        <header className="bg-card/95 backdrop-blur-sm border-b border-border sticky top-0 z-20 rounded-b-2xl shadow-lg">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-16">
               <div className="flex items-center gap-4">
@@ -35,13 +35,13 @@ export const AnonymousCampaignLayout: React.FC<AnonymousCampaignLayoutProps> = (
                   variant="ghost"
                   size="sm"
                   onClick={() => navigate('/landing')}
-                  className="flex items-center gap-2 hover:bg-white/80 rounded-xl transition-all duration-200"
+                  className="flex items-center gap-2 hover:bg-card/80 rounded-xl transition-all duration-200"
                 >
                   <ArrowLeft className="h-4 w-4" />
                   Back to Landing
                 </Button>
-                <div className="h-6 w-px bg-gray-300" />
-                <h1 className="text-xl font-semibold text-gray-900">
+                <div className="h-6 w-px bg-muted" />
+                <h1 className="text-xl font-semibold text-foreground">
                   Campaign Wizard
                 </h1>
               </div>
@@ -73,7 +73,7 @@ export const AnonymousCampaignLayout: React.FC<AnonymousCampaignLayoutProps> = (
         </main>
 
         {/* Footer */}
-        <footer className="bg-white/95 backdrop-blur-sm border-t border-gray-200 mt-12 rounded-t-2xl shadow-lg">
+        <footer className="bg-card/95 backdrop-blur-sm border-t border-border mt-12 rounded-t-2xl shadow-lg">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
             <div className="text-center text-sm text-muted-foreground">
               <p>

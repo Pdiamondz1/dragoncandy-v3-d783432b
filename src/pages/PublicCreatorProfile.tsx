@@ -178,11 +178,11 @@ const PublicCreatorProfile = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#A8A8A0] py-8">
+      <div className="min-h-screen bg-muted py-8">
         <div className="max-w-4xl mx-auto px-4">
           <div className="animate-pulse space-y-6">
-            <div className="h-32 bg-gray-200 rounded-lg"></div>
-            <div className="h-64 bg-gray-200 rounded-lg"></div>
+            <div className="h-32 bg-muted rounded-lg"></div>
+            <div className="h-64 bg-muted rounded-lg"></div>
           </div>
         </div>
       </div>
@@ -191,14 +191,14 @@ const PublicCreatorProfile = () => {
 
   if (notFound || !profile) {
     return (
-      <div className="min-h-screen bg-[#A8A8A0] flex items-center justify-center">
+      <div className="min-h-screen bg-muted flex items-center justify-center">
         <Card className="max-w-md mx-auto">
           <CardContent className="flex flex-col items-center justify-center py-12">
-            <User className="h-12 w-12 text-gray-400 mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+            <User className="h-12 w-12 text-muted-foreground mb-4" />
+            <h3 className="text-lg font-semibold text-foreground mb-2">
               Creator Profile Not Found
             </h3>
-            <p className="text-gray-600 text-center mb-6">
+            <p className="text-muted-foreground text-center mb-6">
               The creator profile you're looking for doesn't exist or is set to private.
             </p>
             <Button onClick={() => navigate('/')}>
@@ -211,7 +211,7 @@ const PublicCreatorProfile = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#A8A8A0] py-8">
+    <div className="min-h-screen bg-muted py-8">
       <div className="max-w-4xl mx-auto px-4 space-y-6">
         {/* Back Button */}
         <Button 
@@ -236,10 +236,10 @@ const PublicCreatorProfile = () => {
               <div className="flex-1">
                 <div className="flex items-start justify-between">
                   <div>
-                    <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                    <h1 className="text-3xl font-bold text-foreground mb-2">
                       {profile.creator_name}
                     </h1>
-                    <div className="flex items-center gap-4 text-sm text-gray-600 mb-4">
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
                       <div className="flex items-center gap-1">
                         <Briefcase className="h-4 w-4" />
                         <span>{formatExperience(profile.years_of_experience)}</span>
@@ -282,7 +282,7 @@ const PublicCreatorProfile = () => {
                 </div>
 
                 {profile.bio && (
-                  <p className="text-gray-700 leading-relaxed">
+                  <p className="text-foreground leading-relaxed">
                     {profile.bio}
                   </p>
                 )}
@@ -320,27 +320,27 @@ const PublicCreatorProfile = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <span className="text-sm font-medium text-gray-500">Hourly Rate</span>
+                <span className="text-sm font-medium text-muted-foreground">Hourly Rate</span>
                 <p>{formatRate(profile.base_rate_per_hour)}</p>
               </div>
-              
+
               {profile.min_project_budget && (
                 <div>
-                  <span className="text-sm font-medium text-gray-500">Minimum Project Budget</span>
+                  <span className="text-sm font-medium text-muted-foreground">Minimum Project Budget</span>
                   <p>${profile.min_project_budget}</p>
                 </div>
               )}
-              
+
               {profile.response_time && (
                 <div>
-                  <span className="text-sm font-medium text-gray-500">Response Time</span>
+                  <span className="text-sm font-medium text-muted-foreground">Response Time</span>
                   <p className="capitalize">{profile.response_time.replace('-', ' ')}</p>
                 </div>
               )}
-              
+
               {profile.max_projects_per_month && (
                 <div>
-                  <span className="text-sm font-medium text-gray-500">Capacity</span>
+                  <span className="text-sm font-medium text-muted-foreground">Capacity</span>
                   <p>{profile.max_projects_per_month} projects per month</p>
                 </div>
               )}
@@ -357,20 +357,20 @@ const PublicCreatorProfile = () => {
             <CardContent className="space-y-4">
               {profile.preferred_project_duration && (
                 <div>
-                  <span className="text-sm font-medium text-gray-500">Preferred Project Duration</span>
+                  <span className="text-sm font-medium text-muted-foreground">Preferred Project Duration</span>
                   <p className="capitalize">{profile.preferred_project_duration.replace('-', ' ')}</p>
                 </div>
               )}
-              
+
               {profile.languages_spoken && profile.languages_spoken.length > 0 && (
                 <div>
-                  <span className="text-sm font-medium text-gray-500">Languages</span>
+                  <span className="text-sm font-medium text-muted-foreground">Languages</span>
                   <p>{profile.languages_spoken.join(', ')}</p>
                 </div>
               )}
-              
+
               <div>
-                <span className="text-sm font-medium text-gray-500">Member Since</span>
+                <span className="text-sm font-medium text-muted-foreground">Member Since</span>
                 <p>{new Date(profile.created_at).toLocaleDateString('en-US', { 
                   year: 'numeric', 
                   month: 'long' 
@@ -387,7 +387,7 @@ const PublicCreatorProfile = () => {
               <CardTitle>How I Work</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-gray-700 leading-relaxed">
+              <p className="text-foreground leading-relaxed">
                 {profile.collaboration_preferences}
               </p>
             </CardContent>
@@ -401,7 +401,7 @@ const PublicCreatorProfile = () => {
               <CardTitle>Current Availability</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-gray-700 leading-relaxed">
+              <p className="text-foreground leading-relaxed">
                 {profile.availability}
               </p>
             </CardContent>
@@ -444,7 +444,7 @@ const PublicCreatorProfile = () => {
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 {portfolioUrls.map((url, index) => (
-                  <div key={index} className="aspect-square bg-gray-100 rounded-lg overflow-hidden group cursor-pointer">
+                  <div key={index} className="aspect-square bg-muted rounded-lg overflow-hidden group cursor-pointer">
                     <img 
                       src={url} 
                       alt={`Portfolio item ${index + 1}`}
@@ -455,8 +455,8 @@ const PublicCreatorProfile = () => {
                         const parent = target.parentElement;
                         if (parent) {
                           parent.innerHTML = `
-                            <div class="w-full h-full flex items-center justify-center bg-gray-200">
-                              <span class="text-gray-500 text-sm">Image unavailable</span>
+                            <div class="w-full h-full flex items-center justify-center bg-muted">
+                              <span class="text-muted-foreground text-sm">Image unavailable</span>
                             </div>
                           `;
                         }
