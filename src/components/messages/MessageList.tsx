@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
+import { MessageSquare } from 'lucide-react';
 import MessageBubbleEnhanced from './MessageBubbleEnhanced';
 import { type Message } from '@/hooks/useMessages';
 
@@ -55,9 +56,12 @@ const MessageList: React.FC<MessageListProps> = ({
   if (messages.length === 0) {
     return (
       <div className="flex-1 flex items-center justify-center p-8">
-        <div className="text-center text-gray-500">
-          <p className="text-lg mb-2">No messages yet</p>
-          <p className="text-sm">Start the conversation by sending a message below</p>
+        <div className="text-center">
+          <div className="p-4 bg-muted/40 rounded-2xl w-fit mx-auto mb-3">
+            <MessageSquare className="h-8 w-8 text-muted-foreground/50" />
+          </div>
+          <p className="text-sm font-medium text-foreground mb-1">No messages yet</p>
+          <p className="text-xs text-muted-foreground">Start the conversation by sending a message below</p>
         </div>
       </div>
     );

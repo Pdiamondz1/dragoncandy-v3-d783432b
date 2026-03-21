@@ -26,10 +26,10 @@ interface MessageInputEnhancedProps {
   onCancelReply?: () => void;
 }
 
-const MessageInputEnhanced: React.FC<MessageInputEnhancedProps> = ({ 
+const MessageInputEnhanced: React.FC<MessageInputEnhancedProps> = ({
   campaignId,
   conversationId,
-  onSendMessage, 
+  onSendMessage,
   disabled = false,
   placeholder = "Type your message...",
   replyingTo,
@@ -39,9 +39,17 @@ const MessageInputEnhanced: React.FC<MessageInputEnhancedProps> = ({
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { sendTypingIndicator } = useTypingIndicator(campaignId);
   const { user } = useAuth();
   const typingTimeoutRef = useRef<NodeJS.Timeout>();
+
+  // Focus input when reply is set
+  useEffect(() => {
+    if (replyingTo && textareaRef.current) {
+      textareaRef.current.focus();
+    }
+  }, [replyingTo]);
 
   const uploadFile = async (file: File): Promise<{ attachmentUrl: string; attachmentName: string; attachmentSize: number }> => {
     if (!user?.id) {
@@ -89,7 +97,7 @@ const MessageInputEnhanced: React.FC<MessageInputEnhancedProps> = ({
 
     try {
       let attachmentData = undefined;
-      
+
       if (file) {
         setUploading(true);
         attachmentData = await uploadFile(file);
@@ -128,19 +136,10 @@ const MessageInputEnhanced: React.FC<MessageInputEnhancedProps> = ({
     const value = e.target.value;
     setMessage(value);
 
-    // Send typing indicator
     if (value.trim()) {
       sendTypingIndicator(true);
-      
-      // Clear existing timeout
-      if (typingTimeoutRef.current) {
-        clearTimeout(typingTimeoutRef.current);
-      }
-
-      // Stop typing indicator after 2 seconds of inactivity
-      typingTimeoutRef.current = setTimeout(() => {
-        sendTypingIndicator(false);
-      }, 2000);
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = setTimeout(() => sendTypingIndicator(false), 2000);
     } else {
       sendTypingIndicator(false);
     }
@@ -149,7 +148,6 @@ const MessageInputEnhanced: React.FC<MessageInputEnhancedProps> = ({
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
-      // Limit file size to 10MB
       if (selectedFile.size > 10 * 1024 * 1024) {
         toast({
           title: 'File too large',
@@ -164,56 +162,56 @@ const MessageInputEnhanced: React.FC<MessageInputEnhancedProps> = ({
 
   const removeFile = () => {
     setFile(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  // Clean up typing indicator on unmount
   useEffect(() => {
     return () => {
-      if (typingTimeoutRef.current) {
-        clearTimeout(typingTimeoutRef.current);
-      }
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
       sendTypingIndicator(false);
     };
   }, [sendTypingIndicator]);
 
   return (
-    <div className="border-t bg-white">
+    <div className="border-t border-border/50 bg-card">
       {/* Reply indicator */}
       {replyingTo && (
-        <div className="flex items-center justify-between p-3 bg-gray-50 border-b">
-          <div className="flex items-center gap-2">
-            <Reply className="h-4 w-4 text-gray-500" />
-            <span className="text-sm text-gray-600">
-              Replying to {replyingTo.sender_profile?.full_name || 'Unknown User'}
-            </span>
+        <div className="flex items-center justify-between px-4 py-2 bg-primary/5 border-b border-border/30">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="w-0.5 h-8 bg-primary rounded-full flex-shrink-0" />
+            <div className="min-w-0">
+              <span className="text-[10px] font-medium text-primary">
+                Replying to {replyingTo.sender_profile?.full_name || 'User'}
+              </span>
+              <p className="text-xs text-muted-foreground truncate">
+                {replyingTo.content.substring(0, 60)}
+              </p>
+            </div>
           </div>
-          <Button variant="ghost" size="sm" onClick={onCancelReply}>
-            <X className="h-4 w-4" />
+          <Button variant="ghost" size="sm" className="h-6 w-6 p-0 flex-shrink-0" onClick={onCancelReply}>
+            <X className="h-3.5 w-3.5" />
           </Button>
         </div>
       )}
 
       {/* File attachment preview */}
       {file && (
-        <div className="flex items-center justify-between p-3 bg-blue-50 border-b">
-          <div className="flex items-center gap-2">
-            <Paperclip className="h-4 w-4 text-blue-600" />
-            <span className="text-sm text-blue-700">{file.name}</span>
-            <span className="text-xs text-gray-500">
-              ({(file.size / 1024 / 1024).toFixed(2)} MB)
+        <div className="flex items-center justify-between px-4 py-2 bg-muted/30 border-b border-border/30">
+          <div className="flex items-center gap-2 min-w-0">
+            <Paperclip className="h-3.5 w-3.5 text-primary flex-shrink-0" />
+            <span className="text-xs text-foreground truncate">{file.name}</span>
+            <span className="text-[10px] text-muted-foreground flex-shrink-0">
+              ({(file.size / 1024 / 1024).toFixed(1)} MB)
             </span>
           </div>
-          <Button variant="ghost" size="sm" onClick={removeFile}>
-            <X className="h-4 w-4" />
+          <Button variant="ghost" size="sm" className="h-6 w-6 p-0 flex-shrink-0" onClick={removeFile}>
+            <X className="h-3.5 w-3.5" />
           </Button>
         </div>
       )}
 
       {/* Message input */}
-      <form onSubmit={handleSubmit} className="flex gap-2 p-4">
+      <form onSubmit={handleSubmit} className="flex items-end gap-2 p-3">
         <Input
           type="file"
           ref={fileInputRef}
@@ -221,11 +219,12 @@ const MessageInputEnhanced: React.FC<MessageInputEnhancedProps> = ({
           className="hidden"
           accept="image/*,video/*,.pdf,.doc,.docx,.txt"
         />
-        
+
         <Button
           type="button"
           variant="ghost"
           size="sm"
+          className="h-9 w-9 p-0 flex-shrink-0 text-muted-foreground hover:text-primary"
           onClick={() => fileInputRef.current?.click()}
           disabled={disabled || uploading}
         >
@@ -233,20 +232,21 @@ const MessageInputEnhanced: React.FC<MessageInputEnhancedProps> = ({
         </Button>
 
         <Textarea
+          ref={textareaRef}
           value={message}
           onChange={handleInputChange}
           onKeyPress={handleKeyPress}
           placeholder={placeholder}
           disabled={disabled || uploading}
-          className="min-h-[40px] max-h-[120px] resize-none"
+          className="min-h-[40px] max-h-[120px] resize-none text-sm bg-muted/30 border-border/50 focus:border-primary/50 rounded-xl"
           rows={1}
         />
-        
-        <Button 
-          type="submit" 
+
+        <Button
+          type="submit"
           disabled={(!message.trim() && !file) || disabled || uploading}
           size="sm"
-          className="self-end"
+          className="h-9 w-9 p-0 flex-shrink-0 rounded-full bg-dc-teal hover:bg-dc-teal-dark text-white shadow-sm transition-all duration-200"
         >
           <Send className="h-4 w-4" />
         </Button>

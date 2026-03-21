@@ -60,10 +60,10 @@ const CampaignMessagesPage: React.FC = () => {
           <div className="max-w-4xl mx-auto">
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12">
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                <h3 className="text-lg font-semibold text-foreground mb-2">
                   Campaign not found
                 </h3>
-                <p className="text-gray-600 mb-4">
+                <p className="text-muted-foreground mb-4">
                   The campaign you're looking for doesn't exist or you don't have access to it.
                 </p>
                 <Button onClick={() => {
@@ -91,10 +91,10 @@ const CampaignMessagesPage: React.FC = () => {
           <div className="max-w-4xl mx-auto">
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12">
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                <h3 className="text-lg font-semibold text-foreground mb-2">
                   No conversation available
                 </h3>
-                <p className="text-gray-600 mb-4">
+                <p className="text-muted-foreground mb-4">
                   {userRole === 'business_client' 
                     ? 'No creators have been accepted for this campaign yet.'
                     : 'Unable to find the campaign owner for messaging.'
@@ -140,10 +140,10 @@ const CampaignMessagesPage: React.FC = () => {
               Back to Messages
             </Button>
             <div className="flex items-center gap-3">
-              <MessageSquare className="h-6 w-6 text-blue-600" />
+              <MessageSquare className="h-6 w-6 text-primary" />
               <div>
-                <h1 className="text-xl font-bold text-gray-900">{campaign.title}</h1>
-                <p className="text-sm text-gray-600">Campaign Discussion</p>
+                <h1 className="text-xl font-bold text-foreground">{campaign.title}</h1>
+                <p className="text-sm text-muted-foreground">Campaign Discussion</p>
               </div>
             </div>
           </div>

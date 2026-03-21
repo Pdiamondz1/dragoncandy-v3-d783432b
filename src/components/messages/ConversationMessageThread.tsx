@@ -1,7 +1,6 @@
-import React, { useEffect, useState } from 'react';
-import { Card } from '@/components/ui/card';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Search } from 'lucide-react';
+import { Search, X, Phone, MoreVertical } from 'lucide-react';
 import MessageList from './MessageList';
 import MessageInputEnhanced from './MessageInputEnhanced';
 import MessageSearch from './MessageSearch';
@@ -14,19 +13,16 @@ interface ConversationMessageThreadProps {
   conversationTitle?: string;
 }
 
-const ConversationMessageThread: React.FC<ConversationMessageThreadProps> = ({ 
-  conversationId, 
-  recipientId, 
-  conversationTitle 
+const ConversationMessageThread: React.FC<ConversationMessageThreadProps> = ({
+  conversationId,
+  recipientId,
+  conversationTitle
 }) => {
   const { user } = useAuth();
   const { data: messages = [], isLoading } = useMessages(undefined, conversationId);
   const sendMessage = useSendMessage();
   const [showSearch, setShowSearch] = useState(false);
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
-
-  // Mark as read functionality removed to prevent infinite loops
-  // Messages can be marked as read manually if needed
 
   const handleSendMessage = (content: string, options?: {
     attachmentUrl?: string;
@@ -35,14 +31,12 @@ const ConversationMessageThread: React.FC<ConversationMessageThreadProps> = ({
     parentMessageId?: string;
     threadId?: string;
   }) => {
-    // For direct conversations, we need to determine the recipient
-    // We'll get it from the messages or use a default approach
-    const actualRecipientId = messages.length > 0 
-      ? messages[0].sender_id === user?.id 
-        ? messages[0].recipient_id 
+    const actualRecipientId = messages.length > 0
+      ? messages[0].sender_id === user?.id
+        ? messages[0].recipient_id
         : messages[0].sender_id
       : recipientId;
-      
+
     sendMessage.mutate({
       conversationId,
       recipientId: actualRecipientId,
@@ -60,32 +54,47 @@ const ConversationMessageThread: React.FC<ConversationMessageThreadProps> = ({
   };
 
   return (
-    <div className="flex h-[calc(100vh-280px)] md:h-[600px]">
-      <Card className="flex flex-col flex-1">
-        {conversationTitle && (
-          <div className="p-4 border-b bg-muted flex items-center justify-between">
-            <div>
-              <h3 className="font-medium">{conversationTitle}</h3>
-              <p className="text-sm text-muted-foreground">Direct conversation</p>
+    <div className="flex flex-col h-full">
+      {/* Thread header */}
+      {conversationTitle && (
+        <div className="flex items-center justify-between px-5 py-3 border-b border-border/50 bg-card flex-shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center">
+              <span className="text-sm font-semibold text-primary">
+                {conversationTitle.charAt(0).toUpperCase()}
+              </span>
             </div>
+            <div>
+              <h3 className="text-sm font-semibold text-foreground">{conversationTitle}</h3>
+              <p className="text-xs text-muted-foreground">Direct conversation</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-1">
             <Button
-              variant="outline"
+              variant="ghost"
               size="sm"
+              className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
               onClick={() => setShowSearch(!showSearch)}
             >
-              <Search className="h-4 w-4" />
+              {showSearch ? <X className="h-4 w-4" /> : <Search className="h-4 w-4" />}
             </Button>
           </div>
-        )}
-        
-        <MessageList 
+        </div>
+      )}
+
+      {/* Messages area */}
+      <div className="flex-1 min-h-0 bg-muted/20">
+        <MessageList
           conversationId={conversationId}
-          messages={messages} 
+          messages={messages}
           isLoading={isLoading}
           onReply={handleReply}
         />
-        
-        <MessageInputEnhanced 
+      </div>
+
+      {/* Input area */}
+      <div className="flex-shrink-0">
+        <MessageInputEnhanced
           conversationId={conversationId}
           onSendMessage={handleSendMessage}
           disabled={sendMessage.isPending}
@@ -93,9 +102,9 @@ const ConversationMessageThread: React.FC<ConversationMessageThreadProps> = ({
           replyingTo={replyingTo}
           onCancelReply={handleCancelReply}
         />
-      </Card>
+      </div>
 
-      {/* Search panel */}
+      {/* Search panel overlay */}
       {showSearch && conversationId && (
         <MessageSearch
           campaignId={conversationId}

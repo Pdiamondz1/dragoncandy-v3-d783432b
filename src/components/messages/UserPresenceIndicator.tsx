@@ -74,7 +74,7 @@ const UserPresenceIndicator: React.FC<UserPresenceIndicatorProps> = ({
           <AvatarFallback>{userEmail?.[0]?.toUpperCase()}</AvatarFallback>
         </Avatar>
         <div
-          className={`absolute -bottom-0.5 -right-0.5 ${indicatorSizeClasses[size]} rounded-full border-2 border-white ${getStatusColor(presence?.status)}`}
+          className={`absolute -bottom-0.5 -right-0.5 ${indicatorSizeClasses[size]} rounded-full border-2 border-card ${getStatusColor(presence?.status)}`}
         />
       </div>
       {showLabel && (
