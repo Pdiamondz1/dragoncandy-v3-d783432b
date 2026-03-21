@@ -10,6 +10,7 @@ import { AIChatModalProvider } from "@/contexts/AIChatModalContext";
 import { AnalyticsProvider } from "@/components/analytics/AnalyticsProvider";
 import { PerformanceMonitor } from "@/components/analytics/PerformanceMonitor";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import { ThemeProvider } from "@/components/ThemeProvider";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import VerifiedRoute from "@/components/VerifiedRoute";
 import { BusinessRoute } from "@/components/BusinessRoute";
@@ -79,6 +80,7 @@ const App = () => {
   
   return (
     <ErrorBoundary>
+      <ThemeProvider>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
           <AIAssistantProvider>
@@ -465,6 +467,7 @@ const App = () => {
           </AIAssistantProvider>
         </AuthProvider>
       </QueryClientProvider>
+      </ThemeProvider>
     </ErrorBoundary>
   );
 };

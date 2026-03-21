@@ -27,6 +27,7 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar';
 import { Settings, LogOut, PlusCircle } from 'lucide-react';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { useAuth } from '@/hooks/useAuth';
 import { useLogout } from '@/hooks/useLogout';
 import { useProfileData } from '@/hooks/useProfileData';
@@ -184,6 +185,7 @@ const DashboardLayoutInner: React.FC<DashboardLayoutProps> = ({ children, userRo
                 </div>
 
                 <div className="flex items-center gap-2 sm:gap-4">
+                  <ThemeToggle />
                   <NotificationDropdown />
 
                   <DropdownMenu>
