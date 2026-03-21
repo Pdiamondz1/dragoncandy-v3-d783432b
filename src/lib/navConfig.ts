@@ -8,6 +8,7 @@ import {
   Image,
   DollarSign,
   Activity,
+  BarChart3,
   QrCode,
   Search,
   Heart,
@@ -45,6 +46,7 @@ export const businessSidebarNav: SidebarNavItem[] = [
   { icon: DollarSign, label: 'Sponsorships', href: '/dashboard/business/sponsorships' },
   { icon: QrCode, label: 'Promotions', href: '/dashboard/business/promotions' },
   { icon: MessageSquare, label: 'Messages', href: '/dashboard/business/messages' },
+  { icon: BarChart3, label: 'Analytics', href: '/dashboard/analytics' },
   { icon: Settings, label: 'Settings', href: '/dashboard/business/settings' },
 ];
 
@@ -54,6 +56,7 @@ export const brandSidebarNav: SidebarNavItem[] = [
   { icon: Target, label: 'Sponsorships', href: '/dashboard/brand/sponsorships' },
   { icon: Users, label: 'Browse Creators', href: '/dashboard/brand/creators' },
   { icon: MessageSquare, label: 'Messages', href: '/dashboard/brand/messages' },
+  { icon: BarChart3, label: 'Analytics', href: '/dashboard/analytics' },
   { icon: Settings, label: 'Settings', href: '/dashboard/brand/settings' },
 ];
 
@@ -64,6 +67,7 @@ export const creatorSidebarNav: SidebarNavItem[] = [
   { icon: Target, label: 'My Projects', href: '/dashboard/creator/projects' },
   { icon: DollarSign, label: 'Earnings', href: '/dashboard/creator/earnings' },
   { icon: MessageSquare, label: 'Messages', href: '/dashboard/creator/messages' },
+  { icon: BarChart3, label: 'Analytics', href: '/dashboard/analytics' },
   { icon: Settings, label: 'Settings', href: '/dashboard/creator/settings' },
 ];
 

@@ -28,6 +28,7 @@ import BrandDashboard from "./pages/BrandDashboard";
 import BrandSponsorships from "./pages/BrandSponsorships";
 import BrandCreators from "./pages/BrandCreators";
 import BrandAnalytics from "./pages/BrandAnalytics";
+import ROIDashboard from "./pages/ROIDashboard";
 import BrandMessages from "./pages/BrandMessages";
 import BrandSettings from "./pages/BrandSettings";
 import BrandCampaignDetails from "./pages/BrandCampaignDetails";
@@ -450,10 +451,10 @@ const App = () => {
                   <Route path="/creator/:slug" element={<PublicCreatorProfile />} />
                   <Route path="/business/:slug" element={<PublicBusinessProfile />} />
                   
-                  {/* Analytics Dashboard Route */}
+                  {/* ROI Dashboard Route — adapts to user role */}
                   <Route path="/dashboard/analytics" element={
                     <ProtectedRoute>
-                      <BusinessDashboard />
+                      <ROIDashboard />
                     </ProtectedRoute>
                   } />
                   
