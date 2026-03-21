@@ -195,7 +195,7 @@ const CampaignMarketplaceListItem: React.FC<CampaignMarketplaceListItemProps> = 
               : onApply(campaign.id)
             }
             disabled={campaign.application_status === 'pending'}
-            className="w-full rounded-full sm:max-w-sm sm:mx-auto"
+            className="w-full rounded-full"
           >
             {campaign.application_status === 'accepted' && 'View Project'}
             {campaign.application_status === 'pending' && 'Applied'}

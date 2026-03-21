@@ -87,10 +87,10 @@ const BusinessDashboard = () => {
 
   return (
     <DashboardLayout userRole="business_client">
-      <div className="flex h-full">
+      <div className="flex h-full overflow-hidden">
         {/* Main Content Area */}
-        <div className="flex-1 overflow-y-auto p-8">
-          <div className="max-w-6xl mx-auto space-y-12">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 lg:p-8">
+          <div className="max-w-6xl mx-auto space-y-8 sm:space-y-12">
           
           {/* Ask Bar */}
           <div className="pt-4">
@@ -101,11 +101,11 @@ const BusinessDashboard = () => {
           <RatingPromptManager />
           
           {/* Welcome Header */}
-          <div className="text-center space-y-4">
-            <h1 className="text-4xl font-bold text-foreground">
+          <div className="text-center space-y-3 sm:space-y-4">
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground">
               Welcome back, {profile.business_name}!
             </h1>
-            <p className="text-xl text-muted-foreground">
+            <p className="text-base sm:text-xl text-muted-foreground">
               Ready to create amazing content with talented creators?
             </p>
           </div>
@@ -113,8 +113,8 @@ const BusinessDashboard = () => {
           {/* Create Campaign CTA - DragonDash Branded */}
           <div className="text-center">
             <Card className="max-w-2xl mx-auto bg-gradient-to-br from-orange-50 via-pink-50 to-red-50 border-pink-300 shadow-lg">
-              <CardContent className="p-8">
-                <div className="space-y-6">
+              <CardContent className="p-4 sm:p-6 lg:p-8">
+                <div className="space-y-4 sm:space-y-6">
                   {/* Flame Icon */}
                   <div className="w-16 h-16 bg-gradient-to-br from-orange-500 to-pink-600 rounded-full flex items-center justify-center mx-auto shadow-lg">
                     <Flame className="w-8 h-8 text-white" />
@@ -122,7 +122,7 @@ const BusinessDashboard = () => {
                   
                   {/* Title & Subtitle */}
                   <div>
-                    <h2 className="text-3xl font-bold bg-gradient-to-r from-orange-600 to-pink-600 bg-clip-text text-transparent mb-1">
+                    <h2 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-orange-600 to-pink-600 bg-clip-text text-transparent mb-1">
                       DragonDash
                     </h2>
                     <p className="text-lg text-muted-foreground font-medium">
@@ -152,14 +152,14 @@ const BusinessDashboard = () => {
           {/* How It Works */}
           <div className="space-y-8">
             <div className="text-center">
-              <h2 className="text-3xl font-bold text-foreground mb-4">How It Works</h2>
+              <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-4">How It Works</h2>
               <p className="text-muted-foreground">Simple steps to launch your next successful campaign</p>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
               {howItWorksSteps.map((step, index) => (
                 <Card key={index} className="text-center hover:shadow-lg transition-shadow">
-                  <CardContent className="p-6">
+                  <CardContent className="p-3 sm:p-6">
                     <div className="w-12 h-12 bg-pink-600 text-white rounded-full flex items-center justify-center mx-auto mb-4 text-lg font-bold">
                       {step.number}
                     </div>
@@ -216,7 +216,7 @@ const BusinessDashboard = () => {
           {/* Quick Actions */}
           <div className="space-y-8">
             <div className="text-center">
-              <h2 className="text-3xl font-bold text-foreground mb-4">Quick Actions</h2>
+              <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-4">Quick Actions</h2>
               <p className="text-muted-foreground">Manage your campaigns and discover new opportunities</p>
             </div>
             

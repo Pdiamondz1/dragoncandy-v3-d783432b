@@ -55,32 +55,33 @@ const CreatorDashboard = () => {
 
   return (
     <DashboardLayout userRole="content_creator">
-      <div className="flex-1 p-8">
-        <div className="max-w-7xl mx-auto space-y-8">
+      <div className="flex-1 p-4 sm:p-6 lg:p-8 overflow-x-hidden">
+        <div className="max-w-7xl mx-auto space-y-6 sm:space-y-8">
           {/* Ask Bar */}
           <AskBar onClick={openModal} userRole="content_creator" />
           
           {/* Header */}
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-foreground">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="min-w-0">
+              <h1 className="text-2xl sm:text-3xl font-bold text-foreground truncate">
                 Welcome back, {profile.creator_name || profile.full_name}
               </h1>
-              <p className="text-muted-foreground mt-2">
+              <p className="text-muted-foreground mt-1 sm:mt-2 text-sm sm:text-base">
                 Here's what's happening with your creator account today.
               </p>
             </div>
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
               <Link to="/dashboard/creator/settings">
-                <Button variant="outline">
-                  <Settings className="h-4 w-4 mr-2" />
-                  Settings
+                <Button variant="outline" size="sm" className="sm:size-default">
+                  <Settings className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Settings</span>
                 </Button>
               </Link>
               <Link to="/dashboard/creator/campaigns">
-                <Button>
-                  <PlusCircle className="h-4 w-4 mr-2" />
-                  Browse Campaigns
+                <Button size="sm" className="sm:size-default">
+                  <PlusCircle className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Browse Campaigns</span>
+                  <span className="sm:hidden">Browse</span>
                 </Button>
               </Link>
             </div>

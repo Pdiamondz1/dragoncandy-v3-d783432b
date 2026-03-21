@@ -18,7 +18,7 @@ const CreatorBrowse: React.FC = () => {
 
   return (
     <DashboardLayout userRole="business_client">
-      <div className="flex-1 p-8 bg-[#F9C8E0] min-h-screen overflow-x-hidden">
+      <div className="flex-1 p-4 sm:p-6 lg:p-8 bg-dc-pink/30 min-h-screen overflow-x-hidden">
         <div className="max-w-7xl mx-auto space-y-6">
           <CreatorBrowseHeader resultCount={filteredCreators.length} />
           <CreatorBrowseContent

@@ -138,7 +138,7 @@ const DashboardLayoutInner: React.FC<DashboardLayoutProps> = ({ children, userRo
   const { setUserRole } = useAIAssistantContext();
   const { isOpen: isAIChatOpen, openModal, closeModal } = useAIChatModal();
 
-  const topNavBgClass = userRole === 'business_client' ? 'bg-[#F9C8E0]' : 'bg-[#A8A8A0]';
+  const topNavBgClass = userRole === 'business_client' ? 'bg-dc-pink/40' : 'bg-muted';
   const showWelcome = userRole === 'business_client' && location.pathname === '/dashboard/business';
 
   useEffect(() => {
@@ -158,7 +158,7 @@ const DashboardLayoutInner: React.FC<DashboardLayoutProps> = ({ children, userRo
 
   return (
     <SidebarProvider defaultOpen={!isMobile}>
-      <div className="min-h-screen flex w-full bg-background">
+      <div className="min-h-screen flex w-full bg-background overflow-x-hidden">
         {/* Sidebar — desktop only */}
         <div className="hidden md:block">
           <AppSidebar userRole={userRole} />

@@ -133,7 +133,7 @@ const CreatorProjects: React.FC = () => {
   if (isLoading) {
     return (
       <DashboardLayout userRole="content_creator">
-        <div className="flex-1 p-8">
+        <div className="flex-1 p-4 sm:p-6 lg:p-8 overflow-x-hidden">
           <div className="max-w-7xl mx-auto space-y-6">
             <div className="animate-pulse space-y-6">
               <div className="h-8 bg-gray-200 rounded w-1/3"></div>
@@ -152,7 +152,7 @@ const CreatorProjects: React.FC = () => {
   if (error) {
     return (
       <DashboardLayout userRole="content_creator">
-        <div className="flex-1 p-8">
+        <div className="flex-1 p-4 sm:p-6 lg:p-8 overflow-x-hidden">
           <div className="max-w-7xl mx-auto">
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12">
@@ -173,7 +173,7 @@ const CreatorProjects: React.FC = () => {
 
   return (
     <DashboardLayout userRole="content_creator">
-      <div className="flex-1 p-8">
+      <div className="flex-1 p-4 sm:p-6 lg:p-8 overflow-x-hidden">
         <div className="max-w-7xl mx-auto space-y-6">
           {/* Payout Banner */}
           {user && <CreatorPayoutBanner creatorId={user.id} />}
