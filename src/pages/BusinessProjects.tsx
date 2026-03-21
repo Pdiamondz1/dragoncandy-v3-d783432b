@@ -9,13 +9,14 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Download, MessageCircle, User, Calendar, FileText, Loader2, CheckCircle2, Clock, AlertCircle, Zap, Star, DollarSign } from 'lucide-react';
+import { Download, MessageCircle, User, Calendar, FileText, FileCheck, Loader2, CheckCircle2, Clock, AlertCircle, Zap, Star, DollarSign } from 'lucide-react';
 import { useProjectComplete } from '@/hooks/useProjectComplete';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useFileUploads } from '@/hooks/useFileUploads';
 import { formatFileSize } from '@/lib/fileUtils';
 import { cn } from '@/lib/utils';
 import RatingModal from '@/components/reviews/RatingModal';
+import { QuickApprovalCard } from '@/components/projects/QuickApprovalCard';
 import { useToast } from '@/hooks/use-toast';
 
 interface ProjectCollaboration {
@@ -23,6 +24,8 @@ interface ProjectCollaboration {
   campaign_id: string;
   creator_id: string;
   status: string;
+  content_status?: string | null;
+  revision_count?: number | null;
   business_completion_status?: string;
   creator_completion_status?: string;
   completed_at?: string | null;
@@ -149,6 +152,8 @@ const BusinessProjects: React.FC = () => {
           campaign_id,
           creator_id,
           status,
+          content_status,
+          revision_count,
           business_completion_status,
           creator_completion_status,
           completed_at,
@@ -198,6 +203,8 @@ const BusinessProjects: React.FC = () => {
         campaign_id: item.campaign_id,
         creator_id: item.creator_id,
         status: item.status,
+        content_status: item.content_status,
+        revision_count: item.revision_count,
         business_completion_status: item.business_completion_status,
         creator_completion_status: item.creator_completion_status,
         completed_at: item.completed_at,
@@ -302,9 +309,14 @@ const BusinessProjects: React.FC = () => {
     return { text: 'Active', variant: 'outline' as const, showBadge: false };
   };
 
-  // Count projects needing approval
+  // Count projects needing approval (completion flow)
   const projectsNeedingApproval = projects?.filter(
     p => p.creator_completion_status === 'requested' && p.business_completion_status !== 'requested'
+  ) || [];
+
+  // Count projects with submitted content needing review
+  const projectsNeedingContentReview = projects?.filter(
+    p => p.content_status === 'submitted'
   ) || [];
 
   if (projectsLoading) {
@@ -369,7 +381,15 @@ const BusinessProjects: React.FC = () => {
           </Card>
         ) : (
           <>
-            {/* Action Required Banner */}
+            {/* Action Required Banners */}
+            {projectsNeedingContentReview.length > 0 && (
+              <Alert className="border-green-500 bg-green-50 dark:bg-green-950/20">
+                <FileCheck className="h-5 w-5 text-green-600 dark:text-green-400" />
+                <AlertDescription className="text-green-800 dark:text-green-300 font-medium">
+                  <strong>{projectsNeedingContentReview.length} deliverable{projectsNeedingContentReview.length !== 1 ? 's' : ''}</strong> submitted and ready for your one-tap approval.
+                </AlertDescription>
+              </Alert>
+            )}
             {projectsNeedingApproval.length > 0 && (
               <Alert className="border-amber-500 bg-amber-50 dark:bg-amber-950/20">
                 <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
@@ -382,6 +402,14 @@ const BusinessProjects: React.FC = () => {
             <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
               <TabsList>
                 <TabsTrigger value="overview">Overview</TabsTrigger>
+                {projectsNeedingContentReview.length > 0 && (
+                  <TabsTrigger value="needs-review" className="relative">
+                    Needs Review
+                    <Badge variant="destructive" className="ml-2 h-5 w-5 p-0 flex items-center justify-center text-xs rounded-full">
+                      {projectsNeedingContentReview.length}
+                    </Badge>
+                  </TabsTrigger>
+                )}
                 <TabsTrigger value="deliverables">Deliverables</TabsTrigger>
               </TabsList>
 
@@ -439,7 +467,22 @@ const BusinessProjects: React.FC = () => {
                       <CardContent>
                         <p className="text-muted-foreground mb-4">{project.campaign.description}</p>
 
-                        <div className="flex gap-2 flex-wrap">
+                        {/* One-Tap Content Approval */}
+                        <QuickApprovalCard
+                          collaborationId={project.id}
+                          campaignId={project.campaign_id}
+                          creatorId={project.creator_id}
+                          creatorName={
+                            project.creator_profile?.creator_name ||
+                            project.user_profile?.full_name ||
+                            project.user_profile?.email ||
+                            'Creator'
+                          }
+                          contentStatus={project.content_status || null}
+                          revisionCount={project.revision_count || 0}
+                        />
+
+                        <div className="flex gap-2 flex-wrap mt-4">
                           {needsApproval ? (
                             <Button
                               onClick={() => handleMarkComplete(project.id)}
@@ -516,6 +559,77 @@ const BusinessProjects: React.FC = () => {
                     </Card>
                   );
                 })}
+              </TabsContent>
+
+              {/* Needs Review Tab - Quick approval for submitted content */}
+              <TabsContent value="needs-review" className="space-y-4">
+                {projectsNeedingContentReview.length === 0 ? (
+                  <Card>
+                    <CardContent className="p-8 text-center">
+                      <CheckCircle2 className="h-12 w-12 mx-auto mb-4 text-green-400" />
+                      <h3 className="text-lg font-medium mb-2">All Caught Up!</h3>
+                      <p className="text-muted-foreground">No content waiting for your review.</p>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  projectsNeedingContentReview.map((project) => (
+                    <Card key={project.id} className="border-2 border-green-300 dark:border-green-700">
+                      <CardHeader className="pb-2">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <CardTitle className="text-lg">{project.campaign.title}</CardTitle>
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+                              <User className="h-3 w-3" />
+                              {project.creator_profile?.creator_name ||
+                               project.user_profile?.full_name ||
+                               'Creator'}
+                            </div>
+                          </div>
+                          <Badge className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
+                            <FileCheck className="h-3 w-3 mr-1" />
+                            Ready for Review
+                          </Badge>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <QuickApprovalCard
+                          collaborationId={project.id}
+                          campaignId={project.campaign_id}
+                          creatorId={project.creator_id}
+                          creatorName={
+                            project.creator_profile?.creator_name ||
+                            project.user_profile?.full_name ||
+                            project.user_profile?.email ||
+                            'Creator'
+                          }
+                          contentStatus={project.content_status || null}
+                          revisionCount={project.revision_count || 0}
+                        />
+                        <div className="flex gap-2 mt-3">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedProject(project.campaign_id);
+                              setActiveTab('deliverables');
+                            }}
+                          >
+                            <FileText className="h-4 w-4 mr-2" />
+                            View Files
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleMessageCreator(project.campaign_id)}
+                          >
+                            <MessageCircle className="h-4 w-4 mr-2" />
+                            Message
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))
+                )}
               </TabsContent>
 
             <TabsContent value="deliverables" className="space-y-4">
