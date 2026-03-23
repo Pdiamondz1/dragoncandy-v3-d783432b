@@ -108,6 +108,10 @@ export default {
 					'25%': { transform: 'translateX(-3px)' },
 					'75%': { transform: 'translateX(3px)' },
 				},
+				marquee: {
+					'0%': { transform: 'translateX(0)' },
+					'100%': { transform: 'translateX(-50%)' },
+				},
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
@@ -116,6 +120,7 @@ export default {
 				'scale-in': 'scale-in 0.3s ease-out',
 				breathe: 'breathe 3s ease-in-out infinite',
 				shake: 'shake 0.3s ease-in-out 2',
+				marquee: 'marquee 30s linear infinite',
 			},
 			boxShadow: {
 				'glow-teal': '0 0 20px rgba(77, 217, 192, 0.15), 0 0 60px rgba(77, 217, 192, 0.05)',
