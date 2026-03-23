@@ -297,35 +297,35 @@ const CreatorEarnings: React.FC = () => {
 
           {/* Balance Stats Row */}
           <div className="grid grid-cols-3 divide-x divide-dc-pink border-2 border-dc-teal rounded-2xl overflow-hidden">
-            <div className="p-4 text-center">
+            <div className="p-3 text-center min-w-0">
               {isLoadingStatus ? (
-                <Skeleton className="h-7 w-16 mx-auto mb-1" />
+                <Skeleton className="h-6 w-14 mx-auto mb-1" />
               ) : (
-                <p className="text-2xl font-extrabold text-gray-900">
+                <p className="text-base font-extrabold text-gray-900 truncate">
                   {formatCurrency(payoutStatus?.availableBalance || 0)}
                 </p>
               )}
-              <p className="text-xs text-gray-500">Stripe Balance</p>
+              <p className="text-xs text-gray-500 leading-tight">Stripe Bal.</p>
             </div>
-            <div className="p-4 text-center">
+            <div className="p-3 text-center min-w-0">
               {isLoadingStatus ? (
-                <Skeleton className="h-7 w-16 mx-auto mb-1" />
+                <Skeleton className="h-6 w-14 mx-auto mb-1" />
               ) : (
-                <p className={`text-2xl font-extrabold ${canWithdraw ? 'text-green-600' : 'text-amber-600'}`}>
+                <p className={`text-base font-extrabold truncate ${canWithdraw ? 'text-green-600' : 'text-amber-600'}`}>
                   {formatCurrency(payoutStatus?.platformPendingBalance || 0)}
                 </p>
               )}
-              <p className="text-xs text-gray-500">Platform Wallet</p>
+              <p className="text-xs text-gray-500 leading-tight">Wallet</p>
             </div>
-            <div className="p-4 text-center">
+            <div className="p-3 text-center min-w-0">
               {isLoadingEarnings ? (
-                <Skeleton className="h-7 w-16 mx-auto mb-1" />
+                <Skeleton className="h-6 w-14 mx-auto mb-1" />
               ) : (
-                <p className="text-2xl font-extrabold text-gray-900">
+                <p className="text-base font-extrabold text-gray-900 truncate">
                   {formatCurrency(totalEarnings)}
                 </p>
               )}
-              <p className="text-xs text-gray-500">Total Earned</p>
+              <p className="text-xs text-gray-500 leading-tight">Total Earned</p>
             </div>
           </div>
 

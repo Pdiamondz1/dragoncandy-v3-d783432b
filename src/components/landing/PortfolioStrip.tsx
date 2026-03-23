@@ -1,54 +1,60 @@
 import React from "react";
 import { useCreatorPortfolioFeed } from "@/hooks/useCreatorPortfolioFeed";
 
-// Fallback placeholder tiles when no real portfolio content is available
 const placeholderTiles = [
-  { bg: "bg-gray-200", label: "Portfolio" },
-  { bg: "bg-gray-300", label: "Portfolio" },
-  { bg: "bg-gray-400", label: "Portfolio" },
-  { bg: "bg-gray-200", label: "Portfolio" },
+  { id: "p1", bg: "bg-gray-200" },
+  { id: "p2", bg: "bg-gray-300" },
+  { id: "p3", bg: "bg-gray-400" },
+  { id: "p4", bg: "bg-gray-200" },
+  { id: "p5", bg: "bg-gray-300" },
+  { id: "p6", bg: "bg-gray-400" },
 ];
+
+function MarqueeItem({ item }: { item: { id: string; url?: string; type?: string; creatorName?: string; bg?: string } }) {
+  if (item.url) {
+    return (
+      <div className="flex-shrink-0 w-28 h-28 md:w-40 md:h-40 overflow-hidden">
+        {item.type === "video" ? (
+          <video
+            src={item.url}
+            className="w-full h-full object-cover"
+            muted
+            loop
+            playsInline
+            autoPlay
+            preload="metadata"
+          />
+        ) : (
+          <img
+            src={item.url}
+            alt={`Portfolio work by ${item.creatorName}`}
+            className="w-full h-full object-cover"
+            loading="lazy"
+          />
+        )}
+      </div>
+    );
+  }
+
+  return <div className={`flex-shrink-0 w-28 h-28 md:w-40 md:h-40 ${item.bg}`} />;
+}
 
 export const PortfolioStrip: React.FC = () => {
   const { portfolioMedia, loading } = useCreatorPortfolioFeed();
 
-  // Use up to 4 real images, otherwise fall back to placeholder tiles
   const hasRealContent = !loading && portfolioMedia.length > 0;
-  const displayItems = hasRealContent ? portfolioMedia.slice(0, 4) : null;
+  const items = hasRealContent ? portfolioMedia : placeholderTiles;
+
+  // Duplicate items to create seamless loop
+  const marqueeItems = [...items, ...items];
 
   return (
-    <div className="w-full flex flex-row h-28 md:h-40 overflow-hidden">
-      {hasRealContent && displayItems ? (
-        displayItems.map((item, index) => (
-          <div key={`${item.id}-${index}`} className="flex-1 relative overflow-hidden">
-            {item.type === "video" ? (
-              <video
-                src={item.url}
-                className="w-full h-full object-cover"
-                muted
-                loop
-                playsInline
-                autoPlay
-                preload="metadata"
-              />
-            ) : (
-              <img
-                src={item.url}
-                alt={`Portfolio work by ${item.creatorName}`}
-                className="w-full h-full object-cover"
-                loading="lazy"
-              />
-            )}
-          </div>
-        ))
-      ) : (
-        placeholderTiles.map((tile, index) => (
-          <div
-            key={index}
-            className={`flex-1 ${tile.bg}`}
-          />
-        ))
-      )}
+    <div className="w-full overflow-hidden">
+      <div className="flex animate-marquee">
+        {marqueeItems.map((item, index) => (
+          <MarqueeItem key={`${item.id}-${index}`} item={item} />
+        ))}
+      </div>
     </div>
   );
 };

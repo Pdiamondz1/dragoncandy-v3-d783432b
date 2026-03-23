@@ -26,7 +26,8 @@ const ApplicationsTabsContent: React.FC<ApplicationsTabsContentProps> = ({
 
   return (
     <Tabs defaultValue="all" className="space-y-6">
-      <TabsList className={`grid w-full ${hasCounterOffers ? 'grid-cols-5' : 'grid-cols-4'}`}>
+      <div className="overflow-x-auto -mx-1 px-1">
+      <TabsList className={`grid w-full min-w-max whitespace-nowrap ${hasCounterOffers ? 'grid-cols-5' : 'grid-cols-4'}`}>
         <TabsTrigger value="all">All ({filteredApplications.length})</TabsTrigger>
         <TabsTrigger value="pending">Pending ({pendingApplications.length})</TabsTrigger>
         {hasCounterOffers && (
@@ -35,6 +36,7 @@ const ApplicationsTabsContent: React.FC<ApplicationsTabsContentProps> = ({
         <TabsTrigger value="accepted">Accepted ({acceptedApplications.length})</TabsTrigger>
         <TabsTrigger value="rejected">Rejected ({rejectedApplications.length})</TabsTrigger>
       </TabsList>
+      </div>
 
       <TabsContent value="all" className="space-y-4">
         {filteredApplications.length === 0 ? (

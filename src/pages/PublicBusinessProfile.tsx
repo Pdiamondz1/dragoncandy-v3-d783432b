@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Star, MapPin, Building2, MessageSquare } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import PublicProfileReviews from '@/components/profiles/PublicProfileReviews';
-import logo from '@/assets/dragon-candy-logo.png';
+import logo from '@/assets/Transparent_DragonCandy_logo.png';
 
 interface BusinessProfile {
   id: string;

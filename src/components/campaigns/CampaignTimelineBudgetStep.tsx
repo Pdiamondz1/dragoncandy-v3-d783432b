@@ -266,12 +266,12 @@ const CampaignTimelineBudgetStep: React.FC<CampaignTimelineBudgetStepProps> = ({
           </Card>
 
           {/* Navigation Buttons */}
-          <div className="flex justify-between">
+          <div className="flex flex-wrap justify-between gap-2">
             <Button type="button" variant="outline" onClick={onBackToCustomize}>
               Back to Customize
             </Button>
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               className="bg-gradient-to-r from-primary to-pink-500 hover:from-primary/90 hover:to-pink-500/90 text-white"
             >
               Continue to Finalize

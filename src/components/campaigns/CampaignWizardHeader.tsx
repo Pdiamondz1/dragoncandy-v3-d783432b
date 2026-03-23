@@ -27,8 +27,8 @@ const CampaignWizardHeader: React.FC<CampaignWizardHeaderProps> = ({
       </div>
 
       {/* Progress Steps */}
-      <div className="flex justify-center mb-8 overflow-x-auto">
-        <div className="flex items-center space-x-2 md:space-x-4">
+      <div className="flex justify-center mb-8 overflow-x-auto pb-1">
+        <div className="flex items-center space-x-2 md:space-x-4 px-2">
           {steps.map((step, index) => (
             <div key={step.number} className="flex items-center">
               <div className="flex flex-col items-center">

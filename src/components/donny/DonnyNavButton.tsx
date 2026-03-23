@@ -1,5 +1,5 @@
-import { DonnyAvatar } from './DonnyAvatar';
 import { useDonnyDashboard } from '@/hooks/useDonnyDashboard';
+import dragonEmblem from '@/assets/dragon-emblem.png';
 
 interface DonnyNavButtonProps {
   onClick: () => void;
@@ -14,8 +14,8 @@ export function DonnyNavButton({ onClick }: DonnyNavButtonProps) {
       onClick={onClick}
       className="flex flex-col items-center -mt-4 relative"
     >
-      <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#4DD9C0] to-[#00E5CC] flex items-center justify-center text-2xl shadow-lg shadow-teal-400/40 border-[3px] border-white">
-        🐉
+      <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#4DD9C0] to-[#00E5CC] flex items-center justify-center shadow-lg shadow-teal-400/40 border-[3px] border-white">
+        <img src={dragonEmblem} alt="Donny" className="h-8 w-8 object-contain" />
       </div>
       {hasNotification && (
         <span className="absolute top-0 right-0 w-3 h-3 bg-[#EC4899] rounded-full border-2 border-white" />

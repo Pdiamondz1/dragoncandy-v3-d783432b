@@ -3,7 +3,7 @@ import React, { useState, useRef } from 'react';
 import TinderCard from 'react-tinder-card';
 import { PublicCampaign } from '@/hooks/usePublicCampaigns';
 import { MapPin, DollarSign } from 'lucide-react';
-import logo from '@/assets/dragon-candy-logo.png';
+import logo from '@/assets/Transparent_DragonCandy_logo.png';
 
 interface CampaignSwipeCardProps {
   campaigns: PublicCampaign[];

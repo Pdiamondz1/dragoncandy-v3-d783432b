@@ -4,8 +4,6 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ArrowLeft, Eye, Info } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { CreatorPortfolioFeed } from '@/components/landing/CreatorPortfolioFeed';
-
 interface AnonymousCampaignLayoutProps {
   children: React.ReactNode;
   currentStep?: number;
@@ -21,11 +19,8 @@ export const AnonymousCampaignLayout: React.FC<AnonymousCampaignLayoutProps> = (
 
   return (
     <div className="min-h-screen bg-background relative">
-      {/* Creator Portfolio Feed - Behind main content */}
-      <CreatorPortfolioFeed />
-      
-      {/* Main content with higher z-index and proper spacing for sidebars */}
-      <div className="relative z-10 ml-40 lg:ml-64 mr-40 lg:mr-64">
+      {/* Main content */}
+      <div className="relative z-10">
         {/* Header */}
         <header className="bg-card/95 backdrop-blur-sm border-b border-border sticky top-0 z-20 rounded-b-2xl shadow-lg">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
