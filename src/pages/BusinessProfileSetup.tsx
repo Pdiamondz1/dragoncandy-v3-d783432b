@@ -4,10 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useLogout } from '@/hooks/useLogout';
 import { supabase } from '@/integrations/supabase/client';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ChevronLeft } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
-import { Sparkles } from 'lucide-react';
 import { EnhancedBusinessProfileForm } from '@/components/business-profile/EnhancedBusinessProfileForm';
 import { FileUploadSection } from '@/components/business-profile/FileUploadSection';
 import { SocialMediaLinks } from '@/components/business-profile/SocialMediaLinks';
@@ -22,7 +20,7 @@ const BusinessProfileSetup = () => {
   const [loading, setLoading] = useState(false);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [sampleFiles, setSampleFiles] = useState<File[]>([]);
-  
+
   const [formData, setFormData] = useState({
     business_name: '',
     industry: '' as IndustryType | '',
@@ -61,7 +59,7 @@ const BusinessProfileSetup = () => {
   const uploadFile = async (file: File, folder: string) => {
     const fileExt = file.name.split('.').pop();
     const fileName = `${user?.id}/${folder}/${Date.now()}.${fileExt}`;
-    
+
     const { data, error } = await supabase.storage
       .from('profile-assets')
       .upload(fileName, file);
@@ -73,9 +71,9 @@ const BusinessProfileSetup = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
-    
+
     setLoading(true);
-    
+
     try {
       let logoUrl = '';
       let sampleContentUrls: string[] = [];
@@ -130,13 +128,14 @@ const BusinessProfileSetup = () => {
         description: "Welcome to DragonCandy. You can now start creating campaigns."
       });
 
-      // Redirect to restaurant dashboard on successful profile creation
+      // Redirect to business dashboard on successful profile creation
       navigate('/dashboard/business');
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as { message?: string };
       console.error('Error saving profile:', error);
       toast({
         title: "Error saving profile",
-        description: error.message || "Please try again.",
+        description: err.message || "Please try again.",
         variant: "destructive"
       });
     } finally {
@@ -145,70 +144,81 @@ const BusinessProfileSetup = () => {
   };
 
   return (
-    <div className="min-h-screen bg-pink-50 py-8">
-      <div className="max-w-2xl mx-auto px-4">
-        {/* Header */}
-        <div className="text-center mb-8 relative">
-          <Button
-            variant="outline"
-            onClick={logout}
-            className="absolute top-0 right-0 text-gray-600 hover:text-gray-900"
-          >
-            Logout
-          </Button>
-          <div className="rounded-full bg-pink-100 p-3 mx-auto mb-4 w-16 h-16 flex items-center justify-center">
-            <Sparkles className="text-pink-600 w-8 h-8" />
+    <div className="min-h-screen bg-white overflow-x-hidden">
+      {/* Template C Header */}
+      <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
+        <button
+          onClick={logout}
+          className="text-dc-pink-accent text-lg p-1"
+          aria-label="Logout"
+        >
+          <ChevronLeft className="w-5 h-5" />
+        </button>
+        <h1 className="flex-1 text-center font-sans text-base font-bold text-gray-900 uppercase tracking-wide">
+          Business Profile Setup
+        </h1>
+        <div className="w-7" />
+      </div>
+
+      {/* Form Content */}
+      <div className="px-4 py-6 pb-24 max-w-2xl mx-auto">
+        <p className="text-sm text-gray-500 mb-6">
+          Tell us about your business to get started with DragonCandy.
+        </p>
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Business Information Section */}
+          <div>
+            <p className="font-sans text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">
+              Business Information
+            </p>
+            <EnhancedBusinessProfileForm
+              formData={formData}
+              onInputChange={handleInputChange}
+            />
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Complete Your Business Profile
-          </h1>
-          <p className="text-gray-600">
-            Tell us about your business to get started with DragonCandy
-          </p>
-        </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Business Information</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <EnhancedBusinessProfileForm 
-                formData={formData}
-                onInputChange={handleInputChange}
-              />
+          {/* Files Section */}
+          <div>
+            <p className="font-sans text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">
+              Logo &amp; Sample Content
+            </p>
+            <FileUploadSection
+              logoFile={logoFile}
+              sampleFiles={sampleFiles}
+              onLogoChange={setLogoFile}
+              onSampleFilesChange={setSampleFiles}
+            />
+          </div>
 
-              <FileUploadSection
-                logoFile={logoFile}
-                sampleFiles={sampleFiles}
-                onLogoChange={setLogoFile}
-                onSampleFilesChange={setSampleFiles}
-              />
+          {/* Social Media Section */}
+          <div>
+            <p className="font-sans text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">
+              Social Media Links
+            </p>
+            <SocialMediaLinks
+              formData={{
+                instagram_url: formData.instagram_url,
+                tiktok_url: formData.tiktok_url,
+                youtube_url: formData.youtube_url,
+                facebook_url: formData.facebook_url,
+                linkedin_url: formData.linkedin_url,
+                x_url: formData.x_url,
+                other_social_url: formData.other_social_url
+              }}
+              onInputChange={handleInputChange}
+            />
+          </div>
 
-              <SocialMediaLinks
-                formData={{
-                  instagram_url: formData.instagram_url,
-                  tiktok_url: formData.tiktok_url,
-                  youtube_url: formData.youtube_url,
-                  facebook_url: formData.facebook_url,
-                  linkedin_url: formData.linkedin_url,
-                  x_url: formData.x_url,
-                  other_social_url: formData.other_social_url
-                }}
-                onInputChange={handleInputChange}
-              />
-
-              {/* Submit Button */}
-              <Button
-                type="submit"
-                className="w-full bg-pink-600 hover:bg-pink-700"
-                disabled={loading || !formData.business_name || !formData.industry}
-              >
-                {loading ? 'Creating Profile...' : 'Complete Profile Setup'}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+          {/* Submit CTA */}
+          <button
+            type="submit"
+            className="w-full rounded-full bg-dc-teal text-white font-bold py-3 disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={loading || !formData.business_name || !formData.industry}
+          >
+            {loading ? 'Creating Profile...' : 'Complete Profile Setup'}
+          </button>
+        </form>
       </div>
     </div>
   );

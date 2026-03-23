@@ -3,7 +3,6 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { Sparkles } from 'lucide-react';
 
 const ProfileOnboarding = () => {
   const { user, loading } = useAuth();
@@ -12,10 +11,10 @@ const ProfileOnboarding = () => {
   const [debugInfo, setDebugInfo] = useState<string>('');
 
   useEffect(() => {
-    console.log('🔄 ProfileOnboarding: Component mounted', { user: !!user, loading });
-    
+    console.log('ProfileOnboarding: Component mounted', { user: !!user, loading });
+
     if (!loading && !user) {
-      console.log('🚫 ProfileOnboarding: No user, redirecting to auth');
+      console.log('ProfileOnboarding: No user, redirecting to auth');
       navigate('/auth');
       return;
     }
@@ -23,30 +22,30 @@ const ProfileOnboarding = () => {
     const handleUserRedirect = async () => {
       if (!user || loading || redirecting) return;
 
-      console.log('👤 ProfileOnboarding: Handling user redirect for:', user.email);
+      console.log('ProfileOnboarding: Handling user redirect for:', user.email);
       setRedirecting(true);
 
       try {
         // First, check user metadata for role (set during signup)
         const userRole = user.user_metadata?.role;
-        console.log('📋 ProfileOnboarding: User metadata role:', userRole);
+        console.log('ProfileOnboarding: User metadata role:', userRole);
         setDebugInfo(`User metadata role: ${userRole}`);
 
         if (userRole) {
           // If we have role from metadata, redirect immediately
           if (userRole === 'business_client') {
-            console.log('🏢 ProfileOnboarding: Redirecting to business profile setup');
+            console.log('ProfileOnboarding: Redirecting to business profile setup');
             navigate('/profile/business');
             return;
           } else if (userRole === 'content_creator') {
-            console.log('🎨 ProfileOnboarding: Redirecting to creator profile setup');
+            console.log('ProfileOnboarding: Redirecting to creator profile setup');
             navigate('/profile/creator');
             return;
           }
         }
 
         // Fallback: check database profile
-        console.log('🔍 ProfileOnboarding: Checking database profile...');
+        console.log('ProfileOnboarding: Checking database profile...');
         const { data: profile, error } = await supabase
           .from('profiles')
           .select('role')
@@ -54,37 +53,37 @@ const ProfileOnboarding = () => {
           .maybeSingle();
 
         if (error) {
-          console.error('❌ ProfileOnboarding: Error fetching profile:', error);
+          console.error('ProfileOnboarding: Error fetching profile:', error);
           setDebugInfo(`Database error: ${error.message}`);
-          
+
           // For authenticated users, redirect to auth to restart the flow
-          console.log('🔄 ProfileOnboarding: Profile fetch failed, redirecting to auth');
+          console.log('ProfileOnboarding: Profile fetch failed, redirecting to auth');
           navigate('/auth');
           return;
         }
 
         if (profile?.role) {
-          console.log('📋 ProfileOnboarding: Database role found:', profile.role);
+          console.log('ProfileOnboarding: Database role found:', profile.role);
           setDebugInfo(`Database role: ${profile.role}`);
-          
+
           if (profile.role === 'business_client') {
-            console.log('🏢 ProfileOnboarding: Redirecting to business profile setup');
+            console.log('ProfileOnboarding: Redirecting to business profile setup');
             navigate('/profile/business');
           } else if (profile.role === 'brand') {
-            console.log('✨ ProfileOnboarding: Redirecting to brand profile setup');
+            console.log('ProfileOnboarding: Redirecting to brand profile setup');
             navigate('/profile/brand');
           } else if (profile.role === 'content_creator') {
-            console.log('🎨 ProfileOnboarding: Redirecting to creator profile setup');
+            console.log('ProfileOnboarding: Redirecting to creator profile setup');
             navigate('/profile/creator');
           }
         } else {
           // No role found anywhere - this shouldn't happen
-          console.error('❌ ProfileOnboarding: No role found in metadata or database');
+          console.error('ProfileOnboarding: No role found in metadata or database');
           setDebugInfo('No role found - redirecting to auth');
           navigate('/auth');
         }
       } catch (error) {
-        console.error('❌ ProfileOnboarding: Unexpected error:', error);
+        console.error('ProfileOnboarding: Unexpected error:', error);
         setDebugInfo(`Unexpected error: ${error}`);
         // Fallback to auth page
         navigate('/auth');
@@ -104,24 +103,21 @@ const ProfileOnboarding = () => {
   // Show loading state
   if (loading || redirecting) {
     const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname.includes('lovable');
-    
+
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center max-w-md">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-pink-600 mx-auto mb-4"></div>
-          <div className="rounded-full bg-muted p-3 mx-auto mb-4 w-16 h-16 flex items-center justify-center">
-            <Sparkles className="text-foreground w-8 h-8" />
-          </div>
-          <h1 className="text-2xl font-bold text-foreground mb-2">
+      <div className="min-h-screen bg-white flex items-center justify-center overflow-x-hidden">
+        <div className="text-center max-w-md px-4">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-dc-teal mx-auto mb-6" />
+          <h1 className="font-sans text-base font-bold text-gray-900 uppercase tracking-wide mb-2">
             Welcome to DragonCandy!
           </h1>
-          <p className="text-muted-foreground mb-4">
+          <p className="text-sm text-gray-500">
             {loading ? 'Loading your account...' : 'Redirecting you to complete your profile setup...'}
           </p>
-          
+
           {isDevelopment && debugInfo && (
-            <div className="mt-4 p-3 bg-muted rounded-lg text-sm text-muted-foreground">
-              <div className="font-medium mb-1">Debug Info:</div>
+            <div className="mt-4 p-3 bg-gray-50 rounded-2xl text-sm text-gray-500 border border-gray-100">
+              <div className="font-semibold mb-1 uppercase tracking-wider text-xs text-gray-400">Debug Info</div>
               <div>{debugInfo}</div>
             </div>
           )}
@@ -132,15 +128,12 @@ const ProfileOnboarding = () => {
 
   // This should rarely render since we redirect in useEffect
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="text-center">
-        <div className="rounded-full bg-muted p-3 mx-auto mb-4 w-16 h-16 flex items-center justify-center">
-          <Sparkles className="text-foreground w-8 h-8" />
-        </div>
-        <h1 className="text-2xl font-bold text-foreground mb-2">
+    <div className="min-h-screen bg-white flex items-center justify-center overflow-x-hidden">
+      <div className="text-center px-4">
+        <h1 className="font-sans text-base font-bold text-gray-900 uppercase tracking-wide mb-2">
           Welcome to DragonCandy!
         </h1>
-        <p className="text-muted-foreground">
+        <p className="text-sm text-gray-500">
           Setting up your profile...
         </p>
       </div>

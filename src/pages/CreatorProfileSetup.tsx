@@ -3,9 +3,7 @@ import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useLogout } from '@/hooks/useLogout';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { CreatorProfileSetupHeader } from '@/components/creator-profile/CreatorProfileSetupHeader';
+import { ChevronLeft } from 'lucide-react';
 import { CreatorProfileSetupForm } from '@/components/creator-profile/CreatorProfileSetupForm';
 import { useCreatorProfileForm } from '@/hooks/useCreatorProfileForm';
 import { useCreatorProfileSubmit } from '@/hooks/useCreatorProfileSubmit';
@@ -15,7 +13,7 @@ const CreatorProfileSetup = () => {
   const logout = useLogout();
   const navigate = useNavigate();
   const { submitProfile, loading } = useCreatorProfileSubmit();
-  
+
   const {
     formData,
     avatarFile,
@@ -37,7 +35,7 @@ const CreatorProfileSetup = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const success = await submitProfile(formData, selectedSkills, avatarFile, portfolioPaths);
-    
+
     // Redirect to creator dashboard on successful profile creation
     if (success) {
       navigate('/dashboard/creator');
@@ -45,40 +43,41 @@ const CreatorProfileSetup = () => {
   };
 
   return (
-    <div className="min-h-screen bg-pink-50 py-8">
-      <div className="max-w-2xl mx-auto px-4">
-        {/* Header with logout button */}
-        <div className="text-center mb-8 relative">
-          <Button
-            variant="outline"
-            onClick={logout}
-            className="absolute top-0 right-0 text-gray-600 hover:text-gray-900"
-          >
-            Logout
-          </Button>
-          <CreatorProfileSetupHeader />
-        </div>
+    <div className="min-h-screen bg-white overflow-x-hidden">
+      {/* Template C Header */}
+      <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
+        <button
+          onClick={logout}
+          className="text-dc-pink-accent text-lg p-1"
+          aria-label="Logout"
+        >
+          <ChevronLeft className="w-5 h-5" />
+        </button>
+        <h1 className="flex-1 text-center font-sans text-base font-bold text-gray-900 uppercase tracking-wide">
+          Creator Profile Setup
+        </h1>
+        <div className="w-7" />
+      </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Creator Information</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <CreatorProfileSetupForm
-              formData={formData}
-              selectedSkills={selectedSkills}
-              avatarFile={avatarFile}
-              portfolioPaths={portfolioPaths}
-              loading={loading}
-              isFormValid={isFormValid()}
-              onInputChange={handleInputChange}
-              onSkillChange={handleSkillChange}
-              onAvatarFileChange={setAvatarFile}
-              onPortfolioPathsChange={setPortfolioPaths}
-              onSubmit={handleSubmit}
-            />
-          </CardContent>
-        </Card>
+      {/* Form Content */}
+      <div className="px-4 py-6 pb-24 max-w-2xl mx-auto">
+        <p className="text-sm text-gray-500 mb-6">
+          Showcase your skills and start getting discovered by brands.
+        </p>
+
+        <CreatorProfileSetupForm
+          formData={formData}
+          selectedSkills={selectedSkills}
+          avatarFile={avatarFile}
+          portfolioPaths={portfolioPaths}
+          loading={loading}
+          isFormValid={isFormValid()}
+          onInputChange={handleInputChange}
+          onSkillChange={handleSkillChange}
+          onAvatarFileChange={setAvatarFile}
+          onPortfolioPathsChange={setPortfolioPaths}
+          onSubmit={handleSubmit}
+        />
       </div>
     </div>
   );
