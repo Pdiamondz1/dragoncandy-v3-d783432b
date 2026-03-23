@@ -3,7 +3,6 @@ import { useParams, useNavigate } from 'react-router-dom';
 import DashboardLayout from '@/components/DashboardLayout';
 import { useCampaign } from '@/hooks/useCampaigns';
 import { useCampaignEditForm } from '@/hooks/useCampaignEditForm';
-import { Button } from '@/components/ui/button';
 import { ArrowLeft, Save, Eye } from 'lucide-react';
 import CampaignBasicInfoForm from '@/components/campaigns/CampaignBasicInfoForm';
 import CampaignPlatformsForm from '@/components/campaigns/CampaignPlatformsForm';
@@ -26,7 +25,7 @@ const CampaignEditPage: React.FC = () => {
     handleSave,
   } = useCampaignEditForm(campaign);
 
-  // Ownership check - redirect if not owner
+  // Ownership check — redirect if not owner
   useEffect(() => {
     if (campaign && user && campaign.user_id !== user.id) {
       toast({
@@ -48,12 +47,13 @@ const CampaignEditPage: React.FC = () => {
   if (isLoading) {
     return (
       <DashboardLayout userRole="business_client">
-        <div className="flex-1 p-6">
-          <div className="max-w-4xl mx-auto">
-            <div className="animate-pulse space-y-6">
-              <div className="h-8 bg-gray-200 rounded w-1/3"></div>
-              <div className="h-96 bg-gray-200 rounded"></div>
-            </div>
+        <div className="min-h-screen bg-white overflow-x-hidden">
+          <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
+            <span className="h-5 w-20 bg-gray-200 rounded-full animate-pulse" />
+          </div>
+          <div className="px-4 py-6 space-y-4">
+            <div className="h-8 bg-gray-200 rounded-full w-1/3 animate-pulse" />
+            <div className="h-64 bg-gray-200 rounded-2xl animate-pulse" />
           </div>
         </div>
       </DashboardLayout>
@@ -63,113 +63,102 @@ const CampaignEditPage: React.FC = () => {
   if (error || !campaign) {
     return (
       <DashboardLayout userRole="business_client">
-        <div className="flex-1 p-6">
-          <div className="max-w-4xl mx-auto">
-            <div className="text-center py-12">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">Campaign Not Found</h2>
-              <p className="text-gray-600 mb-6">The campaign you're trying to edit doesn't exist.</p>
-              <Button onClick={() => navigate('/dashboard/business/campaigns')}>
-                Back to Campaigns
-              </Button>
-            </div>
+        <div className="min-h-screen bg-white overflow-x-hidden flex items-center justify-center p-4">
+          <div className="text-center space-y-4 max-w-sm w-full">
+            <h2 className="text-xl font-bold text-gray-900">Campaign Not Found</h2>
+            <p className="text-gray-500 text-sm">The campaign you're trying to edit doesn't exist.</p>
+            <button
+              onClick={() => navigate('/dashboard/business/campaigns')}
+              className="w-full rounded-full bg-dc-teal text-white font-bold py-3"
+            >
+              Back to Campaigns
+            </button>
           </div>
         </div>
       </DashboardLayout>
     );
   }
 
-  // If not owner, show nothing while redirecting
+  // Not owner — render nothing while redirecting
   if (campaign && user && campaign.user_id !== user.id) {
     return null;
   }
 
   return (
     <DashboardLayout userRole="business_client">
-      <div className="flex-1 p-6">
-        <div className="max-w-4xl mx-auto">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-4">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => navigate(`/dashboard/business/campaigns/${campaign.id}`)}
-                className="flex items-center gap-2"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                Back to Details
-              </Button>
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900">Edit Campaign</h1>
-                <p className="text-gray-600 mt-1">Update your campaign details and settings</p>
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                onClick={() => navigate(`/dashboard/business/campaigns/${campaign.id}`)}
-                className="flex items-center gap-2"
-              >
-                <Eye className="h-4 w-4" />
-                Preview
-              </Button>
-            </div>
-          </div>
+      <div className="min-h-screen bg-white overflow-x-hidden">
+        {/* Template C Header */}
+        <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
+          <button
+            onClick={() => navigate(`/dashboard/business/campaigns/${campaign.id}`)}
+            className="text-dc-pink-accent mr-2"
+            aria-label="Back"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+          <h1 className="flex-1 text-center font-sans text-base font-bold text-gray-900 uppercase tracking-wide">
+            Edit Campaign
+          </h1>
+          <button
+            onClick={() => navigate(`/dashboard/business/campaigns/${campaign.id}`)}
+            className="text-dc-teal"
+            aria-label="Preview"
+          >
+            <Eye className="h-5 w-5" />
+          </button>
+        </div>
 
-          <div className="space-y-6">
-            <CampaignBasicInfoForm
-              formData={formData}
-              onInputChange={handleInputChange}
-            />
+        {/* Form sections */}
+        <div className="px-4 py-6 pb-28 space-y-6">
+          <CampaignBasicInfoForm
+            formData={formData}
+            onInputChange={handleInputChange}
+          />
 
-            <CampaignPlatformsForm
-              formData={formData}
-              onArrayChange={handleArrayChange}
-            />
+          <CampaignPlatformsForm
+            formData={formData}
+            onArrayChange={handleArrayChange}
+          />
 
-            <CampaignBudgetTimelineForm
-              formData={formData}
-              onInputChange={handleInputChange}
-            />
+          <CampaignBudgetTimelineForm
+            formData={formData}
+            onInputChange={handleInputChange}
+          />
 
-            <CampaignStyleToneForm
-              formData={formData}
-              onInputChange={handleInputChange}
-            />
+          <CampaignStyleToneForm
+            formData={formData}
+            onInputChange={handleInputChange}
+          />
 
-            <CampaignSponsorshipToggle
-              openForSponsorship={formData.open_for_sponsorship}
-              onToggle={(value) => handleInputChange('open_for_sponsorship', value)}
-            />
+          <CampaignSponsorshipToggle
+            openForSponsorship={formData.open_for_sponsorship}
+            onToggle={(value) => handleInputChange('open_for_sponsorship', value)}
+          />
 
-            {/* Action Buttons */}
-            <div className="flex justify-between items-center pt-6 border-t">
-              <Button
-                variant="outline"
-                onClick={() => navigate(`/dashboard/business/campaigns/${campaign.id}`)}
-              >
-                Cancel
-              </Button>
-              <div className="flex gap-3">
-                <Button
-                  variant="outline"
-                  onClick={() => handleSaveWithNavigation('draft')}
-                  disabled={isSaving || !formData.title.trim()}
-                  className="flex items-center gap-2"
-                >
-                  <Save className="h-4 w-4" />
-                  Save as Draft
-                </Button>
-                <Button
-                  onClick={() => handleSaveWithNavigation('published')}
-                  disabled={isSaving || !formData.title.trim()}
-                  className="flex items-center gap-2"
-                >
-                  <Save className="h-4 w-4" />
-                  {isSaving ? 'Publishing...' : 'Publish Campaign'}
-                </Button>
-              </div>
-            </div>
+          {/* Action buttons */}
+          <div className="space-y-3 pt-2">
+            <button
+              onClick={() => handleSaveWithNavigation('published')}
+              disabled={isSaving || !formData.title.trim()}
+              className="w-full rounded-full bg-dc-teal text-white font-bold py-3 flex items-center justify-center gap-2 disabled:opacity-60"
+            >
+              <Save className="h-4 w-4" />
+              {isSaving ? 'Publishing...' : 'Publish Campaign'}
+            </button>
+            <button
+              onClick={() => handleSaveWithNavigation('draft')}
+              disabled={isSaving || !formData.title.trim()}
+              className="w-full rounded-full border-2 border-gray-300 text-gray-700 font-bold py-3 flex items-center justify-center gap-2 disabled:opacity-60"
+            >
+              <Save className="h-4 w-4" />
+              Save as Draft
+            </button>
+            <button
+              onClick={() => navigate(`/dashboard/business/campaigns/${campaign.id}`)}
+              className="w-full rounded-full border border-gray-200 text-gray-500 font-semibold py-3"
+            >
+              Cancel
+            </button>
           </div>
         </div>
       </div>

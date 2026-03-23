@@ -1,5 +1,4 @@
 import React from 'react';
-import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { Brain } from 'lucide-react';
 import CampaignAnalysisDisplay from '@/components/campaigns/CampaignAnalysisDisplay';
 import CampaignCustomizeForm from '@/components/campaigns/CampaignCustomizeForm';
@@ -77,115 +76,112 @@ const AnonymousCampaignWizard: React.FC = () => {
   ];
 
   const handleAuthSuccess = () => {
-    // Close modal; redirect will be handled by the auth effect above once profile is loaded
     setShowAuthModal(false);
   };
 
   return (
     <AnonymousCampaignLayout currentStep={currentStep} totalSteps={5}>
-      <div className="flex-1 p-6">
-        <div className="max-w-4xl mx-auto">
-          <CampaignWizardHeader currentStep={currentStep} steps={steps} />
+      {/* Template C inner content */}
+      <div className="py-6 pb-10 space-y-6">
+        <CampaignWizardHeader currentStep={currentStep} steps={steps} />
 
-          {/* Step 1: Campaign Goal */}
-          {currentStep === 1 && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2">
-                <CampaignGoalStep
-                  campaignGoal={campaignGoal}
-                  setCampaignGoal={setCampaignGoal}
-                  onGenerateWithAI={handleGenerateWithAI}
-                  isGenerating={isGenerating}
-                />
-              </div>
-              <CampaignWizardSidebar />
-            </div>
-          )}
-
-          {/* Step 2: AI Analysis Results */}
-          {currentStep === 2 && campaignAnalysis && (
-            <div>
-              <Card className="mb-6">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <div className="w-8 h-8 bg-gray-900 rounded-full flex items-center justify-center text-white text-sm font-semibold">
-                      2
-                    </div>
-                    Step 2: AI Campaign Analysis
-                    <Brain className="h-5 w-5 text-blue-500 ml-2" />
-                  </CardTitle>
-                  <p className="text-gray-600 text-sm">
-                    DragonCandy AI has analyzed your campaign goal and generated a comprehensive strategy
-                  </p>
-                </CardHeader>
-              </Card>
-              
-              <CampaignAnalysisDisplay
-                analysis={campaignAnalysis}
-                onEditCampaignIdea={handleEditCampaignIdea}
-                onApproveAndCustomize={handleApproveAndCustomize}
-              />
-            </div>
-          )}
-
-          {/* Step 3: Customize Campaign */}
-          {currentStep === 3 && campaignAnalysis && (
-            <CampaignCustomizeForm
-              initialData={campaignAnalysis}
-              onContinue={handleContinueFromCustomize}
-              onBackToAnalysis={handleBackToAnalysis}
+        {/* Step 1: Campaign Goal */}
+        {currentStep === 1 && (
+          <div className="space-y-4">
+            <CampaignGoalStep
+              campaignGoal={campaignGoal}
+              setCampaignGoal={setCampaignGoal}
+              onGenerateWithAI={handleGenerateWithAI}
+              isGenerating={isGenerating}
             />
-          )}
+            <CampaignWizardSidebar />
+          </div>
+        )}
 
-          {/* Step 4: Timeline & Budget */}
-          {currentStep === 4 && (
-            <CampaignTimelineBudgetStep
-              initialData={{
-                goals: customizedCampaign ? (
-                  Array.isArray(customizedCampaign.goals) 
-                    ? customizedCampaign.goals.join('. ') + '.'
-                    : customizedCampaign.goals || ''
-                ) : campaignAnalysis ? (
-                  Array.isArray(campaignAnalysis.goals)
-                    ? campaignAnalysis.goals.join('. ') + '.'
-                    : ''
-                ) : '',
-                deadline: undefined,
-                budget_min: customizedCampaign?.budget_min || campaignAnalysis?.budget_recommendations?.min,
-                budget_max: customizedCampaign?.budget_max || campaignAnalysis?.budget_recommendations?.max,
-              }}
-              onContinue={handleContinueFromTimelineBudget}
-              onBackToCustomize={handleBackToCustomize}
-            />
-          )}
-
-          {/* Step 5: Finalize - Anonymous Version */}
-          {currentStep === 5 && (
-            <>
-              {finalCampaignData ? (
-                <AnonymousCampaignFinalizeStep
-                  campaignData={finalCampaignData}
-                  onBack={handleBackToTimelineBudget}
-                  onPublishAttempt={handlePublishAttempt}
-                  onSaveDraftAttempt={handleSaveDraftAttempt}
-                />
-              ) : (
-                <div className="text-center py-12">
-                  <h3 className="text-lg font-semibold mb-4">Complete Previous Steps</h3>
-                  <p className="text-gray-600 mb-6">
-                    Please complete the timeline and budget step to continue.
-                  </p>
-                  <button
-                    onClick={handleBackToTimelineBudget}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                  >
-                    Go Back to Timeline & Budget
-                  </button>
+        {/* Step 2: AI Analysis Results */}
+        {currentStep === 2 && campaignAnalysis && (
+          <div className="space-y-4">
+            <div className="border-2 border-dc-teal rounded-2xl p-4 bg-white">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 bg-gray-900 rounded-full flex items-center justify-center text-white text-xs font-semibold shrink-0">
+                  2
                 </div>
-              )}
-            </>
-          )}
-        </div>
+                <div>
+                  <span className="font-bold text-gray-900 text-sm">Step 2: AI Campaign Analysis</span>
+                  <Brain className="h-4 w-4 text-dc-teal inline ml-2" />
+                </div>
+              </div>
+              <p className="text-gray-500 text-xs mt-2">
+                DragonCandy AI has analyzed your campaign goal and generated a comprehensive strategy
+              </p>
+            </div>
+            <CampaignAnalysisDisplay
+              analysis={campaignAnalysis}
+              onEditCampaignIdea={handleEditCampaignIdea}
+              onApproveAndCustomize={handleApproveAndCustomize}
+            />
+          </div>
+        )}
+
+        {/* Step 3: Customize Campaign */}
+        {currentStep === 3 && campaignAnalysis && (
+          <CampaignCustomizeForm
+            initialData={campaignAnalysis}
+            onContinue={handleContinueFromCustomize}
+            onBackToAnalysis={handleBackToAnalysis}
+          />
+        )}
+
+        {/* Step 4: Timeline & Budget */}
+        {currentStep === 4 && (
+          <CampaignTimelineBudgetStep
+            initialData={{
+              goals: customizedCampaign ? (
+                Array.isArray(customizedCampaign.goals)
+                  ? customizedCampaign.goals.join('. ') + '.'
+                  : customizedCampaign.goals || ''
+              ) : campaignAnalysis ? (
+                Array.isArray(campaignAnalysis.goals)
+                  ? campaignAnalysis.goals.join('. ') + '.'
+                  : ''
+              ) : '',
+              deadline: undefined,
+              budget_min: customizedCampaign?.budget_min || campaignAnalysis?.budget_recommendations?.min,
+              budget_max: customizedCampaign?.budget_max || campaignAnalysis?.budget_recommendations?.max,
+            }}
+            onContinue={handleContinueFromTimelineBudget}
+            onBackToCustomize={handleBackToCustomize}
+          />
+        )}
+
+        {/* Step 5: Finalize - Anonymous Version */}
+        {currentStep === 5 && (
+          <>
+            {finalCampaignData ? (
+              <AnonymousCampaignFinalizeStep
+                campaignData={finalCampaignData}
+                onBack={handleBackToTimelineBudget}
+                onPublishAttempt={handlePublishAttempt}
+                onSaveDraftAttempt={handleSaveDraftAttempt}
+              />
+            ) : (
+              <div className="text-center py-12 bg-white rounded-2xl border-2 border-dc-teal">
+                <h3 className="font-sans text-base font-bold text-gray-900 uppercase tracking-wide mb-3">
+                  Complete Previous Steps
+                </h3>
+                <p className="text-gray-500 text-sm mb-6">
+                  Please complete the timeline and budget step to continue.
+                </p>
+                <button
+                  onClick={handleBackToTimelineBudget}
+                  className="w-full rounded-full bg-dc-teal text-white font-bold py-3"
+                >
+                  Go Back to Timeline &amp; Budget
+                </button>
+              </div>
+            )}
+          </>
+        )}
       </div>
 
       {/* Authentication Modal */}

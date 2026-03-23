@@ -1,13 +1,15 @@
 
 import React from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
-import { Card, CardContent } from '@/components/ui/card';
+import { ArrowLeft } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useCreatorApplications } from '@/hooks/useFetchApplications';
 import ApplicationsStats from '@/components/applications/ApplicationsStats';
 import ApplicationsSearch from '@/components/applications/ApplicationsSearch';
 import ApplicationsTabsContent from '@/components/applications/ApplicationsTabsContent';
 
 const CreatorApplications: React.FC = () => {
+  const navigate = useNavigate();
   const { data: applications = [], isLoading, error } = useCreatorApplications();
   const [searchTerm, setSearchTerm] = React.useState('');
 
@@ -24,16 +26,15 @@ const CreatorApplications: React.FC = () => {
   if (isLoading) {
     return (
       <DashboardLayout userRole="content_creator">
-        <div className="flex-1 p-4 sm:p-6 lg:p-8 overflow-x-hidden">
-          <div className="max-w-7xl mx-auto space-y-6">
-            <div className="animate-pulse space-y-6">
-              <div className="h-8 bg-gray-200 rounded w-1/3"></div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="h-32 bg-gray-200 rounded"></div>
-                ))}
-              </div>
-            </div>
+        <div className="min-h-screen bg-white overflow-x-hidden">
+          <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
+            <span className="h-5 w-5 bg-gray-200 rounded-full animate-pulse mr-2" />
+            <span className="flex-1 h-4 bg-gray-200 rounded-full animate-pulse mx-8" />
+          </div>
+          <div className="px-4 pt-4 pb-24 space-y-3">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="border-2 border-gray-100 rounded-2xl p-4 h-24 animate-pulse bg-gray-50" />
+            ))}
           </div>
         </div>
       </DashboardLayout>
@@ -43,18 +44,10 @@ const CreatorApplications: React.FC = () => {
   if (error) {
     return (
       <DashboardLayout userRole="content_creator">
-        <div className="flex-1 p-4 sm:p-6 lg:p-8 overflow-x-hidden">
-          <div className="max-w-7xl mx-auto">
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  Failed to load applications
-                </h3>
-                <p className="text-gray-600">
-                  There was an error loading your applications.
-                </p>
-              </CardContent>
-            </Card>
+        <div className="min-h-screen bg-white overflow-x-hidden flex items-center justify-center p-4">
+          <div className="border-2 border-dc-teal rounded-2xl p-6 text-center max-w-sm w-full">
+            <h3 className="font-bold text-gray-900 mb-2">Failed to load applications</h3>
+            <p className="text-gray-500 text-sm">There was an error loading your applications.</p>
           </div>
         </div>
       </DashboardLayout>
@@ -63,30 +56,40 @@ const CreatorApplications: React.FC = () => {
 
   return (
     <DashboardLayout userRole="content_creator">
-      <div className="flex-1 p-4 sm:p-6 lg:p-8 overflow-x-hidden">
-        <div className="max-w-7xl mx-auto space-y-6">
-          {/* Header */}
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">My Applications</h1>
-              <p className="text-gray-600">Track your campaign applications and their status</p>
-            </div>
-          </div>
+      <div className="min-h-screen bg-white overflow-x-hidden">
+        {/* Template B Header */}
+        <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
+          <button
+            onClick={() => navigate('/dashboard/creator')}
+            className="text-dc-pink-accent mr-2"
+            aria-label="Back"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+          <h1 className="flex-1 text-center font-sans text-base font-bold text-gray-900 uppercase tracking-wide">
+            My Applications
+          </h1>
+          <span className="text-xs text-gray-400 font-semibold">
+            {applications.length}
+          </span>
+        </div>
 
-          {/* Stats Cards */}
-          <ApplicationsStats 
+        {/* Content */}
+        <div className="px-4 pt-4 pb-24 space-y-4">
+          {/* Stats row */}
+          <ApplicationsStats
             applications={applications}
             pendingCount={pendingApplications.length}
             acceptedCount={acceptedApplications.length}
           />
 
           {/* Search */}
-          <ApplicationsSearch 
+          <ApplicationsSearch
             searchTerm={searchTerm}
             onSearchChange={setSearchTerm}
           />
 
-          {/* Applications Tabs */}
+          {/* Applications tabs — teal-bordered cards inside */}
           <ApplicationsTabsContent
             filteredApplications={filteredApplications}
             pendingApplications={pendingApplications}

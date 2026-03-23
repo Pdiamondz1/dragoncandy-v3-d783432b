@@ -2,8 +2,6 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import DashboardLayout from '@/components/DashboardLayout';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowLeft, Edit, Users, Target, AlertCircle, Send, CheckCircle, FolderOpen } from 'lucide-react';
 import { useCampaign } from '@/hooks/useCampaigns';
@@ -23,32 +21,30 @@ const CampaignDetailsPage: React.FC = () => {
   const { user } = useAuth();
   const { campaign, isLoading, error } = useCampaign(id!);
   const [showApplicationDialog, setShowApplicationDialog] = useState(false);
-  
+
   // Determine user role based on current route
   const isCreatorView = location.pathname.includes('/creator/');
   const userRole = isCreatorView ? 'content_creator' : 'business_client';
   const isOwnCampaign = campaign?.user_id === user?.id;
-  
+
   // Check if creator has already applied
   const { hasApplied, applicationStatus, isLoading: isCheckingStatus } = useCreatorApplicationStatus(id);
-  
+
   // Determine what button to show for creators
   const canApply = isCreatorView && !isOwnCampaign && campaign?.status === 'published' && !hasApplied;
   const showAppliedBadge = isCreatorView && hasApplied && applicationStatus === 'pending';
   const showAcceptedButton = isCreatorView && hasApplied && applicationStatus === 'accepted';
   const canReapply = isCreatorView && hasApplied && applicationStatus === 'rejected';
 
+  const backHref = isCreatorView ? '/dashboard/creator/campaigns' : '/dashboard/business/campaigns';
 
   if (isLoading) {
     return (
       <DashboardLayout userRole={userRole}>
-        <div className="flex-1 p-4 sm:p-6 lg:p-8 overflow-x-hidden">
-          <div className="max-w-7xl mx-auto space-y-6">
-            <div className="flex items-center gap-4">
-              <Skeleton className="h-10 w-10" />
-              <Skeleton className="h-8 w-64" />
-            </div>
-            <Skeleton className="h-64" />
+        <div className="min-h-screen bg-dc-gray overflow-x-hidden">
+          <div className="p-4 space-y-4">
+            <Skeleton className="h-10 w-48" />
+            <Skeleton className="h-64 w-full rounded-2xl" />
           </div>
         </div>
       </DashboardLayout>
@@ -58,22 +54,19 @@ const CampaignDetailsPage: React.FC = () => {
   if (error || !campaign) {
     return (
       <DashboardLayout userRole={userRole}>
-        <div className="flex-1 p-4 sm:p-6 lg:p-8 overflow-x-hidden">
-          <div className="max-w-7xl mx-auto">
-            <Card>
-              <CardContent className="flex items-center justify-center py-12">
-                <div className="text-center space-y-4">
-                  <AlertCircle className="h-12 w-12 text-red-500 mx-auto" />
-                  <div className="text-lg font-medium">Campaign not found</div>
-                  <div className="text-gray-600">
-                    The campaign you're looking for doesn't exist or you don't have access to it.
-                  </div>
-                  <Button onClick={() => navigate(isCreatorView ? '/dashboard/creator/campaigns' : '/dashboard/business/campaigns')}>
-                    Back to Campaigns
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+        <div className="min-h-screen bg-dc-gray overflow-x-hidden flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-8 text-center space-y-4 w-full max-w-sm">
+            <AlertCircle className="h-12 w-12 text-red-400 mx-auto" />
+            <h2 className="text-lg font-bold text-gray-900">Campaign not found</h2>
+            <p className="text-gray-500 text-sm">
+              This campaign doesn't exist or you don't have access to it.
+            </p>
+            <button
+              onClick={() => navigate(backHref)}
+              className="w-full rounded-full bg-dc-teal text-white font-bold py-3"
+            >
+              Back to Campaigns
+            </button>
           </div>
         </div>
       </DashboardLayout>
@@ -82,81 +75,94 @@ const CampaignDetailsPage: React.FC = () => {
 
   return (
     <DashboardLayout userRole={userRole}>
-      <div className="flex-1 p-4 sm:p-6 lg:p-8 overflow-x-hidden">
-        <div className="max-w-7xl mx-auto space-y-6">
-          {/* Header */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => navigate(isCreatorView ? '/dashboard/creator/campaigns' : '/dashboard/business/campaigns')}
-              >
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Campaigns
-              </Button>
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900">{campaign.title}</h1>
-                <p className="text-gray-600">
-                  {isCreatorView ? 'Campaign Details' : 'Campaign Details & Management'}
-                </p>
-              </div>
-            </div>
+      <div className="min-h-screen bg-dc-gray overflow-x-hidden">
+        {/* Hero placeholder — teal gradient band */}
+        <div className="relative h-40 bg-gradient-to-br from-dc-teal to-dc-teal-dark">
+          {/* Header overlay */}
+          <div className="absolute top-0 left-0 right-0 px-4 py-3 flex items-center">
+            <button
+              onClick={() => navigate(backHref)}
+              className="text-white mr-2"
+              aria-label="Back"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </button>
+            <h1 className="flex-1 text-center font-sans text-base font-bold text-white uppercase tracking-wide truncate px-2">
+              {campaign.title}
+            </h1>
             {isOwnCampaign && (
-              <Button onClick={() => navigate(`/dashboard/business/campaigns/${campaign.id}/edit`)}>
-                <Edit className="h-4 w-4 mr-2" />
-                Edit Campaign
-              </Button>
+              <button
+                onClick={() => navigate(`/dashboard/business/campaigns/${campaign.id}/edit`)}
+                className="text-white"
+                aria-label="Edit campaign"
+              >
+                <Edit className="h-5 w-5" />
+              </button>
             )}
-            
-            {/* Creator Apply Button */}
-            {canApply && (
-              <Button onClick={() => setShowApplicationDialog(true)}>
-                <Send className="h-4 w-4 mr-2" />
-                Apply to Campaign
-              </Button>
-            )}
-            
-            {/* Show Applied Badge for pending */}
-            {showAppliedBadge && (
-              <Button variant="secondary" disabled>
-                <CheckCircle className="h-4 w-4 mr-2" />
-                Applied (Pending)
-              </Button>
-            )}
-            
-            {/* Show View Project for accepted */}
-            {showAcceptedButton && (
-              <Button onClick={() => navigate('/dashboard/creator/projects')}>
-                <FolderOpen className="h-4 w-4 mr-2" />
-                View Project
-              </Button>
-            )}
-            
-            {/* Show Reapply for rejected */}
-            {canReapply && (
-              <Button onClick={() => setShowApplicationDialog(true)} variant="outline">
-                <Send className="h-4 w-4 mr-2" />
-                Apply Again
-              </Button>
-            )}
+            {!isOwnCampaign && <span className="w-5" />}
+          </div>
+        </div>
+
+        {/* White card overlay — Template D */}
+        <div className="bg-white rounded-t-3xl -mt-4 relative z-10 px-4 pt-6 pb-28">
+          {/* Campaign title + status row */}
+          <div className="mb-4">
+            <h2 className="text-xl font-bold text-gray-900">{campaign.title}</h2>
+            <p className="text-gray-500 text-sm mt-0.5">
+              {isCreatorView ? 'Campaign Details' : 'Campaign Details & Management'}
+            </p>
           </div>
 
+          {/* Creator action buttons */}
+          {canApply && (
+            <button
+              onClick={() => setShowApplicationDialog(true)}
+              className="w-full rounded-full bg-dc-teal text-white font-bold py-3 mb-4 flex items-center justify-center gap-2"
+            >
+              <Send className="h-4 w-4" />
+              Apply to Campaign
+            </button>
+          )}
+          {showAppliedBadge && (
+            <div className="w-full rounded-full bg-gray-100 text-gray-500 font-bold py-3 mb-4 flex items-center justify-center gap-2">
+              <CheckCircle className="h-4 w-4" />
+              Applied (Pending)
+            </div>
+          )}
+          {showAcceptedButton && (
+            <button
+              onClick={() => navigate('/dashboard/creator/projects')}
+              className="w-full rounded-full bg-dc-teal text-white font-bold py-3 mb-4 flex items-center justify-center gap-2"
+            >
+              <FolderOpen className="h-4 w-4" />
+              View Project
+            </button>
+          )}
+          {canReapply && (
+            <button
+              onClick={() => setShowApplicationDialog(true)}
+              className="w-full rounded-full border-2 border-dc-teal text-dc-teal font-bold py-3 mb-4 flex items-center justify-center gap-2"
+            >
+              <Send className="h-4 w-4" />
+              Apply Again
+            </button>
+          )}
+
           {/* Campaign Tabs */}
-          <Tabs defaultValue="overview" className="space-y-6">
-            <TabsList className={`grid w-full ${isCreatorView ? 'grid-cols-1' : 'grid-cols-3'}`}>
-              <TabsTrigger value="overview" className="flex items-center gap-2">
-                <Target className="h-4 w-4" />
+          <Tabs defaultValue="overview" className="space-y-4">
+            <TabsList className={`grid w-full rounded-full bg-gray-100 ${isCreatorView ? 'grid-cols-1' : 'grid-cols-3'}`}>
+              <TabsTrigger value="overview" className="rounded-full flex items-center gap-1.5 text-xs">
+                <Target className="h-3.5 w-3.5" />
                 Overview
               </TabsTrigger>
               {!isCreatorView && (
                 <>
-                  <TabsTrigger value="applications" className="flex items-center gap-2">
-                    <Users className="h-4 w-4" />
+                  <TabsTrigger value="applications" className="rounded-full flex items-center gap-1.5 text-xs">
+                    <Users className="h-3.5 w-3.5" />
                     Applications
                   </TabsTrigger>
-                  <TabsTrigger value="matching" className="flex items-center gap-2">
-                    <Target className="h-4 w-4" />
+                  <TabsTrigger value="matching" className="rounded-full flex items-center gap-1.5 text-xs">
+                    <Target className="h-3.5 w-3.5" />
                     AI Match
                   </TabsTrigger>
                 </>
@@ -172,16 +178,26 @@ const CampaignDetailsPage: React.FC = () => {
                 <TabsContent value="applications">
                   <ApplicationsListFixed campaignId={campaign.id} />
                 </TabsContent>
-
                 <TabsContent value="matching">
                   <CreatorMatchingSection campaignId={campaign.id} />
                 </TabsContent>
               </>
             )}
           </Tabs>
+
+          {/* Owner edit CTA at bottom */}
+          {isOwnCampaign && (
+            <button
+              onClick={() => navigate(`/dashboard/business/campaigns/${campaign.id}/edit`)}
+              className="w-full rounded-full bg-dc-teal text-white font-bold py-3 mt-6 flex items-center justify-center gap-2"
+            >
+              <Edit className="h-4 w-4" />
+              Edit Campaign
+            </button>
+          )}
         </div>
       </div>
-      
+
       {/* Application Dialog for Creators */}
       <Dialog open={showApplicationDialog} onOpenChange={setShowApplicationDialog}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">

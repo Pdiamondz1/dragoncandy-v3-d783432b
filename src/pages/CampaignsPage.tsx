@@ -1,14 +1,11 @@
 
 import React, { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
-import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Plus } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Plus, ArrowLeft } from 'lucide-react';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import CampaignsList from '@/components/campaigns/CampaignsList';
 import { useCampaigns } from '@/hooks/useCampaigns';
-import { useIsMobile } from '@/hooks/use-mobile';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
@@ -17,8 +14,7 @@ const CampaignsPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [statusFilter, setStatusFilter] = useState<'all' | 'draft' | 'published' | 'active' | 'completed' | 'cancelled'>('all');
-  const { campaigns } = useCampaigns(true); // Only show user's own campaigns
-  const isMobile = useIsMobile();
+  const { campaigns } = useCampaigns(true);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isVerifying, setIsVerifying] = useState(false);
@@ -31,17 +27,14 @@ const CampaignsPage: React.FC = () => {
 
     if (payment === 'success' && campaignId && !isVerifying) {
       setIsVerifying(true);
-      
+
       const verifyPayment = async () => {
         try {
-          console.log('Verifying payment for campaign:', campaignId, 'session:', sessionId);
-          
           const { data, error } = await supabase.functions.invoke('verify-campaign-escrow', {
             body: { campaignId, sessionId },
           });
 
           if (error) {
-            console.error('Verification error:', error);
             toast({
               variant: 'destructive',
               title: 'Verification Failed',
@@ -52,7 +45,6 @@ const CampaignsPage: React.FC = () => {
               title: 'Payment Verified!',
               description: 'Your campaign is now published and visible to creators.',
             });
-            // Refresh campaigns data
             queryClient.invalidateQueries({ queryKey: ['campaigns'] });
             queryClient.invalidateQueries({ queryKey: ['public-campaigns'] });
           } else if (data?.status === 'pending') {
@@ -62,14 +54,12 @@ const CampaignsPage: React.FC = () => {
             });
           }
         } catch (err) {
-          console.error('Payment verification failed:', err);
           toast({
             variant: 'destructive',
             title: 'Error',
             description: 'Something went wrong. Please refresh the page.',
           });
         } finally {
-          // Clean up URL params
           setSearchParams({});
           setIsVerifying(false);
         }
@@ -81,15 +71,12 @@ const CampaignsPage: React.FC = () => {
         title: 'Payment Cancelled',
         description: 'You can complete the payment anytime from your campaign card.',
       });
-      // Clean up URL params
       setSearchParams({});
     }
   }, [searchParams, queryClient, toast, setSearchParams, isVerifying]);
 
-  // Calculate counts for each status
   const getCounts = () => {
     if (!campaigns) return { all: 0, draft: 0, published: 0, active: 0, completed: 0, cancelled: 0 };
-    
     return {
       all: campaigns.length,
       draft: campaigns.filter(c => c.status === 'draft').length,
@@ -102,120 +89,70 @@ const CampaignsPage: React.FC = () => {
 
   const counts = getCounts();
 
+  const tabs: Array<{ key: typeof statusFilter; label: string }> = [
+    { key: 'all', label: 'All' },
+    { key: 'draft', label: 'Drafts' },
+    { key: 'published', label: 'Published' },
+    { key: 'active', label: 'Active' },
+    { key: 'completed', label: 'Completed' },
+    { key: 'cancelled', label: 'Cancelled' },
+  ];
+
   return (
     <DashboardLayout userRole="business_client">
-      <div className="flex-1 p-4 sm:p-6">
-        <div className="max-w-7xl mx-auto">
-          {/* Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Campaigns</h1>
-              <p className="text-muted-foreground mt-1">
-                Manage your content campaigns and track their progress
-              </p>
+      <div className="min-h-screen bg-white overflow-x-hidden">
+        {/* Template B Header */}
+        <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
+          <button
+            onClick={() => navigate('/dashboard/business')}
+            className="text-dc-pink-accent mr-2"
+            aria-label="Back"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+          <h1 className="flex-1 text-center font-sans text-base font-bold text-gray-900 uppercase tracking-wide">
+            Campaigns
+          </h1>
+          <button
+            onClick={() => navigate('/dashboard/business/campaigns/create')}
+            className="text-dc-teal"
+            aria-label="Create campaign"
+          >
+            <Plus className="h-5 w-5" />
+          </button>
+        </div>
+
+        {/* Status filter tabs — horizontal scroll */}
+        <div className="bg-white border-b border-gray-100">
+          <ScrollArea className="w-full whitespace-nowrap">
+            <div className="flex px-4 py-2 gap-2">
+              {tabs.map(tab => (
+                <button
+                  key={tab.key}
+                  onClick={() => setStatusFilter(tab.key)}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+                    statusFilter === tab.key
+                      ? 'bg-dc-teal text-white'
+                      : 'bg-gray-100 text-gray-600'
+                  }`}
+                >
+                  {tab.label}
+                  <span
+                    className={`px-1.5 py-0.5 rounded-full text-xs ${
+                      statusFilter === tab.key ? 'bg-white/30 text-white' : 'bg-white text-gray-600'
+                    }`}
+                  >
+                    {counts[tab.key]}
+                  </span>
+                </button>
+              ))}
             </div>
-            <Button 
-              onClick={() => navigate('/dashboard/business/campaigns/create')}
-              className="inline-flex items-center w-full sm:w-auto"
-              size={isMobile ? "default" : "default"}
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              {isMobile ? "Create" : "Create Campaign"}
-            </Button>
-          </div>
+          </ScrollArea>
+        </div>
 
-          {/* Filter Tabs */}
-          <Tabs value={statusFilter} onValueChange={(value) => setStatusFilter(value as any)} className="mb-6">
-            {isMobile ? (
-              // Mobile: Horizontal scrolling tabs
-              <div className="relative">
-                <ScrollArea className="w-full whitespace-nowrap">
-                  <TabsList className="inline-flex h-9 items-center justify-start rounded-lg bg-muted p-1 text-muted-foreground w-max">
-                    <TabsTrigger value="all" className="flex items-center gap-1 px-3 py-1 text-sm">
-                      All
-                      <span className="px-1.5 py-0.5 text-xs bg-background rounded-full min-w-[18px] text-center">
-                        {counts.all}
-                      </span>
-                    </TabsTrigger>
-                    <TabsTrigger value="draft" className="flex items-center gap-1 px-3 py-1 text-sm">
-                      Drafts
-                      <span className="px-1.5 py-0.5 text-xs bg-background rounded-full min-w-[18px] text-center">
-                        {counts.draft}
-                      </span>
-                    </TabsTrigger>
-                    <TabsTrigger value="published" className="flex items-center gap-1 px-3 py-1 text-sm">
-                      Published
-                      <span className="px-1.5 py-0.5 text-xs bg-background rounded-full min-w-[18px] text-center">
-                        {counts.published}
-                      </span>
-                    </TabsTrigger>
-                    <TabsTrigger value="active" className="flex items-center gap-1 px-3 py-1 text-sm">
-                      Active
-                      <span className="px-1.5 py-0.5 text-xs bg-background rounded-full min-w-[18px] text-center">
-                        {counts.active}
-                      </span>
-                    </TabsTrigger>
-                    <TabsTrigger value="completed" className="flex items-center gap-1 px-3 py-1 text-sm">
-                      Completed
-                      <span className="px-1.5 py-0.5 text-xs bg-background rounded-full min-w-[18px] text-center">
-                        {counts.completed}
-                      </span>
-                    </TabsTrigger>
-                    <TabsTrigger value="cancelled" className="flex items-center gap-1 px-3 py-1 text-sm">
-                      Cancelled
-                      <span className="px-1.5 py-0.5 text-xs bg-background rounded-full min-w-[18px] text-center">
-                        {counts.cancelled}
-                      </span>
-                    </TabsTrigger>
-                  </TabsList>
-                </ScrollArea>
-              </div>
-            ) : (
-              // Desktop: Grid layout
-              <TabsList className="grid w-full grid-cols-6">
-                <TabsTrigger value="all" className="flex items-center gap-2">
-                  All
-                  <span className="px-2 py-1 text-xs bg-muted rounded-full min-w-[20px] text-center">
-                    {counts.all}
-                  </span>
-                </TabsTrigger>
-                <TabsTrigger value="draft" className="flex items-center gap-2">
-                  Drafts
-                  <span className="px-2 py-1 text-xs bg-muted rounded-full min-w-[20px] text-center">
-                    {counts.draft}
-                  </span>
-                </TabsTrigger>
-                <TabsTrigger value="published" className="flex items-center gap-2">
-                  Published
-                  <span className="px-2 py-1 text-xs bg-muted rounded-full min-w-[20px] text-center">
-                    {counts.published}
-                  </span>
-                </TabsTrigger>
-                <TabsTrigger value="active" className="flex items-center gap-2">
-                  Active
-                  <span className="px-2 py-1 text-xs bg-muted rounded-full min-w-[20px] text-center">
-                    {counts.active}
-                  </span>
-                </TabsTrigger>
-                <TabsTrigger value="completed" className="flex items-center gap-2">
-                  Completed
-                  <span className="px-2 py-1 text-xs bg-muted rounded-full min-w-[20px] text-center">
-                    {counts.completed}
-                  </span>
-                </TabsTrigger>
-                <TabsTrigger value="cancelled" className="flex items-center gap-2">
-                  Cancelled
-                  <span className="px-2 py-1 text-xs bg-muted rounded-full min-w-[20px] text-center">
-                    {counts.cancelled}
-                  </span>
-                </TabsTrigger>
-              </TabsList>
-            )}
-
-            <TabsContent value={statusFilter} className="mt-6">
-              <CampaignsList statusFilter={statusFilter} filterByOwnership={true} />
-            </TabsContent>
-          </Tabs>
+        {/* Campaign list */}
+        <div className="px-4 pt-4 pb-24 space-y-3">
+          <CampaignsList statusFilter={statusFilter} filterByOwnership={true} />
         </div>
       </div>
     </DashboardLayout>

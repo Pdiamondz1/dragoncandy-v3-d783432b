@@ -9,7 +9,7 @@ import AdvancedCampaignFilters from '@/components/campaigns/AdvancedCampaignFilt
 import CampaignBrowseContent from '@/components/campaigns/CampaignBrowseContent';
 import MarketplaceLoadingState from '@/components/campaigns/MarketplaceLoadingState';
 import MarketplaceErrorState from '@/components/campaigns/MarketplaceErrorState';
-import { Rocket, Search } from 'lucide-react';
+import { ArrowLeft, Search } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -31,7 +31,7 @@ const BrandDiscoverCampaigns = () => {
   const submitProposal = useSubmitSponsorshipProposal();
   const { data: campaigns = [], isLoading, error } = useSponsorshipCampaigns(user?.id);
   const { filters, filteredCampaigns, updateFilter, resetFilters } = useBrandCampaignFilters(campaigns);
-  
+
   const [selectedCampaign, setSelectedCampaign] = useState<any>(null);
   const [showSponsorDialog, setShowSponsorDialog] = useState(false);
   const [sponsorshipAmount, setSponsorshipAmount] = useState('');
@@ -45,7 +45,6 @@ const BrandDiscoverCampaigns = () => {
     const timer = setTimeout(() => {
       setDebouncedCampaigns(filteredCampaigns);
     }, 300);
-
     return () => clearTimeout(timer);
   }, [filteredCampaigns]);
 
@@ -58,7 +57,6 @@ const BrandDiscoverCampaigns = () => {
   }
 
   const handleSponsor = (campaignId: string, existingProposal?: any) => {
-    // Don't allow opening dialog if proposal already exists
     if (existingProposal) {
       toast({
         title: 'Proposal Already Submitted',
@@ -67,7 +65,6 @@ const BrandDiscoverCampaigns = () => {
       });
       return;
     }
-    
     const campaign = campaigns.find(c => c.id === campaignId);
     if (campaign) {
       setSelectedCampaign(campaign);
@@ -83,7 +80,6 @@ const BrandDiscoverCampaigns = () => {
     if (!user || !selectedCampaign) return;
 
     setIsSubmitting(true);
-
     try {
       await submitProposal.mutateAsync({
         campaignId: selectedCampaign.id,
@@ -123,126 +119,128 @@ const BrandDiscoverCampaigns = () => {
 
   return (
     <DashboardLayout userRole="brand">
-      <div className="flex-1 p-4 sm:p-6 lg:p-8 overflow-x-hidden">
-        <div className="max-w-7xl mx-auto space-y-6">
-          {/* Header */}
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold flex items-center gap-2">
-                <Rocket className="h-8 w-8" />
-                Discover Campaigns
-              </h1>
-              <p className="text-muted-foreground mt-1">
-                Find restaurant campaigns to sponsor and amplify your brand reach
-              </p>
-            </div>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Search className="h-4 w-4" />
-              <span>{campaigns.length} campaigns available</span>
-            </div>
+      <div className="min-h-screen bg-white overflow-x-hidden">
+        {/* Template B Header */}
+        <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
+          <button
+            onClick={() => navigate('/dashboard/brand')}
+            className="text-dc-pink-accent mr-2"
+            aria-label="Back"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+          <h1 className="flex-1 text-center font-sans text-base font-bold text-gray-900 uppercase tracking-wide">
+            Discover Campaigns
+          </h1>
+          <div className="flex items-center gap-1 text-xs text-gray-400 font-semibold">
+            <Search className="h-3.5 w-3.5" />
+            <span>{campaigns.length}</span>
           </div>
+        </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            {/* Filters Sidebar */}
-            <div className="lg:col-span-1">
-              <AdvancedCampaignFilters
-                filters={filters}
-                onFilterChange={updateFilter}
-                onReset={resetFilters}
-                totalCount={campaigns.length}
-                filteredCount={filteredCampaigns.length}
-              />
-            </div>
+        {/* Content */}
+        <div className="px-4 pt-4 pb-24 space-y-4">
+          {/* Filters */}
+          <AdvancedCampaignFilters
+            filters={filters}
+            onFilterChange={updateFilter}
+            onReset={resetFilters}
+            totalCount={campaigns.length}
+            filteredCount={filteredCampaigns.length}
+          />
 
-            {/* Browse Content with Grid/Map/Split Views */}
-            <div className="lg:col-span-3">
-              <CampaignBrowseContent
-                campaigns={debouncedCampaigns}
+          {/* Campaign Browse Content */}
+          <CampaignBrowseContent
+            campaigns={debouncedCampaigns}
+            onViewDetails={handleViewDetails}
+            renderCampaignCard={(campaign) => (
+              <BrandCampaignCard
+                key={campaign.id}
+                campaign={campaign as SponsorshipCampaign}
+                onSponsor={handleSponsor}
                 onViewDetails={handleViewDetails}
-                renderCampaignCard={(campaign) => (
-                  <BrandCampaignCard
-                    key={campaign.id}
-                    campaign={campaign as SponsorshipCampaign}
-                    onSponsor={handleSponsor}
-                    onViewDetails={handleViewDetails}
-                    submittingCampaignId={isSubmitting ? selectedCampaign?.id : undefined}
-                  />
-                )}
-                emptyState={
-                  <div className="text-center py-12 bg-card rounded-lg border">
-                    <Search className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                    <h3 className="text-lg font-semibold mb-2">No campaigns found</h3>
-                    <p className="text-muted-foreground mb-4">
-                      {campaigns.length === 0
-                        ? 'No campaigns are currently open for sponsorship'
-                        : 'Try adjusting your filters to see more campaigns'}
-                    </p>
-                    {campaigns.length > 0 && (
-                      <Button variant="outline" onClick={resetFilters}>
-                        Reset Filters
-                      </Button>
-                    )}
-                  </div>
-                }
+                submittingCampaignId={isSubmitting ? selectedCampaign?.id : undefined}
               />
-            </div>
-          </div>
-
-          {/* Sponsorship Proposal Dialog */}
-          <Dialog open={showSponsorDialog} onOpenChange={setShowSponsorDialog}>
-            <DialogContent className="max-w-2xl">
-              <DialogHeader>
-                <DialogTitle>Sponsor Campaign</DialogTitle>
-                <DialogDescription>
-                  Submit a sponsorship proposal for "{selectedCampaign?.title}"
-                </DialogDescription>
-              </DialogHeader>
-
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="amount">Sponsorship Amount ($)</Label>
-                  <Input
-                    id="amount"
-                    type="number"
-                    placeholder="Enter sponsorship amount"
-                    value={sponsorshipAmount}
-                    onChange={(e) => setSponsorshipAmount(e.target.value)}
-                    min="0"
-                    step="100"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="proposal">Proposal Message</Label>
-                  <Textarea
-                    id="proposal"
-                    placeholder="Explain why you'd like to sponsor this campaign and what value you can bring..."
-                    value={proposalMessage}
-                    onChange={(e) => setProposalMessage(e.target.value)}
-                    rows={6}
-                  />
-                </div>
-
-                <div className="flex justify-end gap-2 pt-4">
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowSponsorDialog(false)}
-                    disabled={isSubmitting}
+            )}
+            emptyState={
+              <div className="text-center py-12 border-2 border-dc-teal rounded-2xl p-4">
+                <Search className="h-10 w-10 mx-auto text-dc-teal mb-3" />
+                <h3 className="font-bold text-gray-900 mb-2">No campaigns found</h3>
+                <p className="text-gray-500 text-sm mb-4">
+                  {campaigns.length === 0
+                    ? 'No campaigns are currently open for sponsorship'
+                    : 'Try adjusting your filters to see more campaigns'}
+                </p>
+                {campaigns.length > 0 && (
+                  <button
+                    onClick={resetFilters}
+                    className="w-full rounded-full border-2 border-dc-teal text-dc-teal font-bold py-3"
                   >
-                    Cancel
-                  </Button>
-                  <Button
-                    onClick={handleSubmitSponsorship}
-                    disabled={isSubmitting || !sponsorshipAmount || !proposalMessage}
-                  >
-                    {isSubmitting ? 'Submitting...' : 'Submit Proposal'}
-                  </Button>
-                </div>
+                    Reset Filters
+                  </button>
+                )}
               </div>
-            </DialogContent>
-          </Dialog>
+            }
+          />
         </div>
       </div>
+
+      {/* Sponsorship Proposal Dialog */}
+      <Dialog open={showSponsorDialog} onOpenChange={setShowSponsorDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Sponsor Campaign</DialogTitle>
+            <DialogDescription>
+              Submit a sponsorship proposal for "{selectedCampaign?.title}"
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="amount">Sponsorship Amount ($)</Label>
+              <Input
+                id="amount"
+                type="number"
+                placeholder="Enter sponsorship amount"
+                value={sponsorshipAmount}
+                onChange={(e) => setSponsorshipAmount(e.target.value)}
+                min="0"
+                step="100"
+                className="rounded-full h-12 px-5 text-base"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="proposal">Proposal Message</Label>
+              <Textarea
+                id="proposal"
+                placeholder="Explain why you'd like to sponsor this campaign and what value you can bring..."
+                value={proposalMessage}
+                onChange={(e) => setProposalMessage(e.target.value)}
+                rows={6}
+              />
+            </div>
+
+            <div className="flex flex-col gap-3 pt-2">
+              <Button
+                onClick={handleSubmitSponsorship}
+                disabled={isSubmitting || !sponsorshipAmount || !proposalMessage}
+                className="w-full rounded-full bg-dc-teal text-white font-bold py-3"
+              >
+                {isSubmitting ? 'Submitting...' : 'Submit Proposal'}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setShowSponsorDialog(false)}
+                disabled={isSubmitting}
+                className="w-full rounded-full"
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 };
