@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import type { UserRole } from '@/types/user';
 import { getBottomNav } from '@/lib/navConfig';
+import { DonnyNavButton } from './donny/DonnyNavButton';
+import { DonnyChatSheet } from './donny/DonnyChatSheet';
 
 interface MobileBottomNavProps {
   userRole: UserRole;
@@ -10,6 +12,17 @@ interface MobileBottomNavProps {
 export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ userRole }) => {
   const location = useLocation();
   const items = getBottomNav(userRole);
+  const [donnyChatOpen, setDonnyChatOpen] = useState(false);
+  const [initialMessage, setInitialMessage] = useState<string | undefined>();
+
+  useEffect(() => {
+    const handler = (e: CustomEvent<{ message?: string }>) => {
+      setInitialMessage(e.detail?.message);
+      setDonnyChatOpen(true);
+    };
+    window.addEventListener('donny-open-chat', handler as EventListener);
+    return () => window.removeEventListener('donny-open-chat', handler as EventListener);
+  }, []);
 
   const isActive = (href: string) =>
     location.pathname === href || location.pathname.startsWith(href + '/');
@@ -20,6 +33,12 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ userRole }) =>
         {items.map((item) => {
           const Icon = item.icon;
           const active = isActive(item.href);
+
+          if (item.isDonny) {
+            return (
+              <DonnyNavButton key="donny" onClick={() => setDonnyChatOpen(true)} />
+            );
+          }
 
           if (item.isCenter) {
             return (
@@ -55,6 +74,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ userRole }) =>
           );
         })}
       </div>
+      <DonnyChatSheet open={donnyChatOpen} onOpenChange={setDonnyChatOpen} initialMessage={initialMessage} />
     </nav>
   );
 };
