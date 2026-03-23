@@ -82,13 +82,16 @@ Six bugs and visual issues identified after the DragonCandy UX frontend theme up
 **Problem:** The `DonnyNavButton` in the bottom navigation uses a 🐉 text emoji. It should display the actual dragon emblem from the DragonCandy logo to match the brand.
 
 **Fix:**
-1. Extract/crop just the dragon emblem from `Transparent_DragonCandy_logo.png` and save as `src/assets/dragon-emblem.png`
-2. Replace the emoji in `DonnyNavButton` with an `<img>` tag referencing the cropped emblem
+1. Crop the dragon emblem from `Transparent_DragonCandy_logo.png` using `npx sharp` CLI:
+   - The logo is ~200px wide. The dragon circle occupies roughly the bottom 60% of the image.
+   - Command: `npx sharp -i src/assets/Transparent_DragonCandy_logo.png -o src/assets/dragon-emblem.png -- extract --top [Y] --left [X] --width [W] --height [H]` (exact pixel values determined at implementation by inspecting the image dimensions)
+   - Verify the output contains only the dragon circle with transparent background
+2. Replace the emoji in `DonnyNavButton` with an `<img>` tag referencing `dragon-emblem.png`
 3. Size the image to fit within the teal gradient circle (e.g., `h-8 w-8 object-contain`)
 4. Keep all existing styling: teal gradient background, white border, shadow, notification badge
 
 **Files modified:**
-- `src/assets/dragon-emblem.png` — new file (cropped from logo)
+- `src/assets/dragon-emblem.png` — new file (cropped via sharp CLI)
 - `src/components/donny/DonnyNavButton.tsx` — swap emoji for image
 
 ---
