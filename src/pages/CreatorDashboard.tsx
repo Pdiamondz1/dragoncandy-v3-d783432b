@@ -14,6 +14,7 @@ import { PlusCircle, Settings, DollarSign, Target, Star, Clock } from 'lucide-re
 import RatingPromptManager from '@/components/reviews/RatingPromptManager';
 import { AskBar } from '@/components/ai-assistant';
 import { useAIChatModal } from '@/contexts/AIChatModalContext';
+import { DonnyCard } from '@/components/donny/DonnyCard';
 
 const CreatorDashboard = () => {
   const { user, profile } = useAuth();
@@ -57,6 +58,15 @@ const CreatorDashboard = () => {
     <DashboardLayout userRole="content_creator">
       <div className="flex-1 p-4 sm:p-6 lg:p-8 overflow-x-hidden">
         <div className="max-w-7xl mx-auto space-y-6 sm:space-y-8">
+          {/* Donny AI Card */}
+          <DonnyCard
+            onOpenChat={(message) => {
+              window.dispatchEvent(
+                new CustomEvent('donny-open-chat', { detail: { message } })
+              );
+            }}
+          />
+
           {/* Ask Bar */}
           <AskBar onClick={openModal} userRole="content_creator" />
           

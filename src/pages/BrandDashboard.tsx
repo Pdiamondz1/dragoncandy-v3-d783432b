@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Search, TrendingUp, Users, DollarSign, Target, Sparkles, Calendar, BarChart3, Loader2, AlertCircle } from 'lucide-react';
 import { AskBar } from '@/components/ai-assistant';
 import { useAIChatModal } from '@/contexts/AIChatModalContext';
+import { DonnyCard } from '@/components/donny/DonnyCard';
 
 const BrandDashboard = () => {
   const { profile } = useAuth();
@@ -99,6 +100,15 @@ const BrandDashboard = () => {
       <div className="flex-1 p-4 sm:p-6 lg:p-8 overflow-x-hidden">
         <div className="max-w-7xl mx-auto space-y-12">
           
+          {/* Donny AI Card */}
+          <DonnyCard
+            onOpenChat={(message) => {
+              window.dispatchEvent(
+                new CustomEvent('donny-open-chat', { detail: { message } })
+              );
+            }}
+          />
+
           {/* Ask Bar */}
           <AskBar onClick={openModal} userRole="brand" />
           

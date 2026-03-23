@@ -13,6 +13,7 @@ import { FeedMediaItem } from '@/hooks/useBusinessDragonFeed';
 import RatingPromptManager from '@/components/reviews/RatingPromptManager';
 import { AskBar } from '@/components/ai-assistant';
 import { useAIChatModal } from '@/contexts/AIChatModalContext';
+import { DonnyCard } from '@/components/donny/DonnyCard';
 
 const BusinessDashboard = () => {
   const { profile } = useAuth();
@@ -92,6 +93,15 @@ const BusinessDashboard = () => {
         <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 lg:p-8">
           <div className="max-w-6xl mx-auto space-y-8 sm:space-y-12">
           
+          {/* Donny AI Card */}
+          <DonnyCard
+            onOpenChat={(message) => {
+              window.dispatchEvent(
+                new CustomEvent('donny-open-chat', { detail: { message } })
+              );
+            }}
+          />
+
           {/* Ask Bar */}
           <div className="pt-4">
             <AskBar onClick={openModal} userRole="business_client" />
