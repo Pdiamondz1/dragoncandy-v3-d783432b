@@ -38,6 +38,7 @@ import { useAIAssistantContext } from '@/contexts/AIAssistantContext';
 import { useAIChatModal } from '@/contexts/AIChatModalContext';
 import { MobileBottomNav } from '@/components/MobileBottomNav';
 import { MobileTopNav } from '@/components/MobileTopNav';
+import { DesktopGate } from '@/components/DesktopGate';
 import type { UserRole } from '@/types/user';
 import { getSidebarNav, getSettingsHref, getDashboardLabel } from '@/lib/navConfig';
 
@@ -155,6 +156,8 @@ const DashboardLayoutInner: React.FC<DashboardLayoutProps> = ({ children, userRo
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [openModal]);
+
+  if (!isMobile) return <DesktopGate />;
 
   return (
     <SidebarProvider defaultOpen={!isMobile}>
