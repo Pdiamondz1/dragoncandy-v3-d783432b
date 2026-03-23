@@ -2,7 +2,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import DashboardLayout from '@/components/DashboardLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -26,116 +25,92 @@ const ReviewsManagement = () => {
 
   return (
     <DashboardLayout userRole={profile.role}>
-      <div className="flex-1 p-4 sm:p-6 lg:p-8 overflow-x-hidden">
-        <div className="max-w-6xl mx-auto space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-foreground">Reviews & Ratings</h1>
-              <p className="text-muted-foreground mt-2">Manage your reviews and track your reputation</p>
-            </div>
-            <Button variant="outline" className="flex items-center gap-2">
-              <Download className="h-4 w-4" />
-              Export Reviews
-            </Button>
+      <div className="min-h-screen bg-white overflow-x-hidden pb-24">
+        {/* Template B header */}
+        <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
+          <div className="flex-1 text-center">
+            <h1 className="font-sans text-base font-bold text-gray-900 uppercase tracking-wide">Reviews & Ratings</h1>
+          </div>
+          <Button variant="ghost" size="sm" className="text-dc-pink-accent">
+            <Download className="h-4 w-4" />
+          </Button>
+        </div>
+
+        <div className="p-4 space-y-4">
+          {/* Rating Overview */}
+          <div className="border-2 border-dc-teal rounded-2xl p-4">
+            <p className="font-sans text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">Your Rating</p>
+            <RatingStats revieweeId={user.id} reviewType={receivedReviewType} />
           </div>
 
-          {/* Rating Overview */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Star className="h-5 w-5" />
-                Your Rating Overview
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <RatingStats revieweeId={user.id} reviewType={receivedReviewType} />
-            </CardContent>
-          </Card>
-
-          {/* Search and Filters */}
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex gap-4 items-center">
-                <div className="flex-1 relative">
-                  <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search reviews..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-                <Select value={filterType} onValueChange={(value: any) => setFilterType(value)}>
-                  <SelectTrigger className="w-48">
-                    <SelectValue placeholder="Filter reviews" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Reviews</SelectItem>
-                    <SelectItem value="received">Received Reviews</SelectItem>
-                    <SelectItem value="given">Given Reviews</SelectItem>
-                  </SelectContent>
-                </Select>
+          {/* Search and Filter */}
+          <div className="border-2 border-dc-teal rounded-2xl p-4">
+            <div className="flex gap-3 items-center">
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  placeholder="Search reviews..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9 rounded-full h-10 border-gray-200"
+                />
               </div>
-            </CardContent>
-          </Card>
+              <Select value={filterType} onValueChange={(value: any) => setFilterType(value)}>
+                <SelectTrigger className="w-36 rounded-full h-10 border-gray-200">
+                  <SelectValue placeholder="Filter" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Reviews</SelectItem>
+                  <SelectItem value="received">Received</SelectItem>
+                  <SelectItem value="given">Given</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
 
           {/* Reviews Tabs */}
           <Tabs value={filterType} onValueChange={(value: any) => setFilterType(value)}>
             <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="all">All Reviews</TabsTrigger>
-              <TabsTrigger value="received">Reviews Received</TabsTrigger>
-              <TabsTrigger value="given">Reviews Given</TabsTrigger>
+              <TabsTrigger value="all" className="text-xs">All</TabsTrigger>
+              <TabsTrigger value="received" className="text-xs">Received</TabsTrigger>
+              <TabsTrigger value="given" className="text-xs">Given</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="all" className="space-y-6">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Reviews Received</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <ReviewsList 
-                      revieweeId={user.id} 
-                      reviewType={receivedReviewType}
-                      limit={5}
-                    />
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Reviews Given</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <ReviewsList 
-                      revieweeId={user.id} 
-                      reviewType={givenReviewType}
-                      limit={5}
-                    />
-                  </CardContent>
-                </Card>
+            <TabsContent value="all" className="space-y-4 mt-4">
+              <div className="border-2 border-dc-teal rounded-2xl p-4">
+                <p className="font-sans text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">Reviews Received</p>
+                <ReviewsList
+                  revieweeId={user.id}
+                  reviewType={receivedReviewType}
+                  limit={5}
+                />
+              </div>
+              <div className="border-2 border-dc-teal rounded-2xl p-4">
+                <p className="font-sans text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">Reviews Given</p>
+                <ReviewsList
+                  revieweeId={user.id}
+                  reviewType={givenReviewType}
+                  limit={5}
+                />
               </div>
             </TabsContent>
 
-            <TabsContent value="received">
-              <Card>
-                <CardContent className="p-6">
-                  <ReviewsList 
-                    revieweeId={user.id} 
-                    reviewType={receivedReviewType}
-                  />
-                </CardContent>
-              </Card>
+            <TabsContent value="received" className="mt-4">
+              <div className="border-2 border-dc-teal rounded-2xl p-4">
+                <ReviewsList
+                  revieweeId={user.id}
+                  reviewType={receivedReviewType}
+                />
+              </div>
             </TabsContent>
 
-            <TabsContent value="given">
-              <Card>
-                <CardContent className="p-6">
-                  <ReviewsList 
-                    revieweeId={user.id} 
-                    reviewType={givenReviewType}
-                  />
-                </CardContent>
-              </Card>
+            <TabsContent value="given" className="mt-4">
+              <div className="border-2 border-dc-teal rounded-2xl p-4">
+                <ReviewsList
+                  revieweeId={user.id}
+                  reviewType={givenReviewType}
+                />
+              </div>
             </TabsContent>
           </Tabs>
         </div>

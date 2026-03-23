@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { cleanupAuthState } from "@/lib/authCleanup";
 import { AuthHeader } from "@/components/auth/AuthHeader";
 
@@ -75,57 +74,66 @@ const UpdatePassword: React.FC = () => {
   };
 
   return (
-    <main className="min-h-screen bg-pink-50 dark:bg-zinc-950 flex items-center justify-center py-10 px-4">
-      <div className="w-full max-w-md">
-        <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-xl px-8 pt-8 pb-10 border border-pink-200 dark:border-zinc-800">
-          <AuthHeader />
-          
-          <div className="text-center mb-6">
-            <h1 className="text-2xl font-bold text-pink-700 dark:text-pink-300 mb-2">
-              Update Password
-            </h1>
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              Enter and confirm your new password.
-            </p>
+    <main className="min-h-screen bg-white flex flex-col overflow-x-hidden">
+      {/* Template C header */}
+      <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
+        <div className="flex-1 text-center">
+          <h1 className="font-sans text-base font-bold text-gray-900 uppercase tracking-wide">Update Password</h1>
+        </div>
+      </div>
+
+      <div className="flex-1 flex items-center justify-center p-4">
+        <div className="w-full max-w-md">
+          <div className="border-2 border-dc-teal rounded-2xl p-6">
+            <AuthHeader />
+
+            <div className="text-center mb-6 mt-4">
+              <p className="font-sans text-xs font-semibold uppercase tracking-wider text-gray-500">
+                Set a new password
+              </p>
+              <p className="text-sm text-gray-500 mt-1">
+                Enter and confirm your new password.
+              </p>
+            </div>
+
+            <form onSubmit={onSubmit} className="space-y-4">
+              <div className="space-y-1">
+                <label htmlFor="password" className="font-sans text-xs font-semibold uppercase tracking-wider text-gray-500">
+                  New password
+                </label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  className="rounded-full h-12 px-5 text-base border-gray-200"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label htmlFor="confirm" className="font-sans text-xs font-semibold uppercase tracking-wider text-gray-500">
+                  Confirm new password
+                </label>
+                <Input
+                  id="confirm"
+                  type="password"
+                  value={confirm}
+                  onChange={(e) => setConfirm(e.target.value)}
+                  required
+                  className="rounded-full h-12 px-5 text-base border-gray-200"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full rounded-full bg-dc-teal text-white font-bold py-3 hover:bg-dc-teal/90 transition-colors disabled:opacity-60"
+              >
+                {loading ? "Updating..." : "Update password"}
+              </button>
+            </form>
           </div>
-
-          <form onSubmit={onSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <label htmlFor="password" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                New password
-              </label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="transition-all duration-200 focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label htmlFor="confirm" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                Confirm new password
-              </label>
-              <Input
-                id="confirm"
-                type="password"
-                value={confirm}
-                onChange={(e) => setConfirm(e.target.value)}
-                required
-                className="transition-all duration-200 focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
-              />
-            </div>
-
-            <Button 
-              type="submit" 
-              disabled={loading} 
-              className="w-full bg-pink-600 hover:bg-pink-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200"
-            >
-              {loading ? "Updating..." : "Update password"}
-            </Button>
-          </form>
         </div>
       </div>
     </main>

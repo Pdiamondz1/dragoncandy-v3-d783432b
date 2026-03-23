@@ -2,8 +2,6 @@
 import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import DashboardLayout from '@/components/DashboardLayout';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { AlertCircle } from 'lucide-react';
 import { useCampaigns } from '@/hooks/useCampaigns';
 import ApplicationsListFixed from '@/components/campaigns/ApplicationsListFixed';
@@ -26,16 +24,18 @@ const BusinessProposals = () => {
   if (campaignLoading) {
     return (
       <DashboardLayout userRole="business_client">
-        <div className="flex-1 p-4 sm:p-6 lg:p-8 overflow-x-hidden">
-          <div className="max-w-7xl mx-auto">
-            <div className="animate-pulse space-y-6">
-              <div className="h-8 bg-gray-200 rounded w-1/3"></div>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                {[1, 2, 3, 4].map((i) => (
-                  <div key={i} className="h-24 bg-gray-200 rounded"></div>
-                ))}
-              </div>
-              <div className="h-64 bg-gray-200 rounded"></div>
+        <div className="min-h-screen bg-white overflow-x-hidden pb-24">
+          <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
+            <div className="flex-1 text-center">
+              <h1 className="font-sans text-base font-bold text-gray-900 uppercase tracking-wide">Proposals</h1>
+            </div>
+          </div>
+          <div className="p-4">
+            <div className="animate-pulse space-y-4">
+              <div className="h-6 bg-gray-200 rounded-full w-1/3"></div>
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-24 bg-gray-100 rounded-2xl border-2 border-gray-200"></div>
+              ))}
             </div>
           </div>
         </div>
@@ -46,19 +46,18 @@ const BusinessProposals = () => {
   if (campaignError) {
     return (
       <DashboardLayout userRole="business_client">
-        <div className="flex-1 p-4 sm:p-6 lg:p-8 overflow-x-hidden">
-          <div className="max-w-7xl mx-auto">
-            <Card>
-              <CardContent className="flex items-center justify-center py-12">
-                <div className="text-center space-y-4">
-                  <AlertCircle className="h-12 w-12 text-red-500 mx-auto" />
-                  <div className="text-red-500">Failed to load campaign data</div>
-                  <div className="text-sm text-gray-600">
-                    {campaignError?.message || 'Unknown error occurred'}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+        <div className="min-h-screen bg-white overflow-x-hidden pb-24">
+          <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
+            <div className="flex-1 text-center">
+              <h1 className="font-sans text-base font-bold text-gray-900 uppercase tracking-wide">Proposals</h1>
+            </div>
+          </div>
+          <div className="p-4">
+            <div className="border-2 border-dc-teal rounded-2xl p-6 text-center">
+              <AlertCircle className="h-12 w-12 text-dc-pink-accent mx-auto mb-3" />
+              <p className="font-bold text-gray-900">Failed to load campaign data</p>
+              <p className="text-xs text-gray-500 mt-1">{campaignError?.message || 'Unknown error occurred'}</p>
+            </div>
           </div>
         </div>
       </DashboardLayout>
@@ -68,19 +67,20 @@ const BusinessProposals = () => {
   if (!campaign) {
     return (
       <DashboardLayout userRole="business_client">
-        <div className="flex-1 p-4 sm:p-6 lg:p-8 overflow-x-hidden">
-          <div className="max-w-7xl mx-auto">
-            <Card>
-              <CardContent className="flex items-center justify-center py-12">
-                <div className="text-center space-y-4">
-                  <AlertCircle className="h-12 w-12 text-yellow-500 mx-auto" />
-                  <div className="text-lg font-medium">Campaign not found</div>
-                  <div className="text-gray-600">
-                    The campaign you're looking for doesn't exist or you don't have access to it.
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+        <div className="min-h-screen bg-white overflow-x-hidden pb-24">
+          <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
+            <div className="flex-1 text-center">
+              <h1 className="font-sans text-base font-bold text-gray-900 uppercase tracking-wide">Proposals</h1>
+            </div>
+          </div>
+          <div className="p-4">
+            <div className="border-2 border-dc-teal rounded-2xl p-6 text-center">
+              <AlertCircle className="h-12 w-12 text-dc-yellow mx-auto mb-3" />
+              <p className="font-bold text-gray-900">Campaign not found</p>
+              <p className="text-xs text-gray-500 mt-1">
+                The campaign you're looking for doesn't exist or you don't have access to it.
+              </p>
+            </div>
           </div>
         </div>
       </DashboardLayout>
@@ -89,19 +89,17 @@ const BusinessProposals = () => {
 
   return (
     <DashboardLayout userRole="business_client">
-      <div className="flex-1 p-4 sm:p-6 lg:p-8 overflow-x-hidden">
-        <div className="max-w-7xl mx-auto space-y-6">
-          {/* Header */}
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">
-              Proposals for "{campaign?.title}"
-            </h1>
-            <p className="text-gray-600 mt-1">
-              Review and manage creator applications for your campaign
-            </p>
+      <div className="min-h-screen bg-white overflow-x-hidden pb-24">
+        {/* Template B header */}
+        <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
+          <div className="flex-1 text-center">
+            <h1 className="font-sans text-base font-bold text-gray-900 uppercase tracking-wide">Proposals</h1>
           </div>
-
-          {/* Applications List */}
+        </div>
+        <div className="p-4 space-y-4">
+          <p className="text-xs text-gray-500">
+            Reviewing applications for <span className="font-semibold text-gray-900">"{campaign?.title}"</span>
+          </p>
           <ApplicationsListFixed campaignId={campaignId!} />
         </div>
       </div>

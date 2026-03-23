@@ -17,8 +17,14 @@ const BrandCreators: React.FC = () => {
 
   return (
     <DashboardLayout userRole="brand">
-      <div className="flex-1 p-4 sm:p-6 lg:p-8 overflow-x-hidden">
-        <div className="max-w-7xl mx-auto space-y-6">
+      <div className="min-h-screen bg-white overflow-x-hidden pb-24">
+        {/* Template B header */}
+        <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
+          <div className="flex-1 text-center">
+            <h1 className="font-sans text-base font-bold text-gray-900 uppercase tracking-wide">Creators</h1>
+          </div>
+        </div>
+        <div className="p-4 space-y-4">
           <CreatorBrowseHeader resultCount={filteredCreators.length} />
           <CreatorBrowseContent
             filteredCreators={filteredCreators}
