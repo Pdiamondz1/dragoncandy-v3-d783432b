@@ -15,7 +15,7 @@ interface MobileTopNavProps {
 }
 
 export const MobileTopNav: React.FC<MobileTopNavProps> = ({
-  bgClass = 'bg-background',
+  bgClass = 'bg-white',
   userRole,
   showWelcome = false,
   displayName,
@@ -27,14 +27,14 @@ export const MobileTopNav: React.FC<MobileTopNavProps> = ({
   const messagesHref = userRole ? getMessagesHref(userRole) : '/';
 
   return (
-    <header className={`sticky top-0 z-40 flex items-center justify-between px-4 py-3 ${bgClass} border-b border-border`}>
+    <header className={`sticky top-0 z-50 flex items-center justify-between px-4 py-2 ${bgClass} border-b border-border`}>
       <Link to="/">
-        <img src={dragonCandyLogo} alt="DragonCandy" className="h-8" />
+        <img src={dragonCandyLogo} alt="DragonCandy" className="h-12 w-12" />
       </Link>
 
       {showWelcome && displayName && (
         <div className="flex-1 text-center px-2">
-          <p className="text-xs font-bold text-dc-teal uppercase leading-tight truncate">
+          <p className="font-semibold text-sm uppercase tracking-wide text-dc-teal leading-tight truncate">
             Welcome Back, {displayName}
           </p>
           <p className="text-xs text-muted-foreground">Create content and drive revenue</p>
@@ -47,14 +47,14 @@ export const MobileTopNav: React.FC<MobileTopNavProps> = ({
             className="p-2 rounded-full hover:bg-muted transition-colors"
             aria-label="Open menu"
           >
-            <Menu className="h-6 w-6 text-foreground" />
+            <Menu className="h-6 w-6 text-gray-600" />
           </button>
         </SheetTrigger>
         <SheetContent side="right" className="w-64 pt-8">
           <div className="flex flex-col gap-1">
             <Link
               to={dashboardHref}
-              className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-dc-teal/10 text-foreground font-medium"
+              className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-dc-teal/10 text-foreground text-base font-medium"
             >
               <LayoutDashboard className="h-5 w-5 text-dc-teal" />
               Dashboard
@@ -62,7 +62,7 @@ export const MobileTopNav: React.FC<MobileTopNavProps> = ({
             {userRole && (
               <Link
                 to={messagesHref}
-                className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-dc-teal/10 text-foreground font-medium"
+                className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-dc-teal/10 text-foreground text-base font-medium"
               >
                 <MessageSquare className="h-5 w-5 text-dc-teal" />
                 Messages
@@ -71,7 +71,7 @@ export const MobileTopNav: React.FC<MobileTopNavProps> = ({
             {userRole && (
               <Link
                 to={settingsHref}
-                className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-dc-teal/10 text-foreground font-medium"
+                className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-dc-teal/10 text-foreground text-base font-medium"
               >
                 <Settings className="h-5 w-5 text-dc-teal" />
                 Settings
@@ -79,7 +79,7 @@ export const MobileTopNav: React.FC<MobileTopNavProps> = ({
             )}
             <button
               onClick={logout}
-              className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-red-50 text-red-600 font-medium w-full text-left mt-4"
+              className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-red-50 text-red-600 text-base font-medium w-full text-left mt-4"
             >
               <LogOut className="h-5 w-5" />
               Log out
