@@ -1,7 +1,7 @@
 import React from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
-import { Card, CardHeader, CardTitle } from '@/components/ui/card';
-import { Brain } from 'lucide-react';
+import { Brain, ArrowLeft } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import CampaignAnalysisDisplay from '@/components/campaigns/CampaignAnalysisDisplay';
 import CampaignCustomizeForm from '@/components/campaigns/CampaignCustomizeForm';
 import CampaignWizardHeader from '@/components/campaigns/CampaignWizardHeader';
@@ -13,6 +13,7 @@ import DeliveryTierStep from '@/components/campaigns/DeliveryTierStep';
 import { useCampaignWizard } from '@/hooks/useCampaignWizard';
 
 const CampaignWizard: React.FC = () => {
+  const navigate = useNavigate();
   const {
     currentStep,
     campaignGoal,
@@ -46,8 +47,26 @@ const CampaignWizard: React.FC = () => {
 
   return (
     <DashboardLayout userRole="business_client">
-      <div className="flex-1 p-6 bg-gray-50">
-        <div className="max-w-4xl mx-auto">
+      <div className="min-h-screen bg-white overflow-x-hidden">
+        {/* Template C Header */}
+        <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
+          <button
+            onClick={() => currentStep > 0 ? handleBack() : navigate('/dashboard/business/campaigns')}
+            className="text-dc-pink-accent mr-2"
+            aria-label="Back"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+          <h1 className="flex-1 text-center font-sans text-base font-bold text-gray-900 uppercase tracking-wide">
+            Create Campaign
+          </h1>
+          <span className="text-xs text-gray-400 font-semibold">
+            {currentStep + 1}/{steps.length}
+          </span>
+        </div>
+
+        {/* Content */}
+        <div className="px-4 py-6 pb-28 space-y-6">
           <CampaignWizardHeader currentStep={currentStep} steps={steps} />
 
           {/* Step 0: Delivery Tier */}
@@ -60,37 +79,34 @@ const CampaignWizard: React.FC = () => {
 
           {/* Step 1: Campaign Goal */}
           {currentStep === 1 && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2">
-                <CampaignGoalStep
-                  campaignGoal={campaignGoal}
-                  setCampaignGoal={setCampaignGoal}
-                  onGenerateWithAI={handleGenerateWithAI}
-                  isGenerating={isGenerating}
-                />
-              </div>
+            <div className="space-y-4">
+              <CampaignGoalStep
+                campaignGoal={campaignGoal}
+                setCampaignGoal={setCampaignGoal}
+                onGenerateWithAI={handleGenerateWithAI}
+                isGenerating={isGenerating}
+              />
               <CampaignWizardSidebar />
             </div>
           )}
 
           {/* Step 2: AI Analysis Results */}
           {currentStep === 2 && campaignAnalysis && (
-            <div>
-              <Card className="mb-6">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <div className="w-8 h-8 bg-gray-900 rounded-full flex items-center justify-center text-white text-sm font-semibold">
-                      2
-                    </div>
-                    Step 2: AI Campaign Analysis
-                    <Brain className="h-5 w-5 text-blue-500 ml-2" />
-                  </CardTitle>
-                  <p className="text-gray-600 text-sm">
-                    DragonCandy AI has analyzed your campaign goal and generated a comprehensive strategy
-                  </p>
-                </CardHeader>
-              </Card>
-              
+            <div className="space-y-4">
+              <div className="border-2 border-dc-teal rounded-2xl p-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 bg-gray-900 rounded-full flex items-center justify-center text-white text-xs font-semibold shrink-0">
+                    2
+                  </div>
+                  <div>
+                    <span className="font-bold text-gray-900 text-sm">Step 2: AI Campaign Analysis</span>
+                    <Brain className="h-4 w-4 text-dc-teal inline ml-2" />
+                  </div>
+                </div>
+                <p className="text-gray-500 text-xs mt-2">
+                  DragonCandy AI has analyzed your campaign goal and generated a comprehensive strategy
+                </p>
+              </div>
               <CampaignAnalysisDisplay
                 analysis={campaignAnalysis}
                 onEditCampaignIdea={handleEditCampaignIdea}
@@ -112,13 +128,13 @@ const CampaignWizard: React.FC = () => {
           {currentStep === 4 && customizedCampaign && (
             <CampaignTimelineBudgetStep
               initialData={{
-                goals: Array.isArray(customizedCampaign.goals) 
+                goals: Array.isArray(customizedCampaign.goals)
                   ? customizedCampaign.goals.join('. ') + '.'
                   : customizedCampaign.goals || '',
                 deadline: undefined,
                 budget_min: undefined,
                 budget_max: undefined,
-                delivery_type: deliveryTier, // Pre-populate from Step 0
+                delivery_type: deliveryTier,
                 delivery_fee: deliveryFee,
               }}
               onContinue={handleContinueFromTimelineBudget}

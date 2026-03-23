@@ -2,8 +2,7 @@ import React from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { ArrowLeft, MessageSquare, Users } from 'lucide-react';
+import { ArrowLeft, Phone, Users } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import ConversationMessageThread from '@/components/messages/ConversationMessageThread';
 import { useConversations } from '@/hooks/useConversations';
@@ -27,7 +26,7 @@ const DirectConversationPage: React.FC = () => {
   if (!conversationId) {
     return (
       <DashboardLayout userRole={userRole as 'business_client' | 'content_creator'}>
-        <div className="flex-1 p-6 bg-background min-h-screen overflow-x-hidden">
+        <div className="flex-1 p-6 bg-dc-gray min-h-screen overflow-x-hidden">
           <div className="text-center">
             <p>Conversation not found</p>
             <Button onClick={() => {
@@ -67,55 +66,46 @@ const DirectConversationPage: React.FC = () => {
 
   return (
     <DashboardLayout userRole={userRole as 'business_client' | 'content_creator'}>
-      <div className="flex-1 p-6">
-        <div className="max-w-7xl mx-auto">
-          {/* Header */}
-          <div className="flex items-center gap-4 mb-6">
-            {/* Show "Back to Browse Creators" when user came from that page */}
-            {navigationState?.from === 'browse-creators' && navigationState?.backPath && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => navigate(navigationState.backPath!)}
-                className="flex items-center gap-2"
-              >
-                <Users className="h-4 w-4" />
-                Back to Browse Creators
-              </Button>
-            )}
-            
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
+      <div className="flex flex-col h-full bg-dc-gray">
+        {/* Chat header */}
+        <div className="bg-white px-4 py-3 flex items-center justify-between flex-shrink-0 shadow-sm">
+          {/* Left: back arrow */}
+          <button
+            onClick={() => {
+              if (navigationState?.from === 'browse-creators' && navigationState?.backPath) {
+                navigate(navigationState.backPath);
+              } else {
                 const role = userRole === 'content_creator' ? 'creator' : 'business';
                 navigate(`/dashboard/${role}/messages`);
-              }}
-              className="flex items-center gap-2"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Back to Messages
-            </Button>
-            
-            <div className="flex items-center gap-3">
-              <MessageSquare className="h-6 w-6 text-primary" />
-              <div>
-                <h1 className="text-xl font-semibold">
-                  {conversation?.other_participant_name || 'Direct Conversation'}
-                </h1>
-                <p className="text-sm text-muted-foreground">Direct message conversation</p>
-              </div>
-            </div>
+              }
+            }}
+            className="text-dc-pink text-xl p-1 -ml-1"
+            aria-label="Back"
+          >
+            <ArrowLeft className="h-5 w-5 text-dc-pink" />
+          </button>
+
+          {/* Center: name + status */}
+          <div className="flex-1 text-center mx-3">
+            <p className="text-lg font-bold text-dc-teal leading-tight">
+              {conversation?.other_participant_name || 'Direct Conversation'}
+            </p>
+            <p className="text-xs text-gray-500">Recently Active</p>
           </div>
 
-          {/* Message Thread */}
-          <Card>
-            <ConversationMessageThread 
-              conversationId={conversationId}
-              recipientId={recipientId}
-              conversationTitle={conversation?.other_participant_name || 'Direct Conversation'}
-            />
-          </Card>
+          {/* Right: phone icon */}
+          <div className="w-10 h-10 rounded-full bg-pink-100 flex items-center justify-center flex-shrink-0">
+            <Phone className="h-5 w-5 text-dc-pink-accent" />
+          </div>
+        </div>
+
+        {/* Message Thread — fills remaining height */}
+        <div className="flex-1 min-h-0 flex flex-col">
+          <ConversationMessageThread
+            conversationId={conversationId}
+            recipientId={recipientId}
+            conversationTitle={conversation?.other_participant_name || 'Direct Conversation'}
+          />
         </div>
       </div>
     </DashboardLayout>

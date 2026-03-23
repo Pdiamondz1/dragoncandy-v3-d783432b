@@ -1,8 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -54,41 +52,49 @@ const VerifyEmail = () => {
   }, [searchParams, navigate]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-pink-50 via-purple-50 to-indigo-100 p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl">Email Verification</CardTitle>
-          <CardDescription>
+    <div className="min-h-screen bg-white flex flex-col overflow-x-hidden">
+      {/* Template C header */}
+      <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
+        <div className="flex-1 text-center">
+          <h1 className="font-sans text-base font-bold text-gray-900 uppercase tracking-wide">Email Verification</h1>
+        </div>
+      </div>
+
+      <div className="flex-1 flex items-center justify-center p-4">
+        <div className="w-full max-w-md border-2 border-dc-teal rounded-2xl p-6 text-center space-y-4">
+          <p className="font-sans text-xs font-semibold uppercase tracking-wider text-gray-500">
             {status === 'verifying' && 'Verifying your email address...'}
             {status === 'success' && 'Your email has been verified!'}
             {status === 'error' && 'Verification failed'}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col items-center gap-4">
+          </p>
+
           {status === 'verifying' && (
-            <Loader2 className="h-16 w-16 text-primary animate-spin" />
+            <Loader2 className="h-16 w-16 text-dc-teal animate-spin mx-auto" />
           )}
-          
+
           {status === 'success' && (
             <>
-              <CheckCircle2 className="h-16 w-16 text-green-500" />
-              <p className="text-center text-muted-foreground">
+              <CheckCircle2 className="h-16 w-16 text-dc-teal mx-auto" />
+              <p className="text-sm text-gray-500">
                 Your email has been verified successfully. Redirecting you to login...
               </p>
             </>
           )}
-          
+
           {status === 'error' && (
             <>
-              <XCircle className="h-16 w-16 text-destructive" />
-              <p className="text-center text-muted-foreground">{errorMessage}</p>
-              <Button onClick={() => navigate('/auth')} className="mt-4">
+              <XCircle className="h-16 w-16 text-dc-pink-accent mx-auto" />
+              <p className="text-sm text-gray-500">{errorMessage}</p>
+              <button
+                onClick={() => navigate('/auth')}
+                className="w-full rounded-full bg-dc-teal text-white font-bold py-3 hover:bg-dc-teal/90 transition-colors"
+              >
                 Go to Login
-              </Button>
+              </button>
             </>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 };

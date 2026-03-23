@@ -32,6 +32,7 @@ export interface BottomNavItem {
   label: string;
   href: string;
   isCenter?: boolean;
+  isDonny?: boolean;
 }
 
 // ── Sidebar nav (desktop) ──────────────────────────────────────────────────
@@ -83,7 +84,7 @@ export const businessBottomNav: BottomNavItem[] = [
   { icon: LayoutDashboard, label: 'Home', href: '/dashboard/business' },
   { icon: Heart, label: 'Feed', href: '/dashboard/business/dragon-feed' },
   { icon: Play, label: 'Inspire', href: '/dashboard/business/activity' },
-  { icon: Plus, label: 'Create', href: '/dashboard/business/campaigns/create', isCenter: true },
+  { icon: Plus, label: 'Create', href: '/dashboard/business/campaigns/create', isCenter: true, isDonny: true },
   { icon: List, label: 'Campaigns', href: '/dashboard/business/campaigns' },
   { icon: Megaphone, label: 'Promos', href: '/dashboard/business/promotions' },
   { icon: User, label: 'Profile', href: '/dashboard/business/settings' },
@@ -93,7 +94,7 @@ export const creatorBottomNav: BottomNavItem[] = [
   { icon: LayoutDashboard, label: 'Home', href: '/dashboard/creator' },
   { icon: Heart, label: 'Applied', href: '/dashboard/creator/applications' },
   { icon: Play, label: 'Projects', href: '/dashboard/creator/projects' },
-  { icon: Plus, label: 'Browse', href: '/dashboard/creator/campaigns', isCenter: true },
+  { icon: Plus, label: 'Browse', href: '/dashboard/creator/campaigns', isCenter: true, isDonny: true },
   { icon: List, label: 'Campaigns', href: '/dashboard/creator/campaigns' },
   { icon: Megaphone, label: 'Earnings', href: '/dashboard/creator/earnings' },
   { icon: User, label: 'Profile', href: '/dashboard/creator/settings' },
@@ -103,7 +104,7 @@ export const brandBottomNav: BottomNavItem[] = [
   { icon: LayoutDashboard, label: 'Home', href: '/dashboard/brand' },
   { icon: Heart, label: 'Creators', href: '/dashboard/brand/creators' },
   { icon: Play, label: 'Discover', href: '/dashboard/brand/discover-campaigns' },
-  { icon: Plus, label: 'Add', href: '/dashboard/brand/discover-campaigns', isCenter: true },
+  { icon: Plus, label: 'Add', href: '/dashboard/brand/discover-campaigns', isCenter: true, isDonny: true },
   { icon: List, label: 'Sponsors', href: '/dashboard/brand/sponsorships' },
   { icon: Megaphone, label: 'Analytics', href: '/dashboard/brand/analytics' },
   { icon: User, label: 'Profile', href: '/dashboard/brand/settings' },

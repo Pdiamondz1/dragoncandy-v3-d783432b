@@ -2,9 +2,7 @@
 import React from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import DashboardLayout from '@/components/DashboardLayout';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, MessageSquare } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { useCampaign } from '@/hooks/useCampaigns';
 import { useAuth } from '@/hooks/useAuth';
 import MessageThread from '@/components/messages/MessageThread';
@@ -21,16 +19,23 @@ const CampaignMessagesPage: React.FC = () => {
 
   const userRole = user?.user_metadata?.role || 'business_client';
 
+  const handleBack = () => {
+    const from = searchParams.get('from');
+    if (from === 'business-projects' && userRole === 'business_client') {
+      navigate('/dashboard/business/projects');
+    } else {
+      navigate('/messages');
+    }
+  };
+
   // Find the correct recipient based on user role and campaign applications
   const getRecipientId = () => {
     if (!campaign || !user) return null;
 
     if (userRole === 'business_client') {
-      // Business client messaging creators who applied
       const acceptedApplication = applications.find(app => app.status === 'accepted');
       return acceptedApplication?.creator_id || null;
     } else {
-      // Creator messaging the campaign owner (business client)
       return campaign.user_id;
     }
   };
@@ -40,13 +45,17 @@ const CampaignMessagesPage: React.FC = () => {
   if (isLoading) {
     return (
       <DashboardLayout userRole={userRole as 'business_client' | 'content_creator'}>
-        <div className="flex-1 p-6">
-          <div className="max-w-4xl mx-auto space-y-6">
-            <div className="flex items-center gap-4">
-              <Skeleton className="h-10 w-10" />
-              <Skeleton className="h-8 w-64" />
-            </div>
-            <Skeleton className="h-96" />
+        <div className="min-h-screen overflow-x-hidden bg-dc-gray">
+          <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
+            <div className="w-7" />
+            <h1 className="flex-1 text-center font-sans text-base font-bold text-gray-900 uppercase tracking-wide">
+              Campaign Messages
+            </h1>
+            <div className="w-7" />
+          </div>
+          <div className="px-4 pt-4 pb-24 space-y-4">
+            <Skeleton className="h-10 w-full rounded-2xl" />
+            <Skeleton className="h-96 w-full rounded-2xl" />
           </div>
         </div>
       </DashboardLayout>
@@ -56,28 +65,33 @@ const CampaignMessagesPage: React.FC = () => {
   if (error || !campaign) {
     return (
       <DashboardLayout userRole={userRole as 'business_client' | 'content_creator'}>
-        <div className="flex-1 p-6">
-          <div className="max-w-4xl mx-auto">
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <h3 className="text-lg font-semibold text-foreground mb-2">
-                  Campaign not found
-                </h3>
-                <p className="text-muted-foreground mb-4">
-                  The campaign you're looking for doesn't exist or you don't have access to it.
-                </p>
-                <Button onClick={() => {
-                  const from = searchParams.get('from');
-                  if (from === 'business-projects' && userRole === 'business_client') {
-                    navigate('/dashboard/business/projects');
-                  } else {
-                    navigate('/messages');
-                  }
-                }}>
-                  Back to Messages
-                </Button>
-              </CardContent>
-            </Card>
+        <div className="min-h-screen overflow-x-hidden bg-dc-gray">
+          <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
+            <button
+              onClick={handleBack}
+              className="text-dc-pink-accent text-lg mr-2"
+              aria-label="Go back"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </button>
+            <h1 className="flex-1 text-center font-sans text-base font-bold text-gray-900 uppercase tracking-wide">
+              Campaign Messages
+            </h1>
+            <div className="w-7" />
+          </div>
+          <div className="px-4 pt-4 pb-24">
+            <div className="border-2 border-dc-teal rounded-2xl p-4 bg-white flex flex-col items-center py-12">
+              <h3 className="text-base font-bold text-gray-900 mb-2">Campaign not found</h3>
+              <p className="text-sm text-gray-500 text-center mb-4">
+                The campaign you're looking for doesn't exist or you don't have access to it.
+              </p>
+              <button
+                onClick={handleBack}
+                className="rounded-full bg-dc-teal text-white font-bold px-6 py-2 text-sm"
+              >
+                Back to Messages
+              </button>
+            </div>
           </div>
         </div>
       </DashboardLayout>
@@ -87,31 +101,35 @@ const CampaignMessagesPage: React.FC = () => {
   if (!recipientId) {
     return (
       <DashboardLayout userRole={userRole as 'business_client' | 'content_creator'}>
-        <div className="flex-1 p-6">
-          <div className="max-w-4xl mx-auto">
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <h3 className="text-lg font-semibold text-foreground mb-2">
-                  No conversation available
-                </h3>
-                <p className="text-muted-foreground mb-4">
-                  {userRole === 'business_client' 
-                    ? 'No creators have been accepted for this campaign yet.'
-                    : 'Unable to find the campaign owner for messaging.'
-                  }
-                </p>
-                <Button onClick={() => {
-                  const from = searchParams.get('from');
-                  if (from === 'business-projects' && userRole === 'business_client') {
-                    navigate('/dashboard/business/projects');
-                  } else {
-                    navigate('/messages');
-                  }
-                }}>
-                  Back to Messages
-                </Button>
-              </CardContent>
-            </Card>
+        <div className="min-h-screen overflow-x-hidden bg-dc-gray">
+          <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
+            <button
+              onClick={handleBack}
+              className="text-dc-pink-accent text-lg mr-2"
+              aria-label="Go back"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </button>
+            <h1 className="flex-1 text-center font-sans text-base font-bold text-gray-900 uppercase tracking-wide">
+              {campaign.title}
+            </h1>
+            <div className="w-7" />
+          </div>
+          <div className="px-4 pt-4 pb-24">
+            <div className="border-2 border-dc-teal rounded-2xl p-4 bg-white flex flex-col items-center py-12">
+              <h3 className="text-base font-bold text-gray-900 mb-2">No conversation available</h3>
+              <p className="text-sm text-gray-500 text-center mb-4">
+                {userRole === 'business_client'
+                  ? 'No creators have been accepted for this campaign yet.'
+                  : 'Unable to find the campaign owner for messaging.'}
+              </p>
+              <button
+                onClick={handleBack}
+                className="rounded-full bg-dc-teal text-white font-bold px-6 py-2 text-sm"
+              >
+                Back to Messages
+              </button>
+            </div>
           </div>
         </div>
       </DashboardLayout>
@@ -120,40 +138,31 @@ const CampaignMessagesPage: React.FC = () => {
 
   return (
     <DashboardLayout userRole={userRole as 'business_client' | 'content_creator'}>
-      <div className="flex-1 p-6">
-        <div className="max-w-4xl mx-auto space-y-6">
-          {/* Header */}
-          <div className="flex items-center gap-4">
-            <Button 
-              variant="ghost" 
-              size="sm"
-              onClick={() => {
-                const from = searchParams.get('from');
-                if (from === 'business-projects' && userRole === 'business_client') {
-                  navigate('/dashboard/business/projects');
-                } else {
-                  navigate('/messages');
-                }
-              }}
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Messages
-            </Button>
-            <div className="flex items-center gap-3">
-              <MessageSquare className="h-6 w-6 text-primary" />
-              <div>
-                <h1 className="text-xl font-bold text-foreground">{campaign.title}</h1>
-                <p className="text-sm text-muted-foreground">Campaign Discussion</p>
-              </div>
-            </div>
-          </div>
+      <div className="min-h-screen overflow-x-hidden bg-dc-gray">
+        {/* Template B header */}
+        <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
+          <button
+            onClick={handleBack}
+            className="text-dc-pink-accent text-lg mr-2"
+            aria-label="Go back"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+          <h1 className="flex-1 text-center font-sans text-base font-bold text-gray-900 uppercase tracking-wide">
+            {campaign.title}
+          </h1>
+          <div className="w-7" />
+        </div>
 
-          {/* Message Thread */}
-          <MessageThread 
-            campaignId={campaign.id}
-            recipientId={recipientId}
-            campaignTitle={campaign.title}
-          />
+        {/* Message thread inside teal-bordered card */}
+        <div className="px-4 pt-4 pb-24">
+          <div className="border-2 border-dc-teal rounded-2xl overflow-hidden bg-white">
+            <MessageThread
+              campaignId={campaign.id}
+              recipientId={recipientId}
+              campaignTitle={campaign.title}
+            />
+          </div>
         </div>
       </div>
     </DashboardLayout>

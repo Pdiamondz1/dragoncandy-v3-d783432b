@@ -2,9 +2,8 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '@/components/DashboardLayout';
+import { ChevronLeft, AlertCircle } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent } from '@/components/ui/card';
-import { AlertCircle } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -87,7 +86,6 @@ const CreatorProjects: React.FC = () => {
 
   const handleMessageClick = async (campaignId: string) => {
     try {
-      // Get the business owner's user_id from the campaign
       const { data: campaignData, error: campaignError } = await supabase
         .from('campaigns')
         .select('user_id')
@@ -107,7 +105,6 @@ const CreatorProjects: React.FC = () => {
         return;
       }
 
-      // Create or get direct conversation with the business owner
       const { data: conversationId, error: conversationError } = await supabase.rpc(
         'create_or_get_direct_conversation',
         {
@@ -118,7 +115,6 @@ const CreatorProjects: React.FC = () => {
 
       if (conversationError) throw conversationError;
 
-      // Navigate directly to the DM conversation
       navigate(`/dashboard/creator/messages/direct/${conversationId}`);
     } catch (error) {
       console.error('Failed to open conversation:', error);
@@ -133,16 +129,15 @@ const CreatorProjects: React.FC = () => {
   if (isLoading) {
     return (
       <DashboardLayout userRole="content_creator">
-        <div className="flex-1 p-4 sm:p-6 lg:p-8 overflow-x-hidden">
-          <div className="max-w-7xl mx-auto space-y-6">
-            <div className="animate-pulse space-y-6">
-              <div className="h-8 bg-gray-200 rounded w-1/3"></div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="h-32 bg-gray-200 rounded"></div>
-                ))}
-              </div>
-            </div>
+        <div className="min-h-screen bg-white overflow-x-hidden">
+          <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
+            <span className="h-5 w-5 bg-gray-200 rounded-full animate-pulse mr-2" />
+            <span className="flex-1 h-4 bg-gray-200 rounded-full animate-pulse mx-8" />
+          </div>
+          <div className="px-4 pt-4 pb-24 space-y-3">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="border-2 border-gray-100 rounded-2xl p-4 h-24 animate-pulse bg-gray-50" />
+            ))}
           </div>
         </div>
       </DashboardLayout>
@@ -152,19 +147,11 @@ const CreatorProjects: React.FC = () => {
   if (error) {
     return (
       <DashboardLayout userRole="content_creator">
-        <div className="flex-1 p-4 sm:p-6 lg:p-8 overflow-x-hidden">
-          <div className="max-w-7xl mx-auto">
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <AlertCircle className="h-12 w-12 text-red-400 mb-4" />
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  Failed to load projects
-                </h3>
-                <p className="text-gray-600">
-                  There was an error loading your projects.
-                </p>
-              </CardContent>
-            </Card>
+        <div className="min-h-screen bg-white overflow-x-hidden flex items-center justify-center p-4">
+          <div className="border-2 border-dc-teal rounded-2xl p-6 text-center max-w-sm w-full">
+            <AlertCircle className="h-10 w-10 text-red-400 mx-auto mb-3" />
+            <h3 className="font-bold text-gray-900 mb-2">Failed to load projects</h3>
+            <p className="text-gray-500 text-sm">There was an error loading your projects.</p>
           </div>
         </div>
       </DashboardLayout>
@@ -173,50 +160,63 @@ const CreatorProjects: React.FC = () => {
 
   return (
     <DashboardLayout userRole="content_creator">
-      <div className="flex-1 p-4 sm:p-6 lg:p-8 overflow-x-hidden">
-        <div className="max-w-7xl mx-auto space-y-6">
+      <div className="min-h-screen bg-white overflow-x-hidden">
+        {/* Template B Header */}
+        <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
+          <button
+            onClick={() => navigate(-1)}
+            className="text-dc-pink-accent text-lg mr-2 flex items-center"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+          <h1 className="flex-1 font-sans text-base font-bold text-gray-900 uppercase tracking-wide text-center">
+            My Projects
+          </h1>
+          <div className="w-7" />
+        </div>
+
+        {/* Body */}
+        <div className="px-4 pt-4 pb-24 space-y-4">
           {/* Payout Banner */}
           {user && <CreatorPayoutBanner creatorId={user.id} />}
-
-          {/* Header */}
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-foreground">My Projects</h1>
-              <p className="text-muted-foreground">Manage your active campaigns and track deliverables</p>
-            </div>
-          </div>
 
           {/* Stats Cards */}
           <ProjectStatsCards projects={projects} />
 
           {/* Projects Tabs */}
-          <Tabs defaultValue="active" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="active">Active ({activeProjects.length})</TabsTrigger>
-              <TabsTrigger value="completed">Completed ({completedProjects.length})</TabsTrigger>
-              <TabsTrigger value="all">All Projects ({projects.length})</TabsTrigger>
+          <Tabs defaultValue="active" className="space-y-4">
+            <TabsList className="grid w-full grid-cols-3 rounded-full bg-gray-100">
+              <TabsTrigger value="active" className="rounded-full text-xs font-bold uppercase tracking-wide">
+                Active ({activeProjects.length})
+              </TabsTrigger>
+              <TabsTrigger value="completed" className="rounded-full text-xs font-bold uppercase tracking-wide">
+                Done ({completedProjects.length})
+              </TabsTrigger>
+              <TabsTrigger value="all" className="rounded-full text-xs font-bold uppercase tracking-wide">
+                All ({projects.length})
+              </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="active" className="space-y-4">
-              <ProjectList 
-                projects={activeProjects} 
-                showProgress={true} 
+            <TabsContent value="active" className="space-y-3">
+              <ProjectList
+                projects={activeProjects}
+                showProgress={true}
                 onMessageClick={handleMessageClick}
               />
             </TabsContent>
 
-            <TabsContent value="completed" className="space-y-4">
-              <ProjectList 
-                projects={completedProjects} 
-                showProgress={false} 
+            <TabsContent value="completed" className="space-y-3">
+              <ProjectList
+                projects={completedProjects}
+                showProgress={false}
                 onMessageClick={handleMessageClick}
               />
             </TabsContent>
 
-            <TabsContent value="all" className="space-y-4">
-              <ProjectList 
-                projects={projects} 
-                showProgress={true} 
+            <TabsContent value="all" className="space-y-3">
+              <ProjectList
+                projects={projects}
+                showProgress={true}
                 onMessageClick={handleMessageClick}
               />
             </TabsContent>

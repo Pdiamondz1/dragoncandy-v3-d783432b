@@ -139,7 +139,10 @@ const DashboardLayoutInner: React.FC<DashboardLayoutProps> = ({ children, userRo
   const { setUserRole } = useAIAssistantContext();
   const { isOpen: isAIChatOpen, openModal, closeModal } = useAIChatModal();
 
-  const topNavBgClass = userRole === 'business_client' ? 'bg-dc-pink/40' : 'bg-muted';
+  const topNavBgClass =
+    userRole === 'business_client' || userRole === 'content_creator'
+      ? 'bg-gradient-to-b from-dc-pink-bg to-pink-50'
+      : 'bg-white';
   const showWelcome = userRole === 'business_client' && location.pathname === '/dashboard/business';
 
   useEffect(() => {
@@ -161,7 +164,7 @@ const DashboardLayoutInner: React.FC<DashboardLayoutProps> = ({ children, userRo
 
   return (
     <SidebarProvider defaultOpen={!isMobile}>
-      <div className="min-h-screen flex w-full bg-background overflow-x-hidden">
+      <div className="min-h-screen flex w-full bg-background overflow-x-hidden font-outfit">
         {/* Sidebar — desktop only */}
         <div className="hidden md:block">
           <AppSidebar userRole={userRole} />
@@ -240,7 +243,7 @@ const DashboardLayoutInner: React.FC<DashboardLayoutProps> = ({ children, userRo
             </header>
           )}
 
-          <main className={`${isMobile ? 'flex-1 pb-20' : 'flex-1 p-6 lg:p-8'} animate-fade-in`}>
+          <main className={`${isMobile ? 'flex-1 min-h-screen overflow-x-hidden pb-24' : 'flex-1 p-6 lg:p-8'} animate-fade-in`}>
             {children}
           </main>
         </SidebarInset>

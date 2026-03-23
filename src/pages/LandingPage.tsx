@@ -4,6 +4,7 @@ import { HeroSection } from "@/components/landing/HeroSection";
 import { FeatureSection } from "@/components/landing/FeatureSection";
 import { BottomCTA } from "@/components/landing/BottomCTA";
 import { CreatorPortfolioFeed } from "@/components/landing/CreatorPortfolioFeed";
+import { PortfolioStrip } from "@/components/landing/PortfolioStrip";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { useEffect } from "react";
@@ -35,6 +36,9 @@ export default function LandingPage() {
           <BottomCTA />
         </main>
       </div>
+
+      {/* Portfolio image strip — edge-to-edge at the bottom */}
+      <PortfolioStrip />
     </div>
   );
 }

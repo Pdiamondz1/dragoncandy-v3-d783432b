@@ -1,15 +1,20 @@
 import { useAuth } from '@/hooks/useAuth';
 import { useBrandAnalytics } from '@/hooks/useBrandAnalytics';
 import DashboardLayout from '@/components/DashboardLayout';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { BarChart3, TrendingUp, DollarSign, Target, Users, Eye, Loader2 } from 'lucide-react';
+import { BarChart3, TrendingUp, DollarSign, Target, Eye, Loader2 } from 'lucide-react';
 
 const BrandAnalytics = () => {
   const { profile } = useAuth();
   const { data: analytics, isLoading } = useBrandAnalytics();
 
   if (!profile) {
-    return <div>Loading...</div>;
+    return (
+      <DashboardLayout userRole="brand">
+        <div className="min-h-screen bg-white overflow-x-hidden flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-dc-teal" />
+        </div>
+      </DashboardLayout>
+    );
   }
 
   const analyticsCards = [
@@ -18,150 +23,150 @@ const BrandAnalytics = () => {
       value: analytics?.totalSponsorships.toString() || '0',
       subtitle: `${analytics?.pendingSponsorships || 0} pending`,
       icon: Target,
-      color: 'text-blue-600',
+      color: 'text-dc-teal',
     },
     {
       title: 'Total Investment',
       value: `$${analytics?.totalInvestment.toLocaleString() || '0'}`,
       subtitle: 'Total sponsorship spend',
       icon: DollarSign,
-      color: 'text-green-600',
+      color: 'text-dc-teal',
     },
     {
       title: 'Active Campaigns',
       value: analytics?.activeCampaigns.toString() || '0',
       subtitle: 'Paid and active',
       icon: TrendingUp,
-      color: 'text-purple-600',
+      color: 'text-dc-teal',
     },
     {
       title: 'Accepted Proposals',
       value: analytics?.acceptedSponsorships.toString() || '0',
       subtitle: `${analytics?.rejectedSponsorships || 0} rejected`,
       icon: Eye,
-      color: 'text-orange-600',
+      color: 'text-dc-teal',
     },
   ];
 
   return (
     <DashboardLayout userRole="brand">
-      <div className="p-8 max-w-7xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-2 text-foreground">Brand Analytics</h1>
-          <p className="text-muted-foreground">
-            Track your sponsorship performance and ROI metrics
+      <div className="min-h-screen overflow-x-hidden">
+        {/* Template A — Pink gradient header */}
+        <div className="bg-gradient-to-b from-dc-pink-bg to-pink-50 px-4 pt-4 pb-6">
+          <p className="font-sans text-sm font-bold uppercase tracking-wide text-dc-teal mb-1">
+            Performance Overview
           </p>
+          <h1 className="text-2xl font-extrabold text-gray-900">Brand Analytics</h1>
+          <p className="text-sm text-gray-500 mt-1">Track your sponsorship performance and ROI metrics</p>
         </div>
 
-        {isLoading ? (
-          <div className="flex items-center justify-center h-64">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          </div>
-        ) : (
-          <>
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              {analyticsCards.map((card, index) => (
-                <Card key={index}>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">
-                      {card.title}
-                    </CardTitle>
-                    <card.icon className={`h-5 w-5 ${card.color}`} />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">{card.value}</div>
-                    <p className="text-xs text-muted-foreground">
-                      {card.subtitle}
-                    </p>
-                  </CardContent>
-                </Card>
-              ))}
+        {/* Template A — White body */}
+        <div className="bg-white px-4 pt-4 pb-24 space-y-4">
+
+          {isLoading ? (
+            <div className="flex items-center justify-center h-48">
+              <Loader2 className="h-8 w-8 animate-spin text-dc-teal" />
             </div>
+          ) : (
+            <>
+              {/* Stats grid — 2×2 teal-bordered cards */}
+              <div className="grid grid-cols-2 gap-3">
+                {analyticsCards.map((card, index) => (
+                  <div key={index} className="border-2 border-dc-teal rounded-2xl p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">
+                        {card.title}
+                      </p>
+                      <card.icon className={`h-4 w-4 ${card.color}`} />
+                    </div>
+                    <p className="text-3xl font-extrabold text-gray-900">{card.value}</p>
+                    <p className="text-xs text-gray-500 mt-1">{card.subtitle}</p>
+                  </div>
+                ))}
+              </div>
 
-            <div className="grid lg:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Sponsorship Performance</CardTitle>
-                  <CardDescription>
-                    Monitor your active sponsorships and their engagement metrics
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {analytics && analytics.totalSponsorships > 0 ? (
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-muted-foreground">Total Proposals</span>
-                        <span className="font-semibold">{analytics.totalSponsorships}</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-muted-foreground">Accepted</span>
-                        <span className="font-semibold text-green-600">{analytics.acceptedSponsorships}</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-muted-foreground">Pending</span>
-                        <span className="font-semibold text-yellow-600">{analytics.pendingSponsorships}</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-muted-foreground">Rejected</span>
-                        <span className="font-semibold text-red-600">{analytics.rejectedSponsorships}</span>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-center h-64 text-muted-foreground">
-                      <div className="text-center">
-                        <BarChart3 className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                        <p>No sponsorship data available yet</p>
-                        <p className="text-sm mt-1">Start sponsoring campaigns to see analytics</p>
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+              {/* Sponsorship Performance */}
+              <div className="border-2 border-dc-teal rounded-2xl p-4">
+                <h2 className="font-bold text-gray-900 uppercase tracking-wide text-sm mb-3">
+                  Sponsorship Performance
+                </h2>
+                <p className="text-xs text-gray-500 mb-4">
+                  Monitor your active sponsorships and their engagement metrics
+                </p>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle>Investment Overview</CardTitle>
-                  <CardDescription>
-                    Track your sponsorship spending and ROI
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {analytics && analytics.totalInvestment > 0 ? (
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-muted-foreground">Total Invested</span>
-                        <span className="font-semibold text-green-600">
-                          ${analytics.totalInvestment.toLocaleString()}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-muted-foreground">Active Campaigns</span>
-                        <span className="font-semibold">{analytics.activeCampaigns}</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-muted-foreground">Avg. per Campaign</span>
-                        <span className="font-semibold">
-                          ${analytics.totalSponsorships > 0 
-                            ? Math.round(analytics.totalInvestment / analytics.totalSponsorships).toLocaleString() 
-                            : '0'}
-                        </span>
-                      </div>
+                {analytics && analytics.totalSponsorships > 0 ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between py-2 border-b border-gray-100">
+                      <span className="text-sm text-gray-500">Total Proposals</span>
+                      <span className="font-extrabold text-gray-900">{analytics.totalSponsorships}</span>
                     </div>
-                  ) : (
-                    <div className="flex items-center justify-center h-64 text-muted-foreground">
-                      <div className="text-center">
-                        <TrendingUp className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                        <p>No investment data available yet</p>
-                        <p className="text-sm mt-1">Complete your first sponsorship to see results</p>
-                      </div>
+                    <div className="flex items-center justify-between py-2 border-b border-gray-100">
+                      <span className="text-sm text-gray-500">Accepted</span>
+                      <span className="font-extrabold text-green-600">{analytics.acceptedSponsorships}</span>
                     </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-          </>
-        )}
+                    <div className="flex items-center justify-between py-2 border-b border-gray-100">
+                      <span className="text-sm text-gray-500">Pending</span>
+                      <span className="font-extrabold text-amber-600">{analytics.pendingSponsorships}</span>
+                    </div>
+                    <div className="flex items-center justify-between py-2">
+                      <span className="text-sm text-gray-500">Rejected</span>
+                      <span className="font-extrabold text-red-500">{analytics.rejectedSponsorships}</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center py-10 text-gray-400">
+                    <div className="text-center">
+                      <BarChart3 className="h-10 w-10 mx-auto mb-2 opacity-40" />
+                      <p className="text-sm font-medium">No sponsorship data yet</p>
+                      <p className="text-xs mt-1">Start sponsoring campaigns to see analytics</p>
+                    </div>
+                  </div>
+                )}
+              </div>
 
+              {/* Investment Overview */}
+              <div className="border-2 border-dc-teal rounded-2xl p-4">
+                <h2 className="font-bold text-gray-900 uppercase tracking-wide text-sm mb-3">
+                  Investment Overview
+                </h2>
+                <p className="text-xs text-gray-500 mb-4">
+                  Track your sponsorship spending and ROI
+                </p>
+
+                {analytics && analytics.totalInvestment > 0 ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between py-2 border-b border-gray-100">
+                      <span className="text-sm text-gray-500">Total Invested</span>
+                      <span className="font-extrabold text-green-600">
+                        ${analytics.totalInvestment.toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between py-2 border-b border-gray-100">
+                      <span className="text-sm text-gray-500">Active Campaigns</span>
+                      <span className="font-extrabold text-gray-900">{analytics.activeCampaigns}</span>
+                    </div>
+                    <div className="flex items-center justify-between py-2">
+                      <span className="text-sm text-gray-500">Avg. per Campaign</span>
+                      <span className="font-extrabold text-gray-900">
+                        ${analytics.totalSponsorships > 0
+                          ? Math.round(analytics.totalInvestment / analytics.totalSponsorships).toLocaleString()
+                          : '0'}
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center py-10 text-gray-400">
+                    <div className="text-center">
+                      <TrendingUp className="h-10 w-10 mx-auto mb-2 opacity-40" />
+                      <p className="text-sm font-medium">No investment data yet</p>
+                      <p className="text-xs mt-1">Complete your first sponsorship to see results</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </div>
       </div>
     </DashboardLayout>
   );

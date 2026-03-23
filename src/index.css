@@ -16,6 +16,7 @@
     height: 100%;
     overflow-x: hidden;
     position: relative;
+    font-family: 'Outfit', sans-serif;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
 
@@ -84,47 +85,42 @@
 
   /* ── Dark mode tokens ──────────────────────────────────────────────────── */
   .dark {
-    /* Deep Charcoal background — #1A1A2E */
     --background: 240 27% 14%;
-    --foreground: 210 40% 96%;
+    --foreground: 0 0% 94%;
 
-    /* Surface — #25253D */
     --card: 240 24% 19%;
-    --card-foreground: 210 40% 96%;
+    --card-foreground: 0 0% 94%;
 
     --popover: 240 24% 19%;
-    --popover-foreground: 210 40% 96%;
+    --popover-foreground: 0 0% 94%;
 
-    /* Dragon Teal stays primary in dark mode */
-    --primary: 171 60% 58%;
+    --primary: 166 52% 51%;
     --primary-foreground: 240 27% 14%;
 
-    /* Candy Pink accent in dark mode */
-    --secondary: 330 87% 82%;
+    --secondary: 330 65% 74%;
     --secondary-foreground: 240 27% 14%;
 
     --muted: 240 20% 22%;
     --muted-foreground: 215 20% 65%;
 
-    --accent: 330 50% 25%;
-    --accent-foreground: 330 87% 82%;
+    --accent: 330 38% 16%;
+    --accent-foreground: 330 65% 74%;
 
     --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 96%;
+    --destructive-foreground: 0 0% 94%;
 
     --border: 240 20% 25%;
     --input: 240 20% 25%;
-    --ring: 171 60% 58%;
+    --ring: 166 52% 51%;
 
-    /* Sidebar — dark with teal brand */
     --sidebar-background: 240 27% 11%;
-    --sidebar-foreground: 210 40% 90%;
-    --sidebar-primary: 171 60% 58%;
+    --sidebar-foreground: 0 0% 90%;
+    --sidebar-primary: 166 52% 51%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 240 20% 18%;
-    --sidebar-accent-foreground: 210 40% 90%;
+    --sidebar-accent-foreground: 0 0% 90%;
     --sidebar-border: 240 20% 20%;
-    --sidebar-ring: 171 60% 58%;
+    --sidebar-ring: 166 52% 51%;
   }
 }
 

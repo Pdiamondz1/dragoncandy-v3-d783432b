@@ -41,20 +41,18 @@ interface StatCardProps {
 }
 
 const StatCard: React.FC<StatCardProps> = ({ title, value, subtitle, icon: Icon, iconColor, trend }) => (
-  <Card>
-    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-      <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
+  <div className="border-2 border-dc-teal rounded-2xl p-4 bg-white">
+    <div className="flex items-center justify-between mb-1">
+      <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold">{title}</p>
       <Icon className={`h-5 w-5 ${iconColor}`} />
-    </CardHeader>
-    <CardContent>
-      <div className="flex items-center gap-2">
-        <span className="text-2xl font-bold">{value}</span>
-        {trend === 'up' && <ArrowUpRight className="h-4 w-4 text-green-500" />}
-        {trend === 'down' && <ArrowDownRight className="h-4 w-4 text-red-500" />}
-      </div>
-      {subtitle && <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>}
-    </CardContent>
-  </Card>
+    </div>
+    <div className="flex items-center gap-2">
+      <span className="text-3xl font-extrabold text-gray-900">{value}</span>
+      {trend === 'up' && <ArrowUpRight className="h-4 w-4 text-green-500" />}
+      {trend === 'down' && <ArrowDownRight className="h-4 w-4 text-red-500" />}
+    </div>
+    {subtitle && <p className="text-xs text-gray-500 mt-1">{subtitle}</p>}
+  </div>
 );
 
 const getRoleConfig = (role: UserRole) => {
@@ -111,28 +109,28 @@ const ROIDashboard: React.FC = () => {
             value: `$${(metrics.totalSpent || 0).toLocaleString()}`,
             subtitle: `${metrics.campaignsCreated || 0} campaigns created`,
             icon: DollarSign,
-            iconColor: 'text-green-500',
+            iconColor: 'text-dc-teal',
           },
           {
             title: 'Content Delivered',
             value: (metrics.contentDelivered || 0).toString(),
             subtitle: `${metrics.activeProjects} in progress`,
             icon: Target,
-            iconColor: 'text-blue-500',
+            iconColor: 'text-dc-teal',
           },
           {
             title: 'Avg Cost per Content',
             value: `$${(metrics.avgCostPerContent || 0).toLocaleString()}`,
             subtitle: 'Per completed deliverable',
             icon: TrendingUp,
-            iconColor: 'text-purple-500',
+            iconColor: 'text-dc-teal',
           },
           {
             title: 'Conversion Rate',
             value: `${metrics.conversionRate}%`,
             subtitle: 'Applications to completions',
             icon: Zap,
-            iconColor: 'text-orange-500',
+            iconColor: 'text-dc-teal',
           },
         ];
 
@@ -143,28 +141,28 @@ const ROIDashboard: React.FC = () => {
             value: `$${(metrics.totalEarnings || 0).toLocaleString()}`,
             subtitle: `${metrics.completedProjects} projects completed`,
             icon: DollarSign,
-            iconColor: 'text-green-500',
+            iconColor: 'text-dc-teal',
           },
           {
             title: 'Acceptance Rate',
             value: `${metrics.acceptanceRate || 0}%`,
             subtitle: `${metrics.campaignsApplied || 0} applications sent`,
             icon: Target,
-            iconColor: 'text-blue-500',
+            iconColor: 'text-dc-teal',
           },
           {
             title: 'Avg per Project',
             value: `$${(metrics.avgEarningsPerProject || 0).toLocaleString()}`,
             subtitle: 'Average earnings per gig',
             icon: TrendingUp,
-            iconColor: 'text-purple-500',
+            iconColor: 'text-dc-teal',
           },
           {
             title: 'Rating',
             value: metrics.averageRating > 0 ? metrics.averageRating.toFixed(1) : '—',
             subtitle: metrics.averageRating > 0 ? 'Average client rating' : 'No ratings yet',
             icon: Star,
-            iconColor: 'text-yellow-500',
+            iconColor: 'text-dc-teal',
           },
         ];
 
@@ -175,28 +173,28 @@ const ROIDashboard: React.FC = () => {
             value: `$${(metrics.totalInvestment || 0).toLocaleString()}`,
             subtitle: `${metrics.sponsoredCampaigns || 0} campaigns sponsored`,
             icon: DollarSign,
-            iconColor: 'text-green-500',
+            iconColor: 'text-dc-teal',
           },
           {
             title: 'Active Sponsorships',
             value: (metrics.activeSponsorships || 0).toString(),
             subtitle: 'Currently running',
             icon: Zap,
-            iconColor: 'text-blue-500',
+            iconColor: 'text-dc-teal',
           },
           {
             title: 'Avg Sponsorship',
             value: `$${(metrics.avgSponsorshipAmount || 0).toLocaleString()}`,
             subtitle: 'Per campaign',
             icon: TrendingUp,
-            iconColor: 'text-purple-500',
+            iconColor: 'text-dc-teal',
           },
           {
             title: 'Acceptance Rate',
             value: `${metrics.conversionRate}%`,
             subtitle: 'Proposals accepted',
             icon: Award,
-            iconColor: 'text-orange-500',
+            iconColor: 'text-dc-teal',
           },
         ];
 
@@ -207,38 +205,46 @@ const ROIDashboard: React.FC = () => {
 
   return (
     <DashboardLayout userRole={config.layoutRole}>
-      <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-8">
-        {/* Header */}
-        <div>
-          <h1 className="text-3xl md:text-4xl font-bold">{config.title}</h1>
-          <p className="text-muted-foreground mt-1">{config.subtitle}</p>
+      <div className="min-h-screen bg-white overflow-x-hidden">
+        {/* Pink gradient header */}
+        <div className="bg-gradient-to-b from-dc-pink-bg to-pink-50 px-4 pt-6 pb-8">
+          <div className="max-w-2xl mx-auto space-y-4">
+            <p className="font-sans text-sm font-bold uppercase tracking-wide text-dc-teal">
+              Analytics
+            </p>
+            <h1 className="text-2xl font-bold text-gray-900">{config.title}</h1>
+            <p className="text-gray-500 text-sm">{config.subtitle}</p>
+
+            {isLoading ? (
+              <div className="flex items-center justify-center h-32">
+                <Loader2 className="h-8 w-8 animate-spin text-dc-teal" />
+              </div>
+            ) : (
+              /* Stat Cards */
+              <div className="grid grid-cols-2 gap-4">
+                {getStatCards().map((card, i) => (
+                  <StatCard key={i} {...card} />
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
-        {isLoading ? (
-          <div className="flex items-center justify-center h-64">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          </div>
-        ) : (
-          <>
-            {/* Stat Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-              {getStatCards().map((card, i) => (
-                <StatCard key={i} {...card} />
-              ))}
-            </div>
+        {/* White body content */}
+        {!isLoading && (
+          <div className="px-4 py-6 pb-24">
+            <div className="max-w-2xl mx-auto space-y-6">
 
-            {/* Charts Row */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Revenue/Earnings/Investment Over Time */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <BarChart3 className="h-5 w-5 text-primary" />
+              <div className="border-2 border-dc-teal rounded-2xl bg-white overflow-hidden">
+                <div className="px-4 pt-4 pb-2 flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5 text-dc-teal" />
+                  <p className="font-sans text-sm font-bold uppercase tracking-wide text-dc-teal">
                     {config.chartLabel} Over Time
-                  </CardTitle>
-                  <CardDescription>Last 6 months</CardDescription>
-                </CardHeader>
-                <CardContent>
+                  </p>
+                </div>
+                <p className="px-4 text-xs text-gray-500 mb-3">Last 6 months</p>
+                <div className="px-4 pb-4">
                   {metrics && metrics.monthlyData.some(d => d.revenue > 0) ? (
                     <div className="h-64">
                       <ResponsiveContainer width="100%" height="100%">
@@ -268,7 +274,7 @@ const ROIDashboard: React.FC = () => {
                       </ResponsiveContainer>
                     </div>
                   ) : (
-                    <div className="flex items-center justify-center h-64 text-muted-foreground">
+                    <div className="flex items-center justify-center h-48 text-gray-500">
                       <div className="text-center">
                         <BarChart3 className="h-12 w-12 mx-auto mb-3 opacity-50" />
                         <p>No data available yet</p>
@@ -276,19 +282,19 @@ const ROIDashboard: React.FC = () => {
                       </div>
                     </div>
                   )}
-                </CardContent>
-              </Card>
+                </div>
+              </div>
 
               {/* Projects Over Time */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Users className="h-5 w-5 text-secondary" />
+              <div className="border-2 border-dc-teal rounded-2xl bg-white overflow-hidden">
+                <div className="px-4 pt-4 pb-2 flex items-center gap-2">
+                  <Users className="h-5 w-5 text-dc-pink-accent" />
+                  <p className="font-sans text-sm font-bold uppercase tracking-wide text-dc-teal">
                     Projects Over Time
-                  </CardTitle>
-                  <CardDescription>Last 6 months</CardDescription>
-                </CardHeader>
-                <CardContent>
+                  </p>
+                </div>
+                <p className="px-4 text-xs text-gray-500 mb-3">Last 6 months</p>
+                <div className="px-4 pb-4">
                   {metrics && metrics.monthlyData.some(d => d.projects > 0) ? (
                     <div className="h-64">
                       <ResponsiveContainer width="100%" height="100%">
@@ -305,7 +311,7 @@ const ROIDashboard: React.FC = () => {
                       </ResponsiveContainer>
                     </div>
                   ) : (
-                    <div className="flex items-center justify-center h-64 text-muted-foreground">
+                    <div className="flex items-center justify-center h-48 text-gray-500">
                       <div className="text-center">
                         <Target className="h-12 w-12 mx-auto mb-3 opacity-50" />
                         <p>No project data yet</p>
@@ -313,46 +319,47 @@ const ROIDashboard: React.FC = () => {
                       </div>
                     </div>
                   )}
-                </CardContent>
-              </Card>
-            </div>
+                </div>
+              </div>
 
-            {/* Performance Summary */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Performance Summary</CardTitle>
-                <CardDescription>Key metrics at a glance</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+              {/* Performance Summary */}
+              <div className="border-2 border-dc-teal rounded-2xl bg-white overflow-hidden">
+                <div className="px-4 pt-4 pb-2">
+                  <p className="font-sans text-sm font-bold uppercase tracking-wide text-dc-teal">
+                    Performance Summary
+                  </p>
+                  <p className="text-xs text-gray-500 mt-0.5">Key metrics at a glance</p>
+                </div>
+                <div className="px-4 pb-4 grid grid-cols-2 sm:grid-cols-4 gap-4">
                   <div className="text-center">
-                    <div className="text-3xl font-bold text-primary">
+                    <div className="text-3xl font-extrabold text-dc-teal">
                       {metrics?.activeProjects || 0}
                     </div>
-                    <p className="text-sm text-muted-foreground mt-1">Active</p>
+                    <p className="text-xs text-gray-500 mt-1">Active</p>
                   </div>
                   <div className="text-center">
-                    <div className="text-3xl font-bold text-green-500">
+                    <div className="text-3xl font-extrabold text-green-500">
                       {metrics?.completedProjects || 0}
                     </div>
-                    <p className="text-sm text-muted-foreground mt-1">Completed</p>
+                    <p className="text-xs text-gray-500 mt-1">Completed</p>
                   </div>
                   <div className="text-center">
-                    <div className="text-3xl font-bold text-yellow-500">
+                    <div className="text-3xl font-extrabold text-yellow-500">
                       {metrics?.averageRating ? metrics.averageRating.toFixed(1) : '—'}
                     </div>
-                    <p className="text-sm text-muted-foreground mt-1">Avg Rating</p>
+                    <p className="text-xs text-gray-500 mt-1">Avg Rating</p>
                   </div>
                   <div className="text-center">
-                    <div className="text-3xl font-bold text-purple-500">
+                    <div className="text-3xl font-extrabold text-dc-pink-accent">
                       {metrics?.conversionRate || 0}%
                     </div>
-                    <p className="text-sm text-muted-foreground mt-1">Conversion</p>
+                    <p className="text-xs text-gray-500 mt-1">Conversion</p>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          </>
+              </div>
+
+            </div>
+          </div>
         )}
       </div>
     </DashboardLayout>

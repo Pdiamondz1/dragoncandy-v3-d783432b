@@ -55,20 +55,20 @@ const MessageList: React.FC<MessageListProps> = ({
 
   if (messages.length === 0) {
     return (
-      <div className="flex-1 flex items-center justify-center p-8">
+      <div className="flex-1 flex items-center justify-center p-8 bg-dc-gray min-h-[200px]">
         <div className="text-center">
-          <div className="p-4 bg-muted/40 rounded-2xl w-fit mx-auto mb-3">
-            <MessageSquare className="h-8 w-8 text-muted-foreground/50" />
+          <div className="p-4 bg-white/30 rounded-2xl w-fit mx-auto mb-3">
+            <MessageSquare className="h-8 w-8 text-white/60" />
           </div>
-          <p className="text-sm font-medium text-foreground mb-1">No messages yet</p>
-          <p className="text-xs text-muted-foreground">Start the conversation by sending a message below</p>
+          <p className="text-sm font-medium text-white mb-1">No messages yet</p>
+          <p className="text-xs text-white/70">Start the conversation by sending a message below</p>
         </div>
       </div>
     );
   }
 
   return (
-    <ScrollArea className="flex-1" ref={scrollAreaRef}>
+    <ScrollArea className="flex-1 bg-dc-gray" ref={scrollAreaRef}>
       <div className="space-y-2 p-4">
         {messages.map((message) => (
           <MessageBubbleEnhanced
