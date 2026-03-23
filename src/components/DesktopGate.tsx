@@ -3,7 +3,7 @@ import dragonCandyLogo from '@/assets/dragon-candy-logo.png';
 
 export function DesktopGate() {
   return (
-    <div className="min-h-screen w-full bg-gradient-to-br from-[#F9C8E0] to-[#4DD9C0] flex items-center justify-center p-8">
+    <div className="min-h-screen w-full bg-gradient-to-br from-dc-pink-bg to-dc-teal flex items-center justify-center p-8">
       <div className="bg-white/90 backdrop-blur-sm rounded-3xl p-10 text-center max-w-sm w-full shadow-2xl">
         <img
           src={dragonCandyLogo}
