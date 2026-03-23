@@ -1,22 +1,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { useCreateDirectConversation } from '@/hooks/useConversations';
 import { supabase } from '@/integrations/supabase/client';
 import CreatorProfileModal from './CreatorProfileModal';
-import { 
-  MapPin, 
-  DollarSign, 
-  User, 
-  MessageSquare,
-  ExternalLink
-} from 'lucide-react';
+import { User } from 'lucide-react';
 
 interface CreatorProfile {
   id: string;
@@ -175,133 +165,48 @@ export const CreatorCard: React.FC<CreatorCardProps> = ({ creator }) => {
 
   return (
     <>
-      <Card className="hover:shadow-lg transition-shadow overflow-hidden">
-        {/* Hero Section with Portfolio Background */}
-        <div 
-          className="relative h-40 bg-gradient-to-br from-primary/20 to-secondary/20"
-          style={portfolioImageUrl ? {
-            backgroundImage: `url(${portfolioImageUrl})`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-          } : undefined}
+      <div className="bg-white rounded-2xl p-3 flex items-center gap-3 shadow-sm">
+        {/* Thumbnail */}
+        <div
+          className="w-16 h-16 rounded-xl object-cover flex-shrink-0 overflow-hidden bg-gray-100 cursor-pointer"
+          onClick={handleViewProfile}
         >
-          {/* Dark gradient overlay for text readability */}
-          <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/30 to-black/60" />
-          
-          {/* Creator Info on Hero */}
-          <div className="absolute bottom-0 left-0 right-0 px-6 pb-10">
-            <h3 className="text-xl font-semibold text-white mb-1 truncate">
-              {creator.creator_name}
-            </h3>
-            {creator.location && (
-              <div className="flex items-center gap-1 text-white/90">
-                <MapPin className="h-3 w-3" />
-                <span className="text-sm truncate">{creator.location}</span>
-              </div>
-            )}
-          </div>
-
-          {/* Profile Picture positioned at bottom center */}
-          <div className="absolute -bottom-8 left-1/2 -translate-x-1/2">
-            <div 
-              className="cursor-pointer hover:opacity-90 transition-opacity"
-              onClick={handleViewProfile}
-            >
-              <Avatar className="h-16 w-16 ring-4 ring-background">
-                <AvatarImage src={avatarUrl || undefined} />
-                <AvatarFallback>
-                  <User className="h-8 w-8" />
-                </AvatarFallback>
-              </Avatar>
+          {(avatarUrl || portfolioImageUrl) ? (
+            <img
+              src={avatarUrl || portfolioImageUrl || ''}
+              alt={creator.creator_name}
+              className="w-16 h-16 rounded-xl object-cover"
+            />
+          ) : (
+            <div className="w-16 h-16 rounded-xl flex items-center justify-center bg-gray-100">
+              <User className="h-8 w-8 text-gray-400" />
             </div>
-          </div>
-        </div>
-
-        {/* Card Body Content */}
-        <CardContent className="pt-10 space-y-4">
-        {creator.bio && (
-          <p className="text-sm text-muted-foreground line-clamp-3">
-            {creator.bio}
-          </p>
-        )}
-
-        {creator.skills && creator.skills.length > 0 && (
-          <div>
-            <h4 className="font-medium mb-2 text-sm">Skills</h4>
-            <div className="flex flex-wrap gap-1">
-              {creator.skills.slice(0, 3).map((skill, index) => (
-                <Badge key={index} variant="outline" className="text-xs">
-                  {skill}
-                </Badge>
-              ))}
-              {creator.skills.length > 3 && (
-                <Badge variant="outline" className="text-xs">
-                  +{creator.skills.length - 3} more
-                </Badge>
-              )}
-            </div>
-          </div>
-        )}
-
-        {getSocialPlatforms(creator).length > 0 && (
-          <div>
-            <h4 className="font-medium mb-2 text-sm">Platforms</h4>
-            <div className="flex flex-wrap gap-1">
-              {getSocialPlatforms(creator).slice(0, 3).map((platform, index) => (
-                <Badge key={index} variant="secondary" className="text-xs">
-                  {platform}
-                </Badge>
-              ))}
-              {getSocialPlatforms(creator).length > 3 && (
-                <Badge variant="secondary" className="text-xs">
-                  +{getSocialPlatforms(creator).length - 3} more
-                </Badge>
-              )}
-            </div>
-          </div>
-        )}
-
-        <div className="flex items-center justify-between pt-2 border-t">
-          <div className="flex items-center gap-2">
-            <DollarSign className="h-4 w-4 text-green-600" />
-            <span className="text-sm font-medium">
-              {formatRate(creator.base_rate_per_hour)}
-            </span>
-          </div>
-          
-          {creator.availability && (
-            <Badge 
-              variant={creator.availability === 'Available' ? 'default' : 'secondary'}
-              className="text-xs"
-            >
-              {creator.availability}
-            </Badge>
           )}
         </div>
 
-        <div className="flex gap-2 pt-2">
-          <Button 
-            size="sm" 
-            className="flex-1" 
-            onClick={handleContact}
-            disabled={createConversation.isPending}
-          >
-            <MessageSquare className="h-4 w-4 mr-2" />
-            {createConversation.isPending ? 'Starting...' : 'Contact'}
-          </Button>
-          <Button size="sm" variant="outline" className="flex-1" onClick={handleViewProfile}>
-            <ExternalLink className="h-4 w-4 mr-2" />
-            View Profile
-          </Button>
+        {/* Info */}
+        <div className="flex-1 min-w-0">
+          <p className="text-base font-bold text-gray-900 truncate">{creator.creator_name}</p>
+          <p className="text-xs text-gray-500 line-clamp-2">
+            {creator.bio || (creator.skills && creator.skills.length > 0 ? creator.skills.slice(0, 3).join(' · ') : 'Content Creator')}
+          </p>
         </div>
-      </CardContent>
-    </Card>
 
-    <CreatorProfileModal
-      creator={creator}
-      isOpen={isModalOpen}
-      onClose={() => setIsModalOpen(false)}
-    />
-  </>
+        {/* Action Button */}
+        <button
+          className="bg-dc-pink text-white rounded-full px-4 py-1.5 text-xs font-semibold flex-shrink-0 hover:opacity-90 transition-opacity disabled:opacity-60"
+          onClick={handleContact}
+          disabled={createConversation.isPending}
+        >
+          {createConversation.isPending ? 'Starting...' : 'Contact'}
+        </button>
+      </div>
+
+      <CreatorProfileModal
+        creator={creator}
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+      />
+    </>
   );
 };
