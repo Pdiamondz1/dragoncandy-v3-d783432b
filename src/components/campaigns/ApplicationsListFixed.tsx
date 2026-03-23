@@ -121,20 +121,22 @@ const ApplicationsListFixed: React.FC<ApplicationsListFixedProps> = ({ campaignI
   return (
     <div className="space-y-6">
       <Tabs defaultValue="applications" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="applications" className="flex items-center gap-2">
-            <Users className="h-4 w-4" />
-            Applications ({applications.length})
+        <div className="overflow-x-auto -mx-1 px-1">
+        <TabsList className="grid w-full min-w-max whitespace-nowrap grid-cols-3">
+          <TabsTrigger value="applications" className="flex items-center gap-1.5 text-xs sm:text-sm">
+            <Users className="h-4 w-4 shrink-0" />
+            <span className="whitespace-nowrap">Applications ({applications.length})</span>
           </TabsTrigger>
-          <TabsTrigger value="analytics" className="flex items-center gap-2">
-            <BarChart3 className="h-4 w-4" />
-            Analytics
+          <TabsTrigger value="analytics" className="flex items-center gap-1.5 text-xs sm:text-sm">
+            <BarChart3 className="h-4 w-4 shrink-0" />
+            <span>Analytics</span>
           </TabsTrigger>
-          <TabsTrigger value="settings" className="flex items-center gap-2">
-            <Settings className="h-4 w-4" />
-            Settings
+          <TabsTrigger value="settings" className="flex items-center gap-1.5 text-xs sm:text-sm">
+            <Settings className="h-4 w-4 shrink-0" />
+            <span>Settings</span>
           </TabsTrigger>
         </TabsList>
+        </div>
 
         <TabsContent value="applications" className="space-y-6">
           {/* Summary Cards */}
