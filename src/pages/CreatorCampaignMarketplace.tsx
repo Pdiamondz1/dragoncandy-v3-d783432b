@@ -1,45 +1,29 @@
 
-import React, { useState, useMemo, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { usePublicCampaigns, PublicCampaign } from '@/hooks/usePublicCampaigns';
-import { useCampaignMarketplaceFilters } from '@/hooks/useCampaignMarketplaceFilters';
 import DashboardLayout from '@/components/DashboardLayout';
-import AdvancedCampaignFilters from '@/components/campaigns/AdvancedCampaignFilters';
-import CampaignMarketplaceListItem from '@/components/campaigns/CampaignMarketplaceListItem';
-import CampaignBrowseContent from '@/components/campaigns/CampaignBrowseContent';
+import { CampaignSwipeCard } from '@/components/campaigns/CampaignSwipeCard';
 import ApplicationForm from '@/components/campaigns/ApplicationForm';
-import MarketplaceHeader from '@/components/campaigns/MarketplaceHeader';
-import MarketplaceStats from '@/components/campaigns/MarketplaceStats';
-import MarketplaceEmptyState from '@/components/campaigns/MarketplaceEmptyState';
 import MarketplaceLoadingState from '@/components/campaigns/MarketplaceLoadingState';
 import MarketplaceErrorState from '@/components/campaigns/MarketplaceErrorState';
-import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { MapPin } from 'lucide-react';
+import logo from '@/assets/dragon-candy-logo.png';
+import { useNavigate } from 'react-router-dom';
 
 const CreatorCampaignMarketplace = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { data: campaigns = [], isLoading, error } = usePublicCampaigns(user?.id);
-  const { filters, filteredCampaigns, updateFilter, resetFilters } = useCampaignMarketplaceFilters(campaigns);
-  const [selectedCampaign, setSelectedCampaign] = useState<any>(null);
+  const [selectedCampaign, setSelectedCampaign] = useState<PublicCampaign | null>(null);
   const [showApplicationForm, setShowApplicationForm] = useState(false);
-  
-  // Debounced campaigns for map performance
-  const [debouncedCampaigns, setDebouncedCampaigns] = useState(filteredCampaigns);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedCampaigns(filteredCampaigns);
-    }, 300);
-
-    return () => clearTimeout(timer);
-  }, [filteredCampaigns]);
+  const [skippedIds, setSkippedIds] = useState<Set<string>>(new Set());
 
   if (isLoading) {
     return <MarketplaceLoadingState />;
@@ -49,92 +33,111 @@ const CreatorCampaignMarketplace = () => {
     return <MarketplaceErrorState />;
   }
 
-  const userApplicationsCount = campaigns.filter(c => c.user_applied).length;
+  // Filter out campaigns the user has already applied to
+  const availableCampaigns = campaigns.filter(
+    (c) => !c.user_applied && !skippedIds.has(c.id)
+  );
 
-  const handleApply = (campaignId: string) => {
-    const campaign = campaigns.find(c => c.id === campaignId);
-    if (campaign) {
+  const handleSwipe = (direction: string, campaign: PublicCampaign) => {
+    if (direction === 'right') {
+      // Swipe right = apply
       setSelectedCampaign(campaign);
       setShowApplicationForm(true);
+    } else if (direction === 'left') {
+      // Swipe left = skip
+      setSkippedIds((prev) => new Set(prev).add(campaign.id));
     }
   };
 
-  const handleViewDetails = (campaignId: string) => {
-    navigate(`/dashboard/creator/campaigns/${campaignId}`);
+  const handleApply = (campaign: PublicCampaign) => {
+    setSelectedCampaign(campaign);
+    setShowApplicationForm(true);
   };
 
   const handleApplicationSubmitted = () => {
     setShowApplicationForm(false);
+    if (selectedCampaign) {
+      setSkippedIds((prev) => new Set(prev).add(selectedCampaign.id));
+    }
     setSelectedCampaign(null);
     // Refresh campaigns to update application status
     window.location.reload();
   };
 
+  // Placeholder location — in a real app this would come from creator profile
+  const locationLabel = 'Available Campaigns';
+
   return (
     <DashboardLayout userRole="content_creator">
-      <div className="flex-1 px-4 py-6 sm:py-8 md:px-8 bg-background min-h-screen overflow-x-hidden">
-        <div className="max-w-4xl mx-auto space-y-6">
-          {/* Header */}
-          <MarketplaceHeader totalCampaigns={campaigns.length} />
+      <div className="flex flex-col min-h-screen bg-dc-gray">
+        {/* Page Header */}
+        <div className="flex items-center justify-between px-4 pt-4 pb-2">
+          {/* Logo */}
+          <img src={logo} alt="Dragon Candy" className="w-12 h-12" />
 
-          {/* Quick Stats */}
-          <MarketplaceStats
-            totalCampaigns={campaigns.length}
-            filteredCampaigns={filteredCampaigns.length}
-            userApplications={userApplicationsCount}
-          />
-
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            {/* Filters Sidebar */}
-            <div className="lg:col-span-1">
-              <AdvancedCampaignFilters
-                filters={filters}
-                onFilterChange={updateFilter}
-                onReset={resetFilters}
-                totalCount={campaigns.length}
-                filteredCount={filteredCampaigns.length}
-              />
-            </div>
-
-            {/* Browse Content with Grid/Map/Split Views */}
-            <div className="lg:col-span-3">
-              <CampaignBrowseContent
-                campaigns={debouncedCampaigns}
-                onViewDetails={handleViewDetails}
-                renderCampaignCard={(campaign) => (
-                  <CampaignMarketplaceListItem
-                    key={campaign.id}
-                    campaign={campaign as PublicCampaign}
-                    onApply={handleApply}
-                    onViewDetails={handleViewDetails}
-                  />
-                )}
-                emptyState={
-                  <MarketplaceEmptyState
-                    totalCampaigns={campaigns.length}
-                    onResetFilters={campaigns.length > 0 ? resetFilters : undefined}
-                  />
-                }
-              />
+          {/* Title + location */}
+          <div className="flex-1 px-3">
+            <h1 className="text-xl font-bold text-gray-900 leading-tight">
+              Available Campaigns
+            </h1>
+            <div className="flex items-center gap-1 mt-0.5">
+              <MapPin className="w-3.5 h-3.5 text-dc-pink-accent flex-shrink-0" />
+              <span className="text-xs text-gray-600">
+                {campaigns.length} campaign{campaigns.length !== 1 ? 's' : ''} available
+              </span>
             </div>
           </div>
 
-          {/* Application Form Dialog */}
-          <Dialog open={showApplicationForm} onOpenChange={setShowApplicationForm}>
-            <DialogContent className="max-w-2xl">
-              <DialogHeader>
-                <DialogTitle>Apply to Campaign</DialogTitle>
-              </DialogHeader>
-              {selectedCampaign && (
-                <ApplicationForm
-                  campaign={selectedCampaign}
-                  onSuccess={handleApplicationSubmitted}
-                  onCancel={() => setShowApplicationForm(false)}
-                />
-              )}
-            </DialogContent>
-          </Dialog>
+          {/* Creator avatar */}
+          <div className="w-10 h-10 rounded-full ring-2 ring-dc-teal overflow-hidden bg-dc-pink-bg flex items-center justify-center flex-shrink-0">
+            <span className="text-sm font-bold text-dc-teal-dark">
+              {user?.email?.charAt(0).toUpperCase() ?? 'C'}
+            </span>
+          </div>
         </div>
+
+        {/* Swipe card stack */}
+        <div className="flex-1 px-4 pb-4">
+          <CampaignSwipeCard
+            campaigns={availableCampaigns}
+            onSwipe={handleSwipe}
+            onApply={handleApply}
+          />
+
+          {/* Swipe hint */}
+          {availableCampaigns.length > 0 && (
+            <div className="flex items-center justify-center gap-6 mt-4">
+              <div className="flex items-center gap-1.5">
+                <div className="w-8 h-8 rounded-full bg-red-400/80 flex items-center justify-center">
+                  <span className="text-white text-sm font-bold">✕</span>
+                </div>
+                <span className="text-xs text-white/80">Skip</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="w-8 h-8 rounded-full bg-dc-teal flex items-center justify-center">
+                  <span className="text-white text-sm font-bold">♥</span>
+                </div>
+                <span className="text-xs text-white/80">Apply</span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Application Form Dialog */}
+        <Dialog open={showApplicationForm} onOpenChange={setShowApplicationForm}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Apply to Campaign</DialogTitle>
+            </DialogHeader>
+            {selectedCampaign && (
+              <ApplicationForm
+                campaign={selectedCampaign}
+                onSuccess={handleApplicationSubmitted}
+                onCancel={() => setShowApplicationForm(false)}
+              />
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );
