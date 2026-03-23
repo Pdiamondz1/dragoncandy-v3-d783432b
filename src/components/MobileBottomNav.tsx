@@ -28,8 +28,8 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ userRole }) =>
     location.pathname === href || location.pathname.startsWith(href + '/');
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-card border-t border-border">
-      <div className="flex items-end justify-around px-1 pb-2 pt-1">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-white border-t border-gray-100 pb-[env(safe-area-inset-bottom)]">
+      <div className="flex items-end justify-around px-1 pt-1 pb-2">
         {items.map((item) => {
           const Icon = item.icon;
           const active = isActive(item.href);
@@ -45,10 +45,10 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ userRole }) =>
               <Link
                 key={`${item.href}-${item.label}`}
                 to={item.href}
-                className="flex flex-col items-center -mt-4"
+                className="flex flex-col items-center -mt-4 min-h-[44px] min-w-[44px]"
                 aria-label={item.label}
               >
-                <span className="bg-dc-teal rounded-full p-4 shadow-lg flex items-center justify-center">
+                <span className="bg-dc-teal w-14 h-14 rounded-full shadow-lg shadow-dc-teal/30 -mt-4 flex items-center justify-center">
                   <Icon className="h-6 w-6 text-white" />
                 </span>
               </Link>
@@ -59,10 +59,10 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ userRole }) =>
             <Link
               key={`${item.href}-${item.label}`}
               to={item.href}
-              className="flex flex-col items-center gap-0.5 py-1 min-w-0"
+              className="flex flex-col items-center gap-0.5 py-1 min-w-0 min-h-[44px] min-w-[44px]"
               aria-label={item.label}
             >
-              <Icon className={`h-5 w-5 ${active ? 'text-dc-teal' : 'text-[#888888]'}`} />
+              <Icon className={`h-5 w-5 ${active ? 'text-dc-teal font-bold' : 'text-[#888888]'}`} />
               <span
                 className={`text-[10px] leading-tight truncate ${
                   active ? 'text-dc-teal font-semibold' : 'text-[#888888]'
