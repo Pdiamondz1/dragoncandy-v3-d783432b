@@ -214,11 +214,10 @@ export const AuthForm = ({ mode, onError }: AuthFormProps) => {
   };
 
   return (
-    <form className="space-y-4" onSubmit={handleSubmit}>
+    <form className="space-y-3" onSubmit={handleSubmit}>
       {mode === "signup" && (
         <>
           <div>
-            <Label htmlFor="fullName" className="mb-1 block text-white font-semibold">Full Name</Label>
             <Input
               id="fullName"
               type="text"
@@ -226,37 +225,37 @@ export const AuthForm = ({ mode, onError }: AuthFormProps) => {
               autoComplete="name"
               required
               onChange={e => setFullName(e.target.value)}
-              placeholder="John Doe"
+              placeholder="Full Name"
               disabled={loading}
-              className="rounded-full px-6 py-3 bg-white border-0 text-base h-auto"
+              className="rounded-full px-6 h-12 bg-white border-0 text-base text-center placeholder:text-center placeholder:text-gray-400 focus-visible:ring-dc-teal"
             />
           </div>
 
           <div>
-            <Label htmlFor="role" className="mb-1 block text-white font-semibold">
+            <p className="text-xs text-white uppercase tracking-widest text-center mb-2 font-medium">
               Select your role
-            </Label>
+            </p>
             <RadioGroup
               id="role"
               value={role}
               onValueChange={setRole as (value: string) => void}
-              className="flex flex-col gap-2 mb-2"
+              className="flex flex-col gap-2"
             >
-              <div className="flex items-center space-x-2 bg-white/20 rounded-full px-4 py-2">
+              <div className="flex items-center space-x-2 bg-white/20 rounded-full px-5 py-2.5">
                 <RadioGroupItem value="business_client" id="business_client" className="border-white text-white" />
-                <Label htmlFor="business_client" className="text-white cursor-pointer text-base">
+                <Label htmlFor="business_client" className="text-white cursor-pointer text-sm">
                   Restaurant / Business Client
                 </Label>
               </div>
-              <div className="flex items-center space-x-2 bg-white/20 rounded-full px-4 py-2">
+              <div className="flex items-center space-x-2 bg-white/20 rounded-full px-5 py-2.5">
                 <RadioGroupItem value="brand" id="brand" className="border-white text-white" />
-                <Label htmlFor="brand" className="text-white cursor-pointer text-base">
+                <Label htmlFor="brand" className="text-white cursor-pointer text-sm">
                   Brand / Sponsor
                 </Label>
               </div>
-              <div className="flex items-center space-x-2 bg-white/20 rounded-full px-4 py-2">
+              <div className="flex items-center space-x-2 bg-white/20 rounded-full px-5 py-2.5">
                 <RadioGroupItem value="content_creator" id="content_creator" className="border-white text-white" />
-                <Label htmlFor="content_creator" className="text-white cursor-pointer text-base">
+                <Label htmlFor="content_creator" className="text-white cursor-pointer text-sm">
                   Content Creator
                 </Label>
               </div>
@@ -266,7 +265,6 @@ export const AuthForm = ({ mode, onError }: AuthFormProps) => {
       )}
 
       <div>
-        <Label htmlFor="email" className="mb-1 block text-white font-semibold">Email</Label>
         <Input
           id="email"
           type="email"
@@ -274,14 +272,13 @@ export const AuthForm = ({ mode, onError }: AuthFormProps) => {
           autoComplete="email"
           required
           onChange={e => setEmail(e.target.value)}
-          placeholder="you@email.com"
+          placeholder="Email"
           disabled={loading}
-          className="rounded-full px-6 py-3 bg-white border-0 text-base h-auto"
+          className="rounded-full px-6 h-12 bg-white border-0 text-base text-center placeholder:text-center placeholder:text-gray-400 focus-visible:ring-dc-teal"
         />
       </div>
 
       <div>
-        <Label htmlFor="password" className="mb-1 block text-white font-semibold">Password</Label>
         <Input
           id="password"
           type="password"
@@ -289,9 +286,9 @@ export const AuthForm = ({ mode, onError }: AuthFormProps) => {
           autoComplete={mode === "signup" ? "new-password" : "current-password"}
           required
           onChange={e => setPassword(e.target.value)}
-          placeholder="Your password"
+          placeholder="Password"
           disabled={loading}
-          className="rounded-full px-6 py-3 bg-white border-0 text-base h-auto"
+          className="rounded-full px-6 h-12 bg-white border-0 text-base text-center placeholder:text-center placeholder:text-gray-400 focus-visible:ring-dc-teal"
         />
       </div>
 
@@ -317,15 +314,15 @@ export const AuthForm = ({ mode, onError }: AuthFormProps) => {
       {mode === "login" ? (
         <button
           type="submit"
-          className="w-full rounded-full bg-white text-dc-teal font-bold text-base py-3 disabled:opacity-60 hover:bg-muted transition-colors"
+          className="w-full rounded-full bg-white text-dc-teal font-semibold text-base h-12 shadow-sm border border-gray-200 disabled:opacity-60 hover:bg-gray-50 transition-colors"
           disabled={loading}
         >
-          {loading ? "Logging in..." : "Log In"}
+          {loading ? "Logging in..." : "Login"}
         </button>
       ) : (
         <button
           type="submit"
-          className="w-full rounded-full bg-dc-teal text-white font-bold text-base py-3 disabled:opacity-60 hover:bg-dc-teal-dark transition-colors"
+          className="w-full rounded-full bg-dc-teal text-white font-bold text-base h-12 disabled:opacity-60 hover:bg-dc-teal-dark transition-colors"
           disabled={loading}
         >
           {loading ? "Signing up..." : "Sign Up"}
