@@ -1,5 +1,6 @@
 import React from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import logo from '@/assets/dragon-candy-logo.png';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -79,9 +80,9 @@ const MessageBubbleEnhanced: React.FC<MessageBubbleEnhancedProps> = ({
     <div className={`group flex gap-2.5 px-4 py-1.5 ${isOwnMessage ? 'flex-row-reverse' : ''}`}>
       {/* Avatar — only show for other people's messages */}
       {!isOwnMessage && (
-        <Avatar className="h-8 w-8 flex-shrink-0 mt-1 ring-2 ring-dc-pink/30">
-          <AvatarImage src={senderAvatar || undefined} alt={senderName} />
-          <AvatarFallback className="bg-dc-pink/20 text-dc-pink-accent text-xs font-semibold">
+        <Avatar className="h-8 w-8 flex-shrink-0 mt-1 ring-2 ring-teal-400">
+          <AvatarImage src={senderAvatar || logo} alt={senderName} />
+          <AvatarFallback className="bg-dc-pink text-white text-xs font-semibold">
             {senderName.charAt(0).toUpperCase()}
           </AvatarFallback>
         </Avatar>
@@ -124,13 +125,13 @@ const MessageBubbleEnhanced: React.FC<MessageBubbleEnhancedProps> = ({
 
         {/* Message bubble — teal for outbound, pink for inbound */}
         <div
-          className={`inline-block px-3.5 py-2 max-w-full transition-shadow duration-200 ${
+          className={`inline-block px-4 py-2.5 max-w-full transition-shadow duration-200 ${
             isOwnMessage
               ? 'bg-dc-teal text-white rounded-2xl rounded-br-md shadow-sm'
-              : 'bg-dc-pink/30 dark:bg-dc-pink/20 text-foreground rounded-2xl rounded-bl-md shadow-sm'
+              : 'bg-dc-pink text-white rounded-2xl rounded-bl-md shadow-sm'
           }`}
         >
-          <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">
+          <p className="text-base whitespace-pre-wrap break-words leading-relaxed">
             {message.content}
           </p>
 

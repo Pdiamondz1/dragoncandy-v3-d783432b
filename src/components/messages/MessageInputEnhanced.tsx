@@ -173,17 +173,17 @@ const MessageInputEnhanced: React.FC<MessageInputEnhancedProps> = ({
   }, [sendTypingIndicator]);
 
   return (
-    <div className="border-t border-border/50 bg-card">
+    <div className="bg-white border-t-2 border-dc-teal">
       {/* Reply indicator */}
       {replyingTo && (
-        <div className="flex items-center justify-between px-4 py-2 bg-primary/5 border-b border-border/30">
+        <div className="flex items-center justify-between px-4 py-2 bg-teal-50 border-b border-teal-100">
           <div className="flex items-center gap-2 min-w-0">
-            <div className="w-0.5 h-8 bg-primary rounded-full flex-shrink-0" />
+            <div className="w-0.5 h-8 bg-dc-teal rounded-full flex-shrink-0" />
             <div className="min-w-0">
-              <span className="text-[10px] font-medium text-primary">
+              <span className="text-[10px] font-medium text-dc-teal">
                 Replying to {replyingTo.sender_profile?.full_name || 'User'}
               </span>
-              <p className="text-xs text-muted-foreground truncate">
+              <p className="text-xs text-gray-500 truncate">
                 {replyingTo.content.substring(0, 60)}
               </p>
             </div>
@@ -196,11 +196,11 @@ const MessageInputEnhanced: React.FC<MessageInputEnhancedProps> = ({
 
       {/* File attachment preview */}
       {file && (
-        <div className="flex items-center justify-between px-4 py-2 bg-muted/30 border-b border-border/30">
+        <div className="flex items-center justify-between px-4 py-2 bg-gray-50 border-b border-gray-100">
           <div className="flex items-center gap-2 min-w-0">
-            <Paperclip className="h-3.5 w-3.5 text-primary flex-shrink-0" />
-            <span className="text-xs text-foreground truncate">{file.name}</span>
-            <span className="text-[10px] text-muted-foreground flex-shrink-0">
+            <Paperclip className="h-3.5 w-3.5 text-dc-teal flex-shrink-0" />
+            <span className="text-xs text-gray-700 truncate">{file.name}</span>
+            <span className="text-[10px] text-gray-400 flex-shrink-0">
               ({(file.size / 1024 / 1024).toFixed(1)} MB)
             </span>
           </div>
@@ -211,7 +211,7 @@ const MessageInputEnhanced: React.FC<MessageInputEnhancedProps> = ({
       )}
 
       {/* Message input */}
-      <form onSubmit={handleSubmit} className="flex items-end gap-2 p-3">
+      <form onSubmit={handleSubmit} className="flex items-center gap-2 px-3 py-2">
         <Input
           type="file"
           ref={fileInputRef}
@@ -220,16 +220,16 @@ const MessageInputEnhanced: React.FC<MessageInputEnhancedProps> = ({
           accept="image/*,video/*,.pdf,.doc,.docx,.txt"
         />
 
-        <Button
+        {/* "+" attachment button */}
+        <button
           type="button"
-          variant="ghost"
-          size="sm"
-          className="h-9 w-9 p-0 flex-shrink-0 text-muted-foreground hover:text-primary"
+          className="w-11 h-11 rounded-full bg-gray-900 text-white flex items-center justify-center flex-shrink-0 hover:bg-gray-700 transition-colors disabled:opacity-50"
           onClick={() => fileInputRef.current?.click()}
           disabled={disabled || uploading}
+          aria-label="Attach file"
         >
-          <Paperclip className="h-4 w-4" />
-        </Button>
+          <span className="text-xl font-light leading-none">+</span>
+        </button>
 
         <Textarea
           ref={textareaRef}
@@ -238,18 +238,19 @@ const MessageInputEnhanced: React.FC<MessageInputEnhancedProps> = ({
           onKeyPress={handleKeyPress}
           placeholder={placeholder}
           disabled={disabled || uploading}
-          className="min-h-[40px] max-h-[120px] resize-none text-sm bg-muted/30 border-border/50 focus:border-primary/50 rounded-xl"
+          className="flex-1 min-h-[40px] max-h-[120px] resize-none text-base border border-dc-pink rounded-full px-4 py-2 focus:outline-none focus:ring-2 focus:ring-dc-teal focus:border-transparent"
           rows={1}
         />
 
-        <Button
+        {/* Send button */}
+        <button
           type="submit"
           disabled={(!message.trim() && !file) || disabled || uploading}
-          size="sm"
-          className="h-9 w-9 p-0 flex-shrink-0 rounded-full bg-dc-teal hover:bg-dc-teal-dark text-white shadow-sm transition-all duration-200"
+          className="text-gray-900 text-xl flex-shrink-0 disabled:opacity-40 hover:text-dc-teal transition-colors p-1"
+          aria-label="Send message"
         >
-          <Send className="h-4 w-4" />
-        </Button>
+          <Send className="h-6 w-6" />
+        </button>
       </form>
     </div>
   );
