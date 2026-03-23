@@ -3,12 +3,10 @@ import { useBrandSettings } from '@/hooks/useBrandSettings';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import DashboardLayout from '@/components/DashboardLayout';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Settings, Building2, DollarSign, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 const BrandSettings = () => {
@@ -59,8 +57,8 @@ const BrandSettings = () => {
   if (!profile || profileLoading) {
     return (
       <DashboardLayout userRole="brand">
-        <div className="flex items-center justify-center h-64">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <div className="min-h-screen bg-white flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-dc-teal" />
         </div>
       </DashboardLayout>
     );
@@ -68,70 +66,67 @@ const BrandSettings = () => {
 
   return (
     <DashboardLayout userRole="brand">
-      <div className="p-8 max-w-4xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-2">Brand Settings</h1>
-          <p className="text-muted-foreground">
-            Manage your brand profile and preferences
-          </p>
+      <div className="min-h-screen bg-white overflow-x-hidden pb-24">
+        {/* Template C header */}
+        <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
+          <div className="flex-1 text-center">
+            <h1 className="font-sans text-base font-bold text-gray-900 uppercase tracking-wide">Brand Settings</h1>
+          </div>
         </div>
 
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Building2 className="h-5 w-5" />
-                Brand Profile
-              </CardTitle>
-              <CardDescription>
-                Update your brand information and details
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
+        <div className="p-4 space-y-6">
+          {/* Brand Profile Section */}
+          <div>
+            <p className="font-sans text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">Brand Profile</p>
+            <div className="border-2 border-dc-teal rounded-2xl p-4 space-y-4">
               <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="brandName">Brand Name</Label>
-                  <Input 
-                    id="brandName" 
+                <div className="space-y-1">
+                  <label htmlFor="brandName" className="font-sans text-xs font-semibold uppercase tracking-wider text-gray-500">Brand Name</label>
+                  <Input
+                    id="brandName"
                     placeholder="Your brand name"
                     value={formData.business_name}
                     onChange={(e) => setFormData({ ...formData, business_name: e.target.value })}
+                    className="rounded-full h-12 px-5 text-base border-gray-200"
                   />
                 </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="industry">Brand Category</Label>
-                  <Input 
-                    id="industry" 
+
+                <div className="space-y-1">
+                  <label htmlFor="industry" className="font-sans text-xs font-semibold uppercase tracking-wider text-gray-500">Brand Category</label>
+                  <Input
+                    id="industry"
                     placeholder="e.g., Food & Beverage"
                     value={formData.brand_category}
                     onChange={(e) => setFormData({ ...formData, brand_category: e.target.value })}
+                    className="rounded-full h-12 px-5 text-base border-gray-200"
                   />
                 </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="description">Brand Description</Label>
-                  <Textarea 
-                    id="description" 
+
+                <div className="space-y-1">
+                  <label htmlFor="description" className="font-sans text-xs font-semibold uppercase tracking-wider text-gray-500">Brand Description</label>
+                  <Textarea
+                    id="description"
                     placeholder="Tell us about your brand..."
                     rows={4}
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    className="rounded-2xl px-5 text-base border-gray-200"
                   />
                 </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="marketingObjectives">Marketing Objectives</Label>
-                  <Textarea 
-                    id="marketingObjectives" 
+
+                <div className="space-y-1">
+                  <label htmlFor="marketingObjectives" className="font-sans text-xs font-semibold uppercase tracking-wider text-gray-500">Marketing Objectives</label>
+                  <Textarea
+                    id="marketingObjectives"
                     placeholder="What are your marketing goals?"
                     rows={3}
                     value={formData.marketing_objectives}
                     onChange={(e) => setFormData({ ...formData, marketing_objectives: e.target.value })}
+                    className="rounded-2xl px-5 text-base border-gray-200"
                   />
                 </div>
-                
-                <Button type="submit" disabled={loading}>
+
+                <Button type="submit" disabled={loading} className="w-full rounded-full bg-dc-teal text-white font-bold py-3 h-auto hover:bg-dc-teal/90">
                   {loading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -142,36 +137,28 @@ const BrandSettings = () => {
                   )}
                 </Button>
               </form>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <DollarSign className="h-5 w-5" />
-                Sponsorship Budget
-              </CardTitle>
-              <CardDescription>
-                Set your monthly sponsorship budget and spending limits
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
+          {/* Sponsorship Budget Section */}
+          <div>
+            <p className="font-sans text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">Sponsorship Budget</p>
+            <div className="border-2 border-dc-teal rounded-2xl p-4">
               <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="monthlyBudget">Total Sponsorship Budget</Label>
-                  <Input 
-                    id="monthlyBudget" 
-                    type="number" 
+                <div className="space-y-1">
+                  <label htmlFor="monthlyBudget" className="font-sans text-xs font-semibold uppercase tracking-wider text-gray-500">Total Sponsorship Budget</label>
+                  <Input
+                    id="monthlyBudget"
+                    type="number"
                     placeholder="25000"
                     value={formData.sponsorship_budget || ''}
                     onChange={(e) => setFormData({ ...formData, sponsorship_budget: e.target.value ? Number(e.target.value) : null })}
+                    className="rounded-full h-12 px-5 text-base border-gray-200"
                   />
-                  <p className="text-sm text-muted-foreground">
-                    Set your total annual budget for sponsorships
-                  </p>
+                  <p className="text-xs text-gray-500 px-1">Set your total annual budget for sponsorships</p>
                 </div>
-                
-                <Button type="submit" disabled={loading}>
+
+                <Button type="submit" disabled={loading} className="w-full rounded-full bg-dc-teal text-white font-bold py-3 h-auto hover:bg-dc-teal/90">
                   {loading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -182,53 +169,44 @@ const BrandSettings = () => {
                   )}
                 </Button>
               </form>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Settings className="h-5 w-5" />
-                Notification Preferences
-              </CardTitle>
-              <CardDescription>
-                Manage how you receive updates about sponsorships
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">Proposal Updates</p>
-                    <p className="text-sm text-muted-foreground">
-                      Get notified when restaurants respond to your proposals
-                    </p>
-                  </div>
-                  <input type="checkbox" defaultChecked />
+          {/* Notification Preferences Section */}
+          <div>
+            <p className="font-sans text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">Notification Preferences</p>
+            <div className="border-2 border-dc-teal rounded-2xl p-4 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium text-gray-900 text-sm">Proposal Updates</p>
+                  <p className="text-xs text-gray-500">
+                    Get notified when restaurants respond to your proposals
+                  </p>
                 </div>
-                
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">Campaign Opportunities</p>
-                    <p className="text-sm text-muted-foreground">
-                      Receive alerts for new campaigns open for sponsorship
-                    </p>
-                  </div>
-                  <input type="checkbox" defaultChecked />
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">Performance Reports</p>
-                    <p className="text-sm text-muted-foreground">
-                      Weekly summaries of your sponsorship performance
-                    </p>
-                  </div>
-                  <input type="checkbox" defaultChecked />
-                </div>
+                <input type="checkbox" defaultChecked className="w-5 h-5 accent-dc-teal" />
               </div>
-            </CardContent>
-          </Card>
+
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium text-gray-900 text-sm">Campaign Opportunities</p>
+                  <p className="text-xs text-gray-500">
+                    Receive alerts for new campaigns open for sponsorship
+                  </p>
+                </div>
+                <input type="checkbox" defaultChecked className="w-5 h-5 accent-dc-teal" />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium text-gray-900 text-sm">Performance Reports</p>
+                  <p className="text-xs text-gray-500">
+                    Weekly summaries of your sponsorship performance
+                  </p>
+                </div>
+                <input type="checkbox" defaultChecked className="w-5 h-5 accent-dc-teal" />
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </DashboardLayout>

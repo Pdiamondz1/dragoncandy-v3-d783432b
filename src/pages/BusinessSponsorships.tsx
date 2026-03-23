@@ -3,7 +3,6 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import DashboardLayout from '@/components/DashboardLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DollarSign, MessageSquare, Calendar, TrendingUp, CheckCircle, Clock, Loader2, Star } from 'lucide-react';
@@ -128,50 +127,39 @@ const BusinessSponsorships = () => {
 
   return (
     <DashboardLayout userRole="business_client">
-      <div className="flex-1 p-4 sm:p-6 lg:p-8 overflow-x-hidden">
-        <div className="max-w-7xl mx-auto space-y-6">
-          {/* Header */}
-          <div>
-            <h1 className="text-3xl font-bold flex items-center gap-2">
-              <DollarSign className="h-8 w-8" />
-              Sponsorship Proposals
-            </h1>
-            <p className="text-muted-foreground mt-1">
-              Manage brand sponsorship offers for your campaigns
-            </p>
+      <div className="min-h-screen overflow-x-hidden pb-24">
+        {/* Template B header */}
+        <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
+          <div className="flex-1 text-center">
+            <h1 className="font-sans text-base font-bold text-gray-900 uppercase tracking-wide">Sponsorship Proposals</h1>
           </div>
+        </div>
+        <div className="p-4 space-y-4">
+          <div>
 
           <SponsorshipRatingPromptManager />
+          </div>
 
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-3 gap-3">
             {stats.map((stat, index) => (
-              <Card key={index}>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">{stat.title}</p>
-                      <p className="text-3xl font-bold mt-1">{stat.value}</p>
-                    </div>
-                    <div className={`${stat.bgColor} ${stat.color} p-3 rounded-full`}>
-                      {stat.icon}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              <div key={index} className="border-2 border-dc-teal rounded-2xl p-4">
+                <p className="text-3xl font-extrabold text-gray-900">{stat.value}</p>
+                <p className="text-xs text-gray-500">{stat.title}</p>
+              </div>
             ))}
           </div>
 
           {/* Proposals Sections */}
           {pendingProposals.length > 0 && (
-            <div className="space-y-4">
+            <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-semibold">Pending Proposals</h2>
-                <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
-                  {pendingProposals.length} Awaiting Response
+                <h2 className="font-sans text-base font-bold text-gray-900 uppercase tracking-wide">Pending</h2>
+                <Badge className="bg-dc-yellow text-gray-900 rounded-full">
+                  {pendingProposals.length} Awaiting
                 </Badge>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-3">
                 {pendingProposals.map((proposal) => (
                   <SponsorshipProposalCard
                     key={proposal.id}
@@ -185,96 +173,96 @@ const BusinessSponsorships = () => {
           )}
 
           {acceptedProposals.length > 0 && (
-            <div className="space-y-4">
+            <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-semibold">Accepted Sponsorships</h2>
-                <Badge variant="secondary" className="bg-green-100 text-green-800">
+                <h2 className="font-sans text-base font-bold text-gray-900 uppercase tracking-wide">Accepted</h2>
+                <Badge className="bg-dc-teal text-white rounded-full">
                   {acceptedProposals.length} Active
                 </Badge>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-3">
                 {acceptedProposals.map((proposal) => (
-                  <Card key={proposal.id}>
-                    <CardHeader>
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <CardTitle>{proposal.brand_profile?.business_name || 'Unknown Brand'}</CardTitle>
-                          <p className="text-sm text-muted-foreground mt-1">
-                            Campaign: {proposal.campaigns?.title || 'Unknown Campaign'}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          {/* Payment Status Badge */}
-                          {(() => {
-                            const ps = proposal.payment_status || 'unpaid';
-                            if (ps === 'paid') return (
-                              <Badge className="bg-green-100 text-green-800">
-                                <DollarSign className="h-3 w-3 mr-1" />
-                                Payment Received
-                              </Badge>
-                            );
-                            if (ps === 'pending') return (
-                              <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
-                                <Clock className="h-3 w-3 mr-1" />
-                                Payment Processing
-                              </Badge>
-                            );
-                            return (
-                              <Badge variant="secondary" className="bg-amber-100 text-amber-800">
-                                <Clock className="h-3 w-3 mr-1" />
-                                Awaiting Brand Payment
-                              </Badge>
-                            );
-                          })()}
-                          {getCompletionButton(proposal)}
-                        </div>
+                  <div key={proposal.id} className="border-2 border-dc-teal rounded-2xl p-4 space-y-3">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="font-bold text-gray-900">{proposal.brand_profile?.business_name || 'Unknown Brand'}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          Campaign: {proposal.campaigns?.title || 'Unknown Campaign'}
+                        </p>
                       </div>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      <div className="flex items-center gap-2 text-lg font-semibold text-green-600">
-                        <DollarSign className="h-5 w-5" />
-                        ${proposal.sponsorship_amount?.toLocaleString() || 0}
+                      <div className="flex items-center gap-2 flex-wrap justify-end">
+                        {(() => {
+                          const ps = proposal.payment_status || 'unpaid';
+                          if (ps === 'paid') return (
+                            <Badge className="bg-dc-teal/20 text-dc-teal text-xs rounded-full">
+                              <DollarSign className="h-3 w-3 mr-1" />
+                              Paid
+                            </Badge>
+                          );
+                          if (ps === 'pending') return (
+                            <Badge className="bg-dc-yellow/30 text-yellow-800 text-xs rounded-full">
+                              <Clock className="h-3 w-3 mr-1" />
+                              Processing
+                            </Badge>
+                          );
+                          return (
+                            <Badge className="bg-dc-yellow/30 text-yellow-800 text-xs rounded-full">
+                              <Clock className="h-3 w-3 mr-1" />
+                              Awaiting Payment
+                            </Badge>
+                          );
+                        })()}
+                        {getCompletionButton(proposal)}
                       </div>
-                      <div className="flex gap-2 flex-wrap">
-                        <Button 
-                          variant="outline"
-                          onClick={() => navigate(`/dashboard/business/campaigns/${proposal.campaign_id}`)}
+                    </div>
+                    <div className="flex items-center gap-2 font-bold text-dc-teal">
+                      <DollarSign className="h-4 w-4" />
+                      ${proposal.sponsorship_amount?.toLocaleString() || 0}
+                    </div>
+                    <div className="flex gap-2 flex-wrap">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="rounded-full border-dc-teal text-dc-teal hover:bg-dc-teal/10"
+                        onClick={() => navigate(`/dashboard/business/campaigns/${proposal.campaign_id}`)}
+                      >
+                        View Campaign
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="rounded-full border-dc-teal text-dc-teal hover:bg-dc-teal/10"
+                        onClick={() => navigate(`/dashboard/business/messages`)}
+                      >
+                        <MessageSquare className="h-3 w-3 mr-1" />
+                        Message Brand
+                      </Button>
+                      {proposal.completed_at && (
+                        <Button
+                          size="sm"
+                          onClick={() => handleLeaveReview(proposal)}
+                          className="rounded-full bg-dc-pink-accent text-white hover:bg-dc-pink-accent/90"
                         >
-                          View Campaign
+                          <Star className="h-3 w-3 mr-1" />
+                          Leave Review
                         </Button>
-                        <Button 
-                          variant="outline"
-                          onClick={() => navigate(`/dashboard/business/messages`)}
-                        >
-                          <MessageSquare className="h-4 w-4 mr-2" />
-                          Message Brand
-                        </Button>
-                        {proposal.completed_at && (
-                          <Button
-                            onClick={() => handleLeaveReview(proposal)}
-                            className="bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-700 hover:to-purple-700"
-                          >
-                            <Star className="h-4 w-4 mr-2" />
-                            Leave Review
-                          </Button>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
+                      )}
+                    </div>
+                  </div>
                 ))}
               </div>
             </div>
           )}
 
           {rejectedProposals.length > 0 && (
-            <div className="space-y-4">
+            <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-semibold">Rejected Proposals</h2>
-                <Badge variant="secondary" className="bg-gray-100 text-gray-800">
+                <h2 className="font-sans text-base font-bold text-gray-900 uppercase tracking-wide">Rejected</h2>
+                <Badge className="bg-gray-100 text-gray-700 rounded-full">
                   {rejectedProposals.length} Declined
                 </Badge>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-3">
                 {rejectedProposals.map((proposal) => (
                   <SponsorshipProposalCard
                     key={proposal.id}
@@ -288,18 +276,19 @@ const BusinessSponsorships = () => {
           )}
 
           {proposals.length === 0 && (
-            <Card className="text-center py-12">
-              <CardContent>
-                <DollarSign className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-xl font-semibold mb-2">No Sponsorship Proposals Yet</h3>
-                <p className="text-muted-foreground mb-6">
-                  Enable sponsorships on your campaigns to receive brand partnership offers
-                </p>
-                <Button onClick={() => navigate('/dashboard/business/campaigns')}>
-                  View My Campaigns
-                </Button>
-              </CardContent>
-            </Card>
+            <div className="border-2 border-dc-teal rounded-2xl p-8 text-center">
+              <DollarSign className="h-12 w-12 mx-auto text-dc-teal mb-3" />
+              <h3 className="font-bold text-gray-900 mb-2">No Sponsorship Proposals Yet</h3>
+              <p className="text-xs text-gray-500 mb-4">
+                Enable sponsorships on your campaigns to receive brand partnership offers
+              </p>
+              <Button
+                onClick={() => navigate('/dashboard/business/campaigns')}
+                className="rounded-full bg-dc-teal text-white font-bold hover:bg-dc-teal/90"
+              >
+                View My Campaigns
+              </Button>
+            </div>
           )}
         </div>
       </div>

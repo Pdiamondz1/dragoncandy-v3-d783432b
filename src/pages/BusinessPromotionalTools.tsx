@@ -15,72 +15,82 @@ const BusinessPromotionalTools: React.FC = () => {
 
   return (
     <DashboardLayout userRole="business_client">
-      <div className="p-4 lg:p-6 space-y-6">
-        {/* Header */}
-        <div>
-          <h1 className="text-2xl lg:text-3xl font-bold text-foreground">
+      <div className="min-h-screen overflow-x-hidden pb-24">
+        {/* Template A: Pink gradient header */}
+        <div className="bg-gradient-to-b from-dc-pink-bg to-pink-50 px-4 pt-6 pb-4">
+          <h1 className="font-sans text-sm font-bold uppercase tracking-wide text-dc-teal">
             Promotional Tools
           </h1>
-          <p className="text-muted-foreground mt-1">
+          <p className="text-xs text-gray-500 mt-1">
             Create QR-based video promotions to incentivize customer content creation.
           </p>
+          {/* Stats row */}
+          <div className="grid grid-cols-2 gap-3 mt-4">
+            <div className="bg-white rounded-2xl p-4 border-2 border-dc-teal">
+              <p className="text-3xl font-extrabold text-gray-900">{pendingCount}</p>
+              <p className="text-xs text-gray-500">Pending Reviews</p>
+            </div>
+            <div className="bg-white rounded-2xl p-4 border-2 border-dc-teal">
+              <p className="text-3xl font-extrabold text-gray-900">{approvedCount}</p>
+              <p className="text-xs text-gray-500">Approved Videos</p>
+            </div>
+          </div>
         </div>
 
-        {/* Tabs */}
-        <Tabs defaultValue="promotions" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid">
-            <TabsTrigger value="promotions" className="flex items-center gap-2">
-              <QrCode className="h-4 w-4" />
-              <span className="hidden sm:inline">Promotions</span>
-              <span className="sm:hidden">Promos</span>
-            </TabsTrigger>
-            <TabsTrigger value="reviews" className="flex items-center gap-2">
-              <Video className="h-4 w-4" />
-              <span className="hidden sm:inline">Pending</span>
-              <span className="sm:hidden">Pending</span>
-              {pendingCount > 0 && (
-                <span className="ml-1 bg-primary text-primary-foreground text-xs px-1.5 py-0.5 rounded-full">
-                  {pendingCount}
-                </span>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="videos" className="flex items-center gap-2">
-              <Film className="h-4 w-4" />
-              <span className="hidden sm:inline">Videos</span>
-              <span className="sm:hidden">Videos</span>
-              {approvedCount > 0 && (
-                <span className="ml-1 bg-green-600 text-white text-xs px-1.5 py-0.5 rounded-full">
-                  {approvedCount}
-                </span>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="codes" className="flex items-center gap-2">
-              <Ticket className="h-4 w-4" />
-              <span className="hidden sm:inline">Codes</span>
-              <span className="sm:hidden">Codes</span>
-            </TabsTrigger>
-          </TabsList>
+        {/* White body */}
+        <div className="bg-white p-4">
+          <Tabs defaultValue="promotions" className="space-y-4">
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="promotions" className="flex items-center gap-1 text-xs">
+                <QrCode className="h-3 w-3" />
+                <span className="hidden sm:inline">Promotions</span>
+                <span className="sm:hidden">Promos</span>
+              </TabsTrigger>
+              <TabsTrigger value="reviews" className="flex items-center gap-1 text-xs">
+                <Video className="h-3 w-3" />
+                Pending
+                {pendingCount > 0 && (
+                  <span className="ml-1 bg-dc-teal text-white text-xs px-1.5 py-0.5 rounded-full">
+                    {pendingCount}
+                  </span>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="videos" className="flex items-center gap-1 text-xs">
+                <Film className="h-3 w-3" />
+                Videos
+                {approvedCount > 0 && (
+                  <span className="ml-1 bg-dc-teal text-white text-xs px-1.5 py-0.5 rounded-full">
+                    {approvedCount}
+                  </span>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="codes" className="flex items-center gap-1 text-xs">
+                <Ticket className="h-3 w-3" />
+                Codes
+              </TabsTrigger>
+            </TabsList>
 
-          <TabsContent value="promotions">
-            <ActivePromotionsTab />
-          </TabsContent>
+            <TabsContent value="promotions">
+              <ActivePromotionsTab />
+            </TabsContent>
 
-          <TabsContent value="reviews">
-            <PendingReviewsTab />
-          </TabsContent>
+            <TabsContent value="reviews">
+              <PendingReviewsTab />
+            </TabsContent>
 
-          <TabsContent value="videos">
-            <ApprovedVideosTab 
-              approvedSubmissions={approvedSubmissions || []}
-              rejectedSubmissions={rejectedSubmissions || []}
-              isLoading={isLoading}
-            />
-          </TabsContent>
+            <TabsContent value="videos">
+              <ApprovedVideosTab
+                approvedSubmissions={approvedSubmissions || []}
+                rejectedSubmissions={rejectedSubmissions || []}
+                isLoading={isLoading}
+              />
+            </TabsContent>
 
-          <TabsContent value="codes">
-            <VerifyCodesTab />
-          </TabsContent>
-        </Tabs>
+            <TabsContent value="codes">
+              <VerifyCodesTab />
+            </TabsContent>
+          </Tabs>
+        </div>
       </div>
     </DashboardLayout>
   );

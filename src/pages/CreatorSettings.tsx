@@ -57,8 +57,14 @@ const CreatorSettings = () => {
 
   return (
     <DashboardLayout userRole="content_creator">
-      <div className="flex-1 p-4 sm:p-6 lg:p-8 overflow-x-hidden">
-        <div className="max-w-2xl">
+      <div className="min-h-screen bg-white overflow-x-hidden pb-24">
+        {/* Template C header */}
+        <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
+          <div className="flex-1 text-center">
+            <h1 className="font-sans text-base font-bold text-gray-900 uppercase tracking-wide">Settings</h1>
+          </div>
+        </div>
+        <div className="p-4">
           <CreatorSettingsHeader />
           <CreatorSettingsForm
             formData={formData}
