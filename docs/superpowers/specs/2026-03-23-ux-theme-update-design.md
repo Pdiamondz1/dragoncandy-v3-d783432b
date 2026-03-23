@@ -68,24 +68,28 @@ Full UX frontend design theme update for the DragonCandy mobile app. Updates eve
 | Text White | `#FFFFFF` | — | Text on dark/image backgrounds |
 | Yellow CTA | `#FACC15` | `dc-yellow` | Accent indicator strips |
 
-**Dark Mode (derived):**
+**Dark Mode (derived — overrides existing CSS variables in `index.css`):**
 
-| Token | Hex | Usage |
-|-------|-----|-------|
-| Teal Primary | `#3FC4AD` | Slightly muted for dark surfaces |
-| Pink Secondary | `#E890BC` | Softer pink for dark mode |
-| Pink Accent | `#DB3A88` | Deeper accent |
-| Yellow CTA | `#E5B813` | Slightly warmer |
-| Surface | `#2A2A3E` | Card/component backgrounds |
-| Pink Surface | `#3A1A2E` | Pink-tinted surface for browse/dashboard |
-| Background | `#16162A` | Main dark background |
-| Text Primary | `#F0F0F0` | Primary text on dark |
+Note: The existing `index.css` has dark mode HSL variables (e.g., background `240 27% 14%` = `#1A1A2E`, card `240 24% 19%` = `#25253D`). These values below replace them to better complement the updated theme. Update the existing `.dark` CSS variables — do not create parallel tokens.
+
+| Token | Hex | HSL (for CSS vars) | Usage |
+|-------|-----|--------------------|-------|
+| Teal Primary | `#3FC4AD` | `166 52% 51%` | Slightly muted for dark surfaces |
+| Pink Secondary | `#E890BC` | `330 65% 74%` | Softer pink for dark mode |
+| Pink Accent | `#DB3A88` | `330 66% 54%` | Deeper accent |
+| Yellow CTA | `#E5B813` | `45 85% 49%` | Slightly warmer |
+| Surface | `#25253D` | `240 24% 19%` | Card/component backgrounds (keep existing) |
+| Pink Surface | `#3A1A2E` | `330 38% 16%` | Pink-tinted surface for browse/dashboard |
+| Background | `#1A1A2E` | `240 27% 14%` | Main dark background (keep existing) |
+| Text Primary | `#F0F0F0` | `0 0% 94%` | Primary text on dark |
 
 ### 1.3 Logo Update
 
 - Copy `designs/DragonCandy_logo.png` → `src/assets/dragon-candy-logo.png` (overwrite existing)
-- Generate new PWA icons (192x192, 512x512) from new logo → `public/icons/`
-- Generate new `favicon.ico` from new logo → `public/`
+- Generate new PWA icons using `npx pwa-asset-generator designs/DragonCandy_logo.png public/icons --icon-only --favicon` or manually resize using `npx sharp-cli`:
+  - `npx sharp -i designs/DragonCandy_logo.png -o public/icons/icon-192.png resize 192 192`
+  - `npx sharp -i designs/DragonCandy_logo.png -o public/icons/icon-512.png resize 512 512`
+- Generate `favicon.ico` using an online converter or `npx png-to-ico designs/DragonCandy_logo.png > public/favicon.ico`
 - All existing code references use same path — no import changes needed
 
 ### 1.4 Shared Component Updates
@@ -96,7 +100,7 @@ Full UX frontend design theme update for the DragonCandy mobile app. Updates eve
 | **Card** (`ui/card.tsx`) | `rounded-2xl` / `rounded-3xl`, `border-2 border-dc-teal` on interactive cards, consistent `p-4` padding. |
 | **Input** (`ui/input.tsx`) | `rounded-full` (pill shape), white fill, centered placeholder text on auth pages. Min height 48px touch target. |
 | **MobileTopNav** | New logo image, hamburger right, role-based background (pink gradient for business/creator dashboard, white for landing). Outfit font. |
-| **MobileBottomNav** | 7 icons (Home, Favorites, Video, **+ Donny center**, Campaigns, Promote, Profile). Teal center button with shadow. 44px min touch targets. Active states. |
+| **MobileBottomNav** | 7 icons (Home, Favorites, Video, **+ Donny center**, Campaigns, Promote, Profile). Teal center button with shadow. 44px min touch targets. Active states. Preserve existing `DonnyNavButton` component (commit `ea171a6`) — restyle to match theme but keep Donny chat integration. |
 | **DashboardLayout** | Role-based page backgrounds via prop or route config. Outfit font inheritance. Proper bottom nav clearance (`pb-24`). |
 | **Avatar** (`ui/avatar.tsx`) | `rounded-full` with `ring-2 ring-dc-teal` border. Consistent sizing. |
 | **Badge** | Rounded pill, Outfit font, teal/pink variants. |
@@ -117,17 +121,23 @@ Full UX frontend design theme update for the DragonCandy mobile app. Updates eve
 
 ### 1.6 Tailwind Config Updates
 
-- Add Outfit + Pacifico to `fontFamily` config
-- Update HSL CSS variables for light and dark mode
-- Ensure `dc-*` color tokens match new values
-- Update `borderRadius` defaults
-- Add font-related utilities if needed
+Note: `tailwind.config.ts` already defines `dc.teal`, `dc.pink`, `dc.pink-accent`, `dc.pink-bg`, `dc.gray`, `dc.yellow`, `dc.teal-dark` color tokens with the correct hex values. These do NOT need to be recreated. Only add:
+
+- `fontFamily.sans`: `['Outfit', ...defaultTheme.fontFamily.sans]`
+- `fontFamily.script`: `['Pacifico', 'cursive']`
+- Verify existing `dc-*` tokens match the hex values in Section 1.2 (they should already match)
+- Update `borderRadius` defaults if needed
 
 ### 1.7 Global CSS Updates (`index.css`)
 
-- Add Google Fonts import for Outfit + Pacifico
-- Update CSS custom properties (HSL variables) for both light and dark
-- Set `font-family: 'Outfit', sans-serif` as base
+- Add Google Fonts via `<link>` tags in `index.html` (NOT `@import` in CSS — `<link>` is non-render-blocking and better for performance):
+  ```html
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Pacifico&display=swap" rel="stylesheet">
+  ```
+- Update CSS custom properties (HSL variables) for both light and dark in `index.css`
+- Set `font-family: 'Outfit', sans-serif` as base body font
 - Keep existing animations (fade-in-up, scale-in, shimmer, etc.)
 
 ### 1.8 Mobile Design Constraints (All Pages)
@@ -143,6 +153,7 @@ Full UX frontend design theme update for the DragonCandy mobile app. Updates eve
 | Bottom nav clearance | 80px (`pb-24`) |
 | Scroll behavior | Vertical with momentum, no horizontal overflow |
 | Element spacing | `gap-3` / `gap-4` between elements |
+| Safe area insets | Use `env(safe-area-inset-top)` for top nav and `env(safe-area-inset-bottom)` for bottom nav to support notched/Dynamic Island devices. Add `<meta name="viewport" content="..., viewport-fit=cover">` to `index.html` if not present. Bottom nav padding: `pb-[calc(16px+env(safe-area-inset-bottom))]` |
 
 ---
 
@@ -172,7 +183,7 @@ Each page is pixel-matched to its design screenshot.
 3. "WELCOME TO DRAGON CANDY" — white, ALL CAPS, bold
 4. Email input — white pill, centered placeholder
 5. Password input — white pill, centered placeholder
-6. Login button — white pill with teal text (outline style)
+6. Login button — white filled pill, teal text, subtle gray border (`bg-white text-dc-teal border border-gray-200 shadow-sm`)
 7. "DON'T HAVE AN ACCOUNT?" — white, uppercase, small
 8. Sign Up button — teal pill, white bold text
 9. Social auth icons row: Google, Apple, Facebook (white circles)
@@ -207,7 +218,7 @@ Each page is pixel-matched to its design screenshot.
    - Creator name (bold) + description (gray) + pink "View Portfolio" pill button
 5. Bottom nav (7 icons)
 
-### 2.5 Creator Portfolio (Modal)
+### 2.5 Creator Portfolio Modal (`src/components/creator-profile/CreatorPortfolioModal.tsx` — new component)
 
 **Screenshot:** `creator_portfolio_page.png`
 **Background:** Dark/charcoal
@@ -279,7 +290,8 @@ Each page is pixel-matched to its design screenshot.
 - Cards animate off-screen with rotation
 - Next card scales up from behind with spring physics
 - Touch/drag gesture support
-- **Tech:** `react-tinder-card` or custom gesture handler with `framer-motion`
+- **Tech:** `react-tinder-card` (preferred — purpose-built, ~3KB gzipped, simple API). Only use `framer-motion` if it's already a project dependency.
+- **Gesture conflict prevention:** Set `touch-action: none` on the card stack container to prevent vertical scroll interference. Only capture horizontal swipe gestures within the card area; vertical scrolling within card content should still work normally.
 
 ---
 
@@ -290,30 +302,35 @@ Each page is pixel-matched to its design screenshot.
 All pages without screenshots follow one of 4 templates:
 
 **Template A — Dashboard/Overview:**
-- Pink gradient header with logo + welcome message
-- White body with card grids, stats sections
+- Pink gradient header (`bg-gradient-to-b from-dc-pink-bg to-pink-50`) with logo + welcome message
+- Header text: `font-outfit text-sm font-bold uppercase tracking-wide text-dc-teal`
+- White body (`bg-white`) with card grids, stats sections
 - Bottom nav
 - Used for: dashboards, analytics, earnings, promotional tools
 
 **Template B — List/Browse:**
-- White header with back arrow (pink) + centered title
-- Scrollable list of teal-bordered cards
+- White header: `bg-white border-b border-gray-100 px-4 py-3 flex items-center`
+- Back arrow: `text-dc-pink-accent text-lg` (left)
+- Title: `font-outfit text-base font-bold text-gray-900 uppercase tracking-wide` (centered, flex-1)
+- Scrollable list of teal-bordered cards (`border-2 border-dc-teal rounded-2xl`)
 - Bottom nav
 - Used for: projects, messages list, applications, sponsorships, reviews, feed
 
 **Template C — Form/Settings:**
-- White header with back arrow + centered title
-- White background
-- Pill-shaped inputs, section labels (uppercase, small), toggles
-- Full-width teal "Save" CTA at bottom
+- White header: same as Template B
+- White background (`bg-white`)
+- Section labels: `font-outfit text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2`
+- Pill-shaped inputs (`rounded-full`), toggles with teal active state
+- Full-width teal "Save" CTA at bottom (`w-full rounded-full bg-dc-teal text-white font-bold py-3`)
 - Bottom nav
 - Used for: settings, profile setup, onboarding, wizards, auth forms
 
 **Template D — Detail/Hero View:**
-- Gray background
+- Gray background (`bg-dc-gray`)
 - Hero image area (top ~35–40%)
-- White card overlay with rounded top corners, slides up over hero
-- Stats row with pink dividers
+- Header overlay: `absolute top-0 left-0 right-0 px-4 py-3 flex items-center` with white text
+- White card overlay: `bg-white rounded-t-3xl -mt-4 relative z-10 px-4 pt-6`
+- Stats row with pink dividers (`border-r border-dc-pink`)
 - Content sections
 - Full-width teal primary CTA at bottom
 - Used for: campaign details, project details, public profiles
@@ -340,23 +357,24 @@ All pages without screenshots follow one of 4 templates:
 | CreatorApplications | B |
 | BrandDiscoverCampaigns | B |
 
-**Group 3 — Messaging & Conversations (4 pages):**
+**Group 3 — Messaging & Conversations (3 pages):**
 | Page | Template |
 |------|----------|
 | DirectMessagesPage | B |
-| DirectConversationPage | Phase 2 messaging design |
 | CampaignMessagesPage | B |
 | BrandMessages | B |
 
-**Group 4 — Profiles & Onboarding (6 pages):**
+Note: `DirectConversationPage` is fully handled in Phase 2 (Section 2.7). Do NOT touch it in Phase 3.
+
+**Group 4 — Profiles & Onboarding (4 pages):**
 | Page | Template |
 |------|----------|
 | CreatorProfileSetup | C |
 | BusinessProfileSetup | C |
 | BrandProfileSetup | C |
 | ProfileOnboarding | C |
-| PublicCreatorProfile | D |
-| PublicBusinessProfile | D |
+
+Note: `PublicCreatorProfile` and `PublicBusinessProfile` are fully handled in Phase 2 (Section 2.6). Do NOT touch them in Phase 3.
 
 **Group 5 — Projects, Earnings & Activity (6 pages):**
 | Page | Template |
@@ -390,9 +408,9 @@ All pages without screenshots follow one of 4 templates:
 
 | Package | Purpose |
 |---------|---------|
-| `react-tinder-card` or `framer-motion` | Campaign swipe card stack gestures |
+| `react-tinder-card` | Campaign swipe card stack gestures (~3KB gzipped) |
 
-No other new dependencies required. Outfit + Pacifico loaded via Google Fonts CDN.
+No other new dependencies required. Outfit + Pacifico loaded via Google Fonts CDN `<link>` tags in `index.html`.
 
 ---
 
@@ -418,7 +436,7 @@ No other new dependencies required. Outfit + Pacifico loaded via Google Fonts CD
 - `src/pages/AuthPage.tsx` + auth components
 - `src/pages/BusinessDashboard.tsx` + dashboard components
 - `src/pages/CreatorBrowse.tsx` + creator card components
-- Creator Portfolio modal component
+- `src/components/creator-profile/CreatorPortfolioModal.tsx` (new component)
 - `src/pages/PublicCreatorProfile.tsx` / `PublicBusinessProfile.tsx`
 - `src/pages/DirectConversationPage.tsx` + message components
 - `src/pages/CreatorCampaignMarketplace.tsx` + new swipe card component
