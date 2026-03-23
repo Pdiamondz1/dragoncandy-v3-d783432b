@@ -1,4 +1,5 @@
 import type { Config } from "tailwindcss";
+import defaultTheme from "tailwindcss/defaultTheme";
 
 export default {
 	darkMode: ["class"],
@@ -18,6 +19,10 @@ export default {
 			}
 		},
 		extend: {
+			fontFamily: {
+				sans: ['Outfit', ...defaultTheme.fontFamily.sans],
+				script: ['Pacifico', 'cursive'],
+			},
 			colors: {
 				dc: {
 					teal: '#4DD9C0',
