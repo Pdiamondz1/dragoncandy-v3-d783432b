@@ -1,13 +1,12 @@
 
 import React, { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
-import { Card, CardContent } from '@/components/ui/card';
-import { MessageCircle, Users } from 'lucide-react';
+import { ArrowLeft, MessageCircle } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import DirectMessagesList from '@/components/messages/DirectMessagesList';
 import ConversationMessageThread from '@/components/messages/ConversationMessageThread';
 import { useConversations, type Conversation } from '@/hooks/useConversations';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 
 const DirectMessagesPage: React.FC = () => {
@@ -23,13 +22,11 @@ const DirectMessagesPage: React.FC = () => {
   // When a conversation is selected, fetch the recipient
   useEffect(() => {
     if (selectedConversationId && user) {
-      // Find conversation in list
       const conv = conversations.find(
         c => c.conversation_id === selectedConversationId
       );
       setSelectedConversation(conv || null);
 
-      // Get recipient ID
       supabase
         .from('conversation_participants')
         .select('user_id')
@@ -53,56 +50,47 @@ const DirectMessagesPage: React.FC = () => {
 
   return (
     <DashboardLayout userRole={userRole as 'business_client' | 'content_creator' | 'brand'}>
-      <div className="flex flex-col h-[calc(100vh-4rem)] overflow-hidden">
-        {/* Compact header */}
-        <div className="flex items-center gap-3 px-6 py-4 border-b border-border/50 bg-card/50 backdrop-blur-sm flex-shrink-0">
-          <div className="p-2 bg-primary/10 rounded-lg">
-            <MessageCircle className="h-5 w-5 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-xl font-semibold text-foreground">Messages</h1>
-            <p className="text-xs text-muted-foreground">Direct messages and campaign discussions</p>
-          </div>
+      <div className="min-h-screen overflow-x-hidden bg-dc-gray">
+        {/* Template B header */}
+        <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
+          {selectedConversationId ? (
+            <button
+              onClick={() => setSelectedConversationId(null)}
+              className="text-dc-pink-accent text-lg mr-2"
+              aria-label="Back to messages"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </button>
+          ) : (
+            <div className="w-7" />
+          )}
+          <h1 className="flex-1 text-center font-sans text-base font-bold text-gray-900 uppercase tracking-wide">
+            {selectedConversationId
+              ? (selectedConversation?.other_participant_name || 'Conversation')
+              : 'Messages'}
+          </h1>
+          <div className="w-7" />
         </div>
 
-        {/* Split pane: conversations list + message thread */}
-        <div className="flex flex-1 min-h-0">
-          {/* Left panel — conversation list */}
-          <div className="w-80 lg:w-96 border-r border-border/50 flex-shrink-0 overflow-hidden">
+        {selectedConversationId ? (
+          /* Message thread fills remaining screen */
+          <div className="flex flex-col overflow-hidden" style={{ height: 'calc(100vh - 3rem)' }}>
+            <ConversationMessageThread
+              conversationId={selectedConversationId}
+              recipientId={recipientId}
+              conversationTitle={selectedConversation?.other_participant_name || 'Conversation'}
+            />
+          </div>
+        ) : (
+          /* Scrollable conversation list */
+          <div className="pb-24 px-4 pt-4">
             <DirectMessagesList
               onConversationSelect={handleConversationSelect}
               onCampaignNavigate={handleCampaignNavigate}
               activeConversationId={selectedConversationId}
             />
           </div>
-
-          {/* Right panel — message thread or placeholder */}
-          <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-            {selectedConversationId ? (
-              <ConversationMessageThread
-                conversationId={selectedConversationId}
-                recipientId={recipientId}
-                conversationTitle={selectedConversation?.other_participant_name || 'Conversation'}
-              />
-            ) : (
-              <div className="flex-1 flex items-center justify-center bg-muted/20">
-                <div className="text-center space-y-4 animate-fade-in">
-                  <div className="p-5 bg-muted/40 rounded-2xl w-fit mx-auto">
-                    <Users className="h-10 w-10 text-muted-foreground/60" />
-                  </div>
-                  <div className="space-y-1.5">
-                    <h3 className="text-lg font-semibold text-foreground">
-                      Select a conversation
-                    </h3>
-                    <p className="text-sm text-muted-foreground max-w-xs">
-                      Choose a conversation from the list to start messaging
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
+        )}
       </div>
     </DashboardLayout>
   );
