@@ -2,33 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Separator } from '@/components/ui/separator';
-import { 
-  User, 
-  MapPin, 
-  Globe, 
-  Clock, 
-  DollarSign, 
-  Star, 
-  MessageSquare,
-  ExternalLink,
-  Instagram,
-  Facebook,
-  Linkedin,
-  Twitter,
-  Youtube,
-  Calendar,
-  Languages,
-  Briefcase,
-  ArrowLeft
-} from 'lucide-react';
-import { toast } from '@/hooks/use-toast';
+import { Star, MapPin, User } from 'lucide-react';
 import PublicProfileReviews from '@/components/profiles/PublicProfileReviews';
 import ContactCreatorModal from '@/components/creator-profile/ContactCreatorModal';
+import logo from '@/assets/dragon-candy-logo.png';
 
 interface CreatorProfile {
   id: string;
@@ -115,75 +94,37 @@ const PublicCreatorProfile = () => {
   useEffect(() => {
     const convertPortfolioUrls = async () => {
       if (!profile?.portfolio_urls) return;
-      
+
       const urls = await Promise.all(
         profile.portfolio_urls.map(async (path) => {
           try {
-            // Check if it's already a full URL
             if (path.startsWith('http://') || path.startsWith('https://')) {
               return path;
             }
-            
-            // Convert storage path to public URL
             const { data } = supabase.storage
               .from('profile-assets')
               .getPublicUrl(path);
-            
             return data.publicUrl;
           } catch (error) {
             console.error('Error converting portfolio URL:', error);
-            return path; // Return original path as fallback
+            return path;
           }
         })
       );
-      
+
       setPortfolioUrls(urls);
     };
 
     convertPortfolioUrls();
   }, [profile?.portfolio_urls]);
 
-  const handleGoBack = () => {
-    // Check if there's history to go back to
-    if (window.history.length > 1) {
-      navigate(-1);
-    } else {
-      // Default fallback - go to creator browse or home
-      navigate('/creator-browse');
-    }
-  };
-
-  const getSocialLinks = () => {
-    const links = [];
-    if (profile?.instagram_url) links.push({ icon: Instagram, url: profile.instagram_url, name: 'Instagram' });
-    if (profile?.tiktok_url) links.push({ icon: User, url: profile.tiktok_url, name: 'TikTok' });
-    if (profile?.youtube_url) links.push({ icon: Youtube, url: profile.youtube_url, name: 'YouTube' });
-    if (profile?.facebook_url) links.push({ icon: Facebook, url: profile.facebook_url, name: 'Facebook' });
-    if (profile?.linkedin_url) links.push({ icon: Linkedin, url: profile.linkedin_url, name: 'LinkedIn' });
-    if (profile?.x_url) links.push({ icon: Twitter, url: profile.x_url, name: 'X (Twitter)' });
-    return links;
-  };
-
-  const formatRate = (rate?: number) => {
-    if (!rate) return 'Rate on request';
-    return `$${rate}/hour`;
-  };
-
-  const formatExperience = (years?: number) => {
-    if (!years) return 'Experience level not specified';
-    if (years === 0) return 'Just starting out';
-    if (years >= 10) return '10+ years experience';
-    return `${years} year${years > 1 ? 's' : ''} experience`;
-  };
-
   if (loading) {
     return (
-      <div className="min-h-screen bg-muted py-8">
-        <div className="max-w-4xl mx-auto px-4">
-          <div className="animate-pulse space-y-6">
-            <div className="h-32 bg-muted rounded-lg"></div>
-            <div className="h-64 bg-muted rounded-lg"></div>
-          </div>
+      <div className="min-h-screen bg-dc-gray flex items-center justify-center">
+        <div className="animate-pulse space-y-6 w-full max-w-md px-4">
+          <div className="h-[40vh] bg-gray-300 rounded-lg"></div>
+          <div className="h-24 bg-white rounded-3xl"></div>
+          <div className="h-20 bg-white rounded-2xl"></div>
         </div>
       </div>
     );
@@ -191,284 +132,155 @@ const PublicCreatorProfile = () => {
 
   if (notFound || !profile) {
     return (
-      <div className="min-h-screen bg-muted flex items-center justify-center">
-        <Card className="max-w-md mx-auto">
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <User className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold text-foreground mb-2">
-              Creator Profile Not Found
-            </h3>
-            <p className="text-muted-foreground text-center mb-6">
-              The creator profile you're looking for doesn't exist or is set to private.
-            </p>
-            <Button onClick={() => navigate('/')}>
-              Go Home
-            </Button>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen bg-dc-gray flex items-center justify-center px-4">
+        <div className="bg-white rounded-3xl p-8 max-w-md w-full text-center shadow-md">
+          <User className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-lg font-bold text-gray-900 mb-2">
+            Creator Profile Not Found
+          </h3>
+          <p className="text-gray-500 text-sm mb-6">
+            The creator profile you're looking for doesn't exist or is set to private.
+          </p>
+          <Button
+            onClick={() => navigate('/')}
+            className="w-full bg-dc-teal text-white rounded-full h-12 font-bold"
+          >
+            Go Home
+          </Button>
+        </div>
       </div>
     );
   }
 
+  const heroImage = portfolioUrls[0] || profile.avatar_url;
+
   return (
-    <div className="min-h-screen bg-muted py-8">
-      <div className="max-w-4xl mx-auto px-4 space-y-6">
-        {/* Back Button */}
-        <Button 
-          variant="ghost" 
-          onClick={handleGoBack}
-          className="mb-4"
-        >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back
-        </Button>
-        {/* Header */}
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-start gap-6">
-              <Avatar className="h-20 w-20">
-                <AvatarImage src={profile.avatar_url} />
-                <AvatarFallback>
-                  <User className="h-10 w-10" />
-                </AvatarFallback>
-              </Avatar>
-              
-              <div className="flex-1">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h1 className="text-3xl font-bold text-foreground mb-2">
-                      {profile.creator_name}
-                    </h1>
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
-                      <div className="flex items-center gap-1">
-                        <Briefcase className="h-4 w-4" />
-                        <span>{formatExperience(profile.years_of_experience)}</span>
-                      </div>
-                      {profile.location && (
-                        <div className="flex items-center gap-1">
-                          <MapPin className="h-4 w-4" />
-                          <span>{profile.location}</span>
-                        </div>
-                      )}
-                      {profile.timezone && (
-                        <div className="flex items-center gap-1">
-                          <Clock className="h-4 w-4" />
-                          <span>{profile.timezone}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  
-                  <div className="flex gap-2">
-                    <ContactCreatorModal 
-                      creator={{
-                        id: profile.id,
-                        user_id: profile.user_id,
-                        creator_name: profile.creator_name,
-                        avatar_url: profile.avatar_url,
-                        bio: profile.bio,
-                        response_time: profile.response_time
-                      }}
-                    />
-                    {profile.website_url && (
-                      <Button variant="outline" asChild>
-                        <a href={profile.website_url} target="_blank" rel="noopener noreferrer">
-                          <ExternalLink className="h-4 w-4 mr-2" />
-                          Website
-                        </a>
-                      </Button>
-                    )}
-                  </div>
-                </div>
-
-                {profile.bio && (
-                  <p className="text-foreground leading-relaxed">
-                    {profile.bio}
-                  </p>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Skills & Expertise */}
-        {profile.skills && profile.skills.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Skills & Expertise</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-2">
-                {profile.skills.map((skill, index) => (
-                  <Badge key={index} variant="secondary">
-                    {skill.replace('_', ' ')}
-                  </Badge>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Professional Details */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <DollarSign className="h-5 w-5" />
-                Rates & Availability
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <span className="text-sm font-medium text-muted-foreground">Hourly Rate</span>
-                <p>{formatRate(profile.base_rate_per_hour)}</p>
-              </div>
-
-              {profile.min_project_budget && (
-                <div>
-                  <span className="text-sm font-medium text-muted-foreground">Minimum Project Budget</span>
-                  <p>${profile.min_project_budget}</p>
-                </div>
-              )}
-
-              {profile.response_time && (
-                <div>
-                  <span className="text-sm font-medium text-muted-foreground">Response Time</span>
-                  <p className="capitalize">{profile.response_time.replace('-', ' ')}</p>
-                </div>
-              )}
-
-              {profile.max_projects_per_month && (
-                <div>
-                  <span className="text-sm font-medium text-muted-foreground">Capacity</span>
-                  <p>{profile.max_projects_per_month} projects per month</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Calendar className="h-5 w-5" />
-                Work Preferences
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {profile.preferred_project_duration && (
-                <div>
-                  <span className="text-sm font-medium text-muted-foreground">Preferred Project Duration</span>
-                  <p className="capitalize">{profile.preferred_project_duration.replace('-', ' ')}</p>
-                </div>
-              )}
-
-              {profile.languages_spoken && profile.languages_spoken.length > 0 && (
-                <div>
-                  <span className="text-sm font-medium text-muted-foreground">Languages</span>
-                  <p>{profile.languages_spoken.join(', ')}</p>
-                </div>
-              )}
-
-              <div>
-                <span className="text-sm font-medium text-muted-foreground">Member Since</span>
-                <p>{new Date(profile.created_at).toLocaleDateString('en-US', { 
-                  year: 'numeric', 
-                  month: 'long' 
-                })}</p>
-              </div>
-            </CardContent>
-          </Card>
+    <div className="bg-dc-gray min-h-screen">
+      {/* Hero Image */}
+      <div className="relative">
+        <div className="h-[40vh] w-full overflow-hidden bg-pink-200">
+          {heroImage ? (
+            <img
+              src={heroImage}
+              alt={profile.creator_name}
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <div className="h-full w-full bg-gradient-to-br from-pink-300 to-pink-400" />
+          )}
+          {/* Dark overlay for readability */}
+          <div className="absolute inset-0 bg-black/10" />
         </div>
 
-        {/* Collaboration Preferences */}
-        {profile.collaboration_preferences && (
-          <Card>
-            <CardHeader>
-              <CardTitle>How I Work</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-foreground leading-relaxed">
-                {profile.collaboration_preferences}
-              </p>
-            </CardContent>
-          </Card>
-        )}
+        {/* Logo overlay */}
+        <div className="absolute top-4 left-4">
+          <img src={logo} alt="Dragon Candy" className="h-12 w-12 rounded-full" />
+        </div>
+      </div>
 
-        {/* Availability */}
-        {profile.availability && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Current Availability</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-foreground leading-relaxed">
-                {profile.availability}
-              </p>
-            </CardContent>
-          </Card>
-        )}
+      {/* White Profile Card — overlaps hero */}
+      <div className="bg-white rounded-3xl -mt-6 relative z-10 mx-4 px-4 py-3 flex items-center gap-3 shadow-md">
+        <Avatar className="w-16 h-16 ring-2 ring-dc-teal flex-shrink-0">
+          <AvatarImage src={profile.avatar_url} />
+          <AvatarFallback className="bg-dc-teal/20">
+            <User className="h-8 w-8 text-dc-teal" />
+          </AvatarFallback>
+        </Avatar>
+        <div className="min-w-0">
+          <h1 className="text-lg font-bold text-gray-900 truncate">
+            {profile.creator_name}
+          </h1>
+          <div className="flex items-center gap-1 text-sm text-dc-pink-accent">
+            <Star className="h-3.5 w-3.5 fill-dc-pink-accent" />
+            <span className="font-medium">4.5 RATING</span>
+          </div>
+          {profile.location && (
+            <p className="text-xs text-gray-500 uppercase tracking-wide flex items-center gap-1">
+              <MapPin className="h-3 w-3" />
+              {profile.location}
+            </p>
+          )}
+        </div>
+      </div>
 
-        {/* Reviews & Ratings Section */}
-        <PublicProfileReviews 
+      {/* Stats Row */}
+      <div className="flex justify-around py-4 px-4 mt-2">
+        <div className="flex-1 text-center">
+          <p className="text-3xl font-extrabold text-gray-900">
+            {profile.years_of_experience ?? 0}
+          </p>
+          <p className="text-xs text-gray-500">Years Experience</p>
+        </div>
+        <div className="w-px bg-dc-pink self-stretch mx-1" />
+        <div className="flex-1 text-center">
+          <p className="text-3xl font-extrabold text-gray-900">
+            {profile.max_projects_per_month ?? 0}
+          </p>
+          <p className="text-xs text-gray-500">Projects / Mo</p>
+        </div>
+        <div className="w-px bg-dc-pink self-stretch mx-1" />
+        <div className="flex-1 text-center">
+          <p className="text-3xl font-extrabold text-gray-900">
+            {portfolioUrls.length}
+          </p>
+          <p className="text-xs text-gray-500">Portfolio Items</p>
+        </div>
+      </div>
+
+      {/* Bio */}
+      {profile.bio && (
+        <div className="px-4 pb-2">
+          <p className="text-sm text-gray-600 leading-relaxed">{profile.bio}</p>
+        </div>
+      )}
+
+      {/* Portfolio Grid */}
+      {portfolioUrls.length > 1 && (
+        <div className="px-4 pb-4">
+          <div className="grid grid-cols-3 gap-2">
+            {portfolioUrls.slice(1).map((url, index) => (
+              <div key={index} className="aspect-square rounded-xl overflow-hidden">
+                <img
+                  src={url}
+                  alt={`Portfolio item ${index + 2}`}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = 'none';
+                  }}
+                  loading="lazy"
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Reviews Section */}
+      <div className="px-4 pb-4">
+        <h2 className="text-lg font-bold text-center mb-3 text-gray-900">Reviews</h2>
+        <PublicProfileReviews
           profileId={profile.user_id}
           profileType="creator"
         />
+      </div>
 
-        {/* Social Links */}
-        {getSocialLinks().length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Connect With Me</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex gap-4">
-                {getSocialLinks().map(({ icon: Icon, url, name }) => (
-                  <Button key={name} variant="outline" size="sm" asChild>
-                    <a href={url} target="_blank" rel="noopener noreferrer">
-                      <Icon className="h-4 w-4 mr-2" />
-                      {name}
-                    </a>
-                  </Button>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Portfolio */}
-        {portfolioUrls.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Portfolio</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                {portfolioUrls.map((url, index) => (
-                  <div key={index} className="aspect-square bg-muted rounded-lg overflow-hidden group cursor-pointer">
-                    <img 
-                      src={url} 
-                      alt={`Portfolio item ${index + 1}`}
-                      className="w-full h-full object-cover transition-transform group-hover:scale-105"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.style.display = 'none';
-                        const parent = target.parentElement;
-                        if (parent) {
-                          parent.innerHTML = `
-                            <div class="w-full h-full flex items-center justify-center bg-muted">
-                              <span class="text-muted-foreground text-sm">Image unavailable</span>
-                            </div>
-                          `;
-                        }
-                      }}
-                      loading="lazy"
-                    />
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
+      {/* CTA Button */}
+      <div className="px-4 pb-8">
+        <ContactCreatorModal
+          creator={{
+            id: profile.id,
+            user_id: profile.user_id,
+            creator_name: profile.creator_name,
+            avatar_url: profile.avatar_url,
+            bio: profile.bio,
+            response_time: profile.response_time
+          }}
+          trigger={
+            <Button className="w-full bg-dc-teal text-white rounded-full h-14 font-bold uppercase tracking-wide text-base hover:bg-dc-teal/90">
+              Get In Touch
+            </Button>
+          }
+        />
       </div>
     </div>
   );

@@ -2,29 +2,13 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Separator } from '@/components/ui/separator';
-import { 
-  Building2, 
-  MapPin, 
-  Globe, 
-  Calendar, 
-  Users, 
-  DollarSign, 
-  Clock, 
-  Eye,
-  MessageSquare,
-  ExternalLink,
-  Instagram,
-  Facebook,
-  Linkedin,
-  Twitter
-} from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Star, MapPin, Building2, MessageSquare } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import PublicProfileReviews from '@/components/profiles/PublicProfileReviews';
+import logo from '@/assets/dragon-candy-logo.png';
 
 interface BusinessProfile {
   id: string;
@@ -111,23 +95,13 @@ const PublicBusinessProfile = () => {
     });
   };
 
-  const getSocialLinks = () => {
-    const links = [];
-    if (profile?.instagram_url) links.push({ icon: Instagram, url: profile.instagram_url, name: 'Instagram' });
-    if (profile?.facebook_url) links.push({ icon: Facebook, url: profile.facebook_url, name: 'Facebook' });
-    if (profile?.linkedin_url) links.push({ icon: Linkedin, url: profile.linkedin_url, name: 'LinkedIn' });
-    if (profile?.x_url) links.push({ icon: Twitter, url: profile.x_url, name: 'X (Twitter)' });
-    return links;
-  };
-
   if (loading) {
     return (
-      <div className="min-h-screen bg-muted py-8">
-        <div className="max-w-4xl mx-auto px-4">
-          <div className="animate-pulse space-y-6">
-            <div className="h-32 bg-muted rounded-lg"></div>
-            <div className="h-64 bg-muted rounded-lg"></div>
-          </div>
+      <div className="min-h-screen bg-dc-gray flex items-center justify-center">
+        <div className="animate-pulse space-y-6 w-full max-w-md px-4">
+          <div className="h-[40vh] bg-gray-300 rounded-lg"></div>
+          <div className="h-24 bg-white rounded-3xl"></div>
+          <div className="h-20 bg-white rounded-2xl"></div>
         </div>
       </div>
     );
@@ -135,206 +109,149 @@ const PublicBusinessProfile = () => {
 
   if (notFound || !profile) {
     return (
-      <div className="min-h-screen bg-muted flex items-center justify-center">
-        <Card className="max-w-md mx-auto">
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <Building2 className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold text-foreground mb-2">
-              Business Profile Not Found
-            </h3>
-            <p className="text-muted-foreground text-center mb-6">
-              The business profile you're looking for doesn't exist or is set to private.
-            </p>
-            <Button onClick={() => navigate('/')}>
-              Go Home
-            </Button>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen bg-dc-gray flex items-center justify-center px-4">
+        <div className="bg-white rounded-3xl p-8 max-w-md w-full text-center shadow-md">
+          <Building2 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-lg font-bold text-gray-900 mb-2">
+            Business Profile Not Found
+          </h3>
+          <p className="text-gray-500 text-sm mb-6">
+            The business profile you're looking for doesn't exist or is set to private.
+          </p>
+          <Button
+            onClick={() => navigate('/')}
+            className="w-full bg-dc-teal text-white rounded-full h-12 font-bold"
+          >
+            Go Home
+          </Button>
+        </div>
       </div>
     );
   }
 
+  const heroImage = profile.sample_content_urls?.[0] || profile.logo_url;
+  const sampleImages = profile.sample_content_urls ?? [];
+
   return (
-    <div className="min-h-screen bg-muted py-8">
-      <div className="max-w-4xl mx-auto px-4 space-y-6">
-        {/* Header */}
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-start gap-6">
-              <Avatar className="h-20 w-20">
-                <AvatarImage src={profile.logo_url} />
-                <AvatarFallback>
-                  <Building2 className="h-10 w-10" />
-                </AvatarFallback>
-              </Avatar>
-              
-              <div className="flex-1">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h1 className="text-3xl font-bold text-foreground mb-2">
-                      {profile.business_name}
-                    </h1>
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
-                      {profile.industry && (
-                        <Badge variant="secondary" className="capitalize">
-                          {profile.industry.replace('_', ' ')}
-                        </Badge>
-                      )}
-                      {profile.location && (
-                        <div className="flex items-center gap-1">
-                          <MapPin className="h-4 w-4" />
-                          <span>{profile.location}</span>
-                        </div>
-                      )}
-                      {profile.timezone && (
-                        <div className="flex items-center gap-1">
-                          <Clock className="h-4 w-4" />
-                          <span>{profile.timezone}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  
-                  <div className="flex gap-2">
-                    <Button onClick={handleContactBusiness}>
-                      <MessageSquare className="h-4 w-4 mr-2" />
-                      Contact
-                    </Button>
-                    {profile.website_url && (
-                      <Button variant="outline" asChild>
-                        <a href={profile.website_url} target="_blank" rel="noopener noreferrer">
-                          <ExternalLink className="h-4 w-4 mr-2" />
-                          Website
-                        </a>
-                      </Button>
-                    )}
-                  </div>
-                </div>
-
-                {profile.description && (
-                  <p className="text-foreground leading-relaxed">
-                    {profile.description}
-                  </p>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Company Details */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Building2 className="h-5 w-5" />
-                Company Details
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {profile.company_size && (
-                <div>
-                  <span className="text-sm font-medium text-muted-foreground">Company Size</span>
-                  <p className="capitalize">{profile.company_size.replace('-', ' ')}</p>
-                </div>
-              )}
-
-              {profile.founded_year && (
-                <div>
-                  <span className="text-sm font-medium text-muted-foreground">Founded</span>
-                  <p>{profile.founded_year}</p>
-                </div>
-              )}
-
-              {profile.employee_count_range && (
-                <div>
-                  <span className="text-sm font-medium text-muted-foreground">Team Size</span>
-                  <p>{profile.employee_count_range} employees</p>
-                </div>
-              )}
-
-              {profile.budget_range && (
-                <div>
-                  <span className="text-sm font-medium text-muted-foreground">Typical Project Budget</span>
-                  <p>{profile.budget_range.replace('-', ' - ').replace('k', ',000').replace('+', '+')}</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5" />
-                Collaboration Style
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {profile.preferred_collaboration_style && (
-                <div>
-                  <span className="text-sm font-medium text-muted-foreground">Preferred Style</span>
-                  <p className="capitalize">{profile.preferred_collaboration_style.replace('-', ' ')}</p>
-                </div>
-              )}
-
-              <div>
-                <span className="text-sm font-medium text-muted-foreground">Member Since</span>
-                <p>{new Date(profile.created_at).toLocaleDateString('en-US', { 
-                  year: 'numeric', 
-                  month: 'long' 
-                })}</p>
-              </div>
-            </CardContent>
-          </Card>
+    <div className="bg-dc-gray min-h-screen">
+      {/* Hero Image */}
+      <div className="relative">
+        <div className="h-[40vh] w-full overflow-hidden bg-pink-200">
+          {heroImage ? (
+            <img
+              src={heroImage}
+              alt={profile.business_name}
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <div className="h-full w-full bg-gradient-to-br from-pink-300 to-pink-400" />
+          )}
+          {/* Dark overlay for readability */}
+          <div className="absolute inset-0 bg-black/10" />
         </div>
 
-        {/* Reviews & Ratings Section */}
-        <PublicProfileReviews 
+        {/* Logo overlay */}
+        <div className="absolute top-4 left-4">
+          <img src={logo} alt="Dragon Candy" className="h-12 w-12 rounded-full" />
+        </div>
+      </div>
+
+      {/* White Profile Card — overlaps hero */}
+      <div className="bg-white rounded-3xl -mt-6 relative z-10 mx-4 px-4 py-3 flex items-center gap-3 shadow-md">
+        <Avatar className="w-16 h-16 ring-2 ring-dc-teal flex-shrink-0">
+          <AvatarImage src={profile.logo_url} />
+          <AvatarFallback className="bg-dc-teal/20">
+            <Building2 className="h-8 w-8 text-dc-teal" />
+          </AvatarFallback>
+        </Avatar>
+        <div className="min-w-0">
+          <h1 className="text-lg font-bold text-gray-900 truncate">
+            {profile.business_name}
+          </h1>
+          {profile.industry && (
+            <div className="flex items-center gap-1 text-sm text-dc-pink-accent">
+              <Star className="h-3.5 w-3.5 fill-dc-pink-accent" />
+              <span className="font-medium uppercase">
+                {profile.industry.replace('_', ' ')}
+              </span>
+            </div>
+          )}
+          {profile.location && (
+            <p className="text-xs text-gray-500 uppercase tracking-wide flex items-center gap-1">
+              <MapPin className="h-3 w-3" />
+              {profile.location}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Stats Row */}
+      <div className="flex justify-around py-4 px-4 mt-2">
+        <div className="flex-1 text-center">
+          <p className="text-3xl font-extrabold text-gray-900">
+            {profile.founded_year ?? '—'}
+          </p>
+          <p className="text-xs text-gray-500">Founded</p>
+        </div>
+        <div className="w-px bg-dc-pink self-stretch mx-1" />
+        <div className="flex-1 text-center">
+          <p className="text-3xl font-extrabold text-gray-900">
+            {profile.employee_count_range ?? '—'}
+          </p>
+          <p className="text-xs text-gray-500">Team Size</p>
+        </div>
+        <div className="w-px bg-dc-pink self-stretch mx-1" />
+        <div className="flex-1 text-center">
+          <p className="text-3xl font-extrabold text-gray-900">
+            {sampleImages.length}
+          </p>
+          <p className="text-xs text-gray-500">Projects</p>
+        </div>
+      </div>
+
+      {/* Description */}
+      {profile.description && (
+        <div className="px-4 pb-2">
+          <p className="text-sm text-gray-600 leading-relaxed">{profile.description}</p>
+        </div>
+      )}
+
+      {/* Sample Content Grid */}
+      {sampleImages.length > 1 && (
+        <div className="px-4 pb-4">
+          <div className="grid grid-cols-3 gap-2">
+            {sampleImages.slice(1).map((url, index) => (
+              <div key={index} className="aspect-square rounded-xl overflow-hidden">
+                <img
+                  src={url}
+                  alt={`Sample content ${index + 2}`}
+                  className="w-full h-full object-cover"
+                  loading="lazy"
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Reviews Section */}
+      <div className="px-4 pb-4">
+        <h2 className="text-lg font-bold text-center mb-3 text-gray-900">Reviews</h2>
+        <PublicProfileReviews
           profileId={profile.user_id}
           profileType="business"
         />
+      </div>
 
-        {/* Social Links */}
-        {getSocialLinks().length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Connect With Us</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex gap-4">
-                {getSocialLinks().map(({ icon: Icon, url, name }) => (
-                  <Button key={name} variant="outline" size="sm" asChild>
-                    <a href={url} target="_blank" rel="noopener noreferrer">
-                      <Icon className="h-4 w-4 mr-2" />
-                      {name}
-                    </a>
-                  </Button>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Sample Content */}
-        {profile.sample_content_urls && profile.sample_content_urls.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Sample Content</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                {profile.sample_content_urls.map((url, index) => (
-                  <div key={index} className="aspect-square bg-muted rounded-lg overflow-hidden">
-                    <img 
-                      src={url} 
-                      alt={`Sample content ${index + 1}`}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
+      {/* CTA Button */}
+      <div className="px-4 pb-8">
+        <Button
+          onClick={handleContactBusiness}
+          className="w-full bg-dc-teal text-white rounded-full h-14 font-bold uppercase tracking-wide text-base hover:bg-dc-teal/90"
+        >
+          <MessageSquare className="h-5 w-5 mr-2" />
+          Get In Touch
+        </Button>
       </div>
     </div>
   );
