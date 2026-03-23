@@ -83,20 +83,20 @@ export const CreatorPortfolioModal: React.FC<CreatorPortfolioModalProps> = ({
       </div>
 
       {/* Counter */}
-      {total > 0 && (
+      {total > 1 && (
         <p className="text-center text-gray-400 text-sm py-2 flex-shrink-0">
           {currentIndex + 1}/{total}
         </p>
       )}
 
       {/* Thumbnail gallery */}
-      {total > 0 && (
+      {total > 1 && (
         <div className="flex gap-2 px-4 pb-4 flex-shrink-0 overflow-x-auto">
           {images.map((image, index) => (
             <button
               key={index}
               onClick={() => onIndexChange(index)}
-              className={`flex-1 h-20 rounded-lg overflow-hidden relative flex-shrink-0 min-w-[80px] transition-opacity ${
+              className={`h-20 rounded-lg overflow-hidden relative flex-shrink-0 min-w-[80px] transition-opacity ${
                 index === currentIndex
                   ? 'ring-2 ring-teal-400 opacity-100'
                   : 'opacity-60 hover:opacity-80'
