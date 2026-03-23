@@ -14,7 +14,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { MapPin } from 'lucide-react';
-import logo from '@/assets/dragon-candy-logo.png';
+import logo from '@/assets/Transparent_DragonCandy_logo.png';
 import { useNavigate } from 'react-router-dom';
 
 const CreatorCampaignMarketplace = () => {

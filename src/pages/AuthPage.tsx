@@ -7,7 +7,7 @@ import { AuthHeader } from "@/components/auth/AuthHeader";
 import { AuthForm } from "@/components/auth/AuthForm";
 import { AuthModeToggle } from "@/components/auth/AuthModeToggle";
 import { toast } from 'sonner';
-import dragonCandyLogo from '@/assets/dragon-candy-logo.png';
+import dragonCandyLogo from '@/assets/Transparent_DragonCandy_logo.png';
 
 const AuthPage = () => {
   const [searchParams] = useSearchParams();

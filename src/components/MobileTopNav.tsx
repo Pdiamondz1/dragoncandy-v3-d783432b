@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Menu, Settings, LogOut, LayoutDashboard, MessageSquare } from 'lucide-react';
-import dragonCandyLogo from '@/assets/dragon-candy-logo.png';
+import dragonCandyLogo from '@/assets/Transparent_DragonCandy_logo.png';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useLogout } from '@/hooks/useLogout';
 import type { UserRole } from '@/types/user';

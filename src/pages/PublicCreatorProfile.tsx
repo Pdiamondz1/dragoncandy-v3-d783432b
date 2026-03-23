@@ -7,7 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Star, MapPin, User } from 'lucide-react';
 import PublicProfileReviews from '@/components/profiles/PublicProfileReviews';
 import ContactCreatorModal from '@/components/creator-profile/ContactCreatorModal';
-import logo from '@/assets/dragon-candy-logo.png';
+import logo from '@/assets/Transparent_DragonCandy_logo.png';
 
 interface CreatorProfile {
   id: string;

@@ -1,5 +1,5 @@
 import { QRCodeSVG } from 'qrcode.react';
-import dragonCandyLogo from '@/assets/dragon-candy-logo.png';
+import dragonCandyLogo from '@/assets/Transparent_DragonCandy_logo.png';
 
 export function DesktopGate() {
   return (
