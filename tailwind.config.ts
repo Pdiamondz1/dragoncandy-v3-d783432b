@@ -94,12 +94,23 @@ export default {
 					from: { opacity: '0', transform: 'scale(0.95)' },
 					to: { opacity: '1', transform: 'scale(1)' }
 				},
+				breathe: {
+					'0%, 100%': { transform: 'scale(1)', opacity: '1' },
+					'50%': { transform: 'scale(1.03)', opacity: '0.95' },
+				},
+				shake: {
+					'0%, 100%': { transform: 'translateX(0)' },
+					'25%': { transform: 'translateX(-3px)' },
+					'75%': { transform: 'translateX(3px)' },
+				},
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
 				'accordion-up': 'accordion-up 0.2s ease-out',
 				'fade-in-up': 'fade-in-up 0.4s ease-out',
 				'scale-in': 'scale-in 0.3s ease-out',
+				breathe: 'breathe 3s ease-in-out infinite',
+				shake: 'shake 0.3s ease-in-out 2',
 			},
 			boxShadow: {
 				'glow-teal': '0 0 20px rgba(77, 217, 192, 0.15), 0 0 60px rgba(77, 217, 192, 0.05)',
