@@ -4,12 +4,14 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import DashboardLayout from '@/components/DashboardLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Download, MessageCircle, User, Calendar, FileText, FileCheck, Loader2, CheckCircle2, Clock, AlertCircle, Zap, Star, DollarSign } from 'lucide-react';
+import {
+  Download, MessageCircle, User, Calendar, FileText, FileCheck,
+  Loader2, CheckCircle2, AlertCircle, Zap, Star, DollarSign, ChevronLeft
+} from 'lucide-react';
 import { useProjectComplete } from '@/hooks/useProjectComplete';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useFileUploads } from '@/hooks/useFileUploads';
@@ -78,27 +80,26 @@ const BusinessProjects: React.FC = () => {
   useEffect(() => {
     const verifyPayment = async () => {
       if (!paymentStatus || !paymentCampaignId || verifyingPayment) return;
-      
+
       if (paymentStatus === 'success') {
         setVerifyingPayment(true);
         toast({
           title: 'Verifying payment...',
           description: 'Please wait while we confirm your escrow payment.',
         });
-        
+
         try {
           const { data, error } = await supabase.functions.invoke('verify-campaign-escrow', {
             body: { campaignId: paymentCampaignId },
           });
-          
+
           if (error) throw error;
-          
+
           if (data?.success) {
             toast({
               title: '🎉 Payment Confirmed!',
               description: 'Your campaign is now published and visible to creators.',
             });
-            // Invalidate campaigns query to refresh the list
             queryClient.invalidateQueries({ queryKey: ['campaigns'] });
             queryClient.invalidateQueries({ queryKey: ['public-campaigns'] });
           } else {
@@ -124,8 +125,7 @@ const BusinessProjects: React.FC = () => {
           description: 'Your campaign was saved as a draft. You can pay escrow later.',
         });
       }
-      
-      // Clean URL params after handling
+
       setSearchParams(prev => {
         const newParams = new URLSearchParams(prev);
         newParams.delete('payment');
@@ -133,7 +133,7 @@ const BusinessProjects: React.FC = () => {
         return newParams;
       });
     };
-    
+
     verifyPayment();
   }, [paymentStatus, paymentCampaignId]);
 
@@ -184,7 +184,6 @@ const BusinessProjects: React.FC = () => {
         return [];
       }
 
-      // Get creator profiles and user profiles for each collaboration
       const creatorIds = data.map(item => item.creator_id).filter(Boolean);
       const [{ data: creatorProfiles }, { data: userProfiles }] = await Promise.all([
         supabase
@@ -197,7 +196,6 @@ const BusinessProjects: React.FC = () => {
           .in('id', creatorIds)
       ]);
 
-      // Transform the data to match our interface
       return data.map(item => ({
         id: item.id,
         campaign_id: item.campaign_id,
@@ -222,9 +220,9 @@ const BusinessProjects: React.FC = () => {
   useEffect(() => {
     if (highlightedProjectId && highlightedRef.current && projects) {
       setTimeout(() => {
-        highlightedRef.current?.scrollIntoView({ 
-          behavior: 'smooth', 
-          block: 'center' 
+        highlightedRef.current?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center'
         });
       }, 100);
     }
@@ -232,15 +230,6 @@ const BusinessProjects: React.FC = () => {
 
   // Fetch files for selected project
   const { data: projectFiles } = useFileUploads(selectedProject || undefined, 'deliverable');
-
-  const getStatusBadgeVariant = (status: string) => {
-    switch (status) {
-      case 'active': return 'default';
-      case 'completed': return 'secondary';
-      case 'cancelled': return 'destructive';
-      default: return 'outline';
-    }
-  };
 
   const handleDownloadFile = async (file: any) => {
     setDownloadingFileId(file.id);
@@ -250,18 +239,14 @@ const BusinessProjects: React.FC = () => {
         .download(file.file_path);
 
       if (data) {
-        // Create blob URL for download
         const url = window.URL.createObjectURL(data);
         const link = document.createElement('a');
         link.href = url;
         link.download = file.original_filename;
         link.style.display = 'none';
-        
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        
-        // Clean up the blob URL
         window.URL.revokeObjectURL(url);
       }
     } catch (error) {
@@ -276,9 +261,9 @@ const BusinessProjects: React.FC = () => {
   };
 
   const handleMarkComplete = (collaborationId: string) => {
-    requestCompletion({ 
-      collaborationId, 
-      userRole: 'business_client' 
+    requestCompletion({
+      collaborationId,
+      userRole: 'business_client'
     });
   };
 
@@ -286,8 +271,8 @@ const BusinessProjects: React.FC = () => {
     setSelectedReview({
       collaborationId: project.id,
       revieweeId: project.creator_id,
-      revieweeName: project.creator_profile?.creator_name || 
-                    project.user_profile?.full_name || 
+      revieweeName: project.creator_profile?.creator_name ||
+                    project.user_profile?.full_name ||
                     project.user_profile?.email || 'Creator'
     });
     setReviewModalOpen(true);
@@ -309,12 +294,10 @@ const BusinessProjects: React.FC = () => {
     return { text: 'Active', variant: 'outline' as const, showBadge: false };
   };
 
-  // Count projects needing approval (completion flow)
   const projectsNeedingApproval = projects?.filter(
     p => p.creator_completion_status === 'requested' && p.business_completion_status !== 'requested'
   ) || [];
 
-  // Count projects with submitted content needing review
   const projectsNeedingContentReview = projects?.filter(
     p => p.content_status === 'submitted'
   ) || [];
@@ -322,17 +305,14 @@ const BusinessProjects: React.FC = () => {
   if (projectsLoading) {
     return (
       <DashboardLayout userRole="business_client">
-        <div className="p-4 lg:p-6 max-w-full overflow-hidden space-y-6">
-          <h1 className="text-3xl font-bold truncate">My Projects</h1>
-          <div className="grid gap-4">
+        <div className="min-h-screen bg-white overflow-x-hidden">
+          <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
+            <span className="h-5 w-5 bg-gray-200 rounded-full animate-pulse mr-2" />
+            <span className="flex-1 h-4 bg-gray-200 rounded-full animate-pulse mx-8" />
+          </div>
+          <div className="px-4 pt-4 pb-24 space-y-3">
             {[1, 2, 3].map(i => (
-              <Card key={i} className="animate-pulse">
-                <CardContent className="p-6">
-                  <div className="h-6 bg-muted rounded mb-4"></div>
-                  <div className="h-4 bg-muted rounded mb-2"></div>
-                  <div className="h-4 bg-muted rounded w-2/3"></div>
-                </CardContent>
-              </Card>
+              <div key={i} className="border-2 border-gray-100 rounded-2xl p-4 h-24 animate-pulse bg-gray-50" />
             ))}
           </div>
         </div>
@@ -343,14 +323,12 @@ const BusinessProjects: React.FC = () => {
   if (projectsError) {
     return (
       <DashboardLayout userRole="business_client">
-        <div className="p-4 lg:p-6 max-w-full overflow-hidden space-y-6">
-          <h1 className="text-3xl font-bold truncate">My Projects</h1>
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              Unable to load your projects. Please refresh the page or try again later.
-            </AlertDescription>
-          </Alert>
+        <div className="min-h-screen bg-white overflow-x-hidden flex items-center justify-center p-4">
+          <div className="border-2 border-dc-teal rounded-2xl p-6 text-center max-w-sm w-full">
+            <AlertCircle className="h-10 w-10 text-red-400 mx-auto mb-3" />
+            <h3 className="font-bold text-gray-900 mb-2">Unable to load projects</h3>
+            <p className="text-gray-500 text-sm">Please refresh the page or try again later.</p>
+          </div>
         </div>
       </DashboardLayout>
     );
@@ -358,114 +336,129 @@ const BusinessProjects: React.FC = () => {
 
   return (
     <DashboardLayout userRole="business_client">
-      <div className="p-4 lg:p-6 max-w-full overflow-hidden space-y-6">
-        <div className="flex justify-between items-center gap-4 min-w-0">
-          <h1 className="text-3xl font-bold truncate">My Projects</h1>
-          <div className="text-sm text-muted-foreground whitespace-nowrap flex-shrink-0">
-            {projects?.length || 0} active project{projects?.length !== 1 ? 's' : ''}
-          </div>
+      <div className="min-h-screen bg-white overflow-x-hidden">
+        {/* Template B Header */}
+        <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
+          <button
+            onClick={() => navigate(-1)}
+            className="text-dc-pink-accent text-lg mr-2 flex items-center"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+          <h1 className="flex-1 font-sans text-base font-bold text-gray-900 uppercase tracking-wide text-center">
+            My Projects
+          </h1>
+          <span className="text-xs text-gray-500 whitespace-nowrap">
+            {projects?.length || 0} project{projects?.length !== 1 ? 's' : ''}
+          </span>
         </div>
 
-        {!projects || projects.length === 0 ? (
-          <Card>
-            <CardContent className="p-12 text-center">
-              <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-              <h3 className="text-lg font-medium mb-2">No Projects Yet</h3>
-              <p className="text-muted-foreground mb-4">
+        {/* Body */}
+        <div className="px-4 pt-4 pb-24 space-y-4">
+
+          {!projects || projects.length === 0 ? (
+            <div className="border-2 border-dc-teal rounded-2xl p-10 text-center">
+              <FileText className="h-10 w-10 mx-auto mb-3 text-gray-400" />
+              <h3 className="font-bold text-gray-900 mb-1">No Projects Yet</h3>
+              <p className="text-sm text-gray-500 mb-4">
                 Once creators are assigned to your campaigns, they'll appear here.
               </p>
-              <Button onClick={() => navigate('/dashboard/business/campaigns')}>
+              <Button
+                onClick={() => navigate('/dashboard/business/campaigns')}
+                className="rounded-full bg-dc-teal text-white font-bold px-6"
+              >
                 View My Campaigns
               </Button>
-            </CardContent>
-          </Card>
-        ) : (
-          <>
-            {/* Action Required Banners */}
-            {projectsNeedingContentReview.length > 0 && (
-              <Alert className="border-green-500 bg-green-50 dark:bg-green-950/20">
-                <FileCheck className="h-5 w-5 text-green-600 dark:text-green-400" />
-                <AlertDescription className="text-green-800 dark:text-green-300 font-medium">
-                  <strong>{projectsNeedingContentReview.length} deliverable{projectsNeedingContentReview.length !== 1 ? 's' : ''}</strong> submitted and ready for your one-tap approval.
-                </AlertDescription>
-              </Alert>
-            )}
-            {projectsNeedingApproval.length > 0 && (
-              <Alert className="border-amber-500 bg-amber-50 dark:bg-amber-950/20">
-                <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-                <AlertDescription className="text-amber-800 dark:text-amber-300 font-medium">
-                  <strong>{projectsNeedingApproval.length} project{projectsNeedingApproval.length !== 1 ? 's' : ''}</strong> {projectsNeedingApproval.length === 1 ? 'has' : 'have'} been marked complete by creators and need your approval.
-                </AlertDescription>
-              </Alert>
-            )}
+            </div>
+          ) : (
+            <>
+              {/* Action Required Banners */}
+              {projectsNeedingContentReview.length > 0 && (
+                <Alert className="border-green-500 bg-green-50 rounded-2xl">
+                  <FileCheck className="h-5 w-5 text-green-600" />
+                  <AlertDescription className="text-green-800 font-medium">
+                    <strong>{projectsNeedingContentReview.length} deliverable{projectsNeedingContentReview.length !== 1 ? 's' : ''}</strong> submitted and ready for your one-tap approval.
+                  </AlertDescription>
+                </Alert>
+              )}
+              {projectsNeedingApproval.length > 0 && (
+                <Alert className="border-amber-500 bg-amber-50 rounded-2xl">
+                  <AlertCircle className="h-5 w-5 text-amber-600" />
+                  <AlertDescription className="text-amber-800 font-medium">
+                    <strong>{projectsNeedingApproval.length} project{projectsNeedingApproval.length !== 1 ? 's' : ''}</strong> {projectsNeedingApproval.length === 1 ? 'has' : 'have'} been marked complete by creators and need your approval.
+                  </AlertDescription>
+                </Alert>
+              )}
 
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-              <TabsList>
-                <TabsTrigger value="overview">Overview</TabsTrigger>
-                {projectsNeedingContentReview.length > 0 && (
-                  <TabsTrigger value="needs-review" className="relative">
-                    Needs Review
-                    <Badge variant="destructive" className="ml-2 h-5 w-5 p-0 flex items-center justify-center text-xs rounded-full">
-                      {projectsNeedingContentReview.length}
-                    </Badge>
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+                <TabsList className="rounded-full bg-gray-100">
+                  <TabsTrigger value="overview" className="rounded-full text-xs font-bold uppercase tracking-wide">
+                    Overview
                   </TabsTrigger>
-                )}
-                <TabsTrigger value="deliverables">Deliverables</TabsTrigger>
-              </TabsList>
+                  {projectsNeedingContentReview.length > 0 && (
+                    <TabsTrigger value="needs-review" className="relative rounded-full text-xs font-bold uppercase tracking-wide">
+                      Review
+                      <Badge variant="destructive" className="ml-1 h-4 w-4 p-0 flex items-center justify-center text-xs rounded-full">
+                        {projectsNeedingContentReview.length}
+                      </Badge>
+                    </TabsTrigger>
+                  )}
+                  <TabsTrigger value="deliverables" className="rounded-full text-xs font-bold uppercase tracking-wide">
+                    Files
+                  </TabsTrigger>
+                </TabsList>
 
-              <TabsContent value="overview" className="space-y-4">
-                {projects.map((project) => {
-                  const isHighlighted = highlightedProjectId === project.id;
-                  const needsApproval = project.creator_completion_status === 'requested' && 
-                                       project.business_completion_status !== 'requested';
-                  const statusInfo = getCompletionStatus(project);
+                <TabsContent value="overview" className="space-y-3">
+                  {projects.map((project) => {
+                    const isHighlighted = highlightedProjectId === project.id;
+                    const needsApproval = project.creator_completion_status === 'requested' &&
+                                         project.business_completion_status !== 'requested';
+                    const statusInfo = getCompletionStatus(project);
 
-                  return (
-                    <Card 
-                      key={project.id} 
-                      ref={isHighlighted ? highlightedRef : null}
-                      className={cn(
-                        "hover:shadow-md transition-all duration-300",
-                        needsApproval && "border-2 border-amber-400 bg-amber-50/50 dark:bg-amber-950/20",
-                        isHighlighted && "ring-2 ring-amber-500 ring-offset-2"
-                      )}
-                    >
-                      <CardHeader>
-                        <div className="flex justify-between items-start">
-                          <div className="space-y-2">
-                            <div className="flex items-center gap-3">
-                              <CardTitle className="text-xl">{project.campaign.title}</CardTitle>
+                    return (
+                      <div
+                        key={project.id}
+                        ref={isHighlighted ? highlightedRef : null}
+                        className={cn(
+                          "border-2 border-dc-teal rounded-2xl p-4 bg-white space-y-3",
+                          needsApproval && "border-amber-400 bg-amber-50/50",
+                          isHighlighted && "ring-2 ring-amber-500 ring-offset-2"
+                        )}
+                      >
+                        <div className="flex justify-between items-start gap-2">
+                          <div className="space-y-1 flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h3 className="font-bold text-gray-900 truncate">{project.campaign.title}</h3>
                               {needsApproval && (
-                                <Badge variant="destructive" className="animate-pulse">
+                                <Badge variant="destructive" className="animate-pulse text-xs rounded-full">
                                   <Zap className="h-3 w-3 mr-1" />
                                   Action Required
                                 </Badge>
                               )}
                             </div>
-                            <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                              <div className="flex items-center gap-2">
-                                <User className="h-4 w-4" />
-                                {project.creator_profile?.creator_name || 
-                                 project.user_profile?.full_name || 
+                            <div className="flex flex-wrap gap-3 text-xs text-gray-500">
+                              <span className="flex items-center gap-1">
+                                <User className="h-3 w-3" />
+                                {project.creator_profile?.creator_name ||
+                                 project.user_profile?.full_name ||
                                  project.user_profile?.email || 'Creator'}
-                              </div>
+                              </span>
                               {project.campaign.deadline && (
-                                <div className="flex items-center gap-2">
-                                  <Calendar className="h-4 w-4" />
+                                <span className="flex items-center gap-1">
+                                  <Calendar className="h-3 w-3" />
                                   Due: {new Date(project.campaign.deadline).toLocaleDateString()}
-                                </div>
+                                </span>
                               )}
                             </div>
                           </div>
                           {statusInfo.showBadge && (
-                            <Badge variant={statusInfo.variant}>
+                            <Badge variant={statusInfo.variant} className="rounded-full text-xs shrink-0">
                               {statusInfo.text}
                             </Badge>
                           )}
                         </div>
-                      </CardHeader>
-                      <CardContent>
-                        <p className="text-muted-foreground mb-4">{project.campaign.description}</p>
+
+                        <p className="text-sm text-gray-500 line-clamp-2">{project.campaign.description}</p>
 
                         {/* One-Tap Content Approval */}
                         <QuickApprovalCard
@@ -482,53 +475,39 @@ const BusinessProjects: React.FC = () => {
                           revisionCount={project.revision_count || 0}
                         />
 
-                        <div className="flex gap-2 flex-wrap mt-4">
+                        <div className="flex gap-2 flex-wrap pt-1">
                           {needsApproval ? (
                             <Button
                               onClick={() => handleMarkComplete(project.id)}
                               disabled={requestingId === project.id}
-                              variant="default"
                               size="sm"
-                              className="bg-amber-600 hover:bg-amber-700"
+                              className="rounded-full bg-amber-600 hover:bg-amber-700 text-white font-bold"
                             >
                               {requestingId === project.id ? (
-                                <>
-                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                  Processing Payment...
-                                </>
+                                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Processing...</>
                               ) : (
-                                <>
-                                  <DollarSign className="h-4 w-4 mr-2" />
-                                  Approve & Release Payment
-                                </>
+                                <><DollarSign className="h-4 w-4 mr-2" />Approve & Release Payment</>
                               )}
                             </Button>
                           ) : project.status === 'active' && (!project.business_completion_status || project.business_completion_status === 'pending') && (
                             <Button
                               onClick={() => handleMarkComplete(project.id)}
                               disabled={requestingId === project.id}
-                              variant="default"
                               size="sm"
+                              className="rounded-full bg-dc-teal text-white font-bold"
                             >
                               {requestingId === project.id ? (
-                                <>
-                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                  Completing...
-                                </>
+                                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Completing...</>
                               ) : (
-                                <>
-                                  <CheckCircle2 className="h-4 w-4 mr-2" />
-                                  Mark Complete
-                                </>
+                                <><CheckCircle2 className="h-4 w-4 mr-2" />Mark Complete</>
                               )}
                             </Button>
                           )}
                           {project.status === 'completed' && (
                             <Button
                               onClick={() => handleLeaveReview(project)}
-                              variant="default"
                               size="sm"
-                              className="bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-700 hover:to-purple-700"
+                              className="rounded-full bg-dc-pink-accent text-white font-bold"
                             >
                               <Star className="h-4 w-4 mr-2" />
                               Leave Review
@@ -537,61 +516,54 @@ const BusinessProjects: React.FC = () => {
                           <Button
                             variant="outline"
                             size="sm"
+                            className="rounded-full border-dc-teal text-dc-teal font-bold"
                             onClick={() => {
-                              console.log('Viewing files for project:', project.campaign_id);
                               setSelectedProject(project.campaign_id);
                               setActiveTab('deliverables');
                             }}
                           >
-                            <FileText className="h-4 w-4 mr-2" />
-                            View Files
+                            <FileText className="h-4 w-4 mr-1" />
+                            Files
                           </Button>
                           <Button
                             variant="outline"
                             size="sm"
+                            className="rounded-full border-dc-teal text-dc-teal font-bold"
                             onClick={() => handleMessageCreator(project.campaign_id)}
                           >
-                            <MessageCircle className="h-4 w-4 mr-2" />
-                            Message Creator
+                            <MessageCircle className="h-4 w-4 mr-1" />
+                            Message
                           </Button>
                         </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </TabsContent>
+                      </div>
+                    );
+                  })}
+                </TabsContent>
 
-              {/* Needs Review Tab - Quick approval for submitted content */}
-              <TabsContent value="needs-review" className="space-y-4">
-                {projectsNeedingContentReview.length === 0 ? (
-                  <Card>
-                    <CardContent className="p-8 text-center">
-                      <CheckCircle2 className="h-12 w-12 mx-auto mb-4 text-green-400" />
-                      <h3 className="text-lg font-medium mb-2">All Caught Up!</h3>
-                      <p className="text-muted-foreground">No content waiting for your review.</p>
-                    </CardContent>
-                  </Card>
-                ) : (
-                  projectsNeedingContentReview.map((project) => (
-                    <Card key={project.id} className="border-2 border-green-300 dark:border-green-700">
-                      <CardHeader className="pb-2">
-                        <div className="flex justify-between items-start">
+                {/* Needs Review Tab */}
+                <TabsContent value="needs-review" className="space-y-3">
+                  {projectsNeedingContentReview.length === 0 ? (
+                    <div className="border-2 border-dc-teal rounded-2xl p-8 text-center">
+                      <CheckCircle2 className="h-10 w-10 mx-auto mb-3 text-green-400" />
+                      <h3 className="font-bold text-gray-900 mb-1">All Caught Up!</h3>
+                      <p className="text-sm text-gray-500">No content waiting for your review.</p>
+                    </div>
+                  ) : (
+                    projectsNeedingContentReview.map((project) => (
+                      <div key={project.id} className="border-2 border-green-400 rounded-2xl p-4 bg-white space-y-3">
+                        <div className="flex justify-between items-start gap-2">
                           <div>
-                            <CardTitle className="text-lg">{project.campaign.title}</CardTitle>
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+                            <h3 className="font-bold text-gray-900">{project.campaign.title}</h3>
+                            <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
                               <User className="h-3 w-3" />
-                              {project.creator_profile?.creator_name ||
-                               project.user_profile?.full_name ||
-                               'Creator'}
-                            </div>
+                              {project.creator_profile?.creator_name || project.user_profile?.full_name || 'Creator'}
+                            </p>
                           </div>
-                          <Badge className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
+                          <Badge className="bg-green-100 text-green-700 rounded-full text-xs shrink-0">
                             <FileCheck className="h-3 w-3 mr-1" />
-                            Ready for Review
+                            Ready
                           </Badge>
                         </div>
-                      </CardHeader>
-                      <CardContent>
                         <QuickApprovalCard
                           collaborationId={project.id}
                           campaignId={project.campaign_id}
@@ -605,55 +577,56 @@ const BusinessProjects: React.FC = () => {
                           contentStatus={project.content_status || null}
                           revisionCount={project.revision_count || 0}
                         />
-                        <div className="flex gap-2 mt-3">
+                        <div className="flex gap-2 pt-1">
                           <Button
                             variant="outline"
                             size="sm"
+                            className="rounded-full border-dc-teal text-dc-teal font-bold"
                             onClick={() => {
                               setSelectedProject(project.campaign_id);
                               setActiveTab('deliverables');
                             }}
                           >
-                            <FileText className="h-4 w-4 mr-2" />
-                            View Files
+                            <FileText className="h-4 w-4 mr-1" />
+                            Files
                           </Button>
                           <Button
                             variant="outline"
                             size="sm"
+                            className="rounded-full border-dc-teal text-dc-teal font-bold"
                             onClick={() => handleMessageCreator(project.campaign_id)}
                           >
-                            <MessageCircle className="h-4 w-4 mr-2" />
+                            <MessageCircle className="h-4 w-4 mr-1" />
                             Message
                           </Button>
                         </div>
-                      </CardContent>
-                    </Card>
-                  ))
-                )}
-              </TabsContent>
+                      </div>
+                    ))
+                  )}
+                </TabsContent>
 
-            <TabsContent value="deliverables" className="space-y-4">
-              {selectedProject ? (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-medium">Project Deliverables</h3>
-                    <Button
-                      variant="outline"
-                      onClick={() => setSelectedProject(null)}
-                    >
-                      Show All Projects
-                    </Button>
-                  </div>
-                  
-                  {projectFiles && projectFiles.length > 0 ? (
-                    <div className="grid gap-4">
-                      {projectFiles.map((file) => (
-                        <Card key={file.id}>
-                          <CardContent className="p-4">
-                            <div className="flex items-center justify-between">
-                              <div className="space-y-1">
-                                <h4 className="font-medium">{file.original_filename}</h4>
-                                <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                <TabsContent value="deliverables" className="space-y-3">
+                  {selectedProject ? (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h3 className="font-bold text-gray-900">Project Deliverables</h3>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="rounded-full border-dc-teal text-dc-teal font-bold"
+                          onClick={() => setSelectedProject(null)}
+                        >
+                          Show All
+                        </Button>
+                      </div>
+
+                      {projectFiles && projectFiles.length > 0 ? (
+                        <div className="space-y-3">
+                          {projectFiles.map((file) => (
+                            <div key={file.id} className="border-2 border-dc-teal rounded-2xl p-4 flex items-center justify-between gap-3">
+                              <div className="space-y-0.5 flex-1 min-w-0">
+                                <p className="font-bold text-gray-900 truncate text-sm">{file.original_filename}</p>
+                                <div className="flex flex-wrap gap-3 text-xs text-gray-500">
                                   <span>{formatFileSize(file.file_size)}</span>
                                   <span>Uploaded {new Date(file.created_at).toLocaleDateString()}</span>
                                   {file.uploader_profile?.full_name && (
@@ -663,42 +636,37 @@ const BusinessProjects: React.FC = () => {
                               </div>
                               <Button
                                 size="sm"
+                                className="rounded-full bg-dc-teal text-white font-bold shrink-0"
                                 onClick={() => handleDownloadFile(file)}
                                 disabled={downloadingFileId === file.id}
                               >
                                 {downloadingFileId === file.id ? (
-                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                  <Loader2 className="h-4 w-4 animate-spin" />
                                 ) : (
-                                  <Download className="h-4 w-4 mr-2" />
+                                  <Download className="h-4 w-4" />
                                 )}
-                                {downloadingFileId === file.id ? 'Downloading...' : 'Download'}
                               </Button>
                             </div>
-                          </CardContent>
-                        </Card>
-                      ))}
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="border-2 border-dc-teal rounded-2xl p-8 text-center">
+                          <FileText className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                          <p className="text-sm text-gray-500">No deliverables uploaded yet.</p>
+                        </div>
+                      )}
                     </div>
                   ) : (
-                    <Card>
-                      <CardContent className="p-8 text-center">
-                        <FileText className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                        <p className="text-muted-foreground">No deliverables uploaded yet for this project.</p>
-                      </CardContent>
-                    </Card>
+                    <div className="border-2 border-dc-teal rounded-2xl p-8 text-center">
+                      <FileText className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                      <p className="text-sm text-gray-500">Select a project to view its deliverables.</p>
+                    </div>
                   )}
-                </div>
-              ) : (
-                <Card>
-                  <CardContent className="p-8 text-center">
-                    <FileText className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                    <p className="text-muted-foreground">Select a project to view its deliverables.</p>
-                  </CardContent>
-                </Card>
-              )}
-            </TabsContent>
-          </Tabs>
-          </>
-        )}
+                </TabsContent>
+              </Tabs>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Rating Modal */}
