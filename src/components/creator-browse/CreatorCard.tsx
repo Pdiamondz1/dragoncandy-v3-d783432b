@@ -6,6 +6,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useCreateDirectConversation } from '@/hooks/useConversations';
 import { supabase } from '@/integrations/supabase/client';
 import CreatorProfileModal from './CreatorProfileModal';
+import { CreatorPortfolioModal } from '@/components/creator-profile/CreatorPortfolioModal';
 import { User } from 'lucide-react';
 
 interface CreatorProfile {
@@ -39,39 +40,42 @@ export const CreatorCard: React.FC<CreatorCardProps> = ({ creator }) => {
   const { toast } = useToast();
   const createConversation = useCreateDirectConversation();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isPortfolioOpen, setIsPortfolioOpen] = useState(false);
+  const [portfolioIndex, setPortfolioIndex] = useState(0);
   const [portfolioImageUrl, setPortfolioImageUrl] = useState<string | null>(null);
+  const [resolvedPortfolioUrls, setResolvedPortfolioUrls] = useState<string[]>([]);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    const loadPortfolioImage = async () => {
+    const loadPortfolioImages = async () => {
       if (!creator.portfolio_urls || creator.portfolio_urls.length === 0) {
         setPortfolioImageUrl(null);
+        setResolvedPortfolioUrls([]);
         return;
       }
 
-      const firstUrl = creator.portfolio_urls[0];
-      
-      // Check if it's an external URL
-      if (firstUrl.startsWith('http://') || firstUrl.startsWith('https://')) {
-        setPortfolioImageUrl(firstUrl);
-        return;
-      }
+      const resolved = await Promise.all(
+        creator.portfolio_urls.map(async (url) => {
+          if (url.startsWith('http://') || url.startsWith('https://')) {
+            return url;
+          }
+          try {
+            const { data } = await supabase.storage
+              .from('profile-assets')
+              .createSignedUrl(url, 3600);
+            return data?.signedUrl ?? null;
+          } catch {
+            return null;
+          }
+        })
+      );
 
-      // It's a Supabase storage path, generate signed URL
-      try {
-        const { data } = await supabase.storage
-          .from('profile-assets')
-          .createSignedUrl(firstUrl, 3600);
-        
-        if (data?.signedUrl) {
-          setPortfolioImageUrl(data.signedUrl);
-        }
-      } catch (error) {
-        console.error('Error loading portfolio image:', error);
-      }
+      const valid = resolved.filter((u): u is string => u !== null);
+      setResolvedPortfolioUrls(valid);
+      setPortfolioImageUrl(valid[0] ?? null);
     };
 
-    loadPortfolioImage();
+    loadPortfolioImages();
   }, [creator.portfolio_urls]);
 
   useEffect(() => {
@@ -192,20 +196,45 @@ export const CreatorCard: React.FC<CreatorCardProps> = ({ creator }) => {
           </p>
         </div>
 
-        {/* Action Button */}
-        <button
-          className="bg-dc-pink text-white rounded-full px-4 py-1.5 text-xs font-semibold flex-shrink-0 hover:opacity-90 transition-opacity disabled:opacity-60"
-          onClick={handleContact}
-          disabled={createConversation.isPending}
-        >
-          {createConversation.isPending ? 'Starting...' : 'Contact'}
-        </button>
+        {/* Action Buttons */}
+        <div className="flex flex-col gap-1.5 flex-shrink-0">
+          {resolvedPortfolioUrls.length > 0 && (
+            <button
+              className="bg-teal-400 text-white rounded-full px-3 py-1.5 text-xs font-semibold hover:opacity-90 transition-opacity"
+              onClick={() => {
+                setPortfolioIndex(0);
+                setIsPortfolioOpen(true);
+              }}
+            >
+              View Portfolio
+            </button>
+          )}
+          <button
+            className="bg-dc-pink text-white rounded-full px-3 py-1.5 text-xs font-semibold hover:opacity-90 transition-opacity disabled:opacity-60"
+            onClick={handleContact}
+            disabled={createConversation.isPending}
+          >
+            {createConversation.isPending ? 'Starting...' : 'Contact'}
+          </button>
+        </div>
       </div>
 
       <CreatorProfileModal
         creator={creator}
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
+      />
+
+      <CreatorPortfolioModal
+        isOpen={isPortfolioOpen}
+        onClose={() => setIsPortfolioOpen(false)}
+        creatorName={creator.creator_name}
+        images={resolvedPortfolioUrls.map((url) => ({
+          url,
+          artistName: creator.creator_name,
+        }))}
+        currentIndex={portfolioIndex}
+        onIndexChange={setPortfolioIndex}
       />
     </>
   );
