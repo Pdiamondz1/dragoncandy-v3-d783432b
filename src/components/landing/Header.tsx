@@ -9,15 +9,15 @@ export const Header: React.FC = () => {
   const navigate = useNavigate();
 
   return (
-    <header className="flex items-center justify-between py-4 lg:py-6 animate-fade-in">
+    <header className="flex items-center justify-between py-4 bg-white animate-fade-in">
       <img
         src={dragonCandyLogo}
         alt="DragonCandy"
-        className="h-8 lg:h-10 cursor-pointer transition-transform duration-200 hover:scale-105"
+        className="h-12 w-12 cursor-pointer transition-transform duration-200 hover:scale-105"
         onClick={() => navigate('/')}
       />
 
-      {/* Desktop nav links */}
+      {/* Desktop nav links — hidden on mobile */}
       <nav className="hidden md:flex items-center gap-8">
         <a
           href="#features"
@@ -52,7 +52,7 @@ export const Header: React.FC = () => {
         </Button>
       </nav>
 
-      {/* Mobile hamburger menu */}
+      {/* Mobile hamburger — only icon, no extra nav links */}
       <div className="md:hidden">
         <Sheet>
           <SheetTrigger asChild>
@@ -60,7 +60,7 @@ export const Header: React.FC = () => {
               className="p-2 rounded-full hover:bg-gray-100 transition-colors"
               aria-label="Toggle menu"
             >
-              <Menu className="h-6 w-6 text-dc-pink-accent" />
+              <Menu className="h-6 w-6 text-gray-600" />
             </button>
           </SheetTrigger>
           <SheetContent side="right" className="w-64 pt-8">
