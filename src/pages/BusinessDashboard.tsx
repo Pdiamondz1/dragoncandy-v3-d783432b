@@ -4,7 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { BarChart3, Users, Target, Flame, DollarSign } from 'lucide-react';
+import { Plus, DollarSign } from 'lucide-react';
 import { useSponsorshipProposals } from '@/hooks/useSponsorshipProposals';
 import SponsorshipProposalCard from '@/components/campaigns/SponsorshipProposalCard';
 import { BusinessDashboardSideFeed } from '@/components/dragon-feed/BusinessDashboardSideFeed';
@@ -45,44 +45,18 @@ const BusinessDashboard = () => {
   const quickActions = [
     {
       title: "View Campaigns",
-      description: "Manage your active and past campaigns",
-      icon: <Target className="h-6 w-6 text-blue-600" />,
+      description: "Manage your content campaigns and track their progress",
       action: () => navigate('/dashboard/business/campaigns')
     },
     {
       title: "Browse Creators",
-      description: "Discover talented content creators",
-      icon: <Users className="h-6 w-6 text-green-600" />,
+      description: "Discover talented content creators for your campaigns",
       action: () => navigate('/dashboard/business/creators')
     },
     {
       title: "View Analytics",
       description: "Track your campaign performance",
-      icon: <BarChart3 className="h-6 w-6 text-purple-600" />,
       action: () => navigate('/dashboard/analytics')
-    }
-  ];
-
-  const howItWorksSteps = [
-    {
-      number: "1",
-      title: "Create Campaign",
-      description: "Use our AI-powered wizard to create your campaign strategy"
-    },
-    {
-      number: "2",
-      title: "Find Creators",
-      description: "Browse and connect with talented content creators"
-    },
-    {
-      number: "3",
-      title: "Collaborate",
-      description: "Work together to create amazing content"
-    },
-    {
-      number: "4",
-      title: "Launch & Grow",
-      description: "Publish your content and watch your brand grow"
     }
   ];
 
@@ -90,9 +64,9 @@ const BusinessDashboard = () => {
     <DashboardLayout userRole="business_client">
       <div className="flex h-full overflow-hidden">
         {/* Main Content Area */}
-        <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 lg:p-8">
-          <div className="max-w-6xl mx-auto space-y-8 sm:space-y-12">
-          
+        <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6">
+          <div className="max-w-2xl mx-auto space-y-6">
+
           {/* Donny AI Card */}
           <DonnyCard
             onOpenChat={(message) => {
@@ -102,101 +76,50 @@ const BusinessDashboard = () => {
             }}
           />
 
-          {/* Ask Bar */}
-          <div className="pt-4">
-            <AskBar onClick={openModal} userRole="business_client" />
-          </div>
-          
+          {/* Ask Donny Bar */}
+          <AskBar onClick={openModal} userRole="business_client" />
+
           {/* Review Prompts */}
           <RatingPromptManager />
-          
-          {/* Welcome Header */}
-          <div className="text-center space-y-3 sm:space-y-4">
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground">
-              Welcome back, {profile.business_name}!
-            </h1>
-            <p className="text-base sm:text-xl text-muted-foreground">
-              Ready to create amazing content with talented creators?
+
+          {/* DragonDash Card */}
+          <div className="border-2 border-dc-teal rounded-2xl p-6 bg-white text-center space-y-4">
+            {/* Teal "+" circle */}
+            <div className="w-12 h-12 bg-dc-teal rounded-full flex items-center justify-center mx-auto">
+              <Plus className="w-6 h-6 text-white" />
+            </div>
+
+            {/* Title */}
+            <h2 className="text-xl font-bold text-gray-900">
+              Start A DragonDash
+            </h2>
+
+            {/* Description */}
+            <p className="text-sm text-gray-500">
+              Need content in hours, not days? Choose your delivery speed and let our creators deliver quality content fast.
             </p>
-          </div>
 
-          {/* Create Campaign CTA - DragonDash Branded */}
-          <div className="text-center">
-            <Card className="max-w-2xl mx-auto bg-gradient-to-br from-orange-50 via-pink-50 to-red-50 border-pink-300 shadow-lg">
-              <CardContent className="p-4 sm:p-6 lg:p-8">
-                <div className="space-y-4 sm:space-y-6">
-                  {/* Flame Icon */}
-                  <div className="w-16 h-16 bg-gradient-to-br from-orange-500 to-pink-600 rounded-full flex items-center justify-center mx-auto shadow-lg">
-                    <Flame className="w-8 h-8 text-white" />
-                  </div>
-                  
-                  {/* Title & Subtitle */}
-                  <div>
-                    <h2 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-orange-600 to-pink-600 bg-clip-text text-transparent mb-1">
-                      DragonDash
-                    </h2>
-                    <p className="text-lg text-muted-foreground font-medium">
-                      Fast Content, On Demand
-                    </p>
-                  </div>
-                  
-                  {/* Description */}
-                  <p className="text-muted-foreground">
-                    Need content in hours, not days? Choose your delivery speed and let our creators deliver quality content fast.
-                  </p>
-                  
-                  {/* CTA Button */}
-                  <Button 
-                    size="lg" 
-                    className="bg-gradient-to-r from-orange-500 to-pink-600 hover:from-orange-600 hover:to-pink-700 text-white px-8 py-3 shadow-lg"
-                    onClick={() => navigate('/dashboard/business/campaigns/create')}
-                  >
-                    <Flame className="w-5 h-5 mr-2" />
-                    Start a DragonDash
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* How It Works */}
-          <div className="space-y-8">
-            <div className="text-center">
-              <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-4">How It Works</h2>
-              <p className="text-muted-foreground">Simple steps to launch your next successful campaign</p>
-            </div>
-            
-            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
-              {howItWorksSteps.map((step, index) => (
-                <Card key={index} className="text-center hover:shadow-lg transition-shadow">
-                  <CardContent className="p-3 sm:p-6">
-                    <div className="w-12 h-12 bg-pink-600 text-white rounded-full flex items-center justify-center mx-auto mb-4 text-lg font-bold">
-                      {step.number}
-                    </div>
-                    <h3 className="text-lg font-semibold text-foreground mb-2">
-                      {step.title}
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      {step.description}
-                    </p>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+            {/* CTA Button */}
+            <Button
+              className="bg-dc-teal hover:bg-dc-teal/90 text-white font-bold rounded-full px-8 py-2 w-full"
+              onClick={() => navigate('/dashboard/business/campaigns/create')}
+            >
+              DragonDash
+            </Button>
           </div>
 
           {/* Sponsorship Proposals Section */}
           {pendingProposals.length > 0 && (
-            <div className="space-y-6">
-              <Card className="border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50">
+            <div className="space-y-4">
+              <Card className="border-2 border-dc-teal rounded-2xl bg-white">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <DollarSign className="h-5 w-5 text-blue-600" />
+                  <CardTitle className="flex items-center gap-2 text-gray-900">
+                    <DollarSign className="h-5 w-5 text-dc-teal" />
                     Sponsorship Proposals ({pendingProposals.length})
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm text-muted-foreground mb-4">
+                  <p className="text-sm text-gray-500 mb-4">
                     You have {pendingProposals.length} pending sponsorship {pendingProposals.length === 1 ? 'proposal' : 'proposals'} from brands interested in funding your campaigns.
                   </p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -210,9 +133,9 @@ const BusinessDashboard = () => {
                     ))}
                   </div>
                   {pendingProposals.length > 4 && (
-                    <Button 
-                      variant="outline" 
-                      className="w-full mt-4"
+                    <Button
+                      variant="outline"
+                      className="w-full mt-4 rounded-full border-dc-teal text-dc-teal hover:bg-dc-teal/10"
                       onClick={() => navigate('/dashboard/business/sponsorships')}
                     >
                       View All Proposals
@@ -224,31 +147,31 @@ const BusinessDashboard = () => {
           )}
 
           {/* Quick Actions */}
-          <div className="space-y-8">
-            <div className="text-center">
-              <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-4">Quick Actions</h2>
-              <p className="text-muted-foreground">Manage your campaigns and discover new opportunities</p>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="space-y-3">
+            {/* Section heading in Pacifico script */}
+            <h2 className="font-script text-2xl text-dc-teal text-center">Quick Actions</h2>
+            <p className="text-sm text-gray-500 text-center">
+              Instant social media department: campaigns generated, creators connected, authentic content posted in 3 hours flat.
+            </p>
+            <p className="text-sm text-gray-500 text-center">
+              Launch faster. Spend less. Crush engagement. Start now.
+            </p>
+
+            {/* 3-column grid */}
+            <div className="grid grid-cols-3 gap-3 pt-2">
               {quickActions.map((action, index) => (
-                <Card key={index} className="hover:shadow-lg transition-shadow cursor-pointer" onClick={action.action}>
-                  <CardContent className="p-6">
-                    <div className="flex items-center space-x-4">
-                      <div className="flex-shrink-0">
-                        {action.icon}
-                      </div>
-                      <div>
-                        <h3 className="text-lg font-semibold text-foreground">
-                          {action.title}
-                        </h3>
-                        <p className="text-sm text-muted-foreground">
-                          {action.description}
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                <button
+                  key={index}
+                  onClick={action.action}
+                  className="border-2 border-dc-teal rounded-2xl p-3 text-center bg-white hover:bg-dc-teal/5 transition-colors cursor-pointer"
+                >
+                  <h3 className="text-sm font-bold text-gray-900">
+                    {action.title}
+                  </h3>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {action.description}
+                  </p>
+                </button>
               ))}
             </div>
           </div>
