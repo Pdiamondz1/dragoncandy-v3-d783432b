@@ -68,7 +68,7 @@ export function DonnyChatSheet({ open, onOpenChange, initialMessage }: DonnyChat
           <DonnyAvatar size="md" state={avatarState} />
           <div className="flex-1">
             <div className="text-sm font-bold text-[#111]">Donny</div>
-            <div className="text-xs text-[#4DD9C0]">Always here for you</div>
+            <div className="text-xs text-[#4DD9C0]">Always here for you ✨</div>
           </div>
           <button
             onClick={() => onOpenChange(false)}
