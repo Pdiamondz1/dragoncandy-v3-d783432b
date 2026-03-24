@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search } from 'lucide-react';
+import dragonEmblem from '@/assets/dragon-emblem.png';
 import { cn } from '@/lib/utils';
 
 interface AskBarProps {
@@ -18,7 +18,7 @@ export const AskBar: React.FC<AskBarProps> = ({ onClick }) => {
         "cursor-text"
       )}
     >
-      <Search className="w-5 h-5 text-gray-400 flex-shrink-0" />
+      <img src={dragonEmblem} alt="Donny" className="w-6 h-6 flex-shrink-0 object-contain" />
       <span className="text-gray-400 text-base flex-1 text-left">
         Ask Donny...
       </span>
