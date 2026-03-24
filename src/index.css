@@ -20,6 +20,15 @@
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
 
+  /* Prevent any element from exceeding viewport width on mobile */
+  @media (max-width: 767px) {
+    #root,
+    #root > * {
+      max-width: 100vw;
+      overflow-x: hidden;
+    }
+  }
+
   /* Fixed sidebar positioning for landing page portfolio columns */
   .fixed-sidebar {
     position: fixed !important;

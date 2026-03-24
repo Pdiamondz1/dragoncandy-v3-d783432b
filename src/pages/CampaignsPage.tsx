@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Plus, ArrowLeft } from 'lucide-react';
-import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+
 import CampaignsList from '@/components/campaigns/CampaignsList';
 import { useCampaigns } from '@/hooks/useCampaigns';
 import { supabase } from '@/integrations/supabase/client';
@@ -123,9 +123,9 @@ const CampaignsPage: React.FC = () => {
         </div>
 
         {/* Status filter tabs — horizontal scroll */}
-        <div className="bg-white border-b border-gray-100">
-          <ScrollArea className="w-full">
-            <div className="flex px-4 py-2 gap-2 whitespace-nowrap">
+        <div className="bg-white border-b border-gray-100 overflow-hidden">
+          <div className="overflow-x-auto scrollbar-hide">
+            <div className="flex px-4 py-2 gap-2 w-max">
               {tabs.map(tab => (
                 <button
                   key={tab.key}
@@ -147,8 +147,7 @@ const CampaignsPage: React.FC = () => {
                 </button>
               ))}
             </div>
-            <ScrollBar orientation="horizontal" />
-          </ScrollArea>
+          </div>
         </div>
 
         {/* Campaign list */}
