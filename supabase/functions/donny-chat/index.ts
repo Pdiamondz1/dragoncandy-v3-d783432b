@@ -304,14 +304,23 @@ function buildSystemPrompt(profile: any, businessProfile: any, creatorProfile: a
 
 async function checkRateLimit(userId: string, supabaseAdmin: any): Promise<boolean> {
   const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+
+  // First fetch the user's conversation IDs
+  const { data: convos, error: convoError } = await supabaseAdmin
+    .from("donny_conversations")
+    .select("id")
+    .eq("user_id", userId);
+
+  if (convoError || !convos || convos.length === 0) return true;
+
+  const convoIds = convos.map((c: any) => c.id);
+
   const { count, error } = await supabaseAdmin
     .from("donny_messages")
     .select("id", { count: "exact", head: true })
     .eq("role", "user")
     .gte("created_at", oneHourAgo)
-    .in("conversation_id",
-      supabaseAdmin.from("donny_conversations").select("id").eq("user_id", userId)
-    );
+    .in("conversation_id", convoIds);
 
   if (error) return true;
   return (count ?? 0) < 30;
