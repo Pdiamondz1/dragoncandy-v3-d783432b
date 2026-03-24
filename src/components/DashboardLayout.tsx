@@ -33,7 +33,7 @@ import { useLogout } from '@/hooks/useLogout';
 import { useProfileData } from '@/hooks/useProfileData';
 import NotificationDropdown from '@/components/notifications/NotificationDropdown';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { AIChatWidget, AIChatModal } from '@/components/ai-assistant';
+import { AIChatModal } from '@/components/ai-assistant';
 import { useAIAssistantContext } from '@/contexts/AIAssistantContext';
 import { useAIChatModal } from '@/contexts/AIChatModalContext';
 import { MobileBottomNav } from '@/components/MobileBottomNav';
@@ -251,7 +251,6 @@ const DashboardLayoutInner: React.FC<DashboardLayoutProps> = ({ children, userRo
         {/* Mobile bottom nav */}
         {isMobile && <MobileBottomNav userRole={userRole} />}
 
-        <AIChatWidget userRole={userRole} />
         <AIChatModal isOpen={isAIChatOpen} onClose={closeModal} userRole={userRole} />
       </div>
     </SidebarProvider>
