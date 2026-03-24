@@ -372,7 +372,7 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
         )}
       </CardContent>
 
-      <CardFooter className="flex flex-wrap gap-2 pt-4 border-t border-border">
+      <CardFooter className="flex flex-wrap gap-2 pt-4 border-t border-border min-w-0">
         <Button 
           variant="outline" 
           size="sm" 
