@@ -352,13 +352,13 @@ const CreatorEarnings: React.FC = () => {
               </Alert>
             ) : payoutStatus?.onboardingComplete ? (
               <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-green-100 rounded-full">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="p-2 bg-green-100 rounded-full shrink-0">
                     <CheckCircle className="h-5 w-5 text-green-600" />
                   </div>
-                  <div>
-                    <p className="font-bold text-gray-900 text-sm">Stripe Connected</p>
-                    <p className="text-xs text-gray-500">Your bank account is set up for payouts</p>
+                  <div className="min-w-0">
+                    <p className="font-bold text-gray-900 text-sm truncate">Stripe Connected</p>
+                    <p className="text-xs text-gray-500 break-words">Your bank account is set up for payouts</p>
                   </div>
                 </div>
                 <Button
@@ -377,13 +377,13 @@ const CreatorEarnings: React.FC = () => {
               </div>
             ) : (
               <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-gray-100 rounded-full">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="p-2 bg-gray-100 rounded-full shrink-0">
                     <AlertCircle className="h-5 w-5 text-gray-400" />
                   </div>
-                  <div>
-                    <p className="font-bold text-gray-900 text-sm">Not Connected</p>
-                    <p className="text-xs text-gray-500">Set up Stripe to withdraw earnings</p>
+                  <div className="min-w-0">
+                    <p className="font-bold text-gray-900 text-sm truncate">Not Connected</p>
+                    <p className="text-xs text-gray-500 break-words">Set up Stripe to withdraw earnings</p>
                   </div>
                 </div>
                 <Button
@@ -453,11 +453,11 @@ const CreatorEarnings: React.FC = () => {
                     >
                       <div className="flex-1 min-w-0 mr-3">
                         <p className="font-bold text-gray-900 text-sm truncate">{payment.campaignTitle}</p>
-                        <div className="flex items-center gap-3 mt-0.5 text-xs text-gray-500">
-                          <span>
+                        <div className="flex items-center gap-2 mt-0.5 text-xs text-gray-500 flex-wrap">
+                          <span className="shrink-0">
                             {payment.date ? format(new Date(payment.date), 'MMM d, yyyy') : 'Date unknown'}
                           </span>
-                          <span>Fee: {formatCurrency(payment.platformFee)}</span>
+                          <span className="shrink-0">Fee: {formatCurrency(payment.platformFee)}</span>
                         </div>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
