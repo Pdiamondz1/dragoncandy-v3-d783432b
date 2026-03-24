@@ -3,32 +3,30 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-// All 18 tool definitions from the spec
+// All tool definitions
 const TOOL_DEFINITIONS = [
-  // --- Campaign Tools ---
   {
     type: "function",
     function: {
       name: "create_campaign",
-      description: "Create a new campaign for the business. Requires title, description, platform, and budget range.",
+      description: "Create a new campaign for the business. Requires title, description, platforms, and budget range.",
       parameters: {
         type: "object",
         properties: {
           title: { type: "string", description: "Campaign title" },
           description: { type: "string", description: "Campaign brief/description" },
-          platform: { type: "string", description: "Target platform" },
+          platforms: { type: "array", items: { type: "string" }, description: "Target platforms (e.g. ['Instagram', 'TikTok'])" },
           budget_min: { type: "number", description: "Minimum budget" },
           budget_max: { type: "number", description: "Maximum budget" },
-          content_type: { type: "string", description: "Type of content needed" },
         },
-        required: ["title", "description", "platform", "budget_min", "budget_max"],
+        required: ["title", "description", "platforms", "budget_min", "budget_max"],
       },
     },
   },
@@ -59,18 +57,16 @@ const TOOL_DEFINITIONS = [
       },
     },
   },
-  // --- Creator Discovery Tools ---
   {
     type: "function",
     function: {
       name: "search_creators",
-      description: "Search for content creators matching criteria. Returns a list of creator profiles.",
+      description: "Search for content creators. Returns a list of creator profiles.",
       parameters: {
         type: "object",
         properties: {
-          platform: { type: "string", description: "Social media platform (tiktok, instagram, youtube)" },
-          niche: { type: "string", description: "Content niche (food, fashion, tech, fitness, lifestyle)" },
-          budget_max: { type: "number", description: "Maximum budget per content piece" },
+          skill: { type: "string", description: "Skill to filter by (e.g. video_editing, photography)" },
+          budget_max: { type: "number", description: "Maximum hourly rate" },
         },
       },
     },
@@ -105,7 +101,6 @@ const TOOL_DEFINITIONS = [
       },
     },
   },
-  // --- Application Tools ---
   {
     type: "function",
     function: {
@@ -129,10 +124,10 @@ const TOOL_DEFINITIONS = [
         type: "object",
         properties: {
           campaign_id: { type: "string", description: "Campaign UUID to apply to" },
-          pitch: { type: "string", description: "Application pitch message" },
+          intro_message: { type: "string", description: "Application pitch message" },
           proposed_rate: { type: "number", description: "Proposed rate for the work" },
         },
-        required: ["campaign_id", "pitch", "proposed_rate"],
+        required: ["campaign_id", "intro_message", "proposed_rate"],
       },
     },
   },
@@ -152,7 +147,6 @@ const TOOL_DEFINITIONS = [
       },
     },
   },
-  // --- Content Tools ---
   {
     type: "function",
     function: {
@@ -196,12 +190,11 @@ const TOOL_DEFINITIONS = [
       },
     },
   },
-  // --- Payment Tools ---
   {
     type: "function",
     function: {
       name: "prepare_payment",
-      description: "Prepare payment details for a collaboration. Returns a payment summary with a confirmation URL. Does NOT execute the payment.",
+      description: "Prepare payment details for a collaboration. Returns a payment summary. Does NOT execute the payment.",
       parameters: {
         type: "object",
         properties: {
@@ -225,18 +218,17 @@ const TOOL_DEFINITIONS = [
       },
     },
   },
-  // --- Profile Tools ---
   {
     type: "function",
     function: {
       name: "update_profile",
-      description: "Update the user's profile fields (full_name, bio, avatar_url, etc.).",
+      description: "Update the user's profile fields (full_name, avatar_url, etc.).",
       parameters: {
         type: "object",
         properties: {
           full_name: { type: "string", description: "Display name" },
-          bio: { type: "string", description: "Profile bio" },
-          business_name: { type: "string", description: "Business name (business users)" },
+          bio: { type: "string", description: "Profile bio (for creator profiles)" },
+          business_name: { type: "string", description: "Business name (for business profiles)" },
           location: { type: "string", description: "Location" },
         },
       },
@@ -250,7 +242,6 @@ const TOOL_DEFINITIONS = [
       parameters: { type: "object", properties: {} },
     },
   },
-  // --- Onboarding Tools ---
   {
     type: "function",
     function: {
@@ -263,11 +254,11 @@ const TOOL_DEFINITIONS = [
     type: "function",
     function: {
       name: "complete_onboarding_step",
-      description: "Save an onboarding answer and advance to the next step. Used during Donny-guided onboarding.",
+      description: "Save an onboarding answer and advance to the next step.",
       parameters: {
         type: "object",
         properties: {
-          field: { type: "string", description: "Profile field being set (business_name, platforms, niche, budget_range, automation_level)" },
+          field: { type: "string", description: "Profile field being set (business_name, skills, bio, budget_range, automation_level)" },
           value: { type: "string", description: "The user's answer" },
         },
         required: ["field", "value"],
@@ -276,8 +267,12 @@ const TOOL_DEFINITIONS = [
   },
 ];
 
-// Build system prompt with user context
-function buildSystemPrompt(profile: any, context: any): string {
+function buildSystemPrompt(profile: any, businessProfile: any, creatorProfile: any, context: any): string {
+  const isBusiness = profile.role === 'business_client' || profile.role === 'brand';
+  const profileName = isBusiness
+    ? (businessProfile?.business_name || profile.full_name || 'there')
+    : (creatorProfile?.creator_name || profile.full_name || 'there');
+
   return `You are Donny, DragonCandy's friendly AI assistant 🐉
 
 ## Personality
@@ -288,32 +283,25 @@ function buildSystemPrompt(profile: any, context: any): string {
 - Keep responses concise — this is a mobile chat, not an essay
 
 ## User Context
-- Name: ${profile.full_name || 'there'}
+- Name: ${profileName}
 - Role: ${profile.role}
-- ${profile.role === 'business_client' || profile.role === 'brand'
-    ? `Business: ${profile.business_name || 'Not set up yet'}`
-    : `Creator: ${profile.creator_name || 'Not set up yet'}`
+- ${isBusiness
+    ? `Business: ${businessProfile?.business_name || 'Not set up yet'}`
+    : `Creator: ${creatorProfile?.creator_name || 'Not set up yet'}`
   }
 - Active campaigns: ${context.campaigns?.length ?? 0}
 - Pending applications: ${context.pendingApplications ?? 0}
 
 ## Rules
 - For payments: ALWAYS use prepare_payment and tell the user to confirm on the payment screen. NEVER claim a payment was processed directly.
-- When showing creators: include name, platform, niche, rating, and project count.
-- When showing campaigns: include title, platform, budget, and application count.
+- When showing creators: include name, skills, rating, and location.
+- When showing campaigns: include title, platforms, budget, and application count.
 - If a tool fails: explain the error conversationally and suggest how to fix it.
 - Use tools proactively — if the user asks about campaigns, call get_campaigns. Don't just describe what you could do.
-- When you call a tool that returns data, present it conversationally. For creator profiles and campaign summaries, include a rich_card in your response.
-
-## Rich Cards
-When presenting creators or campaigns from tool results, add a JSON object in your response metadata (the system will extract it). Format:
-- Creator: { "type": "creator_profile", "data": { "id": "...", "name": "...", ... } }
-- Campaign: { "type": "campaign_summary", "data": { "id": "...", "title": "...", ... } }
-- Payment: { "type": "payment_confirmation", "data": { "collaboration_id": "...", "amount": ..., ... } }
+- When you call a tool that returns data, present it conversationally.
 `;
 }
 
-// Rate limiting: check message count in the last hour
 async function checkRateLimit(userId: string, supabaseAdmin: any): Promise<boolean> {
   const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
   const { count, error } = await supabaseAdmin
@@ -325,22 +313,19 @@ async function checkRateLimit(userId: string, supabaseAdmin: any): Promise<boole
       supabaseAdmin.from("donny_conversations").select("id").eq("user_id", userId)
     );
 
-  if (error) return true; // Allow on error — fail open
+  if (error) return true;
   return (count ?? 0) < 30;
 }
 
-// Context window management: summarize old messages when > 20 exist
 async function getConversationHistory(
   conversationId: string,
   supabaseAdmin: any
 ): Promise<{ messages: any[]; contextSummary: string | null }> {
-  // Get total message count
   const { count } = await supabaseAdmin
     .from("donny_messages")
     .select("id", { count: "exact", head: true })
     .eq("conversation_id", conversationId);
 
-  // Load existing context summary
   const { data: conversation } = await supabaseAdmin
     .from("donny_conversations")
     .select("context_snapshot")
@@ -349,7 +334,6 @@ async function getConversationHistory(
 
   const contextSummary = conversation?.context_snapshot?.summary ?? null;
 
-  // Always load last 20 messages
   const { data: history } = await supabaseAdmin
     .from("donny_messages")
     .select("role, content, tool_calls, tool_result")
@@ -360,7 +344,6 @@ async function getConversationHistory(
   return { messages: history ?? [], contextSummary };
 }
 
-// After GPT-4o response, if message count > 25 — summarize older messages
 async function maybeUpdateContextSummary(
   conversationId: string,
   supabaseAdmin: any,
@@ -373,7 +356,6 @@ async function maybeUpdateContextSummary(
 
   if ((count ?? 0) <= 25) return;
 
-  // Load oldest messages (beyond the last 20)
   const keepCount = 20;
   const summarizeCount = (count ?? 0) - keepCount;
   const { data: oldMessages } = await supabaseAdmin
@@ -390,7 +372,6 @@ async function maybeUpdateContextSummary(
     .map((m: any) => `${m.role}: ${m.content}`)
     .join("\n");
 
-  // Ask GPT-4o to summarize
   const summaryResponse = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -402,7 +383,7 @@ async function maybeUpdateContextSummary(
       messages: [
         {
           role: "system",
-          content: "Summarize this conversation history into a concise paragraph. Focus on key decisions, actions taken, and user preferences. This summary will be used as context for future messages.",
+          content: "Summarize this conversation history into a concise paragraph. Focus on key decisions, actions taken, and user preferences.",
         },
         { role: "user", content: summaryText },
       ],
@@ -413,22 +394,21 @@ async function maybeUpdateContextSummary(
   const summaryResult = await summaryResponse.json();
   const summary = summaryResult.choices?.[0]?.message?.content ?? "";
 
-  // Save summary to conversation
   await supabaseAdmin
     .from("donny_conversations")
     .update({ context_snapshot: { summary, updated_at: new Date().toISOString() } })
     .eq("id", conversationId);
 }
 
-// Execute a tool call against Supabase — all 18 tools from the spec
+// Execute a tool call against Supabase — matched to actual DB schema
 async function executeTool(
   toolName: string,
   args: Record<string, any>,
   userId: string,
+  userRole: string,
   supabaseAdmin: any
 ): Promise<{ result: any }> {
   switch (toolName) {
-    // --- Campaign Tools ---
     case "create_campaign": {
       const { data, error } = await supabaseAdmin
         .from("campaigns")
@@ -436,10 +416,9 @@ async function executeTool(
           user_id: userId,
           title: args.title,
           description: args.description,
-          platform: args.platform,
+          platforms: args.platforms ?? [],
           budget_min: args.budget_min,
           budget_max: args.budget_max,
-          content_type: args.content_type ?? "video",
           status: "draft",
         })
         .select("id, title, status")
@@ -451,51 +430,71 @@ async function executeTool(
     case "get_campaigns": {
       const { data, error } = await supabaseAdmin
         .from("campaigns")
-        .select("id, title, status, platform, budget_min, budget_max, created_at, campaign_applications(count)")
+        .select("id, title, status, platforms, budget_min, budget_max, created_at")
         .eq("user_id", userId)
         .order("created_at", { ascending: false })
         .limit(10);
       if (error) throw error;
-      return { result: data };
+
+      // Get application counts separately
+      const campaignIds = (data ?? []).map((c: any) => c.id);
+      const enriched = [];
+      for (const campaign of (data ?? [])) {
+        const { count } = await supabaseAdmin
+          .from("campaign_applications")
+          .select("id", { count: "exact", head: true })
+          .eq("campaign_id", campaign.id);
+        enriched.push({ ...campaign, application_count: count ?? 0 });
+      }
+      return { result: enriched };
     }
 
     case "update_campaign": {
       const updates: Record<string, any> = {};
       if (args.title) updates.title = args.title;
       if (args.description) updates.description = args.description;
-      if (args.budget_min) updates.budget_min = args.budget_min;
-      if (args.budget_max) updates.budget_max = args.budget_max;
+      if (args.budget_min !== undefined) updates.budget_min = args.budget_min;
+      if (args.budget_max !== undefined) updates.budget_max = args.budget_max;
       if (args.status) updates.status = args.status;
 
       const { data, error } = await supabaseAdmin
         .from("campaigns")
         .update(updates)
         .eq("id", args.campaign_id)
-        .eq("user_id", userId) // Ensure ownership
+        .eq("user_id", userId)
         .select("id, title, status")
         .single();
       if (error) throw error;
       return { result: data };
     }
 
-    // --- Creator Discovery Tools ---
     case "search_creators": {
       let query = supabaseAdmin
         .from("creator_profiles")
-        .select("id, user_id, profiles!inner(full_name, avatar_url), specialty, platforms, rating, completed_projects")
+        .select("id, user_id, creator_name, avatar_url, bio, skills, location, average_rating, total_reviews, base_rate_per_hour")
+        .eq("is_completed", true)
         .limit(5);
-      if (args.niche) query = query.ilike("specialty", `%${args.niche}%`);
+
+      if (args.skill) {
+        query = query.contains("skills", [args.skill]);
+      }
+      if (args.budget_max) {
+        query = query.lte("base_rate_per_hour", args.budget_max);
+      }
+
       const { data, error } = await query;
       if (error) throw error;
       return {
         result: (data ?? []).map((c: any) => ({
           id: c.user_id,
-          name: c.profiles?.full_name ?? "Unknown",
-          avatar_url: c.profiles?.avatar_url,
-          platforms: c.platforms ?? [],
-          niche: c.specialty ?? "General",
-          rating: c.rating ?? 0,
-          project_count: c.completed_projects ?? 0,
+          name: c.creator_name,
+          avatar_url: c.avatar_url,
+          bio: c.bio,
+          skills: c.skills ?? [],
+          location: c.location,
+          rating: c.average_rating ?? 0,
+          total_reviews: c.total_reviews ?? 0,
+          hourly_rate: c.base_rate_per_hour,
         })),
       };
     }
@@ -503,7 +502,7 @@ async function executeTool(
     case "get_creator_profile": {
       const { data, error } = await supabaseAdmin
         .from("creator_profiles")
-        .select("id, user_id, profiles!inner(full_name, avatar_url, bio), specialty, platforms, rating, completed_projects, hourly_rate, portfolio_url")
+        .select("id, user_id, creator_name, avatar_url, bio, skills, portfolio_urls, location, availability, base_rate_per_hour, average_rating, total_reviews, instagram_url, tiktok_url, youtube_url")
         .eq("user_id", args.creator_id)
         .single();
       if (error) throw error;
@@ -517,7 +516,7 @@ async function executeTool(
           campaign_id: args.campaign_id,
           creator_id: args.creator_id,
           invited_by: userId,
-          message: args.message ?? null,
+          invitation_message: args.message ?? null,
           status: "pending",
         })
         .select("id, status")
@@ -526,15 +525,29 @@ async function executeTool(
       return { result: { id: data.id, status: "invitation_sent" } };
     }
 
-    // --- Application Tools ---
     case "get_applications": {
       const { data, error } = await supabaseAdmin
         .from("campaign_applications")
-        .select("id, status, pitch, proposed_rate, applicant_id, profiles!inner(full_name, avatar_url)")
+        .select("id, status, intro_message, proposed_rate, creator_id")
         .eq("campaign_id", args.campaign_id)
         .eq("status", "pending");
       if (error) throw error;
-      return { result: data };
+
+      // Enrich with creator names
+      const enriched = [];
+      for (const app of (data ?? [])) {
+        const { data: creator } = await supabaseAdmin
+          .from("creator_profiles")
+          .select("creator_name, avatar_url")
+          .eq("user_id", app.creator_id)
+          .single();
+        enriched.push({
+          ...app,
+          creator_name: creator?.creator_name ?? "Unknown",
+          creator_avatar: creator?.avatar_url,
+        });
+      }
+      return { result: enriched };
     }
 
     case "apply_to_campaign": {
@@ -542,8 +555,8 @@ async function executeTool(
         .from("campaign_applications")
         .insert({
           campaign_id: args.campaign_id,
-          applicant_id: userId,
-          pitch: args.pitch,
+          creator_id: userId,
+          intro_message: args.intro_message,
           proposed_rate: args.proposed_rate,
           status: "pending",
         })
@@ -559,36 +572,27 @@ async function executeTool(
         .from("campaign_applications")
         .update({ status: newStatus })
         .eq("id", args.application_id)
-        .select("id, status, campaign_id")
+        .select("id, status, campaign_id, creator_id")
         .single();
       if (error) throw error;
 
       // If accepted, create a collaboration
       if (args.action === "accept" && data) {
-        const { data: app } = await supabaseAdmin
-          .from("campaign_applications")
-          .select("applicant_id, proposed_rate, campaign_id")
-          .eq("id", args.application_id)
-          .single();
-
-        if (app) {
-          await supabaseAdmin.from("campaign_collaborations").insert({
-            campaign_id: app.campaign_id,
-            creator_id: app.applicant_id,
-            agreed_rate: app.proposed_rate,
-            status: "active",
-          });
-        }
+        await supabaseAdmin.from("campaign_collaborations").insert({
+          campaign_id: data.campaign_id,
+          creator_id: data.creator_id,
+          application_id: data.id,
+          status: "active",
+        });
       }
       return { result: { id: data.id, status: newStatus } };
     }
 
-    // --- Content Tools ---
     case "get_submissions": {
       const { data, error } = await supabaseAdmin
         .from("file_uploads")
-        .select("id, file_name, file_url, status, created_at, uploader_id, profiles!inner(full_name)")
-        .eq("collaboration_id", args.collaboration_id)
+        .select("id, filename, original_filename, file_path, upload_status, created_at, uploaded_by")
+        .eq("campaign_id", args.collaboration_id)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return { result: data };
@@ -597,9 +601,9 @@ async function executeTool(
     case "approve_content": {
       const { data, error } = await supabaseAdmin
         .from("file_uploads")
-        .update({ status: "approved" })
+        .update({ upload_status: "approved" })
         .eq("id", args.submission_id)
-        .select("id, file_name, status")
+        .select("id, filename, upload_status")
         .single();
       if (error) throw error;
       return { result: data };
@@ -608,66 +612,124 @@ async function executeTool(
     case "request_revision": {
       const { data, error } = await supabaseAdmin
         .from("file_uploads")
-        .update({ status: "revision_requested" })
+        .update({ upload_status: "revision_requested" })
         .eq("id", args.submission_id)
-        .select("id, file_name, status")
+        .select("id, filename, upload_status")
         .single();
       if (error) throw error;
 
       // Add feedback as a file comment
       await supabaseAdmin.from("file_comments").insert({
-        file_id: args.submission_id,
+        file_upload_id: args.submission_id,
         user_id: userId,
-        content: args.feedback,
+        comment_text: args.feedback,
       });
       return { result: { id: data.id, status: "revision_requested", feedback: args.feedback } };
     }
 
-    // --- Payment Tools ---
     case "prepare_payment": {
-      const { data, error } = await supabaseAdmin
+      const { data: collab, error } = await supabaseAdmin
         .from("campaign_collaborations")
-        .select("id, agreed_rate, creator_id, profiles!inner(full_name), campaigns!inner(title)")
+        .select("id, creator_id, campaign_id")
         .eq("id", args.collaboration_id)
         .single();
       if (error) throw error;
+
+      // Get campaign title
+      const { data: campaign } = await supabaseAdmin
+        .from("campaigns")
+        .select("title, budget_min, budget_max")
+        .eq("id", collab.campaign_id)
+        .single();
+
+      // Get creator name
+      const { data: creator } = await supabaseAdmin
+        .from("creator_profiles")
+        .select("creator_name")
+        .eq("user_id", collab.creator_id)
+        .single();
+
+      // Get application proposed rate
+      const { data: app } = await supabaseAdmin
+        .from("campaign_applications")
+        .select("proposed_rate")
+        .eq("campaign_id", collab.campaign_id)
+        .eq("creator_id", collab.creator_id)
+        .limit(1)
+        .maybeSingle();
+
       return {
         result: {
-          collaboration_id: data.id,
-          amount: data.agreed_rate,
-          recipient_name: data.profiles?.full_name,
-          campaign_title: data.campaigns?.title,
-          payment_url: `/dashboard/business/payments/${data.id}`,
+          collaboration_id: collab.id,
+          amount: app?.proposed_rate ?? campaign?.budget_min ?? 0,
+          recipient_name: creator?.creator_name ?? "Creator",
+          campaign_title: campaign?.title ?? "Campaign",
+          payment_url: `/dashboard/business/payments/${collab.id}`,
         },
       };
     }
 
     case "get_payment_status": {
-      const { data, error } = await supabaseAdmin
+      const { data: collab, error } = await supabaseAdmin
         .from("campaign_collaborations")
-        .select("id, agreed_rate, payment_status, campaigns!inner(title), profiles!inner(full_name)")
+        .select("id, status, creator_id, campaign_id")
         .eq("id", args.collaboration_id)
         .single();
       if (error) throw error;
-      return { result: data };
+
+      const { data: campaign } = await supabaseAdmin
+        .from("campaigns")
+        .select("title, escrow_status")
+        .eq("id", collab.campaign_id)
+        .single();
+
+      return {
+        result: {
+          collaboration_id: collab.id,
+          collaboration_status: collab.status,
+          campaign_title: campaign?.title,
+          escrow_status: campaign?.escrow_status ?? "none",
+        },
+      };
     }
 
-    // --- Profile Tools ---
     case "update_profile": {
-      const updates: Record<string, any> = {};
-      if (args.full_name) updates.full_name = args.full_name;
-      if (args.bio) updates.bio = args.bio;
-      if (args.business_name) updates.business_name = args.business_name;
-      if (args.location) updates.location = args.location;
+      // Update profiles table for full_name
+      if (args.full_name) {
+        await supabaseAdmin
+          .from("profiles")
+          .update({ full_name: args.full_name })
+          .eq("id", userId);
+      }
 
-      const { data, error } = await supabaseAdmin
-        .from("profiles")
-        .update(updates)
-        .eq("id", userId)
-        .select("id, full_name, bio, business_name, location")
-        .single();
-      if (error) throw error;
-      return { result: data };
+      const isBusiness = userRole === "business_client" || userRole === "brand";
+
+      if (isBusiness) {
+        const updates: Record<string, any> = {};
+        if (args.business_name) updates.business_name = args.business_name;
+        if (args.location) updates.location = args.location;
+        if (args.bio) updates.description = args.bio;
+
+        if (Object.keys(updates).length > 0) {
+          await supabaseAdmin
+            .from("business_profiles")
+            .update(updates)
+            .eq("user_id", userId);
+        }
+      } else {
+        const updates: Record<string, any> = {};
+        if (args.bio) updates.bio = args.bio;
+        if (args.location) updates.location = args.location;
+
+        if (Object.keys(updates).length > 0) {
+          await supabaseAdmin
+            .from("creator_profiles")
+            .update(updates)
+            .eq("user_id", userId);
+        }
+      }
+
+      return { result: { updated: true } };
     }
 
     case "get_dashboard_summary": {
@@ -679,76 +741,116 @@ async function executeTool(
           .limit(5),
         supabaseAdmin
           .from("campaign_collaborations")
-          .select("id, status, campaigns!inner(title)")
+          .select("id, status, campaign_id")
           .or(`creator_id.eq.${userId}`)
           .limit(10),
         supabaseAdmin
           .from("campaign_applications")
           .select("id, status")
-          .eq("applicant_id", userId)
+          .eq("creator_id", userId)
           .eq("status", "pending"),
       ]);
+
+      // Enrich collaborations with campaign titles
+      const collabs = [];
+      for (const c of (collabsRes.data ?? [])) {
+        const { data: camp } = await supabaseAdmin
+          .from("campaigns")
+          .select("title")
+          .eq("id", c.campaign_id)
+          .single();
+        collabs.push({ ...c, campaign_title: camp?.title });
+      }
+
       return {
         result: {
           campaigns: campaignsRes.data ?? [],
-          collaborations: collabsRes.data ?? [],
+          collaborations: collabs,
           pending_applications: appsRes.data?.length ?? 0,
         },
       };
     }
 
-    // --- Onboarding Tools ---
     case "get_onboarding_step": {
-      const { data: profile } = await supabaseAdmin
-        .from("profiles")
-        .select("role, full_name, business_name")
-        .eq("id", userId)
-        .single();
+      const isBusiness = userRole === "business_client" || userRole === "brand";
 
-      // Determine which onboarding fields are still empty
-      const isBusiness = profile?.role === "business_client" || profile?.role === "brand";
-      const steps = isBusiness
-        ? [
-            { field: "business_name", label: "Business name", completed: !!profile?.business_name },
-            { field: "content_type", label: "Content type", completed: false }, // Check via campaigns
-            { field: "budget_range", label: "Budget range", completed: false },
-            { field: "logo", label: "Logo upload", completed: false },
-          ]
-        : [
-            { field: "platforms", label: "Platforms", completed: false },
-            { field: "niche", label: "Niche/specialty", completed: false },
-            { field: "portfolio_url", label: "Portfolio link", completed: false },
-            { field: "automation_level", label: "Automation preference", completed: false },
-          ];
+      if (isBusiness) {
+        const { data: bp } = await supabaseAdmin
+          .from("business_profiles")
+          .select("business_name, description, location, logo_url, is_completed")
+          .eq("user_id", userId)
+          .maybeSingle();
 
-      const nextStep = steps.find((s) => !s.completed);
-      return {
-        result: {
-          role: profile?.role,
-          steps,
-          current_step: nextStep ?? null,
-          is_complete: !nextStep,
-        },
-      };
+        const steps = [
+          { field: "business_name", label: "Business name", completed: !!bp?.business_name },
+          { field: "description", label: "Business description", completed: !!bp?.description },
+          { field: "location", label: "Location", completed: !!bp?.location },
+          { field: "logo_url", label: "Logo upload", completed: !!bp?.logo_url },
+        ];
+
+        const nextStep = steps.find((s) => !s.completed);
+        return {
+          result: {
+            role: userRole,
+            steps,
+            current_step: nextStep ?? null,
+            is_complete: !nextStep,
+          },
+        };
+      } else {
+        const { data: cp } = await supabaseAdmin
+          .from("creator_profiles")
+          .select("creator_name, bio, skills, portfolio_urls, location, is_completed")
+          .eq("user_id", userId)
+          .maybeSingle();
+
+        const steps = [
+          { field: "creator_name", label: "Creator name", completed: !!cp?.creator_name },
+          { field: "bio", label: "Bio", completed: !!cp?.bio },
+          { field: "skills", label: "Skills", completed: !!(cp?.skills && cp.skills.length > 0) },
+          { field: "portfolio_urls", label: "Portfolio link", completed: !!(cp?.portfolio_urls && cp.portfolio_urls.length > 0) },
+        ];
+
+        const nextStep = steps.find((s) => !s.completed);
+        return {
+          result: {
+            role: userRole,
+            steps,
+            current_step: nextStep ?? null,
+            is_complete: !nextStep,
+          },
+        };
+      }
     }
 
     case "complete_onboarding_step": {
-      // Save the onboarding answer to the appropriate table
       const field = args.field;
       const value = args.value;
+      const isBusiness = userRole === "business_client" || userRole === "brand";
 
-      if (field === "business_name" || field === "full_name" || field === "bio" || field === "location") {
+      if (field === "full_name") {
         await supabaseAdmin.from("profiles").update({ [field]: value }).eq("id", userId);
       } else if (field === "automation_level") {
-        // Upsert creator automation preferences
         await supabaseAdmin.from("creator_automation_preferences").upsert({
           user_id: userId,
           automation_level: value,
           updated_at: new Date().toISOString(),
         }, { onConflict: "user_id" });
-      } else if (field === "platforms" || field === "niche" || field === "portfolio_url") {
-        const updateField = field === "niche" ? "specialty" : field;
-        await supabaseAdmin.from("creator_profiles").update({ [updateField]: value }).eq("user_id", userId);
+      } else if (isBusiness) {
+        // business_name, description, location go to business_profiles
+        await supabaseAdmin.from("business_profiles").update({ [field]: value }).eq("user_id", userId);
+      } else {
+        // bio, skills, portfolio_urls, location, creator_name go to creator_profiles
+        let updateValue: any = value;
+        if (field === "skills" || field === "portfolio_urls") {
+          // These are arrays — try to parse if JSON, otherwise wrap as single-element array
+          try {
+            updateValue = JSON.parse(value);
+          } catch {
+            updateValue = [value];
+          }
+        }
+        await supabaseAdmin.from("creator_profiles").update({ [field]: updateValue }).eq("user_id", userId);
       }
 
       return { result: { field, saved: true } };
@@ -768,19 +870,17 @@ serve(async (req) => {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) throw new Error("No authorization header");
 
-    // Create Supabase clients
     const supabaseUser = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_ANON_KEY")!, {
       global: { headers: { Authorization: authHeader } },
     });
     const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // Get authenticated user
     const { data: { user }, error: authError } = await supabaseUser.auth.getUser();
     if (authError || !user) throw new Error("Unauthorized");
 
     const { conversation_id, message } = await req.json();
 
-    // Rate limiting: max 30 user messages per hour
+    // Rate limiting
     const withinLimit = await checkRateLimit(user.id, supabaseAdmin);
     if (!withinLimit) {
       return new Response(
@@ -789,27 +889,48 @@ serve(async (req) => {
       );
     }
 
-    // Load user profile
+    // Load user profile from profiles table (only columns that exist)
     const { data: profile } = await supabaseAdmin
       .from("profiles")
-      .select("id, role, full_name, email, avatar_url, business_name, bio, location")
+      .select("id, role, full_name, email, avatar_url")
       .eq("id", user.id)
       .single();
 
     if (!profile) throw new Error("Profile not found");
+
+    // Load role-specific profile
+    const isBusiness = profile.role === 'business_client' || profile.role === 'brand';
+    let businessProfile = null;
+    let creatorProfile = null;
+
+    if (isBusiness) {
+      const { data } = await supabaseAdmin
+        .from("business_profiles")
+        .select("business_name, description, location, logo_url")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      businessProfile = data;
+    } else {
+      const { data } = await supabaseAdmin
+        .from("creator_profiles")
+        .select("creator_name, bio, location, avatar_url, skills")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      creatorProfile = data;
+    }
 
     // Load user context for system prompt
     const { data: campaigns } = await supabaseAdmin
       .from("campaigns")
       .select("id, title, status")
       .eq("user_id", user.id)
-      .eq("status", "published")
+      .in("status", ["published", "draft"])
       .limit(10);
 
     const { data: pendingApps } = await supabaseAdmin
       .from("campaign_applications")
       .select("id")
-      .eq("applicant_id", user.id)
+      .eq("creator_id", user.id)
       .eq("status", "pending");
 
     const context = {
@@ -817,19 +938,18 @@ serve(async (req) => {
       pendingApplications: pendingApps?.length ?? 0,
     };
 
-    // Load conversation history with context window management
+    // Load conversation history
     const { messages: history, contextSummary } = await getConversationHistory(
       conversation_id,
       supabaseAdmin
     );
 
     // Build messages array for GPT-4o
-    const systemPrompt = buildSystemPrompt(profile, context);
+    const systemPrompt = buildSystemPrompt(profile, businessProfile, creatorProfile, context);
     const gptMessages: any[] = [
       { role: "system", content: systemPrompt },
     ];
 
-    // Include context summary from older messages if available
     if (contextSummary) {
       gptMessages.push({
         role: "system",
@@ -837,13 +957,12 @@ serve(async (req) => {
       });
     }
 
-    // Add recent history (last 20 messages)
     for (const msg of history) {
       if (msg.role === "tool" && msg.tool_result) {
         gptMessages.push({
           role: "tool",
           content: JSON.stringify(msg.tool_result),
-          tool_call_id: msg.content, // We store tool_call_id in content for tool messages
+          tool_call_id: msg.content,
         });
       } else if (msg.role === "assistant" && msg.tool_calls) {
         gptMessages.push({
@@ -859,7 +978,6 @@ serve(async (req) => {
       }
     }
 
-    // Add current user message
     gptMessages.push({ role: "user", content: message });
 
     // Call GPT-4o
@@ -878,11 +996,16 @@ serve(async (req) => {
     });
 
     let result = await response.json();
+    
+    if (!result.choices || !result.choices[0]) {
+      console.error("OpenAI API error:", JSON.stringify(result));
+      throw new Error(result.error?.message || "Failed to get AI response");
+    }
+    
     let assistantMessage = result.choices[0].message;
 
-    // Tool execution loop — GPT-4o may call multiple tools
+    // Tool execution loop
     while (assistantMessage.tool_calls && assistantMessage.tool_calls.length > 0) {
-      // Save assistant message with tool calls
       const { data: savedAssistantMsg } = await supabaseAdmin
         .from("donny_messages")
         .insert({
@@ -894,14 +1017,16 @@ serve(async (req) => {
         .select()
         .single();
 
-      // Execute each tool call
+      // Add assistant message to gptMessages ONCE before all tool results
+      gptMessages.push(assistantMessage);
+
       for (const toolCall of assistantMessage.tool_calls) {
         const args = JSON.parse(toolCall.function.arguments);
         let toolResult: any;
         let status = "success";
 
         try {
-          const execution = await executeTool(toolCall.function.name, args, user.id, supabaseAdmin);
+          const execution = await executeTool(toolCall.function.name, args, user.id, profile.role, supabaseAdmin);
           toolResult = execution.result;
         } catch (err) {
           toolResult = { error: err.message };
@@ -909,25 +1034,26 @@ serve(async (req) => {
         }
 
         // Log tool execution
-        await supabaseAdmin.from("donny_tool_executions").insert({
-          message_id: savedAssistantMsg?.id,
-          user_id: user.id,
-          tool_name: toolCall.function.name,
-          input: args,
-          output: toolResult,
-          status,
-        });
+        if (savedAssistantMsg?.id) {
+          await supabaseAdmin.from("donny_tool_executions").insert({
+            message_id: savedAssistantMsg.id,
+            user_id: user.id,
+            tool_name: toolCall.function.name,
+            input: args,
+            output: toolResult,
+            status,
+          });
+        }
 
         // Save tool result as message
         await supabaseAdmin.from("donny_messages").insert({
           conversation_id,
           role: "tool",
-          content: toolCall.id, // Store tool_call_id for history reconstruction
+          content: toolCall.id,
           tool_result: toolResult,
         });
 
-        // Add to GPT messages for next call
-        gptMessages.push(assistantMessage);
+        // Add tool result to GPT messages
         gptMessages.push({
           role: "tool",
           content: JSON.stringify(toolResult),
@@ -951,28 +1077,20 @@ serve(async (req) => {
       });
 
       result = await response.json();
+      
+      if (!result.choices || !result.choices[0]) {
+        console.error("OpenAI API error on tool follow-up:", JSON.stringify(result));
+        throw new Error(result.error?.message || "Failed to get AI response after tool execution");
+      }
+      
       assistantMessage = result.choices[0].message;
     }
 
     // Save final assistant response
-    // Try to extract rich_card from response if present
-    let richCard = null;
-    const richCardMatch = assistantMessage.content?.match(/```json\n(\{[\s\S]*?"type":\s*"(creator_profile|campaign_summary|payment_confirmation)"[\s\S]*?\})\n```/);
-    if (richCardMatch) {
-      try {
-        richCard = JSON.parse(richCardMatch[1]);
-        // Remove the JSON block from display content
-        assistantMessage.content = assistantMessage.content.replace(richCardMatch[0], "").trim();
-      } catch {
-        // Ignore parse errors — just show as text
-      }
-    }
-
     await supabaseAdmin.from("donny_messages").insert({
       conversation_id,
       role: "assistant",
       content: assistantMessage.content,
-      rich_card: richCard,
     });
 
     // Update conversation last_message_at
@@ -981,14 +1099,15 @@ serve(async (req) => {
       .update({ last_message_at: new Date().toISOString() })
       .eq("id", conversation_id);
 
-    // Context window management: summarize older messages if needed (async, non-blocking)
+    // Context window management (async, non-blocking)
     maybeUpdateContextSummary(conversation_id, supabaseAdmin, OPENAI_API_KEY!).catch(() => {});
 
     return new Response(
-      JSON.stringify({ success: true, content: assistantMessage.content, rich_card: richCard }),
+      JSON.stringify({ success: true, content: assistantMessage.content }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
+    console.error("donny-chat error:", err.message);
     return new Response(
       JSON.stringify({ error: err.message }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
