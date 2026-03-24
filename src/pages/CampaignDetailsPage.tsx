@@ -104,10 +104,10 @@ const CampaignDetailsPage: React.FC = () => {
         </div>
 
         {/* White card overlay — Template D */}
-        <div className="bg-white rounded-t-3xl -mt-4 relative z-10 px-4 pt-6 pb-28">
+        <div className="bg-white rounded-t-3xl -mt-4 relative z-10 px-4 pt-6 pb-28 overflow-hidden">
           {/* Campaign title + status row */}
           <div className="mb-4">
-            <h2 className="text-xl font-bold text-gray-900">{campaign.title}</h2>
+            <h2 className="text-xl font-bold text-gray-900 break-words">{campaign.title}</h2>
             <p className="text-gray-500 text-sm mt-0.5">
               {isCreatorView ? 'Campaign Details' : 'Campaign Details & Management'}
             </p>
