@@ -120,14 +120,14 @@ const PricingTypeSelector: React.FC<PricingTypeSelectorProps> = ({
       <Card className="p-4 bg-muted/30">
         {effectiveValue === 'fixed' ? (
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <Label className="text-base font-semibold">Creator Payout</Label>
               <button
                 type="button"
                 onClick={useAiRecommendation}
-                className="flex items-center gap-1.5 text-sm text-primary hover:text-primary/80 transition-colors"
+                className="flex items-center gap-1.5 text-sm text-primary hover:text-primary/80 transition-colors shrink-0"
               >
-                <Sparkles className="h-4 w-4" />
+                <Sparkles className="h-4 w-4 shrink-0" />
                 Use AI Recommended (${aiRecommendedPrice})
               </button>
             </div>

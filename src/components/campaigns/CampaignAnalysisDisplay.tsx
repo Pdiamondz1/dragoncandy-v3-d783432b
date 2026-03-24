@@ -38,7 +38,7 @@ const CampaignAnalysisDisplay: React.FC<CampaignAnalysisDisplayProps> = ({
       {/* Campaign Title */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-2xl text-center text-blue-600">
+          <CardTitle className="text-xl sm:text-2xl text-center text-blue-600 break-words">
             {analysis.title}
           </CardTitle>
         </CardHeader>
@@ -258,13 +258,13 @@ const CampaignAnalysisDisplay: React.FC<CampaignAnalysisDisplayProps> = ({
             {analysis.hashtags && analysis.hashtags.length > 0 && (
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <Hash className="h-5 w-5 text-blue-500" />
-                    Hashtags
+                  <CardTitle className="flex flex-wrap items-center gap-2 text-lg min-w-0">
+                    <Hash className="h-5 w-5 text-blue-500 shrink-0" />
+                    <span className="min-w-0">Hashtags</span>
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="ml-auto h-8"
+                      className="ml-auto h-8 shrink-0"
                       onClick={() => {
                         navigator.clipboard.writeText(analysis.hashtags!.join(' '));
                         toast.success('Hashtags copied!');
@@ -387,17 +387,17 @@ const CampaignAnalysisDisplay: React.FC<CampaignAnalysisDisplayProps> = ({
 
       {/* Action Buttons */}
       <div className="flex flex-col sm:flex-row gap-4 justify-center">
-        <Button 
-          variant="outline" 
+        <Button
+          variant="outline"
           onClick={onEditCampaignIdea}
-          className="flex items-center gap-2"
+          className="flex items-center gap-2 w-full sm:w-auto"
         >
           <Edit className="h-4 w-4" />
           Edit Campaign Idea
         </Button>
-        <Button 
+        <Button
           onClick={onApproveAndCustomize}
-          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
+          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 w-full sm:w-auto"
         >
           Approve & Customize
           <ArrowRight className="h-4 w-4" />

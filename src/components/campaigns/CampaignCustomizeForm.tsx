@@ -84,7 +84,7 @@ const CampaignCustomizeForm: React.FC<CampaignCustomizeFormProps> = ({
         />
 
         {/* Action Buttons */}
-        <div className="flex justify-between pt-6">
+        <div className="flex flex-wrap justify-between gap-2 pt-6">
           <Button type="button" variant="outline" onClick={onBackToAnalysis}>
             Back to Analysis
           </Button>

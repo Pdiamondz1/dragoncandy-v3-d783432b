@@ -151,7 +151,7 @@ const DeliveryTierStep: React.FC<DeliveryTierStepProps> = ({
 
           {/* Continue Button */}
           <div className="flex justify-end">
-            <Button onClick={handleContinue} size="lg">
+            <Button onClick={handleContinue} size="lg" className="w-full sm:w-auto">
               Continue
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>

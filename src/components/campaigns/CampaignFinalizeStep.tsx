@@ -242,57 +242,57 @@ const CampaignFinalizeStep: React.FC<CampaignFinalizeStepProps> = ({
       {/* DragonDash Summary Card */}
       <Card className="mb-6 border-primary/20 bg-gradient-to-br from-primary/5 to-pink-500/5">
         <CardContent className="pt-6">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
             <h3 className="text-lg font-semibold">DragonDash Summary</h3>
             <DeliveryBadge deliveryType={campaignData.deliveryType} />
           </div>
           
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="p-3 rounded-lg bg-background/50">
-              <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
-                <Clock className="h-4 w-4" />
-                Delivery Time
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="p-3 rounded-lg bg-background/50 min-w-0">
+              <div className="flex items-center gap-1 text-muted-foreground text-xs mb-1">
+                <Clock className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">Delivery Time</span>
               </div>
-              <p className="font-semibold">{getDeliveryTimeframe()}</p>
+              <p className="font-semibold text-sm">{getDeliveryTimeframe()}</p>
             </div>
-            
-            <div className="p-3 rounded-lg bg-background/50">
-              <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
-                <DollarSign className="h-4 w-4" />
-                Pricing Type
+
+            <div className="p-3 rounded-lg bg-background/50 min-w-0">
+              <div className="flex items-center gap-1 text-muted-foreground text-xs mb-1">
+                <DollarSign className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">Pricing Type</span>
               </div>
-              <p className="font-semibold capitalize">{campaignData.pricingType.replace('_', ' ')}</p>
+              <p className="font-semibold capitalize text-sm">{campaignData.pricingType.replace('_', ' ')}</p>
             </div>
-            
-            <div className="p-3 rounded-lg bg-background/50">
-              <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
-                <DollarSign className="h-4 w-4" />
-                {campaignData.pricingType === 'fixed' ? 'Creator Payout' : 'Budget Range'}
+
+            <div className="p-3 rounded-lg bg-background/50 min-w-0">
+              <div className="flex items-center gap-1 text-muted-foreground text-xs mb-1">
+                <DollarSign className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">{campaignData.pricingType === 'fixed' ? 'Creator Payout' : 'Budget Range'}</span>
               </div>
-              <p className="font-semibold">
-                {campaignData.pricingType === 'fixed' 
+              <p className="font-semibold text-sm truncate">
+                {campaignData.pricingType === 'fixed'
                   ? `$${campaignData.fixedPrice}`
                   : `$${campaignData.budgetMin} - $${campaignData.budgetMax}`
                 }
               </p>
             </div>
-            
+
             {campaignData.deliveryFee > 0 && (
-              <div className="p-3 rounded-lg bg-orange-50 border border-orange-200">
-                <div className="flex items-center gap-2 text-orange-600 text-sm mb-1">
-                  <Rocket className="h-4 w-4" />
-                  Rush Fee
+              <div className="p-3 rounded-lg bg-orange-50 border border-orange-200 min-w-0">
+                <div className="flex items-center gap-1 text-orange-600 text-xs mb-1">
+                  <Rocket className="h-3.5 w-3.5 shrink-0" />
+                  <span className="truncate">Rush Fee</span>
                 </div>
-                <p className="font-semibold text-orange-700">+${campaignData.deliveryFee}</p>
+                <p className="font-semibold text-orange-700 text-sm">+${campaignData.deliveryFee}</p>
               </div>
             )}
           </div>
           
           {campaignData.pricingType === 'fixed' && (
             <div className="mt-4 p-4 rounded-lg bg-primary/10 border border-primary/20">
-              <div className="flex justify-between items-center">
+              <div className="flex flex-wrap justify-between items-center gap-2">
                 <span className="font-medium">Total Campaign Cost (Escrow)</span>
-                <span className="text-xl font-bold text-primary">${getTotalCost()}</span>
+                <span className="text-xl font-bold text-primary shrink-0">${getTotalCost()}</span>
               </div>
               <p className="text-sm text-muted-foreground mt-1">
                 This amount will be held in escrow when you publish the campaign
@@ -443,12 +443,12 @@ const CampaignFinalizeStep: React.FC<CampaignFinalizeStepProps> = ({
           </Card>
 
           {/* Action Buttons */}
-          <div className="flex justify-between">
+          <div className="flex flex-wrap justify-between gap-2">
             <Button type="button" variant="outline" onClick={onBack}>
               Back
             </Button>
-            
-            <div className="flex gap-3">
+
+            <div className="flex flex-wrap gap-2">
               <Button
                 type="button"
                 variant="outline"
@@ -463,8 +463,8 @@ const CampaignFinalizeStep: React.FC<CampaignFinalizeStepProps> = ({
                 type="submit"
                 disabled={isCreating}
                 className={`flex items-center gap-2 ${
-                  form.watch('publishImmediately') 
-                    ? 'bg-gradient-to-r from-primary to-pink-500 hover:from-primary/90 hover:to-pink-500/90' 
+                  form.watch('publishImmediately')
+                    ? 'bg-gradient-to-r from-primary to-pink-500 hover:from-primary/90 hover:to-pink-500/90'
                     : 'bg-muted hover:bg-muted/80 text-muted-foreground'
                 }`}
               >
@@ -472,15 +472,15 @@ const CampaignFinalizeStep: React.FC<CampaignFinalizeStepProps> = ({
                   'Creating...'
                 ) : form.watch('publishImmediately') ? (
                   <>
-                    <Rocket className="h-4 w-4" />
-                    {campaignData.pricingType === 'fixed' 
-                      ? `Publish & Pay $${getTotalCost()} Escrow`
+                    <Rocket className="h-4 w-4 shrink-0" />
+                    {campaignData.pricingType === 'fixed'
+                      ? `Publish & Pay $${getTotalCost()}`
                       : 'Create & Publish'
                     }
                   </>
                 ) : (
                   <>
-                    <FileText className="h-4 w-4" />
+                    <FileText className="h-4 w-4 shrink-0" />
                     Create as Draft
                   </>
                 )}
