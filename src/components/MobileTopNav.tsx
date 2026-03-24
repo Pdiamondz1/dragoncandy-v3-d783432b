@@ -29,7 +29,7 @@ export const MobileTopNav: React.FC<MobileTopNavProps> = ({
   return (
     <header className={`sticky top-0 z-50 flex items-center justify-between px-4 py-2 ${bgClass} border-b border-border`}>
       <Link to="/">
-        <img src={dragonCandyLogo} alt="DragonCandy" className="h-12 w-12" />
+        <img src={dragonCandyLogo} alt="DragonCandy" className="h-12 w-12 flex-shrink-0" />
       </Link>
 
       {showWelcome && displayName && (
