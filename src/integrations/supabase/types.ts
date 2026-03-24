@@ -757,6 +757,38 @@ export type Database = {
           },
         ]
       }
+      creator_automation_preferences: {
+        Row: {
+          auto_apply_criteria: Json | null
+          automation_level: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          auto_apply_criteria?: Json | null
+          automation_level?: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          auto_apply_criteria?: Json | null
+          automation_level?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "creator_automation_preferences_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       creator_profiles: {
         Row: {
           allow_portfolio_in_feed: boolean
@@ -945,6 +977,127 @@ export type Database = {
             columns: ["submission_id"]
             isOneToOne: false
             referencedRelation: "promotion_submissions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      donny_conversations: {
+        Row: {
+          context_snapshot: Json | null
+          created_at: string
+          id: string
+          last_message_at: string
+          user_id: string
+        }
+        Insert: {
+          context_snapshot?: Json | null
+          created_at?: string
+          id?: string
+          last_message_at?: string
+          user_id: string
+        }
+        Update: {
+          context_snapshot?: Json | null
+          created_at?: string
+          id?: string
+          last_message_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "donny_conversations_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      donny_messages: {
+        Row: {
+          content: string | null
+          conversation_id: string
+          created_at: string
+          id: string
+          rich_card: Json | null
+          role: string
+          tool_calls: Json | null
+          tool_result: Json | null
+        }
+        Insert: {
+          content?: string | null
+          conversation_id: string
+          created_at?: string
+          id?: string
+          rich_card?: Json | null
+          role: string
+          tool_calls?: Json | null
+          tool_result?: Json | null
+        }
+        Update: {
+          content?: string | null
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          rich_card?: Json | null
+          role?: string
+          tool_calls?: Json | null
+          tool_result?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "donny_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "donny_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      donny_tool_executions: {
+        Row: {
+          created_at: string
+          id: string
+          input: Json
+          message_id: string
+          output: Json | null
+          status: string
+          tool_name: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          input?: Json
+          message_id: string
+          output?: Json | null
+          status?: string
+          tool_name: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          input?: Json
+          message_id?: string
+          output?: Json | null
+          status?: string
+          tool_name?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "donny_tool_executions_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "donny_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "donny_tool_executions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
