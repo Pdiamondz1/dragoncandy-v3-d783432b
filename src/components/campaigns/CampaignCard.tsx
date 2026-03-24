@@ -221,7 +221,7 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
   const needsEscrowPayment = campaign.escrow_status === 'pending';
 
   return (
-    <Card className={`relative overflow-hidden hover:shadow-lg transition-all duration-200 border-l-4 ${needsEscrowPayment ? 'border-l-amber-500 bg-amber-50/30' : 'border-l-transparent hover:border-l-primary/50'}`}>
+    <Card className={`relative overflow-hidden hover:shadow-lg transition-all duration-200 border-l-4 max-w-full ${needsEscrowPayment ? 'border-l-amber-500 bg-amber-50/30' : 'border-l-transparent hover:border-l-primary/50'}`}>
       {/* Application Counter Badge - Top Right Corner */}
       {applicationCounts && applicationCounts.pending > 0 && (
         <div className="absolute top-2 right-2 z-10">
@@ -372,7 +372,7 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
         )}
       </CardContent>
 
-      <CardFooter className="flex flex-wrap gap-2 pt-4 border-t border-border min-w-0">
+      <CardFooter className="flex flex-wrap gap-2 pt-4 border-t border-border min-w-0 overflow-hidden">
         <Button 
           variant="outline" 
           size="sm" 

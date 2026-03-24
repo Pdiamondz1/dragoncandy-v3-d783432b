@@ -64,7 +64,7 @@ const DeliveryTierStep: React.FC<DeliveryTierStepProps> = ({
   };
 
   return (
-    <div className="space-y-6 overflow-hidden">
+    <div className="space-y-6 overflow-hidden max-w-full">
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">

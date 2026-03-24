@@ -152,7 +152,7 @@ const CampaignsPage: React.FC = () => {
         </div>
 
         {/* Campaign list */}
-        <div className="px-4 pt-4 pb-24 space-y-3">
+        <div className="px-4 pt-4 pb-24 space-y-3 overflow-hidden">
           <CampaignsList statusFilter={statusFilter} filterByOwnership={true} />
         </div>
       </div>

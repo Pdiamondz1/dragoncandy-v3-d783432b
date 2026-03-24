@@ -84,7 +84,7 @@ const DirectMessagesList: React.FC<DirectMessagesListProps> = ({
   }
 
   return (
-    <div className="flex flex-col h-full bg-card">
+    <div className="flex flex-col h-full bg-card overflow-hidden">
       {/* Header with search */}
       <div className="p-4 border-b border-border/50 flex-shrink-0">
         <div className="flex items-center justify-between mb-3">
@@ -143,7 +143,7 @@ const DirectMessagesList: React.FC<DirectMessagesListProps> = ({
               return (
                 <div
                   key={conversation.conversation_id || conversation.campaign_id}
-                  className={`group flex items-center gap-3 px-3 py-3 rounded-xl cursor-pointer transition-all duration-200 ${
+                  className={`group flex items-center gap-3 px-3 py-3 rounded-xl cursor-pointer transition-all duration-200 min-w-0 overflow-hidden ${
                     isActive
                       ? 'bg-primary/10 border border-primary/20'
                       : 'hover:bg-muted/60 border border-transparent'
@@ -160,7 +160,7 @@ const DirectMessagesList: React.FC<DirectMessagesListProps> = ({
                     />
                   </div>
 
-                  <div className="flex-1 min-w-0">
+                  <div className="flex-1 min-w-0 overflow-hidden">
                     <div className="flex items-center justify-between gap-2">
                       <h4 className={`text-sm font-medium truncate ${
                         isActive ? 'text-primary' : 'text-foreground'
@@ -173,7 +173,7 @@ const DirectMessagesList: React.FC<DirectMessagesListProps> = ({
                         </span>
                       )}
                     </div>
-                    <div className="flex items-center gap-1.5 mt-0.5">
+                    <div className="flex items-center gap-1.5 mt-0.5 min-w-0">
                       {isCampaign && (
                         <Megaphone className="h-3 w-3 text-muted-foreground flex-shrink-0" />
                       )}
