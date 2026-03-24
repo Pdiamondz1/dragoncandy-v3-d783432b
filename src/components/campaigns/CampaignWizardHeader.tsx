@@ -19,9 +19,9 @@ const CampaignWizardHeader: React.FC<CampaignWizardHeaderProps> = ({
   return (
     <>
       {/* Header */}
-      <div className="text-center mb-8">
+      <div className="text-center mb-8 max-w-full overflow-hidden">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Campaign Wizard</h1>
-        <p className="text-gray-600">
+        <p className="text-gray-600 break-words">
           Let DragonCandy AI analyze your goals and create the perfect campaign structure
         </p>
       </div>
