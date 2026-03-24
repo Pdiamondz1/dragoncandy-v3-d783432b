@@ -474,7 +474,7 @@ const CampaignFinalizeStep: React.FC<CampaignFinalizeStepProps> = ({
                   <>
                     <Rocket className="h-4 w-4 shrink-0" />
                     {campaignData.pricingType === 'fixed'
-                      ? `Publish & Pay $${getTotalCost()}`
+                      ? `Publish & Pay $${getTotalCost()} Escrow`
                       : 'Create & Publish'
                     }
                   </>
