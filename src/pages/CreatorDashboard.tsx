@@ -12,8 +12,7 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { PlusCircle, Settings, DollarSign, Target, Star, Clock } from 'lucide-react';
 import RatingPromptManager from '@/components/reviews/RatingPromptManager';
-import { AskBar } from '@/components/ai-assistant';
-import { useAIChatModal } from '@/contexts/AIChatModalContext';
+
 import { DonnyCard } from '@/components/donny/DonnyCard';
 
 const CreatorDashboard = () => {
@@ -21,8 +20,6 @@ const CreatorDashboard = () => {
   const { data: stats, isLoading: statsLoading } = useCreatorDashboardStats();
   const { data: activities, isLoading: activitiesLoading } = useCreatorRecentActivity();
   const { data: deadlines, isLoading: deadlinesLoading } = useCreatorUpcomingDeadlines();
-  const { openModal } = useAIChatModal();
-
   if (!profile) {
     return <div>Loading...</div>;
   }
@@ -68,9 +65,6 @@ const CreatorDashboard = () => {
                 );
               }}
             />
-
-            {/* Ask Bar */}
-            <AskBar onClick={openModal} userRole="content_creator" />
 
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">

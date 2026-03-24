@@ -1,5 +1,6 @@
 import { cn } from '@/lib/utils';
 import type { DonnyAvatarState } from '@/types/donny';
+import donnyIcon from '@/assets/Donny_icon.png';
 
 interface DonnyAvatarProps {
   state?: DonnyAvatarState;
@@ -31,7 +32,7 @@ export function DonnyAvatar({ state = 'idle', size = 'md', className }: DonnyAva
         className
       )}
     >
-      🐉
+      <img src={donnyIcon} alt="Donny" className="w-[80%] h-[80%] object-contain" />
     </div>
   );
 }

@@ -7,14 +7,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Search, TrendingUp, Users, DollarSign, Target, Sparkles, Calendar, BarChart3, Loader2, AlertCircle } from 'lucide-react';
-import { AskBar } from '@/components/ai-assistant';
-import { useAIChatModal } from '@/contexts/AIChatModalContext';
+
 import { DonnyCard } from '@/components/donny/DonnyCard';
 
 const BrandDashboard = () => {
   const { profile } = useAuth();
   const navigate = useNavigate();
-  const { openModal } = useAIChatModal();
   const { data: stats, isLoading: statsLoading, isError: statsError } = useBrandDashboardStats();
 
   if (!profile) {
@@ -110,9 +108,6 @@ const BrandDashboard = () => {
                 );
               }}
             />
-
-            {/* Ask Bar */}
-            <AskBar onClick={openModal} userRole="brand" />
 
             {/* Welcome Header */}
             <div>
