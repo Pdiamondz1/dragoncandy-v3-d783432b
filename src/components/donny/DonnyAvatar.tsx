@@ -1,6 +1,9 @@
 import { cn } from '@/lib/utils';
 import type { DonnyAvatarState } from '@/types/donny';
+<<<<<<< HEAD
 import donnyIcon from '@/assets/Donny_icon.png';
+=======
+>>>>>>> a1eeecf (docs: add Donny Chrome Extension OAuth PKCE design spec)
 
 interface DonnyAvatarProps {
   state?: DonnyAvatarState;
@@ -32,7 +35,11 @@ export function DonnyAvatar({ state = 'idle', size = 'md', className }: DonnyAva
         className
       )}
     >
+<<<<<<< HEAD
       <img src={donnyIcon} alt="Donny" className="w-[80%] h-[80%] object-contain" />
+=======
+      🐉
+>>>>>>> a1eeecf (docs: add Donny Chrome Extension OAuth PKCE design spec)
     </div>
   );
 }

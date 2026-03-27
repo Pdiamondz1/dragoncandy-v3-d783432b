@@ -222,9 +222,15 @@ const CreatorEarnings: React.FC = () => {
 
   return (
     <DashboardLayout userRole="content_creator">
+<<<<<<< HEAD
       <div className="min-h-screen overflow-x-hidden w-full max-w-full">
         {/* Template A — Pink gradient header */}
         <div className="bg-gradient-to-b from-dc-pink-bg to-pink-50 px-4 pt-4 pb-6 overflow-hidden">
+=======
+      <div className="min-h-screen overflow-x-hidden">
+        {/* Template A — Pink gradient header */}
+        <div className="bg-gradient-to-b from-dc-pink-bg to-pink-50 px-4 pt-4 pb-6">
+>>>>>>> a1eeecf (docs: add Donny Chrome Extension OAuth PKCE design spec)
           <p className="font-sans text-sm font-bold uppercase tracking-wide text-dc-teal mb-1">
             Creator Earnings
           </p>
@@ -293,6 +299,7 @@ const CreatorEarnings: React.FC = () => {
         </div>
 
         {/* Template A — White body */}
+<<<<<<< HEAD
         <div className="bg-white px-4 pt-4 pb-24 space-y-4 overflow-hidden">
 
           {/* Balance Stats Row */}
@@ -326,6 +333,41 @@ const CreatorEarnings: React.FC = () => {
                 </p>
               )}
               <p className="text-[10px] sm:text-xs text-gray-500 leading-tight">Total Earned</p>
+=======
+        <div className="bg-white px-4 pt-4 pb-24 space-y-4">
+
+          {/* Balance Stats Row */}
+          <div className="grid grid-cols-3 divide-x divide-dc-pink border-2 border-dc-teal rounded-2xl overflow-hidden">
+            <div className="p-3 text-center min-w-0">
+              {isLoadingStatus ? (
+                <Skeleton className="h-6 w-14 mx-auto mb-1" />
+              ) : (
+                <p className="text-base font-extrabold text-gray-900 truncate">
+                  {formatCurrency(payoutStatus?.availableBalance || 0)}
+                </p>
+              )}
+              <p className="text-xs text-gray-500 leading-tight">Stripe Bal.</p>
+            </div>
+            <div className="p-3 text-center min-w-0">
+              {isLoadingStatus ? (
+                <Skeleton className="h-6 w-14 mx-auto mb-1" />
+              ) : (
+                <p className={`text-base font-extrabold truncate ${canWithdraw ? 'text-green-600' : 'text-amber-600'}`}>
+                  {formatCurrency(payoutStatus?.platformPendingBalance || 0)}
+                </p>
+              )}
+              <p className="text-xs text-gray-500 leading-tight">Wallet</p>
+            </div>
+            <div className="p-3 text-center min-w-0">
+              {isLoadingEarnings ? (
+                <Skeleton className="h-6 w-14 mx-auto mb-1" />
+              ) : (
+                <p className="text-base font-extrabold text-gray-900 truncate">
+                  {formatCurrency(totalEarnings)}
+                </p>
+              )}
+              <p className="text-xs text-gray-500 leading-tight">Total Earned</p>
+>>>>>>> a1eeecf (docs: add Donny Chrome Extension OAuth PKCE design spec)
             </div>
           </div>
 

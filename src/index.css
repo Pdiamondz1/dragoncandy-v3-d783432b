@@ -20,6 +20,7 @@
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
 
+<<<<<<< HEAD
   /* Prevent any element from exceeding viewport width on mobile */
   @media (max-width: 767px) {
     #root,
@@ -29,6 +30,8 @@
     }
   }
 
+=======
+>>>>>>> a1eeecf (docs: add Donny Chrome Extension OAuth PKCE design spec)
   /* Fixed sidebar positioning for landing page portfolio columns */
   .fixed-sidebar {
     position: fixed !important;

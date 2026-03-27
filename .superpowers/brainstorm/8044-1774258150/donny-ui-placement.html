@@ -1,0 +1,134 @@
+<h2>Where does Donny live in the app?</h2>
+<p class="subtitle">How should users access and interact with Donny?</p>
+
+<div class="cards">
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="background: #1a1a2e; border-radius: 12px; padding: 20px; min-height: 220px; position: relative; font-family: system-ui;">
+        <!-- Phone frame -->
+        <div style="background: #A8A8A0; border-radius: 20px; padding: 12px; max-width: 240px; margin: 0 auto; min-height: 180px; display: flex; flex-direction: column;">
+          <!-- Top bar -->
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <span style="font-size: 11px; font-weight: bold; color: #111;">🐉 DragonCandy</span>
+            <span style="font-size: 10px; color: #555;">☰</span>
+          </div>
+          <!-- Chat takes full screen -->
+          <div style="flex: 1; background: #f0f0f0; border-radius: 12px; padding: 8px; display: flex; flex-direction: column; gap: 4px;">
+            <div style="background: #F9A8D4; border-radius: 12px; padding: 6px 8px; font-size: 9px; color: #111; align-self: flex-start; max-width: 70%;">
+              Hey! 👋 I'm Donny! What can I help you with today?
+            </div>
+            <div style="background: #4DD9C0; border-radius: 12px; padding: 6px 8px; font-size: 9px; color: #fff; align-self: flex-end; max-width: 70%;">
+              I need a TikTok creator
+            </div>
+            <div style="background: #F9A8D4; border-radius: 12px; padding: 6px 8px; font-size: 9px; color: #111; align-self: flex-start; max-width: 70%;">
+              Got it! Here are 3 creators perfect for your brand...
+            </div>
+            <!-- Quick action chips -->
+            <div style="display: flex; gap: 3px; flex-wrap: wrap; margin-top: 4px;">
+              <span style="background: #4DD9C0; color: white; font-size: 7px; padding: 3px 6px; border-radius: 8px;">Create Campaign</span>
+              <span style="background: #4DD9C0; color: white; font-size: 7px; padding: 3px 6px; border-radius: 8px;">Find Creator</span>
+              <span style="background: #4DD9C0; color: white; font-size: 7px; padding: 3px 6px; border-radius: 8px;">My Projects</span>
+            </div>
+          </div>
+          <!-- Input bar -->
+          <div style="display: flex; gap: 4px; margin-top: 6px; align-items: center;">
+            <div style="flex: 1; background: white; border-radius: 20px; padding: 4px 8px; font-size: 8px; color: #999;">Message Donny...</div>
+            <div style="background: #111; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 8px; color: white;">→</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A) Chat-First Home Screen</h3>
+      <p>Donny IS the home screen. When you open the app, you're talking to Donny. Quick-action chips below for common tasks. All flows start from conversation.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="background: #1a1a2e; border-radius: 12px; padding: 20px; min-height: 220px; position: relative; font-family: system-ui;">
+        <!-- Phone frame -->
+        <div style="background: #A8A8A0; border-radius: 20px; padding: 12px; max-width: 240px; margin: 0 auto; min-height: 180px; display: flex; flex-direction: column;">
+          <!-- Top bar -->
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <span style="font-size: 11px; font-weight: bold; color: #111;">🐉 DragonCandy</span>
+            <span style="font-size: 10px; color: #555;">☰</span>
+          </div>
+          <!-- Dashboard content -->
+          <div style="flex: 1; display: flex; flex-direction: column; gap: 4px;">
+            <div style="background: white; border-radius: 8px; padding: 6px; font-size: 8px;">
+              <div style="font-weight: bold; color: #111; margin-bottom: 2px;">Active Campaigns</div>
+              <div style="color: #555;">2 campaigns running</div>
+            </div>
+            <div style="background: white; border-radius: 8px; padding: 6px; font-size: 8px;">
+              <div style="font-weight: bold; color: #111; margin-bottom: 2px;">Pending Reviews</div>
+              <div style="color: #555;">3 submissions to review</div>
+            </div>
+          </div>
+          <!-- Floating Donny button -->
+          <div style="position: absolute; bottom: 20px; right: 20px; background: linear-gradient(135deg, #4DD9C0, #00E5CC); width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; box-shadow: 0 4px 12px rgba(77,217,192,0.4);">
+            🐉
+          </div>
+          <!-- Bottom nav -->
+          <div style="display: flex; justify-content: space-around; padding: 6px 0; margin-top: 4px;">
+            <span style="font-size: 10px; color: #4DD9C0;">🏠</span>
+            <span style="font-size: 10px; color: #888;">❤️</span>
+            <span style="font-size: 10px; color: #888;">📋</span>
+            <span style="font-size: 10px; color: #888;">👤</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B) Floating Donny Button</h3>
+      <p>Traditional dashboard home screen with a persistent floating 🐉 button. Tap it anytime to open Donny in a slide-up sheet. Dashboard + AI always one tap away.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="background: #1a1a2e; border-radius: 12px; padding: 20px; min-height: 220px; position: relative; font-family: system-ui;">
+        <!-- Phone frame -->
+        <div style="background: #A8A8A0; border-radius: 20px; padding: 12px; max-width: 240px; margin: 0 auto; min-height: 180px; display: flex; flex-direction: column;">
+          <!-- Top bar -->
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <span style="font-size: 11px; font-weight: bold; color: #111;">🐉 DragonCandy</span>
+            <span style="font-size: 10px; color: #555;">☰</span>
+          </div>
+          <!-- Donny greeting card -->
+          <div style="background: linear-gradient(135deg, #4DD9C0, #00E5CC); border-radius: 12px; padding: 8px; margin-bottom: 6px;">
+            <div style="font-size: 9px; color: white; font-weight: bold;">🐉 Donny says...</div>
+            <div style="font-size: 8px; color: white; margin-top: 2px;">You have 2 new creator matches! Want me to show you?</div>
+            <div style="display: flex; gap: 3px; margin-top: 4px;">
+              <span style="background: white; color: #4DD9C0; font-size: 7px; padding: 2px 6px; border-radius: 6px; font-weight: bold;">Show me</span>
+              <span style="background: rgba(255,255,255,0.3); color: white; font-size: 7px; padding: 2px 6px; border-radius: 6px;">Later</span>
+            </div>
+          </div>
+          <!-- Dashboard cards -->
+          <div style="display: flex; flex-direction: column; gap: 4px; flex: 1;">
+            <div style="background: white; border-radius: 8px; padding: 6px; font-size: 8px;">
+              <div style="font-weight: bold; color: #111;">Active Campaigns</div>
+              <div style="color: #555;">2 running</div>
+            </div>
+            <div style="background: white; border-radius: 8px; padding: 6px; font-size: 8px;">
+              <div style="font-weight: bold; color: #111;">Submissions</div>
+              <div style="color: #555;">3 to review</div>
+            </div>
+          </div>
+          <!-- Bottom nav with Donny center -->
+          <div style="display: flex; justify-content: space-around; align-items: center; padding: 6px 0; margin-top: 4px;">
+            <span style="font-size: 10px; color: #4DD9C0;">🏠</span>
+            <span style="font-size: 10px; color: #888;">❤️</span>
+            <div style="background: linear-gradient(135deg, #4DD9C0, #00E5CC); width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; margin-top: -8px; box-shadow: 0 2px 8px rgba(77,217,192,0.4);">🐉</div>
+            <span style="font-size: 10px; color: #888;">📋</span>
+            <span style="font-size: 10px; color: #888;">👤</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C) Hybrid — Donny Card + Nav Button</h3>
+      <p>Dashboard home screen with a prominent Donny card at top showing proactive suggestions. Plus a 🐉 button in the bottom nav center (replacing the current +) for full chat access.</p>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,50 @@
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Pacifico&display=swap" rel="stylesheet">
+
+<h2 style="font-family: 'Outfit', sans-serif;">Implementation Approach</h2>
+<p class="subtitle" style="font-family: 'Outfit', sans-serif;">Three ways to execute the full UX theme update across ~50 pages + components. Each uses team sub-agents as requested.</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3 style="font-family: 'Outfit', sans-serif;">🏗️ Foundation-First (Recommended)</h3>
+      <p style="font-family: 'Outfit', sans-serif; margin-bottom: 12px;"><strong>Phase 1:</strong> Build the theme foundation — update Tailwind config, global CSS, fonts, logo asset, shared components (Button, Card, Nav, Layout). This changes everything at once through the design system.</p>
+      <p style="font-family: 'Outfit', sans-serif; margin-bottom: 12px;"><strong>Phase 2:</strong> Screenshot-matched pages — pixel-match the 8 pages with screenshots (Landing, Login, Dashboard, Browse Creators, Portfolio, Profile, Messaging, Campaigns swipe view).</p>
+      <p style="font-family: 'Outfit', sans-serif; margin-bottom: 12px;"><strong>Phase 3:</strong> Remaining pages — apply the theme to all other pages (~40) using established patterns. Parallel sub-agents grouped by domain (settings pages, project pages, etc.).</p>
+      <div style="background: #f0fdf9; border: 1px solid #4DD9C0; border-radius: 12px; padding: 12px; margin-top: 8px;">
+        <p style="font-family: 'Outfit', sans-serif; font-size: 13px; margin: 0;"><strong>Pros:</strong> Foundation changes cascade everywhere. Less rework. Sub-agents in Phase 3 work from a stable base.<br><strong>Cons:</strong> Phase 1 is sequential (can't parallelize the foundation). Slightly longer before first visible page.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3 style="font-family: 'Outfit', sans-serif;">⚡ Page-Parallel Blitz</h3>
+      <p style="font-family: 'Outfit', sans-serif; margin-bottom: 12px;">Update Tailwind config + fonts + logo first (quick foundation), then immediately dispatch parallel sub-agents — each agent owns a page group and applies the theme independently.</p>
+      <p style="font-family: 'Outfit', sans-serif; margin-bottom: 12px;">Sub-agents: Landing+Login agent, Dashboard agent, Browse+Portfolio agent, Messaging agent, Campaigns agent, Settings group agent, Projects group agent, etc.</p>
+      <div style="background: #fef3f2; border: 1px solid #F9A8D4; border-radius: 12px; padding: 12px; margin-top: 8px;">
+        <p style="font-family: 'Outfit', sans-serif; font-size: 13px; margin: 0;"><strong>Pros:</strong> Maximum parallelism. Fastest wall-clock time.<br><strong>Cons:</strong> Risk of inconsistency between agents. Shared components may get conflicting changes. Merge conflicts likely. Needs careful coordination.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3 style="font-family: 'Outfit', sans-serif;">🎯 Component-Out Strategy</h3>
+      <p style="font-family: 'Outfit', sans-serif; margin-bottom: 12px;">Work exclusively through shared components. Update every shared UI component (Button, Card, Input, Badge, Avatar, Nav, Layout, Sheet, Dialog, etc.) to match the design system. Pages mostly update themselves because they consume these components.</p>
+      <p style="font-family: 'Outfit', sans-serif; margin-bottom: 12px;">Then do a focused pass on the 8 screenshot pages for page-specific layouts (campaign swipe, messaging bubbles, profile hero, etc.).</p>
+      <div style="background: #fefce8; border: 1px solid #FACC15; border-radius: 12px; padding: 12px; margin-top: 8px;">
+        <p style="font-family: 'Outfit', sans-serif; font-size: 13px; margin: 0;"><strong>Pros:</strong> Highest consistency. Component changes propagate to all pages. Minimal per-page work.<br><strong>Cons:</strong> Doesn't handle page-level layout changes (backgrounds, section ordering). Still need per-page work for screenshot pages.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top: 24px;">
+  <p class="subtitle" style="font-family: 'Outfit', sans-serif;">My recommendation: <strong>Option A (Foundation-First)</strong>. It combines the best of B and C — we build the foundation (config + shared components) first so changes cascade, then use parallel sub-agents for the page-specific work. This gives us consistency AND speed where it matters.</p>
+</div>

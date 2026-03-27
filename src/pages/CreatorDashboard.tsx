@@ -12,7 +12,12 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { PlusCircle, Settings, DollarSign, Target, Star, Clock } from 'lucide-react';
 import RatingPromptManager from '@/components/reviews/RatingPromptManager';
+<<<<<<< HEAD
 
+=======
+import { AskBar } from '@/components/ai-assistant';
+import { useAIChatModal } from '@/contexts/AIChatModalContext';
+>>>>>>> a1eeecf (docs: add Donny Chrome Extension OAuth PKCE design spec)
 import { DonnyCard } from '@/components/donny/DonnyCard';
 
 const CreatorDashboard = () => {
@@ -20,6 +25,11 @@ const CreatorDashboard = () => {
   const { data: stats, isLoading: statsLoading } = useCreatorDashboardStats();
   const { data: activities, isLoading: activitiesLoading } = useCreatorRecentActivity();
   const { data: deadlines, isLoading: deadlinesLoading } = useCreatorUpcomingDeadlines();
+<<<<<<< HEAD
+=======
+  const { openModal } = useAIChatModal();
+
+>>>>>>> a1eeecf (docs: add Donny Chrome Extension OAuth PKCE design spec)
   if (!profile) {
     return <div>Loading...</div>;
   }
@@ -66,6 +76,12 @@ const CreatorDashboard = () => {
               }}
             />
 
+<<<<<<< HEAD
+=======
+            {/* Ask Bar */}
+            <AskBar onClick={openModal} userRole="content_creator" />
+
+>>>>>>> a1eeecf (docs: add Donny Chrome Extension OAuth PKCE design spec)
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="min-w-0">

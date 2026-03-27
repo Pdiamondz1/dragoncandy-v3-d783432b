@@ -3,7 +3,11 @@ import React, { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Plus, ArrowLeft } from 'lucide-react';
+<<<<<<< HEAD
 
+=======
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+>>>>>>> a1eeecf (docs: add Donny Chrome Extension OAuth PKCE design spec)
 import CampaignsList from '@/components/campaigns/CampaignsList';
 import { useCampaigns } from '@/hooks/useCampaigns';
 import { supabase } from '@/integrations/supabase/client';
@@ -100,7 +104,11 @@ const CampaignsPage: React.FC = () => {
 
   return (
     <DashboardLayout userRole="business_client">
+<<<<<<< HEAD
       <div className="min-h-screen bg-white overflow-x-hidden w-full max-w-full">
+=======
+      <div className="min-h-screen bg-white overflow-x-hidden">
+>>>>>>> a1eeecf (docs: add Donny Chrome Extension OAuth PKCE design spec)
         {/* Template B Header */}
         <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
           <button
@@ -123,9 +131,15 @@ const CampaignsPage: React.FC = () => {
         </div>
 
         {/* Status filter tabs — horizontal scroll */}
+<<<<<<< HEAD
         <div className="bg-white border-b border-gray-100 overflow-hidden">
           <div className="overflow-x-auto scrollbar-hide">
             <div className="flex px-4 py-2 gap-2 w-max">
+=======
+        <div className="bg-white border-b border-gray-100">
+          <ScrollArea className="w-full">
+            <div className="flex px-4 py-2 gap-2 whitespace-nowrap">
+>>>>>>> a1eeecf (docs: add Donny Chrome Extension OAuth PKCE design spec)
               {tabs.map(tab => (
                 <button
                   key={tab.key}
@@ -147,11 +161,20 @@ const CampaignsPage: React.FC = () => {
                 </button>
               ))}
             </div>
+<<<<<<< HEAD
           </div>
         </div>
 
         {/* Campaign list */}
         <div className="px-4 pt-4 pb-24 space-y-3 overflow-hidden">
+=======
+            <ScrollBar orientation="horizontal" />
+          </ScrollArea>
+        </div>
+
+        {/* Campaign list */}
+        <div className="px-4 pt-4 pb-24 space-y-3">
+>>>>>>> a1eeecf (docs: add Donny Chrome Extension OAuth PKCE design spec)
           <CampaignsList statusFilter={statusFilter} filterByOwnership={true} />
         </div>
       </div>

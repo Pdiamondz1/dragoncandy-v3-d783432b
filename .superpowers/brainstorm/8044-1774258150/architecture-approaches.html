@@ -1,0 +1,59 @@
+<h2>How should we architect Donny?</h2>
+<p class="subtitle">Three approaches — from lightweight to full platform. Each has different trade-offs on speed, cost, and capability.</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Edge Function Agent (Recommended)</h3>
+      <p>Donny runs as a Supabase Edge Function that wraps GPT-4o with function-calling. Each user message hits an edge function that:</p>
+      <ul style="font-size: 14px; margin: 8px 0; padding-left: 20px; color: #ccc;">
+        <li>Loads user context from Supabase (profile, campaigns, history)</li>
+        <li>Builds a system prompt with Donny's personality + available tools</li>
+        <li>Calls GPT-4o with function definitions (create_campaign, match_creators, etc.)</li>
+        <li>Executes tool calls against Supabase, then returns Donny's response</li>
+        <li>Streams responses back via Supabase Realtime for a live chat feel</li>
+      </ul>
+      <div class="pros-cons" style="margin-top: 12px;">
+        <div class="pros"><h4>Pros</h4><ul><li>Stays in your existing stack — no new infra</li><li>Function-calling is battle-tested with GPT-4o</li><li>Conversation history stored in existing messages table</li><li>Streaming via Supabase Realtime you already use</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Edge function cold starts (mitigated by warm-up)</li><li>Complex multi-step flows need careful prompt engineering</li><li>10-minute edge function timeout for long operations</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>OpenAI Assistants API</h3>
+      <p>Donny is an OpenAI Assistant with persistent threads. Each user gets a thread, and OpenAI manages conversation memory and tool execution:</p>
+      <ul style="font-size: 14px; margin: 8px 0; padding-left: 20px; color: #ccc;">
+        <li>Create an Assistant with Donny's personality and tool definitions</li>
+        <li>Each user conversation = an OpenAI Thread (persistent memory)</li>
+        <li>Tools call back to Supabase Edge Functions for data/actions</li>
+        <li>OpenAI handles context window management and tool orchestration</li>
+      </ul>
+      <div class="pros-cons" style="margin-top: 12px;">
+        <div class="pros"><h4>Pros</h4><ul><li>OpenAI manages conversation memory automatically</li><li>Built-in tool orchestration and retry logic</li><li>File search and code interpreter available if needed later</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Vendor lock-in to OpenAI's Assistants API</li><li>Less control over streaming and response timing</li><li>Thread data lives on OpenAI servers (privacy consideration)</li><li>Additional API cost on top of token usage</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Hybrid Client + Edge</h3>
+      <p>Split Donny's brain between the client (for fast UI interactions) and edge functions (for data-heavy operations):</p>
+      <ul style="font-size: 14px; margin: 8px 0; padding-left: 20px; color: #ccc;">
+        <li>Client-side: lightweight prompt handles quick replies, UI suggestions, navigation</li>
+        <li>Edge function: heavy operations (campaign creation, creator search, payments)</li>
+        <li>Client decides if a message needs the server or can be handled locally</li>
+        <li>Pre-fetched user context cached on client for instant responses</li>
+      </ul>
+      <div class="pros-cons" style="margin-top: 12px;">
+        <div class="pros"><h4>Pros</h4><ul><li>Fastest perceived response time — some replies are instant</li><li>Reduced API costs for simple interactions</li><li>Works partially offline</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>API key exposure risk on client (needs proxy regardless)</li><li>Two codepaths to maintain — complexity doubles</li><li>Context sync between client and server state</li><li>Over-engineered for v1</li></ul></div>
+      </div>
+    </div>
+  </div>
+</div>

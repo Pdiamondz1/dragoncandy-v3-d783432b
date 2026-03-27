@@ -1,0 +1,434 @@
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Pacifico&display=swap" rel="stylesheet">
+
+<h2 style="font-family: 'Outfit', sans-serif;">Design — Phase 2: Screenshot-Matched Pages (Mobile-First)</h2>
+<p class="subtitle" style="font-family: 'Outfit', sans-serif;">All mockups shown at mobile viewport proportions (375px wide). Every element sized for touch targets (min 44px), thumb-friendly zones, and full-screen mobile layouts.</p>
+
+<div style="font-family: 'Outfit', sans-serif; background: #fef3f2; border: 2px solid #F9A8D4; border-radius: 16px; padding: 16px; margin-bottom: 24px;">
+  <p style="margin: 0; font-weight: 700; font-size: 14px;">📱 Mobile Design Constraints (All Pages)</p>
+  <ul style="margin: 8px 0 0; padding-left: 20px; font-size: 13px; color: #555; line-height: 1.8;">
+    <li><strong>Viewport:</strong> 375–430px width, full device height (100dvh)</li>
+    <li><strong>Touch targets:</strong> Minimum 44×44px for all tappable elements</li>
+    <li><strong>Buttons:</strong> Full-width (<code>w-full</code>) pill CTAs, min height 48px</li>
+    <li><strong>Padding:</strong> <code>px-4</code> (16px) page gutters, <code>p-4</code> card padding</li>
+    <li><strong>Font sizes:</strong> Body 16px min (prevents iOS zoom), headings 20-28px</li>
+    <li><strong>Bottom safe area:</strong> <code>pb-24</code> to clear bottom nav (80px)</li>
+    <li><strong>Scroll:</strong> Vertical scroll with momentum, no horizontal overflow</li>
+    <li><strong>Spacing:</strong> <code>gap-3</code> / <code>gap-4</code> between elements for thumb comfort</li>
+  </ul>
+</div>
+
+<!-- MOBILE MOCKUPS GRID -->
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+
+  <!-- 1. LANDING -->
+  <div style="font-family: 'Outfit', sans-serif;">
+    <p style="font-weight: 700; font-size: 13px; margin: 0 0 8px; color: #4DD9C0;">1. Landing Page</p>
+    <div style="width: 180px; height: 380px; border-radius: 24px; overflow: hidden; border: 3px solid #222; background: #fff; position: relative; font-size: 10px;">
+      <!-- Status bar -->
+      <div style="height: 20px; background: #fff; display: flex; align-items: center; justify-content: space-between; padding: 0 8px; font-size: 7px; color: #555;">
+        <span>9:41</span><span>●●● WiFi 🔋</span>
+      </div>
+      <!-- Top nav -->
+      <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 10px;">
+        <div style="width: 28px; height: 28px; border-radius: 50%; background: linear-gradient(135deg, #7ee8d0, #4DD9C0);"></div>
+        <div style="font-size: 14px; color: #888;">☰</div>
+      </div>
+      <!-- Hero -->
+      <div style="text-align: center; padding: 16px 12px 8px;">
+        <p style="font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: #4DD9C0; line-height: 1.4; margin: 0;">UNLEASH YOUR CREATIVITY: CONNECT WITH CREATORS AND BUSINESSES</p>
+        <p style="font-size: 7px; color: #555; margin: 6px 0 10px; line-height: 1.4;">Connect with top creators, harness AI editing tools, and build campaigns that drive real results.</p>
+        <button style="font-family: 'Outfit'; width: 85%; background: #4DD9C0; color: white; font-weight: 700; border: none; border-radius: 99px; padding: 8px; font-size: 9px; margin-bottom: 6px; display: block; margin-left: auto; margin-right: auto;">Get Started</button>
+        <button style="font-family: 'Outfit'; width: 85%; background: white; color: #EC4899; font-weight: 600; border: 1px solid #ddd; border-radius: 99px; padding: 8px; font-size: 9px; display: block; margin-left: auto; margin-right: auto;">Learn More</button>
+      </div>
+      <!-- Feature cards -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px; padding: 8px 10px;">
+        <div style="background: #f5f5f5; border-radius: 8px; padding: 6px; text-align: center;">
+          <p style="font-weight: 700; font-size: 6px; margin: 0;">AI-Powered</p>
+          <p style="font-size: 5px; color: #888; margin: 2px 0 0;">Marketing</p>
+        </div>
+        <div style="background: #f5f5f5; border-radius: 8px; padding: 6px; text-align: center;">
+          <p style="font-weight: 700; font-size: 6px; margin: 0;">Creator</p>
+          <p style="font-size: 5px; color: #888; margin: 2px 0 0;">Marketplace</p>
+        </div>
+        <div style="background: #f5f5f5; border-radius: 8px; padding: 6px; text-align: center;">
+          <p style="font-weight: 700; font-size: 6px; margin: 0;">Campaign</p>
+          <p style="font-size: 5px; color: #888; margin: 2px 0 0;">Management</p>
+        </div>
+      </div>
+      <!-- Portfolio strip -->
+      <div style="display: flex; gap: 3px; padding: 4px 10px; overflow: hidden;">
+        <div style="flex:1; height: 40px; background: #ccc; border-radius: 6px;"></div>
+        <div style="flex:1; height: 40px; background: #bbb; border-radius: 6px;"></div>
+        <div style="flex:1; height: 40px; background: #aaa; border-radius: 6px;"></div>
+        <div style="flex:1; height: 40px; background: #999; border-radius: 6px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. LOGIN -->
+  <div style="font-family: 'Outfit', sans-serif;">
+    <p style="font-weight: 700; font-size: 13px; margin: 0 0 8px; color: #4DD9C0;">2. Login Page</p>
+    <div style="width: 180px; height: 380px; border-radius: 24px; overflow: hidden; border: 3px solid #222; background: #A8A8A0; position: relative; font-size: 10px; display: flex; flex-direction: column;">
+      <div style="height: 20px; background: #A8A8A0; display: flex; align-items: center; justify-content: space-between; padding: 0 8px; font-size: 7px; color: #ddd;">
+        <span>9:41</span><span>●●● WiFi 🔋</span>
+      </div>
+      <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 10px;">
+        <div style="width: 28px; height: 28px; border-radius: 50%; background: linear-gradient(135deg, #7ee8d0, #4DD9C0);"></div>
+        <div style="font-size: 14px; color: white;">☰</div>
+      </div>
+      <div style="flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 0 14px;">
+        <p style="text-align: center; color: white; font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 16px;">WELCOME TO DRAGON CANDY</p>
+        <input style="font-family: 'Outfit'; padding: 10px; border-radius: 99px; border: none; font-size: 9px; text-align: center; background: white; margin-bottom: 6px; width: 100%; box-sizing: border-box;" placeholder="Email" disabled>
+        <input style="font-family: 'Outfit'; padding: 10px; border-radius: 99px; border: none; font-size: 9px; text-align: center; background: white; margin-bottom: 6px; width: 100%; box-sizing: border-box;" placeholder="Password" disabled>
+        <button style="font-family: 'Outfit'; padding: 10px; border-radius: 99px; border: 1px solid #ddd; background: white; font-size: 10px; font-weight: 600; color: #4DD9C0; width: 100%; margin-bottom: 10px;">Login</button>
+        <p style="text-align: center; color: white; font-size: 7px; text-transform: uppercase; margin: 0 0 6px;">DON'T HAVE AN ACCOUNT?</p>
+        <button style="font-family: 'Outfit'; width: 100%; padding: 10px; border-radius: 99px; border: none; background: #4DD9C0; color: white; font-size: 10px; font-weight: 700; margin-bottom: 12px;">Sign Up</button>
+        <div style="display: flex; justify-content: center; gap: 10px;">
+          <div style="width: 24px; height: 24px; border-radius: 50%; background: white; display: flex; align-items: center; justify-content: center; font-size: 10px;">G</div>
+          <div style="width: 24px; height: 24px; border-radius: 50%; background: white; display: flex; align-items: center; justify-content: center; font-size: 10px;"></div>
+          <div style="width: 24px; height: 24px; border-radius: 50%; background: white; display: flex; align-items: center; justify-content: center; font-size: 10px;">f</div>
+        </div>
+      </div>
+      <!-- Portfolio strip at bottom -->
+      <div style="display: flex; gap: 2px; padding: 0; margin-top: auto;">
+        <div style="flex:1; height: 36px; background: #888;"></div>
+        <div style="flex:1; height: 36px; background: #777;"></div>
+        <div style="flex:1; height: 36px; background: #666;"></div>
+        <div style="flex:1; height: 36px; background: #555;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. BUSINESS DASHBOARD -->
+  <div style="font-family: 'Outfit', sans-serif;">
+    <p style="font-weight: 700; font-size: 13px; margin: 0 0 8px; color: #4DD9C0;">3. Business Dashboard</p>
+    <div style="width: 180px; height: 380px; border-radius: 24px; overflow: hidden; border: 3px solid #222; background: #fff; position: relative; font-size: 10px; display: flex; flex-direction: column;">
+      <div style="height: 20px; background: #F9C8E0; display: flex; align-items: center; justify-content: space-between; padding: 0 8px; font-size: 7px; color: #555;">
+        <span>9:41</span><span>●●● WiFi 🔋</span>
+      </div>
+      <!-- Pink header -->
+      <div style="background: linear-gradient(180deg, #F9C8E0, #fde8f0); padding: 8px 10px;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <div style="width: 24px; height: 24px; border-radius: 50%; background: #4DD9C0;"></div>
+            <div>
+              <p style="font-weight: 700; font-size: 7px; color: #4DD9C0; text-transform: uppercase; margin: 0;">WELCOME BACK, BUSINESS</p>
+              <p style="font-size: 6px; color: #555; margin: 1px 0 0;">Create content and drive revenue</p>
+            </div>
+          </div>
+          <div style="color: #555; font-size: 12px;">☰</div>
+        </div>
+      </div>
+      <!-- Body (scrollable) -->
+      <div style="flex: 1; overflow-y: auto; padding: 8px 10px; background: white;">
+        <!-- Ask Donny -->
+        <div style="display: flex; align-items: center; gap: 4px; border: 1.5px solid #4DD9C0; border-radius: 99px; padding: 6px 10px; margin-bottom: 8px;">
+          <span style="font-size: 8px;">🔍</span>
+          <span style="color: #aaa; font-size: 7px;">Ask Donny...</span>
+        </div>
+        <!-- DragonDash -->
+        <div style="border: 1.5px solid #4DD9C0; border-radius: 14px; padding: 10px; text-align: center; margin-bottom: 8px;">
+          <div style="width: 16px; height: 16px; border-radius: 50%; background: #4DD9C0; margin: 0 auto 4px; display: flex; align-items: center; justify-content: center; color: white; font-size: 10px;">+</div>
+          <p style="font-weight: 700; font-size: 9px; margin: 0 0 2px;">Start A DragonDash</p>
+          <p style="font-size: 6px; color: #555; margin: 0 0 6px;">Need content in hours, not days?</p>
+          <button style="font-family: 'Outfit'; background: #4DD9C0; color: white; font-weight: 600; border: none; border-radius: 99px; padding: 6px 18px; font-size: 7px;">DragonDash</button>
+        </div>
+        <!-- Quick Actions -->
+        <p style="font-family: 'Pacifico', cursive; font-size: 14px; color: #4DD9C0; text-align: center; margin: 0 0 2px;">Quick Actions</p>
+        <p style="font-size: 6px; color: #555; text-align: center; margin: 0 0 8px;">Instant social media department</p>
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px;">
+          <div style="border: 1.5px solid #4DD9C0; border-radius: 10px; padding: 8px 4px; text-align: center;">
+            <p style="font-weight: 700; font-size: 7px; margin: 0;">View Campaigns</p>
+            <p style="font-size: 5px; color: #888; margin: 2px 0 0;">Manage</p>
+          </div>
+          <div style="border: 1.5px solid #4DD9C0; border-radius: 10px; padding: 8px 4px; text-align: center;">
+            <p style="font-weight: 700; font-size: 7px; margin: 0;">Browse Creators</p>
+            <p style="font-size: 5px; color: #888; margin: 2px 0 0;">Discover</p>
+          </div>
+          <div style="border: 1.5px solid #4DD9C0; border-radius: 10px; padding: 8px 4px; text-align: center;">
+            <p style="font-weight: 700; font-size: 7px; margin: 0;">View Analytics</p>
+            <p style="font-size: 5px; color: #888; margin: 2px 0 0;">Track</p>
+          </div>
+        </div>
+      </div>
+      <!-- Bottom nav -->
+      <div style="display: flex; justify-content: space-around; align-items: center; padding: 6px 4px 10px; background: white; border-top: 1px solid #eee;">
+        <span style="font-size: 12px; color: #888;">🏠</span>
+        <span style="font-size: 12px; color: #888;">❤️</span>
+        <span style="font-size: 12px; color: #888;">▶️</span>
+        <div style="width: 28px; height: 28px; border-radius: 50%; background: #4DD9C0; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 14px; margin-top: -8px; box-shadow: 0 2px 8px rgba(77,217,192,0.4);">+</div>
+        <span style="font-size: 12px; color: #888;">📋</span>
+        <span style="font-size: 12px; color: #888;">📢</span>
+        <span style="font-size: 12px; color: #888;">👤</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. BROWSE CREATORS -->
+  <div style="font-family: 'Outfit', sans-serif;">
+    <p style="font-weight: 700; font-size: 13px; margin: 0 0 8px; color: #4DD9C0;">4. Browse Creators</p>
+    <div style="width: 180px; height: 380px; border-radius: 24px; overflow: hidden; border: 3px solid #222; background: #F9C8E0; position: relative; font-size: 10px; display: flex; flex-direction: column;">
+      <div style="height: 20px; background: #F9C8E0; display: flex; align-items: center; justify-content: space-between; padding: 0 8px; font-size: 7px; color: #555;">
+        <span>9:41</span><span>●●● WiFi 🔋</span>
+      </div>
+      <div style="display: flex; justify-content: space-between; align-items: center; padding: 4px 10px;">
+        <div style="width: 24px; height: 24px; border-radius: 50%; background: linear-gradient(135deg, #7ee8d0, #4DD9C0);"></div>
+        <div style="font-size: 12px; color: #555;">☰</div>
+      </div>
+      <p style="font-weight: 800; font-size: 13px; text-transform: uppercase; text-align: center; margin: 4px 0 2px; color: #111;">BROWSE CREATORS</p>
+      <p style="text-align: center; font-size: 6px; color: #555; margin: 0 0 8px;">Ready to create amazing content?</p>
+      <div style="flex: 1; overflow-y: auto; padding: 0 10px; display: flex; flex-direction: column; gap: 6px;">
+        <div style="background: white; border-radius: 14px; padding: 8px; display: flex; align-items: center; gap: 8px;">
+          <div style="width: 44px; height: 44px; border-radius: 10px; background: #ccc; flex-shrink: 0;"></div>
+          <div style="flex: 1;">
+            <p style="font-weight: 700; font-size: 9px; margin: 0;">Creator Name</p>
+            <p style="font-size: 6px; color: #888; margin: 2px 0 4px;">AI-powered campaign wizard</p>
+            <button style="font-family: 'Outfit'; background: #F9A8D4; color: white; font-weight: 600; border: none; border-radius: 99px; padding: 4px 12px; font-size: 7px;">View Portfolio</button>
+          </div>
+        </div>
+        <div style="background: white; border-radius: 14px; padding: 8px; display: flex; align-items: center; gap: 8px;">
+          <div style="width: 44px; height: 44px; border-radius: 10px; background: #bbb; flex-shrink: 0;"></div>
+          <div style="flex: 1;">
+            <p style="font-weight: 700; font-size: 9px; margin: 0;">Creator Name</p>
+            <p style="font-size: 6px; color: #888; margin: 2px 0 4px;">AI-powered campaign wizard</p>
+            <button style="font-family: 'Outfit'; background: #F9A8D4; color: white; font-weight: 600; border: none; border-radius: 99px; padding: 4px 12px; font-size: 7px;">View Portfolio</button>
+          </div>
+        </div>
+        <div style="background: white; border-radius: 14px; padding: 8px; display: flex; align-items: center; gap: 8px;">
+          <div style="width: 44px; height: 44px; border-radius: 10px; background: #aaa; flex-shrink: 0;"></div>
+          <div style="flex: 1;">
+            <p style="font-weight: 700; font-size: 9px; margin: 0;">Creator Name</p>
+            <p style="font-size: 6px; color: #888; margin: 2px 0 4px;">AI-powered campaign wizard</p>
+            <button style="font-family: 'Outfit'; background: #F9A8D4; color: white; font-weight: 600; border: none; border-radius: 99px; padding: 4px 12px; font-size: 7px;">View Portfolio</button>
+          </div>
+        </div>
+        <div style="background: white; border-radius: 14px; padding: 8px; display: flex; align-items: center; gap: 8px;">
+          <div style="width: 44px; height: 44px; border-radius: 10px; background: #999; flex-shrink: 0;"></div>
+          <div style="flex: 1;">
+            <p style="font-weight: 700; font-size: 9px; margin: 0;">Creator Name</p>
+            <p style="font-size: 6px; color: #888; margin: 2px 0 4px;">AI-powered campaign wizard</p>
+            <button style="font-family: 'Outfit'; background: #F9A8D4; color: white; font-weight: 600; border: none; border-radius: 99px; padding: 4px 12px; font-size: 7px;">View Portfolio</button>
+          </div>
+        </div>
+      </div>
+      <!-- Bottom nav -->
+      <div style="display: flex; justify-content: space-around; align-items: center; padding: 6px 4px 10px; background: white; border-top: 1px solid #eee;">
+        <span style="font-size: 12px; color: #888;">🏠</span>
+        <span style="font-size: 12px; color: #888;">❤️</span>
+        <span style="font-size: 12px; color: #888;">▶️</span>
+        <div style="width: 28px; height: 28px; border-radius: 50%; background: #4DD9C0; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 14px; margin-top: -8px;">+</div>
+        <span style="font-size: 12px; color: #888;">📋</span>
+        <span style="font-size: 12px; color: #888;">📢</span>
+        <span style="font-size: 12px; color: #888;">👤</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. MESSAGING -->
+  <div style="font-family: 'Outfit', sans-serif;">
+    <p style="font-weight: 700; font-size: 13px; margin: 0 0 8px; color: #4DD9C0;">5. Messaging</p>
+    <div style="width: 180px; height: 380px; border-radius: 24px; overflow: hidden; border: 3px solid #222; background: #A8A8A0; position: relative; font-size: 10px; display: flex; flex-direction: column;">
+      <div style="height: 20px; background: white; display: flex; align-items: center; justify-content: space-between; padding: 0 8px; font-size: 7px; color: #555;">
+        <span>9:41</span><span>●●● WiFi 🔋</span>
+      </div>
+      <!-- Header -->
+      <div style="background: white; padding: 8px 10px; display: flex; justify-content: space-between; align-items: center;">
+        <span style="color: #F9A8D4; font-size: 12px;">←</span>
+        <div style="text-align: center;">
+          <p style="font-weight: 700; color: #4DD9C0; font-size: 10px; margin: 0;">Creator Name</p>
+          <p style="font-size: 6px; color: #555; margin: 0;">Recently Active</p>
+        </div>
+        <div style="width: 22px; height: 22px; border-radius: 50%; background: #F9C8E0; display: flex; align-items: center; justify-content: center; font-size: 8px;">📞</div>
+      </div>
+      <!-- Chat area -->
+      <div style="flex: 1; padding: 10px; overflow-y: auto;">
+        <!-- Inbound -->
+        <div style="display: flex; align-items: flex-start; gap: 4px; margin-bottom: 8px;">
+          <div style="width: 20px; height: 20px; border-radius: 50%; background: #555; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 5px; color: white;">DC</div>
+          <div>
+            <div style="background: #F9A8D4; border-radius: 12px; padding: 6px 10px; max-width: 110px; margin-bottom: 3px; min-height: 16px;"></div>
+            <div style="background: #F9A8D4; border-radius: 12px; padding: 6px 10px; max-width: 100px; min-height: 16px;"></div>
+          </div>
+        </div>
+        <!-- Outbound -->
+        <div style="display: flex; justify-content: flex-end; align-items: flex-start; gap: 4px; margin-bottom: 8px;">
+          <div style="background: #4DD9C0; border-radius: 12px; padding: 6px 10px; max-width: 120px; min-height: 16px;"></div>
+          <div style="width: 20px; height: 20px; border-radius: 50%; background: #777; flex-shrink: 0;"></div>
+        </div>
+        <!-- Inbound -->
+        <div style="display: flex; align-items: flex-start; gap: 4px; margin-bottom: 8px;">
+          <div style="width: 20px; height: 20px; border-radius: 50%; background: #555; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 5px; color: white;">DC</div>
+          <div style="background: #F9A8D4; border-radius: 12px; padding: 6px 10px; max-width: 110px; min-height: 16px;"></div>
+        </div>
+        <!-- Outbound -->
+        <div style="display: flex; justify-content: flex-end; align-items: flex-start; gap: 4px;">
+          <div style="background: #4DD9C0; border-radius: 12px; padding: 6px 10px; max-width: 130px; min-height: 16px;"></div>
+          <div style="width: 20px; height: 20px; border-radius: 50%; background: #777; flex-shrink: 0;"></div>
+        </div>
+      </div>
+      <!-- Input bar -->
+      <div style="background: white; padding: 6px 8px; display: flex; align-items: center; gap: 6px; border-top: 2px solid #4DD9C0;">
+        <div style="width: 22px; height: 22px; border-radius: 50%; background: #111; display: flex; align-items: center; justify-content: center; color: white; font-size: 12px;">+</div>
+        <div style="flex: 1; border: 1px solid #F9A8D4; border-radius: 99px; padding: 6px 10px; font-size: 7px; color: #aaa;">Enter Text Here....</div>
+        <span style="font-size: 14px; color: #111;">➤</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6. CAMPAIGNS SWIPE -->
+  <div style="font-family: 'Outfit', sans-serif;">
+    <p style="font-weight: 700; font-size: 13px; margin: 0 0 8px; color: #4DD9C0;">6. Campaigns (Swipe)</p>
+    <div style="width: 180px; height: 380px; border-radius: 24px; overflow: hidden; border: 3px solid #222; background: #A8A8A0; position: relative; font-size: 10px; display: flex; flex-direction: column;">
+      <div style="height: 20px; background: #A8A8A0; display: flex; align-items: center; justify-content: space-between; padding: 0 8px; font-size: 7px; color: #ddd;">
+        <span>9:41</span><span>●●● WiFi 🔋</span>
+      </div>
+      <!-- Header -->
+      <div style="display: flex; justify-content: space-between; align-items: center; padding: 4px 10px;">
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <div style="width: 24px; height: 24px; border-radius: 50%; background: linear-gradient(135deg, #7ee8d0, #4DD9C0);"></div>
+          <div>
+            <p style="font-weight: 700; font-size: 9px; margin: 0; color: #111;">Available Campaigns</p>
+            <p style="font-size: 6px; color: #EC4899; margin: 0;">📍 Hoboken, NJ 07030</p>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <div style="width: 20px; height: 20px; border-radius: 50%; background: #888;"></div>
+          <span style="font-size: 12px; color: #555;">☰</span>
+        </div>
+      </div>
+      <!-- Card stack area -->
+      <div style="flex: 1; position: relative; padding: 8px 10px;">
+        <!-- Peek card 2 -->
+        <div style="position: absolute; top: 18px; left: 22px; right: 10px; bottom: 24px; background: #ddd; border-radius: 16px; opacity: 0.4;"></div>
+        <!-- Peek card 1 -->
+        <div style="position: absolute; top: 14px; left: 18px; right: 14px; bottom: 20px; background: #e5e5e5; border-radius: 16px; opacity: 0.6;"></div>
+        <!-- Front card -->
+        <div style="position: relative; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 16px rgba(0,0,0,0.15); height: 100%;">
+          <div style="background: linear-gradient(135deg, #9b59b6, #e74c3c, #ff6b9d); height: 60%; display: flex; align-items: flex-end; padding: 8px;">
+            <p style="color: white; font-weight: 700; font-size: 11px; margin: 0; text-shadow: 0 1px 4px rgba(0,0,0,0.3);">Available Campaigns</p>
+          </div>
+          <div style="padding: 8px 10px;">
+            <p style="font-size: 6px; color: #555; margin: 0 0 6px;">Use our AI-powered campaign wizard to define your goals</p>
+            <div style="display: flex; align-items: center; gap: 4px; margin-bottom: 8px;">
+              <div style="width: 16px; height: 16px; border-radius: 50%; background: #ddd;"></div>
+              <span style="font-size: 7px; font-weight: 600;">Company Name</span>
+            </div>
+            <button style="font-family: 'Outfit'; width: 100%; background: #F9A8D4; color: white; font-weight: 700; border: none; border-radius: 99px; padding: 8px; font-size: 9px;">Apply Now</button>
+          </div>
+        </div>
+      </div>
+      <!-- Bottom nav -->
+      <div style="display: flex; justify-content: space-around; align-items: center; padding: 6px 4px 10px; background: white; border-top: 1px solid #eee;">
+        <span style="font-size: 12px; color: #888;">🏠</span>
+        <span style="font-size: 12px; color: #888;">❤️</span>
+        <span style="font-size: 12px; color: #888;">▶️</span>
+        <div style="width: 28px; height: 28px; border-radius: 50%; background: #4DD9C0; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 14px; margin-top: -8px;">+</div>
+        <span style="font-size: 12px; color: #888;">📋</span>
+        <span style="font-size: 12px; color: #888;">📢</span>
+        <span style="font-size: 12px; color: #888;">👤</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7. CREATOR PROFILE -->
+  <div style="font-family: 'Outfit', sans-serif;">
+    <p style="font-weight: 700; font-size: 13px; margin: 0 0 8px; color: #4DD9C0;">7. Creator/Business Profile</p>
+    <div style="width: 180px; height: 380px; border-radius: 24px; overflow: hidden; border: 3px solid #222; background: #A8A8A0; position: relative; font-size: 10px; display: flex; flex-direction: column;">
+      <div style="height: 20px; background: rgba(0,0,0,0.2); display: flex; align-items: center; justify-content: space-between; padding: 0 8px; font-size: 7px; color: white;">
+        <span>9:41</span><span>●●● WiFi 🔋</span>
+      </div>
+      <!-- Hero image area -->
+      <div style="height: 42%; background: linear-gradient(135deg, #c0392b, #8e44ad, #2c3e50); position: relative;">
+        <div style="position: absolute; top: 4px; left: 8px;">
+          <div style="width: 20px; height: 20px; border-radius: 50%; background: linear-gradient(135deg, #7ee8d0, #4DD9C0);"></div>
+        </div>
+        <!-- Profile card overlay -->
+        <div style="position: absolute; bottom: -24px; left: 10px; right: 10px; background: white; border-radius: 20px; padding: 8px 10px; display: flex; align-items: center; gap: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+          <div style="width: 36px; height: 36px; border-radius: 50%; background: #ccc; border: 2px solid #4DD9C0; flex-shrink: 0;"></div>
+          <div>
+            <p style="font-weight: 700; font-size: 9px; margin: 0;">Creator Name</p>
+            <p style="font-size: 6px; color: #EC4899; margin: 1px 0;">⭐ 4.5 RATING</p>
+            <p style="font-size: 6px; color: #888; margin: 0;">HOBOKEN, NJ</p>
+          </div>
+          <span style="font-size: 7px; color: #888; margin-left: auto;">V57</span>
+        </div>
+      </div>
+      <!-- Stats + content -->
+      <div style="flex: 1; padding: 32px 10px 8px; background: white; overflow-y: auto;">
+        <!-- Stats row -->
+        <div style="display: flex; justify-content: space-around; text-align: center; margin-bottom: 10px;">
+          <div>
+            <p style="font-weight: 800; font-size: 16px; margin: 0;">50</p>
+            <p style="font-size: 5px; color: #888; margin: 0;">Projects</p>
+          </div>
+          <div style="width: 1px; background: #F9A8D4;"></div>
+          <div>
+            <p style="font-weight: 800; font-size: 16px; margin: 0;">50</p>
+            <p style="font-size: 5px; color: #888; margin: 0;">Reels</p>
+          </div>
+          <div style="width: 1px; background: #F9A8D4;"></div>
+          <div>
+            <p style="font-weight: 800; font-size: 16px; margin: 0;">50</p>
+            <p style="font-size: 5px; color: #888; margin: 0;">Completed</p>
+          </div>
+        </div>
+        <!-- Reviews -->
+        <p style="font-weight: 700; font-size: 10px; text-align: center; margin: 0 0 6px;">Reviews</p>
+        <div style="display: flex; gap: 4px; overflow-x: auto; margin-bottom: 10px;">
+          <div style="min-width: 80px; background: #f8f8f8; border-radius: 8px; padding: 6px; font-size: 5px; color: #555; line-height: 1.4;">
+            <p style="margin: 0 0 3px;">"Transform your content with intelligent AI..."</p>
+            <p style="font-weight: 700; margin: 0;">— Antique Bar</p>
+          </div>
+          <div style="min-width: 80px; background: #f8f8f8; border-radius: 8px; padding: 6px; font-size: 5px; color: #555; line-height: 1.4;">
+            <p style="margin: 0 0 3px;">"Transform your content with intelligent AI..."</p>
+            <p style="font-weight: 700; margin: 0;">— Antique Bar</p>
+          </div>
+        </div>
+        <!-- CTA -->
+        <button style="font-family: 'Outfit'; width: 100%; background: #4DD9C0; color: white; font-weight: 700; border: none; border-radius: 99px; padding: 8px; font-size: 9px;">GET IN TOUCH</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 8. CREATOR PORTFOLIO -->
+  <div style="font-family: 'Outfit', sans-serif;">
+    <p style="font-weight: 700; font-size: 13px; margin: 0 0 8px; color: #4DD9C0;">8. Creator Portfolio (Modal)</p>
+    <div style="width: 180px; height: 380px; border-radius: 24px; overflow: hidden; border: 3px solid #222; background: #222; position: relative; font-size: 10px; display: flex; flex-direction: column;">
+      <div style="height: 20px; background: #222; display: flex; align-items: center; justify-content: space-between; padding: 0 8px; font-size: 7px; color: #aaa;">
+        <span>9:41</span><span>●●● WiFi 🔋</span>
+      </div>
+      <!-- Top bar -->
+      <div style="display: flex; justify-content: space-between; align-items: center; padding: 4px 10px;">
+        <div style="width: 24px; height: 24px; border-radius: 50%; background: linear-gradient(135deg, #7ee8d0, #4DD9C0);"></div>
+        <p style="font-weight: 800; font-size: 11px; text-transform: uppercase; color: white; margin: 0;">CREATOR PORTFOLIO</p>
+        <span style="color: white; font-size: 14px;">✕</span>
+      </div>
+      <!-- Hero image -->
+      <div style="flex: 1; background: linear-gradient(135deg, #8e7cc3, #c4a882, #5b4a3f); margin: 4px 10px; border-radius: 12px; position: relative;">
+      </div>
+      <!-- Counter -->
+      <p style="text-align: center; color: #888; font-size: 8px; margin: 6px 0;">10/200</p>
+      <!-- Thumbnail gallery -->
+      <div style="display: flex; gap: 4px; padding: 0 10px 8px;">
+        <div style="flex: 1; height: 50px; background: #444; border-radius: 8px; position: relative;">
+          <p style="position: absolute; bottom: 2px; left: 4px; color: white; font-size: 5px; margin: 0;">Artist Name</p>
+        </div>
+        <div style="flex: 1; height: 50px; background: #553; border-radius: 8px; position: relative;">
+          <p style="position: absolute; bottom: 2px; left: 4px; color: white; font-size: 5px; margin: 0;">Artist Name</p>
+        </div>
+        <div style="flex: 1; height: 50px; background: #335; border-radius: 8px; position: relative;">
+          <p style="position: absolute; bottom: 2px; left: 4px; color: white; font-size: 5px; margin: 0;">Artist Name</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div style="font-family: 'Outfit', sans-serif; background: #f0fdf9; border: 2px solid #4DD9C0; border-radius: 16px; padding: 20px; margin-top: 24px;">
+  <p style="margin: 0; font-weight: 700; font-size: 16px;">Does Phase 2 (mobile-proportioned) look right?</p>
+  <p style="margin: 8px 0 0 0; color: #555; font-size: 14px;">All 8 screens shown at mobile proportions with touch-friendly sizing constraints. If approved, I'll present Phase 3 (remaining pages) next.</p>
+</div>

@@ -1,0 +1,238 @@
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Pacifico&display=swap" rel="stylesheet">
+
+<h2 style="font-family: 'Outfit', sans-serif;">Design — Phase 3: Remaining Pages (~40 pages)</h2>
+<p class="subtitle" style="font-family: 'Outfit', sans-serif;">No screenshots for these — we apply the theme system from Phase 1 using patterns established in Phase 2. Grouped by domain for parallel sub-agent execution.</p>
+
+<!-- PAGE TEMPLATE SYSTEM -->
+<div class="section">
+  <h3 style="font-family: 'Outfit', sans-serif;">Page Template Patterns</h3>
+  <p style="font-family: 'Outfit', sans-serif; font-size: 13px; color: #555;">Every page without a screenshot follows one of these 4 mobile layout templates:</p>
+
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px;">
+    <!-- Template A: Dashboard-style -->
+    <div style="font-family: 'Outfit', sans-serif;">
+      <div style="width: 140px; height: 240px; border-radius: 18px; overflow: hidden; border: 2px solid #222; background: #fff; font-size: 7px; display: flex; flex-direction: column; margin: 0 auto;">
+        <div style="background: linear-gradient(180deg, #F9C8E0, #fde8f0); padding: 6px 8px; display: flex; align-items: center; gap: 4px;">
+          <div style="width: 14px; height: 14px; border-radius: 50%; background: #4DD9C0;"></div>
+          <div><p style="font-weight: 700; font-size: 6px; color: #4DD9C0; margin: 0;">PAGE TITLE</p></div>
+          <span style="margin-left: auto; font-size: 8px; color: #888;">☰</span>
+        </div>
+        <div style="flex: 1; padding: 6px; overflow: hidden;">
+          <div style="background: #f5f5f5; border-radius: 8px; height: 20px; margin-bottom: 4px;"></div>
+          <div style="background: #f5f5f5; border-radius: 8px; height: 40px; margin-bottom: 4px;"></div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 3px;">
+            <div style="background: #f5f5f5; border-radius: 8px; height: 30px;"></div>
+            <div style="background: #f5f5f5; border-radius: 8px; height: 30px;"></div>
+          </div>
+        </div>
+        <div style="display: flex; justify-content: space-around; padding: 4px; border-top: 1px solid #eee; font-size: 8px; color: #888;">
+          <span>🏠</span><span>❤️</span><span>▶️</span>
+          <div style="width: 16px; height: 16px; border-radius: 50%; background: #4DD9C0; text-align: center; color: white; font-size: 10px; margin-top: -4px;">+</div>
+          <span>📋</span><span>📢</span><span>👤</span>
+        </div>
+      </div>
+      <p style="font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 11px; text-align: center; margin: 8px 0 2px;">A — Dashboard / Overview</p>
+      <p style="font-family: 'Outfit', sans-serif; font-size: 10px; color: #888; text-align: center; margin: 0;">Pink header, white body, cards grid</p>
+    </div>
+
+    <!-- Template B: List/Detail -->
+    <div style="font-family: 'Outfit', sans-serif;">
+      <div style="width: 140px; height: 240px; border-radius: 18px; overflow: hidden; border: 2px solid #222; background: #fff; font-size: 7px; display: flex; flex-direction: column; margin: 0 auto;">
+        <div style="background: white; padding: 6px 8px; display: flex; align-items: center; gap: 4px; border-bottom: 1px solid #eee;">
+          <span style="color: #F9A8D4; font-size: 8px;">←</span>
+          <p style="font-weight: 700; font-size: 7px; color: #111; margin: 0; flex: 1; text-align: center;">PAGE TITLE</p>
+          <span style="font-size: 8px; color: #888;">⋯</span>
+        </div>
+        <div style="flex: 1; padding: 6px; overflow: hidden; display: flex; flex-direction: column; gap: 4px;">
+          <div style="background: white; border: 1.5px solid #4DD9C0; border-radius: 12px; padding: 6px; display: flex; gap: 6px; align-items: center;">
+            <div style="width: 24px; height: 24px; border-radius: 8px; background: #eee; flex-shrink: 0;"></div>
+            <div style="flex: 1;"><div style="background: #eee; height: 4px; border-radius: 2px; margin-bottom: 3px; width: 70%;"></div><div style="background: #eee; height: 3px; border-radius: 2px; width: 50%;"></div></div>
+          </div>
+          <div style="background: white; border: 1.5px solid #4DD9C0; border-radius: 12px; padding: 6px; display: flex; gap: 6px; align-items: center;">
+            <div style="width: 24px; height: 24px; border-radius: 8px; background: #eee; flex-shrink: 0;"></div>
+            <div style="flex: 1;"><div style="background: #eee; height: 4px; border-radius: 2px; margin-bottom: 3px; width: 60%;"></div><div style="background: #eee; height: 3px; border-radius: 2px; width: 40%;"></div></div>
+          </div>
+          <div style="background: white; border: 1.5px solid #4DD9C0; border-radius: 12px; padding: 6px; display: flex; gap: 6px; align-items: center;">
+            <div style="width: 24px; height: 24px; border-radius: 8px; background: #eee; flex-shrink: 0;"></div>
+            <div style="flex: 1;"><div style="background: #eee; height: 4px; border-radius: 2px; margin-bottom: 3px; width: 65%;"></div><div style="background: #eee; height: 3px; border-radius: 2px; width: 45%;"></div></div>
+          </div>
+        </div>
+        <div style="display: flex; justify-content: space-around; padding: 4px; border-top: 1px solid #eee; font-size: 8px; color: #888;">
+          <span>🏠</span><span>❤️</span><span>▶️</span>
+          <div style="width: 16px; height: 16px; border-radius: 50%; background: #4DD9C0; text-align: center; color: white; font-size: 10px; margin-top: -4px;">+</div>
+          <span>📋</span><span>📢</span><span>👤</span>
+        </div>
+      </div>
+      <p style="font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 11px; text-align: center; margin: 8px 0 2px;">B — List / Browse</p>
+      <p style="font-family: 'Outfit', sans-serif; font-size: 10px; color: #888; text-align: center; margin: 0;">Back arrow, teal-bordered cards list</p>
+    </div>
+
+    <!-- Template C: Form/Settings -->
+    <div style="font-family: 'Outfit', sans-serif;">
+      <div style="width: 140px; height: 240px; border-radius: 18px; overflow: hidden; border: 2px solid #222; background: #fff; font-size: 7px; display: flex; flex-direction: column; margin: 0 auto;">
+        <div style="background: white; padding: 6px 8px; display: flex; align-items: center; gap: 4px; border-bottom: 1px solid #eee;">
+          <span style="color: #F9A8D4; font-size: 8px;">←</span>
+          <p style="font-weight: 700; font-size: 7px; color: #111; margin: 0; flex: 1; text-align: center;">SETTINGS</p>
+        </div>
+        <div style="flex: 1; padding: 8px; overflow: hidden;">
+          <p style="font-size: 5px; color: #888; text-transform: uppercase; font-weight: 600; margin: 0 0 4px;">Section Label</p>
+          <div style="background: white; border: 1px solid #eee; border-radius: 99px; padding: 6px 8px; margin-bottom: 4px;"><span style="color: #aaa;">Input field</span></div>
+          <div style="background: white; border: 1px solid #eee; border-radius: 99px; padding: 6px 8px; margin-bottom: 4px;"><span style="color: #aaa;">Input field</span></div>
+          <p style="font-size: 5px; color: #888; text-transform: uppercase; font-weight: 600; margin: 8px 0 4px;">Section Label</p>
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 4px 0; border-bottom: 1px solid #f0f0f0;">
+            <span style="font-size: 6px;">Toggle option</span>
+            <div style="width: 20px; height: 10px; border-radius: 99px; background: #4DD9C0;"></div>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 4px 0;">
+            <span style="font-size: 6px;">Toggle option</span>
+            <div style="width: 20px; height: 10px; border-radius: 99px; background: #ddd;"></div>
+          </div>
+        </div>
+        <div style="padding: 6px 8px;">
+          <button style="font-family: 'Outfit'; width: 100%; background: #4DD9C0; color: white; font-weight: 700; border: none; border-radius: 99px; padding: 6px; font-size: 7px;">Save Changes</button>
+        </div>
+        <div style="display: flex; justify-content: space-around; padding: 4px; border-top: 1px solid #eee; font-size: 8px; color: #888;">
+          <span>🏠</span><span>❤️</span><span>▶️</span>
+          <div style="width: 16px; height: 16px; border-radius: 50%; background: #4DD9C0; text-align: center; color: white; font-size: 10px; margin-top: -4px;">+</div>
+          <span>📋</span><span>📢</span><span>👤</span>
+        </div>
+      </div>
+      <p style="font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 11px; text-align: center; margin: 8px 0 2px;">C — Form / Settings</p>
+      <p style="font-family: 'Outfit', sans-serif; font-size: 10px; color: #888; text-align: center; margin: 0;">White bg, pill inputs, teal save CTA</p>
+    </div>
+
+    <!-- Template D: Detail/Modal -->
+    <div style="font-family: 'Outfit', sans-serif;">
+      <div style="width: 140px; height: 240px; border-radius: 18px; overflow: hidden; border: 2px solid #222; background: #A8A8A0; font-size: 7px; display: flex; flex-direction: column; margin: 0 auto;">
+        <div style="background: rgba(0,0,0,0.2); padding: 6px 8px; display: flex; align-items: center; gap: 4px;">
+          <span style="color: white; font-size: 8px;">←</span>
+          <p style="font-weight: 700; font-size: 7px; color: white; margin: 0; flex: 1; text-align: center;">DETAIL VIEW</p>
+          <span style="color: white; font-size: 8px;">⋯</span>
+        </div>
+        <!-- Hero area -->
+        <div style="height: 35%; background: linear-gradient(135deg, #667, #445); position: relative;">
+          <div style="position: absolute; bottom: 8px; left: 8px; right: 8px;">
+            <p style="color: white; font-weight: 700; font-size: 9px; margin: 0; text-shadow: 0 1px 3px rgba(0,0,0,0.4);">Item Title</p>
+            <p style="color: #ddd; font-size: 6px; margin: 2px 0 0;">Subtitle info</p>
+          </div>
+        </div>
+        <div style="flex: 1; background: white; border-radius: 16px 16px 0 0; margin-top: -8px; padding: 12px 8px 6px; overflow: hidden;">
+          <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+            <div style="flex: 1; text-align: center;"><p style="font-weight: 800; font-size: 12px; margin: 0;">24</p><p style="font-size: 5px; color: #888; margin: 0;">Stat</p></div>
+            <div style="width: 1px; background: #F9A8D4;"></div>
+            <div style="flex: 1; text-align: center;"><p style="font-weight: 800; font-size: 12px; margin: 0;">$500</p><p style="font-size: 5px; color: #888; margin: 0;">Budget</p></div>
+          </div>
+          <div style="background: #f8f8f8; border-radius: 8px; height: 24px; margin-bottom: 4px;"></div>
+          <div style="background: #f8f8f8; border-radius: 8px; height: 24px;"></div>
+        </div>
+        <div style="background: white; padding: 4px 8px 8px;">
+          <button style="font-family: 'Outfit'; width: 100%; background: #4DD9C0; color: white; font-weight: 700; border: none; border-radius: 99px; padding: 6px; font-size: 7px;">Primary Action</button>
+        </div>
+      </div>
+      <p style="font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 11px; text-align: center; margin: 8px 0 2px;">D — Detail / Hero View</p>
+      <p style="font-family: 'Outfit', sans-serif; font-size: 10px; color: #888; text-align: center; margin: 0;">Gray bg, hero image, white card overlay</p>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE ASSIGNMENTS -->
+<div class="section">
+  <h3 style="font-family: 'Outfit', sans-serif;">Sub-Agent Groups & Page Assignments</h3>
+  <p style="font-family: 'Outfit', sans-serif; font-size: 13px; color: #555; margin-bottom: 16px;">Each group runs as a parallel sub-agent. Template letter indicates which layout pattern to use.</p>
+
+  <div class="mockup">
+    <div class="mockup-header" style="font-family: 'Outfit', sans-serif;">Group 1 — Dashboards & Home</div>
+    <div class="mockup-body" style="padding: 16px; font-family: 'Outfit', sans-serif; font-size: 13px;">
+      <table style="width: 100%; border-collapse: collapse;">
+        <tr style="border-bottom: 1px solid #eee;"><td style="padding: 6px 0;">CreatorDashboard</td><td style="padding: 6px 0; color: #4DD9C0; font-weight: 600;">Template A</td></tr>
+        <tr style="border-bottom: 1px solid #eee;"><td style="padding: 6px 0;">BrandDashboard</td><td style="padding: 6px 0; color: #4DD9C0; font-weight: 600;">Template A</td></tr>
+        <tr style="border-bottom: 1px solid #eee;"><td style="padding: 6px 0;">Index (route handler)</td><td style="padding: 6px 0; color: #888;">Redirect only</td></tr>
+        <tr><td style="padding: 6px 0;">ROIDashboard</td><td style="padding: 6px 0; color: #4DD9C0; font-weight: 600;">Template A</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="mockup" style="margin-top: 12px;">
+    <div class="mockup-header" style="font-family: 'Outfit', sans-serif;">Group 2 — Campaigns & Applications</div>
+    <div class="mockup-body" style="padding: 16px; font-family: 'Outfit', sans-serif; font-size: 13px;">
+      <table style="width: 100%; border-collapse: collapse;">
+        <tr style="border-bottom: 1px solid #eee;"><td style="padding: 6px 0;">CampaignsPage</td><td style="padding: 6px 0; color: #4DD9C0; font-weight: 600;">Template B</td></tr>
+        <tr style="border-bottom: 1px solid #eee;"><td style="padding: 6px 0;">CampaignDetailsPage</td><td style="padding: 6px 0; color: #EC4899; font-weight: 600;">Template D</td></tr>
+        <tr style="border-bottom: 1px solid #eee;"><td style="padding: 6px 0;">BrandCampaignDetails</td><td style="padding: 6px 0; color: #EC4899; font-weight: 600;">Template D</td></tr>
+        <tr style="border-bottom: 1px solid #eee;"><td style="padding: 6px 0;">CampaignWizard</td><td style="padding: 6px 0; color: #FACC15; font-weight: 600;">Template C</td></tr>
+        <tr style="border-bottom: 1px solid #eee;"><td style="padding: 6px 0;">CampaignEditPage</td><td style="padding: 6px 0; color: #FACC15; font-weight: 600;">Template C</td></tr>
+        <tr style="border-bottom: 1px solid #eee;"><td style="padding: 6px 0;">AnonymousCampaignWizard</td><td style="padding: 6px 0; color: #FACC15; font-weight: 600;">Template C</td></tr>
+        <tr style="border-bottom: 1px solid #eee;"><td style="padding: 6px 0;">CreatorApplications</td><td style="padding: 6px 0; color: #4DD9C0; font-weight: 600;">Template B</td></tr>
+        <tr><td style="padding: 6px 0;">BrandDiscoverCampaigns</td><td style="padding: 6px 0; color: #4DD9C0; font-weight: 600;">Template B</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="mockup" style="margin-top: 12px;">
+    <div class="mockup-header" style="font-family: 'Outfit', sans-serif;">Group 3 — Messaging & Conversations</div>
+    <div class="mockup-body" style="padding: 16px; font-family: 'Outfit', sans-serif; font-size: 13px;">
+      <table style="width: 100%; border-collapse: collapse;">
+        <tr style="border-bottom: 1px solid #eee;"><td style="padding: 6px 0;">DirectMessagesPage</td><td style="padding: 6px 0; color: #4DD9C0; font-weight: 600;">Template B</td></tr>
+        <tr style="border-bottom: 1px solid #eee;"><td style="padding: 6px 0;">DirectConversationPage</td><td style="padding: 6px 0; color: #888; font-weight: 600;">Messaging (Phase 2)</td></tr>
+        <tr style="border-bottom: 1px solid #eee;"><td style="padding: 6px 0;">CampaignMessagesPage</td><td style="padding: 6px 0; color: #4DD9C0; font-weight: 600;">Template B</td></tr>
+        <tr><td style="padding: 6px 0;">BrandMessages</td><td style="padding: 6px 0; color: #4DD9C0; font-weight: 600;">Template B</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="mockup" style="margin-top: 12px;">
+    <div class="mockup-header" style="font-family: 'Outfit', sans-serif;">Group 4 — Profiles & Onboarding</div>
+    <div class="mockup-body" style="padding: 16px; font-family: 'Outfit', sans-serif; font-size: 13px;">
+      <table style="width: 100%; border-collapse: collapse;">
+        <tr style="border-bottom: 1px solid #eee;"><td style="padding: 6px 0;">CreatorProfileSetup</td><td style="padding: 6px 0; color: #FACC15; font-weight: 600;">Template C</td></tr>
+        <tr style="border-bottom: 1px solid #eee;"><td style="padding: 6px 0;">BusinessProfileSetup</td><td style="padding: 6px 0; color: #FACC15; font-weight: 600;">Template C</td></tr>
+        <tr style="border-bottom: 1px solid #eee;"><td style="padding: 6px 0;">BrandProfileSetup</td><td style="padding: 6px 0; color: #FACC15; font-weight: 600;">Template C</td></tr>
+        <tr style="border-bottom: 1px solid #eee;"><td style="padding: 6px 0;">ProfileOnboarding</td><td style="padding: 6px 0; color: #FACC15; font-weight: 600;">Template C</td></tr>
+        <tr style="border-bottom: 1px solid #eee;"><td style="padding: 6px 0;">PublicCreatorProfile</td><td style="padding: 6px 0; color: #EC4899; font-weight: 600;">Template D</td></tr>
+        <tr><td style="padding: 6px 0;">PublicBusinessProfile</td><td style="padding: 6px 0; color: #EC4899; font-weight: 600;">Template D</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="mockup" style="margin-top: 12px;">
+    <div class="mockup-header" style="font-family: 'Outfit', sans-serif;">Group 5 — Projects, Earnings & Activity</div>
+    <div class="mockup-body" style="padding: 16px; font-family: 'Outfit', sans-serif; font-size: 13px;">
+      <table style="width: 100%; border-collapse: collapse;">
+        <tr style="border-bottom: 1px solid #eee;"><td style="padding: 6px 0;">CreatorProjects</td><td style="padding: 6px 0; color: #4DD9C0; font-weight: 600;">Template B</td></tr>
+        <tr style="border-bottom: 1px solid #eee;"><td style="padding: 6px 0;">BusinessProjects</td><td style="padding: 6px 0; color: #4DD9C0; font-weight: 600;">Template B</td></tr>
+        <tr style="border-bottom: 1px solid #eee;"><td style="padding: 6px 0;">ProjectDetailsPage</td><td style="padding: 6px 0; color: #EC4899; font-weight: 600;">Template D</td></tr>
+        <tr style="border-bottom: 1px solid #eee;"><td style="padding: 6px 0;">CreatorEarnings</td><td style="padding: 6px 0; color: #4DD9C0; font-weight: 600;">Template A</td></tr>
+        <tr style="border-bottom: 1px solid #eee;"><td style="padding: 6px 0;">BusinessActivity</td><td style="padding: 6px 0; color: #4DD9C0; font-weight: 600;">Template B</td></tr>
+        <tr><td style="padding: 6px 0;">BrandAnalytics</td><td style="padding: 6px 0; color: #4DD9C0; font-weight: 600;">Template A</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="mockup" style="margin-top: 12px;">
+    <div class="mockup-header" style="font-family: 'Outfit', sans-serif;">Group 6 — Settings, Promotions & Misc</div>
+    <div class="mockup-body" style="padding: 16px; font-family: 'Outfit', sans-serif; font-size: 13px;">
+      <table style="width: 100%; border-collapse: collapse;">
+        <tr style="border-bottom: 1px solid #eee;"><td style="padding: 6px 0;">CreatorSettings</td><td style="padding: 6px 0; color: #FACC15; font-weight: 600;">Template C</td></tr>
+        <tr style="border-bottom: 1px solid #eee;"><td style="padding: 6px 0;">BusinessSettings</td><td style="padding: 6px 0; color: #FACC15; font-weight: 600;">Template C</td></tr>
+        <tr style="border-bottom: 1px solid #eee;"><td style="padding: 6px 0;">BrandSettings</td><td style="padding: 6px 0; color: #FACC15; font-weight: 600;">Template C</td></tr>
+        <tr style="border-bottom: 1px solid #eee;"><td style="padding: 6px 0;">BusinessPromotionalTools</td><td style="padding: 6px 0; color: #4DD9C0; font-weight: 600;">Template A</td></tr>
+        <tr style="border-bottom: 1px solid #eee;"><td style="padding: 6px 0;">PromotionSubmissionPage</td><td style="padding: 6px 0; color: #FACC15; font-weight: 600;">Template C</td></tr>
+        <tr style="border-bottom: 1px solid #eee;"><td style="padding: 6px 0;">BusinessSponsorships / BrandSponsorships</td><td style="padding: 6px 0; color: #4DD9C0; font-weight: 600;">Template B</td></tr>
+        <tr style="border-bottom: 1px solid #eee;"><td style="padding: 6px 0;">BusinessProposals</td><td style="padding: 6px 0; color: #4DD9C0; font-weight: 600;">Template B</td></tr>
+        <tr style="border-bottom: 1px solid #eee;"><td style="padding: 6px 0;">ReviewsManagement</td><td style="padding: 6px 0; color: #4DD9C0; font-weight: 600;">Template B</td></tr>
+        <tr style="border-bottom: 1px solid #eee;"><td style="padding: 6px 0;">BrandCreators</td><td style="padding: 6px 0; color: #4DD9C0; font-weight: 600;">Template B</td></tr>
+        <tr style="border-bottom: 1px solid #eee;"><td style="padding: 6px 0;">CreatorDragonFeed / BusinessDragonFeed</td><td style="padding: 6px 0; color: #4DD9C0; font-weight: 600;">Template B</td></tr>
+        <tr style="border-bottom: 1px solid #eee;"><td style="padding: 6px 0;">VerifyEmail / ForgotPassword / UpdatePassword</td><td style="padding: 6px 0; color: #FACC15; font-weight: 600;">Template C</td></tr>
+        <tr><td style="padding: 6px 0;">NotFound (404)</td><td style="padding: 6px 0; color: #888;">Gray bg, centered message</td></tr>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div style="font-family: 'Outfit', sans-serif; background: #f0fdf9; border: 2px solid #4DD9C0; border-radius: 16px; padding: 20px; margin-top: 24px;">
+  <p style="margin: 0; font-weight: 700; font-size: 16px;">Does Phase 3 look right?</p>
+  <p style="margin: 8px 0 0 0; color: #555; font-size: 14px;">6 sub-agent groups, 4 reusable mobile templates, every page assigned. If approved, I'll write the full design spec and commit it.</p>
+</div>

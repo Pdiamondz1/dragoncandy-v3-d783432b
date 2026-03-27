@@ -1,0 +1,105 @@
+<h2>Donny's Animated Avatar States</h2>
+<p class="subtitle">What animation style and states should Donny have?</p>
+
+<h3 style="margin-top: 24px;">Animation Style</h3>
+<div class="options">
+  <div class="option" data-choice="style-a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>CSS-Animated Emoji/Icon</h3>
+      <p>Use a stylized 🐉 or simple SVG dragon with CSS animations (bounce, pulse, spin). Lightweight, no external assets, works everywhere. Think: a teal circle with a dragon icon that pulses when thinking and bounces when celebrating.</p>
+      <div style="display: flex; gap: 20px; margin-top: 12px; justify-content: center;">
+        <div style="text-align: center;">
+          <div style="width: 56px; height: 56px; background: linear-gradient(135deg, #4DD9C0, #00E5CC); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 28px; animation: pulse 1.5s ease-in-out infinite;">🐉</div>
+          <div style="font-size: 10px; color: #888; margin-top: 6px;">Thinking...</div>
+        </div>
+        <div style="text-align: center;">
+          <div style="width: 56px; height: 56px; background: linear-gradient(135deg, #4DD9C0, #00E5CC); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 28px; animation: bounce 0.6s ease-in-out infinite;">🐉</div>
+          <div style="font-size: 10px; color: #888; margin-top: 6px;">Celebrating!</div>
+        </div>
+        <div style="text-align: center;">
+          <div style="width: 56px; height: 56px; background: linear-gradient(135deg, #4DD9C0, #00E5CC); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 28px;">🐉</div>
+          <div style="font-size: 10px; color: #888; margin-top: 6px;">Idle</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="style-b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Lottie Animations</h3>
+      <p>A designed dragon character with smooth Lottie animations for each state. Higher quality, more expressive, but requires a designer to create the animation files. Think: a cute cartoon dragon that actually moves — eyes blink, tail wags, breathes fire when celebrating.</p>
+      <div style="background: #1a1a2e; border-radius: 12px; padding: 16px; margin-top: 12px; text-align: center;">
+        <div style="font-size: 12px; color: #888; font-style: italic;">[Would be a smooth cartoon dragon animation]</div>
+        <div style="display: flex; gap: 12px; justify-content: center; margin-top: 12px;">
+          <div style="background: rgba(77,217,192,0.15); border-radius: 8px; padding: 8px 12px; font-size: 10px; color: #4DD9C0;">💭 Thinking</div>
+          <div style="background: rgba(77,217,192,0.15); border-radius: 8px; padding: 8px 12px; font-size: 10px; color: #4DD9C0;">🎉 Celebrating</div>
+          <div style="background: rgba(77,217,192,0.15); border-radius: 8px; padding: 8px 12px; font-size: 10px; color: #4DD9C0;">👋 Waving</div>
+          <div style="background: rgba(77,217,192,0.15); border-radius: 8px; padding: 8px 12px; font-size: 10px; color: #4DD9C0;">😴 Idle</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="style-c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>CSS Now → Lottie Later</h3>
+      <p>Ship v1 with CSS-animated emoji/icon (fast to build, no design dependency), then upgrade to Lottie animations once a designer creates the character. Build the component with a swappable animation layer so the upgrade is seamless.</p>
+      <div style="display: flex; align-items: center; gap: 16px; margin-top: 12px; justify-content: center;">
+        <div style="text-align: center;">
+          <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #4DD9C0, #00E5CC); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; animation: pulse 1.5s ease-in-out infinite;">🐉</div>
+          <div style="font-size: 10px; color: #888; margin-top: 4px;">v1 (now)</div>
+        </div>
+        <div style="font-size: 20px; color: #555;">→</div>
+        <div style="text-align: center;">
+          <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #4DD9C0, #00E5CC); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; color: white; font-weight: bold;">Lottie</div>
+          <div style="font-size: 10px; color: #888; margin-top: 4px;">v2 (later)</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h3 style="margin-top: 32px;">Avatar States (applies to any style)</h3>
+<p class="subtitle">Donny's avatar changes based on what's happening</p>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-top: 16px;">
+  <div style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 16px; text-align: center;">
+    <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #4DD9C0, #00E5CC); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; margin: 0 auto;">🐉</div>
+    <div style="font-size: 12px; font-weight: bold; color: #eee; margin-top: 8px;">Idle / Listening</div>
+    <div style="font-size: 10px; color: #888; margin-top: 2px;">Gentle breathing pulse</div>
+  </div>
+  <div style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 16px; text-align: center;">
+    <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #4DD9C0, #00E5CC); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; margin: 0 auto; animation: pulse 1s ease-in-out infinite;">🐉</div>
+    <div style="font-size: 12px; font-weight: bold; color: #eee; margin-top: 8px;">Thinking</div>
+    <div style="font-size: 10px; color: #888; margin-top: 2px;">Pulsing glow + dots</div>
+  </div>
+  <div style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 16px; text-align: center;">
+    <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #4DD9C0, #00E5CC); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; margin: 0 auto; animation: bounce 0.5s ease-in-out infinite;">🐉</div>
+    <div style="font-size: 12px; font-weight: bold; color: #eee; margin-top: 8px;">Celebrating</div>
+    <div style="font-size: 10px; color: #888; margin-top: 2px;">Bounce + confetti</div>
+  </div>
+  <div style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 16px; text-align: center;">
+    <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #F9A8D4, #EC4899); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; margin: 0 auto;">🐉</div>
+    <div style="font-size: 12px; font-weight: bold; color: #eee; margin-top: 8px;">Error / Sorry</div>
+    <div style="font-size: 10px; color: #888; margin-top: 2px;">Pink tint + slight shake</div>
+  </div>
+  <div style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 16px; text-align: center;">
+    <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #FACC15, #F59E0B); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; margin: 0 auto;">🐉</div>
+    <div style="font-size: 12px; font-weight: bold; color: #eee; margin-top: 8px;">Action Needed</div>
+    <div style="font-size: 10px; color: #888; margin-top: 2px;">Yellow glow + badge</div>
+  </div>
+</div>
+
+<style>
+@keyframes pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.1); opacity: 0.85; }
+}
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+</style>

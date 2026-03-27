@@ -1,0 +1,38 @@
+<h2>Typography — Font Choice</h2>
+<p class="subtitle">The design screenshots show specific typography styles. Let's nail down the font.</p>
+
+<div class="section">
+  <h3>What I see in the screenshots:</h3>
+  <ul>
+    <li><strong>Headings</strong> — ALL CAPS, bold, slightly stylized (e.g., "BROWSE CREATORS", "Quick Actions", "WELCOME TO DRAGON CANDY")</li>
+    <li><strong>Body text</strong> — Clean sans-serif, regular weight</li>
+    <li><strong>"Quick Actions"</strong> heading on the dashboard has a cursive/script style font</li>
+    <li><strong>Button labels</strong> — Bold, clean sans-serif</li>
+  </ul>
+</div>
+
+<h3>For fonts, which approach?</h3>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>System fonts + Tailwind defaults</h3>
+      <p>Keep using the system font stack (Inter/Segoe UI/Roboto). Just adjust weights, sizes, and letter-spacing to match the screenshots. Fastest to implement, no extra font loading.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Custom Google Fonts</h3>
+      <p>Add a specific font pairing — e.g., <strong>Poppins</strong> (headings) + <strong>Inter</strong> (body) — to match the rounded, modern feel of the screenshots. Adds ~50-100KB but gives precise control.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Do you have a specific font in mind?</h3>
+      <p>If you know which font(s) the designs use, tell me and I'll configure them exactly.</p>
+    </div>
+  </div>
+</div>

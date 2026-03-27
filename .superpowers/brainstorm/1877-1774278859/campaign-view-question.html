@@ -1,0 +1,78 @@
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<h2 style="font-family: 'Outfit', sans-serif;">Campaign View — Card Stack / Swipe</h2>
+<p class="subtitle" style="font-family: 'Outfit', sans-serif;">The "Available Campaigns" screenshot shows a Tinder-style card stack with peek cards behind the main card. This is a significant UX change from the current list view.</p>
+
+<div class="split">
+  <div class="mockup">
+    <div class="mockup-header" style="font-family: 'Outfit', sans-serif;">Current: List/Grid View</div>
+    <div class="mockup-body" style="padding: 16px; font-family: 'Outfit', sans-serif;">
+      <div style="background: white; border: 2px solid #4DD9C0; border-radius: 16px; padding: 12px; margin-bottom: 8px;">
+        <div style="background: #ddd; height: 60px; border-radius: 8px; margin-bottom: 8px;"></div>
+        <div style="font-weight: 700; font-size: 13px;">Campaign Title</div>
+        <div style="font-size: 11px; color: #888;">Company Name</div>
+      </div>
+      <div style="background: white; border: 2px solid #4DD9C0; border-radius: 16px; padding: 12px; margin-bottom: 8px;">
+        <div style="background: #ddd; height: 60px; border-radius: 8px; margin-bottom: 8px;"></div>
+        <div style="font-weight: 700; font-size: 13px;">Campaign Title</div>
+        <div style="font-size: 11px; color: #888;">Company Name</div>
+      </div>
+      <div style="background: white; border: 2px solid #4DD9C0; border-radius: 16px; padding: 12px;">
+        <div style="background: #ddd; height: 60px; border-radius: 8px; margin-bottom: 8px;"></div>
+        <div style="font-weight: 700; font-size: 13px;">Campaign Title</div>
+        <div style="font-size: 11px; color: #888;">Company Name</div>
+      </div>
+    </div>
+  </div>
+  <div class="mockup">
+    <div class="mockup-header" style="font-family: 'Outfit', sans-serif;">Screenshot: Card Stack / Swipe</div>
+    <div class="mockup-body" style="padding: 16px; font-family: 'Outfit', sans-serif; position: relative; min-height: 280px;">
+      <!-- Peek cards behind -->
+      <div style="position: absolute; top: 28px; left: 36px; right: 12px; height: 220px; background: #e8e8e8; border-radius: 20px; opacity: 0.4;"></div>
+      <div style="position: absolute; top: 20px; left: 28px; right: 20px; height: 230px; background: #ddd; border-radius: 20px; opacity: 0.6;"></div>
+      <!-- Main card -->
+      <div style="position: relative; background: white; border-radius: 20px; overflow: hidden; box-shadow: 0 8px 30px rgba(0,0,0,0.15);">
+        <div style="background: linear-gradient(135deg, #9b59b6, #e74c3c); height: 160px; display: flex; align-items: flex-end; padding: 16px;">
+          <div style="color: white; font-weight: 700; font-size: 16px;">Available Campaigns</div>
+        </div>
+        <div style="padding: 12px 16px;">
+          <div style="font-size: 11px; color: #555; margin-bottom: 12px;">Use our AI-powered campaign wizard...</div>
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+            <div style="width: 24px; height: 24px; border-radius: 50%; background: #ddd;"></div>
+            <span style="font-size: 12px; font-weight: 600;">Company Name</span>
+          </div>
+          <button style="font-family: 'Outfit', sans-serif; width: 100%; background: #F9A8D4; color: white; font-weight: 700; border: none; border-radius: 99px; padding: 10px; font-size: 14px; cursor: pointer;">Apply Now</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h3 style="font-family: 'Outfit', sans-serif;">Should we implement the swipe card stack?</h3>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3 style="font-family: 'Outfit', sans-serif;">Yes — full swipe card stack</h3>
+      <p style="font-family: 'Outfit', sans-serif;">Match the screenshot exactly with stacked cards, swipe gestures, and peek cards behind. Most visually impactful but adds interaction complexity.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3 style="font-family: 'Outfit', sans-serif;">Card stack visual, scroll to browse</h3>
+      <p style="font-family: 'Outfit', sans-serif;">Show the stacked card visual from the screenshot but use vertical scroll or horizontal carousel to browse instead of swipe gestures. Looks like the design, simpler interaction.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3 style="font-family: 'Outfit', sans-serif;">Styled list with new theme</h3>
+      <p style="font-family: 'Outfit', sans-serif;">Keep the list/grid layout but restyle cards to match the screenshot aesthetic (hero image, company avatar, "Apply Now" CTA). Same UX pattern, new visual treatment.</p>
+    </div>
+  </div>
+</div>

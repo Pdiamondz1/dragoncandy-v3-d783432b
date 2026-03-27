@@ -64,7 +64,11 @@ const DeliveryTierStep: React.FC<DeliveryTierStepProps> = ({
   };
 
   return (
+<<<<<<< HEAD
     <div className="space-y-6 overflow-hidden max-w-full">
+=======
+    <div className="space-y-6">
+>>>>>>> a1eeecf (docs: add Donny Chrome Extension OAuth PKCE design spec)
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -93,7 +97,11 @@ const DeliveryTierStep: React.FC<DeliveryTierStepProps> = ({
               >
                 {/* Premium Badge */}
                 {option.isPremium && (
+<<<<<<< HEAD
                   <div className="absolute top-2 right-2 bg-gradient-to-r from-orange-500 to-pink-500 text-white text-xs px-2 py-0.5 rounded-full font-medium z-10">
+=======
+                  <div className="absolute -top-2 -right-2 bg-gradient-to-r from-orange-500 to-pink-500 text-white text-xs px-2 py-0.5 rounded-full font-medium z-10">
+>>>>>>> a1eeecf (docs: add Donny Chrome Extension OAuth PKCE design spec)
                     Premium
                   </div>
                 )}

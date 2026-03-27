@@ -1,0 +1,31 @@
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<h2 style="font-family: 'Outfit', sans-serif;">Dark Mode</h2>
+<p class="subtitle" style="font-family: 'Outfit', sans-serif;">Your current codebase has dark mode support with HSL CSS variables. The design screenshots are all light mode only. What should we do?</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3 style="font-family: 'Outfit', sans-serif;">Light mode only</h3>
+      <p style="font-family: 'Outfit', sans-serif;">Remove dark mode. Match the screenshots exactly — the app is teal/pink/white/gray and dark mode wasn't part of the design. Simplifies the theme work significantly.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3 style="font-family: 'Outfit', sans-serif;">Keep dark mode, update both</h3>
+      <p style="font-family: 'Outfit', sans-serif;">Update light mode to match screenshots, then adapt a dark mode variant. More work but preserves the existing feature. Dark mode colors would be our interpretation since there are no dark screenshots.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3 style="font-family: 'Outfit', sans-serif;">Light mode now, dark mode later</h3>
+      <p style="font-family: 'Outfit', sans-serif;">Focus on nailing the light mode theme from the screenshots. Keep dark mode CSS variables in place but don't update them yet — revisit when you have dark mode designs.</p>
+    </div>
+  </div>
+</div>

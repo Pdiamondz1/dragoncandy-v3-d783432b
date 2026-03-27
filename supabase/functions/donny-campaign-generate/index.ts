@@ -1,0 +1,220 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY")!;
+
+interface FetchedContent {
+  title: string;
+  description: string;
+  bodyText: string;
+}
+
+async function fetchAndExtract(url: string): Promise<FetchedContent> {
+  const response = await fetch(url, {
+    headers: { "User-Agent": "DragonCandy-Bot/1.0" },
+    redirect: "follow",
+  });
+
+  if (!response.ok) { throw new Error("Failed to fetch URL: " + response.status); }
+  const html = await response.text();
+
+  // Extract <title>
+  const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+  const title = titleMatch ? titleMatch[1].trim() : "";
+
+  // Extract meta description
+  const metaMatch = html.match(/<meta[^>]+name=["']description["'][^>]+content=["']([^"']+)["']/i)
+    ?? html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+name=["']description["']/i);
+  const description = metaMatch ? metaMatch[1].trim() : "";
+
+  // Strip script and style blocks, then all remaining tags
+  let bodyText = html
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 3000);
+
+  return { title, description, bodyText };
+}
+
+serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ success: false, error: "No authorization header" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Dual-client auth pattern: user-scoped for getUser(), service-role for queries
+    const supabaseUser = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    const { data: { user }, error: authError } = await supabaseUser.auth.getUser();
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Parse and validate request body
+    const body = await req.json();
+    const {
+      source_url,
+      page_content,
+      text_brief,
+      preferences,
+    }: {
+      source_url?: string;
+      page_content?: string;
+      text_brief?: string;
+      preferences?: {
+        platform?: string;
+        budget_range?: { min: number; max: number };
+      };
+    } = body;
+
+    if (!source_url && !page_content && !text_brief) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "At least one of source_url, page_content, or text_brief is required",
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Content assembly — priority: page_content > fetched URL > text_brief
+    let contentSections: string[] = [];
+
+    if (page_content) {
+      // Use pre-scraped content directly (truncate to 5000 chars)
+      contentSections.push(`Page Content:\n${page_content.slice(0, 5000)}`);
+    } else if (source_url) {
+      // Fetch and extract content from URL
+      try {
+        const fetched = await fetchAndExtract(source_url);
+        const parts: string[] = [];
+        if (fetched.title) parts.push(`Page Title: ${fetched.title}`);
+        if (fetched.description) parts.push(`Meta Description: ${fetched.description}`);
+        if (fetched.bodyText) parts.push(`Page Body:\n${fetched.bodyText}`);
+        if (parts.length > 0) contentSections.push(parts.join("\n"));
+      } catch (fetchErr) {
+        contentSections.push(`Note: Failed to fetch URL content (${fetchErr.message}). Proceeding with other inputs.`);
+      }
+    }
+
+    // Always append text_brief if provided
+    if (text_brief) {
+      contentSections.push(`Additional Brief:\n${text_brief}`);
+    }
+
+    // Append source_url as context even when page_content was provided
+    if (source_url) {
+      contentSections.push(`Source URL: ${source_url}`);
+    }
+
+    // Append preferences as additional context
+    if (preferences?.platform) {
+      contentSections.push(`Preferred Platform: ${preferences.platform}`);
+    }
+    if (preferences?.budget_range) {
+      contentSections.push(
+        `Budget Range: $${preferences.budget_range.min} – $${preferences.budget_range.max}`
+      );
+    }
+
+    const assembledContent = contentSections.join("\n\n");
+
+    // Call OpenAI GPT-4o
+    const openaiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${OPENAI_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "gpt-4o",
+        temperature: 0.7,
+        max_tokens: 3000,
+        messages: [
+          {
+            role: "system",
+            content: `You are an expert marketing strategist for DragonCandy, a platform connecting brands with social media content creators. Your job is to analyze brand content and generate a complete, compelling campaign draft.
+
+Respond with valid JSON only — no markdown fences, no additional text, just raw JSON. Use this exact structure:
+{
+  "title": "Campaign title (catchy, concise)",
+  "description": "Full campaign brief describing what the brand wants and what creators should deliver",
+  "platform": "Primary platform (e.g. TikTok, Instagram, YouTube)",
+  "budget_min": 500,
+  "budget_max": 2000,
+  "content_type": "Type of content (e.g. Short-form video, Reel, Story, Review)",
+  "goals": ["List", "of", "campaign", "goals"],
+  "target_audience": "Description of the ideal target audience",
+  "recommended_platforms": ["TikTok", "Instagram"],
+  "content_ideas": [
+    {
+      "concept": "Idea name",
+      "format": "Content format (e.g. 60-second Reel)",
+      "description": "Detailed description of the content idea"
+    }
+  ],
+  "hashtags": ["#example", "#hashtags"],
+  "style_direction": {
+    "visual_style": "Description of visual aesthetic",
+    "mood": "Tone and mood of the content",
+    "references": "References or inspiration sources"
+  }
+}`,
+          },
+          {
+            role: "user",
+            content: `Generate a campaign draft based on the following brand information:\n\n${assembledContent}`,
+          },
+        ],
+      }),
+    });
+
+    if (!openaiResponse.ok) { throw new Error("OpenAI API error: " + openaiResponse.status); }
+    const openaiResult = await openaiResponse.json();
+    const rawContent: string = openaiResult.choices?.[0]?.message?.content ?? "";
+
+    // Strip markdown fences if present
+    const cleaned = rawContent
+      .replace(/^```json\s*/i, "")
+      .replace(/^```\s*/i, "")
+      .replace(/\s*```$/i, "")
+      .trim();
+
+    const campaignData = JSON.parse(cleaned);
+
+    return new Response(
+      JSON.stringify({ success: true, data: campaignData }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (err) {
+    return new Response(
+      JSON.stringify({ success: false, error: err.message }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+});

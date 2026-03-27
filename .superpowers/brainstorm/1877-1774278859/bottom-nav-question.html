@@ -1,0 +1,72 @@
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Pacifico&display=swap" rel="stylesheet">
+
+<h2 style="font-family: 'Outfit', sans-serif;">Bottom Navigation</h2>
+<p class="subtitle" style="font-family: 'Outfit', sans-serif;">The screenshots show a 7-icon bottom nav. Your current code has a Donny AI button integrated into the center position. How should we handle this?</p>
+
+<div class="section">
+  <div class="mockup">
+    <div class="mockup-header" style="font-family: 'Outfit', sans-serif;">Screenshot Bottom Nav (7 icons)</div>
+    <div class="mockup-body" style="padding: 16px 8px;">
+      <div style="display: flex; justify-content: space-around; align-items: center; font-family: 'Outfit', sans-serif;">
+        <div style="text-align: center;">
+          <div style="font-size: 22px;">🏠</div>
+          <div style="font-size: 9px; color: #888;">Home</div>
+        </div>
+        <div style="text-align: center;">
+          <div style="font-size: 22px;">❤️</div>
+          <div style="font-size: 9px; color: #888;">Favorites</div>
+        </div>
+        <div style="text-align: center;">
+          <div style="font-size: 22px;">▶️</div>
+          <div style="font-size: 9px; color: #888;">Video</div>
+        </div>
+        <div style="text-align: center;">
+          <div style="width: 48px; height: 48px; border-radius: 50%; background: #4DD9C0; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(77,217,192,0.4); margin: -12px auto 0;">
+            <span style="color: white; font-size: 24px; font-weight: 700;">+</span>
+          </div>
+        </div>
+        <div style="text-align: center;">
+          <div style="font-size: 22px;">📋</div>
+          <div style="font-size: 9px; color: #888;">Campaigns</div>
+        </div>
+        <div style="text-align: center;">
+          <div style="font-size: 22px;">📢</div>
+          <div style="font-size: 9px; color: #888;">Promote</div>
+        </div>
+        <div style="text-align: center;">
+          <div style="font-size: 22px;">👤</div>
+          <div style="font-size: 9px; color: #888;">Profile</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h3 style="font-family: 'Outfit', sans-serif;">The center "+" button currently opens Donny AI chat. What should it do?</h3>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3 style="font-family: 'Outfit', sans-serif;">Keep Donny AI on center button</h3>
+      <p style="font-family: 'Outfit', sans-serif;">The teal "+" opens the Donny chat sheet (current behavior). Matches the existing integration you just built.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3 style="font-family: 'Outfit', sans-serif;">Center "+" opens a quick action menu</h3>
+      <p style="font-family: 'Outfit', sans-serif;">Tapping "+" opens a radial/popup menu with options: New Campaign, New Message, Ask Donny, etc. More versatile.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3 style="font-family: 'Outfit', sans-serif;">Move Donny, use "+" for primary action</h3>
+      <p style="font-family: 'Outfit', sans-serif;">Move Donny AI to a floating button or the "Ask Donny" search bar only. Center "+" becomes role-based: creates a campaign (business) or browses campaigns (creator).</p>
+    </div>
+  </div>
+</div>
