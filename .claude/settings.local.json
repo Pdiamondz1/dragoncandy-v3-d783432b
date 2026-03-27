@@ -27,7 +27,8 @@
       "Bash(gh pr:*)",
       "Bash(find /c/Users/dwill/Desktop/dragoncandy-v2/supabase/functions -name *donny* -o -name *chat*)",
       "Bash(npx:*)",
-      "Bash(npm exec:*)"
+      "Bash(npm exec:*)",
+      "Bash(gh repo:*)"
     ]
   }
 }
