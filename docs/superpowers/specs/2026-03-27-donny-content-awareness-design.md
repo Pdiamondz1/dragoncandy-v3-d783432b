@@ -1,7 +1,7 @@
 # Donny Content Awareness — Design Spec
 
 **Date:** 2026-03-27
-**Status:** Draft
+**Status:** Approved
 **Scope:** Content script extraction, service worker context menus, PageContext UI enhancements
 
 ---
@@ -21,8 +21,15 @@ The content script is passive. It only extracts page data when the service worke
 ### Data Model
 
 ```typescript
+// This type is defined in content-script.ts. The usePageContext.ts hook must
+// define a matching interface. The existing Platform type alias and the
+// metadata?: Record<string, string> field in both files are replaced by this
+// new structured model.
+
+type Platform = "instagram" | "tiktok" | "youtube" | "twitter" | "generic";
+
 interface PageContext {
-  platform: "instagram" | "tiktok" | "youtube" | "twitter" | "generic";
+  platform: Platform;
   url: string;
   title: string;
   description?: string;
@@ -36,6 +43,8 @@ interface PageContext {
   };
 }
 ```
+
+**Breaking change:** The existing `metadata?: Record<string, string>` field is removed from both `content-script.ts` and `usePageContext.ts`. No code currently reads from `metadata`, so this is safe. The new structured fields (`description`, `ogImage`, `isProfilePage`, `creator`) replace it.
 
 ### Extraction Strategy (Hybrid: Meta Tags + DOM)
 
@@ -94,17 +103,21 @@ On `chrome.runtime.onInstalled`, register three context menu items:
 ### Context Menu Click Handling
 
 On `contextMenus.onClicked`:
-1. Open side panel for the tab (`chrome.sidePanel.open`)
-2. Request page context from content script (`GET_PAGE_CONTEXT`)
-3. Send `CONTEXT_MENU_ACTION` message to side panel:
+1. Use `tab.id` from the `onClicked` callback (not `chrome.tabs.query`) to target the correct tab
+2. Request page context from content script (`GET_PAGE_CONTEXT`) using `tab.id`
+3. Write the pending action to `chrome.storage.local` as `donny_pending_action`:
    ```typescript
    {
-     type: "CONTEXT_MENU_ACTION",
      action: "ask-donny" | "generate-campaign" | "find-creators",
-     pageContext: PageContext,
+     pageContext: PageContext | null,
      selectedText?: string  // only for "generate-campaign" with selection
    }
    ```
+4. Open side panel for the tab (`chrome.sidePanel.open`)
+
+**Why storage instead of messaging:** `chrome.sidePanel.open()` is async and the React app needs time to mount and register listeners. A direct message sent immediately after opening would be silently dropped. Writing to storage first ensures the side panel can read the pending action on mount, regardless of timing. The `usePageContext` hook reads and clears `donny_pending_action` on mount.
+
+**Null context fallback:** If the content script is not injected on the current page (e.g., `chrome://` pages, `chrome-extension://` pages), `pageContext` will be `null`. The action is still written to storage and the side panel still opens. App.tsx handles null context by composing a generic message without page-specific details (e.g., "Tell me about what you're working on" instead of "Tell me about this page: [title]").
 
 ### Welcome Message on Install
 
@@ -128,7 +141,7 @@ The existing `REQUEST_PAGE_CONTEXT` message relay (side panel → service worker
 
 - **Updated `PageContext` interface** to match the new content script model (adds `description`, `ogImage`, `isProfilePage`, `creator`, `"twitter"` platform)
 - **Welcome flag:** On mount, reads `donny_show_welcome` from storage. If true, clears the flag and exposes `showWelcome = true`
-- **Context menu action listener:** Listens for `CONTEXT_MENU_ACTION` messages from the service worker. Exposes `pendingAction` state containing the action type, page context, and optional selected text
+- **Pending action from storage:** On mount, reads `donny_pending_action` from `chrome.storage.local` and clears it. Exposes `pendingAction` state containing the action type, page context, and optional selected text
 
 ### `PageContext.tsx` Component Changes
 
@@ -152,13 +165,13 @@ App.tsx orchestrates context menu auto-send since it has access to both `usePage
 
 - Watches `pendingAction` from `usePageContext`
 - Composes a chat message based on action type:
-  - `"ask-donny"` → "Tell me about this page: [title] ([url])"
-  - `"generate-campaign"` → "Generate a campaign brief for: [title/selectedText]"
-  - `"find-creators"` → "Find creators similar to @username on [platform]"
-- Calls `useDonnyAPI.sendMessage()` with composed text + context
+  - `"ask-donny"` → "Tell me about this page: [title] ([url])" — if context is null: "Tell me about what you're working on"
+  - `"generate-campaign"` → Uses `selectedText` if present, otherwise falls back to `pageContext.title`. Format: "Generate a campaign brief for: [selectedText or title]"
+  - `"find-creators"` → "Find creators similar to @username on [platform]" — if no creator data: "Find creators related to: [title]"
+- Calls `useDonnyAPI.sendMessage()` with composed text + context. The `PageContextForAPI` type in `useDonnyAPI.ts` must be updated to include `isProfilePage` and `creator` fields so the edge function can use creator data for matching.
 - Clears `pendingAction` after sending
 
-Welcome message: If `showWelcome` is true, pre-seeds the message list with a Donny greeting explaining page context awareness, context menus, and how to get started.
+**Welcome message:** If `showWelcome` is true, the install-time welcome replaces the existing `WELCOME_MESSAGE` in `useDonnyAPI.ts`. The default welcome message is removed; Donny's first message is always the install-based greeting explaining page context awareness, context menus, and how to get started. On subsequent opens (flag already cleared), no pre-seeded message appears — the conversation history speaks for itself.
 
 ## Message Protocol Summary
 
@@ -166,12 +179,14 @@ Welcome message: If `showWelcome` is true, pre-seeds the message list with a Don
 |-------------|-----------|---------|
 | `GET_PAGE_CONTEXT` | service worker → content script | `{}` |
 | `REQUEST_PAGE_CONTEXT` | side panel → service worker | `{}` |
-| `CONTEXT_MENU_ACTION` | service worker → side panel | `{ action, pageContext, selectedText? }` |
+| `donny_pending_action` (storage) | service worker → side panel | `{ action, pageContext, selectedText? }` |
 
 ## Constraints
 
-- Content script must be < 10KB bundled
+- Content script must be < 10KB bundled (enforced via a post-build size check in the build script or CI — the `@crxjs/vite-plugin` bundler produces the final output)
 - Context payload must be < 2KB serialized
 - DOM selectors are best-effort — graceful degradation to meta tags
 - No modifications to ChatInterface.tsx or AuthScreen.tsx
 - `npm run build` must pass
+- The manifest uses `<all_urls>` for `content_scripts` match patterns. This is intentional — Donny needs to read any page the user browses, not just social media. For Chrome Web Store submission, the extension description must justify this broad permission by explaining the page context awareness feature.
+- `PageContextForAPI` in `useDonnyAPI.ts` must be updated to pass `isProfilePage` and `creator` data to the edge function

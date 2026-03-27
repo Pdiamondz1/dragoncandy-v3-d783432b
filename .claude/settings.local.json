@@ -28,7 +28,10 @@
       "Bash(find /c/Users/dwill/Desktop/dragoncandy-v2/supabase/functions -name *donny* -o -name *chat*)",
       "Bash(npx:*)",
       "Bash(npm exec:*)",
-      "Bash(gh repo:*)"
+      "Bash(git:*)",
+      "Read(//c/GIT/**)",
+      "WebSearch",
+      "Bash(bash \"C:\\\\Users\\\\dwill\\\\.claude\\\\skills\\\\brainstorming\\\\scripts\\\\start-server.sh\" --project-dir \"C:\\\\Users\\\\dwill\\\\Desktop\\\\dragoncandy-v2\")"
     ]
   }
 }

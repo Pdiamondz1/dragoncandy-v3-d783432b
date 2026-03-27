@@ -1,17 +1,104 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { validateDonnyToken, requireScope } from "../_shared/auth.ts";
+# Donny Chat Claude API Integration — Implementation Plan
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+**Goal:** Migrate `supabase/functions/donny-chat/index.ts` from OpenAI GPT-4o to Anthropic Claude, preserving all existing capabilities while adding 3 new tools, action logging, and context awareness.
+
+**Architecture:** Single-file rewrite of the Edge Function. Convert tool definitions from OpenAI to Anthropic format, rewrite the API call layer to use the Anthropic Messages API, update history reconstruction for Anthropic's content-block message format, and add `donny_actions` logging. All 17 retained tools keep their existing Supabase query implementations unchanged.
+
+**Tech Stack:** Deno (Supabase Edge Functions), Anthropic Messages API via `fetch`, Supabase JS client v2
+
+**Spec:** `docs/superpowers/specs/2026-03-24-donny-chat-claude-integration-design.md`
+
+---
+
+## File Structure
+
+Only one file is modified:
+
+| File | Responsibility |
+|---|---|
+| `supabase/functions/donny-chat/index.ts` | Edge Function: auth, rate limiting, system prompt, tool definitions, tool execution, Anthropic API calls, history reconstruction, action logging, rich card extraction |
+
+The file is organized into these logical sections (in order):
+1. Imports + constants
+2. Tool definitions array (`TOOL_DEFINITIONS`)
+3. `buildSystemPrompt()` — constructs system prompt with user context
+4. `checkRateLimit()` — rate limiting (unchanged)
+5. `getConversationHistory()` — loads + reconstructs message history
+6. `executeTool()` — switch statement executing tool calls against Supabase
+7. `serve()` — main HTTP handler: auth → rate limit → load context → build messages → call Claude → tool loop → save + respond
+
+---
+
+### Task 1: Swap Constants and Remove Summarization
+
+**Files:**
+- Modify: `supabase/functions/donny-chat/index.ts:1-12` (constants)
+- Modify: `supabase/functions/donny-chat/index.ts:363-421` (delete `maybeUpdateContextSummary`)
+- Modify: `supabase/functions/donny-chat/index.ts:985` (delete call site)
+
+- [ ] **Step 1: Replace OPENAI_API_KEY with ANTHROPIC_API_KEY**
+
+Change lines 9-11 from:
+```ts
+const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+```
+
+To:
+```ts
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+```
 
-// All 21 tool definitions in Anthropic format
+- [ ] **Step 2: Delete `maybeUpdateContextSummary` function**
+
+Delete the entire function at lines 363-421 (the `async function maybeUpdateContextSummary(...)` block).
+
+- [ ] **Step 3: Delete the call site**
+
+Remove line 985:
+```ts
+maybeUpdateContextSummary(conversation_id, supabaseAdmin, OPENAI_API_KEY!).catch(() => {});
+```
+
+- [ ] **Step 4: Verify the file has no remaining references to `OPENAI` or `maybeUpdateContextSummary`**
+
+Search the file for `OPENAI`, `openai`, `gpt-4o`, `maybeUpdateContextSummary`. There should be zero matches after this step.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add supabase/functions/donny-chat/index.ts
+git commit -m "refactor: remove OpenAI dependency and context summarization from donny-chat"
+```
+
+---
+
+### Task 2: Convert Tool Definitions to Anthropic Format
+
+**Files:**
+- Modify: `supabase/functions/donny-chat/index.ts:13-277` (TOOL_DEFINITIONS array)
+
+The existing 18 tools use OpenAI's `{ type: "function", function: { name, description, parameters } }` format. Convert each to Anthropic's `{ name, description, input_schema }` format. Also replace `search_creators` with `match_creators`.
+
+- [ ] **Step 1: Convert all tool definitions**
+
+Replace the entire `TOOL_DEFINITIONS` array with the Anthropic-formatted version. Each tool changes from:
+```ts
+{ type: "function", function: { name: "X", description: "Y", parameters: { ... } } }
+```
+To:
+```ts
+{ name: "X", description: "Y", input_schema: { ... } }
+```
+
+The full replacement array (20 tools — 17 retained + `match_creators` replacing `search_creators` + 3 new):
+
+```ts
 const TOOL_DEFINITIONS = [
   // --- Campaign Tools ---
   {
@@ -261,102 +348,32 @@ const TOOL_DEFINITIONS = [
       required: ["field", "value"],
     },
   },
-  // --- Scheduling Tools ---
-  {
-    name: "schedule_post",
-    description:
-      "Schedule a content post to a social media platform. Use when the user wants to schedule, plan, or post content.",
-    input_schema: {
-      type: "object",
-      properties: {
-        platform: {
-          type: "string",
-          enum: ["instagram", "tiktok", "youtube", "twitter", "facebook"],
-          description: "Social media platform to post on",
-        },
-        content_type: {
-          type: "string",
-          enum: ["photo", "reel", "story", "video", "carousel", "tweet", "thread"],
-          description: "Type of content to post",
-        },
-        caption: { type: "string", description: "Post caption or text content" },
-        scheduled_at: {
-          type: "string",
-          description: "ISO 8601 datetime for when to publish the post",
-        },
-        campaign_id: {
-          type: "string",
-          description: "Optional campaign to link this post to",
-        },
-      },
-      required: ["platform", "content_type", "caption", "scheduled_at"],
-    },
-  },
-  {
-    name: "suggest_post_times",
-    description:
-      "Get AI-recommended optimal posting times for a specific platform and content type. Use when the user asks when to post, what the best time is, or wants scheduling suggestions.",
-    input_schema: {
-      type: "object",
-      properties: {
-        platform: {
-          type: "string",
-          enum: ["instagram", "tiktok", "youtube", "twitter", "facebook"],
-          description: "Social media platform",
-        },
-        content_type: {
-          type: "string",
-          enum: ["photo", "reel", "story", "video", "carousel", "tweet", "thread"],
-          description: "Type of content",
-        },
-        target_audience: {
-          type: "string",
-          description:
-            "Optional audience description for timezone/behavior analysis",
-        },
-      },
-      required: ["platform", "content_type"],
-    },
-  },
-  // --- Campaign Preview Tools ---
-  {
-    name: "generate_campaign_preview",
-    description:
-      "Generate visual previews for a campaign including mood boards, content templates, storyboards, and example clip breakdowns. Use when the user wants to see what a campaign would look like, asks for visual examples, or wants to preview content.",
-    input_schema: {
-      type: "object",
-      properties: {
-        campaign_id: {
-          type: "string",
-          description: "The campaign to generate previews for",
-        },
-        preview_types: {
-          type: "array",
-          items: {
-            type: "string",
-            enum: [
-              "mood_board",
-              "content_template",
-              "storyboard",
-              "example_clip",
-              "thumbnail",
-            ],
-          },
-          description:
-            "Types of previews to generate (mood_board, content_template, storyboard, example_clip, thumbnail)",
-        },
-        style_notes: {
-          type: "string",
-          description:
-            "Optional style direction like 'cinematic', 'bright and airy', 'UGC authentic'",
-        },
-      },
-      required: ["campaign_id", "preview_types"],
-    },
-  },
 ];
+```
 
-// Build system prompt with user context
+- [ ] **Step 2: Verify tool count is 21 (17 retained + match_creators + 3 new)**
+
+Count the tool objects in the array. Expected: 21 tools.
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add supabase/functions/donny-chat/index.ts
+git commit -m "refactor: convert tool definitions to Anthropic format, add new tools"
+```
+
+---
+
+### Task 3: Update System Prompt
+
+**Files:**
+- Modify: `supabase/functions/donny-chat/index.ts` — `buildSystemPrompt()` function
+
+- [ ] **Step 1: Rewrite `buildSystemPrompt` to accept context parameter and use updated personality**
+
+Replace the existing `buildSystemPrompt` function with:
+
+```ts
 function buildSystemPrompt(
   profile: Record<string, any>,
   userContext: { campaigns: any[]; pendingApplications: number },
@@ -384,8 +401,6 @@ function buildSystemPrompt(
 - Suggest marketing strategies and content ideas
 - Manage applications, collaborations, and payments
 - Guide new users through onboarding
-- Schedule content posts across Instagram, TikTok, YouTube, Twitter/X, and Facebook with AI-optimized timing
-- Generate visual previews for campaigns including mood boards, content templates, storyboards, and example clip breakdowns so brands can see the vision before creators start working
 
 ## User Context
 - Name: ${profile.full_name || "there"}
@@ -404,7 +419,6 @@ function buildSystemPrompt(
 - For payments: ALWAYS use prepare_payment and tell the user to confirm on the payment screen. NEVER claim a payment was processed directly.
 - When showing creators: include name, platform, niche, rating, and project count.
 - When showing campaigns: include title, platform, budget, and application count.
-- When a user generates a campaign, proactively offer to generate visual previews and suggest a posting schedule.
 - If a tool fails: explain the error conversationally and suggest how to fix it.
 - Use tools proactively — if the user asks about campaigns, call get_campaigns. Don't just describe what you could do.
 - When you call a tool that returns data, present it conversationally.
@@ -417,23 +431,263 @@ When presenting creators or campaigns from tool results, include a JSON code blo
 
   return prompt;
 }
+```
 
-// Rate limiting: check message count in the last hour
-async function checkRateLimit(userId: string, supabaseAdmin: any): Promise<boolean> {
-  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-  const { count, error } = await supabaseAdmin
-    .from("donny_messages")
-    .select("id", { count: "exact", head: true })
-    .eq("role", "user")
-    .gte("created_at", oneHourAgo)
-    .in("conversation_id",
-      supabaseAdmin.from("donny_conversations").select("id").eq("user_id", userId)
-    );
+- [ ] **Step 2: Commit**
 
-  if (error) return true; // Allow on error — fail open
-  return (count ?? 0) < 30;
-}
+```bash
+git add supabase/functions/donny-chat/index.ts
+git commit -m "feat: update Donny system prompt with enhanced personality and context awareness"
+```
 
+---
+
+### Task 4: Add New Tool Implementations in `executeTool`
+
+**Files:**
+- Modify: `supabase/functions/donny-chat/index.ts` — `executeTool()` switch statement
+
+- [ ] **Step 1: Replace `search_creators` case with `match_creators`**
+
+Remove the `case "search_creators"` block (lines 482-501) and replace with:
+
+```ts
+    case "match_creators": {
+      let query = supabaseAdmin
+        .from("creator_profiles")
+        .select("id, user_id, profiles!inner(full_name, avatar_url, location), specialty, platforms, rating, completed_projects")
+        .limit(10);
+      if (args.niche) query = query.ilike("specialty", `%${args.niche}%`);
+      if (args.location) query = query.ilike("profiles.location", `%${args.location}%`);
+      if (args.min_rating) query = query.gte("rating", args.min_rating);
+      query = query.order("rating", { ascending: false });
+      const { data, error } = await query;
+      if (error) throw error;
+      return {
+        result: (data ?? []).map((c: any) => ({
+          id: c.user_id,
+          name: c.profiles?.full_name ?? "Unknown",
+          avatar_url: c.profiles?.avatar_url,
+          location: c.profiles?.location ?? null,
+          platforms: c.platforms ?? [],
+          niche: c.specialty ?? "General",
+          rating: c.rating ?? 0,
+          project_count: c.completed_projects ?? 0,
+        })),
+      };
+    }
+```
+
+- [ ] **Step 2: Add `generate_campaign` case**
+
+Add before the `default` case in the switch:
+
+```ts
+    // --- AI Generation Tools ---
+    case "generate_campaign": {
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/donny-campaign-generate`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          brief: args.brief,
+          target_audience: args.target_audience,
+          budget_range: args.budget_range,
+          user_id: userId,
+        }),
+      });
+      if (!response.ok) {
+        const errorBody = await response.text();
+        throw new Error(`Campaign generation failed: ${errorBody}`);
+      }
+      const data = await response.json();
+      return { result: data };
+    }
+```
+
+- [ ] **Step 3: Add `get_analytics` case**
+
+```ts
+    case "get_analytics": {
+      const timeRangeMs: Record<string, number> = {
+        "7d": 7 * 24 * 60 * 60 * 1000,
+        "30d": 30 * 24 * 60 * 60 * 1000,
+        "90d": 90 * 24 * 60 * 60 * 1000,
+      };
+      const range = timeRangeMs[args.time_range ?? "30d"] ?? timeRangeMs["30d"];
+      const since = new Date(Date.now() - range).toISOString();
+
+      let eventsQuery = supabaseAdmin
+        .from("analytics_events")
+        .select("event_type, created_at")
+        .eq("user_id", userId)
+        .gte("created_at", since);
+      if (args.campaign_id) {
+        eventsQuery = eventsQuery.eq("campaign_id", args.campaign_id);
+      }
+      const { data: events, error: eventsError } = await eventsQuery;
+      if (eventsError) throw eventsError;
+
+      // Aggregate event counts by type
+      const eventCounts: Record<string, number> = {};
+      for (const e of events ?? []) {
+        eventCounts[e.event_type] = (eventCounts[e.event_type] ?? 0) + 1;
+      }
+
+      // Pull campaign summary stats
+      let campaignQuery = supabaseAdmin
+        .from("campaigns")
+        .select("id, title, status, campaign_applications(count), campaign_collaborations(count)")
+        .eq("user_id", userId);
+      if (args.campaign_id) {
+        campaignQuery = campaignQuery.eq("id", args.campaign_id);
+      }
+      const { data: campaigns } = await campaignQuery.limit(10);
+
+      return {
+        result: {
+          time_range: args.time_range ?? "30d",
+          event_counts: eventCounts,
+          total_events: events?.length ?? 0,
+          campaigns: campaigns ?? [],
+        },
+      };
+    }
+```
+
+- [ ] **Step 4: Add `send_message` case with authorization**
+
+```ts
+    case "send_message": {
+      // Validate recipient exists
+      const { data: recipient, error: recipientError } = await supabaseAdmin
+        .from("profiles")
+        .select("id, full_name")
+        .eq("id", args.recipient_id)
+        .single();
+      if (recipientError || !recipient) {
+        throw new Error("Recipient not found");
+      }
+
+      // Authorization: verify both users share a campaign context
+      // Check if recipient applied to a campaign owned by the sender (or vice versa)
+      const { data: sharedApps } = await supabaseAdmin
+        .from("campaign_applications")
+        .select("id, campaigns!inner(user_id)")
+        .or(
+          `and(applicant_id.eq.${userId},campaigns.user_id.eq.${args.recipient_id}),` +
+          `and(applicant_id.eq.${args.recipient_id},campaigns.user_id.eq.${userId})`
+        )
+        .limit(1);
+
+      // Check if both users are in the same collaboration
+      const { data: sharedCollabs } = await supabaseAdmin
+        .from("campaign_collaborations")
+        .select("id, campaigns!inner(user_id)")
+        .or(
+          `and(creator_id.eq.${userId},campaigns.user_id.eq.${args.recipient_id}),` +
+          `and(creator_id.eq.${args.recipient_id},campaigns.user_id.eq.${userId})`
+        )
+        .limit(1);
+
+      // Check if one user invited the other
+      const { data: sharedInvites } = await supabaseAdmin
+        .from("campaign_invitations")
+        .select("id")
+        .or(
+          `and(creator_id.eq.${userId},invited_by.eq.${args.recipient_id}),` +
+          `and(creator_id.eq.${args.recipient_id},invited_by.eq.${userId})`
+        )
+        .limit(1);
+
+      const hasSharedContext =
+        (sharedApps && sharedApps.length > 0) ||
+        (sharedCollabs && sharedCollabs.length > 0) ||
+        (sharedInvites && sharedInvites.length > 0);
+
+      if (!hasSharedContext) {
+        throw new Error("Cannot message this user — no shared campaign context");
+      }
+
+      // Find or create conversation
+      const { data: existingParticipants } = await supabaseAdmin
+        .from("conversation_participants")
+        .select("conversation_id")
+        .eq("user_id", userId);
+
+      const { data: recipientParticipants } = await supabaseAdmin
+        .from("conversation_participants")
+        .select("conversation_id")
+        .eq("user_id", args.recipient_id);
+
+      const myConvIds = new Set((existingParticipants ?? []).map((p: any) => p.conversation_id));
+      const sharedConvId = (recipientParticipants ?? []).find(
+        (p: any) => myConvIds.has(p.conversation_id)
+      )?.conversation_id;
+
+      let conversationId = sharedConvId;
+
+      if (!conversationId) {
+        // Create new conversation
+        const { data: newConv, error: convError } = await supabaseAdmin
+          .from("conversations")
+          .insert({})
+          .select("id")
+          .single();
+        if (convError) throw convError;
+        conversationId = newConv.id;
+
+        // Add both participants
+        await supabaseAdmin.from("conversation_participants").insert([
+          { conversation_id: conversationId, user_id: userId },
+          { conversation_id: conversationId, user_id: args.recipient_id },
+        ]);
+      }
+
+      // Insert message
+      const { data: msg, error: msgError } = await supabaseAdmin
+        .from("messages")
+        .insert({
+          conversation_id: conversationId,
+          sender_id: userId,
+          content: args.message,
+        })
+        .select("id")
+        .single();
+      if (msgError) throw msgError;
+
+      return {
+        result: {
+          message_id: msg.id,
+          conversation_id: conversationId,
+          recipient_name: recipient.full_name,
+          status: "sent",
+        },
+      };
+    }
+```
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add supabase/functions/donny-chat/index.ts
+git commit -m "feat: add match_creators, generate_campaign, get_analytics, send_message tool implementations"
+```
+
+---
+
+### Task 5: Rewrite History Reconstruction for Anthropic Format
+
+**Files:**
+- Modify: `supabase/functions/donny-chat/index.ts` — `getConversationHistory()` function
+
+- [ ] **Step 1: Rewrite `getConversationHistory` to return Anthropic-format messages**
+
+Replace the existing function with:
+
+```ts
 // Load conversation history and reconstruct into Anthropic message format
 async function getConversationHistory(
   conversationId: string,
@@ -511,20 +765,22 @@ async function getConversationHistory(
       // Tool results become user messages with tool_result content blocks
       // msg.content stores the tool_use_id (or tool_call_id for OpenAI-era messages)
       const toolResultBlock = {
-        type: "tool_result",
-        tool_use_id: msg.content ?? "unknown",
-        content: JSON.stringify(msg.tool_result),
+        role: "user",
+        content: [
+          {
+            type: "tool_result",
+            tool_use_id: msg.content ?? "unknown",
+            content: JSON.stringify(msg.tool_result),
+          },
+        ],
       };
 
       // If the previous message is also a user tool_result, merge into it
       const prev = anthropicMessages[anthropicMessages.length - 1];
       if (prev?.role === "user" && Array.isArray(prev.content) && prev.content[0]?.type === "tool_result") {
-        prev.content.push(toolResultBlock);
+        prev.content.push(toolResultBlock.content[0]);
       } else {
-        anthropicMessages.push({
-          role: "user",
-          content: [toolResultBlock],
-        });
+        anthropicMessages.push(toolResultBlock);
       }
     }
     // Skip 'system' role messages — Anthropic uses top-level system param
@@ -532,602 +788,46 @@ async function getConversationHistory(
 
   return { messages: anthropicMessages, contextSummary };
 }
+```
 
+- [ ] **Step 2: Verify mental walkthrough of edge cases**
 
-// Execute a tool call against Supabase — all 21 tools
-async function executeTool(
-  toolName: string,
-  args: Record<string, any>,
-  userId: string,
-  supabaseAdmin: any
-): Promise<{ result: any }> {
-  switch (toolName) {
-    // --- Campaign Tools ---
-    case "create_campaign": {
-      const { data, error } = await supabaseAdmin
-        .from("campaigns")
-        .insert({
-          user_id: userId,
-          title: args.title,
-          description: args.description,
-          platform: args.platform,
-          budget_min: args.budget_min,
-          budget_max: args.budget_max,
-          content_type: args.content_type ?? "video",
-          status: "draft",
-        })
-        .select("id, title, status")
-        .single();
-      if (error) throw error;
-      return { result: data };
-    }
+Walk through these scenarios mentally:
+1. Fresh conversation (no history) → returns empty array ✓
+2. User-only messages → simple `{ role: "user", content }` messages ✓
+3. Old OpenAI tool call → detects `function` key, converts to `tool_use` content blocks ✓
+4. New Anthropic tool call → passes through `content` array as-is ✓
+5. Null/undefined `tool_calls` → treated as plain text assistant message ✓
+6. Consecutive tool results → merged into single `user` message with multiple `tool_result` blocks ✓
 
-    case "get_campaigns": {
-      const { data, error } = await supabaseAdmin
-        .from("campaigns")
-        .select("id, title, status, platform, budget_min, budget_max, created_at, campaign_applications(count)")
-        .eq("user_id", userId)
-        .order("created_at", { ascending: false })
-        .limit(10);
-      if (error) throw error;
-      return { result: data };
-    }
+- [ ] **Step 3: Commit**
 
-    case "update_campaign": {
-      const updates: Record<string, any> = {};
-      if (args.title) updates.title = args.title;
-      if (args.description) updates.description = args.description;
-      if (args.budget_min) updates.budget_min = args.budget_min;
-      if (args.budget_max) updates.budget_max = args.budget_max;
-      if (args.status) updates.status = args.status;
+```bash
+git add supabase/functions/donny-chat/index.ts
+git commit -m "feat: rewrite history reconstruction for Anthropic message format"
+```
 
-      const { data, error } = await supabaseAdmin
-        .from("campaigns")
-        .update(updates)
-        .eq("id", args.campaign_id)
-        .eq("user_id", userId) // Ensure ownership
-        .select("id, title, status")
-        .single();
-      if (error) throw error;
-      return { result: data };
-    }
+---
 
-    // --- Creator Discovery Tools ---
-    case "match_creators": {
-      let query = supabaseAdmin
-        .from("creator_profiles")
-        .select("id, user_id, profiles!inner(full_name, avatar_url, location), specialty, platforms, rating, completed_projects")
-        .limit(10);
-      if (args.niche) query = query.ilike("specialty", `%${args.niche}%`);
-      if (args.location) query = query.ilike("profiles.location", `%${args.location}%`);
-      if (args.min_rating) query = query.gte("rating", args.min_rating);
-      query = query.order("rating", { ascending: false });
-      const { data, error } = await query;
-      if (error) throw error;
-      return {
-        result: (data ?? []).map((c: any) => ({
-          id: c.user_id,
-          name: c.profiles?.full_name ?? "Unknown",
-          avatar_url: c.profiles?.avatar_url,
-          location: c.profiles?.location ?? null,
-          platforms: c.platforms ?? [],
-          niche: c.specialty ?? "General",
-          rating: c.rating ?? 0,
-          project_count: c.completed_projects ?? 0,
-        })),
-      };
-    }
+### Task 6: Rewrite Main Handler for Anthropic API
 
-    case "get_creator_profile": {
-      const { data, error } = await supabaseAdmin
-        .from("creator_profiles")
-        .select("id, user_id, profiles!inner(full_name, avatar_url, bio), specialty, platforms, rating, completed_projects, hourly_rate, portfolio_url")
-        .eq("user_id", args.creator_id)
-        .single();
-      if (error) throw error;
-      return { result: data };
-    }
+**Files:**
+- Modify: `supabase/functions/donny-chat/index.ts` — `serve()` handler (lines 762-997)
 
-    case "invite_creator": {
-      const { data, error } = await supabaseAdmin
-        .from("campaign_invitations")
-        .insert({
-          campaign_id: args.campaign_id,
-          creator_id: args.creator_id,
-          invited_by: userId,
-          message: args.message ?? null,
-          status: "pending",
-        })
-        .select("id, status")
-        .single();
-      if (error) throw error;
-      return { result: { id: data.id, status: "invitation_sent" } };
-    }
+This is the largest task. It rewrites the core request handler to:
+- Parse `context` from request body
+- Update `donny_conversations.surface` if provided
+- Build Anthropic-format messages (system as top-level param, not inline)
+- Call Anthropic Messages API instead of OpenAI
+- Handle Anthropic's tool-use response format (content blocks, not `tool_calls` array)
+- Log to `donny_actions` after each tool execution
+- Track `tokens_used` and `model` on saved messages
 
-    // --- Application Tools ---
-    case "get_applications": {
-      const { data, error } = await supabaseAdmin
-        .from("campaign_applications")
-        .select("id, status, pitch, proposed_rate, applicant_id, profiles!inner(full_name, avatar_url)")
-        .eq("campaign_id", args.campaign_id)
-        .eq("status", "pending");
-      if (error) throw error;
-      return { result: data };
-    }
+- [ ] **Step 1: Replace the main handler**
 
-    case "apply_to_campaign": {
-      const { data, error } = await supabaseAdmin
-        .from("campaign_applications")
-        .insert({
-          campaign_id: args.campaign_id,
-          applicant_id: userId,
-          pitch: args.pitch,
-          proposed_rate: args.proposed_rate,
-          status: "pending",
-        })
-        .select("id, status")
-        .single();
-      if (error) throw error;
-      return { result: { id: data.id, status: "submitted" } };
-    }
+Replace everything from `serve(async (req) => {` to the end of the file with:
 
-    case "respond_to_application": {
-      const newStatus = args.action === "accept" ? "accepted" : "rejected";
-      const { data, error } = await supabaseAdmin
-        .from("campaign_applications")
-        .update({ status: newStatus })
-        .eq("id", args.application_id)
-        .select("id, status, campaign_id")
-        .single();
-      if (error) throw error;
-
-      // If accepted, create a collaboration
-      if (args.action === "accept" && data) {
-        const { data: app } = await supabaseAdmin
-          .from("campaign_applications")
-          .select("applicant_id, proposed_rate, campaign_id")
-          .eq("id", args.application_id)
-          .single();
-
-        if (app) {
-          await supabaseAdmin.from("campaign_collaborations").insert({
-            campaign_id: app.campaign_id,
-            creator_id: app.applicant_id,
-            agreed_rate: app.proposed_rate,
-            status: "active",
-          });
-        }
-      }
-      return { result: { id: data.id, status: newStatus } };
-    }
-
-    // --- Content Tools ---
-    case "get_submissions": {
-      const { data, error } = await supabaseAdmin
-        .from("file_uploads")
-        .select("id, file_name, file_url, status, created_at, uploader_id, profiles!inner(full_name)")
-        .eq("collaboration_id", args.collaboration_id)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return { result: data };
-    }
-
-    case "approve_content": {
-      const { data, error } = await supabaseAdmin
-        .from("file_uploads")
-        .update({ status: "approved" })
-        .eq("id", args.submission_id)
-        .select("id, file_name, status")
-        .single();
-      if (error) throw error;
-      return { result: data };
-    }
-
-    case "request_revision": {
-      const { data, error } = await supabaseAdmin
-        .from("file_uploads")
-        .update({ status: "revision_requested" })
-        .eq("id", args.submission_id)
-        .select("id, file_name, status")
-        .single();
-      if (error) throw error;
-
-      // Add feedback as a file comment
-      await supabaseAdmin.from("file_comments").insert({
-        file_id: args.submission_id,
-        user_id: userId,
-        content: args.feedback,
-      });
-      return { result: { id: data.id, status: "revision_requested", feedback: args.feedback } };
-    }
-
-    // --- Payment Tools ---
-    case "prepare_payment": {
-      const { data, error } = await supabaseAdmin
-        .from("campaign_collaborations")
-        .select("id, agreed_rate, creator_id, profiles!inner(full_name), campaigns!inner(title)")
-        .eq("id", args.collaboration_id)
-        .single();
-      if (error) throw error;
-      return {
-        result: {
-          collaboration_id: data.id,
-          amount: data.agreed_rate,
-          recipient_name: data.profiles?.full_name,
-          campaign_title: data.campaigns?.title,
-          payment_url: `/dashboard/business/payments/${data.id}`,
-        },
-      };
-    }
-
-    case "get_payment_status": {
-      const { data, error } = await supabaseAdmin
-        .from("campaign_collaborations")
-        .select("id, agreed_rate, payment_status, campaigns!inner(title), profiles!inner(full_name)")
-        .eq("id", args.collaboration_id)
-        .single();
-      if (error) throw error;
-      return { result: data };
-    }
-
-    // --- Profile Tools ---
-    case "update_profile": {
-      const updates: Record<string, any> = {};
-      if (args.full_name) updates.full_name = args.full_name;
-      if (args.bio) updates.bio = args.bio;
-      if (args.business_name) updates.business_name = args.business_name;
-      if (args.location) updates.location = args.location;
-
-      const { data, error } = await supabaseAdmin
-        .from("profiles")
-        .update(updates)
-        .eq("id", userId)
-        .select("id, full_name, bio, business_name, location")
-        .single();
-      if (error) throw error;
-      return { result: data };
-    }
-
-    case "get_dashboard_summary": {
-      const [campaignsRes, collabsRes, appsRes] = await Promise.all([
-        supabaseAdmin
-          .from("campaigns")
-          .select("id, title, status")
-          .eq("user_id", userId)
-          .limit(5),
-        supabaseAdmin
-          .from("campaign_collaborations")
-          .select("id, status, campaigns!inner(title)")
-          .or(`creator_id.eq.${userId}`)
-          .limit(10),
-        supabaseAdmin
-          .from("campaign_applications")
-          .select("id, status")
-          .eq("applicant_id", userId)
-          .eq("status", "pending"),
-      ]);
-      return {
-        result: {
-          campaigns: campaignsRes.data ?? [],
-          collaborations: collabsRes.data ?? [],
-          pending_applications: appsRes.data?.length ?? 0,
-        },
-      };
-    }
-
-    // --- Onboarding Tools ---
-    case "get_onboarding_step": {
-      const { data: profile } = await supabaseAdmin
-        .from("profiles")
-        .select("role, full_name, business_name")
-        .eq("id", userId)
-        .single();
-
-      // Determine which onboarding fields are still empty
-      const isBusiness = profile?.role === "business_client" || profile?.role === "brand";
-      const steps = isBusiness
-        ? [
-            { field: "business_name", label: "Business name", completed: !!profile?.business_name },
-            { field: "content_type", label: "Content type", completed: false }, // Check via campaigns
-            { field: "budget_range", label: "Budget range", completed: false },
-            { field: "logo", label: "Logo upload", completed: false },
-          ]
-        : [
-            { field: "platforms", label: "Platforms", completed: false },
-            { field: "niche", label: "Niche/specialty", completed: false },
-            { field: "portfolio_url", label: "Portfolio link", completed: false },
-            { field: "automation_level", label: "Automation preference", completed: false },
-          ];
-
-      const nextStep = steps.find((s) => !s.completed);
-      return {
-        result: {
-          role: profile?.role,
-          steps,
-          current_step: nextStep ?? null,
-          is_complete: !nextStep,
-        },
-      };
-    }
-
-    case "complete_onboarding_step": {
-      // Save the onboarding answer to the appropriate table
-      const field = args.field;
-      const value = args.value;
-
-      if (field === "business_name" || field === "full_name" || field === "bio" || field === "location") {
-        await supabaseAdmin.from("profiles").update({ [field]: value }).eq("id", userId);
-      } else if (field === "automation_level") {
-        // Upsert creator automation preferences
-        await supabaseAdmin.from("creator_automation_preferences").upsert({
-          user_id: userId,
-          automation_level: value,
-          updated_at: new Date().toISOString(),
-        }, { onConflict: "user_id" });
-      } else if (field === "platforms" || field === "niche" || field === "portfolio_url") {
-        const updateField = field === "niche" ? "specialty" : field;
-        await supabaseAdmin.from("creator_profiles").update({ [updateField]: value }).eq("user_id", userId);
-      }
-
-      return { result: { field, saved: true } };
-    }
-
-    case "generate_campaign": {
-      const response = await fetch(`${SUPABASE_URL}/functions/v1/donny-campaign-generate`, {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          brief: args.brief,
-          target_audience: args.target_audience,
-          budget_range: args.budget_range,
-          user_id: userId,
-        }),
-      });
-      if (!response.ok) {
-        const errorBody = await response.text();
-        throw new Error(`Campaign generation failed: ${errorBody}`);
-      }
-      const data = await response.json();
-      return { result: data };
-    }
-
-    case "get_analytics": {
-      const timeRangeMs: Record<string, number> = {
-        "7d": 7 * 24 * 60 * 60 * 1000,
-        "30d": 30 * 24 * 60 * 60 * 1000,
-        "90d": 90 * 24 * 60 * 60 * 1000,
-      };
-      const range = timeRangeMs[args.time_range ?? "30d"] ?? timeRangeMs["30d"];
-      const since = new Date(Date.now() - range).toISOString();
-
-      let eventsQuery = supabaseAdmin
-        .from("analytics_events")
-        .select("event_type, created_at")
-        .eq("user_id", userId)
-        .gte("created_at", since);
-      if (args.campaign_id) {
-        eventsQuery = eventsQuery.eq("campaign_id", args.campaign_id);
-      }
-      const { data: events, error: eventsError } = await eventsQuery;
-      if (eventsError) throw eventsError;
-
-      const eventCounts: Record<string, number> = {};
-      for (const e of events ?? []) {
-        eventCounts[e.event_type] = (eventCounts[e.event_type] ?? 0) + 1;
-      }
-
-      let campaignQuery = supabaseAdmin
-        .from("campaigns")
-        .select("id, title, status, campaign_applications(count), campaign_collaborations(count)")
-        .eq("user_id", userId);
-      if (args.campaign_id) {
-        campaignQuery = campaignQuery.eq("id", args.campaign_id);
-      }
-      const { data: campaigns } = await campaignQuery.limit(10);
-
-      return {
-        result: {
-          time_range: args.time_range ?? "30d",
-          event_counts: eventCounts,
-          total_events: events?.length ?? 0,
-          campaigns: campaigns ?? [],
-        },
-      };
-    }
-
-    case "send_message": {
-      // Validate recipient exists
-      const { data: recipient, error: recipientError } = await supabaseAdmin
-        .from("profiles")
-        .select("id, full_name")
-        .eq("id", args.recipient_id)
-        .single();
-      if (recipientError || !recipient) {
-        throw new Error("Recipient not found");
-      }
-
-      // Authorization: verify both users share a campaign context
-      const { data: sharedApps } = await supabaseAdmin
-        .from("campaign_applications")
-        .select("id, campaigns!inner(user_id)")
-        .or(
-          `and(applicant_id.eq.${userId},campaigns.user_id.eq.${args.recipient_id}),` +
-          `and(applicant_id.eq.${args.recipient_id},campaigns.user_id.eq.${userId})`
-        )
-        .limit(1);
-
-      const { data: sharedCollabs } = await supabaseAdmin
-        .from("campaign_collaborations")
-        .select("id, campaigns!inner(user_id)")
-        .or(
-          `and(creator_id.eq.${userId},campaigns.user_id.eq.${args.recipient_id}),` +
-          `and(creator_id.eq.${args.recipient_id},campaigns.user_id.eq.${userId})`
-        )
-        .limit(1);
-
-      const { data: sharedInvites } = await supabaseAdmin
-        .from("campaign_invitations")
-        .select("id")
-        .or(
-          `and(creator_id.eq.${userId},invited_by.eq.${args.recipient_id}),` +
-          `and(creator_id.eq.${args.recipient_id},invited_by.eq.${userId})`
-        )
-        .limit(1);
-
-      const hasSharedContext =
-        (sharedApps && sharedApps.length > 0) ||
-        (sharedCollabs && sharedCollabs.length > 0) ||
-        (sharedInvites && sharedInvites.length > 0);
-
-      if (!hasSharedContext) {
-        throw new Error("Cannot message this user — no shared campaign context");
-      }
-
-      // Find or create conversation
-      const { data: existingParticipants } = await supabaseAdmin
-        .from("conversation_participants")
-        .select("conversation_id")
-        .eq("user_id", userId);
-
-      const { data: recipientParticipants } = await supabaseAdmin
-        .from("conversation_participants")
-        .select("conversation_id")
-        .eq("user_id", args.recipient_id);
-
-      const myConvIds = new Set((existingParticipants ?? []).map((p: any) => p.conversation_id));
-      const sharedConvId = (recipientParticipants ?? []).find(
-        (p: any) => myConvIds.has(p.conversation_id)
-      )?.conversation_id;
-
-      let conversationId = sharedConvId;
-
-      if (!conversationId) {
-        const { data: newConv, error: convError } = await supabaseAdmin
-          .from("conversations")
-          .insert({})
-          .select("id")
-          .single();
-        if (convError) throw convError;
-        conversationId = newConv.id;
-
-        await supabaseAdmin.from("conversation_participants").insert([
-          { conversation_id: conversationId, user_id: userId },
-          { conversation_id: conversationId, user_id: args.recipient_id },
-        ]);
-      }
-
-      // Insert message
-      const { data: msg, error: msgError } = await supabaseAdmin
-        .from("messages")
-        .insert({
-          conversation_id: conversationId,
-          sender_id: userId,
-          content: args.message,
-        })
-        .select("id")
-        .single();
-      if (msgError) throw msgError;
-
-      return {
-        result: {
-          message_id: msg.id,
-          conversation_id: conversationId,
-          recipient_name: recipient.full_name,
-          status: "sent",
-        },
-      };
-    }
-
-    // --- Scheduling Tools ---
-    case "schedule_post": {
-      const scheduleResponse = await fetch(
-        `${SUPABASE_URL}/functions/v1/donny-schedule`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            action: "create",
-            user_id: userId,
-            platform: args.platform,
-            content_type: args.content_type,
-            caption: args.caption,
-            scheduled_at: args.scheduled_at,
-            campaign_id: args.campaign_id,
-          }),
-        }
-      );
-      if (!scheduleResponse.ok) {
-        const errorBody = await scheduleResponse.text();
-        throw new Error(`Schedule post failed: ${errorBody}`);
-      }
-      const scheduleData = await scheduleResponse.json();
-      return { result: scheduleData };
-    }
-
-    case "suggest_post_times": {
-      const suggestResponse = await fetch(
-        `${SUPABASE_URL}/functions/v1/donny-schedule`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            action: "suggest_times",
-            user_id: userId,
-            platform: args.platform,
-            content_type: args.content_type,
-            target_audience: args.target_audience,
-          }),
-        }
-      );
-      if (!suggestResponse.ok) {
-        const errorBody = await suggestResponse.text();
-        throw new Error(`Suggest times failed: ${errorBody}`);
-      }
-      const suggestData = await suggestResponse.json();
-      return { result: suggestData };
-    }
-
-    // --- Campaign Preview Tools ---
-    case "generate_campaign_preview": {
-      const previewResponse = await fetch(
-        `${SUPABASE_URL}/functions/v1/donny-campaign-preview`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            action: "generate",
-            user_id: userId,
-            campaign_id: args.campaign_id,
-            preview_types: args.preview_types,
-            style_notes: args.style_notes,
-          }),
-        }
-      );
-      if (!previewResponse.ok) {
-        const errorBody = await previewResponse.text();
-        throw new Error(`Campaign preview generation failed: ${errorBody}`);
-      }
-      const previewData = await previewResponse.json();
-      return { result: previewData };
-    }
-
-    default:
-      throw new Error(`Unknown tool: ${toolName}`);
-  }
-}
-
+```ts
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -1137,36 +837,23 @@ serve(async (req) => {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) throw new Error("No authorization header");
 
-    // --- Dual auth: Supabase session first, OAuth fallback ---
-    let userId: string;
-
-    // Try Supabase session auth first (in-app usage)
+    // Create Supabase clients
     const supabaseUser = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_ANON_KEY")!, {
       global: { headers: { Authorization: authHeader } },
     });
+    const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    // Get authenticated user
     const {
       data: { user },
       error: authError,
     } = await supabaseUser.auth.getUser();
-
-    if (user && !authError) {
-      userId = user.id;
-    } else {
-      // Fallback: try Donny OAuth token (Chrome Extension, external clients)
-      const oauthResult = await validateDonnyToken(req);
-      if (!oauthResult) throw new Error("Unauthorized");
-      if (!requireScope(oauthResult.scopes, "donny:chat")) {
-        throw new Error("Insufficient scope: donny:chat required");
-      }
-      userId = oauthResult.user_id;
-    }
-
-    const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    if (authError || !user) throw new Error("Unauthorized");
 
     const { conversation_id, message, context: requestContext } = await req.json();
 
     // Rate limiting: max 30 user messages per hour
-    const withinLimit = await checkRateLimit(userId, supabaseAdmin);
+    const withinLimit = await checkRateLimit(user.id, supabaseAdmin);
     if (!withinLimit) {
       return new Response(
         JSON.stringify({
@@ -1188,7 +875,7 @@ serve(async (req) => {
     const { data: profile } = await supabaseAdmin
       .from("profiles")
       .select("id, role, full_name, email, avatar_url, business_name, bio, location")
-      .eq("id", userId)
+      .eq("id", user.id)
       .single();
 
     if (!profile) throw new Error("Profile not found");
@@ -1197,14 +884,14 @@ serve(async (req) => {
     const { data: campaigns } = await supabaseAdmin
       .from("campaigns")
       .select("id, title, status")
-      .eq("user_id", userId)
+      .eq("user_id", user.id)
       .eq("status", "published")
       .limit(10);
 
     const { data: pendingApps } = await supabaseAdmin
       .from("campaign_applications")
       .select("id")
-      .eq("applicant_id", userId)
+      .eq("applicant_id", user.id)
       .eq("status", "pending");
 
     const userContext = {
@@ -1226,6 +913,8 @@ serve(async (req) => {
 
     // Build messages array for Claude
     const claudeMessages: any[] = [...history];
+
+    // Add current user message
     claudeMessages.push({ role: "user", content: message });
 
     // Helper: extract text from Anthropic content blocks
@@ -1240,7 +929,12 @@ serve(async (req) => {
       return "";
     }
 
-    // Helper: get tool use blocks from content
+    // Helper: check if response has tool use
+    function hasToolUse(content: any[]): boolean {
+      return content.some((b: any) => b.type === "tool_use");
+    }
+
+    // Helper: get tool use blocks
     function getToolUseBlocks(content: any[]): any[] {
       return content.filter((b: any) => b.type === "tool_use");
     }
@@ -1275,7 +969,7 @@ serve(async (req) => {
       const assistantContent = result.content;
       const callTokens = (result.usage?.input_tokens ?? 0) + (result.usage?.output_tokens ?? 0);
 
-      // Save assistant message with tool calls (per-call tokens)
+      // Save assistant message with tool calls (per-call tokens, not cumulative)
       const { data: savedAssistantMsg } = await supabaseAdmin
         .from("donny_messages")
         .insert({
@@ -1297,7 +991,7 @@ serve(async (req) => {
         let status = "completed";
 
         try {
-          const execution = await executeTool(toolUse.name, toolUse.input, userId, supabaseAdmin);
+          const execution = await executeTool(toolUse.name, toolUse.input, user.id, supabaseAdmin);
           toolResult = execution.result;
         } catch (err: any) {
           toolResult = { error: err.message };
@@ -1307,7 +1001,7 @@ serve(async (req) => {
         // Log to donny_tool_executions
         await supabaseAdmin.from("donny_tool_executions").insert({
           message_id: savedAssistantMsg?.id,
-          user_id: userId,
+          user_id: user.id,
           tool_name: toolUse.name,
           input: toolUse.input,
           output: toolResult,
@@ -1317,7 +1011,7 @@ serve(async (req) => {
         // Log to donny_actions (service-role client bypasses RLS)
         await supabaseAdmin.from("donny_actions").insert({
           conversation_id,
-          user_id: userId,
+          user_id: user.id,
           action_type: toolUse.name,
           action_payload: { input: toolUse.input, output: toolResult },
           status,
@@ -1327,7 +1021,7 @@ serve(async (req) => {
         await supabaseAdmin.from("donny_messages").insert({
           conversation_id,
           role: "tool",
-          content: toolUse.id,
+          content: toolUse.id, // Store tool_use_id for history reconstruction
           tool_result: toolResult,
           model: "claude-sonnet-4-20250514",
         });
@@ -1395,7 +1089,7 @@ serve(async (req) => {
       content: displayContent,
       rich_card: richCard,
       model: "claude-sonnet-4-20250514",
-      tokens_used: (result.usage?.input_tokens ?? 0) + (result.usage?.output_tokens ?? 0),
+      tokens_used: totalTokens,
     });
 
     // Update conversation last_message_at
@@ -1409,11 +1103,91 @@ serve(async (req) => {
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err: any) {
-    const msg = err.message || "Internal error";
-    const isAuthError = msg.includes("Unauthorized") || msg.includes("authorization") || msg.includes("scope");
     return new Response(
-      JSON.stringify({ error: msg }),
-      { status: isAuthError ? 401 : 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      JSON.stringify({ error: err.message }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });
+```
+
+- [ ] **Step 2: Verify no remaining OpenAI references**
+
+Search the entire file for: `openai`, `OPENAI`, `gpt-4o`, `gpt`, `GPT`, `chat/completions`. All should return zero matches.
+
+- [ ] **Step 3: Verify the Anthropic API flow**
+
+Mental walkthrough:
+1. **Normal chat:** User sends message → Claude returns `stop_reason: "end_turn"` → skip tool loop → extract text → save → respond ✓
+2. **Single tool call:** Claude returns `stop_reason: "tool_use"` → execute tool → save results → call Claude again → `stop_reason: "end_turn"` → respond ✓
+3. **Multi-tool in one turn:** Claude returns multiple `tool_use` blocks → execute each → build all `tool_result` blocks → send back → respond ✓
+4. **Chained tool calls:** Claude calls tool A → results fed back → Claude calls tool B → results fed back → Claude responds ✓
+5. **Context-aware:** `requestContext.page_url` appended to system prompt → Claude knows what user is viewing ✓
+6. **Surface tracking:** `requestContext.surface` saved to `donny_conversations.surface` ✓
+7. **Token tracking:** `tokens_used` accumulated across all API calls in the turn ✓
+8. **Action logging:** Each tool execution logged to both `donny_tool_executions` and `donny_actions` ✓
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add supabase/functions/donny-chat/index.ts
+git commit -m "feat: integrate Anthropic Claude API with tool execution loop and action logging"
+```
+
+---
+
+### Task 7: Final Verification and Cleanup
+
+**Files:**
+- Verify: `supabase/functions/donny-chat/index.ts`
+
+- [ ] **Step 1: Run a full file read and check for issues**
+
+Read the complete file. Check for:
+- No TypeScript errors (unused variables, type mismatches)
+- No dangling references to OpenAI
+- All 21 tools present in `TOOL_DEFINITIONS`
+- All 21 tools (20 in switch + `search_creators` removed) handled in `executeTool` switch
+- `default: throw new Error("Unknown tool")` still present
+- CORS headers applied to all responses
+- Auth check at the top of the handler
+- Rate limit check before API calls
+
+- [ ] **Step 2: Verify tool definition count matches executeTool cases**
+
+Tool definitions (21): `create_campaign`, `get_campaigns`, `update_campaign`, `generate_campaign`, `match_creators`, `get_creator_profile`, `invite_creator`, `get_applications`, `apply_to_campaign`, `respond_to_application`, `get_submissions`, `approve_content`, `request_revision`, `prepare_payment`, `get_payment_status`, `update_profile`, `get_dashboard_summary`, `get_analytics`, `send_message`, `get_onboarding_step`, `complete_onboarding_step`
+
+executeTool cases (21): same list. Verify 1:1 mapping.
+
+- [ ] **Step 3: Final commit with all changes**
+
+```bash
+git add supabase/functions/donny-chat/index.ts
+git commit -m "chore: final cleanup and verification of donny-chat Claude integration"
+```
+
+---
+
+## Summary of Changes
+
+| What | Before | After |
+|---|---|---|
+| LLM Provider | OpenAI GPT-4o | Anthropic Claude Sonnet |
+| Env var | `OPENAI_API_KEY` | `ANTHROPIC_API_KEY` |
+| Tool format | OpenAI function calling | Anthropic tool use |
+| Tool count | 18 | 21 (replaced 1, added 3 net-new) |
+| History window | Last 20 messages | Last 50 messages |
+| Context summarization | GPT-4o-mini | Removed |
+| Action logging | `donny_tool_executions` only | + `donny_actions` |
+| Token tracking | None | `donny_messages.tokens_used` |
+| Context awareness | None | `context.page_url` in system prompt |
+| Surface tracking | None | `donny_conversations.surface` |
+
+## Environment Setup Reminder
+
+Before deploying, add `ANTHROPIC_API_KEY` to the Supabase dashboard:
+```
+Settings → Edge Functions → Environment Variables → Add ANTHROPIC_API_KEY
+```
+
+`OPENAI_API_KEY` must remain configured — it's still used by `donny-campaign-generate` and other Edge Functions.
