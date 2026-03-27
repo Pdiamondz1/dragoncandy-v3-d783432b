@@ -947,15 +947,12 @@ function DropdownMenu({
   onSignOut: () => void;
   onClose: () => void;
 }) {
-  const menuRef = useRef<HTMLDivElement>(null);
-
   return (
     <>
       {/* Backdrop */}
       <div className="fixed inset-0 z-10" onClick={onClose} />
       {/* Menu */}
       <div
-        ref={menuRef}
         className="absolute right-0 top-full mt-1 bg-donny-surface border border-donny-border rounded-lg shadow-lg py-1 z-20 min-w-[160px]"
       >
         <button
