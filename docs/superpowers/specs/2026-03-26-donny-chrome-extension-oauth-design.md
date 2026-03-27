@@ -24,6 +24,10 @@ Enhance the existing Chrome Extension scaffold with a complete OAuth 2.0 PKCE au
 - Offline detection, token revocation push, or multi-tab sync
 - Streaming responses or conversation persistence
 
+## Prerequisites
+
+- **`manifest.json` must include the `identity` permission.** The OAuth flow uses `chrome.identity.launchWebAuthFlow()` and `chrome.identity.getRedirectURL()`, both of which require this permission. If it's not already present, add `"identity"` to the `permissions` array before testing. This is listed as a prerequisite rather than a file modification because the spec scope explicitly excludes manifest changes.
+
 ## Architecture
 
 ```
@@ -91,6 +95,7 @@ export interface UserProfile {
   display_name: string;
   avatar_url: string | null;
   email: string;
+  role: string;
 }
 ```
 
@@ -159,11 +164,22 @@ export class AuthExpiredError extends Error {
 - POST to `DONNY_OAUTH_TOKEN_URL`
 - Body: `{ grant_type: "refresh_token", client_id, refresh_token }`
 - On error: clear tokens via `clearTokens()`, throw `AuthExpiredError`
+- **Deduplication:** A module-level `refreshPromise` variable prevents concurrent refresh calls. If a refresh is already in flight, subsequent callers await the same promise. This prevents a race condition where the auto-refresh timer and a `donnyFetch` 401 retry both attempt to rotate the refresh token simultaneously (the server deletes the old token on use, so the second caller would find it missing).
+
+```typescript
+let refreshPromise: Promise<TokenResponse> | null = null;
+
+export async function refreshAccessToken(refreshToken: string): Promise<TokenResponse> {
+  if (refreshPromise) return refreshPromise;
+  refreshPromise = doRefresh(refreshToken).finally(() => { refreshPromise = null; });
+  return refreshPromise;
+}
+```
 
 #### `donnyFetch(endpoint, options?): Promise<Response>`
 1. Get tokens from storage → throw `AuthExpiredError` if none
-2. Build URL — accepts relative endpoint (e.g. `"donny-chat"`) or full URL
-3. Set `Authorization: Bearer <token>` and `Content-Type: application/json`
+2. Build URL — accepts relative endpoint (e.g. `"donny-chat"`) or full URL. Leading slashes on relative endpoints are stripped to avoid double-slash URLs.
+3. Set `Authorization: Bearer <token>`. Only set `Content-Type: application/json` when `options.body` is present (avoids sending content-type on GET requests).
 4. Make request
 5. If 401 → refresh token → save new tokens → retry once with new token
 6. If still 401 → clear tokens, throw `AuthExpiredError`
@@ -258,28 +274,28 @@ Minor changes:
 - Destructure `error` and `user` from `useAuth()` (in addition to existing `isAuthenticated`, `isLoading`, `login`, `logout`)
 - Pass `isLoading` and `error` to `<AuthScreen>`
 - Show `user.display_name` in the header as a subtitle under "Donny" when available
-- Remove separate loading screen if one exists — `AuthScreen` handles its own loading state via the `isLoading` prop
+- **Mount loading:** During the initial token check on mount (`isLoading: true` and `isAuthenticated: false`), show a minimal loading indicator (the "D" logo with a subtle pulse) rather than immediately showing the full AuthScreen with "Connecting..." on the login button. This avoids confusion — "Connecting..." implies the user initiated a login, but during mount the app is just checking stored tokens. Once mount loading completes, either show the authenticated UI or the AuthScreen with the login button enabled.
 
 ### 7. Callback Page (`src/oauth/callback.html`)
 
 Standalone HTML (no Tailwind — plain CSS since it's outside the build pipeline).
 
+**Note:** When using `chrome.identity.launchWebAuthFlow`, Chrome intercepts the redirect URL before actually loading this page — the authorization code is returned directly to the calling code. This page is a branded fallback that may briefly flash in the popup during the redirect, and serves as a landing page if the OAuth URL is ever opened outside the extension context (e.g., manually in a browser tab). It does **not** relay messages back to the extension via `chrome.runtime.sendMessage`.
+
 **Styling:** Dark background (`#0a0a1a`), centered card, "DRAGONCANDY" teal wordmark.
 
-**Four states** (show/hide via JS):
+**Three states** (show/hide via JS):
 
 | State | Shown When | Content |
 |---|---|---|
 | Loading | Default on page load | Teal spinner + "Connecting to DragonCandy..." + "This window will close automatically" |
-| Success | Code successfully sent to extension | "Connected!" + auto-close after 1s |
 | Error | `error` param in URL | Pink error message from `error_description` + auto-close after 3s |
-| Fallback | Extension context unavailable | "You can close this window" |
+| Fallback | No code or error (unexpected state) | "You can close this window" |
 
 **Script behavior:**
-1. Parse `code`, `state`, `error`, `error_description` from URL params
-2. If `error` → show error state, send `OAUTH_ERROR` message to extension, auto-close
-3. If `code` → send `OAUTH_CALLBACK` message with `code` + `state` to extension via `chrome.runtime.sendMessage`, show success, auto-close
-4. Otherwise → show fallback
+1. Parse `error`, `error_description` from URL params
+2. If `error` → show error state, auto-close after 3s
+3. Otherwise → show fallback (page was loaded outside the normal extension flow)
 
 ---
 
