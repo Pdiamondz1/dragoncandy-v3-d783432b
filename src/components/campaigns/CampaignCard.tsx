@@ -221,17 +221,10 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
   const needsEscrowPayment = campaign.escrow_status === 'pending';
 
   return (
-<<<<<<< HEAD
     <Card className={`relative overflow-hidden hover:shadow-lg transition-all duration-200 border-l-4 max-w-full ${needsEscrowPayment ? 'border-l-amber-500 bg-amber-50/30' : 'border-l-transparent hover:border-l-primary/50'}`}>
       {/* Application Counter Badge - Top Right Corner */}
       {applicationCounts && applicationCounts.pending > 0 && (
         <div className="absolute top-2 right-2 z-10">
-=======
-    <Card className={`relative hover:shadow-lg transition-all duration-200 border-l-4 ${needsEscrowPayment ? 'border-l-amber-500 bg-amber-50/30' : 'border-l-transparent hover:border-l-primary/50'}`}>
-      {/* Application Counter Badge - Top Right Corner */}
-      {applicationCounts && applicationCounts.pending > 0 && (
-        <div className="absolute -top-2 -right-2 z-10">
->>>>>>> a1eeecf (docs: add Donny Chrome Extension OAuth PKCE design spec)
           <Badge className="bg-destructive text-destructive-foreground text-xs px-2 py-1 rounded-full shadow-lg">
             {applicationCounts.pending}
           </Badge>
@@ -379,11 +372,7 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
         )}
       </CardContent>
 
-<<<<<<< HEAD
       <CardFooter className="flex flex-wrap gap-2 pt-4 border-t border-border min-w-0 overflow-hidden">
-=======
-      <CardFooter className="flex flex-wrap gap-2 pt-4 border-t border-border min-w-0">
->>>>>>> a1eeecf (docs: add Donny Chrome Extension OAuth PKCE design spec)
         <Button 
           variant="outline" 
           size="sm" 

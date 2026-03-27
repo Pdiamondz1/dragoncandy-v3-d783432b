@@ -11,22 +11,15 @@ import { BusinessDashboardSideFeed } from '@/components/dragon-feed/BusinessDash
 import { FeedLightbox } from '@/components/dragon-feed/FeedLightbox';
 import { FeedMediaItem } from '@/hooks/useBusinessDragonFeed';
 import RatingPromptManager from '@/components/reviews/RatingPromptManager';
-<<<<<<< HEAD
-
-=======
 import { AskBar } from '@/components/ai-assistant';
 import { useAIChatModal } from '@/contexts/AIChatModalContext';
->>>>>>> a1eeecf (docs: add Donny Chrome Extension OAuth PKCE design spec)
 import { DonnyCard } from '@/components/donny/DonnyCard';
 
 const BusinessDashboard = () => {
   const { profile } = useAuth();
   const navigate = useNavigate();
   const { proposals, isLoading: proposalsLoading, updateProposalStatus } = useSponsorshipProposals();
-<<<<<<< HEAD
-=======
   const { openModal } = useAIChatModal();
->>>>>>> a1eeecf (docs: add Donny Chrome Extension OAuth PKCE design spec)
   const [selectedFeedItem, setSelectedFeedItem] = useState<FeedMediaItem | null>(null);
   const [currentFeedIndex, setCurrentFeedIndex] = useState(0);
   const [allFeedItems, setAllFeedItems] = useState<FeedMediaItem[]>([]);
@@ -83,12 +76,9 @@ const BusinessDashboard = () => {
             }}
           />
 
-<<<<<<< HEAD
-=======
           {/* Ask Donny Bar */}
           <AskBar onClick={openModal} userRole="business_client" />
 
->>>>>>> a1eeecf (docs: add Donny Chrome Extension OAuth PKCE design spec)
           {/* Review Prompts */}
           <RatingPromptManager />
 

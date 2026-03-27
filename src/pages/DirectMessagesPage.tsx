@@ -50,11 +50,7 @@ const DirectMessagesPage: React.FC = () => {
 
   return (
     <DashboardLayout userRole={userRole as 'business_client' | 'content_creator' | 'brand'}>
-<<<<<<< HEAD
       <div className="min-h-screen overflow-x-hidden bg-dc-gray w-full max-w-full">
-=======
-      <div className="min-h-screen overflow-x-hidden bg-dc-gray">
->>>>>>> a1eeecf (docs: add Donny Chrome Extension OAuth PKCE design spec)
         {/* Template B header */}
         <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
           {selectedConversationId ? (
@@ -87,11 +83,7 @@ const DirectMessagesPage: React.FC = () => {
           </div>
         ) : (
           /* Scrollable conversation list */
-<<<<<<< HEAD
           <div className="pb-24 px-4 pt-4 overflow-hidden">
-=======
-          <div className="pb-24 px-4 pt-4">
->>>>>>> a1eeecf (docs: add Donny Chrome Extension OAuth PKCE design spec)
             <DirectMessagesList
               onConversationSelect={handleConversationSelect}
               onCampaignNavigate={handleCampaignNavigate}

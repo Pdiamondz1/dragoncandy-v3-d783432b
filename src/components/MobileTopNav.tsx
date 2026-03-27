@@ -28,7 +28,6 @@ export const MobileTopNav: React.FC<MobileTopNavProps> = ({
 
   return (
     <header className={`sticky top-0 z-50 flex items-center justify-between px-4 py-2 ${bgClass} border-b border-border`}>
-<<<<<<< HEAD
       <Link to="/" className="flex-shrink-0">
         <img src={dragonCandyLogo} alt="DragonCandy" className="h-12 w-12" />
       </Link>
@@ -39,18 +38,6 @@ export const MobileTopNav: React.FC<MobileTopNavProps> = ({
             Welcome Back, {displayName}
           </p>
           <p className="text-xs text-muted-foreground truncate">Create content and drive revenue</p>
-=======
-      <Link to="/">
-        <img src={dragonCandyLogo} alt="DragonCandy" className="h-12 w-12 flex-shrink-0" />
-      </Link>
-
-      {showWelcome && displayName && (
-        <div className="flex-1 text-center px-2">
-          <p className="font-semibold text-sm uppercase tracking-wide text-dc-teal leading-tight truncate">
-            Welcome Back, {displayName}
-          </p>
-          <p className="text-xs text-muted-foreground">Create content and drive revenue</p>
->>>>>>> a1eeecf (docs: add Donny Chrome Extension OAuth PKCE design spec)
         </div>
       )}
 

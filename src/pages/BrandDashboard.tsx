@@ -7,21 +7,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Search, TrendingUp, Users, DollarSign, Target, Sparkles, Calendar, BarChart3, Loader2, AlertCircle } from 'lucide-react';
-<<<<<<< HEAD
-
-=======
 import { AskBar } from '@/components/ai-assistant';
 import { useAIChatModal } from '@/contexts/AIChatModalContext';
->>>>>>> a1eeecf (docs: add Donny Chrome Extension OAuth PKCE design spec)
 import { DonnyCard } from '@/components/donny/DonnyCard';
 
 const BrandDashboard = () => {
   const { profile } = useAuth();
   const navigate = useNavigate();
-<<<<<<< HEAD
-=======
   const { openModal } = useAIChatModal();
->>>>>>> a1eeecf (docs: add Donny Chrome Extension OAuth PKCE design spec)
   const { data: stats, isLoading: statsLoading, isError: statsError } = useBrandDashboardStats();
 
   if (!profile) {
@@ -118,12 +111,9 @@ const BrandDashboard = () => {
               }}
             />
 
-<<<<<<< HEAD
-=======
             {/* Ask Bar */}
             <AskBar onClick={openModal} userRole="brand" />
 
->>>>>>> a1eeecf (docs: add Donny Chrome Extension OAuth PKCE design spec)
             {/* Welcome Header */}
             <div>
               <p className="font-sans text-sm font-bold uppercase tracking-wide text-dc-teal">
