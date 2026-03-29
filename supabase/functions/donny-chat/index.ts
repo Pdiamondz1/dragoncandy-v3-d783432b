@@ -530,7 +530,42 @@ async function getConversationHistory(
     // Skip 'system' role messages — Anthropic uses top-level system param
   }
 
-  return { messages: anthropicMessages, contextSummary };
+  // Sanitize: merge consecutive same-role messages (Anthropic requires alternating roles)
+  const sanitized: any[] = [];
+  for (const msg of anthropicMessages) {
+    const prev = sanitized[sanitized.length - 1];
+    if (prev && prev.role === msg.role) {
+      // Merge into previous message
+      if (msg.role === "user") {
+        // Concatenate user text messages, or merge tool_result arrays
+        if (typeof prev.content === "string" && typeof msg.content === "string") {
+          prev.content = prev.content + "\n\n" + msg.content;
+        } else if (Array.isArray(prev.content) && Array.isArray(msg.content)) {
+          prev.content.push(...msg.content);
+        } else if (typeof prev.content === "string" && Array.isArray(msg.content)) {
+          // Previous is text, current is tool_result — wrap previous as text block
+          prev.content = [{ type: "text", text: prev.content }, ...msg.content];
+        } else if (Array.isArray(prev.content) && typeof msg.content === "string") {
+          prev.content.push({ type: "text", text: msg.content });
+        }
+      } else if (msg.role === "assistant") {
+        // Concatenate assistant text
+        if (typeof prev.content === "string" && typeof msg.content === "string") {
+          prev.content = prev.content + "\n\n" + msg.content;
+        }
+        // If either has tool_use blocks, keep the later message (more recent state)
+      }
+    } else {
+      sanitized.push(msg);
+    }
+  }
+
+  // Ensure first message is from "user" role (Anthropic requirement)
+  while (sanitized.length > 0 && sanitized[0].role !== "user") {
+    sanitized.shift();
+  }
+
+  return { messages: sanitized, contextSummary };
 }
 
 
@@ -1304,33 +1339,40 @@ serve(async (req) => {
           status = "failed";
         }
 
-        // Log to donny_tool_executions
-        await supabaseAdmin.from("donny_tool_executions").insert({
-          message_id: savedAssistantMsg?.id,
-          user_id: userId,
-          tool_name: toolUse.name,
-          input: toolUse.input,
-          output: toolResult,
-          status: status === "completed" ? "success" : "error",
-        });
+        // Audit logging — non-critical, don't crash if these fail
+        try {
+          await supabaseAdmin.from("donny_tool_executions").insert({
+            message_id: savedAssistantMsg?.id ?? null,
+            user_id: userId,
+            tool_name: toolUse.name,
+            input: toolUse.input,
+            output: toolResult,
+            status: status === "completed" ? "success" : "error",
+          });
 
-        // Log to donny_actions (service-role client bypasses RLS)
-        await supabaseAdmin.from("donny_actions").insert({
-          conversation_id,
-          user_id: userId,
-          action_type: toolUse.name,
-          action_payload: { input: toolUse.input, output: toolResult },
-          status,
-        });
+          await supabaseAdmin.from("donny_actions").insert({
+            conversation_id,
+            user_id: userId,
+            action_type: toolUse.name,
+            action_payload: { input: toolUse.input, output: toolResult },
+            status,
+          });
+        } catch (logErr: any) {
+          console.error(`[donny-chat] audit log failed for tool ${toolUse.name}:`, logErr.message);
+        }
 
         // Save tool result as message
-        await supabaseAdmin.from("donny_messages").insert({
-          conversation_id,
-          role: "tool",
-          content: toolUse.id,
-          tool_result: toolResult,
-          model: "claude-sonnet-4-20250514",
-        });
+        try {
+          await supabaseAdmin.from("donny_messages").insert({
+            conversation_id,
+            role: "tool",
+            content: toolUse.id,
+            tool_result: toolResult,
+            model: "claude-sonnet-4-20250514",
+          });
+        } catch (msgErr: any) {
+          console.error(`[donny-chat] tool message insert failed:`, msgErr.message);
+        }
 
         // Build tool result block for next Claude call
         toolResultBlocks.push({

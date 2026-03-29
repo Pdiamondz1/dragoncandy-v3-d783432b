@@ -36,6 +36,7 @@ export function useDonny() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const isSendingRef = useRef(false);
 
   // Load or create conversation
   const { data: conversation } = useQuery({
@@ -117,6 +118,9 @@ export function useDonny() {
   const sendMessageMutation = useMutation({
     mutationFn: async (content: string) => {
       if (!conversation || !user) throw new Error('No active conversation');
+      if (isSendingRef.current) throw new Error('Message already in flight');
+
+      isSendingRef.current = true;
 
       setIsStreaming(true);
       setAvatarState('thinking');
@@ -149,6 +153,7 @@ export function useDonny() {
       return data;
     },
     onSuccess: () => {
+      isSendingRef.current = false;
       setAvatarState('celebrating');
       setTimeout(() => setAvatarState('idle'), 2000);
       setIsStreaming(false);
@@ -157,6 +162,7 @@ export function useDonny() {
       queryClient.invalidateQueries({ queryKey: ['donny-dashboard', user?.id] });
     },
     onError: (err) => {
+      isSendingRef.current = false;
       setAvatarState('error');
       setTimeout(() => setAvatarState('idle'), 3000);
       setIsStreaming(false);
@@ -167,6 +173,7 @@ export function useDonny() {
 
   const sendMessage = useCallback(
     (content: string) => {
+      if (isSendingRef.current) return; // Silently discard duplicate sends
       sendMessageMutation.mutate(content);
     },
     [sendMessageMutation]
