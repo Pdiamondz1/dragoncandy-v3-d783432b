@@ -204,13 +204,6 @@ const AuthPage = () => {
         </div>
       </div>
 
-      {/* Portfolio strip — edge-to-edge image strip at bottom */}
-      <div className="flex w-full overflow-hidden" style={{ height: '140px' }}>
-        <div className="flex-1 bg-stone-200" />
-        <div className="flex-1 bg-stone-400" />
-        <div className="flex-1 bg-stone-600" />
-        <div className="flex-1 bg-stone-800" />
-      </div>
     </div>
   );
 };
