@@ -11,7 +11,6 @@ import { BusinessDashboardSideFeed } from '@/components/dragon-feed/BusinessDash
 import { FeedLightbox } from '@/components/dragon-feed/FeedLightbox';
 import { FeedMediaItem } from '@/hooks/useBusinessDragonFeed';
 import RatingPromptManager from '@/components/reviews/RatingPromptManager';
-import { AskBar } from '@/components/ai-assistant';
 import { useAIChatModal } from '@/contexts/AIChatModalContext';
 import { DonnyCard } from '@/components/donny/DonnyCard';
 
@@ -76,8 +75,6 @@ const BusinessDashboard = () => {
             }}
           />
 
-          {/* Ask Donny Bar */}
-          <AskBar onClick={openModal} userRole="business_client" />
 
           {/* Review Prompts */}
           <RatingPromptManager />
