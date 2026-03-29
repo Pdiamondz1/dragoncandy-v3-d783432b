@@ -59,3 +59,27 @@ verify_jwt = false
 
 [functions.get-watermarked-preview]
 verify_jwt = false
+
+[functions.donny-chat]
+verify_jwt = false
+
+[functions.donny-campaign-generate]
+verify_jwt = false
+
+[functions.donny-campaign-preview]
+verify_jwt = false
+
+[functions.donny-schedule]
+verify_jwt = false
+
+[functions.donny-analytics-alerts]
+verify_jwt = false
+
+[functions.donny-oauth-authorize]
+verify_jwt = false
+
+[functions.donny-oauth-token]
+verify_jwt = false
+
+[functions.donny-oauth-userinfo]
+verify_jwt = false

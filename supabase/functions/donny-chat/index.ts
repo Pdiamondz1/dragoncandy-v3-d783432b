@@ -8,6 +8,9 @@ const corsHeaders = {
 };
 
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+if (!ANTHROPIC_API_KEY) {
+  console.error("[donny-chat] ANTHROPIC_API_KEY is not set — all requests will fail");
+}
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
@@ -364,8 +367,8 @@ function buildSystemPrompt(
 ): string {
   const roleContext =
     profile.role === "business_client" || profile.role === "brand"
-      ? `Business: ${profile.business_name || "Not set up yet"}`
-      : `Creator: ${profile.creator_name || "Not set up yet"}`;
+      ? `Business: ${profile.full_name || "Not set up yet"}`
+      : `Creator: ${profile.full_name || "Not set up yet"}`;
 
   let prompt = `You are Donny, DragonCandy's AI assistant specializing in digital content, marketing, and creator-brand connections.
 
@@ -421,14 +424,24 @@ When presenting creators or campaigns from tool results, include a JSON code blo
 // Rate limiting: check message count in the last hour
 async function checkRateLimit(userId: string, supabaseAdmin: any): Promise<boolean> {
   const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+
+  // Step 1: get this user's conversation IDs
+  const { data: convRows, error: convError } = await supabaseAdmin
+    .from("donny_conversations")
+    .select("id")
+    .eq("user_id", userId);
+
+  if (convError || !convRows || convRows.length === 0) return true; // Allow on error — fail open
+
+  const convIds = convRows.map((r: any) => r.id);
+
+  // Step 2: count user messages in those conversations in the last hour
   const { count, error } = await supabaseAdmin
     .from("donny_messages")
     .select("id", { count: "exact", head: true })
     .eq("role", "user")
     .gte("created_at", oneHourAgo)
-    .in("conversation_id",
-      supabaseAdmin.from("donny_conversations").select("id").eq("user_id", userId)
-    );
+    .in("conversation_id", convIds);
 
   if (error) return true; // Allow on error — fail open
   return (count ?? 0) < 30;
@@ -1222,7 +1235,7 @@ serve(async (req) => {
     // Load user profile
     const { data: profile } = await supabaseAdmin
       .from("profiles")
-      .select("id, role, full_name, email, avatar_url, business_name, bio, location")
+      .select("id, role, full_name, email, avatar_url")
       .eq("id", userId)
       .single();
 
@@ -1281,6 +1294,9 @@ serve(async (req) => {
     }
 
     // Call Claude
+    if (!ANTHROPIC_API_KEY) {
+      throw new Error("ANTHROPIC_API_KEY is not configured — please set it in Supabase Edge Function secrets");
+    }
     let response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
