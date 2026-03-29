@@ -37,12 +37,12 @@ const CampaignWizard: React.FC = () => {
   } = useCampaignWizard();
 
   const steps = [
-    { number: 0, title: 'Delivery', active: true },
-    { number: 1, title: 'Campaign Goal', active: false },
-    { number: 2, title: 'AI Analysis', active: false },
-    { number: 3, title: 'Customize', active: false },
-    { number: 4, title: 'DragonDash', active: false },
-    { number: 5, title: 'Finalize', active: false },
+    { number: 1, title: 'Delivery', active: true },
+    { number: 2, title: 'Campaign Goal', active: false },
+    { number: 3, title: 'AI Analysis', active: false },
+    { number: 4, title: 'Customize', active: false },
+    { number: 5, title: 'DragonDash', active: false },
+    { number: 6, title: 'Finalize', active: false },
   ];
 
   return (
@@ -96,10 +96,10 @@ const CampaignWizard: React.FC = () => {
               <div className="border-2 border-dc-teal rounded-2xl p-4">
                 <div className="flex items-center gap-2">
                   <div className="w-7 h-7 bg-gray-900 rounded-full flex items-center justify-center text-white text-xs font-semibold shrink-0">
-                    2
+                    3
                   </div>
                   <div>
-                    <span className="font-bold text-gray-900 text-sm">Step 2: AI Campaign Analysis</span>
+                    <span className="font-bold text-gray-900 text-sm">Step 3: AI Campaign Analysis</span>
                     <Brain className="h-4 w-4 text-dc-teal inline ml-2" />
                   </div>
                 </div>
