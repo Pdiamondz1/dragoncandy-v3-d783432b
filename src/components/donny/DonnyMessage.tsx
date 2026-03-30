@@ -1,3 +1,4 @@
+import ReactMarkdown from 'react-markdown';
 import { DonnyAvatar } from './DonnyAvatar';
 import { DonnyRichCard } from './DonnyRichCard';
 import type { DonnyMessage as DonnyMessageType, DonnyAvatarState } from '@/types/donny';
@@ -33,7 +34,32 @@ export function DonnyMessage({ message, avatarState = 'idle', isLatestAssistant 
       <div className="max-w-[80%]">
         {message.content && (
           <div className="bg-[#F9A8D4] rounded-2xl rounded-bl-sm px-3.5 py-2.5">
-            <p className="text-sm text-[#111] leading-relaxed">{message.content}</p>
+            <div className="donny-markdown text-sm text-[#111] leading-relaxed">
+              <ReactMarkdown
+                components={{
+                  h1: ({ children }) => <h3 className="font-bold text-base mt-2 mb-1">{children}</h3>,
+                  h2: ({ children }) => <h4 className="font-bold text-sm mt-2 mb-1">{children}</h4>,
+                  h3: ({ children }) => <h5 className="font-semibold text-sm mt-1.5 mb-0.5">{children}</h5>,
+                  p: ({ children }) => <p className="mb-1.5 last:mb-0">{children}</p>,
+                  strong: ({ children }) => <strong className="font-bold">{children}</strong>,
+                  em: ({ children }) => <em className="italic">{children}</em>,
+                  ul: ({ children }) => <ul className="list-disc list-inside mb-1.5 space-y-0.5">{children}</ul>,
+                  ol: ({ children }) => <ol className="list-decimal list-inside mb-1.5 space-y-0.5">{children}</ol>,
+                  li: ({ children }) => <li className="text-sm">{children}</li>,
+                  a: ({ href, children }) => (
+                    <a href={href} target="_blank" rel="noopener noreferrer" className="text-[#EC4899] underline underline-offset-2">
+                      {children}
+                    </a>
+                  ),
+                  code: ({ children }) => (
+                    <code className="bg-black/10 rounded px-1 py-0.5 text-xs font-mono">{children}</code>
+                  ),
+                  hr: () => <hr className="border-black/20 my-2" />,
+                }}
+              >
+                {message.content}
+              </ReactMarkdown>
+            </div>
           </div>
         )}
         {message.rich_card && <DonnyRichCard card={message.rich_card} />}
