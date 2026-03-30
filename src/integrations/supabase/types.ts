@@ -597,6 +597,7 @@ export type Database = {
       }
       campaigns: {
         Row: {
+          ai_analysis: Json | null
           budget_max: number | null
           budget_min: number | null
           created_at: string
@@ -621,6 +622,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          ai_analysis?: Json | null
           budget_max?: number | null
           budget_min?: number | null
           created_at?: string
@@ -645,6 +647,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          ai_analysis?: Json | null
           budget_max?: number | null
           budget_min?: number | null
           created_at?: string
