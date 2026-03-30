@@ -18,6 +18,7 @@ import { supabase } from '@/integrations/supabase/client';
 import DeliveryBadge from './DeliveryBadge';
 import type { DeliveryType } from './DeliveryTypeSelector';
 import type { PricingType } from './PricingTypeSelector';
+import type { CampaignAnalysis } from '@/types/campaign';
 
 const finalizeSchema = z.object({
   title: z.string().min(3, 'Campaign name must be at least 3 characters'),
@@ -45,6 +46,7 @@ interface CampaignFinalizeStepProps {
     deliveryFee: number;
     pricingType: PricingType;
     fixedPrice?: number;
+    aiAnalysis?: CampaignAnalysis;
   };
   onBack: () => void;
 }
@@ -134,6 +136,8 @@ const CampaignFinalizeStep: React.FC<CampaignFinalizeStepProps> = ({
         pricing_type: campaignData.pricingType,
         fixed_price: campaignData.pricingType === 'fixed' ? campaignData.fixedPrice : undefined,
         escrow_status: escrowStatus,
+        // Persist the full AI analysis
+        ...(campaignData.aiAnalysis ? { ai_analysis: campaignData.aiAnalysis } : {}),
       });
 
       // If fixed price and user wants to publish, trigger Stripe escrow checkout
