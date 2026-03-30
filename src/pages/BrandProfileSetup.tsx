@@ -65,7 +65,7 @@ const BrandProfileSetup = () => {
       </div>
 
       {/* Form Content */}
-      <div className="px-4 py-6 pb-24 max-w-4xl mx-auto">
+      <div className="px-4 py-6 pb-24 md:pb-0 max-w-4xl mx-auto">
         <p className="text-sm text-gray-500 mb-6">
           Set up your brand profile to start sponsoring campaigns and partnering with creators.
         </p>

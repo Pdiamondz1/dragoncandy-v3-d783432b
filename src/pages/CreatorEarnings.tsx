@@ -293,7 +293,7 @@ const CreatorEarnings: React.FC = () => {
         </div>
 
         {/* Template A — White body */}
-        <div className="bg-white px-4 pt-4 pb-24 space-y-4 overflow-hidden">
+        <div className="bg-white px-4 pt-4 pb-24 md:pb-0 space-y-4 overflow-hidden">
 
           {/* Balance Stats Row */}
           <div className="grid grid-cols-3 divide-x divide-dc-pink border-2 border-dc-teal rounded-2xl overflow-hidden">

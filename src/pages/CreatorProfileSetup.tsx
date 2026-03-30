@@ -60,7 +60,7 @@ const CreatorProfileSetup = () => {
       </div>
 
       {/* Form Content */}
-      <div className="px-4 py-6 pb-24 max-w-2xl mx-auto">
+      <div className="px-4 py-6 pb-24 md:pb-0 max-w-2xl mx-auto">
         <p className="text-sm text-gray-500 mb-6">
           Showcase your skills and start getting discovered by brands.
         </p>

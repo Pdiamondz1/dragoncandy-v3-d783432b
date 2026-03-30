@@ -27,7 +27,7 @@ const BrandMessages = () => {
             </h1>
             <div className="w-7" />
           </div>
-          <div className="px-4 pt-4 pb-24">
+          <div className="px-4 pt-4 pb-24 md:pb-0">
             <div className="border-2 border-dc-teal rounded-2xl p-4 bg-white text-center text-sm text-gray-500">
               Loading...
             </div>
@@ -50,7 +50,7 @@ const BrandMessages = () => {
         </div>
 
         {/* Scrollable conversation list */}
-        <div className="pb-24 px-4 pt-4">
+        <div className="pb-24 md:pb-0 px-4 pt-4">
           <DirectMessagesList />
         </div>
       </div>

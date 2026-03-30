@@ -83,7 +83,7 @@ const BusinessActivity = () => {
             <span className="h-5 w-5 bg-gray-200 rounded-full animate-pulse mr-2" />
             <span className="flex-1 h-4 bg-gray-200 rounded-full animate-pulse mx-8" />
           </div>
-          <div className="px-4 pt-4 pb-24 flex items-center justify-center min-h-[300px]">
+          <div className="px-4 pt-4 pb-24 md:pb-0 flex items-center justify-center min-h-[300px]">
             <Loader2 className="h-10 w-10 animate-spin text-dc-teal" />
           </div>
         </div>
@@ -123,7 +123,7 @@ const BusinessActivity = () => {
         </div>
 
         {/* Body */}
-        <div className="px-4 pt-4 pb-24">
+        <div className="px-4 pt-4 pb-24 md:pb-0">
           {localLikedItems.length === 0 ? (
             <div className="border-2 border-dc-teal rounded-2xl p-10 text-center">
               <Heart className="h-12 w-12 text-gray-300 mx-auto mb-3 opacity-50" />

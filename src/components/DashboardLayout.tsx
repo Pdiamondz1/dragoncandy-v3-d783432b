@@ -160,8 +160,6 @@ const DashboardLayoutInner: React.FC<DashboardLayoutProps> = ({ children, userRo
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [openModal]);
 
-  if (!isMobile) return <DesktopGate />;
-
   return (
     <SidebarProvider defaultOpen={!isMobile}>
       <div className="min-h-screen flex w-full bg-background overflow-x-hidden font-outfit">

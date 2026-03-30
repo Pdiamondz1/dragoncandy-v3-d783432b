@@ -24,7 +24,7 @@ const BusinessProposals = () => {
   if (campaignLoading) {
     return (
       <DashboardLayout userRole="business_client">
-        <div className="min-h-screen bg-white overflow-x-hidden pb-24">
+        <div className="min-h-screen bg-white overflow-x-hidden pb-24 md:pb-0">
           <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
             <div className="flex-1 text-center">
               <h1 className="font-sans text-base font-bold text-gray-900 uppercase tracking-wide">Proposals</h1>
@@ -46,7 +46,7 @@ const BusinessProposals = () => {
   if (campaignError) {
     return (
       <DashboardLayout userRole="business_client">
-        <div className="min-h-screen bg-white overflow-x-hidden pb-24">
+        <div className="min-h-screen bg-white overflow-x-hidden pb-24 md:pb-0">
           <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
             <div className="flex-1 text-center">
               <h1 className="font-sans text-base font-bold text-gray-900 uppercase tracking-wide">Proposals</h1>
@@ -67,7 +67,7 @@ const BusinessProposals = () => {
   if (!campaign) {
     return (
       <DashboardLayout userRole="business_client">
-        <div className="min-h-screen bg-white overflow-x-hidden pb-24">
+        <div className="min-h-screen bg-white overflow-x-hidden pb-24 md:pb-0">
           <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
             <div className="flex-1 text-center">
               <h1 className="font-sans text-base font-bold text-gray-900 uppercase tracking-wide">Proposals</h1>
@@ -89,7 +89,7 @@ const BusinessProposals = () => {
 
   return (
     <DashboardLayout userRole="business_client">
-      <div className="min-h-screen bg-white overflow-x-hidden pb-24">
+      <div className="min-h-screen bg-white overflow-x-hidden pb-24 md:pb-0">
         {/* Template B header */}
         <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
           <div className="flex-1 text-center">

@@ -53,7 +53,7 @@ const CampaignMessagesPage: React.FC = () => {
             </h1>
             <div className="w-7" />
           </div>
-          <div className="px-4 pt-4 pb-24 space-y-4">
+          <div className="px-4 pt-4 pb-24 md:pb-0 space-y-4">
             <Skeleton className="h-10 w-full rounded-2xl" />
             <Skeleton className="h-96 w-full rounded-2xl" />
           </div>
@@ -79,7 +79,7 @@ const CampaignMessagesPage: React.FC = () => {
             </h1>
             <div className="w-7" />
           </div>
-          <div className="px-4 pt-4 pb-24">
+          <div className="px-4 pt-4 pb-24 md:pb-0">
             <div className="border-2 border-dc-teal rounded-2xl p-4 bg-white flex flex-col items-center py-12">
               <h3 className="text-base font-bold text-gray-900 mb-2">Campaign not found</h3>
               <p className="text-sm text-gray-500 text-center mb-4">
@@ -115,7 +115,7 @@ const CampaignMessagesPage: React.FC = () => {
             </h1>
             <div className="w-7" />
           </div>
-          <div className="px-4 pt-4 pb-24">
+          <div className="px-4 pt-4 pb-24 md:pb-0">
             <div className="border-2 border-dc-teal rounded-2xl p-4 bg-white flex flex-col items-center py-12">
               <h3 className="text-base font-bold text-gray-900 mb-2">No conversation available</h3>
               <p className="text-sm text-gray-500 text-center mb-4">
@@ -155,7 +155,7 @@ const CampaignMessagesPage: React.FC = () => {
         </div>
 
         {/* Message thread inside teal-bordered card */}
-        <div className="px-4 pt-4 pb-24">
+        <div className="px-4 pt-4 pb-24 md:pb-0">
           <div className="border-2 border-dc-teal rounded-2xl overflow-hidden bg-white">
             <MessageThread
               campaignId={campaign.id}

@@ -83,7 +83,7 @@ const DirectMessagesPage: React.FC = () => {
           </div>
         ) : (
           /* Scrollable conversation list */
-          <div className="pb-24 px-4 pt-4 overflow-hidden">
+          <div className="pb-24 md:pb-0 px-4 pt-4 overflow-hidden">
             <DirectMessagesList
               onConversationSelect={handleConversationSelect}
               onCampaignNavigate={handleCampaignNavigate}

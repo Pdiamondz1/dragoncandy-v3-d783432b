@@ -61,7 +61,7 @@ const ProjectDetailsPage: React.FC = () => {
           {/* Hero skeleton */}
           <div className="h-48 bg-gray-400 animate-pulse" />
           {/* White card overlay */}
-          <div className="bg-white rounded-t-3xl -mt-4 relative z-10 px-4 pt-6 pb-24 space-y-4">
+          <div className="bg-white rounded-t-3xl -mt-4 relative z-10 px-4 pt-6 pb-24 md:pb-0 space-y-4">
             <Skeleton className="h-7 w-2/3" />
             <Skeleton className="h-5 w-1/2" />
             <Skeleton className="h-40 w-full rounded-2xl" />
@@ -141,7 +141,7 @@ const ProjectDetailsPage: React.FC = () => {
         </div>
 
         {/* White card overlay — Template D body */}
-        <div className="bg-white rounded-t-3xl -mt-4 relative z-10 px-4 pt-6 pb-24 space-y-4">
+        <div className="bg-white rounded-t-3xl -mt-4 relative z-10 px-4 pt-6 pb-24 md:pb-0 space-y-4">
 
           {/* Stats row with pink dividers */}
           <div className="flex divide-x divide-dc-pink py-2">

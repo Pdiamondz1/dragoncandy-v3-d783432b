@@ -61,7 +61,7 @@ const BrandAnalytics = () => {
         </div>
 
         {/* Template A — White body */}
-        <div className="bg-white px-4 pt-4 pb-24 space-y-4">
+        <div className="bg-white px-4 pt-4 pb-24 md:pb-0 space-y-4">
 
           {isLoading ? (
             <div className="flex items-center justify-center h-48">

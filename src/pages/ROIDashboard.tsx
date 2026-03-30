@@ -232,7 +232,7 @@ const ROIDashboard: React.FC = () => {
 
         {/* White body content */}
         {!isLoading && (
-          <div className="px-4 py-6 pb-24">
+          <div className="px-4 py-6 pb-24 md:pb-0">
             <div className="max-w-2xl mx-auto space-y-6">
 
               {/* Revenue/Earnings/Investment Over Time */}

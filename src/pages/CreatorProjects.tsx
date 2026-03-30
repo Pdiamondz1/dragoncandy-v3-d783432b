@@ -134,7 +134,7 @@ const CreatorProjects: React.FC = () => {
             <span className="h-5 w-5 bg-gray-200 rounded-full animate-pulse mr-2" />
             <span className="flex-1 h-4 bg-gray-200 rounded-full animate-pulse mx-8" />
           </div>
-          <div className="px-4 pt-4 pb-24 space-y-3">
+          <div className="px-4 pt-4 pb-24 md:pb-0 space-y-3">
             {[1, 2, 3].map(i => (
               <div key={i} className="border-2 border-gray-100 rounded-2xl p-4 h-24 animate-pulse bg-gray-50" />
             ))}
@@ -176,7 +176,7 @@ const CreatorProjects: React.FC = () => {
         </div>
 
         {/* Body */}
-        <div className="px-4 pt-4 pb-24 space-y-4">
+        <div className="px-4 pt-4 pb-24 md:pb-0 space-y-4">
           {/* Payout Banner */}
           {user && <CreatorPayoutBanner creatorId={user.id} />}
 
