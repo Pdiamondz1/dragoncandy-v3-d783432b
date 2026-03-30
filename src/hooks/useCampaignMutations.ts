@@ -24,8 +24,6 @@ export interface CreateCampaignData {
   pricing_type?: 'fixed' | 'bid_range';
   fixed_price?: number;
   escrow_status?: 'none' | 'pending' | 'held' | 'released' | 'refunded';
-  // AI-generated campaign analysis
-  ai_analysis?: Record<string, unknown> | null;
 }
 
 export const useCreateCampaign = () => {
