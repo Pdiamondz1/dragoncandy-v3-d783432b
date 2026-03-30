@@ -2,6 +2,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import type { CampaignAnalysis } from '@/types/campaign';
 
 export interface Campaign {
   id: string;
@@ -25,6 +26,8 @@ export interface Campaign {
   fixed_price?: number;
   escrow_status?: 'none' | 'pending' | 'held' | 'released' | 'refunded';
   escrow_payment_intent_id?: string;
+  // AI-generated campaign analysis
+  ai_analysis?: CampaignAnalysis | null;
   created_at: string;
   updated_at: string;
 }

@@ -33,6 +33,8 @@ export interface FinalCampaignData {
   fixedPrice?: number;
   budgetMin?: number;
   budgetMax?: number;
+  // Full AI analysis for persistence
+  aiAnalysis?: CampaignAnalysis;
 }
 
 export const useCampaignWizard = () => {
@@ -150,6 +152,8 @@ export const useCampaignWizard = () => {
       fixedPrice: data.fixedPrice,
       budgetMin: data.budgetMin,
       budgetMax: data.budgetMax,
+      // Persist the full AI analysis
+      aiAnalysis: campaignAnalysis || undefined,
     };
     
     console.log('Final campaign data prepared:', finalData);

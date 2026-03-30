@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Calendar, DollarSign, Target, Palette, Volume2, Package } from 'lucide-react';
 import { Campaign } from '@/hooks/useCampaignQueries';
+import CampaignAnalysisDisplay from './CampaignAnalysisDisplay';
 
 interface CampaignDetailsOverviewProps {
   campaign: Campaign;
@@ -122,6 +123,13 @@ const CampaignDetailsOverview: React.FC<CampaignDetailsOverviewProps> = ({ campa
           )}
         </CardContent>
       </Card>
+
+      {/* Full AI Analysis — spans full width below the grid */}
+      {campaign.ai_analysis && (
+        <div className="lg:col-span-2">
+          <CampaignAnalysisDisplay analysis={campaign.ai_analysis} />
+        </div>
+      )}
     </div>
   );
 };

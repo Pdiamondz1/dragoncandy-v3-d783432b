@@ -134,6 +134,8 @@ const CampaignFinalizeStep: React.FC<CampaignFinalizeStepProps> = ({
         pricing_type: campaignData.pricingType,
         fixed_price: campaignData.pricingType === 'fixed' ? campaignData.fixedPrice : undefined,
         escrow_status: escrowStatus,
+        // Persist the full AI analysis
+        ai_analysis: campaignData.aiAnalysis || null,
       });
 
       // If fixed price and user wants to publish, trigger Stripe escrow checkout

@@ -24,8 +24,8 @@ import { toast } from 'sonner';
 
 interface CampaignAnalysisDisplayProps {
   analysis: CampaignAnalysis;
-  onEditCampaignIdea: () => void;
-  onApproveAndCustomize: () => void;
+  onEditCampaignIdea?: () => void;
+  onApproveAndCustomize?: () => void;
 }
 
 const CampaignAnalysisDisplay: React.FC<CampaignAnalysisDisplayProps> = ({
@@ -385,24 +385,30 @@ const CampaignAnalysisDisplay: React.FC<CampaignAnalysisDisplayProps> = ({
         </div>
       )}
 
-      {/* Action Buttons */}
-      <div className="flex flex-col sm:flex-row gap-4 justify-center">
-        <Button
-          variant="outline"
-          onClick={onEditCampaignIdea}
-          className="flex items-center gap-2 w-full sm:w-auto"
-        >
-          <Edit className="h-4 w-4" />
-          Edit Campaign Idea
-        </Button>
-        <Button
-          onClick={onApproveAndCustomize}
-          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 w-full sm:w-auto"
-        >
-          Approve & Customize
-          <ArrowRight className="h-4 w-4" />
-        </Button>
-      </div>
+      {/* Action Buttons — only shown in wizard context */}
+      {(onEditCampaignIdea || onApproveAndCustomize) && (
+        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          {onEditCampaignIdea && (
+            <Button
+              variant="outline"
+              onClick={onEditCampaignIdea}
+              className="flex items-center gap-2 w-full sm:w-auto"
+            >
+              <Edit className="h-4 w-4" />
+              Edit Campaign Idea
+            </Button>
+          )}
+          {onApproveAndCustomize && (
+            <Button
+              onClick={onApproveAndCustomize}
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 w-full sm:w-auto"
+            >
+              Approve & Customize
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+      )}
     </div>
   );
 };
