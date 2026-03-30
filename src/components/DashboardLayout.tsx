@@ -155,10 +155,13 @@ const DashboardLayoutInner: React.FC<DashboardLayoutProps> = ({ children, userRo
         e.preventDefault();
         openModal();
       }
+      if (e.key === 'Escape' && isAIChatOpen) {
+        closeModal();
+      }
     };
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [openModal]);
+  }, [openModal, closeModal, isAIChatOpen]);
 
   return (
     <SidebarProvider defaultOpen={!isMobile}>

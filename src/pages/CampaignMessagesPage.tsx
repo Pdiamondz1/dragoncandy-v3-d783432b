@@ -138,7 +138,7 @@ const CampaignMessagesPage: React.FC = () => {
 
   return (
     <DashboardLayout userRole={userRole as 'business_client' | 'content_creator'}>
-      <div className="min-h-screen overflow-x-hidden bg-dc-gray">
+      <div className="min-h-screen overflow-x-hidden bg-dc-gray md:max-w-4xl md:mx-auto">
         {/* Template B header */}
         <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
           <button

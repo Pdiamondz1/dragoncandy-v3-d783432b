@@ -119,7 +119,7 @@ const BrandDiscoverCampaigns = () => {
 
   return (
     <DashboardLayout userRole="brand">
-      <div className="min-h-screen bg-white overflow-x-hidden">
+      <div className="min-h-screen bg-white overflow-x-hidden md:max-w-6xl md:mx-auto">
         {/* Template B Header */}
         <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
           <button

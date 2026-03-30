@@ -96,7 +96,7 @@ const ProjectDetailsPage: React.FC = () => {
 
   return (
     <DashboardLayout userRole={isBusinessClient ? 'business_client' : 'content_creator'}>
-      <div className="min-h-screen bg-dc-gray overflow-x-hidden">
+      <div className="min-h-screen bg-dc-gray overflow-x-hidden md:max-w-4xl md:mx-auto">
         {/* Template D — Hero image area */}
         <div className="relative h-44 bg-gradient-to-br from-dc-teal to-dc-teal-dark overflow-hidden">
           {/* Header overlay on hero */}

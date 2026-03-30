@@ -15,7 +15,7 @@ const BusinessPromotionalTools: React.FC = () => {
 
   return (
     <DashboardLayout userRole="business_client">
-      <div className="min-h-screen overflow-x-hidden pb-24 md:pb-0">
+      <div className="min-h-screen overflow-x-hidden pb-24 md:pb-0 md:max-w-4xl md:mx-auto">
         {/* Template A: Pink gradient header */}
         <div className="bg-gradient-to-b from-dc-pink-bg to-pink-50 px-4 pt-6 pb-4">
           <h1 className="font-sans text-sm font-bold uppercase tracking-wide text-dc-teal">

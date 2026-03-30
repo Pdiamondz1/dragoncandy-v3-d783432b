@@ -222,7 +222,7 @@ const CreatorEarnings: React.FC = () => {
 
   return (
     <DashboardLayout userRole="content_creator">
-      <div className="min-h-screen overflow-x-hidden w-full max-w-full">
+      <div className="min-h-screen overflow-x-hidden w-full max-w-full md:max-w-3xl md:mx-auto">
         {/* Template A — Pink gradient header */}
         <div className="bg-gradient-to-b from-dc-pink-bg to-pink-50 px-4 pt-4 pb-6 overflow-hidden">
           <p className="font-sans text-sm font-bold uppercase tracking-wide text-dc-teal mb-1">

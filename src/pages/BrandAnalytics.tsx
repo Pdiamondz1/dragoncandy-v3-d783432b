@@ -50,7 +50,7 @@ const BrandAnalytics = () => {
 
   return (
     <DashboardLayout userRole="brand">
-      <div className="min-h-screen overflow-x-hidden">
+      <div className="min-h-screen overflow-x-hidden md:max-w-4xl md:mx-auto">
         {/* Template A — Pink gradient header */}
         <div className="bg-gradient-to-b from-dc-pink-bg to-pink-50 px-4 pt-4 pb-6">
           <p className="font-sans text-sm font-bold uppercase tracking-wide text-dc-teal mb-1">
