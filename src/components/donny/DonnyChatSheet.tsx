@@ -62,6 +62,7 @@ export function DonnyChatSheet({ open, onOpenChange, initialMessage }: DonnyChat
       <SheetContent
         side="bottom"
         className="h-[85vh] rounded-t-3xl p-0 flex flex-col"
+        hideClose
       >
         {/* Header */}
         <div className="flex items-center gap-3 px-4 py-3 border-b bg-white rounded-t-3xl">
