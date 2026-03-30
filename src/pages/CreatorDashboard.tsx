@@ -58,7 +58,7 @@ const CreatorDashboard = () => {
       <div className="min-h-screen bg-white overflow-x-hidden">
         {/* Pink gradient header */}
         <div className="bg-gradient-to-b from-dc-pink-bg to-pink-50 px-4 pt-6 pb-8">
-          <div className="max-w-2xl mx-auto space-y-4">
+          <div className="max-w-2xl lg:max-w-4xl mx-auto space-y-4">
             {/* Donny AI Card */}
             <DonnyCard
               onOpenChat={(message) => {
@@ -164,7 +164,7 @@ const CreatorDashboard = () => {
 
         {/* White body content */}
         <div className="px-4 py-6 pb-24 md:pb-0">
-          <div className="max-w-2xl mx-auto space-y-6">
+          <div className="max-w-2xl lg:max-w-4xl mx-auto space-y-6">
 
             {/* Recent Activity */}
             <div className="border-2 border-dc-teal rounded-2xl bg-white overflow-hidden">

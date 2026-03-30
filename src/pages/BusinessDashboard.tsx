@@ -64,7 +64,7 @@ const BusinessDashboard = () => {
       <div className="flex h-full overflow-hidden">
         {/* Main Content Area */}
         <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6">
-          <div className="max-w-2xl mx-auto space-y-6">
+          <div className="max-w-2xl lg:max-w-4xl mx-auto space-y-6">
 
           {/* Donny AI Card */}
           <DonnyCard

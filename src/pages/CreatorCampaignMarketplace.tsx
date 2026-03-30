@@ -13,7 +13,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { MapPin } from 'lucide-react';
+import { MapPin, DollarSign } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
 import logo from '@/assets/Transparent_DragonCandy_logo.png';
 import { useNavigate } from 'react-router-dom';
 
@@ -96,8 +98,8 @@ const CreatorCampaignMarketplace = () => {
           </div>
         </div>
 
-        {/* Swipe card stack */}
-        <div className="flex-1 px-4 pb-4">
+        {/* Swipe card stack — mobile only */}
+        <div className="flex-1 px-4 pb-4 md:hidden">
           <CampaignSwipeCard
             campaigns={availableCampaigns}
             onSwipe={handleSwipe}
@@ -119,6 +121,80 @@ const CreatorCampaignMarketplace = () => {
                 </div>
                 <span className="text-xs text-white/80">Apply</span>
               </div>
+            </div>
+          )}
+        </div>
+
+        {/* Grid view — desktop only */}
+        <div className="hidden md:block px-4 pb-8">
+          {availableCampaigns.length === 0 ? (
+            <div className="text-center py-16">
+              <p className="text-lg font-semibold text-gray-700">No campaigns available</p>
+              <p className="text-sm text-gray-500 mt-1">Check back soon for new opportunities!</p>
+            </div>
+          ) : (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 max-w-6xl mx-auto">
+              {availableCampaigns.map((campaign) => (
+                <Card
+                  key={campaign.id}
+                  className="hover:shadow-lg transition-shadow cursor-pointer border-2 border-transparent hover:border-dc-teal/30"
+                  onClick={() => navigate(`/dashboard/creator/campaigns/${campaign.id}`)}
+                >
+                  <CardContent className="p-5 space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <h3 className="font-bold text-gray-900 text-base leading-tight line-clamp-2">
+                        {campaign.title}
+                      </h3>
+                      <Badge variant="outline" className="shrink-0 text-xs">
+                        {campaign.status}
+                      </Badge>
+                    </div>
+
+                    {campaign.description && (
+                      <p className="text-sm text-gray-500 line-clamp-2">{campaign.description}</p>
+                    )}
+
+                    {campaign.platforms && campaign.platforms.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5">
+                        {campaign.platforms.map((p, i) => (
+                          <Badge key={i} className="bg-dc-pink/20 text-dc-pink-accent border-0 text-xs">
+                            {p}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+                      <div className="flex items-center gap-1 text-sm text-gray-600">
+                        <DollarSign className="w-3.5 h-3.5" />
+                        <span>
+                          {campaign.pricing_type === 'fixed' && campaign.fixed_price
+                            ? `$${campaign.fixed_price}`
+                            : campaign.budget_min && campaign.budget_max
+                            ? `$${campaign.budget_min} – $${campaign.budget_max}`
+                            : 'Budget TBD'}
+                        </span>
+                      </div>
+
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleApply(campaign);
+                        }}
+                        className="rounded-full bg-dc-teal text-white text-xs font-bold px-4 py-1.5 hover:bg-dc-teal-dark transition-colors"
+                      >
+                        Apply
+                      </button>
+                    </div>
+
+                    {campaign.business_profile?.business_name && (
+                      <p className="text-xs text-gray-400">
+                        by {campaign.business_profile.business_name}
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
             </div>
           )}
         </div>

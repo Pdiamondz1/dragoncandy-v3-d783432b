@@ -61,7 +61,7 @@ export function DonnyChatSheet({ open, onOpenChange, initialMessage }: DonnyChat
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="bottom"
-        className="h-[85vh] rounded-t-3xl p-0 flex flex-col"
+        className="h-[85vh] md:h-[70vh] rounded-t-3xl p-0 flex flex-col md:max-w-2xl md:mx-auto md:shadow-2xl"
         hideClose
       >
         {/* Header */}

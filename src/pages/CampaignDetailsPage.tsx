@@ -104,7 +104,7 @@ const CampaignDetailsPage: React.FC = () => {
         </div>
 
         {/* White card overlay — Template D */}
-        <div className="bg-white rounded-t-3xl -mt-4 relative z-10 px-4 pt-6 pb-28 overflow-hidden">
+        <div className="bg-white rounded-t-3xl -mt-4 relative z-10 px-4 pt-6 pb-28 overflow-hidden md:max-w-5xl md:mx-auto md:rounded-3xl md:mt-6 md:shadow-lg">
           {/* Campaign title + status row */}
           <div className="mb-4">
             <h2 className="text-xl font-bold text-gray-900 break-words">{campaign.title}</h2>
@@ -117,7 +117,7 @@ const CampaignDetailsPage: React.FC = () => {
           {canApply && (
             <button
               onClick={() => setShowApplicationDialog(true)}
-              className="w-full rounded-full bg-dc-teal text-white font-bold py-3 mb-4 flex items-center justify-center gap-2"
+              className="w-full md:w-auto rounded-full bg-dc-teal text-white font-bold py-3 md:px-8 mb-4 flex items-center justify-center gap-2"
             >
               <Send className="h-4 w-4" />
               Apply to Campaign
@@ -132,7 +132,7 @@ const CampaignDetailsPage: React.FC = () => {
           {showAcceptedButton && (
             <button
               onClick={() => navigate('/dashboard/creator/projects')}
-              className="w-full rounded-full bg-dc-teal text-white font-bold py-3 mb-4 flex items-center justify-center gap-2"
+              className="w-full md:w-auto rounded-full bg-dc-teal text-white font-bold py-3 md:px-8 mb-4 flex items-center justify-center gap-2"
             >
               <FolderOpen className="h-4 w-4" />
               View Project

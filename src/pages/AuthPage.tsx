@@ -126,7 +126,7 @@ const AuthPage = () => {
         <button
           type="button"
           aria-label="Menu"
-          className="flex flex-col gap-1.5 p-2"
+          className="flex flex-col gap-1.5 p-2 md:hidden"
         >
           <span className="block w-6 h-0.5 bg-white rounded-full" />
           <span className="block w-6 h-0.5 bg-white rounded-full" />
@@ -141,7 +141,7 @@ const AuthPage = () => {
           Welcome to Dragon Candy
         </h1>
 
-        <div className="w-full max-w-sm mx-auto">
+        <div className="w-full max-w-sm md:max-w-md mx-auto">
           {/* AuthHeader renders null — no duplicate logo */}
           <AuthHeader />
 
