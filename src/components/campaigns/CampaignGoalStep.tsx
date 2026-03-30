@@ -23,9 +23,9 @@ const CampaignGoalStep: React.FC<CampaignGoalStepProps> = ({
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <div className="w-8 h-8 bg-gray-900 rounded-full flex items-center justify-center text-white text-sm font-semibold">
-            1
+            2
           </div>
-          Step 1: Describe Your Campaign Goal
+          Step 2: Describe Your Campaign Goal
         </CardTitle>
         <p className="text-gray-600 text-sm">
           Tell DragonCandy AI about your campaign vision

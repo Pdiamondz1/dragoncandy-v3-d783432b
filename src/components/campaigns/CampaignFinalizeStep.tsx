@@ -232,9 +232,9 @@ const CampaignFinalizeStep: React.FC<CampaignFinalizeStepProps> = ({
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <div className="w-8 h-8 bg-gradient-to-r from-primary to-pink-500 rounded-full flex items-center justify-center text-white text-sm font-semibold">
-              5
+              6
             </div>
-            Step 5: Finalize & Publish
+            Step 6: Finalize & Publish
           </CardTitle>
         </CardHeader>
       </Card>

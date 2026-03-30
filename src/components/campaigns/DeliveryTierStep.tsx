@@ -69,7 +69,7 @@ const DeliveryTierStep: React.FC<DeliveryTierStepProps> = ({
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center text-primary-foreground text-sm font-semibold">
-              0
+              1
             </div>
             Choose Your Delivery Speed
           </CardTitle>

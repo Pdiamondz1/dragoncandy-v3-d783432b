@@ -56,9 +56,9 @@ const CampaignCustomizeForm: React.FC<CampaignCustomizeFormProps> = ({
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <div className="w-8 h-8 bg-gray-900 rounded-full flex items-center justify-center text-white text-sm font-semibold">
-              3
+              4
             </div>
-            Step 3: Customize Campaign Structure
+            Step 4: Customize Campaign Structure
           </CardTitle>
         </CardHeader>
       </Card>
