@@ -315,13 +315,15 @@ serve(async (req: Request) => {
         );
       }
 
-      // Check authentication — redirect to login if missing or invalid
-      const token = req.headers.get("Authorization")?.replace("Bearer ", "");
+      // Check authentication — accept token from header or query param
+      // (browser redirects from the login page can't set headers)
+      const token = req.headers.get("Authorization")?.replace("Bearer ", "")
+        || url.searchParams.get("access_token");
       if (!token) {
         const returnTo = encodeURIComponent(url.toString());
         return new Response(null, {
           status: 302,
-          headers: { Location: `https://dragoncandy.io/login?returnTo=${returnTo}`, ...corsHeaders },
+          headers: { Location: `https://dragoncandy.io/auth?returnTo=${returnTo}`, ...corsHeaders },
         });
       }
 
@@ -330,7 +332,7 @@ serve(async (req: Request) => {
         const returnTo = encodeURIComponent(url.toString());
         return new Response(null, {
           status: 302,
-          headers: { Location: `https://dragoncandy.io/login?returnTo=${returnTo}`, ...corsHeaders },
+          headers: { Location: `https://dragoncandy.io/auth?returnTo=${returnTo}`, ...corsHeaders },
         });
       }
 

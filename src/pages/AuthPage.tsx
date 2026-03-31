@@ -29,10 +29,30 @@ const AuthPage = () => {
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
+      // If returnTo is set (e.g. from Donny OAuth flow), redirect back with access token
+      const returnTo = searchParams.get('returnTo');
+      if (returnTo) {
+        handleOAuthReturn(returnTo);
+        return;
+      }
       console.log('User is authenticated, checking profile completion');
       checkProfileCompletion();
     }
   }, [isAuthenticated]);
+
+  const handleOAuthReturn = async (returnTo: string) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) return;
+
+      // Append access_token to the returnTo URL so the authorize endpoint can read it
+      const returnUrl = new URL(returnTo);
+      returnUrl.searchParams.set('access_token', session.access_token);
+      window.location.href = returnUrl.toString();
+    } catch (err) {
+      console.error('OAuth return redirect failed:', err);
+    }
+  };
 
   const checkProfileCompletion = async () => {
     if (!user) return;
