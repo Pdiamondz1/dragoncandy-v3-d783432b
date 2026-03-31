@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { validateDonnyToken, requireScope } from "../_shared/auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -48,13 +49,26 @@ serve(async (req) => {
     });
     const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // Validate auth
+    // Validate auth: try Supabase JWT first, fallback to Donny OAuth token
+    let userId: string;
     const { data: { user }, error: authError } = await supabaseUser.auth.getUser();
-    if (authError || !user) {
-      return new Response(
-        JSON.stringify({ success: false, error: "Unauthorized" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    if (user && !authError) {
+      userId = user.id;
+    } else {
+      const oauthResult = await validateDonnyToken(req);
+      if (!oauthResult) {
+        return new Response(
+          JSON.stringify({ success: false, error: "Unauthorized" }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      if (!requireScope(oauthResult.scopes, "analytics:read")) {
+        return new Response(
+          JSON.stringify({ success: false, error: "Insufficient scope: analytics:read required" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      userId = oauthResult.user_id;
     }
 
     // Parse optional POST body — defaults gracefully on missing or malformed body
@@ -71,7 +85,7 @@ serve(async (req) => {
     const { data: profileData, error: profileError } = await supabaseAdmin
       .from("profiles")
       .select("role")
-      .eq("id", user.id)
+      .eq("id", userId)
       .single();
 
     if (profileError || !profileData) {
@@ -95,7 +109,7 @@ serve(async (req) => {
         const { data: applications } = await supabaseAdmin
           .from("campaign_applications")
           .select("id, campaign_id, created_at, campaigns!inner(id, user_id, title)")
-          .eq("campaigns.user_id", user.id)
+          .eq("campaigns.user_id", userId)
           .eq("status", "pending")
           .gte("created_at", since);
 
@@ -146,7 +160,7 @@ serve(async (req) => {
         const { data: expiringCampaigns } = await supabaseAdmin
           .from("campaigns")
           .select("id, title, deadline")
-          .eq("user_id", user.id)
+          .eq("user_id", userId)
           .in("status", ["published", "active"])
           .not("deadline", "is", null)
           .gte("deadline", todayStr)
@@ -178,7 +192,7 @@ serve(async (req) => {
         const { data: paymentCampaigns } = await supabaseAdmin
           .from("campaigns")
           .select("id, title, escrow_status, updated_at")
-          .eq("user_id", user.id)
+          .eq("user_id", userId)
           .neq("escrow_status", "none")
           .gte("updated_at", since);
 
@@ -218,7 +232,7 @@ serve(async (req) => {
         const { data: collaborations } = await supabaseAdmin
           .from("campaign_collaborations")
           .select("id, content_status, status, updated_at, campaign_id, campaigns!inner(id, title)")
-          .eq("creator_id", user.id)
+          .eq("creator_id", userId)
           .gte("updated_at", since);
 
         if (collaborations) {
@@ -255,7 +269,7 @@ serve(async (req) => {
         const { data: creatorCollabs } = await supabaseAdmin
           .from("campaign_collaborations")
           .select("id, campaign_id, updated_at, campaigns!inner(id, title, escrow_status)")
-          .eq("creator_id", user.id)
+          .eq("creator_id", userId)
           .gte("updated_at", since);
 
         if (creatorCollabs) {
@@ -289,7 +303,7 @@ serve(async (req) => {
       const { data: participations } = await supabaseAdmin
         .from("conversation_participants")
         .select("conversation_id")
-        .eq("user_id", user.id);
+        .eq("user_id", userId);
 
       const conversationIds = (participations || []).map(
         (p: any) => p.conversation_id
@@ -300,7 +314,7 @@ serve(async (req) => {
           .from("messages")
           .select("id", { count: "exact", head: true })
           .in("conversation_id", conversationIds)
-          .neq("sender_id", user.id)
+          .neq("sender_id", userId)
           .is("read_at", null)
           .gte("created_at", since);
 

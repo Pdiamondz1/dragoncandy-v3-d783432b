@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { validateDonnyToken, requireScope } from "../_shared/auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -61,18 +62,31 @@ serve(async (req) => {
       );
     }
 
-    // Dual-client auth pattern: user-scoped for getUser(), service-role for queries
+    // Dual-client auth: try Supabase JWT first, fallback to Donny OAuth token
     const supabaseUser = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       global: { headers: { Authorization: authHeader } },
     });
     const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
+    let userId: string;
     const { data: { user }, error: authError } = await supabaseUser.auth.getUser();
-    if (authError || !user) {
-      return new Response(
-        JSON.stringify({ success: false, error: "Unauthorized" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    if (user && !authError) {
+      userId = user.id;
+    } else {
+      const oauthResult = await validateDonnyToken(req);
+      if (!oauthResult) {
+        return new Response(
+          JSON.stringify({ success: false, error: "Unauthorized" }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      if (!requireScope(oauthResult.scopes, "campaigns:write")) {
+        return new Response(
+          JSON.stringify({ success: false, error: "Insufficient scope: campaigns:write required" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      userId = oauthResult.user_id;
     }
 
     // Parse and validate request body

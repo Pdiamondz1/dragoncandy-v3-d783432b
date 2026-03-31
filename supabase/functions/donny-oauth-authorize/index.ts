@@ -256,6 +256,11 @@ serve(async (req: Request) => {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     const url = new URL(req.url);
 
+    // Supabase Edge Functions see an internal URL (http, no /functions/v1/ prefix).
+    // Build the canonical public URL so returnTo redirects work correctly.
+    const publicUrl = new URL(`${SUPABASE_URL}/functions/v1/donny-oauth-authorize`);
+    url.searchParams.forEach((v, k) => publicUrl.searchParams.set(k, v));
+
     // -------------------------------------------------------------------------
     // GET — validate params, check auth, render consent screen
     // -------------------------------------------------------------------------
@@ -320,7 +325,7 @@ serve(async (req: Request) => {
       const token = req.headers.get("Authorization")?.replace("Bearer ", "")
         || url.searchParams.get("access_token");
       if (!token) {
-        const returnTo = encodeURIComponent(url.toString());
+        const returnTo = encodeURIComponent(publicUrl.toString());
         return new Response(null, {
           status: 302,
           headers: { Location: `https://dragoncandy.io/auth?returnTo=${returnTo}`, ...corsHeaders },
@@ -329,33 +334,43 @@ serve(async (req: Request) => {
 
       const { data: { user }, error: authError } = await supabase.auth.getUser(token);
       if (authError || !user) {
-        const returnTo = encodeURIComponent(url.toString());
+        const returnTo = encodeURIComponent(publicUrl.toString());
         return new Response(null, {
           status: 302,
           headers: { Location: `https://dragoncandy.io/auth?returnTo=${returnTo}`, ...corsHeaders },
         });
       }
 
-      // Generate CSRF token
-      const csrfToken = await generateCsrfToken({ clientId, redirectUri, state, codeChallenge });
+      // First-party client — auto-approve without consent screen.
+      // Generate authorization code directly and redirect back.
+      const rawCode = generateToken(48);
+      const codeHash = await sha256Hash(rawCode);
 
-      // Render consent screen
-      const html = renderConsentScreen({
-        clientName: client.client_name,
+      const { error: insertError } = await supabase.from("donny_oauth_codes").insert({
+        code_hash: codeHash,
+        user_id: user.id,
+        client_id: client.id,
+        redirect_uri: redirectUri,
         scopes: scopeResult.scopes,
-        clientId,
-        redirectUri,
-        state,
-        codeChallenge,
-        codeChallengeMethod,
-        scopeParam: scopeResult.scopes.join(" "),
-        accessToken: token,
-        csrfToken,
+        code_challenge: codeChallenge,
+        code_challenge_method: codeChallengeMethod,
+        expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
       });
 
-      return new Response(html, {
-        status: 200,
-        headers: { "Content-Type": "text/html; charset=utf-8", ...corsHeaders },
+      if (insertError) {
+        console.error("donny-oauth-authorize: failed to insert auth code", insertError);
+        return new Response(
+          JSON.stringify({ error: "server_error", error_description: "Failed to generate authorization code" }),
+          { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+
+      const separator = redirectUri.includes("?") ? "&" : "?";
+      const redirectUrl = `${redirectUri}${separator}code=${encodeURIComponent(rawCode)}&state=${encodeURIComponent(state)}`;
+
+      return new Response(null, {
+        status: 302,
+        headers: { Location: redirectUrl, ...corsHeaders },
       });
     }
 
