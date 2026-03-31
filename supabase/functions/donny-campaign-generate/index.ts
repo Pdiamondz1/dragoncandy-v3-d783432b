@@ -95,18 +95,34 @@ serve(async (req) => {
       source_url,
       page_content,
       text_brief,
+      brief,
+      target_audience,
+      budget_range,
+      content_types,
+      timeline,
+      page_context,
       preferences,
     }: {
       source_url?: string;
       page_content?: string;
       text_brief?: string;
+      brief?: string;
+      target_audience?: string;
+      budget_range?: string;
+      content_types?: string[];
+      timeline?: string;
+      page_context?: { url?: string; title?: string; description?: string; platform?: string };
       preferences?: {
         platform?: string;
         budget_range?: { min: number; max: number };
       };
     } = body;
 
-    if (!source_url && !page_content && !text_brief) {
+    // Normalise: accept both legacy fields and Chrome Extension field names
+    const effectiveBrief = text_brief || brief;
+    const effectiveSourceUrl = source_url || page_context?.url;
+
+    if (!effectiveSourceUrl && !page_content && !effectiveBrief) {
       return new Response(
         JSON.stringify({
           success: false,
@@ -116,16 +132,14 @@ serve(async (req) => {
       );
     }
 
-    // Content assembly — priority: page_content > fetched URL > text_brief
+    // Content assembly — priority: page_content > fetched URL > brief
     let contentSections: string[] = [];
 
     if (page_content) {
-      // Use pre-scraped content directly (truncate to 5000 chars)
       contentSections.push(`Page Content:\n${page_content.slice(0, 5000)}`);
-    } else if (source_url) {
-      // Fetch and extract content from URL
+    } else if (effectiveSourceUrl) {
       try {
-        const fetched = await fetchAndExtract(source_url);
+        const fetched = await fetchAndExtract(effectiveSourceUrl);
         const parts: string[] = [];
         if (fetched.title) parts.push(`Page Title: ${fetched.title}`);
         if (fetched.description) parts.push(`Meta Description: ${fetched.description}`);
@@ -136,14 +150,34 @@ serve(async (req) => {
       }
     }
 
-    // Always append text_brief if provided
-    if (text_brief) {
-      contentSections.push(`Additional Brief:\n${text_brief}`);
+    // Always append brief/text_brief if provided
+    if (effectiveBrief) {
+      contentSections.push(`Additional Brief:\n${effectiveBrief}`);
     }
 
-    // Append source_url as context even when page_content was provided
-    if (source_url) {
-      contentSections.push(`Source URL: ${source_url}`);
+    // Append source URL as context
+    if (effectiveSourceUrl) {
+      contentSections.push(`Source URL: ${effectiveSourceUrl}`);
+    }
+
+    // Append Chrome Extension fields as additional context
+    if (target_audience) {
+      contentSections.push(`Target Audience: ${target_audience}`);
+    }
+    if (budget_range) {
+      contentSections.push(`Budget Range: ${budget_range}`);
+    }
+    if (content_types?.length) {
+      contentSections.push(`Content Types: ${content_types.join(", ")}`);
+    }
+    if (timeline) {
+      contentSections.push(`Timeline: ${timeline}`);
+    }
+    if (page_context?.title) {
+      contentSections.push(`Page Title: ${page_context.title}`);
+    }
+    if (page_context?.description) {
+      contentSections.push(`Page Description: ${page_context.description}`);
     }
 
     // Append preferences as additional context

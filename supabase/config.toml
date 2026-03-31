@@ -75,6 +75,9 @@ verify_jwt = false
 [functions.donny-analytics-alerts]
 verify_jwt = false
 
+[functions.donny-creator-match]
+verify_jwt = false
+
 [functions.donny-oauth-authorize]
 verify_jwt = false
 
