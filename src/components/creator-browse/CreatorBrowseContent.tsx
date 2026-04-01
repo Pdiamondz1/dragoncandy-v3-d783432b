@@ -1,33 +1,11 @@
-
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Search, Users, LayoutGrid, Map as MapIcon, LayoutDashboard } from 'lucide-react';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import React from 'react';
+import { Search } from 'lucide-react';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { CreatorCard } from './CreatorCard';
 import { CreatorMapView } from './CreatorMapView';
 import AdvancedCreatorFilters from '@/components/creator-search/AdvancedCreatorFilters';
-import type { CreatorFilters } from '@/hooks/useCreatorBrowse';
-
-interface CreatorProfile {
-  id: string;
-  user_id: string;
-  creator_name: string;
-  avatar_url?: string;
-  bio?: string;
-  skills?: string[];
-  portfolio_urls?: string[];
-  location?: string;
-  availability?: string;
-  base_rate_per_hour?: number;
-  instagram_url?: string;
-  tiktok_url?: string;
-  youtube_url?: string;
-  facebook_url?: string;
-  linkedin_url?: string;
-  x_url?: string;
-  other_social_url?: string;
-  website_url?: string;
-}
+import type { CreatorFilters, CreatorProfile } from '@/hooks/useCreatorBrowse';
 
 interface CreatorBrowseContentProps {
   filteredCreators: CreatorProfile[];
@@ -36,7 +14,11 @@ interface CreatorBrowseContentProps {
   onFilterChange: (key: keyof CreatorFilters, value: any) => void;
   onResetFilters: () => void;
   isLoading: boolean;
-  error: any;
+  error: Error | null;
+  isFiltersOpen: boolean;
+  onFiltersOpenChange: (open: boolean) => void;
+  isMapOpen: boolean;
+  onMapOpenChange: (open: boolean) => void;
 }
 
 export const CreatorBrowseContent: React.FC<CreatorBrowseContentProps> = ({
@@ -46,116 +28,85 @@ export const CreatorBrowseContent: React.FC<CreatorBrowseContentProps> = ({
   onFilterChange,
   onResetFilters,
   isLoading,
-  error
+  error,
+  isFiltersOpen,
+  onFiltersOpenChange,
+  isMapOpen,
+  onMapOpenChange,
 }) => {
   if (isLoading) {
     return (
-      <div className="space-y-6">
-        <div className="animate-pulse space-y-6">
-          <div className="h-8 bg-muted rounded w-1/3"></div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {[1, 2, 3, 4, 5, 6].map((i) => (
-              <div key={i} className="h-64 bg-muted rounded"></div>
-            ))}
-          </div>
-        </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        {[1, 2, 3, 4, 5, 6].map((i) => (
+          <div key={i} className="h-36 bg-gray-100 rounded-2xl animate-pulse" />
+        ))}
       </div>
     );
   }
 
   if (error) {
     return (
-      <Card>
-        <CardContent className="flex flex-col items-center justify-center py-12">
-          <Users className="h-12 w-12 text-red-400 mb-4" />
-          <h3 className="text-lg font-semibold text-foreground mb-2">
-            Failed to load creators
-          </h3>
-          <p className="text-muted-foreground">
-            There was an error loading the creator profiles.
-          </p>
-        </CardContent>
-      </Card>
+      <div className="flex flex-col items-center justify-center py-16">
+        <Search className="h-12 w-12 text-gray-300 mb-4" />
+        <h3 className="text-lg font-semibold text-gray-900 mb-2">Failed to load creators</h3>
+        <p className="text-gray-500">There was an error loading creator profiles.</p>
+      </div>
     );
   }
 
-  const [viewMode, setViewMode] = useState<'grid' | 'map' | 'split'>(() => {
-    return (localStorage.getItem('creator-view-mode') as any) || 'split';
-  });
-
-  useEffect(() => {
-    localStorage.setItem('creator-view-mode', viewMode);
-  }, [viewMode]);
-
   return (
-    <div className="space-y-6">
-      {/* View Mode Tabs */}
-      <Tabs value={viewMode} onValueChange={(value: any) => setViewMode(value)} className="w-full">
-        <TabsList className="grid w-full max-w-md grid-cols-3">
-          <TabsTrigger value="grid" className="flex items-center gap-2">
-            <LayoutGrid className="h-4 w-4" />
-            <span className="hidden sm:inline">Grid</span>
-          </TabsTrigger>
-          <TabsTrigger value="map" className="flex items-center gap-2">
-            <MapIcon className="h-4 w-4" />
-            <span className="hidden sm:inline">Map</span>
-          </TabsTrigger>
-          <TabsTrigger value="split" className="flex items-center gap-2">
-            <LayoutDashboard className="h-4 w-4" />
-            <span className="hidden sm:inline">Split</span>
-          </TabsTrigger>
-        </TabsList>
-      </Tabs>
+    <>
+      {/* Creator Grid or Empty State */}
+      {filteredCreators.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-16">
+          <div className="text-5xl mb-4">🔍</div>
+          <h3 className="text-lg font-bold text-gray-900 mb-2">No creators found</h3>
+          <p className="text-gray-500 text-sm text-center mb-5 max-w-xs">
+            Try expanding your search or adjusting filters to see more creators.
+          </p>
+          <button
+            onClick={onResetFilters}
+            className="px-6 py-2.5 bg-teal-400 text-white rounded-full font-semibold text-sm hover:bg-teal-500 transition-colors"
+          >
+            Clear All Filters
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {filteredCreators.map((creator) => (
+            <CreatorCard key={creator.id} creator={creator} />
+          ))}
+        </div>
+      )}
 
-      {/* Advanced Filters */}
-      <AdvancedCreatorFilters
-        filters={filters}
-        onFilterChange={onFilterChange}
-        onResetFilters={onResetFilters}
-        resultCount={filteredCreators.length}
-      />
+      {/* Filters Sheet */}
+      <Sheet open={isFiltersOpen} onOpenChange={onFiltersOpenChange}>
+        <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>Filters</SheetTitle>
+          </SheetHeader>
+          <div className="mt-6">
+            <AdvancedCreatorFilters
+              filters={filters}
+              onFilterChange={onFilterChange}
+              onResetFilters={onResetFilters}
 
-      {/* Main Content Area */}
-      <div className={`
-        ${viewMode === 'split' ? 'grid grid-cols-1 lg:grid-cols-5 gap-6' : ''}
-      `}>
-        {/* Left: Creator Grid */}
-        {(viewMode === 'grid' || viewMode === 'split') && (
-          <div className={`${viewMode === 'split' ? 'lg:col-span-3' : ''}`}>
-            {filteredCreators.length === 0 ? (
-              <Card>
-                <CardContent className="flex flex-col items-center justify-center py-12">
-                  <Search className="h-12 w-12 text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold text-foreground mb-2">
-                    No creators found
-                  </h3>
-                  <p className="text-muted-foreground">
-                    Try adjusting your search criteria to find more creators.
-                  </p>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="flex flex-col gap-3">
-                {filteredCreators.map((creator) => (
-                  <CreatorCard key={creator.id} creator={creator} />
-                ))}
-              </div>
-            )}
+            />
           </div>
-        )}
+        </SheetContent>
+      </Sheet>
 
-        {/* Right: Map View */}
-        {(viewMode === 'map' || viewMode === 'split') && (
-          <div className={`${viewMode === 'split' ? 'lg:col-span-2' : ''}`}>
-            <div className={`${viewMode === 'split' ? 'sticky top-4' : ''}`}>
-              <CreatorMapView 
-                filteredCreators={filteredCreators}
-                filters={mapFilters ?? filters}
-              />
-            </div>
+      {/* Map Overlay */}
+      <Dialog open={isMapOpen} onOpenChange={onMapOpenChange}>
+        <DialogContent className="max-w-4xl w-[95vw] h-[80vh] p-0 overflow-hidden">
+          <div className="h-full">
+            <CreatorMapView
+              filteredCreators={filteredCreators}
+              filters={mapFilters ?? filters}
+            />
           </div>
-        )}
-      </div>
-    </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };
