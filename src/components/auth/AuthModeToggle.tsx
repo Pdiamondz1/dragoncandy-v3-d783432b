@@ -1,4 +1,3 @@
-
 import React from 'react';
 
 interface AuthModeToggleProps {
@@ -10,13 +9,11 @@ interface AuthModeToggleProps {
 export const AuthModeToggle = ({ mode, onModeChange, loading }: AuthModeToggleProps) => {
   if (mode === "login") {
     return (
-      <div className="mt-4 space-y-3">
-        <p className="text-xs text-white uppercase tracking-widest text-center font-medium">
-          Don&apos;t have an account?
-        </p>
+      <div className="mt-6 text-center text-sm">
+        <span className="text-gray-500">Don&apos;t have an account? </span>
         <button
           type="button"
-          className="w-full rounded-full bg-dc-teal text-white font-bold text-base h-12 disabled:opacity-60 hover:bg-dc-teal-dark transition-colors"
+          className="text-dc-pink-accent font-semibold hover:underline disabled:opacity-60"
           onClick={() => onModeChange("signup")}
           disabled={loading}
         >
@@ -27,11 +24,11 @@ export const AuthModeToggle = ({ mode, onModeChange, loading }: AuthModeTogglePr
   }
 
   return (
-    <div className="mt-4 text-center text-sm text-white">
-      Already have an account?{" "}
+    <div className="mt-6 text-center text-sm">
+      <span className="text-gray-500">Already have an account? </span>
       <button
-        className="font-semibold underline underline-offset-2 text-dc-teal"
         type="button"
+        className="text-dc-pink-accent font-semibold hover:underline disabled:opacity-60"
         onClick={() => onModeChange("login")}
         disabled={loading}
       >
