@@ -1,12 +1,10 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
   Select,
   SelectContent,
@@ -15,7 +13,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
-import { Search, Filter, X, MapPin, DollarSign, Star, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
+import { X, MapPin, DollarSign, Star, Loader2 } from 'lucide-react';
 import { geocodingService } from '@/lib/geocoding';
 
 interface CreatorFilters {
@@ -36,16 +34,13 @@ interface AdvancedCreatorFiltersProps {
   filters: CreatorFilters;
   onFilterChange: (key: keyof CreatorFilters, value: any) => void;
   onResetFilters: () => void;
-  resultCount: number;
 }
 
 const AdvancedCreatorFilters: React.FC<AdvancedCreatorFiltersProps> = ({
   filters,
   onFilterChange,
   onResetFilters,
-  resultCount,
 }) => {
-  const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
   const [isLookingUp, setIsLookingUp] = useState(false);
   const lastLookedUpPostalRef = useRef('');
   const userEditedCityRef = useRef(false);
@@ -60,10 +55,10 @@ const AdvancedCreatorFilters: React.FC<AdvancedCreatorFiltersProps> = ({
   // Auto-fill city and country based on postal code
   useEffect(() => {
     const postalCode = filters.postal_code?.trim();
-    
+
     // Skip if invalid, already looked up, or user manually edited
-    if (!postalCode || 
-        postalCode.length < 3 || 
+    if (!postalCode ||
+        postalCode.length < 3 ||
         postalCode === lastLookedUpPostalRef.current ||
         (userEditedCityRef.current && filters.postal_code === lastLookedUpPostalRef.current)) {
       setIsLookingUp(false);
@@ -76,7 +71,7 @@ const AdvancedCreatorFilters: React.FC<AdvancedCreatorFiltersProps> = ({
     const debounceTimer = setTimeout(async () => {
       try {
         const result = await geocodingService.lookupPostalCode(postalCode);
-        
+
         if (result) {
           lastLookedUpPostalRef.current = postalCode;
           userEditedCityRef.current = false;
@@ -135,242 +130,183 @@ const AdvancedCreatorFilters: React.FC<AdvancedCreatorFiltersProps> = ({
     onFilterChange('platforms', updatedPlatforms);
   };
 
-  // Count active advanced filters
-  const activeAdvancedFiltersCount = [
-    filters.skills?.length > 0,
-    filters.platforms?.length > 0,
-    filters.availability,
-    filters.experienceLevel,
-    filters.minRate > 0 || filters.maxRate < 500,
-    filters.searchTerm
-  ].filter(Boolean).length;
-
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
-            <Filter className="h-5 w-5" />
-            Search Creators
-          </CardTitle>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">{resultCount} creators found</span>
-            <Button variant="outline" size="sm" onClick={onResetFilters}>
-              <X className="h-4 w-4 mr-1" />
-              Reset
-            </Button>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {/* DEFAULT VISIBLE FILTERS - Location Only */}
-        <div className="space-y-4">
-          <Label className="flex items-center gap-2 text-base font-semibold">
-            <MapPin className="h-5 w-5" />
-            Location
-          </Label>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <Label htmlFor="filter-postal-code">Postal/Zip Code</Label>
-              <div className="relative">
-                <Input
-                  id="filter-postal-code"
-                  placeholder="e.g., 10001, SW1A 1AA"
-                  value={filters.postal_code || ''}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    onFilterChange('postal_code', value);
-                    // Clear auto-fill flag when postal code is cleared
-                    if (!value) {
-                      onFilterChange('_isLocationAutoFilled', false);
-                      lastLookedUpPostalRef.current = '';
-                    }
-                  }}
-                />
-                {isLookingUp && (
-                  <Loader2 className="absolute right-3 top-3 h-4 w-4 animate-spin text-muted-foreground" />
-                )}
-              </div>
-            </div>
-            <div>
-              <Label htmlFor="filter-city">City</Label>
-              <Input
-                id="filter-city"
-                placeholder="e.g., New York, London"
-                value={filters.city || ''}
-                onChange={(e) => {
-                  onFilterChange('city', e.target.value);
-                  // Mark as user-edited so auto-fill doesn't override
-                  userEditedCityRef.current = true;
-                  // Clear auto-fill flag so city filter becomes active
+    <div className="space-y-6">
+      {/* Location */}
+      <div className="space-y-3">
+        <Label className="flex items-center gap-2 text-base font-semibold">
+          <MapPin className="h-5 w-5" />
+          Location
+        </Label>
+
+        <div>
+          <Label htmlFor="filter-postal-code">Postal/Zip Code</Label>
+          <div className="relative">
+            <Input
+              id="filter-postal-code"
+              placeholder="e.g., 10001, SW1A 1AA"
+              value={filters.postal_code || ''}
+              onChange={(e) => {
+                const value = e.target.value;
+                onFilterChange('postal_code', value);
+                // Clear auto-fill flag when postal code is cleared
+                if (!value) {
                   onFilterChange('_isLocationAutoFilled', false);
-                }}
-              />
-            </div>
-            <div>
-              <Label htmlFor="filter-country">Country</Label>
-              <Input
-                id="filter-country"
-                placeholder="e.g., United States, UK"
-                value={filters.country || ''}
-                onChange={(e) => {
-                  onFilterChange('country', e.target.value);
-                  // Mark as user-edited so auto-fill doesn't override
-                  userEditedCityRef.current = true;
-                  // Clear auto-fill flag so country filter becomes active
-                  onFilterChange('_isLocationAutoFilled', false);
-                }}
-              />
-            </div>
+                  lastLookedUpPostalRef.current = '';
+                }
+              }}
+            />
+            {isLookingUp && (
+              <Loader2 className="absolute right-3 top-3 h-4 w-4 animate-spin text-muted-foreground" />
+            )}
           </div>
         </div>
 
-        <Separator />
+        <div>
+          <Label htmlFor="filter-city">City</Label>
+          <Input
+            id="filter-city"
+            placeholder="e.g., New York, London"
+            value={filters.city || ''}
+            onChange={(e) => {
+              onFilterChange('city', e.target.value);
+              // Mark as user-edited so auto-fill doesn't override
+              userEditedCityRef.current = true;
+              // Clear auto-fill flag so city filter becomes active
+              onFilterChange('_isLocationAutoFilled', false);
+            }}
+          />
+        </div>
 
-        {/* COLLAPSIBLE ADVANCED FILTERS */}
-        <Collapsible open={isAdvancedOpen} onOpenChange={setIsAdvancedOpen}>
-          <CollapsibleTrigger asChild>
-            <Button variant="outline" className="w-full flex items-center justify-between">
-              <span className="flex items-center gap-2">
-                <Filter className="h-4 w-4" />
-                Advanced Filters
-                {activeAdvancedFiltersCount > 0 && (
-                  <Badge variant="secondary" className="ml-2">
-                    {activeAdvancedFiltersCount} active
-                  </Badge>
-                )}
-              </span>
-              {isAdvancedOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-            </Button>
-          </CollapsibleTrigger>
-          
-          <CollapsibleContent className="space-y-6 mt-6">
-            {/* Search */}
-            <div>
-              <Label htmlFor="search">Search by Name or Bio</Label>
-              <div className="relative">
-                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="search"
-                  placeholder="Search creator name or bio..."
-                  value={filters.searchTerm}
-                  onChange={(e) => onFilterChange('searchTerm', e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-            </div>
+        <div>
+          <Label htmlFor="filter-country">Country</Label>
+          <Input
+            id="filter-country"
+            placeholder="e.g., United States, UK"
+            value={filters.country || ''}
+            onChange={(e) => {
+              onFilterChange('country', e.target.value);
+              // Mark as user-edited so auto-fill doesn't override
+              userEditedCityRef.current = true;
+              // Clear auto-fill flag so country filter becomes active
+              onFilterChange('_isLocationAutoFilled', false);
+            }}
+          />
+        </div>
+      </div>
 
-            <Separator />
+      <Separator />
 
-            {/* Skills */}
-            <div>
-              <Label className="flex items-center gap-2 mb-3">
-                <Star className="h-4 w-4" />
-                Skills & Expertise
-              </Label>
-              <div className="flex flex-wrap gap-2">
-                {availableSkills.map(skill => (
-                  <Badge
-                    key={skill}
-                    variant={filters.skills?.includes(skill) ? "default" : "outline"}
-                    className="cursor-pointer"
-                    onClick={() => toggleSkill(skill)}
-                  >
-                    {skill}
-                  </Badge>
-                ))}
-              </div>
-            </div>
+      {/* Skills */}
+      <div>
+        <Label className="flex items-center gap-2 mb-3">
+          <Star className="h-4 w-4" />
+          Skills & Expertise
+        </Label>
+        <div className="flex flex-wrap gap-2">
+          {availableSkills.map(skill => (
+            <Badge
+              key={skill}
+              variant={filters.skills?.includes(skill) ? "default" : "outline"}
+              className="cursor-pointer"
+              onClick={() => toggleSkill(skill)}
+            >
+              {skill}
+            </Badge>
+          ))}
+        </div>
+      </div>
 
-            <Separator />
+      <Separator />
 
-            {/* Platforms */}
-            <div>
-              <Label className="flex items-center gap-2 mb-3">
-                <Search className="h-4 w-4" />
-                Social Media Platforms
-              </Label>
-              <div className="flex flex-wrap gap-2">
-                {availablePlatforms.map(platform => (
-                  <Badge
-                    key={platform}
-                    variant={filters.platforms?.includes(platform) ? "default" : "outline"}
-                    className="cursor-pointer"
-                    onClick={() => togglePlatform(platform)}
-                  >
-                    {platform}
-                  </Badge>
-                ))}
-              </div>
-            </div>
+      {/* Platforms */}
+      <div>
+        <Label className="flex items-center gap-2 mb-3">
+          Social Media Platforms
+        </Label>
+        <div className="flex flex-wrap gap-2">
+          {availablePlatforms.map(platform => (
+            <Badge
+              key={platform}
+              variant={filters.platforms?.includes(platform) ? "default" : "outline"}
+              className="cursor-pointer"
+              onClick={() => togglePlatform(platform)}
+            >
+              {platform}
+            </Badge>
+          ))}
+        </div>
+      </div>
 
-            <Separator />
+      <Separator />
 
-            {/* Availability */}
-            <div>
-              <Label htmlFor="availability">Availability</Label>
-              <Select value={filters.availability || "any"} onValueChange={(value) => onFilterChange('availability', value === "any" ? "" : value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Any availability" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="any">Any availability</SelectItem>
-                  <SelectItem value="Available">Available</SelectItem>
-                  <SelectItem value="Busy">Busy</SelectItem>
-                  <SelectItem value="Booked">Booked</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+      {/* Availability */}
+      <div>
+        <Label htmlFor="availability">Availability</Label>
+        <Select value={filters.availability || "any"} onValueChange={(value) => onFilterChange('availability', value === "any" ? "" : value)}>
+          <SelectTrigger>
+            <SelectValue placeholder="Any availability" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="any">Any availability</SelectItem>
+            <SelectItem value="Available">Available</SelectItem>
+            <SelectItem value="Busy">Busy</SelectItem>
+            <SelectItem value="Booked">Booked</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
 
-            <Separator />
+      <Separator />
 
-            {/* Rate Range */}
-            <div>
-              <Label className="flex items-center gap-2 mb-3">
-                <DollarSign className="h-4 w-4" />
-                Hourly Rate Range: ${filters.minRate} - ${filters.maxRate}
-              </Label>
-              <div className="px-2">
-                <Slider
-                  value={[filters.minRate, filters.maxRate]}
-                  onValueChange={([min, max]) => {
-                    onFilterChange('minRate', min);
-                    onFilterChange('maxRate', max);
-                  }}
-                  max={500}
-                  min={0}
-                  step={10}
-                  className="w-full"
-                />
-              </div>
-              <div className="flex justify-between text-sm text-muted-foreground mt-1">
-                <span>$0</span>
-                <span>$500+</span>
-              </div>
-            </div>
+      {/* Rate Range */}
+      <div>
+        <Label className="flex items-center gap-2 mb-3">
+          <DollarSign className="h-4 w-4" />
+          Hourly Rate Range: ${filters.minRate} - ${filters.maxRate}
+        </Label>
+        <div className="px-2">
+          <Slider
+            value={[filters.minRate, filters.maxRate]}
+            onValueChange={([min, max]) => {
+              onFilterChange('minRate', min);
+              onFilterChange('maxRate', max);
+            }}
+            max={500}
+            min={0}
+            step={10}
+            className="w-full"
+          />
+        </div>
+        <div className="flex justify-between text-sm text-muted-foreground mt-1">
+          <span>$0</span>
+          <span>$500+</span>
+        </div>
+      </div>
 
-            <Separator />
+      <Separator />
 
-            {/* Experience Level */}
-            <div>
-              <Label htmlFor="experience">Experience Level</Label>
-              <Select value={filters.experienceLevel || "any"} onValueChange={(value) => onFilterChange('experienceLevel', value === "any" ? "" : value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Any experience level" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="any">Any experience level</SelectItem>
-                  <SelectItem value="beginner">Beginner (0-1 years)</SelectItem>
-                  <SelectItem value="intermediate">Intermediate (2-4 years)</SelectItem>
-                  <SelectItem value="expert">Expert (5+ years)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </CollapsibleContent>
-        </Collapsible>
-      </CardContent>
-    </Card>
+      {/* Experience Level */}
+      <div>
+        <Label htmlFor="experience">Experience Level</Label>
+        <Select value={filters.experienceLevel || "any"} onValueChange={(value) => onFilterChange('experienceLevel', value === "any" ? "" : value)}>
+          <SelectTrigger>
+            <SelectValue placeholder="Any experience level" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="any">Any experience level</SelectItem>
+            <SelectItem value="beginner">Beginner (0-1 years)</SelectItem>
+            <SelectItem value="intermediate">Intermediate (2-4 years)</SelectItem>
+            <SelectItem value="expert">Expert (5+ years)</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Reset All Filters */}
+      <Button variant="outline" className="w-full" onClick={onResetFilters}>
+        <X className="h-4 w-4 mr-2" />
+        Reset All Filters
+      </Button>
+    </div>
   );
 };
 

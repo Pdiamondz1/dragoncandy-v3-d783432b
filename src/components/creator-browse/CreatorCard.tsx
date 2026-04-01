@@ -1,64 +1,53 @@
-
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { useToast } from '@/hooks/use-toast';
-import { useCreateDirectConversation } from '@/hooks/useConversations';
 import { supabase } from '@/integrations/supabase/client';
 import CreatorProfileModal from './CreatorProfileModal';
 import { CreatorPortfolioModal } from '@/components/creator-profile/CreatorPortfolioModal';
-import { User } from 'lucide-react';
-
-interface CreatorProfile {
-  id: string;
-  user_id: string;
-  creator_name: string;
-  avatar_url?: string;
-  bio?: string;
-  skills?: string[];
-  portfolio_urls?: string[];
-  location?: string;
-  availability?: string;
-  base_rate_per_hour?: number;
-  instagram_url?: string;
-  tiktok_url?: string;
-  youtube_url?: string;
-  facebook_url?: string;
-  linkedin_url?: string;
-  x_url?: string;
-  other_social_url?: string;
-  website_url?: string;
-}
+import { Heart } from 'lucide-react';
+import type { CreatorProfile } from '@/hooks/useCreatorBrowse';
 
 interface CreatorCardProps {
   creator: CreatorProfile;
 }
 
+const FAVORITES_KEY = 'creator-favorites';
+
+const getFavorites = (): string[] => {
+  try {
+    return JSON.parse(localStorage.getItem(FAVORITES_KEY) || '[]');
+  } catch {
+    return [];
+  }
+};
+
+const toggleFavorite = (id: string): boolean => {
+  const favorites = getFavorites();
+  const isFav = favorites.includes(id);
+  const updated = isFav ? favorites.filter(f => f !== id) : [...favorites, id];
+  localStorage.setItem(FAVORITES_KEY, JSON.stringify(updated));
+  return !isFav;
+};
+
 export const CreatorCard: React.FC<CreatorCardProps> = ({ creator }) => {
-  const navigate = useNavigate();
-  const { user, profile } = useAuth();
-  const { toast } = useToast();
-  const createConversation = useCreateDirectConversation();
+  const { user } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isPortfolioOpen, setIsPortfolioOpen] = useState(false);
   const [portfolioIndex, setPortfolioIndex] = useState(0);
-  const [portfolioImageUrl, setPortfolioImageUrl] = useState<string | null>(null);
+  const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
   const [resolvedPortfolioUrls, setResolvedPortfolioUrls] = useState<string[]>([]);
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [isFavorite, setIsFavorite] = useState(() => getFavorites().includes(creator.id));
 
+  // Resolve portfolio images (keep existing logic)
   useEffect(() => {
     const loadPortfolioImages = async () => {
       if (!creator.portfolio_urls || creator.portfolio_urls.length === 0) {
-        setPortfolioImageUrl(null);
         setResolvedPortfolioUrls([]);
         return;
       }
 
       const resolved = await Promise.all(
         creator.portfolio_urls.map(async (url) => {
-          if (url.startsWith('http://') || url.startsWith('https://')) {
-            return url;
-          }
+          if (url.startsWith('http://') || url.startsWith('https://')) return url;
           try {
             const { data } = await supabase.storage
               .from('profile-assets')
@@ -72,149 +61,152 @@ export const CreatorCard: React.FC<CreatorCardProps> = ({ creator }) => {
 
       const valid = resolved.filter((u): u is string => u !== null);
       setResolvedPortfolioUrls(valid);
-      setPortfolioImageUrl(valid[0] ?? null);
     };
 
     loadPortfolioImages();
   }, [creator.portfolio_urls]);
 
+  // Resolve thumbnail: portfolio[0] -> avatar -> null
   useEffect(() => {
-    const loadAvatarUrl = async () => {
-      if (!creator.avatar_url) return;
-      
-      // Check if it's an external URL
-      if (creator.avatar_url.startsWith('http://') || creator.avatar_url.startsWith('https://')) {
-        setAvatarUrl(creator.avatar_url);
+    const loadThumbnail = async () => {
+      // Try portfolio first
+      if (resolvedPortfolioUrls.length > 0) {
+        setThumbnailUrl(resolvedPortfolioUrls[0]);
         return;
       }
-      
-      // Generate signed URL from profile-assets bucket
-      try {
-        const { data } = await supabase.storage
-          .from('profile-assets')
-          .createSignedUrl(creator.avatar_url, 3600);
-        
-        if (data?.signedUrl) {
-          setAvatarUrl(data.signedUrl);
+
+      // Try avatar
+      if (creator.avatar_url) {
+        if (creator.avatar_url.startsWith('http://') || creator.avatar_url.startsWith('https://')) {
+          setThumbnailUrl(creator.avatar_url);
+          return;
         }
-      } catch (error) {
-        console.error('Error loading avatar:', error);
+        try {
+          const { data } = await supabase.storage
+            .from('profile-assets')
+            .createSignedUrl(creator.avatar_url, 3600);
+          if (data?.signedUrl) {
+            setThumbnailUrl(data.signedUrl);
+            return;
+          }
+        } catch {
+          // fall through to null
+        }
       }
+
+      setThumbnailUrl(null);
     };
-    
-    loadAvatarUrl();
-  }, [creator.avatar_url]);
 
-  const formatRate = (rate?: number) => {
-    if (!rate) return 'Rate not specified';
-    return `$${rate}/hour`;
+    loadThumbnail();
+  }, [creator.avatar_url, resolvedPortfolioUrls]);
+
+  const handleCardClick = () => setIsModalOpen(true);
+
+  const handleHeartClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsFavorite(toggleFavorite(creator.id));
   };
 
-  const handleViewProfile = () => {
-    setIsModalOpen(true);
-  };
+  // Build location string
+  const locationStr = [creator.city, creator.country].filter(Boolean).join(', ');
 
-  const handleContact = async () => {
-    if (!user) {
-      toast({
-        title: "Authentication Required",
-        description: "Please log in to contact creators.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    try {
-      // Create or get existing conversation
-      const conversationId = await createConversation.mutateAsync(creator.user_id);
-      
-      // Navigate based on user role - include state about origin
-      if (profile?.role === 'business_client') {
-        navigate(`/dashboard/business/messages/direct/${conversationId}`, { 
-          state: { from: 'browse-creators', backPath: '/dashboard/business/creators' } 
-        });
-      } else if (profile?.role === 'brand') {
-        navigate(`/dashboard/brand/messages/direct/${conversationId}`, { 
-          state: { from: 'browse-creators', backPath: '/dashboard/brand/creators' } 
-        });
-      } else {
-        // Fallback to generic messages route
-        navigate(`/messages/direct/${conversationId}`);
-      }
-      
-      toast({
-        title: "Starting conversation",
-        description: `Opening chat with ${creator.creator_name}...`,
-      });
-    } catch (error) {
-      console.error('Failed to create conversation:', error);
-      toast({
-        title: "Failed to start conversation",
-        description: "Please try again later.",
-        variant: "destructive",
-      });
-    }
-  };
+  // Creator initials for fallback
+  const initials = creator.creator_name
+    .split(' ')
+    .map(w => w[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
 
-  const getSocialPlatforms = (creator: CreatorProfile) => {
-    const platforms = [];
-    if (creator.instagram_url) platforms.push('Instagram');
-    if (creator.tiktok_url) platforms.push('TikTok');
-    if (creator.youtube_url) platforms.push('YouTube');
-    if (creator.facebook_url) platforms.push('Facebook');
-    if (creator.linkedin_url) platforms.push('LinkedIn');
-    if (creator.x_url) platforms.push('X');
-    return platforms;
-  };
+  // Skills display: first 2 + overflow
+  const visibleSkills = (creator.skills ?? []).slice(0, 2);
+  const overflowCount = (creator.skills?.length ?? 0) - 2;
+
+  // Metrics line parts
+  const metricParts: string[] = [];
+  if (creator.total_reviews != null && creator.total_reviews > 0) {
+    metricParts.push(`${creator.total_reviews} review${creator.total_reviews !== 1 ? 's' : ''}`);
+  }
+  if (creator.base_rate_per_hour != null) {
+    metricParts.push(`$${creator.base_rate_per_hour}/hr`);
+  }
 
   return (
     <>
-      <div className="bg-white rounded-2xl p-3 flex items-center gap-3 shadow-sm">
+      <div
+        onClick={handleCardClick}
+        className="bg-white border border-gray-200 rounded-2xl overflow-hidden flex shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+      >
         {/* Thumbnail */}
-        <div
-          className="w-16 h-16 rounded-xl object-cover flex-shrink-0 overflow-hidden bg-gray-100 cursor-pointer"
-          onClick={handleViewProfile}
-        >
-          {(avatarUrl || portfolioImageUrl) ? (
+        <div className="w-[110px] sm:w-[130px] flex-shrink-0 relative">
+          {thumbnailUrl ? (
             <img
-              src={avatarUrl || portfolioImageUrl || ''}
+              src={thumbnailUrl}
               alt={creator.creator_name}
-              className="w-16 h-16 rounded-xl object-cover"
+              className="w-full h-full object-cover"
             />
           ) : (
-            <div className="w-16 h-16 rounded-xl flex items-center justify-center bg-gray-100">
-              <User className="h-8 w-8 text-gray-400" />
+            <div className="w-full h-full bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center">
+              <span className="text-white text-xl font-bold">{initials}</span>
             </div>
           )}
+          {/* Heart */}
+          <button
+            onClick={handleHeartClick}
+            className="absolute top-2 right-2 bg-white/90 rounded-full w-7 h-7 flex items-center justify-center hover:bg-white transition-colors"
+          >
+            <Heart
+              className={`h-4 w-4 ${isFavorite ? 'fill-pink-300 text-pink-300' : 'text-gray-300'}`}
+            />
+          </button>
         </div>
 
         {/* Info */}
-        <div className="flex-1 min-w-0">
-          <p className="text-base font-bold text-gray-900 truncate">{creator.creator_name}</p>
-          <p className="text-xs text-gray-500 line-clamp-2">
-            {creator.bio || (creator.skills && creator.skills.length > 0 ? creator.skills.slice(0, 3).join(' · ') : 'Content Creator')}
-          </p>
-        </div>
+        <div className="p-3 flex-1 flex flex-col justify-center min-w-0">
+          {/* Name + Rating */}
+          <div className="flex items-center gap-1.5 mb-0.5">
+            <span className="font-bold text-gray-900 text-sm truncate">{creator.creator_name}</span>
+            {creator.average_rating != null && (
+              <span className="text-yellow-400 text-xs flex-shrink-0">★ {creator.average_rating.toFixed(1)}</span>
+            )}
+          </div>
 
-        {/* Action Buttons */}
-        <div className="flex flex-col gap-1.5 flex-shrink-0">
-          {resolvedPortfolioUrls.length > 0 && (
-            <button
-              className="bg-teal-400 text-white rounded-full px-3 py-1.5 text-xs font-semibold hover:opacity-90 transition-opacity"
-              onClick={() => {
-                setPortfolioIndex(0);
-                setIsPortfolioOpen(true);
-              }}
-            >
-              View Portfolio
-            </button>
+          {/* Location */}
+          {locationStr && (
+            <p className="text-xs text-gray-500 mb-1.5 truncate">📍 {locationStr}</p>
           )}
+
+          {/* Skill Tags */}
+          {visibleSkills.length > 0 && (
+            <div className="flex gap-1 mb-1.5 flex-wrap">
+              {visibleSkills.map((skill) => (
+                <span
+                  key={skill}
+                  className="bg-teal-50 text-teal-700 rounded-full text-[11px] px-2 py-0.5 font-medium"
+                >
+                  {skill}
+                </span>
+              ))}
+              {overflowCount > 0 && (
+                <span className="text-gray-400 text-[11px] py-0.5">+{overflowCount}</span>
+              )}
+            </div>
+          )}
+
+          {/* Metrics */}
+          {metricParts.length > 0 && (
+            <p className="text-xs text-gray-400">{metricParts.join(' · ')}</p>
+          )}
+
+          {/* CTA Button */}
           <button
-            className="bg-dc-pink text-white rounded-full px-3 py-1.5 text-xs font-semibold hover:opacity-90 transition-opacity disabled:opacity-60"
-            onClick={handleContact}
-            disabled={createConversation.isPending}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleCardClick();
+            }}
+            className="mt-2 w-full bg-teal-400 text-white rounded-full font-semibold text-sm py-1.5 hover:bg-teal-500 transition-colors"
           >
-            {createConversation.isPending ? 'Starting...' : 'Contact'}
+            View Profile
           </button>
         </div>
       </div>

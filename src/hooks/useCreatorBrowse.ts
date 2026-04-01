@@ -4,7 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
-interface CreatorProfile {
+export interface CreatorProfile {
   id: string;
   user_id: string;
   creator_name: string;
@@ -30,6 +30,8 @@ interface CreatorProfile {
   profile_slug?: string;
   total_reviews?: number;
 }
+
+export type SortOption = 'relevance' | 'top-rated' | 'price-low' | 'price-high' | 'most-reviewed';
 
 export interface CreatorFilters {
   searchTerm: string;
@@ -59,6 +61,9 @@ export const useCreatorBrowse = () => {
     availability: '',
     experienceLevel: '',
   });
+
+  const [sortBy, setSortBy] = React.useState<SortOption>('relevance');
+  const [contentTypeFilter, setContentTypeFilter] = React.useState<string[]>([]);
 
   const [debouncedFilters, setDebouncedFilters] = React.useState(filters);
 
@@ -109,26 +114,32 @@ export const useCreatorBrowse = () => {
       experienceLevel: '',
       _isLocationAutoFilled: false,
     });
+    setSortBy('relevance');
+    setContentTypeFilter([]);
   };
 
   const filteredCreators = useMemo(() => {
-    return creators.filter(creator => {
-    const matchesSearch = 
+    let result = creators.filter(creator => {
+    const matchesSearch =
       creator.creator_name.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
       creator.bio?.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
       creator.skills?.some(skill => skill.toLowerCase().includes(filters.searchTerm.toLowerCase()));
 
-    const matchesSkills = filters.skills.length === 0 || 
+    const matchesSkills = filters.skills.length === 0 ||
       creator.skills?.some(skill => filters.skills.includes(skill));
+
+    // Content-type pill filter (separate from advanced skills filter)
+    const matchesContentType = contentTypeFilter.length === 0 ||
+      creator.skills?.some(skill => contentTypeFilter.includes(skill));
 
     // Location filters - structured with legacy fallback
     // Smart filtering: If postal code search with auto-filled city/country, only use postal code
     const isPostalCodeSearch = !!debouncedFilters.postal_code && filters._isLocationAutoFilled;
-    
+
     const matchesPostalCode = !debouncedFilters.postal_code || (() => {
       const filterPostal = debouncedFilters.postal_code.toLowerCase().trim();
       const creatorPostal = (creator.postal_code || '').toLowerCase().trim();
-      
+
       if (creatorPostal && creatorPostal.startsWith(filterPostal)) return true;
       if (!creatorPostal && creator.location?.toLowerCase().includes(filterPostal)) return true;
       return false;
@@ -138,7 +149,7 @@ export const useCreatorBrowse = () => {
     const matchesCity = isPostalCodeSearch ? true : (!debouncedFilters.city || (() => {
       const filterCity = debouncedFilters.city.toLowerCase().trim();
       const creatorCity = (creator.city || '').toLowerCase().trim();
-      
+
       if (creatorCity && creatorCity.includes(filterCity)) return true;
       if (!creatorCity && creator.location?.toLowerCase().includes(filterCity)) return true;
       return false;
@@ -147,7 +158,7 @@ export const useCreatorBrowse = () => {
     const matchesCountry = isPostalCodeSearch ? true : (!debouncedFilters.country || (() => {
       const filterCountry = debouncedFilters.country.toLowerCase().trim();
       const creatorCountry = (creator.country || '').toLowerCase().trim();
-      
+
       if (creatorCountry && creatorCountry.includes(filterCountry)) return true;
       if (!creatorCountry && creator.location?.toLowerCase().includes(filterCountry)) return true;
       return false;
@@ -166,7 +177,7 @@ export const useCreatorBrowse = () => {
       if (creator.facebook_url) creatorPlatforms.push('Facebook');
       if (creator.linkedin_url) creatorPlatforms.push('LinkedIn');
       if (creator.x_url) creatorPlatforms.push('X (Twitter)');
-      
+
       return filters.platforms.some(platform => creatorPlatforms.includes(platform));
     })();
 
@@ -175,10 +186,30 @@ export const useCreatorBrowse = () => {
 
     const matchesExperience = !filters.experienceLevel || filters.experienceLevel === "any";
 
-      return matchesSearch && matchesSkills && matchesPostalCode && matchesCity && 
+      return matchesSearch && matchesSkills && matchesContentType && matchesPostalCode && matchesCity &&
              matchesCountry && matchesRate && matchesPlatforms && matchesAvailability && matchesExperience;
     });
-  }, [creators, filters, debouncedFilters]);
+
+    // Sort
+    if (sortBy !== 'relevance') {
+      result = [...result].sort((a, b) => {
+        switch (sortBy) {
+          case 'top-rated':
+            return (b.average_rating ?? -1) - (a.average_rating ?? -1);
+          case 'price-low':
+            return (a.base_rate_per_hour ?? Infinity) - (b.base_rate_per_hour ?? Infinity);
+          case 'price-high':
+            return (b.base_rate_per_hour ?? -Infinity) - (a.base_rate_per_hour ?? -Infinity);
+          case 'most-reviewed':
+            return (b.total_reviews ?? -1) - (a.total_reviews ?? -1);
+          default:
+            return 0;
+        }
+      });
+    }
+
+    return result;
+  }, [creators, filters, debouncedFilters, sortBy, contentTypeFilter]);
 
   return {
     creators,
@@ -189,5 +220,9 @@ export const useCreatorBrowse = () => {
     error,
     handleFilterChange,
     resetFilters,
+    sortBy,
+    setSortBy,
+    contentTypeFilter,
+    setContentTypeFilter,
   };
 };

@@ -1,5 +1,4 @@
-
-import React from 'react';
+import React, { useState } from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
 import { CreatorBrowseHeader } from '@/components/creator-browse/CreatorBrowseHeader';
 import { CreatorBrowseContent } from '@/components/creator-browse/CreatorBrowseContent';
@@ -14,13 +13,43 @@ const CreatorBrowse: React.FC = () => {
     error,
     handleFilterChange,
     resetFilters,
+    sortBy,
+    setSortBy,
+    contentTypeFilter,
+    setContentTypeFilter,
   } = useCreatorBrowse();
+
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
+  const [isMapOpen, setIsMapOpen] = useState(false);
+
+  // Count active advanced filters (excluding search and content-type pills)
+  const activeFilterCount = [
+    filters.skills.length > 0,
+    filters.city,
+    filters.country,
+    filters.postal_code,
+    filters.platforms.length > 0,
+    filters.availability,
+    filters.experienceLevel,
+    filters.minRate > 0 || filters.maxRate < 500,
+  ].filter(Boolean).length;
 
   return (
     <DashboardLayout userRole="business_client">
-      <div className="flex-1 p-4 sm:p-6 lg:p-8 bg-dc-pink-bg min-h-screen overflow-x-hidden">
-        <div className="max-w-7xl mx-auto space-y-6">
-          <CreatorBrowseHeader resultCount={filteredCreators.length} />
+      <div className="flex-1 p-4 sm:p-6 lg:p-8 bg-white min-h-screen overflow-x-hidden">
+        <div className="max-w-7xl mx-auto space-y-4">
+          <CreatorBrowseHeader
+            resultCount={filteredCreators.length}
+            searchTerm={filters.searchTerm}
+            onSearchChange={(value) => handleFilterChange('searchTerm', value)}
+            contentTypeFilter={contentTypeFilter}
+            onContentTypeChange={setContentTypeFilter}
+            sortBy={sortBy}
+            onSortChange={setSortBy}
+            onOpenFilters={() => setIsFiltersOpen(true)}
+            onOpenMap={() => setIsMapOpen(true)}
+            activeFilterCount={activeFilterCount}
+          />
           <CreatorBrowseContent
             filteredCreators={filteredCreators}
             filters={filters}
@@ -29,6 +58,10 @@ const CreatorBrowse: React.FC = () => {
             onResetFilters={resetFilters}
             isLoading={isLoading}
             error={error}
+            isFiltersOpen={isFiltersOpen}
+            onFiltersOpenChange={setIsFiltersOpen}
+            isMapOpen={isMapOpen}
+            onMapOpenChange={setIsMapOpen}
           />
         </div>
       </div>
