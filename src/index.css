@@ -81,6 +81,10 @@
 
     --radius: 1rem;
 
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.04);
+    --shadow-lg: 0 8px 30px rgba(0,0,0,0.10), 0 4px 12px rgba(0,0,0,0.06);
+
     /* Sidebar — teal brand */
     --sidebar-background: 0 0% 100%;
     --sidebar-foreground: 0 0% 20%;
@@ -121,6 +125,10 @@
     --border: 240 20% 24%;
     --input: 240 20% 24%;
     --ring: 166 52% 51%;
+
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.3), 0 2px 6px rgba(0,0,0,0.2);
+    --shadow-lg: 0 8px 30px rgba(0,0,0,0.4), 0 4px 12px rgba(0,0,0,0.3);
 
     --sidebar-background: 240 27% 11%;
     --sidebar-foreground: 0 0% 90%;
