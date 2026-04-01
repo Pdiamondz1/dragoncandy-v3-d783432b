@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Button } from '@/components/ui/button';
-import { Bell, Rocket, Users, DollarSign } from 'lucide-react';
+import { Rocket, Users, DollarSign } from 'lucide-react';
 import { useSponsorshipProposals } from '@/hooks/useSponsorshipProposals';
 import SponsorshipProposalCard from '@/components/campaigns/SponsorshipProposalCard';
 import { BusinessDashboardSideFeed } from '@/components/dragon-feed/BusinessDashboardSideFeed';
@@ -15,7 +15,7 @@ import { DonnyAskBar } from '@/components/donny/DonnyAskBar';
 import { BusinessStatsRow } from '@/components/dashboard/BusinessStatsRow';
 import { ActiveCampaignsFeed } from '@/components/dashboard/ActiveCampaignsFeed';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import dragonEmblem from '@/assets/dragon-emblem.png';
+
 
 const BusinessDashboard = () => {
   const { profile } = useAuth();
@@ -49,31 +49,6 @@ const BusinessDashboard = () => {
         {/* Main Content Area */}
         <div className="flex-1 overflow-y-auto overflow-x-hidden">
           <div className="max-w-2xl lg:max-w-4xl mx-auto">
-
-            {/* 1. Header */}
-            <div className="flex items-center justify-between px-4 py-3 bg-white border-b border-gray-100">
-              <img
-                src={dragonEmblem}
-                alt="DragonCandy"
-                className="w-10 h-10 rounded-full object-contain flex-shrink-0"
-              />
-              <div className="text-center flex-1 px-3 min-w-0">
-                <h1 className="text-sm font-bold text-gray-900 truncate">
-                  Welcome back, {profile.business_name || 'Business'}
-                </h1>
-                <p className="text-xs text-gray-500">Create content and drive revenue</p>
-              </div>
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <button className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition-colors">
-                  <Bell className="w-4 h-4 text-gray-600" />
-                </button>
-                <div className="w-8 h-8 rounded-full bg-dc-teal flex items-center justify-center ring-2 ring-teal-400">
-                  <span className="text-xs font-bold text-white">
-                    {(profile.business_name || 'B').charAt(0).toUpperCase()}
-                  </span>
-                </div>
-              </div>
-            </div>
 
             {/* Content sections with padding */}
             <div className="p-4 sm:p-6 space-y-4">

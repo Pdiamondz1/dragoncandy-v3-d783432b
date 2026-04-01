@@ -4,6 +4,7 @@ import type { UserRole } from '@/types/user';
 import { getBottomNav } from '@/lib/navConfig';
 import { DonnyNavButton } from './donny/DonnyNavButton';
 import { DonnyChatSheet } from './donny/DonnyChatSheet';
+import donnyIcon from '@/assets/Donny_icon.png';
 
 interface MobileBottomNavProps {
   userRole: UserRole;
@@ -48,8 +49,8 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ userRole }) =>
                 className="flex flex-col items-center -mt-4 min-h-[44px] min-w-[44px]"
                 aria-label={item.label}
               >
-                <span className="bg-dc-teal w-14 h-14 rounded-full shadow-lg shadow-dc-teal/30 -mt-4 flex items-center justify-center">
-                  <Icon className="h-6 w-6 text-white" />
+                <span className="bg-dc-teal w-14 h-14 rounded-full shadow-lg shadow-dc-teal/30 -mt-4 flex items-center justify-center overflow-hidden">
+                  <img src={donnyIcon} alt="Create" className="w-10 h-10 object-contain" />
                 </span>
               </Link>
             );
