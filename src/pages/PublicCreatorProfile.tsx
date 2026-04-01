@@ -313,7 +313,7 @@ const PublicCreatorProfile = () => {
               const contentType = getContentType(url);
               const isVideo = contentType === 'Reel';
               return (
-                <div key={index} className="aspect-square rounded-xl overflow-hidden relative">
+                <div key={url} className="aspect-square rounded-xl overflow-hidden relative">
                   {isVideo ? (
                     <video
                       src={url}
@@ -368,41 +368,39 @@ const PublicCreatorProfile = () => {
       )}
 
       {/* CTA Buttons */}
-      <div className="px-4 pb-8 space-y-3">
-        <ContactCreatorModal
-          creator={{
-            id: profile.id,
-            user_id: profile.user_id,
-            creator_name: profile.creator_name,
-            avatar_url: profile.avatar_url,
-            bio: profile.bio,
-            response_time: profile.response_time
-          }}
-          trigger={
-            <Button className="w-full bg-dc-teal text-white rounded-full h-14 font-bold uppercase tracking-wide text-base hover:bg-dc-teal/90">
-              Hire This Creator
-            </Button>
-          }
-        />
-        <ContactCreatorModal
-          creator={{
-            id: profile.id,
-            user_id: profile.user_id,
-            creator_name: profile.creator_name,
-            avatar_url: profile.avatar_url,
-            bio: profile.bio,
-            response_time: profile.response_time
-          }}
-          trigger={
-            <Button
-              variant="outline"
-              className="w-full bg-white text-dc-pink-accent rounded-full h-14 font-bold border-2 border-gray-200 text-base hover:bg-gray-50"
-            >
-              Message
-            </Button>
-          }
-        />
-      </div>
+      {(() => {
+        const creatorForModal = {
+          id: profile.id,
+          user_id: profile.user_id,
+          creator_name: profile.creator_name,
+          avatar_url: profile.avatar_url,
+          bio: profile.bio,
+          response_time: profile.response_time
+        };
+        return (
+          <div className="px-4 pb-8 space-y-3">
+            <ContactCreatorModal
+              creator={creatorForModal}
+              trigger={
+                <Button className="w-full bg-dc-teal text-white rounded-full h-14 font-bold uppercase tracking-wide text-base hover:bg-dc-teal/90">
+                  Hire This Creator
+                </Button>
+              }
+            />
+            <ContactCreatorModal
+              creator={creatorForModal}
+              trigger={
+                <Button
+                  variant="outline"
+                  className="w-full bg-white text-dc-pink-accent rounded-full h-14 font-bold border-2 border-gray-200 text-base hover:bg-gray-50"
+                >
+                  Message
+                </Button>
+              }
+            />
+          </div>
+        );
+      })()}
     </div>
   );
 };
