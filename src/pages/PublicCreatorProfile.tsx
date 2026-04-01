@@ -203,8 +203,8 @@ const PublicCreatorProfile = () => {
           ) : (
             <div className="h-full w-full bg-gradient-to-br from-pink-300 to-pink-400" />
           )}
-          {/* Dark overlay for readability */}
-          <div className="absolute inset-0 bg-black/10" />
+          {/* Gradient overlay for readability */}
+          <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/40 to-transparent" />
         </div>
 
         {/* Logo overlay */}
@@ -356,17 +356,19 @@ const PublicCreatorProfile = () => {
         )}
       </div>
 
-      {/* Reviews Section */}
-      <div className="px-4 pb-4">
-        <h2 className="text-lg font-bold text-center mb-3 text-gray-900">Reviews</h2>
-        <PublicProfileReviews
-          profileId={profile.user_id}
-          profileType="creator"
-        />
-      </div>
+      {/* Reviews Section — only shown when reviews exist */}
+      {(profile.total_reviews ?? 0) > 0 && (
+        <div className="mx-4 mb-4 bg-white rounded-2xl p-4 shadow-sm">
+          <h2 className="text-sm font-bold text-gray-900 mb-3">Reviews</h2>
+          <PublicProfileReviews
+            profileId={profile.user_id}
+            profileType="creator"
+          />
+        </div>
+      )}
 
-      {/* CTA Button */}
-      <div className="px-4 pb-8">
+      {/* CTA Buttons */}
+      <div className="px-4 pb-8 space-y-3">
         <ContactCreatorModal
           creator={{
             id: profile.id,
@@ -378,7 +380,25 @@ const PublicCreatorProfile = () => {
           }}
           trigger={
             <Button className="w-full bg-dc-teal text-white rounded-full h-14 font-bold uppercase tracking-wide text-base hover:bg-dc-teal/90">
-              Get In Touch
+              Hire This Creator
+            </Button>
+          }
+        />
+        <ContactCreatorModal
+          creator={{
+            id: profile.id,
+            user_id: profile.user_id,
+            creator_name: profile.creator_name,
+            avatar_url: profile.avatar_url,
+            bio: profile.bio,
+            response_time: profile.response_time
+          }}
+          trigger={
+            <Button
+              variant="outline"
+              className="w-full bg-white text-dc-pink-accent rounded-full h-14 font-bold border-2 border-gray-200 text-base hover:bg-gray-50"
+            >
+              Message
             </Button>
           }
         />
