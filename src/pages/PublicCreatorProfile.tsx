@@ -37,6 +37,8 @@ interface CreatorProfile {
   other_social_url?: string;
   website_url?: string;
   created_at: string;
+  average_rating?: number;
+  total_reviews?: number;
 }
 
 const PublicCreatorProfile = () => {
@@ -192,7 +194,11 @@ const PublicCreatorProfile = () => {
           </h1>
           <div className="flex items-center gap-1 text-sm text-dc-pink-accent">
             <Star className="h-3.5 w-3.5 fill-dc-pink-accent" />
-            <span className="font-medium">4.5 RATING</span>
+            <span className="font-medium">
+              {profile.average_rating
+                ? `${profile.average_rating.toFixed(1)} · ${profile.total_reviews ?? 0} reviews`
+                : 'New'}
+            </span>
           </div>
           {profile.location && (
             <p className="text-xs text-gray-500 uppercase tracking-wide flex items-center gap-1">
