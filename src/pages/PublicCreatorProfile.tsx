@@ -48,6 +48,14 @@ const formatSkillLabel = (skill: string): string => {
     .join(' ');
 };
 
+const getContentType = (url: string): 'Photo' | 'Reel' | null => {
+  const ext = url.split('.').pop()?.toLowerCase().split('?')[0];
+  if (!ext) return null;
+  if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) return 'Photo';
+  if (['mp4', 'mov', 'webm'].includes(ext)) return 'Reel';
+  return null;
+};
+
 const PublicCreatorProfile = () => {
   const { slug } = useParams();
   const { user } = useAuth();
@@ -297,25 +305,56 @@ const PublicCreatorProfile = () => {
       )}
 
       {/* Portfolio Grid */}
-      {portfolioUrls.length > 1 && (
-        <div className="px-4 pb-4">
+      <div className="px-4 pb-4">
+        <h2 className="text-sm font-bold text-gray-900 mb-2">Portfolio</h2>
+        {portfolioUrls.length > 0 ? (
           <div className="grid grid-cols-3 gap-2">
-            {portfolioUrls.slice(1).map((url, index) => (
-              <div key={index} className="aspect-square rounded-xl overflow-hidden">
-                <img
-                  src={url}
-                  alt={`Portfolio item ${index + 2}`}
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).style.display = 'none';
-                  }}
-                  loading="lazy"
-                />
-              </div>
-            ))}
+            {portfolioUrls.map((url, index) => {
+              const contentType = getContentType(url);
+              const isVideo = contentType === 'Reel';
+              return (
+                <div key={index} className="aspect-square rounded-xl overflow-hidden relative">
+                  {isVideo ? (
+                    <video
+                      src={url}
+                      className="w-full h-full object-cover"
+                      muted
+                      playsInline
+                      preload="metadata"
+                    />
+                  ) : (
+                    <img
+                      src={url}
+                      alt={`Portfolio item ${index + 1}`}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = 'none';
+                      }}
+                      loading="lazy"
+                    />
+                  )}
+                  {contentType && (
+                    <span className="absolute top-1.5 left-1.5 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded font-semibold">
+                      {contentType}
+                    </span>
+                  )}
+                  {isVideo && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="w-8 h-8 rounded-full bg-white/80 flex items-center justify-center">
+                        <div className="w-0 h-0 border-t-[6px] border-t-transparent border-b-[6px] border-b-transparent border-l-[10px] border-l-gray-800 ml-0.5" />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
-        </div>
-      )}
+        ) : (
+          <p className="text-sm text-gray-400 text-center py-6">
+            This creator hasn't uploaded portfolio pieces yet
+          </p>
+        )}
+      </div>
 
       {/* Reviews Section */}
       <div className="px-4 pb-4">
