@@ -41,6 +41,13 @@ interface CreatorProfile {
   total_reviews?: number;
 }
 
+const formatSkillLabel = (skill: string): string => {
+  return skill
+    .split('_')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+};
+
 const PublicCreatorProfile = () => {
   const { slug } = useParams();
   const { user } = useAuth();
@@ -262,10 +269,30 @@ const PublicCreatorProfile = () => {
         </div>
       )}
 
-      {/* Bio */}
-      {profile.bio && (
-        <div className="px-4 pb-2">
-          <p className="text-sm text-gray-600 leading-relaxed">{profile.bio}</p>
+      {/* About Card */}
+      {(profile.bio || (profile.skills && profile.skills.length > 0) || profile.base_rate_per_hour) && (
+        <div className="mx-4 mb-3 bg-white rounded-2xl p-4 shadow-sm">
+          <h2 className="text-sm font-bold text-gray-900 mb-2">About</h2>
+          {profile.bio && (
+            <p className="text-sm text-gray-600 leading-relaxed mb-3">{profile.bio}</p>
+          )}
+          {profile.skills && profile.skills.length > 0 && (
+            <div className="flex flex-wrap gap-2 mb-3">
+              {profile.skills.map((skill) => (
+                <span
+                  key={skill}
+                  className="bg-dc-teal text-white rounded-full px-3 py-1 text-xs font-semibold"
+                >
+                  {formatSkillLabel(skill)}
+                </span>
+              ))}
+            </div>
+          )}
+          {profile.base_rate_per_hour && (
+            <p className="text-sm text-gray-500">
+              💰 ${profile.base_rate_per_hour} / hr
+            </p>
+          )}
         </div>
       )}
 
