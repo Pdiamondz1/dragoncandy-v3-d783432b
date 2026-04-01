@@ -49,6 +49,7 @@ const PublicCreatorProfile = () => {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [portfolioUrls, setPortfolioUrls] = useState<string[]>([]);
+  const [projectsCount, setProjectsCount] = useState<number>(0);
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -91,6 +92,23 @@ const PublicCreatorProfile = () => {
 
     loadProfile();
   }, [slug, user]);
+
+  useEffect(() => {
+    const fetchProjectsCount = async () => {
+      if (!profile?.user_id) return;
+      const { count, error } = await supabase
+        .from('campaign_collaborations')
+        .select('id', { count: 'exact', head: true })
+        .eq('creator_id', profile.user_id)
+        .eq('status', 'completed');
+      if (error) {
+        console.error('Error fetching projects count:', error);
+        return;
+      }
+      setProjectsCount(count ?? 0);
+    };
+    fetchProjectsCount();
+  }, [profile?.user_id]);
 
   // Convert portfolio storage paths to public URLs
   useEffect(() => {
@@ -210,28 +228,30 @@ const PublicCreatorProfile = () => {
       </div>
 
       {/* Stats Row */}
-      <div className="flex justify-around py-4 px-4 mt-2">
-        <div className="flex-1 text-center">
-          <p className="text-3xl font-extrabold text-gray-900">
-            {profile.years_of_experience ?? 0}
-          </p>
-          <p className="text-xs text-gray-500">Years Experience</p>
+      {projectsCount === 0 && portfolioUrls.length === 0 && (profile.total_reviews ?? 0) === 0 ? (
+        <div className="flex justify-center py-4 px-4 mt-2">
+          <span className="bg-gradient-to-r from-dc-teal to-emerald-400 text-white px-6 py-2 rounded-full font-bold text-sm">
+            🌟 New Creator
+          </span>
         </div>
-        <div className="w-px bg-dc-pink self-stretch mx-1" />
-        <div className="flex-1 text-center">
-          <p className="text-3xl font-extrabold text-gray-900">
-            {profile.max_projects_per_month ?? 0}
-          </p>
-          <p className="text-xs text-gray-500">Projects / Mo</p>
+      ) : (
+        <div className="flex justify-around py-4 px-4 mt-2">
+          <div className="flex-1 text-center">
+            <p className="text-3xl font-extrabold text-gray-900">{projectsCount}</p>
+            <p className="text-xs text-gray-500">Projects</p>
+          </div>
+          <div className="w-px bg-dc-pink self-stretch mx-1" />
+          <div className="flex-1 text-center">
+            <p className="text-3xl font-extrabold text-gray-900">{portfolioUrls.length}</p>
+            <p className="text-xs text-gray-500">Portfolio</p>
+          </div>
+          <div className="w-px bg-dc-pink self-stretch mx-1" />
+          <div className="flex-1 text-center">
+            <p className="text-3xl font-extrabold text-gray-900">{profile.total_reviews ?? 0}</p>
+            <p className="text-xs text-gray-500">Reviews</p>
+          </div>
         </div>
-        <div className="w-px bg-dc-pink self-stretch mx-1" />
-        <div className="flex-1 text-center">
-          <p className="text-3xl font-extrabold text-gray-900">
-            {portfolioUrls.length}
-          </p>
-          <p className="text-xs text-gray-500">Portfolio Items</p>
-        </div>
-      </div>
+      )}
 
       {/* Bio */}
       {profile.bio && (
