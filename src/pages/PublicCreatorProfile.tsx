@@ -206,7 +206,7 @@ const PublicCreatorProfile = () => {
             <User className="h-8 w-8 text-dc-teal" />
           </AvatarFallback>
         </Avatar>
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <h1 className="text-lg font-bold text-gray-900 truncate">
             {profile.creator_name}
           </h1>
@@ -225,6 +225,15 @@ const PublicCreatorProfile = () => {
             </p>
           )}
         </div>
+        {profile.availability && (
+          <span className={`text-xs px-3 py-1 rounded-full font-semibold flex-shrink-0 ${
+            profile.availability === 'available'
+              ? 'bg-green-500 text-white'
+              : 'bg-gray-300 text-gray-600'
+          }`}>
+            {profile.availability === 'available' ? 'Available' : 'Busy'}
+          </span>
+        )}
       </div>
 
       {/* Stats Row */}
