@@ -28,7 +28,7 @@ export const AuthModeToggle = ({ mode, onModeChange, loading }: AuthModeTogglePr
       <span className="text-gray-500">Already have an account? </span>
       <button
         type="button"
-        className="text-dc-pink-accent font-semibold hover:underline disabled:opacity-60"
+        className="text-dc-teal font-semibold hover:underline disabled:opacity-60"
         onClick={() => onModeChange("login")}
         disabled={loading}
       >
