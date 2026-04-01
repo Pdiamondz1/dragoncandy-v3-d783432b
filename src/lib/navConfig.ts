@@ -78,15 +78,13 @@ export function getSidebarNav(role: UserRole): SidebarNavItem[] {
   return creatorSidebarNav;
 }
 
-// ── Bottom nav (mobile, 7 items) ───────────────────────────────────────────
+// ── Bottom nav (mobile) ────────────────────────────────────────────────────
 
 export const businessBottomNav: BottomNavItem[] = [
   { icon: LayoutDashboard, label: 'Home', href: '/dashboard/business' },
-  { icon: Heart, label: 'Feed', href: '/dashboard/business/dragon-feed' },
-  { icon: Play, label: 'Inspire', href: '/dashboard/business/activity' },
-  { icon: Plus, label: 'Create', href: '/dashboard/business/campaigns/create', isCenter: true, isDonny: true },
-  { icon: List, label: 'Campaigns', href: '/dashboard/business/campaigns' },
-  { icon: Megaphone, label: 'Promos', href: '/dashboard/business/promotions' },
+  { icon: Megaphone, label: 'Campaigns', href: '/dashboard/business/campaigns' },
+  { icon: Plus, label: 'Create', href: '/dashboard/business/campaigns/create', isCenter: true },
+  { icon: MessageSquare, label: 'Messages', href: '/dashboard/business/messages' },
   { icon: User, label: 'Profile', href: '/dashboard/business/settings' },
 ];
 
