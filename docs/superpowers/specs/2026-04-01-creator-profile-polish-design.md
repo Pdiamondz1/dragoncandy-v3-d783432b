@@ -33,14 +33,14 @@ Redesign as Approach B (Professional Portfolio): fix all data bugs, add an About
 
 ### Profile Card
 - White card overlapping hero bottom (`-mt-6`, `rounded-3xl`, `shadow-md`)
-- Avatar: increase from `w-16 h-16` to `w-14 h-14` (stays compact but slightly more presence) with `ring-2 ring-dc-teal`
+- Avatar: keep at `w-16 h-16` (64px) with `ring-2 ring-dc-teal`
 - **Name**: bold, truncated
 - **Rating**: read `average_rating` and `total_reviews` from `creator_profiles` — display as "⭐ {rating} · {count} reviews". If no reviews, show "⭐ New"
 - **Location**: unchanged
 - **Availability badge**: top-right of card. Green pill "Available" when `availability === 'available'`, gray pill "Busy" otherwise. Hidden if `availability` is null/unset.
 
 ### Stats Row
-- **Stat 1 — "Projects"**: count of `campaign_collaborations` where creator's `user_id` matches and collaboration exists. Query: count from `campaign_collaborations` joined through `campaign_applications` where `applicant_id = profile.user_id`
+- **Stat 1 — "Projects"**: count of `campaign_collaborations` where `creator_id = profile.user_id`. Simple count query with `.select('id', { count: 'exact' })`
 - **Stat 2 — "Portfolio"**: `portfolio_urls.length`
 - **Stat 3 — "Reviews"**: `total_reviews` from `creator_profiles`
 - **New Creator fallback**: when all three stats are 0, replace entire stats row with a centered teal gradient pill badge: "🌟 New Creator"
@@ -55,7 +55,7 @@ New white card (`rounded-2xl`, `shadow-sm`) below stats row. Contains:
 1. **"About" heading**: bold, dark
 2. **Bio text**: from `creator_profiles.bio`. If null/empty, hide entire About card.
 3. **Skills tags**: teal pills (`bg-dc-teal text-white rounded-full px-3 py-1 text-xs font-semibold`) rendered from `creator_profiles.skills` array. If empty array, hide tags row.
-4. **Rate range**: "💰 $XX per project" from `base_rate_per_hour`. If null, hide rate line.
+4. **Rate range**: "💰 $XX / hr" from `base_rate_per_hour`. If null, hide rate line.
 
 Card is hidden entirely if bio, skills, and rate are all empty.
 
@@ -75,7 +75,7 @@ Card is hidden entirely if bio, skills, and rate are all empty.
 - **Error handling**: keep existing `onError` handler that hides broken images
 
 ### Hero image source change
-- Hero uses `profile.avatar_url` as background, or first portfolio URL, or pink gradient fallback
+- Hero fallback priority: first portfolio URL > `profile.avatar_url` > pink gradient
 - Portfolio grid shows ALL items independently (no longer skipping index 0)
 
 ---
@@ -96,7 +96,7 @@ Replace single "GET IN TOUCH" with two buttons:
 1. **"Hire This Creator"** (primary): `w-full bg-dc-teal text-white rounded-full h-14 font-bold uppercase tracking-wide` — opens existing `ContactCreatorModal`
 2. **"Message"** (secondary): `w-full bg-white text-dc-pink-accent rounded-full h-14 font-bold border-2 border-gray-200` — also opens `ContactCreatorModal`
 
-Both use the same modal and flow. The dual buttons provide clearer intent framing for different user mindsets (hiring vs. casual inquiry).
+Both use the same modal and flow. The dual buttons provide clearer intent framing for different user mindsets (hiring vs. casual inquiry). The existing `ContactCreatorModal` already handles auth checks (redirects to login if not authenticated) and self-view prevention — no additional auth gating needed on the buttons.
 
 Bottom padding `pb-8` for safe area.
 
@@ -105,7 +105,7 @@ Bottom padding `pb-8` for safe area.
 ## Data Requirements
 
 ### New query needed
-- **Completed projects count**: `campaign_collaborations` count where the creator is involved. Query path: `campaign_collaborations` → `campaign_applications.applicant_id = profile.user_id`. This needs a new query or could be a simple `.select('id', { count: 'exact' })` call.
+- **Completed projects count**: `campaign_collaborations` where `creator_id = profile.user_id`. Simple `.select('id', { count: 'exact' })` call.
 
 ### Existing data (no changes)
 - `creator_profiles.*` — all fields already fetched with `select('*')`
