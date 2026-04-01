@@ -2,7 +2,7 @@ import React from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Phone, Users } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import ConversationMessageThread from '@/components/messages/ConversationMessageThread';
 import { useConversations } from '@/hooks/useConversations';
@@ -26,7 +26,7 @@ const DirectConversationPage: React.FC = () => {
   if (!conversationId) {
     return (
       <DashboardLayout userRole={userRole as 'business_client' | 'content_creator'}>
-        <div className="flex-1 p-6 bg-dc-gray min-h-screen overflow-x-hidden">
+        <div className="flex-1 p-6 bg-teal-50 min-h-screen overflow-x-hidden">
           <div className="text-center">
             <p>Conversation not found</p>
             <Button onClick={() => {
@@ -66,7 +66,7 @@ const DirectConversationPage: React.FC = () => {
 
   return (
     <DashboardLayout userRole={userRole as 'business_client' | 'content_creator'}>
-      <div className="flex flex-col h-full bg-dc-gray">
+      <div className="flex flex-col h-full bg-teal-50">
         {/* Chat header */}
         <div className="bg-white px-4 py-3 flex items-center justify-between flex-shrink-0 shadow-sm">
           {/* Left: back arrow */}
@@ -93,9 +93,16 @@ const DirectConversationPage: React.FC = () => {
             <p className="text-xs text-gray-500">Recently Active</p>
           </div>
 
-          {/* Right: phone icon */}
-          <div className="w-10 h-10 rounded-full bg-pink-100 flex items-center justify-center flex-shrink-0">
-            <Phone className="h-5 w-5 text-dc-pink-accent" />
+          {/* Right: View Profile link */}
+          <div className="flex-shrink-0">
+            {otherParticipantId && (
+              <button
+                onClick={() => navigate(`/profile/${otherParticipantId}`)}
+                className="text-xs font-medium text-dc-teal hover:underline"
+              >
+                View Profile
+              </button>
+            )}
           </div>
         </div>
 
