@@ -3,7 +3,20 @@ import { useNavigate } from "react-router-dom";
 import { Menu } from "lucide-react";
 import dragonCandyLogo from "@/assets/Transparent_DragonCandy_logo.png";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTrigger, SheetClose } from "@/components/ui/sheet";
+
+const scrollToSection = (id: string) => {
+  const el = document.getElementById(id);
+  if (el) {
+    el.scrollIntoView({ behavior: "smooth" });
+  }
+};
+
+const navLinks = [
+  { label: "How It Works", target: "how-it-works" },
+  { label: "For Businesses", target: "features" },
+  { label: "For Creators", target: "cta" },
+];
 
 export const Header: React.FC = () => {
   const navigate = useNavigate();
@@ -19,30 +32,21 @@ export const Header: React.FC = () => {
 
       {/* Desktop nav links — hidden on mobile */}
       <nav className="hidden md:flex items-center gap-8">
-        <a
-          href="#features"
-          className="text-sm font-medium text-[#555555] hover:text-dc-teal transition-colors duration-200"
-        >
-          Features
-        </a>
-        <a
-          href="#creators"
-          className="text-sm font-medium text-[#555555] hover:text-dc-teal transition-colors duration-200"
-        >
-          Creators
-        </a>
-        <a
-          href="#brands"
-          className="text-sm font-medium text-[#555555] hover:text-dc-teal transition-colors duration-200"
-        >
-          For Brands
-        </a>
+        {navLinks.map((link) => (
+          <button
+            key={link.target}
+            onClick={() => scrollToSection(link.target)}
+            className="text-sm font-medium text-[#555555] hover:text-dc-teal transition-colors duration-200 bg-transparent border-none cursor-pointer"
+          >
+            {link.label}
+          </button>
+        ))}
         <Button
           variant="ghost"
           className="rounded-full text-[#555555] hover:text-dc-teal font-medium"
           onClick={() => navigate('/auth?mode=login')}
         >
-          Log in
+          Login
         </Button>
         <Button
           className="rounded-full bg-dc-teal text-white font-semibold px-6 hover:bg-dc-teal-dark hover:shadow-glow-teal transition-all duration-300"
@@ -52,7 +56,7 @@ export const Header: React.FC = () => {
         </Button>
       </nav>
 
-      {/* Mobile hamburger — only icon, no extra nav links */}
+      {/* Mobile hamburger */}
       <div className="md:hidden">
         <Sheet>
           <SheetTrigger asChild>
@@ -65,18 +69,29 @@ export const Header: React.FC = () => {
           </SheetTrigger>
           <SheetContent side="right" className="w-64 pt-8">
             <div className="flex flex-col gap-3">
+              {navLinks.map((link) => (
+                <SheetClose asChild key={link.target}>
+                  <button
+                    onClick={() => scrollToSection(link.target)}
+                    className="w-full text-left px-4 py-2 rounded-full text-[#555555] hover:text-dc-teal font-medium bg-transparent border-none cursor-pointer"
+                  >
+                    {link.label}
+                  </button>
+                </SheetClose>
+              ))}
+              <hr className="border-gray-200 my-1" />
               <Button
                 variant="ghost"
                 className="w-full justify-start rounded-full text-[#555555] hover:text-dc-teal"
                 onClick={() => navigate('/auth?mode=login')}
               >
-                Log in
+                Login
               </Button>
               <Button
                 className="w-full rounded-full bg-dc-teal text-white font-bold hover:bg-dc-teal-dark"
                 onClick={() => navigate('/auth?mode=signup')}
               >
-                Sign up
+                Get Started
               </Button>
             </div>
           </SheetContent>
