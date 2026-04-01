@@ -32,6 +32,8 @@ export default {
 					'pink-bg': '#F9C8E0',
 					gray: '#A8A8A0',
 					yellow: '#FACC15',
+					dark: '#1A1A2A',
+					card: '#FFFFFF',
 				},
 				border: 'hsl(var(--border))',
 				input: 'hsl(var(--input))',
@@ -112,6 +114,10 @@ export default {
 					'0%': { transform: 'translateX(0)' },
 					'100%': { transform: 'translateX(-50%)' },
 				},
+				'slide-up': {
+					from: { opacity: '0', transform: 'translateY(8px)' },
+					to: { opacity: '1', transform: 'translateY(0)' },
+				},
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
@@ -121,12 +127,16 @@ export default {
 				breathe: 'breathe 3s ease-in-out infinite',
 				shake: 'shake 0.3s ease-in-out 2',
 				marquee: 'marquee 30s linear infinite',
+				'slide-up': 'slide-up 0.3s ease-out',
 			},
 			boxShadow: {
 				'glow-teal': '0 0 20px rgba(77, 217, 192, 0.15), 0 0 60px rgba(77, 217, 192, 0.05)',
 				'glow-pink': '0 0 20px rgba(249, 168, 212, 0.15), 0 0 60px rgba(249, 168, 212, 0.05)',
 				'card-hover': '0 8px 30px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04)',
 				'card-elevated': '0 12px 40px rgba(0, 0, 0, 0.12), 0 4px 12px rgba(0, 0, 0, 0.06)',
+				'dc-sm': 'var(--shadow-sm)',
+				'dc-md': 'var(--shadow-md)',
+				'dc-lg': 'var(--shadow-lg)',
 			},
 		}
 	},
