@@ -50,7 +50,7 @@ const DirectMessagesPage: React.FC = () => {
 
   return (
     <DashboardLayout userRole={userRole as 'business_client' | 'content_creator' | 'brand'}>
-      <div className="min-h-screen overflow-x-hidden bg-dc-gray w-full max-w-full md:max-w-4xl md:mx-auto">
+      <div className="min-h-screen overflow-x-hidden bg-teal-50 w-full max-w-full md:max-w-4xl md:mx-auto">
         {/* Template B header */}
         <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
           {selectedConversationId ? (
@@ -64,12 +64,26 @@ const DirectMessagesPage: React.FC = () => {
           ) : (
             <div className="w-7" />
           )}
-          <h1 className="flex-1 text-center font-sans text-base font-bold text-gray-900 uppercase tracking-wide">
-            {selectedConversationId
-              ? (selectedConversation?.other_participant_name || 'Conversation')
-              : 'Messages'}
-          </h1>
-          <div className="w-7" />
+          <div className="flex-1 text-center">
+            <h1 className="font-sans text-base font-bold text-gray-900 uppercase tracking-wide">
+              {selectedConversationId
+                ? (selectedConversation?.other_participant_name || 'Conversation')
+                : 'Messages'}
+            </h1>
+            {selectedConversationId && (
+              <p className="text-xs text-gray-500">Recently Active</p>
+            )}
+          </div>
+          {selectedConversationId && recipientId ? (
+            <button
+              onClick={() => navigate(`/profile/${recipientId}`)}
+              className="text-xs font-medium text-dc-teal hover:underline"
+            >
+              View Profile
+            </button>
+          ) : (
+            <div className="w-7" />
+          )}
         </div>
 
         {selectedConversationId ? (
@@ -82,14 +96,25 @@ const DirectMessagesPage: React.FC = () => {
             />
           </div>
         ) : (
-          /* Scrollable conversation list */
-          <div className="pb-24 md:pb-0 px-4 pt-4 overflow-hidden">
-            <DirectMessagesList
-              onConversationSelect={handleConversationSelect}
-              onCampaignNavigate={handleCampaignNavigate}
-              activeConversationId={selectedConversationId}
-            />
-          </div>
+          <>
+            {/* Scrollable conversation list */}
+            <div className="pb-24 md:pb-0 px-4 pt-4 overflow-hidden">
+              <DirectMessagesList
+                onConversationSelect={handleConversationSelect}
+                onCampaignNavigate={handleCampaignNavigate}
+                activeConversationId={selectedConversationId}
+              />
+            </div>
+            {/* Desktop empty state hint */}
+            <div className="hidden md:flex items-center justify-center py-16">
+              <div className="text-center">
+                <MessageCircle className="h-10 w-10 text-gray-300 mx-auto mb-3" />
+                <p className="text-sm text-gray-400">
+                  Select a conversation or start a new one from a creator's profile
+                </p>
+              </div>
+            </div>
+          </>
         )}
       </div>
     </DashboardLayout>
