@@ -80,19 +80,23 @@ export const Header: React.FC = () => {
                 </SheetClose>
               ))}
               <hr className="border-gray-200 my-1" />
-              <Button
-                variant="ghost"
-                className="w-full justify-start rounded-full text-[#555555] hover:text-dc-teal"
-                onClick={() => navigate('/auth?mode=login')}
-              >
-                Login
-              </Button>
-              <Button
-                className="w-full rounded-full bg-dc-teal text-white font-bold hover:bg-dc-teal-dark"
-                onClick={() => navigate('/auth?mode=signup')}
-              >
-                Get Started
-              </Button>
+              <SheetClose asChild>
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start rounded-full text-[#555555] hover:text-dc-teal"
+                  onClick={() => navigate('/auth?mode=login')}
+                >
+                  Login
+                </Button>
+              </SheetClose>
+              <SheetClose asChild>
+                <Button
+                  className="w-full rounded-full bg-dc-teal text-white font-bold hover:bg-dc-teal-dark"
+                  onClick={() => navigate('/auth?mode=signup')}
+                >
+                  Get Started
+                </Button>
+              </SheetClose>
             </div>
           </SheetContent>
         </Sheet>
