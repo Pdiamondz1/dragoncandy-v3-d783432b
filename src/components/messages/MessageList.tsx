@@ -70,15 +70,20 @@ const MessageList: React.FC<MessageListProps> = ({
   return (
     <ScrollArea className="flex-1 bg-teal-50" ref={scrollAreaRef}>
       <div className="space-y-2 p-4">
-        {messages.map((message) => (
-          <MessageBubbleEnhanced
-            key={message.id}
-            message={message}
-            onReply={onReply}
-            onForward={onForward}
-            onEdit={onEdit}
-          />
-        ))}
+        {messages.map((message, index) => {
+          const prevMessage = index > 0 ? messages[index - 1] : null;
+          const showAvatar = !prevMessage || prevMessage.sender_id !== message.sender_id;
+          return (
+            <MessageBubbleEnhanced
+              key={message.id}
+              message={message}
+              showAvatar={showAvatar}
+              onReply={onReply}
+              onForward={onForward}
+              onEdit={onEdit}
+            />
+          );
+        })}
         <div ref={messagesEndRef} />
       </div>
     </ScrollArea>

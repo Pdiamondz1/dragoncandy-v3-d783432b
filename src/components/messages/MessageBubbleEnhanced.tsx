@@ -16,6 +16,7 @@ import MessageReactions from './MessageReactions';
 
 interface MessageBubbleEnhancedProps {
   message: Message;
+  showAvatar?: boolean;
   onReply?: (message: Message) => void;
   onForward?: (message: Message) => void;
   onEdit?: (message: Message) => void;
@@ -23,6 +24,7 @@ interface MessageBubbleEnhancedProps {
 
 const MessageBubbleEnhanced: React.FC<MessageBubbleEnhancedProps> = ({
   message,
+  showAvatar = true,
   onReply,
   onForward,
   onEdit
@@ -80,18 +82,22 @@ const MessageBubbleEnhanced: React.FC<MessageBubbleEnhancedProps> = ({
     <div className={`group flex gap-2.5 px-4 py-1.5 ${isOwnMessage ? 'flex-row-reverse' : ''}`}>
       {/* Avatar — only show for other people's messages */}
       {!isOwnMessage && (
-        <Avatar className="h-8 w-8 flex-shrink-0 mt-1 ring-2 ring-teal-400">
-          <AvatarImage src={senderAvatar || logo} alt={senderName} />
-          <AvatarFallback className="bg-dc-pink text-white text-xs font-semibold">
-            {senderName.charAt(0).toUpperCase()}
-          </AvatarFallback>
-        </Avatar>
+        showAvatar ? (
+          <Avatar className="h-8 w-8 flex-shrink-0 mt-1 ring-2 ring-teal-400">
+            <AvatarImage src={senderAvatar || logo} alt={senderName} />
+            <AvatarFallback className="bg-dc-pink text-white text-xs font-semibold">
+              {senderName.charAt(0).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+        ) : (
+          <div className="w-8 flex-shrink-0" />
+        )
       )}
 
       {/* Message content */}
       <div className={`flex flex-col max-w-[70%] ${isOwnMessage ? 'items-end' : 'items-start'}`}>
         {/* Sender name + time (only for other's messages) */}
-        {!isOwnMessage && (
+        {!isOwnMessage && showAvatar && (
           <div className="flex items-center gap-2 mb-0.5 px-1">
             <span className="text-xs font-medium text-foreground">{senderName}</span>
             {getCategoryBadge()}
