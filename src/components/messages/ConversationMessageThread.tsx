@@ -52,7 +52,7 @@ const ConversationMessageThread: React.FC<ConversationMessageThreadProps> = ({
   return (
     <div className="flex flex-col h-full">
       {/* Messages area */}
-      <div className="flex-1 min-h-0 bg-dc-gray">
+      <div className="flex-1 min-h-0 bg-teal-50">
         <MessageList
           conversationId={conversationId}
           messages={messages}
