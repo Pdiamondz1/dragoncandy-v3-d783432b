@@ -79,7 +79,12 @@ const MessageBubbleEnhanced: React.FC<MessageBubbleEnhancedProps> = ({
   };
 
   return (
-    <div className={`group flex gap-2.5 px-4 py-1.5 ${isOwnMessage ? 'flex-row-reverse' : ''}`}>
+    <div
+      className={`group flex gap-2.5 px-4 py-1.5 ${isOwnMessage ? 'flex-row-reverse' : ''}`}
+      style={{
+        animation: `${isOwnMessage ? 'slideInRight' : 'slideInLeft'} 0.2s ease-out`,
+      }}
+    >
       {/* Avatar — only show for other people's messages */}
       {!isOwnMessage && (
         showAvatar ? (
