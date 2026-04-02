@@ -67,7 +67,7 @@ const ConversationMessageThread: React.FC<ConversationMessageThreadProps> = ({
           conversationId={conversationId}
           onSendMessage={handleSendMessage}
           disabled={sendMessage.isPending}
-          placeholder="Type your message..."
+          placeholder="Type a message..."
           replyingTo={replyingTo}
           onCancelReply={handleCancelReply}
         />
