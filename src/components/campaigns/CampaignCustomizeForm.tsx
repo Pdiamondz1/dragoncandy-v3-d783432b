@@ -1,6 +1,5 @@
 
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { CampaignAnalysis, CampaignData, CampaignCustomizeFormProps } from '@/types/campaign';
 import CampaignBasicFields from './CampaignBasicFields';
@@ -52,17 +51,6 @@ const CampaignCustomizeForm: React.FC<CampaignCustomizeFormProps> = ({
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-gray-900 rounded-full flex items-center justify-center text-white text-sm font-semibold">
-              4
-            </div>
-            Step 4: Customize Campaign Structure
-          </CardTitle>
-        </CardHeader>
-      </Card>
-
       <form onSubmit={handleSubmit} className="space-y-6">
         <CampaignBasicFields
           title={formData.title}

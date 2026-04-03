@@ -262,15 +262,10 @@ const ApplicationsList: React.FC<ApplicationsListProps> = ({ campaignId }) => {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="text-center py-8 text-muted-foreground">
-                <Settings className="h-12 w-12 mx-auto mb-4" />
-                <h3 className="text-lg font-medium mb-2">Settings Coming Soon</h3>
-                <p>Advanced application settings will be available here, including:</p>
-                <ul className="mt-4 space-y-1 text-sm">
-                  <li>• Auto-response templates</li>
-                  <li>• Application requirements</li>
-                  <li>• Notification preferences</li>
-                  <li>• Screening criteria</li>
-                </ul>
+                <Settings className="h-12 w-12 mx-auto mb-4 opacity-40" />
+                <h3 className="text-lg font-medium mb-2 text-gray-700">Application Settings</h3>
+                <p className="text-sm">Configure requirements and auto-responses for this campaign.</p>
+                <p className="text-xs mt-2 text-muted-foreground">Settings panel not yet enabled for this campaign.</p>
               </div>
             </CardContent>
           </Card>

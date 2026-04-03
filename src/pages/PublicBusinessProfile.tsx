@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Star, MapPin, Building2, MessageSquare } from 'lucide-react';
-import { toast } from '@/hooks/use-toast';
 import PublicProfileReviews from '@/components/profiles/PublicProfileReviews';
 import logo from '@/assets/Transparent_DragonCandy_logo.png';
 
@@ -89,10 +88,7 @@ const PublicBusinessProfile = () => {
       navigate('/auth');
       return;
     }
-    toast({
-      title: "Contact feature coming soon",
-      description: "Direct messaging will be available in the next update."
-    });
+    navigate('/dashboard/creator/messages');
   };
 
   if (loading) {

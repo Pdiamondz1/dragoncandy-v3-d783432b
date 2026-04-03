@@ -1,5 +1,6 @@
 
 import React, { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { usePublicCampaigns, PublicCampaign } from '@/hooks/usePublicCampaigns';
 import DashboardLayout from '@/components/DashboardLayout';
@@ -24,6 +25,7 @@ import { useNavigate } from 'react-router-dom';
 const CreatorCampaignMarketplace = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { data: campaigns = [], isLoading, error } = usePublicCampaigns(user?.id);
   const [selectedCampaign, setSelectedCampaign] = useState<PublicCampaign | null>(null);
   const [showApplicationForm, setShowApplicationForm] = useState(false);
@@ -64,12 +66,9 @@ const CreatorCampaignMarketplace = () => {
       setSkippedIds((prev) => new Set(prev).add(selectedCampaign.id));
     }
     setSelectedCampaign(null);
-    // Refresh campaigns to update application status
-    window.location.reload();
+    // Invalidate query cache to refresh campaign list without full page reload
+    queryClient.invalidateQueries({ queryKey: ['public-campaigns'] });
   };
-
-  // Placeholder location — in a real app this would come from creator profile
-  const locationLabel = 'Available Campaigns';
 
   return (
     <DashboardLayout userRole="content_creator">
