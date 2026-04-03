@@ -1,7 +1,7 @@
 
 import React from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useCreatorApplications } from '@/hooks/useFetchApplications';
 import ApplicationsStats from '@/components/applications/ApplicationsStats';
@@ -46,8 +46,9 @@ const CreatorApplications: React.FC = () => {
       <DashboardLayout userRole="content_creator">
         <div className="min-h-screen bg-white overflow-x-hidden flex items-center justify-center p-4">
           <div className="border-2 border-dc-teal rounded-2xl p-6 text-center max-w-sm w-full">
+            <AlertCircle className="h-10 w-10 text-red-400 mx-auto mb-3" />
             <h3 className="font-bold text-gray-900 mb-2">Failed to load applications</h3>
-            <p className="text-gray-500 text-sm">There was an error loading your applications.</p>
+            <p className="text-gray-500 text-sm">There was an error loading your applications. Please try again.</p>
           </div>
         </div>
       </DashboardLayout>
