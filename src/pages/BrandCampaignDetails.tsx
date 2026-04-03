@@ -108,7 +108,6 @@ const BrandCampaignDetails = () => {
           {/* Title + subtitle */}
           <div>
             <h2 className="text-xl font-bold text-gray-900">{campaign.title}</h2>
-            <p className="text-gray-500 text-sm mt-0.5">Restaurant Campaign</p>
           </div>
 
           {/* Campaign description */}
