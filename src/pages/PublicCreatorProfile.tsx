@@ -77,7 +77,37 @@ const PublicCreatorProfile = () => {
       try {
         const { data, error } = await supabase
           .from('creator_profiles')
-          .select('*')
+          .select(`
+            id,
+            user_id,
+            creator_name,
+            avatar_url,
+            bio,
+            skills,
+            portfolio_urls,
+            location,
+            availability,
+            base_rate_per_hour,
+            years_of_experience,
+            languages_spoken,
+            timezone,
+            response_time,
+            min_project_budget,
+            max_projects_per_month,
+            preferred_project_duration,
+            collaboration_preferences,
+            instagram_url,
+            tiktok_url,
+            youtube_url,
+            facebook_url,
+            linkedin_url,
+            x_url,
+            other_social_url,
+            website_url,
+            created_at,
+            average_rating,
+            total_reviews
+          `)
           .eq('profile_slug', slug)
           .eq('profile_visibility', 'public')
           .single();
