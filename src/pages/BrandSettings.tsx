@@ -171,42 +171,6 @@ const BrandSettings = () => {
               </form>
             </div>
           </div>
-
-          {/* Notification Preferences Section */}
-          <div>
-            <p className="font-sans text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">Notification Preferences</p>
-            <div className="border-2 border-dc-teal rounded-2xl p-4 space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium text-gray-900 text-sm">Proposal Updates</p>
-                  <p className="text-xs text-gray-500">
-                    Get notified when restaurants respond to your proposals
-                  </p>
-                </div>
-                <input type="checkbox" defaultChecked className="w-5 h-5 accent-dc-teal" />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium text-gray-900 text-sm">Campaign Opportunities</p>
-                  <p className="text-xs text-gray-500">
-                    Receive alerts for new campaigns open for sponsorship
-                  </p>
-                </div>
-                <input type="checkbox" defaultChecked className="w-5 h-5 accent-dc-teal" />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium text-gray-900 text-sm">Performance Reports</p>
-                  <p className="text-xs text-gray-500">
-                    Weekly summaries of your sponsorship performance
-                  </p>
-                </div>
-                <input type="checkbox" defaultChecked className="w-5 h-5 accent-dc-teal" />
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </DashboardLayout>
