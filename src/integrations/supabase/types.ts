@@ -410,6 +410,56 @@ export type Database = {
           },
         ]
       }
+      campaign_deliverables: {
+        Row: {
+          aspect_ratio: string | null
+          campaign_id: string
+          content_type: string
+          created_at: string | null
+          description: string | null
+          id: string
+          max_duration_seconds: number | null
+          platform: string
+          sort_order: number | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          aspect_ratio?: string | null
+          campaign_id: string
+          content_type: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          max_duration_seconds?: number | null
+          platform: string
+          sort_order?: number | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          aspect_ratio?: string | null
+          campaign_id?: string
+          content_type?: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          max_duration_seconds?: number | null
+          platform?: string
+          sort_order?: number | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_deliverables_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       campaign_invitations: {
         Row: {
           campaign_id: string
@@ -510,6 +560,72 @@ export type Database = {
           },
         ]
       }
+      campaign_media: {
+        Row: {
+          ai_analysis: Json | null
+          campaign_id: string
+          created_at: string | null
+          duration_seconds: number | null
+          file_name: string
+          file_size_bytes: number | null
+          file_url: string
+          id: string
+          media_type: string
+          mime_type: string | null
+          sort_order: number | null
+          thumbnail_url: string | null
+          updated_at: string | null
+          uploaded_by: string
+        }
+        Insert: {
+          ai_analysis?: Json | null
+          campaign_id: string
+          created_at?: string | null
+          duration_seconds?: number | null
+          file_name: string
+          file_size_bytes?: number | null
+          file_url: string
+          id?: string
+          media_type: string
+          mime_type?: string | null
+          sort_order?: number | null
+          thumbnail_url?: string | null
+          updated_at?: string | null
+          uploaded_by: string
+        }
+        Update: {
+          ai_analysis?: Json | null
+          campaign_id?: string
+          created_at?: string | null
+          duration_seconds?: number | null
+          file_name?: string
+          file_size_bytes?: number | null
+          file_url?: string
+          id?: string
+          media_type?: string
+          mime_type?: string | null
+          sort_order?: number | null
+          thumbnail_url?: string | null
+          updated_at?: string | null
+          uploaded_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_media_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_media_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       campaign_sponsorships: {
         Row: {
           brand_completion_status: string | null
@@ -598,8 +714,11 @@ export type Database = {
       campaigns: {
         Row: {
           ai_analysis: Json | null
+          ai_preview_prompt: string | null
+          ai_preview_status: string | null
           budget_max: number | null
           budget_min: number | null
+          content_source: string | null
           created_at: string
           deadline: string | null
           deliverables: string[] | null
@@ -623,8 +742,11 @@ export type Database = {
         }
         Insert: {
           ai_analysis?: Json | null
+          ai_preview_prompt?: string | null
+          ai_preview_status?: string | null
           budget_max?: number | null
           budget_min?: number | null
+          content_source?: string | null
           created_at?: string
           deadline?: string | null
           deliverables?: string[] | null
@@ -648,8 +770,11 @@ export type Database = {
         }
         Update: {
           ai_analysis?: Json | null
+          ai_preview_prompt?: string | null
+          ai_preview_status?: string | null
           budget_max?: number | null
           budget_min?: number | null
+          content_source?: string | null
           created_at?: string
           deadline?: string | null
           deliverables?: string[] | null
@@ -984,26 +1109,76 @@ export type Database = {
           },
         ]
       }
-      donny_conversations: {
+      donny_actions: {
         Row: {
-          context_snapshot: Json | null
-          created_at: string
+          action_payload: Json
+          action_type: string
+          conversation_id: string | null
+          created_at: string | null
           id: string
-          last_message_at: string
+          status: string | null
           user_id: string
         }
         Insert: {
-          context_snapshot?: Json | null
-          created_at?: string
+          action_payload: Json
+          action_type: string
+          conversation_id?: string | null
+          created_at?: string | null
           id?: string
-          last_message_at?: string
+          status?: string | null
           user_id: string
         }
         Update: {
+          action_payload?: Json
+          action_type?: string
+          conversation_id?: string | null
+          created_at?: string | null
+          id?: string
+          status?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "donny_actions_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "donny_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      donny_conversations: {
+        Row: {
+          context_metadata: Json | null
+          context_snapshot: Json | null
+          context_url: string | null
+          created_at: string
+          id: string
+          last_message_at: string
+          surface: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          context_metadata?: Json | null
           context_snapshot?: Json | null
+          context_url?: string | null
           created_at?: string
           id?: string
           last_message_at?: string
+          surface?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          context_metadata?: Json | null
+          context_snapshot?: Json | null
+          context_url?: string | null
+          created_at?: string
+          id?: string
+          last_message_at?: string
+          surface?: string
+          updated_at?: string | null
           user_id?: string
         }
         Relationships: [
@@ -1022,8 +1197,10 @@ export type Database = {
           conversation_id: string
           created_at: string
           id: string
+          model: string | null
           rich_card: Json | null
           role: string
+          tokens_used: number | null
           tool_calls: Json | null
           tool_result: Json | null
         }
@@ -1032,8 +1209,10 @@ export type Database = {
           conversation_id: string
           created_at?: string
           id?: string
+          model?: string | null
           rich_card?: Json | null
           role: string
+          tokens_used?: number | null
           tool_calls?: Json | null
           tool_result?: Json | null
         }
@@ -1042,8 +1221,10 @@ export type Database = {
           conversation_id?: string
           created_at?: string
           id?: string
+          model?: string | null
           rich_card?: Json | null
           role?: string
+          tokens_used?: number | null
           tool_calls?: Json | null
           tool_result?: Json | null
         }
@@ -1053,6 +1234,130 @@ export type Database = {
             columns: ["conversation_id"]
             isOneToOne: false
             referencedRelation: "donny_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      donny_oauth_clients: {
+        Row: {
+          client_id: string
+          client_name: string
+          client_secret_hash: string | null
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          redirect_uris: string[]
+          scopes: string[] | null
+        }
+        Insert: {
+          client_id: string
+          client_name: string
+          client_secret_hash?: string | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          redirect_uris: string[]
+          scopes?: string[] | null
+        }
+        Update: {
+          client_id?: string
+          client_name?: string
+          client_secret_hash?: string | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          redirect_uris?: string[]
+          scopes?: string[] | null
+        }
+        Relationships: []
+      }
+      donny_oauth_codes: {
+        Row: {
+          client_id: string
+          code_challenge: string
+          code_challenge_method: string
+          code_hash: string
+          created_at: string | null
+          expires_at: string
+          id: string
+          redirect_uri: string
+          scopes: string[]
+          used: boolean | null
+          user_id: string
+        }
+        Insert: {
+          client_id: string
+          code_challenge: string
+          code_challenge_method?: string
+          code_hash: string
+          created_at?: string | null
+          expires_at: string
+          id?: string
+          redirect_uri: string
+          scopes: string[]
+          used?: boolean | null
+          user_id: string
+        }
+        Update: {
+          client_id?: string
+          code_challenge?: string
+          code_challenge_method?: string
+          code_hash?: string
+          created_at?: string | null
+          expires_at?: string
+          id?: string
+          redirect_uri?: string
+          scopes?: string[]
+          used?: boolean | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "donny_oauth_codes_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "donny_oauth_clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      donny_oauth_tokens: {
+        Row: {
+          access_token_hash: string
+          client_id: string
+          created_at: string | null
+          expires_at: string
+          id: string
+          refresh_token_hash: string
+          scopes: string[]
+          user_id: string
+        }
+        Insert: {
+          access_token_hash: string
+          client_id: string
+          created_at?: string | null
+          expires_at: string
+          id?: string
+          refresh_token_hash: string
+          scopes: string[]
+          user_id: string
+        }
+        Update: {
+          access_token_hash?: string
+          client_id?: string
+          created_at?: string | null
+          expires_at?: string
+          id?: string
+          refresh_token_hash?: string
+          scopes?: string[]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "donny_oauth_tokens_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "donny_oauth_clients"
             referencedColumns: ["id"]
           },
         ]
