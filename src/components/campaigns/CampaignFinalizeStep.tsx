@@ -176,7 +176,7 @@ const CampaignFinalizeStep: React.FC<CampaignFinalizeStepProps> = ({
 
       if (campaignData.draftCampaignId) {
         // Update existing draft campaign
-        // @ts-ignore — content_source not in generated types yet
+        // @ts-expect-error — content_source not in generated types yet
         const { data: updatedCampaign, error: updateError } = await supabase
           .from('campaigns')
           .update(campaignPayload)
@@ -193,7 +193,7 @@ const CampaignFinalizeStep: React.FC<CampaignFinalizeStepProps> = ({
 
       // Insert structured deliverables if present
       if (campaignData.structuredDeliverables?.length) {
-        // @ts-ignore — campaign_deliverables not in generated types yet
+        // @ts-expect-error — campaign_deliverables not in generated types yet
         const { error: delError } = await supabase
           .from('campaign_deliverables')
           .insert(
