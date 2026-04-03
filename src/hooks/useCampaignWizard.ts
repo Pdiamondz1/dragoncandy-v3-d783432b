@@ -223,7 +223,7 @@ export const useCampaignWizard = () => {
 
     console.log('Final campaign data prepared:', finalData);
     setFinalCampaignData(finalData);
-    setCurrentStep(3); // Review & Launch (Step 3)
+    setCurrentStep(2); // Review & Launch (Step 2)
   };
 
   // Combined handler for moving from Details to AI Preview

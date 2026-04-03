@@ -10,7 +10,7 @@ import CampaignWizardSidebar from '@/components/campaigns/CampaignWizardSidebar'
 import CampaignTimelineBudgetStep from '@/components/campaigns/CampaignTimelineBudgetStep';
 import CampaignFinalizeStep from '@/components/campaigns/CampaignFinalizeStep';
 import CampaignBriefStep from '@/components/campaigns/CampaignBriefStep';
-import CampaignAIPreviewStep from '@/components/campaigns/CampaignAIPreviewStep';
+
 import DeliverableBuilder from '@/components/campaigns/DeliverableBuilder';
 import { useCampaignWizard } from '@/hooks/useCampaignWizard';
 
@@ -46,8 +46,7 @@ const CampaignWizard: React.FC = () => {
   const steps = [
     { number: 1, title: 'Brief', active: true },
     { number: 2, title: 'Details', active: false },
-    { number: 3, title: 'AI Preview', active: false },
-    { number: 4, title: 'Review', active: false },
+    { number: 3, title: 'Review', active: false },
   ];
 
   return (
@@ -142,29 +141,28 @@ const CampaignWizard: React.FC = () => {
                 </Button>
                 <Button
                   className="flex-1 bg-dc-teal hover:bg-dc-teal/90 text-white rounded-full"
-                  onClick={handleContinueToPreview}
+                  onClick={() => {
+                    // Trigger the timeline/budget continue handler which builds finalCampaignData
+                    // and sets step to 2 (Review)
+                    const timelineForm = document.querySelector('[data-continue-finalize]') as HTMLButtonElement;
+                    if (timelineForm) {
+                      timelineForm.click();
+                    } else {
+                      setCurrentStep(2);
+                    }
+                  }}
                 >
-                  Continue to AI Preview
+                  Continue to Review
                 </Button>
               </div>
             </div>
           )}
 
-          {/* Step 2: AI Preview */}
-          {currentStep === 2 && draftCampaignId && (
-            <CampaignAIPreviewStep
-              campaignId={draftCampaignId}
-              onApprove={() => setCurrentStep(3)}
-              onSkip={() => setCurrentStep(3)}
-              onBack={() => setCurrentStep(1)}
-            />
-          )}
-
-          {/* Step 3: Review & Launch */}
-          {currentStep === 3 && finalCampaignData && (
+          {/* Step 2: Review & Launch */}
+          {currentStep === 2 && finalCampaignData && (
             <CampaignFinalizeStep
               campaignData={finalCampaignData}
-              onBack={() => setCurrentStep(2)}
+              onBack={() => setCurrentStep(1)}
             />
           )}
         </div>
