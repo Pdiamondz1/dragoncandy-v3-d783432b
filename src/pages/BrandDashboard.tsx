@@ -57,14 +57,14 @@ const BrandDashboard = () => {
   const quickActions = [
     {
       title: "Discover Campaigns",
-      description: "Browse restaurant campaigns seeking brand partnerships",
+      description: "Browse campaigns open for brand sponsorships",
       icon: <Search className="h-6 w-6 text-dc-teal" />,
       action: () => navigate('/dashboard/brand/discover-campaigns'),
       buttonText: "Browse Campaigns"
     },
     {
       title: "Creator Directory",
-      description: "Find local content creators for brand collaborations",
+      description: "Find content creators for your brand collaborations",
       icon: <Users className="h-6 w-6 text-dc-teal" />,
       action: () => navigate('/dashboard/brand/creators'),
       buttonText: "Browse Creators"
@@ -82,7 +82,7 @@ const BrandDashboard = () => {
     {
       number: "1",
       title: "Discover Opportunities",
-      description: "Browse local restaurant campaigns and creators seeking brand partnerships"
+      description: "Browse campaigns and creators seeking brand partnerships"
     },
     {
       number: "2",
@@ -92,7 +92,7 @@ const BrandDashboard = () => {
     {
       number: "3",
       title: "Collaborate",
-      description: "Work with restaurants and creators to develop authentic branded content"
+      description: "Work with businesses and creators to develop authentic branded content"
     },
     {
       number: "4",
@@ -163,7 +163,7 @@ const BrandDashboard = () => {
                   Start Discovering Opportunities
                 </h2>
                 <p className="text-sm text-gray-500 mt-1">
-                  Find restaurant campaigns and local creators that align with your brand values
+                  Find campaigns and creators that align with your brand values
                 </p>
               </div>
               <Button
