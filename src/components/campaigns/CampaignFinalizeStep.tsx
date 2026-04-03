@@ -9,12 +9,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Rocket, FileText, HelpCircle, DollarSign, Clock } from 'lucide-react';
+import { Rocket, FileText, HelpCircle, DollarSign, Clock, Image, Video, Film, LayoutGrid } from 'lucide-react';
 import { format } from 'date-fns';
 import { useCampaigns } from '@/hooks/useCampaigns';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import CostBreakdown from './CostBreakdown';
 import DeliveryBadge from './DeliveryBadge';
 import type { DeliveryType } from './DeliveryTypeSelector';
 import type { PricingType } from './PricingTypeSelector';
@@ -47,6 +48,16 @@ interface CampaignFinalizeStepProps {
     pricingType: PricingType;
     fixedPrice?: number;
     aiAnalysis?: CampaignAnalysis;
+    contentSource?: string;
+    structuredDeliverables?: Array<{
+      id: string;
+      content_type: string;
+      platform: string;
+      aspect_ratio: string;
+      max_duration_seconds?: number;
+      description?: string;
+    }>;
+    draftCampaignId?: string;
   };
   onBack: () => void;
 }
@@ -76,6 +87,24 @@ const CampaignFinalizeStep: React.FC<CampaignFinalizeStepProps> = ({
       ? (campaignData.fixedPrice || 0)
       : (campaignData.budgetMax || 0);
     return baseAmount + campaignData.deliveryFee;
+  };
+
+  const getContentTypeIcon = (contentType: string) => {
+    switch (contentType) {
+      case 'video_reel': return <Video className="h-4 w-4 text-teal-600" />;
+      case 'story': return <Film className="h-4 w-4 text-teal-600" />;
+      case 'carousel': return <LayoutGrid className="h-4 w-4 text-teal-600" />;
+      default: return <Image className="h-4 w-4 text-teal-600" />;
+    }
+  };
+
+  const formatContentSource = (source: string): string => {
+    switch (source) {
+      case 'creator_shoots': return 'Creator shoots';
+      case 'your_footage': return 'Your footage';
+      case 'hybrid': return 'Hybrid';
+      default: return source;
+    }
   };
 
   const getDeliveryTimeframe = () => {
@@ -116,8 +145,8 @@ const CampaignFinalizeStep: React.FC<CampaignFinalizeStepProps> = ({
         }
       }
       
-      // Create the campaign
-      const campaign = await createCampaign.mutateAsync({
+      // Build the campaign payload
+      const campaignPayload = {
         title: data.title,
         description: data.description,
         goals: campaignData.goals,
@@ -138,7 +167,48 @@ const CampaignFinalizeStep: React.FC<CampaignFinalizeStepProps> = ({
         escrow_status: escrowStatus,
         // Persist the full AI analysis
         ...(campaignData.aiAnalysis ? { ai_analysis: campaignData.aiAnalysis } : {}),
-      });
+        // Content source
+        ...(campaignData.contentSource ? { content_source: campaignData.contentSource } : {}),
+      };
+
+      // Create or update the campaign
+      let campaign: { id: string };
+
+      if (campaignData.draftCampaignId) {
+        // Update existing draft campaign
+        // @ts-ignore — content_source not in generated types yet
+        const { data: updatedCampaign, error: updateError } = await supabase
+          .from('campaigns')
+          .update(campaignPayload)
+          .eq('id', campaignData.draftCampaignId)
+          .select('id')
+          .single();
+
+        if (updateError) throw updateError;
+        campaign = updatedCampaign;
+      } else {
+        // Create a new campaign
+        campaign = await createCampaign.mutateAsync(campaignPayload);
+      }
+
+      // Insert structured deliverables if present
+      if (campaignData.structuredDeliverables?.length) {
+        // @ts-ignore — campaign_deliverables not in generated types yet
+        const { error: delError } = await supabase
+          .from('campaign_deliverables')
+          .insert(
+            campaignData.structuredDeliverables.map((d, i) => ({
+              campaign_id: campaign.id,
+              content_type: d.content_type,
+              platform: d.platform,
+              aspect_ratio: d.aspect_ratio,
+              max_duration_seconds: d.max_duration_seconds || null,
+              description: d.description || null,
+              sort_order: i,
+            }))
+          );
+        if (delError) console.error('Failed to insert deliverables:', delError);
+      }
 
       // If fixed price and user wants to publish, trigger Stripe escrow checkout
       if (wantToPublish && isFixedPrice) {
@@ -305,6 +375,88 @@ const CampaignFinalizeStep: React.FC<CampaignFinalizeStepProps> = ({
           )}
         </CardContent>
       </Card>
+
+      {/* Campaign Summary Card */}
+      {campaignData.contentSource && (
+        <Card className="mb-6 rounded-xl">
+          <CardHeader>
+            <CardTitle className="text-lg">Campaign Summary</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <div>
+                <p className="text-sm font-medium text-gray-700">Title</p>
+                <p className="text-sm text-gray-600">{campaignData.title}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-700">Description</p>
+                <p className="text-sm text-gray-600 line-clamp-3">{campaignData.description}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-medium text-gray-700">Content Source</p>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-teal-100 text-teal-700">
+                  {formatContentSource(campaignData.contentSource)}
+                </span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Deliverables List */}
+      {campaignData.structuredDeliverables && campaignData.structuredDeliverables.length > 0 && (
+        <Card className="mb-6 rounded-xl">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              Deliverables
+              <span className="text-xs px-2 py-0.5 rounded-full bg-teal-100 text-teal-700">
+                {campaignData.structuredDeliverables.length}
+              </span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {campaignData.structuredDeliverables.map((deliverable, index) => (
+                <div key={deliverable.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                  <span className="text-sm font-semibold text-gray-400 w-5 text-center">{index + 1}</span>
+                  {getContentTypeIcon(deliverable.content_type)}
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-gray-800 capitalize">
+                      {deliverable.content_type.replace(/_/g, ' ')}
+                    </p>
+                    <p className="text-xs text-gray-500">{deliverable.platform}</p>
+                    {deliverable.description && (
+                      <p className="text-xs text-gray-400 truncate">
+                        {deliverable.description.length > 80
+                          ? `${deliverable.description.slice(0, 80)}...`
+                          : deliverable.description}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Cost Breakdown */}
+      {campaignData.structuredDeliverables && campaignData.structuredDeliverables.length > 0 && (
+        <div className="mb-6">
+          <CostBreakdown
+            deliverableCount={campaignData.structuredDeliverables.length}
+            budgetTotal={getTotalCost()}
+            baseCostPerDeliverable={
+              (campaignData.pricingType === 'fixed'
+                ? (campaignData.fixedPrice || 0)
+                : (campaignData.budgetMax || 0)) /
+              campaignData.structuredDeliverables.length
+            }
+            premiumAmount={campaignData.deliveryFee}
+            deliveryType={campaignData.deliveryType}
+          />
+        </div>
+      )}
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
