@@ -243,13 +243,17 @@ export const useCampaignWizard = () => {
 
   return {
     currentStep,
+    setCurrentStep,
     campaignGoal,
     setCampaignGoal,
     isGenerating,
     campaignAnalysis,
     customizedCampaign,
+    setCustomizedCampaign,
     timelineBudgetData,
+    setTimelineBudgetData,
     finalCampaignData,
+    setFinalCampaignData,
     // Delivery tier state
     deliveryTier,
     deliveryFee,
