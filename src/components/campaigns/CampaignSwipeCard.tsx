@@ -4,6 +4,8 @@ import TinderCard from 'react-tinder-card';
 import { PublicCampaign } from '@/hooks/usePublicCampaigns';
 import { MapPin, DollarSign } from 'lucide-react';
 import logo from '@/assets/Transparent_DragonCandy_logo.png';
+import DeliveryBadge from './DeliveryBadge';
+import type { DeliveryType } from './DeliveryTypeSelector';
 
 interface CampaignSwipeCardProps {
   campaigns: PublicCampaign[];
@@ -112,6 +114,7 @@ const CardContent: React.FC<CardContentProps> = ({ campaign, onApply }) => {
   const location = campaign.business_profile?.city
     ? `${campaign.business_profile.city}${campaign.business_profile.country ? ', ' + campaign.business_profile.country : ''}`
     : null;
+  const isExpedited = campaign.delivery_type === 'expedited' || campaign.delivery_type === 'dragonrush';
 
   // Use a placeholder gradient when no image is available
   const hasImage = false; // campaigns don't have a hero image field yet — use gradient placeholder
@@ -137,6 +140,17 @@ const CardContent: React.FC<CardContentProps> = ({ campaign, onApply }) => {
 
         {/* Dark overlay gradient at bottom of image */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+
+        {/* DragonDash badge — top-right corner */}
+        {isExpedited && (
+          <div className="absolute top-3 right-3 z-10">
+            <DeliveryBadge
+              deliveryType={campaign.delivery_type as DeliveryType}
+              size="sm"
+              showTimeframe={false}
+            />
+          </div>
+        )}
 
         {/* Title overlaid on image */}
         <div className="absolute bottom-0 left-0 right-0 p-4">

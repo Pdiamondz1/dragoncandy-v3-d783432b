@@ -7,12 +7,14 @@ import { CampaignSwipeCard } from '@/components/campaigns/CampaignSwipeCard';
 import ApplicationForm from '@/components/campaigns/ApplicationForm';
 import MarketplaceLoadingState from '@/components/campaigns/MarketplaceLoadingState';
 import MarketplaceErrorState from '@/components/campaigns/MarketplaceErrorState';
+import DeliveryBadge from '@/components/campaigns/DeliveryBadge';
+import type { DeliveryType } from '@/components/campaigns/DeliveryTypeSelector';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
 import { MapPin, DollarSign } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -145,9 +147,17 @@ const CreatorCampaignMarketplace = () => {
                       <h3 className="font-bold text-gray-900 text-base leading-tight line-clamp-2">
                         {campaign.title}
                       </h3>
-                      <Badge variant="outline" className="shrink-0 text-xs">
-                        {campaign.status}
-                      </Badge>
+                      {campaign.delivery_type && campaign.delivery_type !== 'standard' ? (
+                        <DeliveryBadge
+                          deliveryType={campaign.delivery_type as DeliveryType}
+                          size="sm"
+                          showTimeframe={false}
+                        />
+                      ) : (
+                        <Badge variant="outline" className="shrink-0 text-xs capitalize">
+                          {campaign.delivery_type ?? 'standard'}
+                        </Badge>
+                      )}
                     </div>
 
                     {campaign.description && (
@@ -199,12 +209,18 @@ const CreatorCampaignMarketplace = () => {
           )}
         </div>
 
-        {/* Application Form Dialog */}
-        <Dialog open={showApplicationForm} onOpenChange={setShowApplicationForm}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Apply to Campaign</DialogTitle>
-            </DialogHeader>
+        {/* Application Form — bottom sheet on mobile, centered sheet on desktop */}
+        <Sheet open={showApplicationForm} onOpenChange={setShowApplicationForm}>
+          <SheetContent
+            side="bottom"
+            className="h-[90vh] overflow-y-auto rounded-t-2xl px-4 pt-2 pb-8 md:max-w-2xl md:mx-auto"
+          >
+            <SheetHeader className="mb-4">
+              <div className="w-10 h-1 rounded-full bg-gray-300 mx-auto mb-3" />
+              <SheetTitle>
+                {selectedCampaign ? selectedCampaign.title : 'Apply to Campaign'}
+              </SheetTitle>
+            </SheetHeader>
             {selectedCampaign && (
               <ApplicationForm
                 campaign={selectedCampaign}
@@ -212,8 +228,8 @@ const CreatorCampaignMarketplace = () => {
                 onCancel={() => setShowApplicationForm(false)}
               />
             )}
-          </DialogContent>
-        </Dialog>
+          </SheetContent>
+        </Sheet>
       </div>
     </DashboardLayout>
   );
