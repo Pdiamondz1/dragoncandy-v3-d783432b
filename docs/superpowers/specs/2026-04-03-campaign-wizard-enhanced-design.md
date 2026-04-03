@@ -26,7 +26,8 @@ CREATE TABLE campaign_media (
   thumbnail_url TEXT,
   sort_order INTEGER DEFAULT 0,
   ai_analysis JSONB,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE INDEX idx_campaign_media_campaign ON campaign_media(campaign_id);
@@ -34,8 +35,26 @@ CREATE INDEX idx_campaign_media_type ON campaign_media(campaign_id, media_type);
 
 ALTER TABLE campaign_media ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Business owners manage their campaign media"
-  ON campaign_media FOR ALL
+-- Separate policies for clarity and safety
+CREATE POLICY "Business owners can read their campaign media"
+  ON campaign_media FOR SELECT
+  USING (
+    uploaded_by = auth.uid()
+    OR EXISTS (
+      SELECT 1 FROM campaigns c WHERE c.id = campaign_media.campaign_id AND c.user_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "Business owners can insert campaign media"
+  ON campaign_media FOR INSERT
+  WITH CHECK (uploaded_by = auth.uid());
+
+CREATE POLICY "Business owners can update their campaign media"
+  ON campaign_media FOR UPDATE
+  USING (uploaded_by = auth.uid());
+
+CREATE POLICY "Business owners can delete their campaign media"
+  ON campaign_media FOR DELETE
   USING (
     uploaded_by = auth.uid()
     OR EXISTS (
@@ -54,7 +73,7 @@ CREATE POLICY "Creators can view media for published campaigns"
   );
 ```
 
-**Note:** The spec references `c.business_id` but the existing `campaigns` table uses `c.user_id`. The RLS policy uses `user_id` to match the existing schema.
+**Note:** The existing `campaigns` table uses `c.user_id` (not `c.business_id`). RLS policies use `user_id` to match. INSERT policy uses explicit `WITH CHECK` to ensure `uploaded_by` is always the authenticated user.
 
 ### 1.2 New Table: `campaign_deliverables`
 
@@ -71,7 +90,8 @@ CREATE TABLE campaign_deliverables (
   max_duration_seconds INTEGER,
   status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'in_progress', 'submitted', 'revision_requested', 'approved')),
   sort_order INTEGER DEFAULT 0,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE INDEX idx_campaign_deliverables_campaign ON campaign_deliverables(campaign_id);
@@ -124,7 +144,7 @@ The existing `campaign-assets` bucket can be used, OR create a new `campaign-med
 
 ## 2. New Components
 
-All new components go in `src/components/campaign/`.
+All new components go in `src/components/campaigns/` (matching the existing directory with 60+ campaign components).
 
 ### 2.1 `ContentSourceSelector.tsx`
 
@@ -251,54 +271,56 @@ interface Deliverable {
 
 **Purpose:** Displays the AI-generated mood board from the preview step.
 
+The existing Edge Function generates mood boards with: `color_palette`, `typography { heading, body }`, `layout_description`, `reference_descriptions[]`. The component props align with this output, plus a `title` from the preview record.
+
 **Props:**
 ```typescript
 interface MoodBoardProps {
-  styleKeywords: string[];
-  colorPalette: string[];     // hex codes
-  moodDescription: string;
-  compositionStyle?: string;
+  title: string;
+  colorPalette: string[];          // hex codes from Edge Function
+  typography?: {
+    heading: string;
+    body: string;
+  };
+  layoutDescription: string;       // maps to Edge Function's layout_description
+  referenceDescriptions?: string[]; // maps to Edge Function's reference_descriptions
 }
 ```
 
 **Design:**
-- Style keywords as teal pill badges
+- Title as section heading
 - Color palette as circular swatches in a row
-- Mood description as body text
-- Composition style as secondary text
+- Typography notes as secondary text
+- Layout description as body text
+- Reference descriptions as a bulleted list (if provided)
 
 ### 2.6 `Storyboard.tsx`
 
-**Purpose:** Displays per-deliverable shot descriptions from the AI preview.
+**Purpose:** Displays shot/frame descriptions from the AI preview.
+
+The existing Edge Function generates storyboards as flat `frames[]` with: `frame_number`, `duration_seconds`, `scene_description`, `camera_angle`, `text_overlay`, `transition`. A transformation layer in the `useDonnyPreview` hook groups these by deliverable when possible.
 
 **Props:**
 ```typescript
 interface StoryboardProps {
-  storyboard: StoryboardEntry[];
+  frames: StoryboardFrame[];
+  title?: string;
 }
 
-interface StoryboardEntry {
-  deliverable_index: number;
-  deliverable_type: string;
-  platform: string;
-  shots: {
-    shot_number: number;
-    description: string;
-    duration_seconds?: number;
-    camera_angle?: string;
-    lighting_notes?: string;
-  }[];
-  music_mood?: string;
-  caption_suggestion?: string;
-  hashtag_suggestions?: string[];
+interface StoryboardFrame {
+  frame_number: number;
+  scene_description: string;
+  duration_seconds?: number;
+  camera_angle?: string;
+  text_overlay?: string;
+  transition?: string;
 }
 ```
 
 **Design:**
-- Accordion or card per deliverable
-- Each deliverable shows: type + platform badge in header
-- Numbered shot list: "Shot 1: Close-up of..." with camera angle and lighting notes
-- Music mood and caption suggestion at bottom of each card
+- Card with title (e.g. "Storyboard")
+- Numbered frame list: "Frame 1: Close-up of..." with camera angle and duration
+- Text overlay and transition notes shown as secondary details per frame
 
 ### 2.7 `CostBreakdown.tsx`
 
@@ -309,8 +331,9 @@ interface StoryboardEntry {
 interface CostBreakdownProps {
   deliverableCount: number;
   budgetTotal: number;
-  isExpedited: boolean;
-  deliveryType: string;
+  baseCostPerDeliverable: number;  // budgetTotal / deliverableCount
+  premiumAmount: number;           // DragonDash premium (0 if standard)
+  deliveryType: string;            // 'standard' | 'expedited' | 'dragonrush'
 }
 ```
 
@@ -321,6 +344,34 @@ interface CostBreakdownProps {
 ---
 
 ## 3. Enhanced Wizard Flow
+
+### 3.0 Step Mapping (Existing → New)
+
+The existing wizard has 6 steps (0-5). The new wizard consolidates into 4 steps:
+
+| Existing Step | Existing Component | New Step | Action |
+|---|---|---|---|
+| 0: Delivery Tier | `DeliveryTierStep` | Step 2 (Details) | Merged into Details as timeline toggle |
+| 1: Campaign Goal | `CampaignGoalStep` | Step 1 (Brief) | Enhanced with ContentSourceSelector + MediaUploader |
+| 2: AI Analysis | `CampaignAnalysisDisplay` | Step 2 (Details) | AI-generated fields shown in Details step |
+| 3: Customize | `CampaignCustomizeForm` | Step 2 (Details) | Merged into editable Details step |
+| 4: Timeline/Budget | `CampaignTimelineBudgetStep` | Step 2 (Details) | Budget + timeline in Details step |
+| 5: Finalize | `CampaignFinalizeStep` | Step 4 (Review) | Enhanced with media gallery + deliverables list |
+| — | NEW | Step 3 (AI Preview) | New step for mood board + storyboard |
+
+The consolidation reduces friction: Steps 0, 2, 3, and 4 all contained related "campaign details" that are now on one scrollable page (Step 2). The new Step 3 (AI Preview) replaces the old analysis display with a richer visual preview.
+
+### 3.0.1 Auto-Save as Draft (Critical Workflow)
+
+The AI Preview step (Step 3) calls the `donny-campaign-preview` Edge Function, which requires a `campaign_id`. Since the campaign doesn't exist yet during wizard creation, the wizard **auto-saves the campaign as a draft** when transitioning from Step 2 to Step 3:
+
+1. User completes Step 2 ("Campaign Details") and clicks "Next"
+2. Before showing Step 3, the wizard creates the campaign in Supabase with `status: 'draft'`
+3. This gives us a `campaign_id` for the Edge Function call and for media uploads
+4. If the user abandons the wizard, the draft remains (can be resumed from dashboard)
+5. On "Launch" in Step 4, the draft is updated to `status: 'published'`
+
+This also means media uploads can happen immediately after Step 2 instead of being staged in memory. However, for Step 1 (before draft exists), reference media and raw footage are still staged in memory and uploaded when the draft is created.
 
 ### 3.1 State Management
 
@@ -465,15 +516,15 @@ Mutation hook that:
 
 ### New Files:
 - `supabase/migrations/YYYYMMDD_campaign_media_deliverables.sql`
-- `src/components/campaign/ContentSourceSelector.tsx`
-- `src/components/campaign/MediaUploader.tsx`
-- `src/components/campaign/MediaGallery.tsx`
-- `src/components/campaign/DeliverableBuilder.tsx`
-- `src/components/campaign/MoodBoard.tsx`
-- `src/components/campaign/Storyboard.tsx`
-- `src/components/campaign/CostBreakdown.tsx`
-- `src/components/campaign/CampaignBriefStep.tsx` (or enhance CampaignGoalStep)
-- `src/components/campaign/CampaignAIPreviewStep.tsx`
+- `src/components/campaigns/ContentSourceSelector.tsx`
+- `src/components/campaigns/MediaUploader.tsx`
+- `src/components/campaigns/MediaGallery.tsx`
+- `src/components/campaigns/DeliverableBuilder.tsx`
+- `src/components/campaigns/MoodBoard.tsx`
+- `src/components/campaigns/Storyboard.tsx`
+- `src/components/campaigns/CostBreakdown.tsx`
+- `src/components/campaigns/CampaignBriefStep.tsx`
+- `src/components/campaigns/CampaignAIPreviewStep.tsx`
 - `src/hooks/useCampaignMedia.ts`
 - `src/hooks/useCampaignDeliverables.ts`
 - `src/hooks/useUploadCampaignMedia.ts`
@@ -481,15 +532,21 @@ Mutation hook that:
 
 ### Modified Files:
 - `src/hooks/useCampaignWizard.ts` — extend state with new fields
-- `src/pages/CampaignWizard.tsx` — add new steps to wizard flow
+- `src/pages/CampaignWizard.tsx` — add new steps to wizard flow, consolidate 6→4 steps
 - `src/components/campaigns/CampaignFinalizeStep.tsx` — enhance review step
-- Existing campaign details step — add DeliverableBuilder
+- `src/integrations/supabase/types.ts` — regenerate after migration (`npx supabase gen types typescript`)
 
 ### NOT Modified:
 - Landing page, login/auth, browse creators, creator profile, messaging
-- Existing Supabase Edge Functions
+- Existing Supabase Edge Functions (donny-campaign-preview used as-is)
 - Dashboard page
 - Any non-campaign components
+
+### Post-Migration Step:
+After running the database migration, regenerate Supabase types:
+```bash
+npx supabase gen types typescript --project-id zocahiffooqdybdhguqv > src/integrations/supabase/types.ts
+```
 
 ---
 
@@ -504,3 +561,11 @@ Mutation hook that:
 **Existing storage bucket:** Using `campaign-assets` with path conventions avoids creating a new bucket and its associated RLS policies.
 
 **`user_id` not `business_id`:** The existing `campaigns` table uses `user_id` as the foreign key to `profiles`. All RLS policies reference `user_id` to stay consistent.
+
+**Edge Function column fix (prerequisite):** The existing `donny-campaign-preview` Edge Function queries `budget` and `niche` columns that don't exist on the `campaigns` table (actual columns: `budget_min`, `budget_max`, no `niche`). The Edge Function's select statement needs updating to `budget_min, budget_max, goals, style, tone, platforms, deliverables` before Step 3 can function correctly. This is a small fix in the Edge Function's campaign data fetch.
+
+**Auto-save as draft:** The campaign is auto-saved as a draft when transitioning from Step 2 → Step 3. This solves the `campaign_id` chicken-and-egg problem (Edge Function needs a campaign_id, but wizard hasn't saved yet). Abandoned drafts persist and can be resumed.
+
+**Component props match Edge Function output:** MoodBoard and Storyboard component props are aligned with the existing Edge Function's actual output schema, not the Enhanced Prompt 8 spec's idealized schema. This avoids modifying the Edge Function in Phase 1.
+
+**Memory limit for staged files:** MediaUploader enforces a 300MB total staged file limit across all uploaders in the wizard. Videos are the concern — 10 files at 100MB each would be 1GB. The limit prevents browser memory issues.
