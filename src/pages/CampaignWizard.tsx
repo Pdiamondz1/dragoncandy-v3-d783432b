@@ -2,11 +2,8 @@ import React from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
 import { ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { Card, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import CampaignCustomizeForm from '@/components/campaigns/CampaignCustomizeForm';
 import CampaignWizardHeader from '@/components/campaigns/CampaignWizardHeader';
-import CampaignWizardSidebar from '@/components/campaigns/CampaignWizardSidebar';
 import CampaignTimelineBudgetStep from '@/components/campaigns/CampaignTimelineBudgetStep';
 import CampaignFinalizeStep from '@/components/campaigns/CampaignFinalizeStep';
 import CampaignBriefStep from '@/components/campaigns/CampaignBriefStep';
@@ -36,10 +33,8 @@ const CampaignWizard: React.FC = () => {
     setRawFootage,
     deliverables,
     setDeliverables,
-    draftCampaignId,
     handleGenerateWithAI,
     handleContinueFromTimelineBudget,
-    handleContinueToPreview,
     handleBack,
   } = useCampaignWizard();
 
@@ -86,6 +81,7 @@ const CampaignWizard: React.FC = () => {
               setRawFootage={setRawFootage}
               onGenerateWithAI={handleGenerateWithAI}
               isGenerating={isGenerating}
+              hasAnalysis={!!campaignAnalysis}
               onNext={() => {
                 if (campaignAnalysis) {
                   setCurrentStep(1);
@@ -97,16 +93,6 @@ const CampaignWizard: React.FC = () => {
           {/* Step 1: Details */}
           {currentStep === 1 && campaignAnalysis && (
             <div className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <div className="w-8 h-8 bg-gray-900 rounded-full flex items-center justify-center text-white text-sm font-semibold">2</div>
-                    Campaign Details
-                  </CardTitle>
-                  <p className="text-gray-500 text-sm">Review and customize your AI-generated campaign</p>
-                </CardHeader>
-              </Card>
-
               <CampaignCustomizeForm
                 initialData={campaignAnalysis}
                 onContinue={(data) => {
@@ -135,26 +121,6 @@ const CampaignWizard: React.FC = () => {
                 onBackToCustomize={() => setCurrentStep(0)}
               />
 
-              <div className="flex gap-3">
-                <Button variant="outline" onClick={() => setCurrentStep(0)} className="rounded-full">
-                  Back
-                </Button>
-                <Button
-                  className="flex-1 bg-dc-teal hover:bg-dc-teal/90 text-white rounded-full"
-                  onClick={() => {
-                    // Trigger the timeline/budget continue handler which builds finalCampaignData
-                    // and sets step to 2 (Review)
-                    const timelineForm = document.querySelector('[data-continue-finalize]') as HTMLButtonElement;
-                    if (timelineForm) {
-                      timelineForm.click();
-                    } else {
-                      setCurrentStep(2);
-                    }
-                  }}
-                >
-                  Continue to Review
-                </Button>
-              </div>
             </div>
           )}
 

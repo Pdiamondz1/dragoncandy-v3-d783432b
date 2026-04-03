@@ -18,6 +18,7 @@ interface CampaignBriefStepProps {
   setRawFootage: (files: StagedFile[]) => void;
   onGenerateWithAI: () => void;
   isGenerating: boolean;
+  hasAnalysis?: boolean;
   onNext: () => void;
 }
 
@@ -32,6 +33,7 @@ const CampaignBriefStep: React.FC<CampaignBriefStepProps> = ({
   setRawFootage,
   onGenerateWithAI,
   isGenerating,
+  hasAnalysis = false,
   onNext,
 }) => {
   const showRawFootage = contentSource === 'business_footage' || contentSource === 'hybrid';
@@ -115,15 +117,16 @@ const CampaignBriefStep: React.FC<CampaignBriefStepProps> = ({
         </Card>
       )}
 
-      {/* Next Button */}
-      <Button
-        onClick={onNext}
-        disabled={!campaignGoal.trim()}
-        className="w-full bg-dc-teal hover:bg-dc-teal/90 text-white rounded-full"
-      >
-        Next
-        <ArrowRight className="h-4 w-4 ml-2" />
-      </Button>
+      {/* Next Button — only shown after AI generation */}
+      {hasAnalysis && (
+        <Button
+          onClick={onNext}
+          className="w-full bg-dc-teal hover:bg-dc-teal/90 text-white rounded-full"
+        >
+          Next
+          <ArrowRight className="h-4 w-4 ml-2" />
+        </Button>
+      )}
     </div>
   );
 };

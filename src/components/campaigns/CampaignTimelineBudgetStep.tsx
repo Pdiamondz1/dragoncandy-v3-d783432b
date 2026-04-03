@@ -146,20 +146,6 @@ const CampaignTimelineBudgetStep: React.FC<CampaignTimelineBudgetStepProps> = ({
 
   return (
     <div>
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-gradient-to-r from-primary to-pink-500 rounded-full flex items-center justify-center text-white text-sm font-semibold">
-              <Rocket className="h-4 w-4" />
-            </div>
-            Step 4: DragonDash Delivery & Pricing
-          </CardTitle>
-          <p className="text-sm text-muted-foreground mt-1">
-            Choose your delivery speed and set your budget
-          </p>
-        </CardHeader>
-      </Card>
-
       <Form {...form}>
         <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
           {/* Delivery Type Selection */}
@@ -268,13 +254,13 @@ const CampaignTimelineBudgetStep: React.FC<CampaignTimelineBudgetStepProps> = ({
           {/* Navigation Buttons */}
           <div className="flex flex-wrap justify-between gap-2">
             <Button type="button" variant="outline" onClick={onBackToCustomize}>
-              Back to Customize
+              Back
             </Button>
             <Button
               type="submit"
-              className="bg-gradient-to-r from-primary to-pink-500 hover:from-primary/90 hover:to-pink-500/90 text-white"
+              className="bg-dc-teal hover:bg-dc-teal/90 text-white rounded-full"
             >
-              Continue to Finalize
+              Continue to Review & Launch
             </Button>
           </div>
         </form>

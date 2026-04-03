@@ -302,17 +302,6 @@ const CampaignFinalizeStep: React.FC<CampaignFinalizeStepProps> = ({
 
   return (
     <div>
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-gradient-to-r from-primary to-pink-500 rounded-full flex items-center justify-center text-white text-sm font-semibold">
-              6
-            </div>
-            Step 6: Finalize & Publish
-          </CardTitle>
-        </CardHeader>
-      </Card>
-
       {/* DragonDash Summary Card */}
       <Card className="mb-6 border-primary/20 bg-gradient-to-br from-primary/5 to-pink-500/5">
         <CardContent className="pt-6">
