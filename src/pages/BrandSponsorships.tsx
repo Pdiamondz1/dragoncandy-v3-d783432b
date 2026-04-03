@@ -152,7 +152,7 @@ const BrandSponsorships = () => {
       <Button
         onClick={() => handlePayment(sponsorship)}
         disabled={initiatePayment.isPending}
-        className="bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-700 hover:to-purple-700"
+        className="rounded-full bg-dc-teal hover:bg-dc-teal/90 text-white font-bold"
       >
         {initiatePayment.isPending ? (
           <Loader2 className="h-4 w-4 mr-2 animate-spin" />
