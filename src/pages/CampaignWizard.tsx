@@ -1,48 +1,53 @@
 import React from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
-import { Brain, ArrowLeft } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import CampaignAnalysisDisplay from '@/components/campaigns/CampaignAnalysisDisplay';
+import { Card, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import CampaignCustomizeForm from '@/components/campaigns/CampaignCustomizeForm';
 import CampaignWizardHeader from '@/components/campaigns/CampaignWizardHeader';
-import CampaignGoalStep from '@/components/campaigns/CampaignGoalStep';
 import CampaignWizardSidebar from '@/components/campaigns/CampaignWizardSidebar';
 import CampaignTimelineBudgetStep from '@/components/campaigns/CampaignTimelineBudgetStep';
 import CampaignFinalizeStep from '@/components/campaigns/CampaignFinalizeStep';
-import DeliveryTierStep from '@/components/campaigns/DeliveryTierStep';
+import CampaignBriefStep from '@/components/campaigns/CampaignBriefStep';
+import CampaignAIPreviewStep from '@/components/campaigns/CampaignAIPreviewStep';
+import DeliverableBuilder from '@/components/campaigns/DeliverableBuilder';
 import { useCampaignWizard } from '@/hooks/useCampaignWizard';
 
 const CampaignWizard: React.FC = () => {
   const navigate = useNavigate();
   const {
     currentStep,
+    setCurrentStep,
     campaignGoal,
     setCampaignGoal,
     isGenerating,
     campaignAnalysis,
     customizedCampaign,
+    setCustomizedCampaign,
     finalCampaignData,
     deliveryTier,
     deliveryFee,
-    handleContinueFromDeliveryTier,
+    contentSource,
+    setContentSource,
+    referenceMedia,
+    setReferenceMedia,
+    rawFootage,
+    setRawFootage,
+    deliverables,
+    setDeliverables,
+    draftCampaignId,
     handleGenerateWithAI,
-    handleEditCampaignIdea,
-    handleApproveAndCustomize,
-    handleBackToAnalysis,
-    handleContinueFromCustomize,
-    handleBackToCustomize,
     handleContinueFromTimelineBudget,
-    handleBackToTimelineBudget,
+    handleContinueToPreview,
     handleBack,
   } = useCampaignWizard();
 
   const steps = [
-    { number: 1, title: 'Delivery', active: true },
-    { number: 2, title: 'Campaign Goal', active: false },
-    { number: 3, title: 'AI Analysis', active: false },
-    { number: 4, title: 'Customize', active: false },
-    { number: 5, title: 'DragonDash', active: false },
-    { number: 6, title: 'Finalize', active: false },
+    { number: 1, title: 'Brief', active: true },
+    { number: 2, title: 'Details', active: false },
+    { number: 3, title: 'AI Preview', active: false },
+    { number: 4, title: 'Review', active: false },
   ];
 
   return (
@@ -69,84 +74,97 @@ const CampaignWizard: React.FC = () => {
         <div className="px-4 py-6 pb-28 space-y-6 md:max-w-3xl md:mx-auto">
           <CampaignWizardHeader currentStep={currentStep} steps={steps} />
 
-          {/* Step 0: Delivery Tier */}
+          {/* Step 0: Brief */}
           {currentStep === 0 && (
-            <DeliveryTierStep
-              initialTier={deliveryTier}
-              onContinue={handleContinueFromDeliveryTier}
-            />
-          )}
-
-          {/* Step 1: Campaign Goal */}
-          {currentStep === 1 && (
-            <div className="space-y-4">
-              <CampaignGoalStep
-                campaignGoal={campaignGoal}
-                setCampaignGoal={setCampaignGoal}
-                onGenerateWithAI={handleGenerateWithAI}
-                isGenerating={isGenerating}
-              />
-              <CampaignWizardSidebar />
-            </div>
-          )}
-
-          {/* Step 2: AI Analysis Results */}
-          {currentStep === 2 && campaignAnalysis && (
-            <div className="space-y-4">
-              <div className="border-2 border-dc-teal rounded-2xl p-4">
-                <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 bg-gray-900 rounded-full flex items-center justify-center text-white text-xs font-semibold shrink-0">
-                    3
-                  </div>
-                  <div>
-                    <span className="font-bold text-gray-900 text-sm">Step 3: AI Campaign Analysis</span>
-                    <Brain className="h-4 w-4 text-dc-teal inline ml-2" />
-                  </div>
-                </div>
-                <p className="text-gray-500 text-xs mt-2">
-                  DragonCandy AI has analyzed your campaign goal and generated a comprehensive strategy
-                </p>
-              </div>
-              <CampaignAnalysisDisplay
-                analysis={campaignAnalysis}
-                onEditCampaignIdea={handleEditCampaignIdea}
-                onApproveAndCustomize={handleApproveAndCustomize}
-              />
-            </div>
-          )}
-
-          {/* Step 3: Customize Campaign */}
-          {currentStep === 3 && campaignAnalysis && (
-            <CampaignCustomizeForm
-              initialData={campaignAnalysis}
-              onContinue={handleContinueFromCustomize}
-              onBackToAnalysis={handleBackToAnalysis}
-            />
-          )}
-
-          {/* Step 4: Timeline & Budget (DragonDash) */}
-          {currentStep === 4 && customizedCampaign && (
-            <CampaignTimelineBudgetStep
-              initialData={{
-                goals: Array.isArray(customizedCampaign.goals)
-                  ? customizedCampaign.goals.join('. ') + '.'
-                  : customizedCampaign.goals || '',
-                deadline: undefined,
-                budget_min: undefined,
-                budget_max: undefined,
-                delivery_type: deliveryTier,
-                delivery_fee: deliveryFee,
+            <CampaignBriefStep
+              campaignGoal={campaignGoal}
+              setCampaignGoal={setCampaignGoal}
+              contentSource={contentSource}
+              setContentSource={setContentSource}
+              referenceMedia={referenceMedia}
+              setReferenceMedia={setReferenceMedia}
+              rawFootage={rawFootage}
+              setRawFootage={setRawFootage}
+              onGenerateWithAI={handleGenerateWithAI}
+              isGenerating={isGenerating}
+              onNext={() => {
+                if (campaignAnalysis) {
+                  setCurrentStep(1);
+                }
               }}
-              onContinue={handleContinueFromTimelineBudget}
-              onBackToCustomize={handleBackToCustomize}
             />
           )}
 
-          {/* Step 5: Finalize */}
-          {currentStep === 5 && finalCampaignData && (
+          {/* Step 1: Details */}
+          {currentStep === 1 && campaignAnalysis && (
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <div className="w-8 h-8 bg-gray-900 rounded-full flex items-center justify-center text-white text-sm font-semibold">2</div>
+                    Campaign Details
+                  </CardTitle>
+                  <p className="text-gray-500 text-sm">Review and customize your AI-generated campaign</p>
+                </CardHeader>
+              </Card>
+
+              <CampaignCustomizeForm
+                initialData={campaignAnalysis}
+                onContinue={(data) => {
+                  setCustomizedCampaign(data);
+                }}
+                onBackToAnalysis={() => setCurrentStep(0)}
+              />
+
+              <DeliverableBuilder
+                deliverables={deliverables}
+                onChange={setDeliverables}
+              />
+
+              <CampaignTimelineBudgetStep
+                initialData={{
+                  goals: Array.isArray(customizedCampaign?.goals)
+                    ? customizedCampaign.goals.join('. ')
+                    : customizedCampaign?.goals || '',
+                  deadline: undefined,
+                  budget_min: undefined,
+                  budget_max: undefined,
+                  delivery_type: deliveryTier,
+                  delivery_fee: deliveryFee,
+                }}
+                onContinue={handleContinueFromTimelineBudget}
+                onBackToCustomize={() => setCurrentStep(0)}
+              />
+
+              <div className="flex gap-3">
+                <Button variant="outline" onClick={() => setCurrentStep(0)} className="rounded-full">
+                  Back
+                </Button>
+                <Button
+                  className="flex-1 bg-dc-teal hover:bg-dc-teal/90 text-white rounded-full"
+                  onClick={handleContinueToPreview}
+                >
+                  Continue to AI Preview
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Step 2: AI Preview */}
+          {currentStep === 2 && draftCampaignId && (
+            <CampaignAIPreviewStep
+              campaignId={draftCampaignId}
+              onApprove={() => setCurrentStep(3)}
+              onSkip={() => setCurrentStep(3)}
+              onBack={() => setCurrentStep(1)}
+            />
+          )}
+
+          {/* Step 3: Review & Launch */}
+          {currentStep === 3 && finalCampaignData && (
             <CampaignFinalizeStep
               campaignData={finalCampaignData}
-              onBack={handleBackToTimelineBudget}
+              onBack={() => setCurrentStep(2)}
             />
           )}
         </div>
