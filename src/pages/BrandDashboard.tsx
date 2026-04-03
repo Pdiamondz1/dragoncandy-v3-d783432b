@@ -18,7 +18,13 @@ const BrandDashboard = () => {
   const { data: stats, isLoading: statsLoading, isError: statsError } = useBrandDashboardStats();
 
   if (!profile) {
-    return <div>Loading...</div>;
+    return (
+      <DashboardLayout userRole="brand">
+        <div className="min-h-screen bg-white flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-dc-teal" />
+        </div>
+      </DashboardLayout>
+    );
   }
 
   const quickStats = [
