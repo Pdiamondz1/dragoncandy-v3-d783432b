@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import DashboardLayout from '@/components/DashboardLayout';
@@ -28,8 +29,8 @@ const BrandMessages = () => {
             <div className="w-7" />
           </div>
           <div className="px-4 pt-4 pb-24 md:pb-0">
-            <div className="border-2 border-dc-teal rounded-2xl p-4 bg-white text-center text-sm text-gray-500">
-              Loading...
+            <div className="flex items-center justify-center h-40">
+              <Loader2 className="h-8 w-8 animate-spin text-dc-teal" />
             </div>
           </div>
         </div>

@@ -10,7 +10,7 @@ import { useCreatorRecentActivity } from '@/hooks/useCreatorRecentActivity';
 import { useCreatorUpcomingDeadlines } from '@/hooks/useCreatorUpcomingDeadlines';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Settings, DollarSign, Target, Star, Clock } from 'lucide-react';
+import { PlusCircle, Settings, DollarSign, Target, Star, Clock, Loader2 } from 'lucide-react';
 import RatingPromptManager from '@/components/reviews/RatingPromptManager';
 import { AskBar } from '@/components/ai-assistant';
 import { useAIChatModal } from '@/contexts/AIChatModalContext';
@@ -23,7 +23,13 @@ const CreatorDashboard = () => {
   const { data: deadlines, isLoading: deadlinesLoading } = useCreatorUpcomingDeadlines();
   const { openModal } = useAIChatModal();
   if (!profile) {
-    return <div>Loading...</div>;
+    return (
+      <DashboardLayout userRole="content_creator">
+        <div className="min-h-screen bg-white flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-dc-teal" />
+        </div>
+      </DashboardLayout>
+    );
   }
 
   const formatCurrency = (amount: number) => {

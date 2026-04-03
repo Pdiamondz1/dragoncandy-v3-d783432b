@@ -16,7 +16,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
-import { MapPin, DollarSign } from 'lucide-react';
+import { MapPin, DollarSign, Target } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import logo from '@/assets/Transparent_DragonCandy_logo.png';
@@ -129,9 +129,10 @@ const CreatorCampaignMarketplace = () => {
         {/* Grid view — desktop only */}
         <div className="hidden md:block px-4 pb-8">
           {availableCampaigns.length === 0 ? (
-            <div className="text-center py-16">
-              <p className="text-lg font-semibold text-gray-700">No campaigns available</p>
-              <p className="text-sm text-gray-500 mt-1">Check back soon for new opportunities!</p>
+            <div className="border-2 border-dc-teal rounded-2xl p-10 text-center max-w-md mx-auto">
+              <Target className="h-10 w-10 text-dc-teal mx-auto mb-3" />
+              <h3 className="font-bold text-gray-900 mb-1">No campaigns available</h3>
+              <p className="text-sm text-gray-500">You've reviewed all available campaigns. Check back soon for new opportunities!</p>
             </div>
           ) : (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 max-w-6xl mx-auto">

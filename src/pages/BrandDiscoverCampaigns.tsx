@@ -11,12 +11,12 @@ import MarketplaceLoadingState from '@/components/campaigns/MarketplaceLoadingSt
 import MarketplaceErrorState from '@/components/campaigns/MarketplaceErrorState';
 import { ArrowLeft, Search } from 'lucide-react';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
@@ -185,15 +185,19 @@ const BrandDiscoverCampaigns = () => {
         </div>
       </div>
 
-      {/* Sponsorship Proposal Dialog */}
-      <Dialog open={showSponsorDialog} onOpenChange={setShowSponsorDialog}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Sponsor Campaign</DialogTitle>
-            <DialogDescription>
+      {/* Sponsorship Proposal Sheet */}
+      <Sheet open={showSponsorDialog} onOpenChange={setShowSponsorDialog}>
+        <SheetContent
+          side="bottom"
+          className="h-[90vh] overflow-y-auto rounded-t-2xl px-4 pt-2 pb-8 md:max-w-2xl md:mx-auto"
+        >
+          <SheetHeader className="mb-4">
+            <div className="w-10 h-1 rounded-full bg-gray-300 mx-auto mb-3" />
+            <SheetTitle>Sponsor Campaign</SheetTitle>
+            <SheetDescription>
               Submit a sponsorship proposal for "{selectedCampaign?.title}"
-            </DialogDescription>
-          </DialogHeader>
+            </SheetDescription>
+          </SheetHeader>
 
           <div className="space-y-4">
             <div className="space-y-2">
@@ -239,8 +243,8 @@ const BrandDiscoverCampaigns = () => {
               </Button>
             </div>
           </div>
-        </DialogContent>
-      </Dialog>
+        </SheetContent>
+      </Sheet>
     </DashboardLayout>
   );
 };

@@ -1,11 +1,11 @@
 import { useAuth } from '@/hooks/useAuth';
 import { useBrandAnalytics } from '@/hooks/useBrandAnalytics';
 import DashboardLayout from '@/components/DashboardLayout';
-import { BarChart3, TrendingUp, DollarSign, Target, Eye, Loader2 } from 'lucide-react';
+import { BarChart3, TrendingUp, DollarSign, Target, Eye, Loader2, AlertCircle } from 'lucide-react';
 
 const BrandAnalytics = () => {
   const { profile } = useAuth();
-  const { data: analytics, isLoading } = useBrandAnalytics();
+  const { data: analytics, isLoading, isError } = useBrandAnalytics();
 
   if (!profile) {
     return (
@@ -66,6 +66,12 @@ const BrandAnalytics = () => {
           {isLoading ? (
             <div className="flex items-center justify-center h-48">
               <Loader2 className="h-8 w-8 animate-spin text-dc-teal" />
+            </div>
+          ) : isError ? (
+            <div className="border-2 border-dc-teal rounded-2xl p-8 text-center">
+              <AlertCircle className="h-10 w-10 text-red-400 mx-auto mb-3" />
+              <h3 className="font-bold text-gray-900 mb-2">Unable to load analytics</h3>
+              <p className="text-sm text-gray-500">There was a problem fetching your analytics data. Please refresh the page.</p>
             </div>
           ) : (
             <>
