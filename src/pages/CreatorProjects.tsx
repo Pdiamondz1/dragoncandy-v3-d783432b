@@ -50,7 +50,6 @@ const CreatorProjects: React.FC = () => {
   const { data: projects = [], isLoading, error } = useQuery({
     queryKey: ['creator-projects', user?.id],
     queryFn: async () => {
-      console.log('Fetching projects for creator:', user?.id);
       const { data, error } = await supabase
         .from('campaign_collaborations')
         .select(`
@@ -75,7 +74,6 @@ const CreatorProjects: React.FC = () => {
         throw error;
       }
 
-      console.log('Fetched projects:', data);
       return data as ProjectCollaboration[];
     },
     enabled: !!user,
