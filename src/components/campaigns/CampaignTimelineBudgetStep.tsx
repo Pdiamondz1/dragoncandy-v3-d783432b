@@ -2,16 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { CalendarIcon, Rocket } from 'lucide-react';
+import { CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
-import DeliveryTypeSelector, { DeliveryType, deliveryOptions } from './DeliveryTypeSelector';
+import type { DeliveryTier } from '@/types/campaignMedia';
 import PricingTypeSelector, { PricingType } from './PricingTypeSelector';
 
 const timelineBudgetSchema = z.object({
@@ -19,7 +19,7 @@ const timelineBudgetSchema = z.object({
   deadline: z.date({
     required_error: 'Please select a campaign deadline',
   }),
-  deliveryType: z.enum(['standard', 'expedited', 'dragonrush']),
+  deliveryType: z.enum(['dragondash', 'express', 'standard']),
   deliveryFee: z.number().min(0),
   pricingType: z.enum(['fixed', 'bid_range']),
   fixedPrice: z.number().optional(),
@@ -54,13 +54,13 @@ const timelineBudgetSchema = z.object({
 type TimelineBudgetFormData = z.infer<typeof timelineBudgetSchema>;
 
 interface CampaignTimelineBudgetStepProps {
+  deliveryTier: DeliveryTier;
+  deliveryFee: number;
   initialData?: {
     goals?: string;
     deadline?: string;
     budget_min?: number;
     budget_max?: number;
-    delivery_type?: DeliveryType;
-    delivery_fee?: number;
     pricing_type?: PricingType;
     fixed_price?: number;
   };
@@ -69,16 +69,12 @@ interface CampaignTimelineBudgetStepProps {
 }
 
 const CampaignTimelineBudgetStep: React.FC<CampaignTimelineBudgetStepProps> = ({
+  deliveryTier,
+  deliveryFee,
   initialData,
   onContinue,
   onBackToCustomize,
 }) => {
-  const [deliveryType, setDeliveryType] = useState<DeliveryType>(
-    initialData?.delivery_type || 'standard'
-  );
-  const [deliveryFee, setDeliveryFee] = useState<number>(
-    initialData?.delivery_fee || 0
-  );
   const [pricingType, setPricingType] = useState<PricingType>(
     initialData?.pricing_type || 'bid_range'
   );
@@ -92,26 +88,19 @@ const CampaignTimelineBudgetStep: React.FC<CampaignTimelineBudgetStepProps> = ({
     initialData?.budget_max || 1000
   );
 
-  // Force fixed pricing for DragonRush
+  // Force fixed pricing for DragonDash
   useEffect(() => {
-    if (deliveryType === 'dragonrush') {
+    if (deliveryTier === 'dragondash') {
       setPricingType('fixed');
     }
-  }, [deliveryType]);
-
-  // Update delivery fee when type changes
-  const handleDeliveryTypeChange = (type: DeliveryType) => {
-    setDeliveryType(type);
-    const option = deliveryOptions.find(o => o.type === type);
-    setDeliveryFee(option?.feeAmount || 0);
-  };
+  }, [deliveryTier]);
 
   const form = useForm<TimelineBudgetFormData>({
     resolver: zodResolver(timelineBudgetSchema),
     defaultValues: {
       goals: initialData?.goals || '',
       deadline: initialData?.deadline ? new Date(initialData.deadline) : undefined,
-      deliveryType: deliveryType,
+      deliveryType: deliveryTier,
       deliveryFee: deliveryFee,
       pricingType: pricingType,
       fixedPrice: fixedPrice,
@@ -120,26 +109,26 @@ const CampaignTimelineBudgetStep: React.FC<CampaignTimelineBudgetStepProps> = ({
     },
   });
 
-  // Sync form values with state
+  // Sync form values with state and props
   useEffect(() => {
-    form.setValue('deliveryType', deliveryType);
+    form.setValue('deliveryType', deliveryTier);
     form.setValue('deliveryFee', deliveryFee);
     form.setValue('pricingType', pricingType);
     form.setValue('fixedPrice', fixedPrice);
     form.setValue('budgetMin', budgetMin);
     form.setValue('budgetMax', budgetMax);
-  }, [deliveryType, deliveryFee, pricingType, fixedPrice, budgetMin, budgetMax, form]);
+  }, [deliveryTier, deliveryFee, pricingType, fixedPrice, budgetMin, budgetMax, form]);
 
   const handleSubmit = (data: TimelineBudgetFormData) => {
     console.log('DragonDash Timeline & Budget form data:', data);
     onContinue(data);
   };
 
-  // Calculate AI recommended price based on delivery type
+  // Calculate AI recommended price based on delivery tier
   const getAiRecommendedPrice = () => {
-    switch (deliveryType) {
-      case 'dragonrush': return 750;
-      case 'expedited': return 600;
+    switch (deliveryTier) {
+      case 'dragondash': return 750;
+      case 'express': return 600;
       default: return 500;
     }
   };
@@ -148,17 +137,6 @@ const CampaignTimelineBudgetStep: React.FC<CampaignTimelineBudgetStepProps> = ({
     <div>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-          {/* Delivery Type Selection */}
-          <Card>
-            <CardContent className="pt-6">
-              <DeliveryTypeSelector
-                value={deliveryType}
-                onChange={handleDeliveryTypeChange}
-                onFeeChange={setDeliveryFee}
-              />
-            </CardContent>
-          </Card>
-
           {/* Pricing Type Selection */}
           <Card>
             <CardContent className="pt-6">
@@ -172,7 +150,7 @@ const CampaignTimelineBudgetStep: React.FC<CampaignTimelineBudgetStepProps> = ({
                 onBudgetMinChange={setBudgetMin}
                 onBudgetMaxChange={setBudgetMax}
                 deliveryFee={deliveryFee}
-                forceFixed={deliveryType === 'dragonrush'}
+                forceFixed={deliveryTier === 'dragondash'}
                 aiRecommendedPrice={getAiRecommendedPrice()}
               />
             </CardContent>
