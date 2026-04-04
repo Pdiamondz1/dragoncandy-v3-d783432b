@@ -104,7 +104,7 @@ const CampaignWizard: React.FC = () => {
           )}
 
           {/* Step 2: Details */}
-          {currentStep === 2 && campaignAnalysis && (
+          {currentStep === 2 && campaignAnalysis && deliveryTier && (
             <div className="space-y-6">
               <CampaignCustomizeForm
                 initialData={campaignAnalysis}
@@ -115,7 +115,7 @@ const CampaignWizard: React.FC = () => {
               />
 
               <CampaignTimelineBudgetStep
-                deliveryTier={deliveryTier!}
+                deliveryTier={deliveryTier}
                 deliveryFee={deliveryFee}
                 initialData={{
                   goals: Array.isArray(customizedCampaign?.goals)
@@ -132,9 +132,9 @@ const CampaignWizard: React.FC = () => {
           )}
 
           {/* Step 3: Visuals & Footage */}
-          {currentStep === 3 && (
+          {currentStep === 3 && deliveryTier && (
             <CampaignVisualsStep
-              deliveryTier={deliveryTier!}
+              deliveryTier={deliveryTier}
               referenceMedia={referenceMedia}
               onReferenceMediaChange={setReferenceMedia}
               rawFootage={rawFootage}

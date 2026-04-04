@@ -59,7 +59,7 @@ export function CampaignVisualsStep({
           <button
             type="button"
             onClick={() => setShowFootage(!showFootage)}
-            className={`relative w-11 h-6 rounded-full transition-colors ${showFootage ? 'bg-[#4DD9C0]' : 'bg-gray-300'}`}
+            className={`relative w-11 h-6 rounded-full transition-colors ${showFootage ? 'bg-dc-teal' : 'bg-gray-300'}`}
           >
             <span
               className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${showFootage ? 'translate-x-5' : 'translate-x-0.5'}`}
@@ -99,7 +99,7 @@ export function CampaignVisualsStep({
         <Button
           type="button"
           onClick={onContinue}
-          className="bg-[#4DD9C0] hover:bg-[#4DD9C0]/90 text-white rounded-full px-8"
+          className="bg-dc-teal hover:bg-dc-teal/90 text-white rounded-full px-8"
         >
           Continue to Review
         </Button>

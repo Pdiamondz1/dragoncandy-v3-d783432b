@@ -119,23 +119,20 @@ export const useCampaignWizard = () => {
     setDeliveryTier(tier);
     setDeliveryFee(TIER_LIMITS[tier].fee);
 
-    // Gate deliverables if switching to a lower-cap tier
     const maxDel = TIER_LIMITS[tier].maxDeliverables;
-    if (deliverables.length > maxDel) {
-      setDeliverables(deliverables.slice(0, maxDel));
-      toast.info(`Reduced to ${maxDel} deliverables for ${TIER_LIMITS[tier].label}`);
-    }
+    const trimmed = deliverables.length > maxDel;
+    const capped = trimmed ? deliverables.slice(0, maxDel) : deliverables;
 
     // Filter out content types not allowed by new tier
     const allowedTypes = TIER_LIMITS[tier].contentTypes as readonly string[];
-    const currentDeliverables = deliverables.length > maxDel ? deliverables.slice(0, maxDel) : deliverables;
-    const filtered = currentDeliverables.map(d => {
-      if (!allowedTypes.includes(d.content_type)) {
-        return { ...d, content_type: TIER_LIMITS[tier].contentTypes[0] };
-      }
-      return d;
-    });
+    const filtered = capped.map(d =>
+      allowedTypes.includes(d.content_type) ? d : { ...d, content_type: TIER_LIMITS[tier].contentTypes[0] }
+    );
+
     setDeliverables(filtered);
+    if (trimmed) {
+      toast.info(`Reduced to ${maxDel} deliverables for ${TIER_LIMITS[tier].label}`);
+    }
   };
 
   // Save current state as a draft campaign

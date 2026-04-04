@@ -238,7 +238,7 @@ const CampaignTimelineBudgetStep: React.FC<CampaignTimelineBudgetStepProps> = ({
               type="submit"
               className="bg-dc-teal hover:bg-dc-teal/90 text-white rounded-full"
             >
-              Continue to Review & Launch
+              Continue to Visuals
             </Button>
           </div>
         </form>

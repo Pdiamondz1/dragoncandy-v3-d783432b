@@ -21,8 +21,8 @@ const TIER_META: Record<
 > = {
   dragondash: {
     icon: '⚡',
-    timeColor: 'text-[#4DD9C0]',
-    iconBg: 'bg-gradient-to-br from-[#4DD9C0] to-[#00E5CC]',
+    timeColor: 'text-dc-teal',
+    iconBg: 'bg-gradient-to-br from-dc-teal to-dc-teal-dark',
     iconShadow: 'shadow-[0_0_16px_rgba(77,217,192,0.35)]',
     priceBadge: { bg: 'bg-amber-100', text: 'text-amber-700', label: '$$$ Premium' },
     description: 'Best for: 1–2 simple posts, quick photo/reel',
@@ -68,13 +68,13 @@ const DeliveryTierStep = ({ selectedTier, onSelect, onContinue }: DeliveryTierSt
               className={[
                 'relative rounded-2xl border-2 p-5 cursor-pointer transition-all',
                 isSelected
-                  ? 'border-[#4DD9C0] bg-[#4DD9C0]/5'
-                  : 'border-gray-200 bg-white hover:border-[#4DD9C0]/50',
+                  ? 'border-dc-teal bg-dc-teal/5'
+                  : 'border-gray-200 bg-white hover:border-dc-teal/50',
               ].join(' ')}
             >
               {/* DragonDash PREMIUM badge */}
               {tier === 'dragondash' && !isSelected && (
-                <span className="absolute top-3 right-3 bg-gradient-to-r from-[#4DD9C0] to-[#00E5CC] text-white text-[11px] font-bold rounded-full px-2.5 py-0.5">
+                <span className="absolute top-3 right-3 bg-gradient-to-r from-dc-teal to-dc-teal-dark text-white text-[11px] font-bold rounded-full px-2.5 py-0.5">
                   PREMIUM
                 </span>
               )}
@@ -82,7 +82,7 @@ const DeliveryTierStep = ({ selectedTier, onSelect, onContinue }: DeliveryTierSt
               {/* Selected checkmark */}
               {isSelected && (
                 <span className="absolute top-3 right-3">
-                  <CheckCircle2 className="w-5 h-5 text-[#4DD9C0]" />
+                  <CheckCircle2 className="w-5 h-5 text-dc-teal" />
                 </span>
               )}
 
@@ -134,7 +134,7 @@ const DeliveryTierStep = ({ selectedTier, onSelect, onContinue }: DeliveryTierSt
       <button
         onClick={onContinue}
         disabled={selectedTier === null}
-        className="w-full rounded-full bg-[#4DD9C0] hover:bg-[#4DD9C0]/90 text-white font-semibold py-3 text-base mt-6 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        className="w-full rounded-full bg-dc-teal hover:bg-dc-teal/90 text-white font-semibold py-3 text-base mt-6 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
       >
         Continue
       </button>
