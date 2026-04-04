@@ -77,7 +77,7 @@ const CampaignCustomizeForm: React.FC<CampaignCustomizeFormProps> = ({
             Back to Analysis
           </Button>
           <Button type="submit" className="bg-gray-900 hover:bg-gray-800 text-white">
-            Continue to Timeline & Budget
+            Continue
           </Button>
         </div>
       </form>

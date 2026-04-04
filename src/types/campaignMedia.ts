@@ -8,6 +8,35 @@ export type AspectRatio = '9:16' | '16:9' | '1:1' | '4:5';
 export type DeliverableStatus = 'pending' | 'in_progress' | 'submitted' | 'revision_requested' | 'approved';
 export type AIPreviewStatus = 'none' | 'generating' | 'ready' | 'approved' | 'rejected';
 
+export type DeliveryTier = 'dragondash' | 'express' | 'standard';
+
+export const TIER_LIMITS = {
+  dragondash: {
+    maxDeliverables: 2,
+    contentTypes: ['photo', 'video_reel'] as ContentType[],
+    timeframe: '1–3 hours',
+    label: 'DragonDash',
+    fee: 75,
+    estimatedCreationTime: '~90 min',
+  },
+  express: {
+    maxDeliverables: 4,
+    contentTypes: ['photo', 'video_reel', 'story', 'carousel', 'tiktok', 'youtube_short'] as ContentType[],
+    timeframe: '24–48 hours',
+    label: 'Express',
+    fee: 25,
+    estimatedCreationTime: '~1–2 days',
+  },
+  standard: {
+    maxDeliverables: 10,
+    contentTypes: ['photo', 'video_reel', 'story', 'carousel', 'tiktok', 'youtube_short'] as ContentType[],
+    timeframe: '5–7 days',
+    label: 'Standard',
+    fee: 0,
+    estimatedCreationTime: '~4–5 days',
+  },
+} as const;
+
 export interface CampaignMediaItem {
   id: string;
   campaign_id: string;
