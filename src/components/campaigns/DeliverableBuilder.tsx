@@ -11,11 +11,13 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import type { Deliverable } from '@/types/campaignMedia';
+import type { Deliverable, ContentType } from '@/types/campaignMedia';
 
 interface DeliverableBuilderProps {
   deliverables: Deliverable[];
   onChange: (deliverables: Deliverable[]) => void;
+  maxDeliverables?: number;
+  allowedContentTypes?: ContentType[];
 }
 
 const CONTENT_TYPE_OPTIONS: { value: Deliverable['content_type']; label: string }[] = [
@@ -51,9 +53,12 @@ const DEFAULT_DELIVERABLE: Omit<Deliverable, 'id'> = {
   aspect_ratio: '9:16',
 };
 
-const MAX_DELIVERABLES = 10;
-
-export default function DeliverableBuilder({ deliverables, onChange }: DeliverableBuilderProps) {
+export default function DeliverableBuilder({
+  deliverables,
+  onChange,
+  maxDeliverables = 10,
+  allowedContentTypes,
+}: DeliverableBuilderProps) {
   const isVideoType = (contentType: Deliverable['content_type']) =>
     VIDEO_CONTENT_TYPES.includes(contentType);
 
@@ -69,12 +74,16 @@ export default function DeliverableBuilder({ deliverables, onChange }: Deliverab
   };
 
   const addDeliverable = () => {
-    if (deliverables.length >= MAX_DELIVERABLES) return;
+    if (deliverables.length >= maxDeliverables) return;
     onChange([
       ...deliverables,
       { id: crypto.randomUUID(), ...DEFAULT_DELIVERABLE },
     ]);
   };
+
+  const filteredContentTypes = allowedContentTypes
+    ? CONTENT_TYPE_OPTIONS.filter(opt => allowedContentTypes.includes(opt.value))
+    : CONTENT_TYPE_OPTIONS;
 
   return (
     <div className="space-y-4">
@@ -129,7 +138,7 @@ export default function DeliverableBuilder({ deliverables, onChange }: Deliverab
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {CONTENT_TYPE_OPTIONS.map((opt) => (
+                      {filteredContentTypes.map((opt) => (
                         <SelectItem key={opt.value} value={opt.value}>
                           {opt.label}
                         </SelectItem>
@@ -232,10 +241,10 @@ export default function DeliverableBuilder({ deliverables, onChange }: Deliverab
         variant="outline"
         className="w-full rounded-full border-dashed border-gray-300 text-gray-600 hover:border-dc-teal hover:text-dc-teal hover:bg-dc-teal/5 gap-2"
         onClick={addDeliverable}
-        disabled={deliverables.length >= MAX_DELIVERABLES}
+        disabled={deliverables.length >= maxDeliverables}
       >
         <Plus className="h-4 w-4" />
-        {deliverables.length >= MAX_DELIVERABLES
+        {deliverables.length >= maxDeliverables
           ? 'Maximum deliverables reached'
           : '+ Add Deliverable'}
       </Button>
