@@ -4,13 +4,14 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { CampaignAnalysis } from '@/types/campaign';
-import { DeliveryType } from '@/components/campaigns/DeliveryTypeSelector';
+import type { DeliveryTier } from '@/types/campaignMedia';
+import { TIER_LIMITS } from '@/types/campaignMedia';
 import type { ContentSource, StagedFile, Deliverable } from '@/types/campaignMedia';
 
 export interface TimelineBudgetData {
   goals: string;
   deadline: Date;
-  deliveryType: 'standard' | 'expedited' | 'dragonrush';
+  deliveryType: DeliveryTier;
   deliveryFee: number;
   pricingType: 'fixed' | 'bid_range';
   fixedPrice?: number;
@@ -28,7 +29,7 @@ export interface FinalCampaignData {
   tone: string;
   deadline: Date;
   // DragonDash fields
-  deliveryType: 'standard' | 'expedited' | 'dragonrush';
+  deliveryType: DeliveryTier;
   deliveryFee: number;
   pricingType: 'fixed' | 'bid_range';
   fixedPrice?: number;
@@ -36,7 +37,7 @@ export interface FinalCampaignData {
   budgetMax?: number;
   // Full AI analysis for persistence
   aiAnalysis?: CampaignAnalysis;
-  // New fields for 4-step flow
+  // New fields for 5-step flow
   contentSource?: ContentSource;
   structuredDeliverables?: Deliverable[];
   draftCampaignId?: string;
@@ -54,10 +55,10 @@ export const useCampaignWizard = () => {
   const [finalCampaignData, setFinalCampaignData] = useState<FinalCampaignData | null>(null);
 
   // Delivery tier state
-  const [deliveryTier, setDeliveryTier] = useState<DeliveryType>('standard');
+  const [deliveryTier, setDeliveryTier] = useState<DeliveryTier | null>(null);
   const [deliveryFee, setDeliveryFee] = useState(0);
 
-  // New state for 4-step flow
+  // New state for 5-step flow
   const [contentSource, setContentSource] = useState<ContentSource>('creator_shoots');
   const [referenceMedia, setReferenceMedia] = useState<StagedFile[]>([]);
   const [rawFootage, setRawFootage] = useState<StagedFile[]>([]);
@@ -102,7 +103,7 @@ export const useCampaignWizard = () => {
 
       console.log('Campaign analysis generated successfully:', data.analysis);
       setCampaignAnalysis(data.analysis);
-      setCurrentStep(1); // Step 1: Details (was Step 2 in old 6-step flow)
+      setCurrentStep(2); // Step 2: Details (Brief is Step 1, so after AI generation go to Step 2)
       toast.success('Campaign analysis generated successfully!');
 
     } catch (error: any) {
@@ -111,6 +112,30 @@ export const useCampaignWizard = () => {
     } finally {
       setIsGenerating(false);
     }
+  };
+
+  // Tier selection handler — gates deliverables to tier limits
+  const handleTierSelect = (tier: DeliveryTier) => {
+    setDeliveryTier(tier);
+    setDeliveryFee(TIER_LIMITS[tier].fee);
+
+    // Gate deliverables if switching to a lower-cap tier
+    const maxDel = TIER_LIMITS[tier].maxDeliverables;
+    if (deliverables.length > maxDel) {
+      setDeliverables(deliverables.slice(0, maxDel));
+      toast.info(`Reduced to ${maxDel} deliverables for ${TIER_LIMITS[tier].label}`);
+    }
+
+    // Filter out content types not allowed by new tier
+    const allowedTypes = TIER_LIMITS[tier].contentTypes as readonly string[];
+    const currentDeliverables = deliverables.length > maxDel ? deliverables.slice(0, maxDel) : deliverables;
+    const filtered = currentDeliverables.map(d => {
+      if (!allowedTypes.includes(d.content_type)) {
+        return { ...d, content_type: TIER_LIMITS[tier].contentTypes[0] };
+      }
+      return d;
+    });
+    setDeliverables(filtered);
   };
 
   // Save current state as a draft campaign
@@ -152,87 +177,38 @@ export const useCampaignWizard = () => {
     }
   };
 
-  // Save draft and move to AI Preview step
-  const handleContinueToPreview = async () => {
-    const campaignId = await handleSaveAsDraft();
-    if (campaignId) {
-      setCurrentStep(2); // AI Preview step
-    }
-  };
-
-  // Legacy handlers kept for backward compatibility with current wizard page
-  const handleContinueFromDeliveryTier = (tier: DeliveryType, fee: number) => {
-    setDeliveryTier(tier);
-    setDeliveryFee(fee);
-    setCurrentStep(1); // Move to Campaign Goal
-  };
-
-  const handleBackToDeliveryTier = () => {
-    setCurrentStep(0);
-  };
-
-  const handleEditCampaignIdea = () => {
-    setCurrentStep(0); // Back to Brief (Step 0)
-  };
-
-  const handleApproveAndCustomize = () => {
-    setCurrentStep(1); // Stay on Details (Step 1) in new flow
-  };
-
-  const handleBackToAnalysis = () => {
-    setCurrentStep(1); // Details step in new flow
-  };
-
-  const handleContinueFromCustomize = (data: any) => {
-    setCustomizedCampaign(data);
-    setCurrentStep(1); // Stay on Details or move to Preview
-  };
-
-  const handleBackToCustomize = () => {
-    setCurrentStep(1); // Details step in new flow
-  };
-
   const handleContinueFromTimelineBudget = (data: TimelineBudgetData) => {
     console.log('Timeline & Budget data received:', data);
     setTimelineBudgetData(data);
+    setCurrentStep(3); // Go to Visuals step (Step 3)
+  };
 
-    // Combine all data for the finalize step
+  const handleContinueFromVisuals = () => {
+    if (!timelineBudgetData) return;
+
     const finalData: FinalCampaignData = {
       title: customizedCampaign?.title || campaignAnalysis?.title || '',
       description: customizedCampaign?.description || campaignAnalysis?.description || '',
-      goals: data.goals,
+      goals: timelineBudgetData.goals,
       deliverables: customizedCampaign?.content_types || campaignAnalysis?.content_types || [],
       platforms: customizedCampaign?.platforms || campaignAnalysis?.recommended_platforms || [],
       style: customizedCampaign?.style || '',
       tone: customizedCampaign?.tone || '',
-      deadline: data.deadline,
-      // DragonDash fields
-      deliveryType: data.deliveryType,
-      deliveryFee: data.deliveryFee,
-      pricingType: data.pricingType,
-      fixedPrice: data.fixedPrice,
-      budgetMin: data.budgetMin,
-      budgetMax: data.budgetMax,
-      // Persist the full AI analysis
+      deadline: timelineBudgetData.deadline,
+      deliveryType: deliveryTier!,
+      deliveryFee: deliveryFee,
+      pricingType: timelineBudgetData.pricingType,
+      fixedPrice: timelineBudgetData.fixedPrice,
+      budgetMin: timelineBudgetData.budgetMin,
+      budgetMax: timelineBudgetData.budgetMax,
       aiAnalysis: campaignAnalysis || undefined,
-      // New fields
       contentSource,
       structuredDeliverables: deliverables,
       draftCampaignId: draftCampaignId || undefined,
     };
 
-    console.log('Final campaign data prepared:', finalData);
     setFinalCampaignData(finalData);
-    setCurrentStep(2); // Review & Launch (Step 2)
-  };
-
-  // Combined handler for moving from Details to AI Preview
-  const handleContinueFromDetails = async () => {
-    await handleContinueToPreview();
-  };
-
-  const handleBackToTimelineBudget = () => {
-    setCurrentStep(1); // Back to Details
+    setCurrentStep(4); // Review & Launch
   };
 
   const handleBack = () => {
@@ -256,8 +232,9 @@ export const useCampaignWizard = () => {
     setFinalCampaignData,
     // Delivery tier state
     deliveryTier,
+    setDeliveryTier,
     deliveryFee,
-    // New state for 4-step flow
+    // New state for 5-step flow
     contentSource,
     setContentSource,
     referenceMedia,
@@ -267,21 +244,12 @@ export const useCampaignWizard = () => {
     deliverables,
     setDeliverables,
     draftCampaignId,
-    // Legacy handlers (kept for backward compatibility)
-    handleContinueFromDeliveryTier,
-    handleBackToDeliveryTier,
+    // Handlers
     handleGenerateWithAI,
-    handleEditCampaignIdea,
-    handleApproveAndCustomize,
-    handleBackToAnalysis,
-    handleContinueFromCustomize,
-    handleBackToCustomize,
+    handleTierSelect,
     handleContinueFromTimelineBudget,
-    handleBackToTimelineBudget,
+    handleContinueFromVisuals,
     handleBack,
-    // New handlers for 4-step flow
     handleSaveAsDraft,
-    handleContinueToPreview,
-    handleContinueFromDetails,
   };
 };
