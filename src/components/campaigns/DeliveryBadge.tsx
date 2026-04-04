@@ -2,7 +2,9 @@ import React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { Turtle, Zap, Flame, Clock } from 'lucide-react';
-import type { DeliveryType } from './DeliveryTypeSelector';
+import type { DeliveryTier } from '@/types/campaignMedia';
+
+type DeliveryType = DeliveryTier;
 
 interface DeliveryBadgeProps {
   deliveryType: DeliveryType;
@@ -15,21 +17,21 @@ const deliveryConfig = {
   standard: {
     icon: Turtle,
     label: 'Standard',
-    timeframe: '3 days',
+    timeframe: '5–7 days',
     bgClass: 'bg-green-100 text-green-700 border-green-200',
     iconClass: 'text-green-600',
   },
-  expedited: {
+  express: {
     icon: Zap,
-    label: 'Expedited',
-    timeframe: '8-12 hrs',
+    label: 'Express',
+    timeframe: '24–48 hrs',
     bgClass: 'bg-yellow-100 text-yellow-700 border-yellow-200',
     iconClass: 'text-yellow-600',
   },
-  dragonrush: {
+  dragondash: {
     icon: Flame,
-    label: 'DragonRush',
-    timeframe: '1-3 hrs',
+    label: 'DragonDash',
+    timeframe: '1–3 hrs',
     bgClass: 'bg-gradient-to-r from-orange-100 to-pink-100 text-orange-700 border-orange-200',
     iconClass: 'text-orange-600',
   },
