@@ -1,0 +1,107 @@
+<h2>Section 1: Login Page Polish</h2>
+<p class="subtitle">Visual design for the polished login screen at 375px</p>
+
+<div class="mockup">
+  <div class="mockup-header">Login Page — 375px Mobile</div>
+  <div class="mockup-body" style="background: #A8A8A0; padding: 0; max-width: 375px; margin: 0 auto; min-height: 700px; position: relative; overflow: hidden;">
+
+    <!-- Top nav -->
+    <div style="display: flex; justify-content: space-between; align-items: center; padding: 16px;">
+      <div style="width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg, #4DD9C0, #F9A8D4); display: flex; align-items: center; justify-content: center; font-weight: bold; color: white; font-size: 10px;">DC</div>
+      <div style="display: flex; flex-direction: column; gap: 4px; cursor: pointer;">
+        <div style="width: 24px; height: 2px; background: white;"></div>
+        <div style="width: 24px; height: 2px; background: white;"></div>
+        <div style="width: 24px; height: 2px; background: white;"></div>
+      </div>
+    </div>
+
+    <!-- Centered form area -->
+    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 24px 24px;">
+
+      <!-- Heading -->
+      <h1 style="color: white; font-size: 22px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; text-align: center; margin-bottom: 32px;">Welcome to<br>Dragon Candy</h1>
+
+      <!-- Card container -->
+      <div style="background: white; border-radius: 24px; padding: 32px 24px; width: 100%; box-shadow: 0 8px 32px rgba(0,0,0,0.12);">
+
+        <!-- Email input -->
+        <div style="margin-bottom: 16px;">
+          <input style="width: 100%; height: 48px; border-radius: 12px; background: #F3F4F6; border: 2px solid transparent; padding: 0 16px; font-size: 15px; color: #555; box-sizing: border-box;" placeholder="Email" disabled>
+        </div>
+
+        <!-- Password input -->
+        <div style="margin-bottom: 8px; position: relative;">
+          <input style="width: 100%; height: 48px; border-radius: 12px; background: #F3F4F6; border: 2px solid transparent; padding: 0 16px; font-size: 15px; color: #555; box-sizing: border-box;" placeholder="Password" type="password" disabled>
+          <div style="position: absolute; right: 14px; top: 14px; color: #999; font-size: 12px;">&#128065;</div>
+        </div>
+
+        <!-- Forgot password -->
+        <div style="text-align: right; margin-bottom: 20px;">
+          <span style="color: #4DD9C0; font-size: 13px; cursor: pointer;">Forgot password?</span>
+        </div>
+
+        <!-- Login button -->
+        <button style="width: 100%; height: 48px; border-radius: 9999px; background: #4DD9C0; border: none; color: white; font-size: 16px; font-weight: 700; cursor: pointer; margin-bottom: 24px;">Login</button>
+
+        <!-- Divider -->
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 24px;">
+          <div style="flex: 1; height: 1px; background: #E5E7EB;"></div>
+          <span style="color: #999; font-size: 13px; white-space: nowrap;">or continue with</span>
+          <div style="flex: 1; height: 1px; background: #E5E7EB;"></div>
+        </div>
+
+        <!-- Social buttons row -->
+        <div style="display: flex; justify-content: center; gap: 16px; margin-bottom: 24px;">
+          <!-- Google -->
+          <div style="width: 52px; height: 52px; border-radius: 12px; border: 1.5px solid #E5E7EB; display: flex; align-items: center; justify-content: center; cursor: pointer; background: white;">
+            <span style="font-size: 22px; font-weight: bold;">G</span>
+          </div>
+          <!-- Apple -->
+          <div style="width: 52px; height: 52px; border-radius: 12px; border: 1.5px solid #E5E7EB; display: flex; align-items: center; justify-content: center; cursor: pointer; background: #000; color: white;">
+            <span style="font-size: 22px;">&#63743;</span>
+          </div>
+          <!-- Facebook -->
+          <div style="width: 52px; height: 52px; border-radius: 12px; border: 1.5px solid #E5E7EB; display: flex; align-items: center; justify-content: center; cursor: pointer; background: #1877F2; color: white;">
+            <span style="font-size: 22px; font-weight: bold;">f</span>
+          </div>
+        </div>
+
+        <!-- Sign up link -->
+        <div style="text-align: center;">
+          <span style="color: #555; font-size: 14px;">Don't have an account? </span>
+          <span style="color: #EC4899; font-weight: 600; font-size: 14px; cursor: pointer;">Sign Up</span>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top: 24px;">
+  <h3>Design Decisions</h3>
+  <ul>
+    <li><strong>White card container</strong> (rounded-3xl, shadow-lg) — groups the form visually against the gray background</li>
+    <li><strong>Inputs:</strong> 48px height, rounded-lg, gray-100 bg, teal focus ring (2px border-teal-400 on focus)</li>
+    <li><strong>Forgot password</strong> moved to right-aligned link below password, teal color</li>
+    <li><strong>Login button:</strong> full-width, 48px, rounded-full, dc-teal, bold white text</li>
+    <li><strong>"or continue with" divider</strong> between login button and social buttons</li>
+    <li><strong>Social buttons:</strong> 52px square, rounded-lg — Google (white + border), Apple (black), Facebook (#1877F2 blue)</li>
+    <li><strong>Mode toggle</strong> at bottom: "Don't have an account? <strong style="color:#EC4899">Sign Up</strong>"</li>
+    <li><strong>Heading stays outside the card</strong> on the gray background, matching the design reference</li>
+  </ul>
+</div>
+
+<div class="options">
+  <div class="option" data-choice="approve" onclick="toggleSelect(this)">
+    <div class="letter">&#10003;</div>
+    <div class="content">
+      <h3>Looks good — move to next section</h3>
+    </div>
+  </div>
+  <div class="option" data-choice="revise" onclick="toggleSelect(this)">
+    <div class="letter">&#9998;</div>
+    <div class="content">
+      <h3>Needs changes — I'll describe in terminal</h3>
+    </div>
+  </div>
+</div>

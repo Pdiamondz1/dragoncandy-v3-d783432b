@@ -31,7 +31,14 @@
       "Bash(git:*)",
       "Read(//c/GIT/**)",
       "WebSearch",
-      "Bash(bash \"C:\\\\Users\\\\dwill\\\\.claude\\\\skills\\\\brainstorming\\\\scripts\\\\start-server.sh\" --project-dir \"C:\\\\Users\\\\dwill\\\\Desktop\\\\dragoncandy-v2\")"
+      "Bash(bash \"C:\\\\Users\\\\dwill\\\\.claude\\\\skills\\\\brainstorming\\\\scripts\\\\start-server.sh\" --project-dir \"C:\\\\Users\\\\dwill\\\\Desktop\\\\dragoncandy-v2\")",
+      "Bash(bash:*)",
+      "Bash(break)",
+      "Bash(C:/Users/dwill/.claude/plugins/cache/claude-plugins-official/superpowers/5.0.7/scripts/start-server.sh:*)",
+      "Bash(grep -E \"\\\\.\\(ts|tsx\\)$\")",
+      "Bash(C:\\\\Users\\\\dwill\\\\.claude\\\\plugins\\\\cache\\\\claude-plugins-official\\\\superpowers\\\\5.0.7\\\\scripts\\\\start-server.sh:*)",
+      "Bash(xargs grep:*)",
+      "Bash(find:*)"
     ]
   }
 }

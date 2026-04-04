@@ -1,0 +1,112 @@
+<h2>Section 3: Signup Form (After Role Selection)</h2>
+<p class="subtitle">User has selected a role — now they fill in their details</p>
+
+<div class="mockup">
+  <div class="mockup-header">Signup Form — 375px Mobile (after selecting "I'm a Creator")</div>
+  <div class="mockup-body" style="background: linear-gradient(160deg, #1A5C5C, #2D7A7A, #9B5A8A); padding: 0; max-width: 375px; margin: 0 auto; min-height: 700px; position: relative; overflow: hidden;">
+
+    <!-- Top nav -->
+    <div style="display: flex; justify-content: space-between; align-items: center; padding: 16px;">
+      <div style="width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg, #4DD9C0, #F9A8D4); display: flex; align-items: center; justify-content: center; font-weight: bold; color: white; font-size: 10px;">DC</div>
+      <div style="display: flex; flex-direction: column; gap: 4px; cursor: pointer;">
+        <div style="width: 24px; height: 2px; background: white;"></div>
+        <div style="width: 24px; height: 2px; background: white;"></div>
+        <div style="width: 24px; height: 2px; background: white;"></div>
+      </div>
+    </div>
+
+    <!-- Centered form area -->
+    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px 24px 24px;">
+
+      <!-- Heading -->
+      <h1 style="color: white; font-size: 22px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; text-align: center; margin-bottom: 8px;">Create Account</h1>
+
+      <!-- Role badge -->
+      <div style="display: inline-flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.15); border-radius: 9999px; padding: 6px 16px; margin-bottom: 28px;">
+        <span style="font-size: 14px;">📸</span>
+        <span style="color: white; font-size: 13px; font-weight: 600;">Creator</span>
+        <span style="color: rgba(255,255,255,0.5); font-size: 12px; cursor: pointer; margin-left: 4px;">Change</span>
+      </div>
+
+      <!-- Card container -->
+      <div style="background: white; border-radius: 24px; padding: 28px 24px; width: 100%; box-shadow: 0 8px 32px rgba(0,0,0,0.12);">
+
+        <!-- Full name input -->
+        <div style="margin-bottom: 16px;">
+          <input style="width: 100%; height: 48px; border-radius: 12px; background: #F3F4F6; border: 2px solid transparent; padding: 0 16px; font-size: 15px; color: #555; box-sizing: border-box;" placeholder="Full Name" disabled>
+        </div>
+
+        <!-- Email input -->
+        <div style="margin-bottom: 16px;">
+          <input style="width: 100%; height: 48px; border-radius: 12px; background: #F3F4F6; border: 2px solid transparent; padding: 0 16px; font-size: 15px; color: #555; box-sizing: border-box;" placeholder="Email" disabled>
+        </div>
+
+        <!-- Password input -->
+        <div style="margin-bottom: 24px; position: relative;">
+          <input style="width: 100%; height: 48px; border-radius: 12px; background: #F3F4F6; border: 2px solid transparent; padding: 0 16px; font-size: 15px; color: #555; box-sizing: border-box;" placeholder="Password" type="password" disabled>
+          <div style="position: absolute; right: 14px; top: 14px; color: #999; font-size: 12px;">&#128065;</div>
+        </div>
+
+        <!-- Sign Up button -->
+        <button style="width: 100%; height: 48px; border-radius: 9999px; background: #4DD9C0; border: none; color: white; font-size: 16px; font-weight: 700; cursor: pointer; margin-bottom: 24px;">Create Account</button>
+
+        <!-- Divider -->
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 24px;">
+          <div style="flex: 1; height: 1px; background: #E5E7EB;"></div>
+          <span style="color: #999; font-size: 13px; white-space: nowrap;">or continue with</span>
+          <div style="flex: 1; height: 1px; background: #E5E7EB;"></div>
+        </div>
+
+        <!-- Social buttons row -->
+        <div style="display: flex; justify-content: center; gap: 16px; margin-bottom: 24px;">
+          <div style="width: 52px; height: 52px; border-radius: 12px; border: 1.5px solid #E5E7EB; display: flex; align-items: center; justify-content: center; cursor: pointer; background: white;">
+            <span style="font-size: 22px; font-weight: bold;">G</span>
+          </div>
+          <div style="width: 52px; height: 52px; border-radius: 12px; border: 1.5px solid #E5E7EB; display: flex; align-items: center; justify-content: center; cursor: pointer; background: #000; color: white;">
+            <span style="font-size: 22px;">&#63743;</span>
+          </div>
+          <div style="width: 52px; height: 52px; border-radius: 12px; border: 1.5px solid #E5E7EB; display: flex; align-items: center; justify-content: center; cursor: pointer; background: #1877F2; color: white;">
+            <span style="font-size: 22px; font-weight: bold;">f</span>
+          </div>
+        </div>
+
+        <!-- Login link -->
+        <div style="text-align: center;">
+          <span style="color: #555; font-size: 14px;">Already have an account? </span>
+          <span style="color: #EC4899; font-weight: 600; font-size: 14px; cursor: pointer;">Log in</span>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top: 24px;">
+  <h3>Design Decisions</h3>
+  <ul>
+    <li><strong>Same teal-to-pink gradient background</strong> — consistent across login, role selection, and signup form</li>
+    <li><strong>Heading:</strong> "CREATE ACCOUNT" — distinct from login's "WELCOME TO DRAGONCANDY"</li>
+    <li><strong>Role badge:</strong> Pill showing selected role (icon + label) with a "Change" link to go back to role selection</li>
+    <li><strong>White card container</strong> matches login page styling</li>
+    <li><strong>Fields:</strong> Full Name, Email, Password — same 48px/rounded-lg/gray-100 styling as login</li>
+    <li><strong>CTA:</strong> "Create Account" button (teal, full-width pill) — distinct from login's "Login" label</li>
+    <li><strong>Social auth + divider</strong> — same pattern as login page</li>
+    <li><strong>reCAPTCHA</strong> renders below the form (not shown in mockup but stays in its current position)</li>
+    <li><strong>No inline role picker</strong> — the radio buttons from the current AuthForm are removed since role is pre-selected</li>
+  </ul>
+</div>
+
+<div class="options">
+  <div class="option" data-choice="approve" onclick="toggleSelect(this)">
+    <div class="letter">&#10003;</div>
+    <div class="content">
+      <h3>Looks good — design complete</h3>
+    </div>
+  </div>
+  <div class="option" data-choice="revise" onclick="toggleSelect(this)">
+    <div class="letter">&#9998;</div>
+    <div class="content">
+      <h3>Needs changes — I'll describe in terminal</h3>
+    </div>
+  </div>
+</div>

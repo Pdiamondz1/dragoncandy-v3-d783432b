@@ -1,0 +1,86 @@
+<h2>Design Section 1: Dark Mode & Elevation Tokens</h2>
+<p class="subtitle">Updates to index.css — replacing existing dark mode tokens with #1A1A2A base</p>
+
+<div class="section">
+  <h3>Dark Mode Token Changes</h3>
+  <p>All dark mode backgrounds shift from purple-leaning (#1E1E33) to navy-grounded (#1A1A2A)</p>
+
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0;">
+    <div style="background: #1E1E33; border-radius: 12px; padding: 24px; color: white;">
+      <span class="label">BEFORE</span>
+      <div style="font-size: 14px; opacity: 0.7; margin-top: 8px;">--background: 240 27% 14%</div>
+      <div style="font-size: 12px; opacity: 0.5; margin-top: 4px;">#1E1E33 — purple undertone</div>
+      <div style="display: flex; gap: 8px; margin-top: 16px;">
+        <div style="background: #4DD9C0; padding: 8px 16px; border-radius: 999px; color: #1E1E33; font-weight: 600; font-size: 13px;">Teal Button</div>
+        <div style="background: #2A2A44; padding: 8px 16px; border-radius: 12px; font-size: 13px;">Card</div>
+      </div>
+    </div>
+    <div style="background: #1A1A2A; border-radius: 12px; padding: 24px; color: white;">
+      <span class="label">AFTER</span>
+      <div style="font-size: 14px; opacity: 0.7; margin-top: 8px;">--background: 240 23% 13%</div>
+      <div style="font-size: 12px; opacity: 0.5; margin-top: 4px;">#1A1A2A — navy undertone</div>
+      <div style="display: flex; gap: 8px; margin-top: 16px;">
+        <div style="background: #4DD9C0; padding: 8px 16px; border-radius: 999px; color: #1A1A2A; font-weight: 600; font-size: 13px;">Teal Button</div>
+        <div style="background: #242438; padding: 8px 16px; border-radius: 12px; font-size: 13px;">Card</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>New Derived Dark Tokens</h3>
+  <div style="display: flex; gap: 12px; flex-wrap: wrap; margin: 16px 0;">
+    <div style="background: #1A1A2A; color: white; padding: 16px; border-radius: 8px; min-width: 120px; text-align: center;">
+      <div style="font-size: 11px; opacity: 0.5;">--background</div>
+      <div style="font-weight: 600;">#1A1A2A</div>
+    </div>
+    <div style="background: #242438; color: white; padding: 16px; border-radius: 8px; min-width: 120px; text-align: center;">
+      <div style="font-size: 11px; opacity: 0.5;">--card</div>
+      <div style="font-weight: 600;">#242438</div>
+    </div>
+    <div style="background: #2E2E45; color: white; padding: 16px; border-radius: 8px; min-width: 120px; text-align: center;">
+      <div style="font-size: 11px; opacity: 0.5;">--muted</div>
+      <div style="font-weight: 600;">#2E2E45</div>
+    </div>
+    <div style="background: #1F1F32; color: white; padding: 16px; border-radius: 8px; min-width: 120px; text-align: center;">
+      <div style="font-size: 11px; opacity: 0.5;">--popover</div>
+      <div style="font-weight: 600;">#1F1F32</div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Elevation System (shadows)</h3>
+  <p>Three levels — subtle enough for light mode, visible enough for dark mode</p>
+  <div style="display: flex; gap: 20px; margin: 20px 0;">
+    <div style="background: white; border-radius: 12px; padding: 24px; min-width: 140px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);">
+      <div style="font-weight: 600; color: #111;">shadow-sm</div>
+      <div style="font-size: 12px; color: #6B7280; margin-top: 4px;">Cards at rest</div>
+    </div>
+    <div style="background: white; border-radius: 12px; padding: 24px; min-width: 140px; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.04);">
+      <div style="font-weight: 600; color: #111;">shadow-md</div>
+      <div style="font-size: 12px; color: #6B7280; margin-top: 4px;">Cards on hover</div>
+    </div>
+    <div style="background: white; border-radius: 12px; padding: 24px; min-width: 140px; text-align: center; box-shadow: 0 8px 30px rgba(0,0,0,0.10), 0 4px 12px rgba(0,0,0,0.06);">
+      <div style="font-weight: 600; color: #111;">shadow-lg</div>
+      <div style="font-size: 12px; color: #6B7280; margin-top: 4px;">Modals, popovers</div>
+    </div>
+  </div>
+</div>
+
+<div class="options">
+  <div class="option" data-choice="approve-tokens" onclick="toggleSelect(this)">
+    <div class="letter">✓</div>
+    <div class="content">
+      <h3>Looks good — move to component specs</h3>
+      <p>Approve these token changes and see Button/Card specs next</p>
+    </div>
+  </div>
+  <div class="option" data-choice="revise-tokens" onclick="toggleSelect(this)">
+    <div class="letter">✎</div>
+    <div class="content">
+      <h3>I have feedback</h3>
+      <p>Let me know what to change in the terminal</p>
+    </div>
+  </div>
+</div>

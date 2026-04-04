@@ -1,0 +1,106 @@
+<h2>Section 1: Header + Filter Bar</h2>
+<p class="subtitle">Replacing the pink "BROWSE CREATORS" header with an action-oriented, filterable layout</p>
+
+<div class="section">
+  <div class="mockup">
+    <div class="mockup-header">Mobile View (375px)</div>
+    <div class="mockup-body" style="background: #ffffff; color: #111; max-width: 375px; margin: 0 auto;">
+      <!-- Header -->
+      <div style="padding: 20px 16px 12px;">
+        <h1 style="font-size: 1.5em; font-weight: 800; color: #111; margin: 0;">Find Creators</h1>
+        <p style="color: #555; font-size: 0.85em; margin: 4px 0 0;">Discover local creators matched to your brand</p>
+      </div>
+
+      <!-- Search bar -->
+      <div style="padding: 0 16px 12px;">
+        <div style="display: flex; align-items: center; background: #f5f5f5; border-radius: 9999px; padding: 10px 16px; gap: 8px;">
+          <span style="color: #888;">🔍</span>
+          <span style="color: #aaa; font-size: 0.85em;">Search creators by name or skill...</span>
+        </div>
+      </div>
+
+      <!-- Content type pills -->
+      <div style="padding: 0 16px 12px; display: flex; gap: 8px; overflow-x: auto;">
+        <span style="background: #4dd9c0; color: white; padding: 6px 16px; border-radius: 9999px; font-size: 0.8em; font-weight: 600; white-space: nowrap;">All</span>
+        <span style="background: #f5f5f5; color: #555; padding: 6px 16px; border-radius: 9999px; font-size: 0.8em; white-space: nowrap;">Food</span>
+        <span style="background: #f5f5f5; color: #555; padding: 6px 16px; border-radius: 9999px; font-size: 0.8em; white-space: nowrap;">Lifestyle</span>
+        <span style="background: #f5f5f5; color: #555; padding: 6px 16px; border-radius: 9999px; font-size: 0.8em; white-space: nowrap;">Reels</span>
+        <span style="background: #f5f5f5; color: #555; padding: 6px 16px; border-radius: 9999px; font-size: 0.8em; white-space: nowrap;">Photography</span>
+        <span style="background: #f5f5f5; color: #555; padding: 6px 16px; border-radius: 9999px; font-size: 0.8em; white-space: nowrap;">UGC</span>
+      </div>
+
+      <!-- Sort + filter row -->
+      <div style="padding: 0 16px 16px; display: flex; justify-content: space-between; align-items: center;">
+        <span style="color: #555; font-size: 0.8em;">24 creators</span>
+        <div style="display: flex; gap: 8px;">
+          <span style="display: flex; align-items: center; gap: 4px; color: #555; font-size: 0.8em; background: #f5f5f5; padding: 6px 12px; border-radius: 9999px;">Sort: Relevance ▾</span>
+          <span style="display: flex; align-items: center; gap: 4px; color: #555; font-size: 0.8em; background: #f5f5f5; padding: 6px 12px; border-radius: 9999px;">⚙ Filters</span>
+        </div>
+      </div>
+
+      <!-- Divider -->
+      <div style="border-top: 1px solid #eee;"></div>
+
+      <!-- Preview of first card -->
+      <div style="padding: 12px 16px;">
+        <div style="background: white; border: 1px solid #e5e5e5; border-radius: 16px; overflow: hidden; display: flex; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+          <div style="width: 120px; height: 130px; background: linear-gradient(135deg, #667eea, #764ba2); flex-shrink: 0; position: relative;">
+            <div style="position: absolute; top: 6px; right: 6px; background: rgba(255,255,255,0.9); border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; color: #ccc; font-size: 0.8em;">♡</div>
+          </div>
+          <div style="padding: 10px 12px; flex: 1; display: flex; flex-direction: column; justify-content: center;">
+            <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 2px;">
+              <span style="font-weight: 700; font-size: 0.9em; color: #111;">Sarah Chen</span>
+              <span style="color: #facc15; font-size: 0.75em;">★ 4.8</span>
+            </div>
+            <div style="color: #888; font-size: 0.75em; margin-bottom: 6px;">📍 Austin, TX</div>
+            <div style="display: flex; gap: 4px; margin-bottom: 6px;">
+              <span style="background: rgba(77,217,192,0.1); color: #2d9f8f; padding: 2px 8px; border-radius: 8px; font-size: 0.65em;">Food</span>
+              <span style="background: rgba(77,217,192,0.1); color: #2d9f8f; padding: 2px 8px; border-radius: 8px; font-size: 0.65em;">Reels</span>
+            </div>
+            <div style="color: #888; font-size: 0.65em;">12 projects · 3-day avg</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Design Decisions</h3>
+  <ul>
+    <li><strong>White background</strong> replaces pink — cleaner, more professional, lets cards pop</li>
+    <li><strong>"Find Creators"</strong> — action-oriented title, not a label</li>
+    <li><strong>Content-type pills</strong> — horizontally scrollable, teal active state, maps to creator skills</li>
+    <li><strong>Search bar</strong> — uses existing searchTerm filter, just promoted to top-level</li>
+    <li><strong>Sort dropdown</strong> — new feature: Relevance (default), Rating, Price low→high, Availability</li>
+    <li><strong>"Filters" button</strong> — opens existing AdvancedCreatorFilters as a slide-up sheet (keeps location, rate, platform filters accessible without cluttering the main view)</li>
+    <li><strong>Creator count</strong> — moved inline with sort/filter controls</li>
+  </ul>
+</div>
+
+<div class="section">
+  <h3>What happens to the Map/Split view?</h3>
+  <div class="options">
+    <div class="option" data-choice="keep-tabs" onclick="toggleSelect(this)">
+      <div class="letter">A</div>
+      <div class="content">
+        <h3>Keep view tabs (Grid / Map / Split)</h3>
+        <p>Add a small toggle icon row below the filter pills. Users who want the map can still access it.</p>
+      </div>
+    </div>
+    <div class="option" data-choice="map-filter" onclick="toggleSelect(this)">
+      <div class="letter">B</div>
+      <div class="content">
+        <h3>Map as a filter action</h3>
+        <p>Move map to a "View on Map" button that opens it as a full-screen overlay. Keeps the default view clean.</p>
+      </div>
+    </div>
+    <div class="option" data-choice="remove-map" onclick="toggleSelect(this)">
+      <div class="letter">C</div>
+      <div class="content">
+        <h3>Remove map for now</h3>
+        <p>Focus on the card experience. Map can come back later as a dedicated feature.</p>
+      </div>
+    </div>
+  </div>
+</div>

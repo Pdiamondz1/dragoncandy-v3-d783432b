@@ -1,0 +1,187 @@
+<h2>Creator Card Layout — 3 Approaches</h2>
+<p class="subtitle">Which card style fits DragonCandy's marketplace best?</p>
+
+<div class="cards">
+
+  <!-- Approach A: Vertical Portfolio Card -->
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="background: linear-gradient(135deg, #1a1a2e, #16213e); border-radius: 8px; padding: 16px; min-height: 320px;">
+        <!-- Mock card -->
+        <div style="position: relative;">
+          <div style="background: linear-gradient(135deg, #667eea, #764ba2); border-radius: 12px; height: 160px; display: flex; align-items: center; justify-content: center; color: white; font-size: 0.8em;">
+            Creator's Best Work (Square Thumbnail)
+          </div>
+          <div style="position: absolute; top: 8px; right: 8px; background: rgba(0,0,0,0.5); border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; color: #f9a8d4;">♥</div>
+        </div>
+        <div style="padding: 12px 0;">
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+            <div style="width: 36px; height: 36px; border-radius: 50%; background: #4dd9c0; border: 2px solid #4dd9c0;"></div>
+            <div>
+              <div style="color: white; font-weight: 700; font-size: 0.95em;">Sarah Chen</div>
+              <div style="color: #aaa; font-size: 0.75em;">📍 Austin, TX</div>
+            </div>
+            <div style="margin-left: auto; color: #facc15; font-size: 0.8em;">★ 4.8</div>
+          </div>
+          <div style="display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap;">
+            <span style="background: rgba(77,217,192,0.15); color: #4dd9c0; padding: 2px 8px; border-radius: 12px; font-size: 0.7em;">Food</span>
+            <span style="background: rgba(77,217,192,0.15); color: #4dd9c0; padding: 2px 8px; border-radius: 12px; font-size: 0.7em;">Reels</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; color: #888; font-size: 0.7em; margin-bottom: 10px;">
+            <span>12 projects</span>
+            <span>Avg 3-day delivery</span>
+          </div>
+          <button style="width: 100%; padding: 8px; background: #4dd9c0; color: white; border: none; border-radius: 9999px; font-weight: 600; font-size: 0.85em;">View Profile</button>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A: Vertical Portfolio Card</h3>
+      <p>Large thumbnail up top, creator info below. Instagram/Pinterest-inspired. Best for showcasing visual work — the thumbnail sells the creator.</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>Pros</h4><ul><li>Visual-first — great for a content marketplace</li><li>Natural grid layout (1/2/3 cols)</li><li>Thumbnail does the selling</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Takes more vertical space per card</li><li>Less info visible per screen</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Approach B: Compact Data Row -->
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="background: linear-gradient(135deg, #1a1a2e, #16213e); border-radius: 8px; padding: 16px; min-height: 320px; display: flex; flex-direction: column; gap: 8px;">
+        <!-- Mock row card 1 -->
+        <div style="background: rgba(255,255,255,0.05); border-radius: 12px; padding: 12px; display: flex; gap: 12px; align-items: center;">
+          <div style="width: 64px; height: 64px; border-radius: 12px; background: linear-gradient(135deg, #667eea, #764ba2); flex-shrink: 0;"></div>
+          <div style="flex: 1; min-width: 0;">
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span style="color: white; font-weight: 700; font-size: 0.85em;">Sarah Chen</span>
+              <span style="color: #facc15; font-size: 0.75em;">★ 4.8</span>
+              <span style="color: #888; font-size: 0.7em;">📍 Austin</span>
+            </div>
+            <div style="display: flex; gap: 4px; margin: 4px 0;">
+              <span style="background: rgba(77,217,192,0.15); color: #4dd9c0; padding: 1px 6px; border-radius: 8px; font-size: 0.65em;">Food</span>
+              <span style="background: rgba(77,217,192,0.15); color: #4dd9c0; padding: 1px 6px; border-radius: 8px; font-size: 0.65em;">Reels</span>
+            </div>
+            <div style="color: #888; font-size: 0.65em;">12 projects · Avg 3-day delivery</div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 4px; flex-shrink: 0;">
+            <button style="padding: 4px 12px; background: #4dd9c0; color: white; border: none; border-radius: 9999px; font-size: 0.7em; font-weight: 600;">Profile</button>
+            <span style="color: #f9a8d4; text-align: center; font-size: 0.9em;">♥</span>
+          </div>
+        </div>
+        <!-- Mock row card 2 -->
+        <div style="background: rgba(255,255,255,0.05); border-radius: 12px; padding: 12px; display: flex; gap: 12px; align-items: center;">
+          <div style="width: 64px; height: 64px; border-radius: 12px; background: linear-gradient(135deg, #f093fb, #f5576c); flex-shrink: 0;"></div>
+          <div style="flex: 1; min-width: 0;">
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span style="color: white; font-weight: 700; font-size: 0.85em;">Marcus Rivera</span>
+              <span style="color: #facc15; font-size: 0.75em;">★ 4.6</span>
+              <span style="color: #888; font-size: 0.7em;">📍 Miami</span>
+            </div>
+            <div style="display: flex; gap: 4px; margin: 4px 0;">
+              <span style="background: rgba(77,217,192,0.15); color: #4dd9c0; padding: 1px 6px; border-radius: 8px; font-size: 0.65em;">Lifestyle</span>
+              <span style="background: rgba(77,217,192,0.15); color: #4dd9c0; padding: 1px 6px; border-radius: 8px; font-size: 0.65em;">Photography</span>
+            </div>
+            <div style="color: #888; font-size: 0.65em;">8 projects · Avg 5-day delivery</div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 4px; flex-shrink: 0;">
+            <button style="padding: 4px 12px; background: #4dd9c0; color: white; border: none; border-radius: 9999px; font-size: 0.7em; font-weight: 600;">Profile</button>
+            <span style="color: #888; text-align: center; font-size: 0.9em;">♡</span>
+          </div>
+        </div>
+        <!-- Mock row card 3 -->
+        <div style="background: rgba(255,255,255,0.05); border-radius: 12px; padding: 12px; display: flex; gap: 12px; align-items: center;">
+          <div style="width: 64px; height: 64px; border-radius: 12px; background: linear-gradient(135deg, #4dd9c0, #44a08d); flex-shrink: 0;"></div>
+          <div style="flex: 1; min-width: 0;">
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span style="color: white; font-weight: 700; font-size: 0.85em;">Jess Kim</span>
+              <span style="color: #facc15; font-size: 0.75em;">★ 5.0</span>
+              <span style="color: #888; font-size: 0.7em;">📍 LA</span>
+            </div>
+            <div style="display: flex; gap: 4px; margin: 4px 0;">
+              <span style="background: rgba(77,217,192,0.15); color: #4dd9c0; padding: 1px 6px; border-radius: 8px; font-size: 0.65em;">UGC</span>
+            </div>
+            <div style="color: #888; font-size: 0.65em;">24 projects · Avg 2-day delivery</div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 4px; flex-shrink: 0;">
+            <button style="padding: 4px 12px; background: #4dd9c0; color: white; border: none; border-radius: 9999px; font-size: 0.7em; font-weight: 600;">Profile</button>
+            <span style="color: #888; text-align: center; font-size: 0.9em;">♡</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B: Compact Data Rows</h3>
+      <p>Closer to current layout. Small avatar, dense info, scan-friendly. Like a search results list — optimized for comparing many creators quickly.</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>Pros</h4><ul><li>More creators visible per screen</li><li>Easy to scan and compare</li><li>Works great with map split-view</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Less visual impact — doesn't showcase work</li><li>Feels more like a spreadsheet than a marketplace</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Approach C: Hybrid -->
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="background: linear-gradient(135deg, #1a1a2e, #16213e); border-radius: 8px; padding: 16px; min-height: 320px;">
+        <!-- Mock hybrid card -->
+        <div style="background: rgba(255,255,255,0.05); border-radius: 16px; overflow: hidden; margin-bottom: 10px;">
+          <div style="display: flex;">
+            <div style="width: 120px; height: 140px; background: linear-gradient(135deg, #667eea, #764ba2); flex-shrink: 0; position: relative;">
+              <div style="position: absolute; top: 6px; left: 6px; background: rgba(0,0,0,0.5); border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; color: #f9a8d4; font-size: 0.7em;">♥</div>
+            </div>
+            <div style="padding: 12px; flex: 1;">
+              <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+                <span style="color: white; font-weight: 700; font-size: 0.9em;">Sarah Chen</span>
+                <span style="color: #facc15; font-size: 0.75em;">★ 4.8</span>
+              </div>
+              <div style="color: #888; font-size: 0.7em; margin-bottom: 6px;">📍 Austin, TX</div>
+              <div style="display: flex; gap: 4px; margin-bottom: 8px; flex-wrap: wrap;">
+                <span style="background: rgba(77,217,192,0.15); color: #4dd9c0; padding: 2px 8px; border-radius: 8px; font-size: 0.65em;">Food</span>
+                <span style="background: rgba(77,217,192,0.15); color: #4dd9c0; padding: 2px 8px; border-radius: 8px; font-size: 0.65em;">Reels</span>
+              </div>
+              <div style="display: flex; gap: 12px; color: #888; font-size: 0.65em; margin-bottom: 8px;">
+                <span>12 projects</span>
+                <span>3-day avg</span>
+              </div>
+              <button style="padding: 6px 16px; background: #4dd9c0; color: white; border: none; border-radius: 9999px; font-size: 0.75em; font-weight: 600;">View Profile</button>
+            </div>
+          </div>
+        </div>
+        <!-- Second hybrid card -->
+        <div style="background: rgba(255,255,255,0.05); border-radius: 16px; overflow: hidden;">
+          <div style="display: flex;">
+            <div style="width: 120px; height: 140px; background: linear-gradient(135deg, #f093fb, #f5576c); flex-shrink: 0; position: relative;">
+              <div style="position: absolute; top: 6px; left: 6px; background: rgba(0,0,0,0.5); border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; color: #888; font-size: 0.7em;">♡</div>
+            </div>
+            <div style="padding: 12px; flex: 1;">
+              <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+                <span style="color: white; font-weight: 700; font-size: 0.9em;">Marcus Rivera</span>
+                <span style="color: #facc15; font-size: 0.75em;">★ 4.6</span>
+              </div>
+              <div style="color: #888; font-size: 0.7em; margin-bottom: 6px;">📍 Miami, FL</div>
+              <div style="display: flex; gap: 4px; margin-bottom: 8px; flex-wrap: wrap;">
+                <span style="background: rgba(77,217,192,0.15); color: #4dd9c0; padding: 2px 8px; border-radius: 8px; font-size: 0.65em;">Lifestyle</span>
+                <span style="background: rgba(77,217,192,0.15); color: #4dd9c0; padding: 2px 8px; border-radius: 8px; font-size: 0.65em;">Photography</span>
+              </div>
+              <div style="display: flex; gap: 12px; color: #888; font-size: 0.65em; margin-bottom: 8px;">
+                <span>8 projects</span>
+                <span>5-day avg</span>
+              </div>
+              <button style="padding: 6px 16px; background: #4dd9c0; color: white; border: none; border-radius: 9999px; font-size: 0.75em; font-weight: 600;">View Profile</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C: Hybrid (Recommended)</h3>
+      <p>Portfolio thumbnail on the left, data on the right. Best of both worlds — visual showcase + scannable metrics. Similar to Airbnb listing cards.</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>Pros</h4><ul><li>Shows work AND data at a glance</li><li>Good density — 2-3 cards visible on mobile</li><li>Closest to current card shape (less churn)</li><li>Works in both list and grid layouts</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Thumbnail is smaller than Approach A</li><li>Slightly more complex responsive behavior</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+</div>

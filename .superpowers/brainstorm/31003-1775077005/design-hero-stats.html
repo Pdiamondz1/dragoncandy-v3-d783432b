@@ -1,0 +1,97 @@
+<h2>Section 1: Hero + Profile Card + Stats</h2>
+<p class="subtitle">Top of the profile — first impression for brands</p>
+
+<div class="split">
+  <!-- CURRENT -->
+  <div class="mockup">
+    <div class="mockup-header">Current</div>
+    <div class="mockup-body" style="padding:0;">
+      <div style="background:#A8A8A0;border-radius:0 0 12px 12px;overflow:hidden;font-size:13px;">
+        <!-- Hero (no gradient) -->
+        <div style="height:140px;background:linear-gradient(135deg,#F9A8D4,#FF69B4);position:relative;">
+          <div style="position:absolute;top:8px;left:8px;width:32px;height:32px;border-radius:50%;background:#222;"></div>
+          <div style="position:absolute;inset:0;background:rgba(0,0,0,0.1);"></div>
+        </div>
+        <!-- Card -->
+        <div style="background:white;border-radius:20px;margin:-16px 12px 0;padding:12px;display:flex;gap:10px;position:relative;z-index:1;box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+          <div style="width:48px;height:48px;border-radius:50%;background:#b0e8dd;flex-shrink:0;border:2px solid #4DD9C0;"></div>
+          <div>
+            <div style="font-weight:bold;font-size:13px;">Creator Name</div>
+            <div style="color:#EC4899;font-size:11px;">⭐ 4.5 RATING</div>
+            <div style="color:#888;font-size:10px;">📍 LOCATION</div>
+          </div>
+        </div>
+        <!-- Stats (BROKEN) -->
+        <div style="display:flex;justify-content:space-around;padding:14px 8px;text-align:center;">
+          <div><div style="font-size:22px;font-weight:800;">0</div><div style="font-size:9px;color:#666;">Years Experience</div></div>
+          <div style="width:1px;background:#F9A8D4;"></div>
+          <div><div style="font-size:22px;font-weight:800;">0</div><div style="font-size:9px;color:#666;">Projects / Mo</div></div>
+          <div style="width:1px;background:#F9A8D4;"></div>
+          <div><div style="font-size:22px;font-weight:800;">0</div><div style="font-size:9px;color:#666;">Portfolio Items</div></div>
+        </div>
+        <div style="text-align:center;padding:4px 12px 12px;">
+          <div style="background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;padding:6px;font-size:10px;color:#dc2626;">
+            ⚠️ Issues: Hardcoded "4.5 RATING" · Stats show profile metadata, not real achievements · All zeros for new creators
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PROPOSED -->
+  <div class="mockup">
+    <div class="mockup-header">Proposed</div>
+    <div class="mockup-body" style="padding:0;">
+      <div style="background:#A8A8A0;border-radius:0 0 12px 12px;overflow:hidden;font-size:13px;">
+        <!-- Hero WITH gradient -->
+        <div style="height:140px;background:linear-gradient(135deg,#F9A8D4,#FF69B4);position:relative;">
+          <div style="position:absolute;top:8px;left:8px;width:32px;height:32px;border-radius:50%;background:#222;"></div>
+          <div style="position:absolute;bottom:0;left:0;right:0;height:60px;background:linear-gradient(transparent,rgba(0,0,0,0.4));"></div>
+        </div>
+        <!-- Card with availability badge -->
+        <div style="background:white;border-radius:20px;margin:-16px 12px 0;padding:12px;display:flex;gap:10px;position:relative;z-index:1;box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+          <div style="width:56px;height:56px;border-radius:50%;background:#b0e8dd;flex-shrink:0;border:2px solid #4DD9C0;"></div>
+          <div style="flex:1;">
+            <div style="font-weight:bold;font-size:13px;">Creator Name</div>
+            <div style="color:#EC4899;font-size:11px;">⭐ 4.5 · 5 reviews</div>
+            <div style="color:#888;font-size:10px;">📍 LOCATION</div>
+          </div>
+          <div style="background:#22c55e;color:white;font-size:9px;padding:2px 8px;border-radius:999px;height:fit-content;font-weight:600;">Available</div>
+        </div>
+        <!-- Stats (REAL DATA) -->
+        <div style="display:flex;justify-content:space-around;padding:14px 8px;text-align:center;">
+          <div><div style="font-size:22px;font-weight:800;">3</div><div style="font-size:9px;color:#666;">Projects</div></div>
+          <div style="width:1px;background:#F9A8D4;"></div>
+          <div><div style="font-size:22px;font-weight:800;">8</div><div style="font-size:9px;color:#666;">Portfolio</div></div>
+          <div style="width:1px;background:#F9A8D4;"></div>
+          <div><div style="font-size:22px;font-weight:800;">5</div><div style="font-size:9px;color:#666;">Reviews</div></div>
+        </div>
+        <div style="text-align:center;padding:4px 12px 12px;">
+          <div style="background:#dcfce7;border:1px solid #86efac;border-radius:8px;padding:6px;font-size:10px;color:#166534;">
+            ✅ Real rating from DB · Real stats from collaborations/portfolio/reviews · Availability badge from profile
+          </div>
+        </div>
+      </div>
+
+      <!-- New Creator variant -->
+      <div style="margin-top:12px;background:#A8A8A0;border-radius:12px;overflow:hidden;font-size:13px;padding:12px;">
+        <div style="font-size:10px;color:#666;text-align:center;margin-bottom:8px;">↓ When all stats are zero:</div>
+        <div style="display:flex;justify-content:center;padding:10px;">
+          <div style="background:linear-gradient(135deg,#4DD9C0,#00E5CC);color:white;padding:6px 20px;border-radius:999px;font-size:12px;font-weight:bold;">🌟 New Creator</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="margin-top:20px;">
+  <h3>Key Changes</h3>
+  <ul style="font-size:14px;line-height:1.8;">
+    <li><strong>Hero gradient:</strong> Bottom gradient overlay for text readability (was flat 10% overlay)</li>
+    <li><strong>Avatar:</strong> Bumped to 56px (was 48px) for stronger visual presence</li>
+    <li><strong>Rating:</strong> Uses real <code>average_rating</code> + <code>total_reviews</code> from DB (was hardcoded "4.5 RATING")</li>
+    <li><strong>Availability badge:</strong> Green "Available" / gray "Busy" from <code>creator_profiles.availability</code></li>
+    <li><strong>Stats:</strong> Projects (collaborations count) · Portfolio (portfolio_urls.length) · Reviews (total_reviews)</li>
+    <li><strong>New Creator badge:</strong> Replaces stats row when all three are zero</li>
+  </ul>
+</div>

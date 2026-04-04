@@ -1,0 +1,131 @@
+<h2>Section 3: Grid Layout, Sort Logic, Empty State</h2>
+<p class="subtitle">Responsive grid, sorting mechanics, and what happens when nothing matches</p>
+
+<div class="section">
+  <h3>Responsive Grid</h3>
+  <div class="split">
+    <div class="mockup">
+      <div class="mockup-header">Mobile (375px) — 1 column</div>
+      <div class="mockup-body" style="background: #f9f9f9; padding: 12px; max-width: 340px; margin: 0 auto;">
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+          <div style="background: white; border: 1px solid #e5e5e5; border-radius: 14px; height: 130px; display: flex; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.04);">
+            <div style="width: 110px; background: linear-gradient(135deg, #667eea, #764ba2); flex-shrink: 0;"></div>
+            <div style="padding: 10px; flex: 1; display: flex; flex-direction: column; justify-content: center;">
+              <div style="font-weight: 700; font-size: 0.8em; color: #111;">Sarah Chen <span style="color: #facc15;">★ 4.8</span></div>
+              <div style="color: #888; font-size: 0.65em;">📍 Austin, TX</div>
+              <div style="display: flex; gap: 3px; margin: 4px 0;"><span style="background: rgba(77,217,192,0.1); color: #2d9f8f; padding: 1px 6px; border-radius: 6px; font-size: 0.6em;">Food</span></div>
+              <div style="color: #888; font-size: 0.6em;">5 reviews · $45/hr</div>
+            </div>
+          </div>
+          <div style="background: white; border: 1px solid #e5e5e5; border-radius: 14px; height: 130px; display: flex; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.04);">
+            <div style="width: 110px; background: linear-gradient(135deg, #f093fb, #f5576c); flex-shrink: 0;"></div>
+            <div style="padding: 10px; flex: 1; display: flex; flex-direction: column; justify-content: center;">
+              <div style="font-weight: 700; font-size: 0.8em; color: #111;">Marcus Rivera <span style="color: #facc15;">★ 4.6</span></div>
+              <div style="color: #888; font-size: 0.65em;">📍 Miami, FL</div>
+              <div style="display: flex; gap: 3px; margin: 4px 0;"><span style="background: rgba(77,217,192,0.1); color: #2d9f8f; padding: 1px 6px; border-radius: 6px; font-size: 0.6em;">Lifestyle</span></div>
+              <div style="color: #888; font-size: 0.6em;">3 reviews · $60/hr</div>
+            </div>
+          </div>
+          <div style="background: white; border: 1px solid #e5e5e5; border-radius: 14px; height: 130px; display: flex; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.04);">
+            <div style="width: 110px; background: linear-gradient(135deg, #4dd9c0, #44a08d); flex-shrink: 0;"></div>
+            <div style="padding: 10px; flex: 1; display: flex; flex-direction: column; justify-content: center;">
+              <div style="font-weight: 700; font-size: 0.8em; color: #111;">Jess Kim <span style="color: #facc15;">★ 5.0</span></div>
+              <div style="color: #888; font-size: 0.65em;">📍 Los Angeles, CA</div>
+              <div style="display: flex; gap: 3px; margin: 4px 0;"><span style="background: rgba(77,217,192,0.1); color: #2d9f8f; padding: 1px 6px; border-radius: 6px; font-size: 0.6em;">UGC</span></div>
+              <div style="color: #888; font-size: 0.6em;">24 reviews · $35/hr</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mockup">
+      <div class="mockup-header">Tablet/Desktop (768px+) — 2 columns</div>
+      <div class="mockup-body" style="background: #f9f9f9; padding: 12px;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div style="background: white; border: 1px solid #e5e5e5; border-radius: 14px; height: 120px; display: flex; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.04);">
+            <div style="width: 100px; background: linear-gradient(135deg, #667eea, #764ba2); flex-shrink: 0;"></div>
+            <div style="padding: 8px; flex: 1; display: flex; flex-direction: column; justify-content: center;">
+              <div style="font-weight: 700; font-size: 0.7em; color: #111;">Sarah Chen <span style="color: #facc15;">★ 4.8</span></div>
+              <div style="color: #888; font-size: 0.6em;">📍 Austin, TX</div>
+              <div style="color: #888; font-size: 0.55em; margin-top: 2px;">5 reviews · $45/hr</div>
+            </div>
+          </div>
+          <div style="background: white; border: 1px solid #e5e5e5; border-radius: 14px; height: 120px; display: flex; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.04);">
+            <div style="width: 100px; background: linear-gradient(135deg, #f093fb, #f5576c); flex-shrink: 0;"></div>
+            <div style="padding: 8px; flex: 1; display: flex; flex-direction: column; justify-content: center;">
+              <div style="font-weight: 700; font-size: 0.7em; color: #111;">Marcus Rivera <span style="color: #facc15;">★ 4.6</span></div>
+              <div style="color: #888; font-size: 0.6em;">📍 Miami, FL</div>
+              <div style="color: #888; font-size: 0.55em; margin-top: 2px;">3 reviews · $60/hr</div>
+            </div>
+          </div>
+          <div style="background: white; border: 1px solid #e5e5e5; border-radius: 14px; height: 120px; display: flex; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.04);">
+            <div style="width: 100px; background: linear-gradient(135deg, #4dd9c0, #44a08d); flex-shrink: 0;"></div>
+            <div style="padding: 8px; flex: 1; display: flex; flex-direction: column; justify-content: center;">
+              <div style="font-weight: 700; font-size: 0.7em; color: #111;">Jess Kim <span style="color: #facc15;">★ 5.0</span></div>
+              <div style="color: #888; font-size: 0.6em;">📍 Los Angeles, CA</div>
+              <div style="color: #888; font-size: 0.55em; margin-top: 2px;">24 reviews · $35/hr</div>
+            </div>
+          </div>
+          <div style="background: white; border: 1px solid #e5e5e5; border-radius: 14px; height: 120px; display: flex; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.04);">
+            <div style="width: 100px; background: linear-gradient(135deg, #ffd93d, #ff6b6b); flex-shrink: 0;"></div>
+            <div style="padding: 8px; flex: 1; display: flex; flex-direction: column; justify-content: center;">
+              <div style="font-weight: 700; font-size: 0.7em; color: #111;">Alex Torres <span style="color: #facc15;">★ 4.2</span></div>
+              <div style="color: #888; font-size: 0.6em;">📍 Denver, CO</div>
+              <div style="color: #888; font-size: 0.55em; margin-top: 2px;">1 review · $30/hr</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Breakpoints</h3>
+  <ul>
+    <li><strong>Mobile (&lt;640px):</strong> 1 column, full-width cards, thumbnail 110px wide</li>
+    <li><strong>Tablet (640px–1023px):</strong> 2 columns, cards slightly shorter</li>
+    <li><strong>Desktop (1024px+):</strong> 3 columns — but since this is mobile-first and used inside <code>DashboardLayout</code>, 2 columns is likely the practical max</li>
+  </ul>
+</div>
+
+<div class="section">
+  <h3>Sort Options</h3>
+  <p>Added to <code>useCreatorBrowse</code> — all client-side sorting on already-fetched data:</p>
+  <table style="width: 100%; border-collapse: collapse; font-size: 0.9em;">
+    <tr style="border-bottom: 1px solid rgba(255,255,255,0.1);">
+      <td style="padding: 8px 0; font-weight: 600;">Relevance (default)</td>
+      <td style="padding: 8px 0; color: #aaa;">Current order — <code>created_at DESC</code> from the query</td>
+    </tr>
+    <tr style="border-bottom: 1px solid rgba(255,255,255,0.1);">
+      <td style="padding: 8px 0; font-weight: 600;">Top Rated</td>
+      <td style="padding: 8px 0; color: #aaa;"><code>average_rating DESC</code>, nulls last</td>
+    </tr>
+    <tr style="border-bottom: 1px solid rgba(255,255,255,0.1);">
+      <td style="padding: 8px 0; font-weight: 600;">Price: Low to High</td>
+      <td style="padding: 8px 0; color: #aaa;"><code>base_rate_per_hour ASC</code>, nulls last</td>
+    </tr>
+    <tr style="border-bottom: 1px solid rgba(255,255,255,0.1);">
+      <td style="padding: 8px 0; font-weight: 600;">Price: High to Low</td>
+      <td style="padding: 8px 0; color: #aaa;"><code>base_rate_per_hour DESC</code>, nulls last</td>
+    </tr>
+    <tr>
+      <td style="padding: 8px 0; font-weight: 600;">Most Reviewed</td>
+      <td style="padding: 8px 0; color: #aaa;"><code>total_reviews DESC</code>, nulls last</td>
+    </tr>
+  </table>
+</div>
+
+<div class="section">
+  <h3>Empty State</h3>
+  <div class="mockup">
+    <div class="mockup-header">No Results</div>
+    <div class="mockup-body" style="background: #f9f9f9; padding: 40px 20px; text-align: center; max-width: 375px; margin: 0 auto;">
+      <div style="font-size: 2.5em; margin-bottom: 12px;">🔍</div>
+      <div style="font-weight: 700; color: #111; font-size: 1.1em; margin-bottom: 6px;">No creators found</div>
+      <div style="color: #777; font-size: 0.85em; margin-bottom: 20px; line-height: 1.5;">Try expanding your search or adjusting filters to see more creators.</div>
+      <button style="padding: 10px 24px; background: #4dd9c0; color: white; border: none; border-radius: 9999px; font-weight: 600; font-size: 0.85em; cursor: pointer;">Clear All Filters</button>
+    </div>
+  </div>
+</div>

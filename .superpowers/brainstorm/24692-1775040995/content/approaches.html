@@ -1,0 +1,83 @@
+<h2>Login Polish + Role Selection: Approach Options</h2>
+<p class="subtitle">How should we structure the signup flow and login polish?</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Minimal Polish — Keep Current Structure</h3>
+      <p>Polish the existing <code>AuthPage</code> and <code>AuthForm</code> in-place. Replace inline radio buttons with two styled role cards <em>within</em> the same form view. Add card container, improve input styling, style social buttons. Fewest files changed.</p>
+      <div class="pros-cons">
+        <div class="pros">
+          <h4>Pros</h4>
+          <ul>
+            <li>Smallest diff — low risk of breaking auth flow</li>
+            <li>Role cards and form on same screen = fewer navigation steps</li>
+            <li>reCAPTCHA, validation, error handling stay untouched</li>
+          </ul>
+        </div>
+        <div class="cons">
+          <h4>Cons</h4>
+          <ul>
+            <li>Signup form gets long on mobile (role cards + name + email + password)</li>
+            <li>Doesn't match the spec's "role selection FIRST" requirement</li>
+            <li>Less visual impact — incremental improvement</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Multi-Step Signup — Role Screen First (Recommended)</h3>
+      <p>Add a <strong>role selection step</strong> as a separate screen/view before the signup form. User clicks "Sign Up" → sees two large cards ("I'm a Business" / "I'm a Creator") → taps one → slides to the signup form with role pre-filled. Login page gets full visual polish with card container, styled inputs, "or continue with" divider, branded social buttons.</p>
+      <div class="pros-cons">
+        <div class="pros">
+          <h4>Pros</h4>
+          <ul>
+            <li>Matches the spec exactly — role selection is a dedicated first step</li>
+            <li>Clean UX: one decision per screen, no scroll on mobile</li>
+            <li>Role cards get full visual treatment (icons, colors, descriptions)</li>
+            <li>Signup form is shorter (no role picker inline)</li>
+          </ul>
+        </div>
+        <div class="cons">
+          <h4>Cons</h4>
+          <ul>
+            <li>Adds a new component (RoleSelection) and step state management</li>
+            <li>One extra tap before the signup form</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Full Redesign — Separate Auth Pages</h3>
+      <p>Split login and signup into completely separate page components. Signup becomes a multi-page wizard: Role → Details → Verification. Login gets its own dedicated page with maximum polish. New route structure.</p>
+      <div class="pros-cons">
+        <div class="pros">
+          <h4>Pros</h4>
+          <ul>
+            <li>Maximum flexibility for each flow</li>
+            <li>Cleanest code separation</li>
+            <li>Easy to A/B test different flows later</li>
+          </ul>
+        </div>
+        <div class="cons">
+          <h4>Cons</h4>
+          <ul>
+            <li>Largest scope — high risk of breaking existing auth logic</li>
+            <li>Duplicates shared logic (OAuth, reCAPTCHA, redirect handling)</li>
+            <li>Overkill for what's being asked — YAGNI</li>
+            <li>Changes route structure which could affect deep links</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

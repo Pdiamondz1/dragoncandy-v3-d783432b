@@ -1,0 +1,48 @@
+<h2>Section 2: Navigation Header</h2>
+<p class="subtitle">Updated nav links with anchor scrolling + mobile drawer</p>
+
+<div class="mockup">
+  <div class="mockup-header">Desktop Navigation</div>
+  <div class="mockup-body" style="background: white; padding: 16px 24px; font-family: 'Outfit', sans-serif;">
+    <div style="display: flex; align-items: center; justify-content: space-between;">
+      <div style="width: 48px; height: 48px; background: #4DD9C0; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 12px;">DC</div>
+      <nav style="display: flex; align-items: center; gap: 28px;">
+        <a href="#" style="font-size: 14px; font-weight: 500; color: #555555; text-decoration: none;">How It Works</a>
+        <a href="#" style="font-size: 14px; font-weight: 500; color: #555555; text-decoration: none;">For Businesses</a>
+        <a href="#" style="font-size: 14px; font-weight: 500; color: #555555; text-decoration: none;">For Creators</a>
+        <a href="#" style="font-size: 14px; font-weight: 500; color: #555555; text-decoration: none;">Login</a>
+        <button style="padding: 10px 24px; border-radius: 9999px; background: #4DD9C0; color: white; font-weight: 600; font-size: 14px; border: none; cursor: pointer;">Get Started</button>
+      </nav>
+    </div>
+  </div>
+</div>
+
+<div class="mockup" style="margin-top: 20px;">
+  <div class="mockup-header">Mobile Navigation (hamburger open)</div>
+  <div class="mockup-body" style="background: white; padding: 16px 20px; font-family: 'Outfit', sans-serif;">
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
+      <div style="width: 48px; height: 48px; background: #4DD9C0; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 12px;">DC</div>
+      <div style="font-size: 24px; color: #666;">☰</div>
+    </div>
+    <div style="background: #f9fafb; border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 8px;">
+      <a href="#" style="font-size: 15px; font-weight: 500; color: #555555; text-decoration: none; padding: 10px 16px; border-radius: 12px;">How It Works</a>
+      <a href="#" style="font-size: 15px; font-weight: 500; color: #555555; text-decoration: none; padding: 10px 16px; border-radius: 12px;">For Businesses</a>
+      <a href="#" style="font-size: 15px; font-weight: 500; color: #555555; text-decoration: none; padding: 10px 16px; border-radius: 12px;">For Creators</a>
+      <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 4px 0;">
+      <button style="width: 100%; padding: 12px; border-radius: 9999px; background: transparent; color: #555555; font-weight: 500; font-size: 15px; border: none; cursor: pointer;">Log in</button>
+      <button style="width: 100%; padding: 12px; border-radius: 9999px; background: #4DD9C0; color: white; font-weight: 700; font-size: 15px; border: none; cursor: pointer;">Get Started</button>
+    </div>
+  </div>
+</div>
+
+<div style="margin-top: 24px;">
+  <h3>Changes from current:</h3>
+  <ul style="text-align: left; margin-top: 8px; line-height: 1.8;">
+    <li><strong>Nav links:</strong> "Features / Creators / For Brands" → "How It Works / For Businesses / For Creators"</li>
+    <li><strong>Anchor targets:</strong> How It Works → <code>#how-it-works</code>, For Businesses → <code>#features</code>, For Creators → <code>#cta</code></li>
+    <li><strong>Smooth scroll:</strong> Add <code>scroll-behavior: smooth</code> or use <code>scrollIntoView</code></li>
+    <li><strong>Mobile drawer:</strong> Now includes all 3 anchor links (currently only has Log in / Sign up)</li>
+    <li><strong>"Get Started" button:</strong> Routes to <code>/auth?mode=signup</code> (unchanged)</li>
+    <li><strong>Logo:</strong> Unchanged — existing DragonCandy logo</li>
+  </ul>
+</div>

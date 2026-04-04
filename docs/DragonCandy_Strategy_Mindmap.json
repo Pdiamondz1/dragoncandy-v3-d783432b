@@ -1,0 +1,177 @@
+{
+  "name": "DragonCandy Moat & Profit Playbook",
+  "children": [
+    {
+      "name": "Six Layers of Defensibility",
+      "children": [
+        {
+          "name": "Data Flywheel",
+          "children": [
+            {
+              "name": "Proprietary Campaign Data"
+            },
+            {
+              "name": "Hyperlocal/Vertical Intelligence"
+            },
+            {
+              "name": "Donny AI Fine-tuning (1k-5k records)"
+            }
+          ]
+        },
+        {
+          "name": "Network Effects",
+          "children": [
+            {
+              "name": "3:1 to 5:1 Creator-Restaurant Ratio"
+            },
+            {
+              "name": "Metro Area Liquidity (70%+ fill rate)"
+            },
+            {
+              "name": "Creator-as-Distribution Referral Model"
+            }
+          ]
+        },
+        {
+          "name": "Ecosystem Integration",
+          "children": [
+            {
+              "name": "POS Integrations (Square/Toast)"
+            },
+            {
+              "name": "Google/Meta/TikTok APIs"
+            },
+            {
+              "name": "Donny AI Browser Extension"
+            }
+          ]
+        },
+        {
+          "name": "Legal Protections",
+          "children": [
+            {
+              "name": "Trademarks (DragonCandy, Donny AI, DragonDash)"
+            },
+            {
+              "name": "Trade Secrets (Algorithms & Prompts)"
+            },
+            {
+              "name": "Provisional Patents (Campaign-from-URL)"
+            }
+          ]
+        },
+        {
+          "name": "Regulatory Compliance",
+          "children": [
+            {
+              "name": "FTC Disclosure Automation"
+            },
+            {
+              "name": "AI Transparency Act Alignment"
+            },
+            {
+              "name": "Compliance Audit Trails"
+            }
+          ]
+        },
+        {
+          "name": "Brand Verbification",
+          "children": [
+            {
+              "name": "DragonDash for Speed"
+            },
+            {
+              "name": "DragonCandy for Ecosystem"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Revenue & Profitability",
+      "children": [
+        {
+          "name": "Monetization Streams",
+          "children": [
+            {
+              "name": "SaaS Subscriptions ($99-$499/mo)"
+            },
+            {
+              "name": "Marketplace Take Rate (15-20%)"
+            },
+            {
+              "name": "Donny AI Premium Add-ons"
+            },
+            {
+              "name": "DragonDash Rush Premiums (50-200%)"
+            }
+          ]
+        },
+        {
+          "name": "Financial Targets",
+          "children": [
+            {
+              "name": "Year 3: $2-5M Annual Profit"
+            },
+            {
+              "name": "Target ARR: $5-12M"
+            },
+            {
+              "name": "Lean Team: 5-12 People"
+            }
+          ]
+        },
+        {
+          "name": "Cost Efficiency",
+          "children": [
+            {
+              "name": "High Revenue per Employee (>$500k)"
+            },
+            {
+              "name": "Low AI API Costs (90%+ margins)"
+            },
+            {
+              "name": "Creator-led CAC reduction"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Execution Strategy",
+      "children": [
+        {
+          "name": "Elon's Algorithm",
+          "children": [
+            {
+              "name": "Question Requirements"
+            },
+            {
+              "name": "Delete Possible Steps"
+            },
+            {
+              "name": "Simplify & Optimize"
+            }
+          ]
+        },
+        {
+          "name": "90-Day Battle Plan",
+          "children": [
+            {
+              "name": "Week 1-2: Legal & Data Logging"
+            },
+            {
+              "name": "Month 1: Single City Launch"
+            },
+            {
+              "name": "Month 2: Patents & Certifications"
+            },
+            {
+              "name": "Month 3: Chrome Extension & Case Studies"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,92 @@
+<h2>Donny AI Bar — Interaction Model</h2>
+<p class="subtitle">How should the Donny bar behave when tapped/focused on the dashboard?</p>
+
+<div class="cards">
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-body">
+      <h3>A) Chat Sheet</h3>
+      <div class="mockup" style="margin:12px 0">
+        <div class="mockup-header">Dashboard</div>
+        <div class="mockup-body" style="padding:16px;font-size:13px">
+          <div style="background:#4DD9C0;color:white;padding:10px 16px;border-radius:999px;text-align:center;margin-bottom:12px">
+            Ask Donny anything...
+          </div>
+          <div style="color:#999;text-align:center;font-size:11px;margin-bottom:8px">user taps bar...</div>
+          <div style="background:#f3f4f6;border-radius:12px;padding:12px;border:2px solid #4DD9C0">
+            <div style="font-weight:bold;font-size:12px;margin-bottom:6px">Chat Sheet slides up</div>
+            <div style="background:#F9A8D4;padding:8px;border-radius:8px;font-size:11px;margin-bottom:4px">Hi! I'm Donny. How can I help?</div>
+            <div style="background:#e5e7eb;padding:8px;border-radius:8px;font-size:11px">Full conversation UI...</div>
+          </div>
+        </div>
+      </div>
+      <p>Tap bar = full chat sheet slides up. Current behavior, proven UX. But pulls you away from the dashboard.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-body">
+      <h3>B) Command Palette</h3>
+      <div class="mockup" style="margin:12px 0">
+        <div class="mockup-header">Dashboard</div>
+        <div class="mockup-body" style="padding:16px;font-size:13px">
+          <div style="background:#4DD9C0;color:white;padding:10px 16px;border-radius:999px;text-align:center;margin-bottom:8px;border:2px solid #0d9488">
+            Ask Donny anything... |
+          </div>
+          <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
+            <span style="background:#e0f7f3;color:#0d9488;padding:4px 10px;border-radius:999px;font-size:11px">Generate Campaign</span>
+            <span style="background:#e0f7f3;color:#0d9488;padding:4px 10px;border-radius:999px;font-size:11px">Find Creators</span>
+            <span style="background:#e0f7f3;color:#0d9488;padding:4px 10px;border-radius:999px;font-size:11px">Check Analytics</span>
+          </div>
+          <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:8px;font-size:11px;color:#666">
+            Inline results appear here — never leaves dashboard
+          </div>
+        </div>
+      </div>
+      <p>Focus expands inline with chips + results. Stays on dashboard. But complex queries feel cramped.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)" style="border:2px solid #4DD9C0">
+    <div class="card-body">
+      <h3>C) Hybrid <span style="background:#4DD9C0;color:white;font-size:11px;padding:2px 8px;border-radius:999px;margin-left:6px">Recommended</span></h3>
+      <div class="mockup" style="margin:12px 0">
+        <div class="mockup-header">Dashboard</div>
+        <div class="mockup-body" style="padding:16px;font-size:13px">
+          <div style="background:#4DD9C0;color:white;padding:10px 16px;border-radius:999px;text-align:center;margin-bottom:8px;border:2px solid #0d9488">
+            Ask Donny anything... |
+          </div>
+          <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
+            <span style="background:#e0f7f3;color:#0d9488;padding:4px 10px;border-radius:999px;font-size:11px;border:1px solid #4DD9C0">Generate Campaign</span>
+            <span style="background:#e0f7f3;color:#0d9488;padding:4px 10px;border-radius:999px;font-size:11px;border:1px solid #4DD9C0">Find Creators</span>
+            <span style="background:#e0f7f3;color:#0d9488;padding:4px 10px;border-radius:999px;font-size:11px;border:1px solid #4DD9C0">Check Analytics</span>
+          </div>
+          <div style="color:#999;text-align:center;font-size:11px;margin-bottom:6px">tap chip = navigate instantly | type query = chat sheet opens</div>
+          <div style="background:#f3f4f6;border-radius:12px;padding:10px;border:1px dashed #4DD9C0">
+            <div style="font-size:11px;color:#666">Typing "Help me plan a brunch campaign..."</div>
+            <div style="font-size:11px;color:#0d9488;margin-top:4px">Chat sheet slides up with query pre-filled</div>
+          </div>
+        </div>
+      </div>
+      <p>Quick chips stay inline for fast actions. Typing opens full chat sheet for real conversations. Best of both worlds.</p>
+    </div>
+  </div>
+</div>
+
+<div class="pros-cons" style="margin-top:24px">
+  <div class="pros">
+    <h4>Why Hybrid wins</h4>
+    <ul>
+      <li>80% of actions are quick taps — chips handle these without leaving dashboard</li>
+      <li>20% are real conversations — chat sheet gives Donny room to shine</li>
+      <li>Donny gets a MORE prominent home (top of dashboard) after leaving bottom nav</li>
+      <li>Feels like a command center, not a chatbot</li>
+    </ul>
+  </div>
+  <div class="cons">
+    <h4>Trade-offs</h4>
+    <ul>
+      <li>Slightly more complex to implement (two interaction modes)</li>
+      <li>Need clear visual transition between inline chips and chat sheet</li>
+    </ul>
+  </div>
+</div>

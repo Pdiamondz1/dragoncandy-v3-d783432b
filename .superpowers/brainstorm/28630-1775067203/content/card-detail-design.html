@@ -1,0 +1,105 @@
+<h2>Section 2: Hybrid Creator Card — Detail Design</h2>
+<p class="subtitle">Exactly what data shows on each card, and how it's sourced</p>
+
+<div class="section">
+  <div class="split">
+    <div class="mockup">
+      <div class="mockup-header">Card Anatomy (Light / White BG)</div>
+      <div class="mockup-body" style="background: #f9f9f9; padding: 20px;">
+        <!-- Card -->
+        <div style="background: white; border: 1px solid #e5e5e5; border-radius: 16px; overflow: hidden; display: flex; box-shadow: 0 2px 8px rgba(0,0,0,0.06); max-width: 400px;">
+          <!-- Thumbnail -->
+          <div style="width: 130px; min-height: 155px; background: linear-gradient(135deg, #ff6b6b, #ee5a24); flex-shrink: 0; position: relative; display: flex; align-items: center; justify-content: center;">
+            <div style="color: rgba(255,255,255,0.6); font-size: 0.65em; text-align: center; padding: 8px;">portfolio_urls[0]<br>or avatar_url<br>fallback</div>
+            <div style="position: absolute; top: 8px; right: 8px; background: rgba(255,255,255,0.9); border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; color: #ddd; font-size: 1em; cursor: pointer;">♡</div>
+          </div>
+          <!-- Info -->
+          <div style="padding: 12px 14px; flex: 1; display: flex; flex-direction: column;">
+            <!-- Row 1: Name + Rating -->
+            <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 3px;">
+              <span style="font-weight: 700; font-size: 0.95em; color: #111;">creator_name</span>
+              <span style="color: #facc15; font-size: 0.8em;">★ average_rating</span>
+            </div>
+            <!-- Row 2: Location -->
+            <div style="color: #777; font-size: 0.75em; margin-bottom: 8px;">📍 city, country</div>
+            <!-- Row 3: Content tags -->
+            <div style="display: flex; gap: 5px; margin-bottom: 8px; flex-wrap: wrap;">
+              <span style="background: rgba(77,217,192,0.1); color: #2d9f8f; padding: 2px 10px; border-radius: 10px; font-size: 0.7em; font-weight: 500;">skills[0]</span>
+              <span style="background: rgba(77,217,192,0.1); color: #2d9f8f; padding: 2px 10px; border-radius: 10px; font-size: 0.7em; font-weight: 500;">skills[1]</span>
+              <span style="color: #aaa; font-size: 0.65em; padding: 2px 4px;">+N more</span>
+            </div>
+            <!-- Row 4: Metrics -->
+            <div style="color: #888; font-size: 0.7em; margin-bottom: 10px;">total_reviews reviews · $base_rate_per_hour/hr</div>
+            <!-- Row 5: CTA -->
+            <button style="width: 100%; padding: 8px; background: #4dd9c0; color: white; border: none; border-radius: 9999px; font-weight: 600; font-size: 0.8em; cursor: pointer;">View Profile</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mockup">
+      <div class="mockup-header">Data Mapping</div>
+      <div class="mockup-body" style="font-size: 0.85em; padding: 16px;">
+        <table style="width: 100%; border-collapse: collapse;">
+          <tr style="border-bottom: 1px solid rgba(255,255,255,0.1);">
+            <td style="padding: 6px 0; color: #aaa;">Thumbnail</td>
+            <td style="padding: 6px 0;"><code>portfolio_urls[0]</code> → <code>avatar_url</code> → gradient placeholder</td>
+          </tr>
+          <tr style="border-bottom: 1px solid rgba(255,255,255,0.1);">
+            <td style="padding: 6px 0; color: #aaa;">Name</td>
+            <td style="padding: 6px 0;"><code>creator_name</code></td>
+          </tr>
+          <tr style="border-bottom: 1px solid rgba(255,255,255,0.1);">
+            <td style="padding: 6px 0; color: #aaa;">Rating</td>
+            <td style="padding: 6px 0;"><code>average_rating</code> — hide star if null</td>
+          </tr>
+          <tr style="border-bottom: 1px solid rgba(255,255,255,0.1);">
+            <td style="padding: 6px 0; color: #aaa;">Location</td>
+            <td style="padding: 6px 0;"><code>city</code>, <code>country</code> — hide row if both null</td>
+          </tr>
+          <tr style="border-bottom: 1px solid rgba(255,255,255,0.1);">
+            <td style="padding: 6px 0; color: #aaa;">Tags</td>
+            <td style="padding: 6px 0;"><code>skills[]</code> — show first 2, "+N" overflow</td>
+          </tr>
+          <tr style="border-bottom: 1px solid rgba(255,255,255,0.1);">
+            <td style="padding: 6px 0; color: #aaa;">Metrics</td>
+            <td style="padding: 6px 0;"><code>total_reviews</code> + <code>base_rate_per_hour</code></td>
+          </tr>
+          <tr style="border-bottom: 1px solid rgba(255,255,255,0.1);">
+            <td style="padding: 6px 0; color: #aaa;">Heart</td>
+            <td style="padding: 6px 0;">Client-side toggle (localStorage) — no backend</td>
+          </tr>
+          <tr>
+            <td style="padding: 6px 0; color: #aaa;">CTA</td>
+            <td style="padding: 6px 0;">Opens existing <code>CreatorProfileModal</code></td>
+          </tr>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Fallback Behavior</h3>
+  <ul>
+    <li><strong>No portfolio images:</strong> Show avatar. No avatar? Show teal gradient with creator initials.</li>
+    <li><strong>No rating:</strong> Hide the star entirely (don't show "★ 0" or "No reviews").</li>
+    <li><strong>No location:</strong> Hide the location row — card still looks balanced.</li>
+    <li><strong>No skills:</strong> Hide the tag row.</li>
+    <li><strong>No rate:</strong> Show only review count, or hide metrics row if both missing.</li>
+  </ul>
+</div>
+
+<div class="section">
+  <h3>Interaction</h3>
+  <ul>
+    <li><strong>Tap card anywhere</strong> (except heart) → opens <code>CreatorProfileModal</code> (existing)</li>
+    <li><strong>Tap heart</strong> → toggles favorite in localStorage, filled pink heart vs outline</li>
+    <li><strong>"View Profile" button</strong> → same as card tap (redundant but expected affordance)</li>
+    <li><strong>No "Contact" button on card</strong> — moved inside profile modal to reduce clutter</li>
+  </ul>
+</div>
+
+<div style="padding: 1.5em; background: rgba(77,217,192,0.08); border-radius: 12px; border-left: 3px solid #4dd9c0; margin-top: 1em;">
+  <p style="margin: 0; font-size: 0.9em;"><strong>Note on "projects completed" / "avg delivery time":</strong> Your original brief included these metrics. The current <code>creator_profiles</code> table doesn't have these fields. Rather than adding backend changes (which you said to protect), I'm using <code>total_reviews</code> and <code>base_rate_per_hour</code> as the two metrics — data that already exists. We can swap in project metrics later when the backend supports it.</p>
+</div>
