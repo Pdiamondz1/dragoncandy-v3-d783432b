@@ -110,12 +110,18 @@ Three sections within a single step:
 - `DeliverableBuilder` stepper max reads from `TIER_LIMITS[deliveryTier].maxDeliverables`
 - Content type selector reads from `TIER_LIMITS[deliveryTier].contentTypes`
 
+## Pricing Constraint
+
+- DragonDash forces fixed pricing (no bid range) — carried over from existing DragonRush behavior
+- Express and Standard allow both fixed and bid range pricing
+- This logic already exists in `CampaignTimelineBudgetStep` — just needs the type rename
+
 ## Validation & Edge Cases
 
 ### Per-Step Validation
 - **Step 0:** Cannot proceed without tier selection
 - **Step 1:** Unchanged
-- **Step 2:** Budget auto-adjusts by tier (DragonDash higher floor). Content types filtered. "Estimated creation time" label shown (static per tier). Scope warning if AI brief exceeds tier capacity.
+- **Step 2:** Budget auto-adjusts by tier (DragonDash higher floor). Content types filtered. "Estimated creation time" label shown (static per tier: DragonDash ~90 min, Express ~1–2 days, Standard ~4–5 days). Scope warning if AI brief exceeds tier capacity.
 - **Step 3:** Reference uploads: max 5 files, 50MB each (toast on rejection). Raw footage: max 10 files, 200MB total (progress bar per file). Deliverable stepper: min 1, max per tier.
 - **Step 4:** Unchanged beyond showing tier in summary
 
