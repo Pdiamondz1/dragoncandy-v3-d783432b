@@ -17,7 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import CostBreakdown from './CostBreakdown';
 import DeliveryBadge from './DeliveryBadge';
-import type { DeliveryType } from './DeliveryTypeSelector';
+import type { DeliveryTier } from '@/types/campaignMedia';
 import type { PricingType } from './PricingTypeSelector';
 import type { CampaignAnalysis } from '@/types/campaign';
 
@@ -43,7 +43,7 @@ interface CampaignFinalizeStepProps {
     budgetMax?: number;
     deadline: Date;
     // DragonDash fields
-    deliveryType: DeliveryType;
+    deliveryType: DeliveryTier;
     deliveryFee: number;
     pricingType: PricingType;
     fixedPrice?: number;
@@ -109,9 +109,9 @@ const CampaignFinalizeStep: React.FC<CampaignFinalizeStepProps> = ({
 
   const getDeliveryTimeframe = () => {
     switch (campaignData.deliveryType) {
-      case 'dragonrush': return '1-3 hours';
-      case 'expedited': return '8-12 hours';
-      default: return '72 hours';
+      case 'dragondash': return '1–3 hours';
+      case 'express': return '24–48 hours';
+      default: return '5–7 days';
     }
   };
 
