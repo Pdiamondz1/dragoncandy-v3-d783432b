@@ -1,6 +1,6 @@
 import { useDonnyDashboard } from '@/hooks/useDonnyDashboard';
 import donnyIcon from '@/assets/Donny_icon.png';
-import dragonEmblem from '@/assets/dragon-emblem.png';
+import dragonEmblem from '@/assets/Donny_icon.png';
 
 interface DonnyNavButtonProps {
   onClick: () => void;
