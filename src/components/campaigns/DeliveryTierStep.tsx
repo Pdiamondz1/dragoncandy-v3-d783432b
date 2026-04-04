@@ -1,165 +1,146 @@
-import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
-import { Turtle, Zap, Flame, Clock, ArrowRight, Check } from 'lucide-react';
-import { DeliveryType } from './DeliveryTypeSelector';
-
-interface DeliveryTierOption {
-  type: DeliveryType;
-  icon: React.ReactNode;
-  label: string;
-  timeframe: string;
-  fee: string;
-  feeAmount: number;
-  features: string[];
-  isPremium?: boolean;
-}
-
-const deliveryTierOptions: DeliveryTierOption[] = [
-  {
-    type: 'standard',
-    icon: <Turtle className="h-8 w-8" />,
-    label: 'Standard',
-    timeframe: '72 hours',
-    fee: 'No extra fee',
-    feeAmount: 0,
-    features: ['Standard support', 'Regular matching', 'Quality guaranteed'],
-  },
-  {
-    type: 'expedited',
-    icon: <Zap className="h-8 w-8" />,
-    label: 'Expedited',
-    timeframe: '8–12 hours',
-    fee: '+ $25 rush fee',
-    feeAmount: 25,
-    features: ['Priority matching', 'Faster review', 'Dedicated queue'],
-  },
-  {
-    type: 'dragonrush',
-    icon: <Flame className="h-8 w-8" />,
-    label: 'DragonRush',
-    timeframe: '1–3 hours',
-    fee: '+ $75 premium fee',
-    feeAmount: 75,
-    features: ['Top priority', 'Dedicated support', 'Guaranteed delivery', 'Fixed price only'],
-    isPremium: true,
-  },
-];
+import type { DeliveryTier } from '@/types/campaignMedia';
+import { TIER_LIMITS } from '@/types/campaignMedia';
+import { CheckCircle2 } from 'lucide-react';
 
 interface DeliveryTierStepProps {
-  initialTier?: DeliveryType;
-  onContinue: (tier: DeliveryType, fee: number) => void;
+  selectedTier: DeliveryTier | null;
+  onSelect: (tier: DeliveryTier) => void;
+  onContinue: () => void;
 }
 
-const DeliveryTierStep: React.FC<DeliveryTierStepProps> = ({
-  initialTier = 'standard',
-  onContinue,
-}) => {
-  const [selectedTier, setSelectedTier] = useState<DeliveryType>(initialTier);
+const TIER_META: Record<
+  DeliveryTier,
+  {
+    icon: string;
+    timeColor: string;
+    iconBg: string;
+    iconShadow?: string;
+    priceBadge: { bg: string; text: string; label: string };
+    description: string;
+  }
+> = {
+  dragondash: {
+    icon: '⚡',
+    timeColor: 'text-[#4DD9C0]',
+    iconBg: 'bg-gradient-to-br from-[#4DD9C0] to-[#00E5CC]',
+    iconShadow: 'shadow-[0_0_16px_rgba(77,217,192,0.35)]',
+    priceBadge: { bg: 'bg-amber-100', text: 'text-amber-700', label: '$$$ Premium' },
+    description: 'Best for: 1–2 simple posts, quick photo/reel',
+  },
+  express: {
+    icon: '🚀',
+    timeColor: 'text-amber-500',
+    iconBg: 'bg-gradient-to-br from-amber-200 to-amber-500',
+    priceBadge: { bg: 'bg-sky-100', text: 'text-sky-700', label: '$$ Standard' },
+    description: 'Best for: 2–4 deliverables, edited reels',
+  },
+  standard: {
+    icon: '📅',
+    timeColor: 'text-emerald-500',
+    iconBg: 'bg-gradient-to-br from-emerald-200 to-emerald-400',
+    priceBadge: { bg: 'bg-emerald-100', text: 'text-emerald-700', label: '$ Value' },
+    description: 'Best for: 5–10 deliverables, full campaigns',
+  },
+};
 
-  const handleContinue = () => {
-    const selected = deliveryTierOptions.find(opt => opt.type === selectedTier);
-    onContinue(selectedTier, selected?.feeAmount || 0);
-  };
+const TIER_ORDER: DeliveryTier[] = ['dragondash', 'express', 'standard'];
 
+const DeliveryTierStep = ({ selectedTier, onSelect, onContinue }: DeliveryTierStepProps) => {
   return (
-    <div className="space-y-6 overflow-hidden max-w-full">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center text-primary-foreground text-sm font-semibold">
-              1
+    <div className="px-4 py-6">
+      {/* Heading */}
+      <h1 className="text-2xl font-bold text-gray-900 mb-1">How fast do you need it?</h1>
+      <p className="text-sm text-gray-500 mb-6">
+        Choose your delivery speed — this determines scope and pricing
+      </p>
+
+      {/* Tier Cards */}
+      <div className="space-y-4">
+        {TIER_ORDER.map((tier) => {
+          const limits = TIER_LIMITS[tier];
+          const meta = TIER_META[tier];
+          const isSelected = selectedTier === tier;
+
+          return (
+            <div
+              key={tier}
+              onClick={() => onSelect(tier)}
+              className={[
+                'relative rounded-2xl border-2 p-5 cursor-pointer transition-all',
+                isSelected
+                  ? 'border-[#4DD9C0] bg-[#4DD9C0]/5'
+                  : 'border-gray-200 bg-white hover:border-[#4DD9C0]/50',
+              ].join(' ')}
+            >
+              {/* DragonDash PREMIUM badge */}
+              {tier === 'dragondash' && !isSelected && (
+                <span className="absolute top-3 right-3 bg-gradient-to-r from-[#4DD9C0] to-[#00E5CC] text-white text-[11px] font-bold rounded-full px-2.5 py-0.5">
+                  PREMIUM
+                </span>
+              )}
+
+              {/* Selected checkmark */}
+              {isSelected && (
+                <span className="absolute top-3 right-3">
+                  <CheckCircle2 className="w-5 h-5 text-[#4DD9C0]" />
+                </span>
+              )}
+
+              <div className="flex gap-3.5">
+                {/* Icon circle */}
+                <div
+                  className={[
+                    'w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0',
+                    meta.iconBg,
+                    meta.iconShadow ?? '',
+                  ].join(' ')}
+                >
+                  <span className="text-[26px] leading-none">{meta.icon}</span>
+                </div>
+
+                {/* Text content */}
+                <div className="flex-1 min-w-0">
+                  <p className="text-lg font-extrabold text-gray-900 leading-tight">
+                    {limits.label}
+                  </p>
+                  <p className={['text-sm font-semibold', meta.timeColor].join(' ')}>
+                    {limits.timeframe}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">{meta.description}</p>
+
+                  {/* Bottom row */}
+                  <div className="flex items-center gap-2 mt-2">
+                    <span
+                      className={[
+                        'text-[11px] font-bold px-2.5 py-0.5 rounded-full',
+                        meta.priceBadge.bg,
+                        meta.priceBadge.text,
+                      ].join(' ')}
+                    >
+                      {meta.priceBadge.label}
+                    </span>
+                    <span className="text-[11px] text-gray-400">
+                      Max {limits.maxDeliverables} deliverables
+                    </span>
+                  </div>
+                </div>
+              </div>
             </div>
-            Choose Your Delivery Speed
-          </CardTitle>
-          <p className="text-muted-foreground text-sm">
-            How fast do you need content delivered? Select a tier to get started.
-          </p>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Delivery Tier Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {deliveryTierOptions.map((option) => (
-              <Card
-                key={option.type}
-                onClick={() => setSelectedTier(option.type)}
-                className={cn(
-                  "relative cursor-pointer transition-all hover:shadow-lg",
-                  selectedTier === option.type
-                    ? "ring-2 ring-primary border-primary bg-primary/5"
-                    : "hover:border-primary/50"
-                )}
-              >
-                {/* Premium Badge */}
-                {option.isPremium && (
-                  <div className="absolute top-2 right-2 bg-gradient-to-r from-orange-500 to-pink-500 text-white text-xs px-2 py-0.5 rounded-full font-medium z-10">
-                    Premium
-                  </div>
-                )}
+          );
+        })}
+      </div>
 
-                <CardContent className="pt-6 pb-4">
-                  <div className="flex flex-col items-center text-center space-y-4">
-                    {/* Icon */}
-                    <div className={cn(
-                      "p-4 rounded-full",
-                      option.type === 'standard' && "bg-green-100 text-green-600",
-                      option.type === 'expedited' && "bg-yellow-100 text-yellow-600",
-                      option.type === 'dragonrush' && "bg-gradient-to-r from-orange-100 to-pink-100 text-orange-600"
-                    )}>
-                      {option.icon}
-                    </div>
-
-                    {/* Label & Timeframe */}
-                    <div>
-                      <h3 className="font-semibold text-lg text-foreground">{option.label}</h3>
-                      <p className="text-primary font-medium">{option.timeframe}</p>
-                    </div>
-
-                    {/* Fee Badge */}
-                    <div className={cn(
-                      "text-sm font-medium px-3 py-1.5 rounded-full",
-                      option.feeAmount === 0
-                        ? "bg-green-100 text-green-700"
-                        : "bg-orange-100 text-orange-700"
-                    )}>
-                      {option.fee}
-                    </div>
-
-                    {/* Features List */}
-                    <ul className="space-y-2 text-sm text-muted-foreground text-left w-full">
-                      {option.features.map((feature, idx) => (
-                        <li key={idx} className="flex items-center gap-2">
-                          <Check className="h-4 w-4 text-green-500 flex-shrink-0" />
-                          <span>{feature}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-
-          {/* Timer Rule */}
-          <div className="flex items-center justify-center gap-2 p-4 bg-muted/50 rounded-lg">
-            <Clock className="h-5 w-5 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">
-              Timer starts when creator taps <span className="font-medium text-foreground">"Start Capture"</span>
-            </p>
-          </div>
-
-          {/* Continue Button */}
-          <div className="flex justify-end">
-            <Button onClick={handleContinue} size="lg" className="w-full sm:w-auto">
-              Continue
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Continue button */}
+      <button
+        onClick={onContinue}
+        disabled={selectedTier === null}
+        className="w-full rounded-full bg-[#4DD9C0] hover:bg-[#4DD9C0]/90 text-white font-semibold py-3 text-base mt-6 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+      >
+        Continue
+      </button>
     </div>
   );
 };
 
+export { DeliveryTierStep };
 export default DeliveryTierStep;
