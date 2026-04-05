@@ -1,4 +1,11 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
+import { Info } from 'lucide-react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import type { DeliveryTier, StagedFile, Deliverable } from '@/types/campaignMedia';
 import { TIER_LIMITS } from '@/types/campaignMedia';
 import { MediaUploader } from '@/components/campaigns/MediaUploader';
@@ -29,6 +36,7 @@ export function CampaignVisualsStep({
   onBack,
 }: CampaignVisualsStepProps) {
   const [showFootage, setShowFootage] = useState(rawFootage.length > 0);
+  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
 
   return (
     <div className="space-y-4">
@@ -47,6 +55,7 @@ export function CampaignVisualsStep({
           maxFiles={5}
           onFilesChange={onReferenceMediaChange}
           existingFiles={referenceMedia}
+          uploadProgress={uploadProgress}
         />
       </div>
 
@@ -76,13 +85,32 @@ export function CampaignVisualsStep({
               maxFiles={10}
               onFilesChange={onRawFootageChange}
               existingFiles={rawFootage}
+              maxTotalBytes={200 * 1024 * 1024}
+              uploadProgress={uploadProgress}
             />
           </div>
         )}
       </div>
 
       {/* Section C — Content Deliverables */}
-      <div className="bg-white rounded-2xl p-5">
+      <div className="bg-white rounded-2xl p-5 space-y-4">
+        <div className="flex items-center gap-1">
+          <h3 className="text-base font-extrabold text-gray-900">
+            How many pieces of content do you need?
+          </h3>
+          {deliveryTier === 'dragondash' && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info className="w-4 h-4 text-gray-400 cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>DragonDash rush orders support up to 2 deliverables</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+        </div>
         <DeliverableBuilder
           deliverables={deliverables}
           onChange={onDeliverablesChange}
