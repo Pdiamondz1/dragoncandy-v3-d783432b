@@ -10,6 +10,7 @@ interface MediaUploaderProps {
   onFilesChange: (files: StagedFile[]) => void;
   existingFiles?: StagedFile[];
   className?: string;
+  uploadProgress?: Record<string, number>;
 }
 
 const IMAGE_TYPES: Record<string, string[]> = {
@@ -58,6 +59,7 @@ export function MediaUploader({
   onFilesChange,
   existingFiles = [],
   className = '',
+  uploadProgress,
 }: MediaUploaderProps) {
   const [files, setFiles] = useState<StagedFile[]>(existingFiles);
   const previewUrls = useRef<string[]>([]);
@@ -260,6 +262,16 @@ export function MediaUploader({
                   )}
                 </div>
               </div>
+
+              {/* Upload progress bar */}
+              {uploadProgress?.[staged.name] != null && uploadProgress[staged.name] < 100 && (
+                <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-600">
+                  <div
+                    className="h-full bg-dc-teal rounded-full transition-all duration-300"
+                    style={{ width: `${uploadProgress[staged.name]}%` }}
+                  />
+                </div>
+              )}
             </div>
           ))}
         </div>
