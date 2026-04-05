@@ -15,27 +15,30 @@ interface CampaignApplyFormProps {
   onCancel: () => void;
 }
 
-type DateOption = 'today' | 'tomorrow' | 'this_week' | 'custom';
+type DateOption = 'today' | 'tomorrow' | 'this_week';
+
+function toLocalISODate(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
 
 function getISODate(option: DateOption): string {
   const now = new Date();
   switch (option) {
     case 'today':
-      return now.toISOString().split('T')[0];
+      return toLocalISODate(now);
     case 'tomorrow': {
       const d = new Date(now);
       d.setDate(d.getDate() + 1);
-      return d.toISOString().split('T')[0];
+      return toLocalISODate(d);
     }
     case 'this_week': {
       const d = new Date(now);
       const dayOfWeek = d.getDay();
-      const daysUntilSunday = dayOfWeek === 0 ? 0 : 7 - dayOfWeek;
+      const daysUntilSunday = dayOfWeek === 0 ? 7 : 7 - dayOfWeek;
       d.setDate(d.getDate() + daysUntilSunday);
-      return d.toISOString().split('T')[0];
+      return toLocalISODate(d);
     }
-    default:
-      return now.toISOString().split('T')[0];
   }
 }
 
@@ -57,7 +60,7 @@ const CampaignApplyForm: React.FC<CampaignApplyFormProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isFixedPrice && !proposedRate) return;
+    if (!isFixedPrice && (!proposedRate || Number(proposedRate) <= 0)) return;
 
     try {
       await createApplication.mutateAsync({
@@ -184,7 +187,7 @@ const CampaignApplyForm: React.FC<CampaignApplyFormProps> = ({
       {/* Submit */}
       <button
         type="submit"
-        disabled={createApplication.isPending || (!isFixedPrice && !proposedRate)}
+        disabled={createApplication.isPending || (!isFixedPrice && (!proposedRate || Number(proposedRate) <= 0))}
         className="w-full bg-dc-teal text-white rounded-full py-3.5 font-bold text-sm hover:bg-dc-teal-dark transition-colors active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
       >
         {createApplication.isPending ? (
