@@ -1,6 +1,5 @@
 import React from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -10,18 +9,19 @@ import { useCreatorRecentActivity } from '@/hooks/useCreatorRecentActivity';
 import { useCreatorUpcomingDeadlines } from '@/hooks/useCreatorUpcomingDeadlines';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Settings, DollarSign, Target, Star, Clock, Loader2 } from 'lucide-react';
+import { DollarSign, Target, Star, Clock, Loader2 } from 'lucide-react';
 import RatingPromptManager from '@/components/reviews/RatingPromptManager';
-import { AskBar } from '@/components/ai-assistant';
-import { useAIChatModal } from '@/contexts/AIChatModalContext';
-import { DonnyCard } from '@/components/donny/DonnyCard';
+import { DashboardHero } from '@/components/dashboard/DashboardHero';
+import { DonnyAIBar } from '@/components/dashboard/DonnyAIBar';
+import { DashboardStatsGrid, type StatItem } from '@/components/dashboard/DashboardStatsGrid';
+import { QuickActionButtons, type QuickAction } from '@/components/dashboard/QuickActionButtons';
 
 const CreatorDashboard = () => {
   const { user, profile } = useAuth();
   const { data: stats, isLoading: statsLoading } = useCreatorDashboardStats();
   const { data: activities, isLoading: activitiesLoading } = useCreatorRecentActivity();
   const { data: deadlines, isLoading: deadlinesLoading } = useCreatorUpcomingDeadlines();
-  const { openModal } = useAIChatModal();
+
   if (!profile) {
     return (
       <DashboardLayout userRole="content_creator">
@@ -33,10 +33,7 @@ const CreatorDashboard = () => {
   }
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount);
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
   };
 
   const getActivityBadgeVariant = (status: string) => {
@@ -59,114 +56,38 @@ const CreatorDashboard = () => {
     return 'border-green-500';
   };
 
+  const creatorStats: StatItem[] = [
+    { label: 'Revenue', value: formatCurrency(stats?.totalRevenue || 0), subtitle: 'From completed projects', icon: DollarSign },
+    { label: 'Applied', value: stats?.campaignsApplied || 0, subtitle: 'Total applications', icon: Target },
+    { label: 'Completed', value: stats?.projectsCompleted || 0, subtitle: 'Successfully delivered', icon: Clock },
+    { label: 'Rating', value: stats?.averageRating ? stats.averageRating.toFixed(1) : 'N/A', subtitle: 'Client feedback score', icon: Star },
+  ];
+
+  const creatorActions: [QuickAction, QuickAction] = [
+    { label: 'Browse Campaigns', to: '/dashboard/creator/campaigns', variant: 'primary' },
+    { label: 'Update Portfolio', to: '/dashboard/creator/settings', variant: 'secondary' },
+  ];
+
   return (
     <DashboardLayout userRole="content_creator">
       <div className="min-h-screen bg-white overflow-x-hidden">
-        {/* Pink gradient header */}
-        <div className="bg-gradient-to-b from-dc-pink-bg to-pink-50 px-4 pt-6 pb-8">
-          <div className="max-w-2xl lg:max-w-4xl mx-auto space-y-4">
-            {/* Donny AI Card */}
-            <DonnyCard
-              onOpenChat={(message) => {
-                window.dispatchEvent(
-                  new CustomEvent('donny-open-chat', { detail: { message } })
-                );
-              }}
-            />
+        {/* Unified gradient header */}
+        <DashboardHero
+          roleLabel="Creator Dashboard"
+          userName={profile.creator_name || profile.full_name}
+        >
+          {/* Donny AI Bar */}
+          <DonnyAIBar placeholder='Ask Donny... "Find campaigns near me"' />
 
-            {/* Ask Bar */}
-            <AskBar onClick={openModal} userRole="content_creator" />
-            {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="min-w-0">
-                <p className="font-sans text-sm font-bold uppercase tracking-wide text-dc-teal">
-                  Creator Dashboard
-                </p>
-                <h1 className="text-2xl font-bold text-gray-900 truncate mt-1">
-                  Welcome back, {profile.creator_name || profile.full_name}
-                </h1>
-                <p className="text-gray-500 mt-1 text-sm">
-                  Here's what's happening with your creator account today.
-                </p>
-              </div>
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <Link to="/dashboard/creator/settings">
-                  <Button variant="outline" size="sm" className="rounded-full border-dc-teal text-dc-teal hover:bg-dc-teal/10">
-                    <Settings className="h-4 w-4 sm:mr-2" />
-                    <span className="hidden sm:inline">Settings</span>
-                  </Button>
-                </Link>
-                <Link to="/dashboard/creator/campaigns">
-                  <Button size="sm" className="rounded-full bg-dc-teal hover:bg-dc-teal/90 text-white font-bold">
-                    <PlusCircle className="h-4 w-4 sm:mr-2" />
-                    <span className="hidden sm:inline">Browse Campaigns</span>
-                    <span className="sm:hidden">Browse</span>
-                  </Button>
-                </Link>
-              </div>
-            </div>
+          {/* Rating Prompts */}
+          <RatingPromptManager />
 
-            {/* Rating Prompts */}
-            <RatingPromptManager />
+          {/* Stats Grid */}
+          <DashboardStatsGrid stats={creatorStats} isLoading={statsLoading} />
 
-            {/* Stats Grid */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="border-2 border-dc-teal rounded-2xl p-4 bg-white">
-                <div className="flex items-center justify-between mb-1">
-                  <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold">Revenue</p>
-                  <DollarSign className="h-4 w-4 text-dc-teal" />
-                </div>
-                {statsLoading ? (
-                  <Skeleton className="h-9 w-24" />
-                ) : (
-                  <div className="text-3xl font-extrabold text-gray-900">{formatCurrency(stats?.totalRevenue || 0)}</div>
-                )}
-                <p className="text-xs text-gray-500 mt-1">From completed projects</p>
-              </div>
-
-              <div className="border-2 border-dc-teal rounded-2xl p-4 bg-white">
-                <div className="flex items-center justify-between mb-1">
-                  <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold">Applied</p>
-                  <Target className="h-4 w-4 text-dc-teal" />
-                </div>
-                {statsLoading ? (
-                  <Skeleton className="h-9 w-16" />
-                ) : (
-                  <div className="text-3xl font-extrabold text-gray-900">{stats?.campaignsApplied || 0}</div>
-                )}
-                <p className="text-xs text-gray-500 mt-1">Total applications</p>
-              </div>
-
-              <div className="border-2 border-dc-teal rounded-2xl p-4 bg-white">
-                <div className="flex items-center justify-between mb-1">
-                  <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold">Completed</p>
-                  <Clock className="h-4 w-4 text-dc-teal" />
-                </div>
-                {statsLoading ? (
-                  <Skeleton className="h-9 w-12" />
-                ) : (
-                  <div className="text-3xl font-extrabold text-gray-900">{stats?.projectsCompleted || 0}</div>
-                )}
-                <p className="text-xs text-gray-500 mt-1">Successfully delivered</p>
-              </div>
-
-              <div className="border-2 border-dc-teal rounded-2xl p-4 bg-white">
-                <div className="flex items-center justify-between mb-1">
-                  <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold">Rating</p>
-                  <Star className="h-4 w-4 text-dc-teal" />
-                </div>
-                {statsLoading ? (
-                  <Skeleton className="h-9 w-16" />
-                ) : (
-                  <div className="text-3xl font-extrabold text-gray-900">
-                    {stats?.averageRating ? stats.averageRating.toFixed(1) : 'N/A'}
-                  </div>
-                )}
-                <p className="text-xs text-gray-500 mt-1">Client feedback score</p>
-              </div>
-            </div>
-          </div>
-        </div>
+          {/* Quick Actions */}
+          <QuickActionButtons actions={creatorActions} />
+        </DashboardHero>
 
         {/* White body content */}
         <div className="px-4 py-6 pb-24 md:pb-0">
@@ -206,26 +127,6 @@ const CreatorDashboard = () => {
                     <p className="text-xs mt-1">Start applying to campaigns to see your activity here</p>
                   </div>
                 )}
-              </div>
-            </div>
-
-            {/* Quick Actions */}
-            <div className="border-2 border-dc-teal rounded-2xl bg-white overflow-hidden">
-              <div className="px-4 pt-4 pb-2">
-                <p className="font-sans text-sm font-bold uppercase tracking-wide text-dc-teal">
-                  Quick Actions
-                </p>
-              </div>
-              <div className="px-4 pb-4 space-y-3">
-                <Button className="w-full rounded-full border-dc-teal text-dc-teal hover:bg-dc-teal/10 font-semibold" variant="outline" asChild>
-                  <Link to="/dashboard/creator/campaigns">Browse New Campaigns</Link>
-                </Button>
-                <Button className="w-full rounded-full border-dc-teal text-dc-teal hover:bg-dc-teal/10 font-semibold" variant="outline" asChild>
-                  <Link to="/dashboard/creator/projects">View Active Projects</Link>
-                </Button>
-                <Button className="w-full rounded-full border-dc-teal text-dc-teal hover:bg-dc-teal/10 font-semibold" variant="outline" asChild>
-                  <Link to="/reviews">Manage Reviews</Link>
-                </Button>
               </div>
             </div>
 

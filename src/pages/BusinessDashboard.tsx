@@ -4,18 +4,27 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Button } from '@/components/ui/button';
-import { Rocket, Users, DollarSign } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { DollarSign, Rocket, Clock, Target, Loader2 } from 'lucide-react';
 import { useSponsorshipProposals } from '@/hooks/useSponsorshipProposals';
 import SponsorshipProposalCard from '@/components/campaigns/SponsorshipProposalCard';
 import { BusinessDashboardSideFeed } from '@/components/dragon-feed/BusinessDashboardSideFeed';
 import { FeedLightbox } from '@/components/dragon-feed/FeedLightbox';
 import { FeedMediaItem } from '@/hooks/useBusinessDragonFeed';
 import RatingPromptManager from '@/components/reviews/RatingPromptManager';
-import { DonnyAskBar } from '@/components/donny/DonnyAskBar';
-import { BusinessStatsRow } from '@/components/dashboard/BusinessStatsRow';
-import { ActiveCampaignsFeed } from '@/components/dashboard/ActiveCampaignsFeed';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { DashboardHero } from '@/components/dashboard/DashboardHero';
+import { DonnyAIBar } from '@/components/dashboard/DonnyAIBar';
+import { DashboardStatsGrid, type StatItem } from '@/components/dashboard/DashboardStatsGrid';
+import { QuickActionButtons, type QuickAction } from '@/components/dashboard/QuickActionButtons';
+import { ActivityFeedCard } from '@/components/dashboard/ActivityFeedCard';
+import { useBusinessActiveCampaigns } from '@/hooks/useBusinessActiveCampaigns';
+import { useBusinessDashboardMetrics } from '@/hooks/useBusinessDashboardMetrics';
 
+function formatDate(dateStr: string | null): string {
+  if (!dateStr) return 'No deadline';
+  const date = new Date(dateStr);
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
 
 const BusinessDashboard = () => {
   const { profile } = useAuth();
@@ -24,6 +33,9 @@ const BusinessDashboard = () => {
   const [selectedFeedItem, setSelectedFeedItem] = useState<FeedMediaItem | null>(null);
   const [currentFeedIndex, setCurrentFeedIndex] = useState(0);
   const [allFeedItems, setAllFeedItems] = useState<FeedMediaItem[]>([]);
+
+  const { data: metrics, isLoading: metricsLoading } = useBusinessDashboardMetrics();
+  const { data: campaigns, isLoading: campaignsLoading } = useBusinessActiveCampaigns();
 
   const pendingProposals = proposals.filter(p => p.status === 'pending');
 
@@ -39,6 +51,18 @@ const BusinessDashboard = () => {
     }
   };
 
+  const businessStats: StatItem[] = metrics ? [
+    { label: metrics.activeCampaigns.label, value: metrics.activeCampaigns.value, icon: Rocket },
+    { label: metrics.pendingContent.label, value: metrics.pendingContent.value, icon: Clock },
+    { label: metrics.totalSpend.label, value: metrics.totalSpend.value, icon: DollarSign },
+    { label: metrics.avgEngagement.label, value: metrics.avgEngagement.value, icon: Target },
+  ] : [];
+
+  const businessActions: [QuickAction, QuickAction] = [
+    { label: 'Create Campaign', to: '/dashboard/business/campaigns/create', variant: 'primary' },
+    { label: 'Browse Creators', to: '/dashboard/business/creators', variant: 'secondary' },
+  ];
+
   if (!profile) {
     return <div>Loading...</div>;
   }
@@ -48,44 +72,57 @@ const BusinessDashboard = () => {
       <div className="flex h-full overflow-hidden">
         {/* Main Content Area */}
         <div className="flex-1 overflow-y-auto overflow-x-hidden">
-          <div className="max-w-2xl lg:max-w-4xl mx-auto">
 
-            {/* Content sections with padding */}
-            <div className="p-4 sm:p-6 space-y-4">
+          {/* Unified gradient header */}
+          <DashboardHero
+            roleLabel="Business Dashboard"
+            userName={profile.full_name || 'there'}
+          >
+            <DonnyAIBar placeholder='Ask Donny... "Find creators near me"' />
+            <RatingPromptManager />
+            <DashboardStatsGrid stats={businessStats} isLoading={metricsLoading} />
+            <QuickActionButtons actions={businessActions} />
+          </DashboardHero>
 
-              {/* 2. Donny AI Bar */}
-              <DonnyAskBar userRole="business_client" />
+          {/* White body content */}
+          <div className="p-4 sm:p-6 space-y-4">
+            <div className="max-w-2xl lg:max-w-4xl mx-auto space-y-4">
 
-              {/* 3. Stats Row */}
-              <BusinessStatsRow />
-
-              {/* 4. Quick Actions */}
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  onClick={() => navigate('/dashboard/business/campaigns/create')}
-                  className="bg-dc-teal rounded-xl p-4 text-center hover:bg-dc-teal/90 transition-colors"
-                >
-                  <Rocket className="w-6 h-6 text-white mx-auto mb-2" />
-                  <div className="text-sm font-bold text-white">Create Campaign</div>
-                  <div className="text-xs text-white/80 mt-1">Launch a new content campaign</div>
-                </button>
-                <button
-                  onClick={() => navigate('/dashboard/business/creators')}
-                  className="bg-white border-2 border-gray-200 rounded-xl p-4 text-center hover:border-dc-teal/50 transition-colors"
-                >
-                  <Users className="w-6 h-6 text-gray-700 mx-auto mb-2" />
-                  <div className="text-sm font-bold text-gray-900">Browse Creators</div>
-                  <div className="text-xs text-gray-500 mt-1">Find talent for your brand</div>
-                </button>
+              {/* Active Campaigns Feed */}
+              <div>
+                <p className="font-sans text-sm font-bold uppercase tracking-wide text-dc-teal mb-2">
+                  Active Campaigns
+                </p>
+                {campaignsLoading ? (
+                  <div className="border-2 border-dc-teal rounded-2xl p-6 bg-white flex items-center justify-center">
+                    <Loader2 className="w-5 h-5 text-dc-teal animate-spin" />
+                  </div>
+                ) : !campaigns || campaigns.length === 0 ? (
+                  <div className="border-2 border-dc-teal rounded-2xl p-6 bg-white text-center">
+                    <p className="text-sm text-gray-500">No active campaigns yet.</p>
+                    <button
+                      onClick={() => navigate('/dashboard/business/campaigns/create')}
+                      className="text-sm font-semibold text-dc-teal hover:underline mt-1"
+                    >
+                      Let Donny help you create one
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {campaigns.map((campaign) => (
+                      <ActivityFeedCard
+                        key={campaign.id}
+                        title={campaign.title}
+                        subtitle={`${campaign.creatorName ? `@${campaign.creatorName}` : 'Unassigned'} · Due ${formatDate(campaign.deadline)}`}
+                        status={campaign.status}
+                        onClick={() => navigate(`/dashboard/business/campaigns/${campaign.id}`)}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
 
-              {/* 5. Active Campaigns Feed */}
-              <ActiveCampaignsFeed />
-
-              {/* Review Prompts */}
-              <RatingPromptManager />
-
-              {/* Sponsorship Proposals (preserved, moved below feed) */}
+              {/* Sponsorship Proposals — PRESERVED, same conditional logic */}
               {pendingProposals.length > 0 && (
                 <Card className="border-2 border-dc-teal rounded-2xl bg-white">
                   <CardHeader>
@@ -120,12 +157,13 @@ const BusinessDashboard = () => {
                   </CardContent>
                 </Card>
               )}
-            </div>
 
+            </div>
           </div>
+
         </div>
 
-        {/* Side Feed — Desktop only (preserved) */}
+        {/* Side Feed — Desktop only (PRESERVED, no changes to this block) */}
         <div className="hidden lg:block w-80 shrink-0 border-l bg-muted/10 sticky top-14 h-[calc(100vh-56px)] overflow-hidden">
           <BusinessDashboardSideFeed
             onItemClick={handleFeedItemClick}
@@ -134,7 +172,7 @@ const BusinessDashboard = () => {
         </div>
       </div>
 
-      {/* Lightbox Modal (preserved) */}
+      {/* Lightbox Modal (PRESERVED, no changes) */}
       <FeedLightbox
         item={selectedFeedItem}
         allItems={allFeedItems}
