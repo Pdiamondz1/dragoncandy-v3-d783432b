@@ -24,11 +24,12 @@ export const CampaignSwipeCard: React.FC<CampaignSwipeCardProps> = ({
   const [currentIndex, setCurrentIndex] = useState(campaigns.length - 1);
   const currentIndexRef = useRef(currentIndex);
 
-  // Reset index when campaigns array changes (e.g. re-fetch)
+  // Reset index when campaigns array changes (e.g. re-fetch or filter change)
+  const campaignFingerprint = `${campaigns.length}-${campaigns[0]?.id ?? ''}`;
   React.useEffect(() => {
     setCurrentIndex(campaigns.length - 1);
     currentIndexRef.current = campaigns.length - 1;
-  }, [campaigns.length]);
+  }, [campaignFingerprint]);
 
   const updateCurrentIndex = (val: number) => {
     currentIndexRef.current = val;

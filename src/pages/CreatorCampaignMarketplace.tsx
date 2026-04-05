@@ -56,6 +56,8 @@ const CreatorCampaignMarketplace = () => {
     return <MarketplaceErrorState />;
   }
 
+  const availableFilteredCount = availableFilteredCount;
+
   const donnyPickIds = new Set(donnyPicks.map((p) => p.campaign.id));
 
   const availableCampaigns = filteredBySearch.filter(
@@ -144,7 +146,7 @@ const CreatorCampaignMarketplace = () => {
             <div className="flex items-center gap-1 mt-0.5">
               <MapPin className="w-3.5 h-3.5 text-dc-pink-accent flex-shrink-0" />
               <span className="text-xs text-gray-600">
-                {filteredBySearch.filter((c) => !c.user_applied).length} campaign{filteredBySearch.filter((c) => !c.user_applied).length !== 1 ? 's' : ''} available
+                {availableFilteredCount} campaign{availableFilteredCount !== 1 ? 's' : ''} available
               </span>
             </div>
           </div>
@@ -188,7 +190,7 @@ const CreatorCampaignMarketplace = () => {
             {/* Search & Filters */}
             <CampaignSearchFilters
               filters={filters}
-              filteredCount={filteredBySearch.filter((c) => !c.user_applied).length}
+              filteredCount={availableFilteredCount}
               hasActiveFilters={hasActiveFilters}
               onSearchChange={setSearchTerm}
               onContentTypeChange={setContentType}
