@@ -11,6 +11,7 @@ interface MediaUploaderProps {
   existingFiles?: StagedFile[];
   className?: string;
   uploadProgress?: Record<string, number>;
+  maxTotalBytes?: number;
 }
 
 const IMAGE_TYPES: Record<string, string[]> = {
@@ -60,6 +61,7 @@ export function MediaUploader({
   existingFiles = [],
   className = '',
   uploadProgress,
+  maxTotalBytes,
 }: MediaUploaderProps) {
   const [files, setFiles] = useState<StagedFile[]>(existingFiles);
   const previewUrls = useRef<string[]>([]);
@@ -83,6 +85,17 @@ export function MediaUploader({
       if (remaining <= 0) {
         toast.error(`Maximum ${maxFiles} file${maxFiles !== 1 ? 's' : ''} allowed`);
         return;
+      }
+
+      // Total size cap validation
+      if (maxTotalBytes) {
+        const currentTotal = current.reduce((sum, f) => sum + f.size, 0);
+        const newTotal = accepted.reduce((sum, f) => sum + f.size, 0);
+        if (currentTotal + newTotal > maxTotalBytes) {
+          const limitMB = Math.round(maxTotalBytes / (1024 * 1024));
+          toast.error(`Total footage size exceeds ${limitMB}MB limit`);
+          return;
+        }
       }
 
       const toProcess = accepted.slice(0, remaining);
@@ -140,7 +153,7 @@ export function MediaUploader({
         onFilesChange(updated);
       }
     },
-    [files, maxFiles, maxBytes, isVideo, onFilesChange],
+    [files, maxFiles, maxBytes, isVideo, onFilesChange, maxTotalBytes],
   );
 
   const onDrop = useCallback(
@@ -201,6 +214,26 @@ export function MediaUploader({
         <p className="mt-2 text-xs text-gray-500 text-right">
           {files.length} of {maxFiles} file{maxFiles !== 1 ? 's' : ''}
         </p>
+      )}
+
+      {/* Total size usage indicator */}
+      {maxTotalBytes && files.length > 0 && (
+        <div className="mt-2">
+          <div className="flex justify-between text-xs text-gray-500 mb-1">
+            <span>
+              {Math.round(files.reduce((sum, f) => sum + f.size, 0) / (1024 * 1024))}MB of{' '}
+              {Math.round(maxTotalBytes / (1024 * 1024))}MB used
+            </span>
+          </div>
+          <div className="h-1 bg-gray-200 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-dc-teal rounded-full transition-all"
+              style={{
+                width: `${Math.min(100, (files.reduce((sum, f) => sum + f.size, 0) / maxTotalBytes) * 100)}%`,
+              }}
+            />
+          </div>
+        </div>
       )}
 
       {/* Thumbnail grid */}
