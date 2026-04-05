@@ -203,9 +203,9 @@ export function MediaUploader({
 
       {/* Thumbnail grid */}
       {files.length > 0 && (
-        <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <div className="mt-3 flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
           {files.map((staged, index) => (
-            <div key={`${staged.name}-${index}`} className="relative rounded-lg overflow-hidden bg-gray-200 aspect-square">
+            <div key={`${staged.name}-${index}`} className="relative rounded-lg overflow-hidden bg-gray-200 w-24 h-24 flex-shrink-0">
               {/* Preview */}
               {staged.type.startsWith('video/') ? (
                 <div className="w-full h-full bg-gray-800 flex items-center justify-center">
