@@ -2,37 +2,21 @@
 import React, { useState, useRef } from 'react';
 import TinderCard from 'react-tinder-card';
 import { PublicCampaign } from '@/hooks/usePublicCampaigns';
-import { MapPin, DollarSign } from 'lucide-react';
+import { MapPin, Users } from 'lucide-react';
 import logo from '@/assets/Transparent_DragonCandy_logo.png';
 import DeliveryBadge from './DeliveryBadge';
-import type { DeliveryType } from './DeliveryTypeSelector';
+import { mapDeliveryType, getRelativeTime, formatBudget } from '@/lib/campaignUtils';
 
 interface CampaignSwipeCardProps {
   campaigns: PublicCampaign[];
   onSwipe: (direction: string, campaign: PublicCampaign) => void;
-  onApply: (campaign: PublicCampaign) => void;
-}
-
-function formatBudget(campaign: PublicCampaign): string {
-  if (campaign.pricing_type === 'fixed' && campaign.fixed_price) {
-    return `$${campaign.fixed_price}`;
-  }
-  if (campaign.budget_min && campaign.budget_max) {
-    return `$${campaign.budget_min} – $${campaign.budget_max}`;
-  }
-  if (campaign.budget_min) {
-    return `From $${campaign.budget_min}`;
-  }
-  if (campaign.budget_max) {
-    return `Up to $${campaign.budget_max}`;
-  }
-  return 'Budget TBD';
+  onViewDetail: (campaign: PublicCampaign) => void;
 }
 
 export const CampaignSwipeCard: React.FC<CampaignSwipeCardProps> = ({
   campaigns,
   onSwipe,
-  onApply,
+  onViewDetail,
 }) => {
   const [currentIndex, setCurrentIndex] = useState(campaigns.length - 1);
   const currentIndexRef = useRef(currentIndex);
@@ -91,10 +75,10 @@ export const CampaignSwipeCard: React.FC<CampaignSwipeCardProps> = ({
                 swipeThreshold={100}
                 className="w-full h-full"
               >
-                <CardContent campaign={campaign} onApply={onApply} />
+                <CardContent campaign={campaign} onViewDetail={onViewDetail} />
               </TinderCard>
             ) : (
-              <CardContent campaign={campaign} onApply={onApply} />
+              <CardContent campaign={campaign} onViewDetail={onViewDetail} />
             )}
           </div>
         );
@@ -105,83 +89,157 @@ export const CampaignSwipeCard: React.FC<CampaignSwipeCardProps> = ({
 
 interface CardContentProps {
   campaign: PublicCampaign;
-  onApply: (campaign: PublicCampaign) => void;
+  onViewDetail: (campaign: PublicCampaign) => void;
 }
 
-const CardContent: React.FC<CardContentProps> = ({ campaign, onApply }) => {
-  const businessName = campaign.business_profile?.business_name ?? 'Company Name';
+const CardContent: React.FC<CardContentProps> = ({ campaign, onViewDetail }) => {
+  const businessName = campaign.business_profile?.business_name ?? 'Unknown Business';
   const businessLogo = campaign.business_profile?.logo_url;
   const location = campaign.business_profile?.city
     ? `${campaign.business_profile.city}${campaign.business_profile.country ? ', ' + campaign.business_profile.country : ''}`
-    : null;
-  const isExpedited = campaign.delivery_type === 'expedited' || campaign.delivery_type === 'dragonrush';
+    : campaign.business_profile?.location ?? null;
+  const deliveryTier = mapDeliveryType(campaign.delivery_type);
+  const applicantCount = campaign.application_count ?? 0;
+  const postedTime = getRelativeTime(campaign.created_at);
+  const deliverableCount = campaign.deliverable_count ?? campaign.deliverables?.length ?? 0;
+  const contentTypes = campaign.content_types ?? [];
 
-  // Use a placeholder gradient when no image is available
-  const hasImage = false; // campaigns don't have a hero image field yet — use gradient placeholder
-
-  return (
-    <div className="bg-white rounded-2xl shadow-xl overflow-hidden h-full flex flex-col cursor-grab active:cursor-grabbing">
-      {/* Hero image area — 65% height */}
-      <div className="relative" style={{ height: '65%', flexShrink: 0 }}>
-        {hasImage ? (
+  // Cover image fallback rendering
+  const renderCoverImage = () => {
+    if (campaign.cover_image_url && campaign.cover_image_type === 'reference') {
+      return (
+        <img
+          src={campaign.cover_image_url}
+          alt={campaign.title}
+          className="w-full h-full object-cover"
+          draggable={false}
+        />
+      );
+    }
+    if (campaign.cover_image_url && campaign.cover_image_type === 'ai_preview') {
+      return (
+        <img
+          src={campaign.cover_image_url}
+          alt={campaign.title}
+          className="w-full h-full object-cover"
+          draggable={false}
+        />
+      );
+    }
+    if (campaign.cover_image_url && campaign.cover_image_type === 'logo') {
+      // Blurred logo treatment
+      return (
+        <div className="w-full h-full relative overflow-hidden">
           <img
-            src=""
-            alt={campaign.title}
-            className="w-full h-full object-cover"
+            src={campaign.cover_image_url}
+            alt=""
+            className="w-full h-full object-cover scale-150 blur-2xl opacity-60"
             draggable={false}
           />
-        ) : (
-          <div className="w-full h-full bg-gradient-to-br from-dc-teal/30 via-dc-pink/20 to-dc-teal-dark/40 flex items-center justify-center">
-            <div className="text-center px-4">
-              <img src={logo} alt="Dragon Candy" className="w-16 h-16 mx-auto mb-2 opacity-60" />
-            </div>
-          </div>
-        )}
+          <img
+            src={campaign.cover_image_url}
+            alt={businessName}
+            className="absolute inset-0 m-auto w-20 h-20 object-contain rounded-full"
+            draggable={false}
+          />
+        </div>
+      );
+    }
+    // Branded gradient fallback
+    return (
+      <div className="w-full h-full bg-gradient-to-br from-dc-teal via-dc-pink/40 to-dc-teal-dark flex items-center justify-center">
+        <div className="text-center px-4">
+          <img src={logo} alt="Dragon Candy" className="w-16 h-16 mx-auto mb-2 opacity-70" draggable={false} />
+          <p className="text-white/80 font-bold text-sm line-clamp-2">{campaign.title}</p>
+        </div>
+      </div>
+    );
+  };
+
+  const contentTypeLabels: Record<string, string> = {
+    photo: 'Photo',
+    video_reel: 'Reel',
+    story: 'Story',
+    carousel: 'Carousel',
+    tiktok: 'TikTok',
+    youtube_short: 'YT Short',
+  };
+
+  return (
+    <div
+      className="bg-white rounded-2xl shadow-xl overflow-hidden h-full flex flex-col cursor-grab active:cursor-grabbing"
+      onClick={(e) => {
+        e.stopPropagation();
+        onViewDetail(campaign);
+      }}
+    >
+      {/* Hero image area — 60% height */}
+      <div className="relative" style={{ height: '60%', flexShrink: 0 }}>
+        {renderCoverImage()}
 
         {/* Dark overlay gradient at bottom of image */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
 
-        {/* DragonDash badge — top-right corner */}
-        {isExpedited && (
+        {/* Delivery badge — top-right */}
+        {deliveryTier && (
           <div className="absolute top-3 right-3 z-10">
-            <DeliveryBadge
-              deliveryType={campaign.delivery_type as DeliveryType}
-              size="sm"
-              showTimeframe={false}
-            />
+            <DeliveryBadge deliveryType={deliveryTier} size="sm" showTimeframe={false} />
           </div>
         )}
 
-        {/* Title overlaid on image */}
-        <div className="absolute bottom-0 left-0 right-0 p-4">
-          <p className="text-white font-bold text-xl leading-tight drop-shadow-sm line-clamp-2">
+        {/* Applicant count — top-left */}
+        {applicantCount > 0 && (
+          <div className="absolute top-3 left-3 z-10 flex items-center gap-1 bg-black/50 rounded-full px-2.5 py-1">
+            <Users className="w-3 h-3 text-white" />
+            <span className="text-white text-xs font-medium">{applicantCount} applied</span>
+          </div>
+        )}
+
+        {/* Title + location overlay */}
+        <div className="absolute bottom-0 left-0 right-0 p-4 z-10">
+          <p className="text-white font-bold text-lg leading-tight drop-shadow-sm line-clamp-2">
             {campaign.title}
           </p>
-          {location && (
-            <div className="flex items-center gap-1 mt-1">
-              <MapPin className="w-3 h-3 text-dc-pink flex-shrink-0" />
-              <span className="text-white/80 text-xs">{location}</span>
-            </div>
-          )}
+          <div className="flex items-center gap-2 mt-1.5 text-white/75 text-xs">
+            {location && (
+              <span className="flex items-center gap-1">
+                <MapPin className="w-3 h-3 text-dc-pink flex-shrink-0" />
+                {location}
+              </span>
+            )}
+            {location && <span className="opacity-50">·</span>}
+            <span>{postedTime}</span>
+          </div>
         </div>
       </div>
 
-      {/* Card body — remaining height */}
+      {/* Card body */}
       <div className="flex flex-col flex-1 px-4 py-3 min-h-0">
-        {/* Description */}
-        <p className="text-sm text-gray-500 line-clamp-2 flex-shrink-0">
-          {campaign.description ?? 'Use our AI-powered campaign wizard to define your goals and find the perfect creators'}
-        </p>
-
-        {/* Budget badge */}
-        <div className="flex items-center gap-1 mt-2 flex-shrink-0">
-          <DollarSign className="w-4 h-4 text-dc-teal flex-shrink-0" />
-          <span className="text-sm font-semibold text-dc-teal">{formatBudget(campaign)}</span>
+        {/* Budget + deliverable count */}
+        <div className="flex items-center justify-between flex-shrink-0">
+          <span className="text-dc-teal font-bold text-base">{formatBudget(campaign)}</span>
+          {deliverableCount > 0 && (
+            <span className="text-gray-500 text-xs">{deliverableCount} deliverable{deliverableCount !== 1 ? 's' : ''}</span>
+          )}
         </div>
 
-        {/* Company row */}
+        {/* Content type pills */}
+        {contentTypes.length > 0 && (
+          <div className="flex gap-1.5 mt-2 flex-wrap flex-shrink-0">
+            {contentTypes.slice(0, 4).map((type) => (
+              <span
+                key={type}
+                className="bg-teal-50 text-teal-700 text-[10px] px-2 py-0.5 rounded-full border border-teal-200"
+              >
+                {contentTypeLabels[type] ?? type}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Business row */}
         <div className="flex items-center gap-2 mt-2 flex-shrink-0">
-          <div className="w-8 h-8 rounded-full ring-2 ring-dc-teal overflow-hidden flex-shrink-0 bg-dc-pink-bg flex items-center justify-center">
+          <div className="w-7 h-7 rounded-full ring-2 ring-dc-teal overflow-hidden flex-shrink-0 bg-dc-pink-bg flex items-center justify-center">
             {businessLogo ? (
               <img src={businessLogo} alt={businessName} className="w-full h-full object-cover" />
             ) : (
@@ -191,17 +249,18 @@ const CardContent: React.FC<CardContentProps> = ({ campaign, onApply }) => {
             )}
           </div>
           <span className="text-sm font-semibold text-gray-700 truncate">{businessName}</span>
+          <span className="text-dc-teal text-xs">✓</span>
         </div>
 
-        {/* Apply Now CTA */}
+        {/* View Campaign CTA */}
         <button
           onClick={(e) => {
             e.stopPropagation();
-            onApply(campaign);
+            onViewDetail(campaign);
           }}
-          className="w-full bg-dc-pink text-white rounded-full h-12 font-bold mt-3 flex-shrink-0 hover:bg-dc-pink-accent transition-colors duration-150 active:scale-95"
+          className="w-full bg-dc-teal text-white rounded-full h-11 font-bold mt-auto flex-shrink-0 hover:bg-dc-teal-dark transition-colors duration-150 active:scale-95 text-sm"
         >
-          Apply Now
+          View Campaign
         </button>
       </div>
     </div>
