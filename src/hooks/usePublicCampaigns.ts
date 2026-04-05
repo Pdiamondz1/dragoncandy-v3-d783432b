@@ -2,6 +2,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Campaign } from '@/hooks/useCampaignQueries';
+import { getCoverImageUrl } from '@/lib/campaignUtils';
 
 export interface PublicCampaign extends Campaign {
   business_profile?: {
@@ -15,6 +16,10 @@ export interface PublicCampaign extends Campaign {
   application_count?: number;
   user_applied?: boolean;
   application_status?: 'pending' | 'accepted' | 'rejected';
+  cover_image_url?: string;
+  cover_image_type?: 'reference' | 'ai_preview' | 'logo' | 'gradient';
+  deliverable_count?: number;
+  content_types?: string[];
 }
 
 export const usePublicCampaigns = (userId?: string) => {
@@ -109,6 +114,40 @@ export const usePublicCampaigns = (userId?: string) => {
         (businessProfiles || []).map(profile => [profile.user_id, profile])
       );
 
+      // Batch fetch cover images: first reference_image or ai_preview per campaign
+      const campaignIds = visibleCampaigns.map(c => c.id);
+
+      const { data: allMedia } = await supabase
+        .from('campaign_media')
+        .select('campaign_id, media_type, file_url')
+        .in('campaign_id', campaignIds)
+        .in('media_type', ['reference_image', 'ai_preview'])
+        .order('sort_order', { ascending: true });
+
+      // Build a map of campaign_id -> media items
+      const mediaMap = new Map<string, Array<{ media_type: string; file_url: string }>>();
+      for (const item of allMedia || []) {
+        const list = mediaMap.get(item.campaign_id) || [];
+        list.push(item);
+        mediaMap.set(item.campaign_id, list);
+      }
+
+      // Batch fetch deliverable counts and content types
+      const { data: allDeliverables } = await supabase
+        .from('campaign_deliverables')
+        .select('campaign_id, content_type')
+        .in('campaign_id', campaignIds);
+
+      // Build maps for deliverable data
+      const deliverableCountMap = new Map<string, number>();
+      const contentTypeMap = new Map<string, string[]>();
+      for (const d of allDeliverables || []) {
+        deliverableCountMap.set(d.campaign_id, (deliverableCountMap.get(d.campaign_id) || 0) + 1);
+        const types = contentTypeMap.get(d.campaign_id) || [];
+        if (!types.includes(d.content_type)) types.push(d.content_type);
+        contentTypeMap.set(d.campaign_id, types);
+      }
+
       // Get application counts and user application status if user is provided
       const enrichedCampaigns = await Promise.all(
         visibleCampaigns.map(async (campaign) => {
@@ -150,6 +189,24 @@ export const usePublicCampaigns = (userId?: string) => {
             application_count: count || 0,
             user_applied: userApplied,
             application_status: applicationStatus,
+            // Cover image from campaign media
+            ...(() => {
+              const campaignMedia = mediaMap.get(campaign.id);
+              const coverImage = getCoverImageUrl(
+                campaignMedia,
+                campaign.ai_preview_status,
+                businessProfile?.logo_url
+              );
+              return {
+                cover_image_url: coverImage.url ?? undefined,
+                cover_image_type: coverImage.type,
+              };
+            })(),
+            // Deliverable data
+            deliverable_count: deliverableCountMap.get(campaign.id)
+              || campaign.deliverables?.length
+              || 0,
+            content_types: contentTypeMap.get(campaign.id) || [],
           };
         })
       );
