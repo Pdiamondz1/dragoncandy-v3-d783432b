@@ -21,6 +21,12 @@ export const CampaignSwipeCard: React.FC<CampaignSwipeCardProps> = ({
   const [currentIndex, setCurrentIndex] = useState(campaigns.length - 1);
   const currentIndexRef = useRef(currentIndex);
 
+  // Reset index when campaigns array changes (e.g. re-fetch)
+  React.useEffect(() => {
+    setCurrentIndex(campaigns.length - 1);
+    currentIndexRef.current = campaigns.length - 1;
+  }, [campaigns.length]);
+
   const updateCurrentIndex = (val: number) => {
     currentIndexRef.current = val;
     setCurrentIndex(val);
@@ -78,7 +84,9 @@ export const CampaignSwipeCard: React.FC<CampaignSwipeCardProps> = ({
                 <CardContent campaign={campaign} onViewDetail={onViewDetail} />
               </TinderCard>
             ) : (
-              <CardContent campaign={campaign} onViewDetail={onViewDetail} />
+              <div className="pointer-events-none w-full h-full">
+                <CardContent campaign={campaign} onViewDetail={onViewDetail} />
+              </div>
             )}
           </div>
         );
