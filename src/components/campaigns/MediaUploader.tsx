@@ -243,7 +243,16 @@ export function MediaUploader({
 
               {/* File info bar */}
               <div className="absolute bottom-0 left-0 right-0 bg-black/50 px-2 py-1">
-                <p className="text-white text-xs truncate">{staged.name}</p>
+                <div className="flex items-center gap-1.5 mb-0.5">
+                  <span
+                    className={`text-white text-[10px] font-semibold rounded-full px-2 py-0.5 ${
+                      staged.type.startsWith('video/') ? 'bg-purple-500/80' : 'bg-blue-500/80'
+                    }`}
+                  >
+                    {staged.type.startsWith('video/') ? 'Video' : 'Photo'}
+                  </span>
+                  <p className="text-white text-xs truncate flex-1">{staged.name}</p>
+                </div>
                 <div className="flex items-center justify-between gap-1">
                   <span className="text-gray-300 text-[10px]">{formatSize(staged.size)}</span>
                   {staged.duration != null && (
