@@ -26,7 +26,7 @@ export const Header: React.FC = () => {
       <img
         src={dragonCandyLogo}
         alt="DragonCandy"
-        className="h-12 w-12 cursor-pointer transition-transform duration-200 hover:scale-105"
+        className="w-[100px] md:w-[120px] lg:w-[140px] h-auto cursor-pointer transition-transform duration-200 hover:scale-105"
         onClick={() => navigate('/')}
       />
 

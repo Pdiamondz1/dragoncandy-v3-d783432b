@@ -18,7 +18,7 @@ export const AskBar: React.FC<AskBarProps> = ({ onClick }) => {
         "cursor-text"
       )}
     >
-      <img src={dragonEmblem} alt="Donny" className="w-6 h-6 flex-shrink-0 object-contain" />
+      <img src={dragonEmblem} alt="Donny" className="w-8 h-8 md:w-9 md:h-9 flex-shrink-0 rounded-full object-contain shadow-[0_0_8px_rgba(77,217,192,0.4)]" />
       <span className="text-gray-400 text-base flex-1 text-left">
         Ask Donny...
       </span>

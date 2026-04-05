@@ -1,7 +1,7 @@
 // src/components/donny/DonnyAskBar.tsx
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Sparkles } from 'lucide-react';
+import donnyIcon from '@/assets/Donny_icon.png';
 import { cn } from '@/lib/utils';
 
 interface DonnyAskBarProps {
@@ -53,7 +53,11 @@ export function DonnyAskBar({ userRole }: DonnyAskBarProps) {
           )}
           onClick={() => inputRef.current?.focus()}
         >
-          <Sparkles className="w-5 h-5 text-dc-teal flex-shrink-0" />
+          <img
+            src={donnyIcon}
+            alt="Donny"
+            className="w-8 h-8 md:w-9 md:h-9 flex-shrink-0 rounded-full object-contain shadow-[0_0_8px_rgba(77,217,192,0.4)]"
+          />
           <input
             ref={inputRef}
             type="text"
