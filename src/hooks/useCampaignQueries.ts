@@ -28,6 +28,7 @@ export interface Campaign {
   escrow_payment_intent_id?: string;
   // AI-generated campaign analysis
   ai_analysis?: CampaignAnalysis | null;
+  ai_preview_status?: string | null;
   created_at: string;
   updated_at: string;
 }
