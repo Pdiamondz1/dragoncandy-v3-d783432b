@@ -182,6 +182,7 @@ export function MediaUploader({
   const fileLabel = isVideo ? 'video' : 'image';
   const acceptedFormats = isVideo ? 'MP4, MOV, WebM' : 'JPEG, PNG, WebP';
   const sizeLimit = isVideo ? '100MB, max 60s' : '50MB';
+  const totalBytes = files.reduce((sum, f) => sum + f.size, 0);
 
   return (
     <div className={className}>
@@ -217,19 +218,17 @@ export function MediaUploader({
       )}
 
       {/* Total size usage indicator */}
-      {maxTotalBytes && files.length > 0 && (
+      {maxTotalBytes != null && maxTotalBytes > 0 && files.length > 0 && (
         <div className="mt-2">
-          <div className="flex justify-between text-xs text-gray-500 mb-1">
-            <span>
-              {Math.round(files.reduce((sum, f) => sum + f.size, 0) / (1024 * 1024))}MB of{' '}
-              {Math.round(maxTotalBytes / (1024 * 1024))}MB used
-            </span>
+          <div className="text-xs text-gray-500 mb-1">
+            {Math.round(totalBytes / (1024 * 1024))}MB of{' '}
+            {Math.round(maxTotalBytes / (1024 * 1024))}MB used
           </div>
           <div className="h-1 bg-gray-200 rounded-full overflow-hidden">
             <div
               className="h-full bg-dc-teal rounded-full transition-all"
               style={{
-                width: `${Math.min(100, (files.reduce((sum, f) => sum + f.size, 0) / maxTotalBytes) * 100)}%`,
+                width: `${Math.min(100, (totalBytes / maxTotalBytes) * 100)}%`,
               }}
             />
           </div>
