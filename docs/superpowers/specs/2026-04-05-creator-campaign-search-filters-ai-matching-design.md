@@ -18,18 +18,19 @@ Add compact search + filter UI and a client-side AI matching system ("Donny's Pi
 
 ## 1. Search Bar
 
-- Full-width input with Donny logo icon on the left
+- Full-width input with DragonCandy logo icon on the left (use existing `Transparent_DragonCandy_logo.png`)
 - Placeholder: `"Search campaigns..."`
 - **Mobile:** collapsed to a search icon by default, expands on tap
 - **Debounced 300ms** client-side filtering against: `title`, `description`, `business_profile.business_name`
 - Clear button (X) inside the input when active
+- **Mobile swipe interaction:** when search text changes, the filtered campaign list updates and the swipe stack resets to the top card. This is acceptable since search is an intentional action (user tapped to expand, typed a query). The reset signals "new results."
 
 ## 2. Filter Pills
 
 ### Content Type (single row, single-select, "All" is default)
 
-| Pill | Matches `campaign_deliverables.content_type` |
-|------|----------------------------------------------|
+| Pill | Matches `campaign.content_types` array (already denormalized by `usePublicCampaigns`) |
+|------|------------------------------------------------------------------------------------------|
 | All | everything |
 | Photo | `photo` |
 | Reel | `video_reel`, `tiktok`, `youtube_short` |
@@ -38,17 +39,17 @@ Add compact search + filter UI and a client-side AI matching system ("Donny's Pi
 
 ### Delivery Tier (second row, appears on expand/tap)
 
-| Pill | Matches `campaigns.delivery_type` |
-|------|-----------------------------------|
+| Pill | Matches `campaign.delivery_type` (DB value) |
+|------|-----------------------------------------------|
 | All | everything |
-| DragonDash | `dragonrush` |
-| Express | `expedited` |
+| DragonDash | `dragonrush` (DB stores `dragonrush`, displays as "DragonDash" via `mapDeliveryType`) |
+| Express | `expedited` (DB stores `expedited`, displays as "Express" via `mapDeliveryType`) |
 | Standard | `standard` |
 
 ### Sort (compact dropdown, right-aligned)
 
 - **Newest** (default) — `created_at` descending
-- **Highest Budget** — `budget_max` or `fixed_price` descending
+- **Highest Budget** — sort by `campaign.fixed_price ?? campaign.budget_max ?? 0` descending
 - **Ending Soon** — `deadline` ascending (nulls last)
 
 ### Collapsibility
@@ -104,7 +105,7 @@ Score = (skillMatch x 0.5) + (ratingFit x 0.3) + (availability x 0.2)
 | Skills | Overlap between creator `skills` enum and campaign `content_types` via mapping table (e.g. `photography` -> `photo`, `video_editing` -> `video_reel`) | 0-100 |
 | Location | Normalized city string match: exact = 100, same country = 50, no data/no match = 0 | 0-100 |
 | Rating | `average_rating / 5 * 100`. Higher-rated creators boosted for higher-budget campaigns | 0-100 |
-| Availability | Based on `max_projects_per_month` vs active collaboration count. <2 active = 100, 2 active = 50, 3+ active = 0 | 0-100 |
+| Availability | `max(0, (max_projects_per_month - active_count) / max_projects_per_month * 100)`. If `max_projects_per_month` is null, fall back to: <2 active = 100, 2 active = 50, 3+ active = 0 | 0-100 |
 
 ### Skill-to-Content-Type Mapping
 
@@ -140,7 +141,18 @@ Donny's Picks respect active filters. If a creator filters to "Photo", picks onl
 | No campaigns at all | Existing empty state preserved ("All caught up!") |
 | Filters active + zero results | Active filter count displayed + "Clear filters" button |
 
-## 5. Files to Create/Modify
+## 5. Existing Code Disposition
+
+- **`src/components/campaigns/CampaignMarketplaceFilters.tsx`** — existing filter component built for business-side use. **Do not reuse.** The new `CampaignSearchFilters.tsx` is mobile-first with pill-based design; the existing component uses form inputs and a desktop grid layout. Leave the existing file untouched (it may be used on business pages later).
+- **`src/hooks/useCampaignMarketplaceFilters.ts`** — if this file exists, it is currently unused (no imports). **Do not reuse or delete.** Build the new filtering logic inline in the marketplace page or in a small dedicated hook.
+
+## 6. Edge Cases
+
+- **Unauthenticated / non-creator users:** If no creator profile exists (user not logged in, or user is a business account), Donny's Picks section does not render. Regular campaigns still display with search/filters functional.
+- **Creator with no skills set:** Skill match scores 0 for all campaigns. Donny's Picks will still rank by location/rating/availability.
+- **Campaign with no deliverables:** `content_types` array is empty. Content type filter pills won't match it unless "All" is selected.
+
+## 7. Files to Create/Modify
 
 | File | Action |
 |------|--------|
@@ -152,7 +164,7 @@ Donny's Picks respect active filters. If a creator filters to "Photo", picks onl
 | `src/pages/CreatorCampaignMarketplace.tsx` | **Modify** — integrate search, filters, Donny's Picks injection |
 | `src/components/campaigns/CampaignSwipeCard.tsx` | **Modify** — accept badge overlay prop for injected picks |
 
-## 6. Constraints
+## 8. Constraints
 
 - **No changes to business/restaurant pages**
 - **All existing `lg:` Tailwind classes preserved** on desktop layouts
