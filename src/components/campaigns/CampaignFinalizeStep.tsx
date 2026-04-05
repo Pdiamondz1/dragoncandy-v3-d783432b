@@ -20,6 +20,8 @@ import DeliveryBadge from './DeliveryBadge';
 import type { DeliveryTier } from '@/types/campaignMedia';
 import type { PricingType } from './PricingTypeSelector';
 import type { CampaignAnalysis } from '@/types/campaign';
+import { useScopeValidation } from '@/hooks/useScopeValidation';
+import { ScopeValidationCard } from './ScopeValidationCard';
 
 const finalizeSchema = z.object({
   title: z.string().min(3, 'Campaign name must be at least 3 characters'),
@@ -70,6 +72,12 @@ const CampaignFinalizeStep: React.FC<CampaignFinalizeStepProps> = ({
   const { createCampaign } = useCampaigns();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  const scopeValidation = useScopeValidation(
+    campaignData.structuredDeliverables ?? [],
+    campaignData.deliveryType,
+    campaignData.contentSource,
+  );
 
   const form = useForm<FinalizeFormData>({
     resolver: zodResolver(finalizeSchema),
@@ -429,6 +437,11 @@ const CampaignFinalizeStep: React.FC<CampaignFinalizeStepProps> = ({
         </Card>
       )}
 
+      {/* Scope Validation */}
+      {campaignData.structuredDeliverables && campaignData.structuredDeliverables.length > 0 && (
+        <ScopeValidationCard validation={scopeValidation} />
+      )}
+
       {/* Cost Breakdown */}
       {campaignData.structuredDeliverables && campaignData.structuredDeliverables.length > 0 && (
         <div className="mb-6">
@@ -606,8 +619,10 @@ const CampaignFinalizeStep: React.FC<CampaignFinalizeStepProps> = ({
               </Button>
               <Button
                 type="submit"
-                disabled={isCreating}
+                disabled={isCreating || scopeValidation.status === 'block'}
                 className={`flex items-center gap-2 ${
+                  scopeValidation.status === 'block' ? 'opacity-50 cursor-not-allowed' : ''
+                } ${
                   form.watch('publishImmediately')
                     ? 'bg-gradient-to-r from-primary to-pink-500 hover:from-primary/90 hover:to-pink-500/90'
                     : 'bg-muted hover:bg-muted/80 text-muted-foreground'
