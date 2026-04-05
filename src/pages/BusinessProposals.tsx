@@ -34,7 +34,7 @@ const BusinessProposals = () => {
             <div className="animate-pulse space-y-4">
               <div className="h-6 bg-gray-200 rounded-full w-1/3"></div>
               {[1, 2, 3].map((i) => (
-                <div key={i} className="h-24 bg-gray-100 rounded-2xl border-2 border-gray-200"></div>
+                <div key={i} className="h-24 bg-gray-100 rounded-2xl border-2 border-teal-300"></div>
               ))}
             </div>
           </div>
