@@ -11,6 +11,10 @@ import { CampaignDetailModal } from '@/components/campaigns/CampaignDetailModal'
 import { CreatorApplicationCard } from '@/components/campaigns/CreatorApplicationCard';
 import MarketplaceLoadingState from '@/components/campaigns/MarketplaceLoadingState';
 import MarketplaceErrorState from '@/components/campaigns/MarketplaceErrorState';
+import { useCampaignFilters } from '@/hooks/useCampaignFilters';
+import { useDonnyMatches } from '@/hooks/useDonnyMatches';
+import { CampaignSearchFilters } from '@/components/campaigns/CampaignSearchFilters';
+import { DonnyPicksRow } from '@/components/campaigns/DonnyPicksRow';
 import { MapPin, Target } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { formatBudget } from '@/lib/campaignUtils';
@@ -23,6 +27,19 @@ const CreatorCampaignMarketplace = () => {
   const queryClient = useQueryClient();
   const { data: campaigns = [], isLoading, error } = usePublicCampaigns(user?.id);
   const { data: applications = [], isLoading: appsLoading } = useCreatorApplications();
+
+  const {
+    filters,
+    filteredCampaigns: filteredBySearch,
+    hasActiveFilters,
+    setSearchTerm,
+    setContentType,
+    setDeliveryTier,
+    setSortBy,
+    clearFilters,
+  } = useCampaignFilters(campaigns);
+
+  const donnyPicks = useDonnyMatches(filteredBySearch);
 
   const [activeTab, setActiveTab] = useState<Tab>('available');
   const [detailCampaign, setDetailCampaign] = useState<PublicCampaign | null>(null);
@@ -39,8 +56,19 @@ const CreatorCampaignMarketplace = () => {
     return <MarketplaceErrorState />;
   }
 
-  const availableCampaigns = campaigns.filter(
-    (c) => !c.user_applied && !skippedIds.has(c.id)
+  const donnyPickIds = new Set(donnyPicks.map((p) => p.campaign.id));
+
+  const availableCampaigns = filteredBySearch.filter(
+    (c) => !c.user_applied && !skippedIds.has(c.id) && !donnyPickIds.has(c.id)
+  );
+
+  const swipeCampaigns = [
+    ...donnyPicks.map((p) => p.campaign),
+    ...availableCampaigns,
+  ];
+
+  const matchScoresMap = new Map(
+    donnyPicks.map((p) => [p.campaign.id, { score: p.score, matchReasons: p.matchReasons }])
   );
 
   const handleSwipe = (direction: string, campaign: PublicCampaign) => {
@@ -116,7 +144,7 @@ const CreatorCampaignMarketplace = () => {
             <div className="flex items-center gap-1 mt-0.5">
               <MapPin className="w-3.5 h-3.5 text-dc-pink-accent flex-shrink-0" />
               <span className="text-xs text-gray-600">
-                {availableCampaigns.length} campaign{availableCampaigns.length !== 1 ? 's' : ''} available
+                {filteredBySearch.filter((c) => !c.user_applied).length} campaign{filteredBySearch.filter((c) => !c.user_applied).length !== 1 ? 's' : ''} available
               </span>
             </div>
           </div>
@@ -157,26 +185,55 @@ const CreatorCampaignMarketplace = () => {
         {/* Tab Content */}
         {activeTab === 'available' && (
           <>
+            {/* Search & Filters */}
+            <CampaignSearchFilters
+              filters={filters}
+              filteredCount={filteredBySearch.filter((c) => !c.user_applied).length}
+              hasActiveFilters={hasActiveFilters}
+              onSearchChange={setSearchTerm}
+              onContentTypeChange={setContentType}
+              onDeliveryTierChange={setDeliveryTier}
+              onSortChange={setSortBy}
+              onClearFilters={clearFilters}
+            />
+
             {/* Swipe card stack — mobile */}
             <div className="flex-1 px-4 pb-4 md:hidden">
               <div className="pt-4">
                 <CampaignSwipeCard
-                  campaigns={availableCampaigns}
+                  campaigns={swipeCampaigns}
                   onSwipe={handleSwipe}
                   onViewDetail={handleViewDetail}
+                  matchScores={matchScoresMap}
                 />
               </div>
-              {availableCampaigns.length > 0 && (
+              {swipeCampaigns.length > 0 && (
                 <div className="flex items-center justify-center gap-6 mt-4">
                   <span className="text-xs text-white/50">← Skip</span>
                   <span className="text-xs text-white/50">View Details →</span>
+                </div>
+              )}
+              {swipeCampaigns.length === 0 && hasActiveFilters && (
+                <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
+                  <p className="text-white font-semibold mb-2">No campaigns found</p>
+                  <p className="text-white/60 text-sm mb-4">Try different filters or check back soon.</p>
+                  <button
+                    onClick={clearFilters}
+                    className="rounded-full bg-dc-teal text-white text-sm font-bold px-6 py-2 hover:bg-dc-teal-dark transition-colors"
+                  >
+                    Clear filters
+                  </button>
                 </div>
               )}
             </div>
 
             {/* Grid view — desktop */}
             <div className="hidden md:block px-4 pb-8 pt-4">
-              {availableCampaigns.length === 0 ? (
+              <div className="max-w-6xl mx-auto">
+                <DonnyPicksRow picks={donnyPicks} onViewDetail={handleViewDetail} />
+              </div>
+
+              {availableCampaigns.length === 0 && donnyPicks.length === 0 ? (
                 <div className="border-2 border-dc-teal rounded-2xl p-10 text-center max-w-md mx-auto">
                   <Target className="h-10 w-10 text-dc-teal mx-auto mb-3" />
                   <h3 className="font-bold text-gray-900 mb-1">No campaigns available</h3>
