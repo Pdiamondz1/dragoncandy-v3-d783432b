@@ -34,12 +34,12 @@ New file: `src/lib/scopeEstimates.ts`
 | `youtube_short` (≤30s) | 75 | Same as short reel |
 | `youtube_short` (>30s) | 105 | Same as long reel |
 
-### Buffers
+### Buffers (applied once per campaign, not per deliverable)
 
 | Buffer | Minutes |
 |---|---|
-| Travel/setup | 30 (flat) |
-| Review/revision | 15 (flat) |
+| Travel/setup | 30 (flat, once) |
+| Review/revision | 15 (flat, once) |
 
 ### Constants
 
@@ -84,6 +84,8 @@ New file: `src/hooks/useScopeValidation.ts`
 }
 ```
 
+**Type note:** `CampaignFinalizeStep` receives `structuredDeliverables` with `content_type: string` (not `ContentType`). The hook should accept `string` for `content_type` and treat unknown types as `photo` (60 min fallback) to avoid runtime errors.
+
 ### Output
 
 ```typescript
@@ -101,9 +103,11 @@ New file: `src/hooks/useScopeValidation.ts`
 
 | Tier | Warn (minutes) | Block (minutes) |
 |---|---|---|
-| DragonDash | >150 | >180 |
+| DragonDash | >180 | >210 |
 | Express | >360 | — (warn only) |
 | Standard | No validation (≤10 deliverables enforced elsewhere) |
+
+**DragonDash threshold rationale:** With 45 min of flat buffers, the original >150/>180 thresholds would warn or block nearly every 2-deliverable campaign (e.g., 2 photos = 165 min warned). Raised to >180/>210 so that common combos (2 photos, 1 photo + 1 short reel) pass clean, while genuinely tight combos (2 short reels = 195) warn and impossible ones (2 long reels = 255) block.
 
 ### Status Messages
 
@@ -114,9 +118,10 @@ New file: `src/hooks/useScopeValidation.ts`
 ### Quick-Fix Suggestion Algorithm
 
 1. Find the deliverable with the longest estimated time
-2. If removing it brings total under threshold → "Remove the [type] to save ~X min"
+2. If removing it brings total under the relevant threshold → "Remove the [type] to save ~X min"
 3. If not → "Switch to [next tier] for more flexibility" (DragonDash→Express, Express→Standard)
-4. Edge case: if removing 2 smallest deliverables would fix it (but removing 1 largest won't), suggest removing 2 smallest to minimize campaign impact
+4. If removing 2 deliverables with the lowest time would fix it (but removing 1 largest won't), AND at least 1 deliverable would remain after removal, suggest removing them. "Lowest time" means smallest `minutes` value; ties broken by array order (first match).
+5. Never suggest removing all deliverables — if the only fix is an empty campaign, suggest tier upgrade instead.
 
 ### Computation
 
@@ -130,7 +135,7 @@ New file: `src/components/campaigns/ScopeValidationCard.tsx`
 
 ### Placement
 
-Inside `CampaignFinalizeStep.tsx`, between the deliverables list (~line 429) and the `CostBreakdown` component (~line 432).
+Inside `CampaignFinalizeStep.tsx`, between the deliverables list and the `CostBreakdown` component.
 
 ### Visual Design
 
@@ -156,7 +161,7 @@ Inside `CampaignFinalizeStep.tsx`, between the deliverables list (~line 429) and
 
 ### Launch Button Gating
 
-In `CampaignFinalizeStep.tsx`, the "Create & Publish" / "Create & Pay" button receives `disabled={scopeValidation.status === 'block'}` with `opacity-50 cursor-not-allowed` styling. The "Save Draft" button is unaffected.
+In `CampaignFinalizeStep.tsx`, the publish/submit button (whichever variant is shown — "Create & Publish", "Publish & Pay", etc.) receives `disabled={scopeValidation.status === 'block'}` with `opacity-50 cursor-not-allowed` styling. The "Save Draft" / "Create as Draft" button is unaffected.
 
 ---
 
