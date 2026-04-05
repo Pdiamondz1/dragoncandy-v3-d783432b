@@ -207,6 +207,11 @@ describe('computeAvailabilityScore', () => {
   test('fallback: 5 active (null maxProjects) returns 0', () => {
     expect(computeAvailabilityScore(5, null)).toBe(0);
   });
+
+  test('maxProjects=0 falls back to heuristic (no division by zero)', () => {
+    expect(computeAvailabilityScore(0, 0)).toBe(100);
+    expect(computeAvailabilityScore(3, 0)).toBe(0);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -316,6 +321,21 @@ describe('computeMatchScore', () => {
     const result = computeMatchScore(creator, baseCampaign);
     // skills=0*0.4 + location=100*0.3 + rating=100*0.2 + availability=100*0.1 = 0+30+20+10 = 60
     expect(result.score).toBe(60);
+  });
+
+  test('uses no-location weights when creator has city but null country', () => {
+    const creator: CreatorMatchInput = {
+      skills: ['photography'],
+      city: 'Austin',
+      country: null,
+      averageRating: 5,
+      activeCount: 0,
+      maxProjects: 5,
+    };
+    // Creator has city but no country → hasLocation is false → no-location weights
+    // skills=100*0.5 + rating=100*0.3 + availability=100*0.2 = 100
+    const result = computeMatchScore(creator, baseCampaign);
+    expect(result.score).toBe(100);
   });
 
   test('score is rounded to nearest integer', () => {

@@ -120,7 +120,7 @@ export function computeAvailabilityScore(
   activeCount: number,
   maxProjects: number | null,
 ): number {
-  if (maxProjects !== null) {
+  if (maxProjects !== null && maxProjects > 0) {
     return Math.max(0, Math.round(((maxProjects - activeCount) / maxProjects) * 100));
   }
 
@@ -146,7 +146,8 @@ export function computeMatchScore(
   const ratingScore = computeRatingScore(creator.averageRating);
   const availabilityScore = computeAvailabilityScore(creator.activeCount, creator.maxProjects);
 
-  const hasLocation = creator.city !== null && campaign.businessCity !== null;
+  const hasLocation = creator.city != null && campaign.businessCity != null
+    && creator.country != null && campaign.businessCountry != null;
 
   let score: number;
   if (hasLocation) {
