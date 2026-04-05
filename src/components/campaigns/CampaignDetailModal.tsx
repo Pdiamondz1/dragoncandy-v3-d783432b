@@ -26,7 +26,6 @@ export const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
 }) => {
   const [showApplyForm, setShowApplyForm] = useState(false);
   const formRef = useRef<HTMLDivElement>(null);
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const { data: detail } = useCampaignDetail(isOpen ? campaign.id : null);
 
   const deliveryTier = mapDeliveryType(campaign.delivery_type);
@@ -71,7 +70,7 @@ export const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
 
       {/* Modal */}
       <div className="fixed inset-0 z-50 flex items-end lg:items-center lg:justify-center">
-        <div className="w-full h-full lg:h-auto lg:max-h-[90vh] lg:max-w-lg bg-white lg:rounded-2xl overflow-hidden flex flex-col">
+        <div className="w-full h-full lg:h-auto lg:max-h-[90vh] lg:max-w-lg bg-white lg:rounded-2xl overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
           {/* Sticky header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 flex-shrink-0">
             <button onClick={onClose} className="p-1 -ml-1 hover:bg-gray-100 rounded-full transition-colors">
@@ -82,7 +81,7 @@ export const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
           </div>
 
           {/* Scrollable content */}
-          <div ref={scrollContainerRef} className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto">
             {/* Hero image */}
             <div className="relative h-48 bg-gradient-to-br from-dc-teal via-dc-pink/40 to-dc-teal-dark">
               {campaign.cover_image_url && campaign.cover_image_type !== 'gradient' && (
