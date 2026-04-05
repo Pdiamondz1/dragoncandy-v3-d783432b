@@ -5,18 +5,21 @@ import { PublicCampaign } from '@/hooks/usePublicCampaigns';
 import { MapPin, Users } from 'lucide-react';
 import logo from '@/assets/Transparent_DragonCandy_logo.png';
 import DeliveryBadge from './DeliveryBadge';
+import { DonnyPicksBadge } from './DonnyPicksBadge';
 import { mapDeliveryType, getRelativeTime, formatBudget } from '@/lib/campaignUtils';
 
 interface CampaignSwipeCardProps {
   campaigns: PublicCampaign[];
   onSwipe: (direction: string, campaign: PublicCampaign) => void;
   onViewDetail: (campaign: PublicCampaign) => void;
+  matchScores?: Map<string, { score: number; matchReasons: string[] }>;
 }
 
 export const CampaignSwipeCard: React.FC<CampaignSwipeCardProps> = ({
   campaigns,
   onSwipe,
   onViewDetail,
+  matchScores,
 }) => {
   const [currentIndex, setCurrentIndex] = useState(campaigns.length - 1);
   const currentIndexRef = useRef(currentIndex);
@@ -81,11 +84,11 @@ export const CampaignSwipeCard: React.FC<CampaignSwipeCardProps> = ({
                 swipeThreshold={100}
                 className="w-full h-full"
               >
-                <CardContent campaign={campaign} onViewDetail={onViewDetail} />
+                <CardContent campaign={campaign} onViewDetail={onViewDetail} matchInfo={matchScores?.get(campaign.id)} />
               </TinderCard>
             ) : (
               <div className="pointer-events-none w-full h-full">
-                <CardContent campaign={campaign} onViewDetail={onViewDetail} />
+                <CardContent campaign={campaign} onViewDetail={onViewDetail} matchInfo={matchScores?.get(campaign.id)} />
               </div>
             )}
           </div>
@@ -98,9 +101,10 @@ export const CampaignSwipeCard: React.FC<CampaignSwipeCardProps> = ({
 interface CardContentProps {
   campaign: PublicCampaign;
   onViewDetail: (campaign: PublicCampaign) => void;
+  matchInfo?: { score: number; matchReasons: string[] };
 }
 
-const CardContent: React.FC<CardContentProps> = ({ campaign, onViewDetail }) => {
+const CardContent: React.FC<CardContentProps> = ({ campaign, onViewDetail, matchInfo }) => {
   const businessName = campaign.business_profile?.business_name ?? 'Unknown Business';
   const businessLogo = campaign.business_profile?.logo_url;
   const location = campaign.business_profile?.city
@@ -203,6 +207,13 @@ const CardContent: React.FC<CardContentProps> = ({ campaign, onViewDetail }) => 
           </div>
         )}
 
+        {/* Donny Picks match badge — top-left, below applicant count */}
+        {matchInfo && (
+          <div className={`absolute left-3 z-10 ${applicantCount > 0 ? 'top-12' : 'top-3'}`}>
+            <DonnyPicksBadge score={matchInfo.score} />
+          </div>
+        )}
+
         {/* Title + location overlay */}
         <div className="absolute bottom-0 left-0 right-0 p-4 z-10">
           <p className="text-white font-bold text-lg leading-tight drop-shadow-sm line-clamp-2">
@@ -259,6 +270,13 @@ const CardContent: React.FC<CardContentProps> = ({ campaign, onViewDetail }) => 
           <span className="text-sm font-semibold text-gray-700 truncate">{businessName}</span>
           <span className="text-dc-teal text-xs">✓</span>
         </div>
+
+        {/* Match reasons */}
+        {matchInfo && matchInfo.matchReasons.length > 0 && (
+          <p className="text-[10px] text-gray-400 mt-1 flex-shrink-0">
+            Matches your: {matchInfo.matchReasons.join(', ')}
+          </p>
+        )}
 
         {/* View Campaign CTA */}
         <button
