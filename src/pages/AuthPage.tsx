@@ -181,19 +181,10 @@ const AuthPage = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#1A5C5C] via-[#2D7A7A] to-[#9B5A8A] flex flex-col">
       {/* Top nav — logo left, hamburger right */}
-      <div className="flex items-center justify-between px-5 pt-6 pb-2">
+      <div className="flex items-center px-5 pt-6 pb-2">
         <Link to="/">
           <img src={dragonCandyLogo} alt="DragonCandy" className="h-14 w-14" />
         </Link>
-        <button
-          type="button"
-          aria-label="Menu"
-          className="flex flex-col gap-1.5 p-2 md:hidden"
-        >
-          <span className="block w-6 h-0.5 bg-white rounded-full" />
-          <span className="block w-6 h-0.5 bg-white rounded-full" />
-          <span className="block w-6 h-0.5 bg-white rounded-full" />
-        </button>
       </div>
 
       {/* Render based on mode and signup step */}
