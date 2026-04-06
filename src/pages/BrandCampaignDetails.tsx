@@ -36,7 +36,7 @@ const BrandCampaignDetails = () => {
   if (!profile) {
     return (
       <DashboardLayout userRole="brand">
-        <div className="min-h-screen bg-dc-gray flex items-center justify-center">
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-dc-teal" />
         </div>
       </DashboardLayout>
@@ -46,7 +46,7 @@ const BrandCampaignDetails = () => {
   if (isLoading) {
     return (
       <DashboardLayout userRole="brand">
-        <div className="min-h-screen bg-dc-gray flex items-center justify-center">
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-dc-teal" />
         </div>
       </DashboardLayout>
@@ -56,7 +56,7 @@ const BrandCampaignDetails = () => {
   if (!campaign) {
     return (
       <DashboardLayout userRole="brand">
-        <div className="min-h-screen bg-dc-gray flex items-center justify-center p-4">
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl p-8 text-center space-y-4 w-full max-w-sm">
             <h2 className="text-lg font-bold text-gray-900">Campaign Not Found</h2>
             <button
@@ -79,7 +79,7 @@ const BrandCampaignDetails = () => {
 
   return (
     <DashboardLayout userRole="brand">
-      <div className="min-h-screen bg-dc-gray overflow-x-hidden">
+      <div className="min-h-screen bg-gray-50 overflow-x-hidden">
         {/* Hero area — Template D */}
         <div className="relative h-40 bg-gradient-to-br from-dc-teal to-dc-teal-dark">
           {/* Header overlay */}

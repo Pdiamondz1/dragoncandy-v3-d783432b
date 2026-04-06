@@ -1,0 +1,176 @@
+<h2>Unified Design System — Change Overview</h2>
+<p class="subtitle">Approach 1: Surgical fixes targeting the 6 actual divergences</p>
+
+<div class="section">
+  <h3>1. Gray Background Removal</h3>
+  <div class="split">
+    <div class="mockup">
+      <div class="mockup-header">BEFORE — Campaign Marketplace</div>
+      <div class="mockup-body" style="background:#A8A8A0; padding:20px; min-height:200px;">
+        <div style="background:white; border:2px solid #4DD9C0; border-radius:16px; padding:16px; margin-bottom:12px;">
+          <div style="font-weight:bold; color:#111;">Summer Fashion Shoot</div>
+          <div style="color:#555; font-size:13px;">Looking for lifestyle creators...</div>
+        </div>
+        <div style="background:white; border:2px solid #4DD9C0; border-radius:16px; padding:16px;">
+          <div style="font-weight:bold; color:#111;">Restaurant Review</div>
+          <div style="color:#555; font-size:13px;">Food content creators needed...</div>
+        </div>
+      </div>
+    </div>
+    <div class="mockup">
+      <div class="mockup-header">AFTER — Campaign Marketplace</div>
+      <div class="mockup-body" style="background:#F9FAFB; padding:20px; min-height:200px;">
+        <div style="background:white; border:2px solid #4DD9C0; border-radius:16px; padding:16px; margin-bottom:12px; box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+          <div style="font-weight:bold; color:#111;">Summer Fashion Shoot</div>
+          <div style="color:#555; font-size:13px;">Looking for lifestyle creators...</div>
+        </div>
+        <div style="background:white; border:2px solid #4DD9C0; border-radius:16px; padding:16px; box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+          <div style="font-weight:bold; color:#111;">Restaurant Review</div>
+          <div style="color:#555; font-size:13px;">Food content creators needed...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p style="margin-top:12px; color:#666; font-size:14px;">
+    <strong>Files:</strong> CreatorCampaignMarketplace.tsx (<code>bg-dc-gray</code> → <code>bg-gray-50</code>),
+    BrandMessages.tsx (<code>bg-dc-gray</code> → <code>bg-teal-50</code>),
+    DonnyChatSheet.tsx (<code>bg-[#A8A8A0]</code> → <code>bg-teal-50</code>)
+  </p>
+</div>
+
+<div class="section">
+  <h3>2. Message Bubble Brand Colors</h3>
+  <div class="split">
+    <div class="mockup">
+      <div class="mockup-header">BEFORE — Messages</div>
+      <div class="mockup-body" style="background:#F0FDFA; padding:20px; min-height:180px; display:flex; flex-direction:column; gap:10px;">
+        <div style="align-self:flex-start; max-width:70%;">
+          <div style="background:#e5e5e5; color:#111; border-radius:16px 16px 16px 4px; padding:10px 14px; font-size:13px;">Hey! I saw your campaign 👋</div>
+        </div>
+        <div style="align-self:flex-end; max-width:70%;">
+          <div style="background:#2563EB; color:white; border-radius:16px 16px 4px 16px; padding:10px 14px; font-size:13px;">Great! Let's discuss the details</div>
+        </div>
+        <div style="align-self:flex-start; max-width:70%;">
+          <div style="background:#e5e5e5; color:#111; border-radius:16px 16px 16px 4px; padding:10px 14px; font-size:13px;">Perfect, I'm available next week</div>
+        </div>
+      </div>
+    </div>
+    <div class="mockup">
+      <div class="mockup-header">AFTER — Messages</div>
+      <div class="mockup-body" style="background:#F0FDFA; padding:20px; min-height:180px; display:flex; flex-direction:column; gap:10px;">
+        <div style="align-self:flex-start; max-width:70%;">
+          <div style="background:#F9A8D4; color:#111; border-radius:16px 16px 16px 4px; padding:10px 14px; font-size:13px;">Hey! I saw your campaign 👋</div>
+        </div>
+        <div style="align-self:flex-end; max-width:70%;">
+          <div style="background:#4DD9C0; color:white; border-radius:16px 16px 4px 16px; padding:10px 14px; font-size:13px;">Great! Let's discuss the details</div>
+        </div>
+        <div style="align-self:flex-start; max-width:70%;">
+          <div style="background:#F9A8D4; color:#111; border-radius:16px 16px 16px 4px; padding:10px 14px; font-size:13px;">Perfect, I'm available next week</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p style="margin-top:12px; color:#666; font-size:14px;">
+    <strong>File:</strong> MessageBubble.tsx — sent: <code>bg-blue-600</code> → <code>bg-dc-teal</code>, received: <code>bg-muted</code> → <code>bg-dc-pink</code>
+  </p>
+</div>
+
+<div class="section">
+  <h3>3. Unified Bottom Nav (5 icons, role slot)</h3>
+  <div class="mockup">
+    <div class="mockup-header">Unified Nav — All Roles</div>
+    <div class="mockup-body" style="background:white; padding:16px 8px 8px;">
+      <div style="display:flex; justify-content:space-around; align-items:center; border-top:1px solid #eee; padding-top:12px;">
+        <div style="text-align:center;">
+          <div style="font-size:20px;">🏠</div>
+          <div style="font-size:10px; color:#888; margin-top:2px;">Home</div>
+        </div>
+        <div style="text-align:center;">
+          <div style="font-size:20px;">⚡</div>
+          <div style="font-size:10px; color:#4DD9C0; font-weight:bold; margin-top:2px;">[Role]</div>
+        </div>
+        <div style="text-align:center; margin-top:-16px;">
+          <div style="width:48px; height:48px; background:#4DD9C0; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 12px rgba(77,217,192,0.3);">
+            <span style="color:white; font-size:24px; font-weight:bold;">+</span>
+          </div>
+        </div>
+        <div style="text-align:center;">
+          <div style="font-size:20px;">💬</div>
+          <div style="font-size:10px; color:#888; margin-top:2px;">Messages</div>
+        </div>
+        <div style="text-align:center;">
+          <div style="font-size:20px;">👤</div>
+          <div style="font-size:10px; color:#888; margin-top:2px;">Profile</div>
+        </div>
+      </div>
+      <div style="margin-top:16px; padding:12px; background:#F9FAFB; border-radius:12px; font-size:12px; color:#555;">
+        <strong>Slot 2 adapts per role:</strong><br>
+        • Creator → <strong>Earnings</strong> (💰)<br>
+        • Business → <strong>Campaigns</strong> (📋)<br>
+        • Brand → <strong>Analytics</strong> (📊)
+      </div>
+      <div style="margin-top:8px; padding:12px; background:#F9FAFB; border-radius:12px; font-size:12px; color:#555;">
+        <strong>"+" button adapts per role:</strong><br>
+        • Creator → Quick Apply / Update Portfolio<br>
+        • Business → Create Campaign<br>
+        • Brand → Discover Campaigns
+      </div>
+    </div>
+  </div>
+  <p style="margin-top:12px; color:#666; font-size:14px;">
+    <strong>Files:</strong> navConfig.ts (reduce all roles to 5 items), MobileBottomNav.tsx (no structural changes needed)
+  </p>
+</div>
+
+<div class="section">
+  <h3>4. Brand Dashboard — DonnyAIBar Alignment</h3>
+  <p style="color:#555;">Swap Brand's <code>DonnyCard</code> + <code>AskBar</code> to the shared <code>DonnyAIBar</code> component with a Brand-specific placeholder: <em>"Ask Donny... 'Show me campaign ROI' or 'Find top creators'"</em></p>
+  <p style="margin-top:8px; color:#666; font-size:14px;">
+    <strong>File:</strong> BrandDashboard.tsx — remove DonnyCard/AskBar imports, add DonnyAIBar
+  </p>
+</div>
+
+<div class="section">
+  <h3>Summary: Files Changed</h3>
+  <table style="width:100%; border-collapse:collapse; font-size:13px;">
+    <tr style="border-bottom:1px solid #eee;">
+      <td style="padding:6px; font-weight:bold;">CreatorCampaignMarketplace.tsx</td>
+      <td style="padding:6px; color:#555;">bg-dc-gray → bg-gray-50</td>
+    </tr>
+    <tr style="border-bottom:1px solid #eee;">
+      <td style="padding:6px; font-weight:bold;">BrandMessages.tsx</td>
+      <td style="padding:6px; color:#555;">bg-dc-gray → bg-teal-50</td>
+    </tr>
+    <tr style="border-bottom:1px solid #eee;">
+      <td style="padding:6px; font-weight:bold;">DonnyChatSheet.tsx</td>
+      <td style="padding:6px; color:#555;">bg-[#A8A8A0] → bg-teal-50</td>
+    </tr>
+    <tr style="border-bottom:1px solid #eee;">
+      <td style="padding:6px; font-weight:bold;">MessageBubble.tsx</td>
+      <td style="padding:6px; color:#555;">blue → teal (sent), muted → pink (received)</td>
+    </tr>
+    <tr style="border-bottom:1px solid #eee;">
+      <td style="padding:6px; font-weight:bold;">navConfig.ts</td>
+      <td style="padding:6px; color:#555;">All roles → 5 icons with role slot</td>
+    </tr>
+    <tr style="border-bottom:1px solid #eee;">
+      <td style="padding:6px; font-weight:bold;">MobileBottomNav.tsx</td>
+      <td style="padding:6px; color:#555;">Minor cleanup if needed for 5-icon layout</td>
+    </tr>
+    <tr style="border-bottom:1px solid #eee;">
+      <td style="padding:6px; font-weight:bold;">BrandDashboard.tsx</td>
+      <td style="padding:6px; color:#555;">DonnyCard/AskBar → DonnyAIBar</td>
+    </tr>
+  </table>
+</div>
+
+<div class="section" style="padding:16px; background:#F0FDF9; border:2px solid #4DD9C0; border-radius:16px; margin-top:24px;">
+  <h3 style="color:#111; margin-top:0;">🛡 Protected (NOT touched)</h3>
+  <ul style="color:#555; font-size:14px;">
+    <li>Campaign creation wizard</li>
+    <li>Messaging layout/structure (only colors change)</li>
+    <li>Desktop lg: Tailwind classes</li>
+    <li>Auth logic</li>
+    <li>Dashboard shared components (DashboardHero, DashboardStatsGrid, QuickActionButtons, ActivityFeedCard — already unified)</li>
+  </ul>
+</div>

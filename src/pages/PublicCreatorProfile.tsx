@@ -185,7 +185,7 @@ const PublicCreatorProfile = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-dc-gray flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="animate-pulse space-y-6 w-full max-w-md px-4">
           <div className="h-[40vh] bg-gray-300 rounded-lg"></div>
           <div className="h-24 bg-white rounded-3xl"></div>
@@ -197,7 +197,7 @@ const PublicCreatorProfile = () => {
 
   if (notFound || !profile) {
     return (
-      <div className="min-h-screen bg-dc-gray flex items-center justify-center px-4">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
         <div className="bg-white rounded-3xl p-8 max-w-md w-full text-center shadow-md">
           <User className="h-12 w-12 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-bold text-gray-900 mb-2">
@@ -220,7 +220,7 @@ const PublicCreatorProfile = () => {
   const heroImage = portfolioUrls[0] || profile.avatar_url;
 
   return (
-    <div className="bg-dc-gray min-h-screen">
+    <div className="bg-gray-50 min-h-screen">
       {/* Hero Image */}
       <div className="relative">
         <div className="h-[40vh] w-full overflow-hidden bg-pink-200">

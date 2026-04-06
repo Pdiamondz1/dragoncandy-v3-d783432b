@@ -57,7 +57,7 @@ const ProjectDetailsPage: React.FC = () => {
   if (isLoading) {
     return (
       <DashboardLayout userRole={isBusinessClient ? 'business_client' : 'content_creator'}>
-        <div className="min-h-screen bg-dc-gray overflow-x-hidden">
+        <div className="min-h-screen bg-gray-50 overflow-x-hidden">
           {/* Hero skeleton */}
           <div className="h-48 bg-gray-400 animate-pulse" />
           {/* White card overlay */}
@@ -75,7 +75,7 @@ const ProjectDetailsPage: React.FC = () => {
   if (error || !collaboration) {
     return (
       <DashboardLayout userRole={isBusinessClient ? 'business_client' : 'content_creator'}>
-        <div className="min-h-screen bg-dc-gray overflow-x-hidden flex items-center justify-center p-4">
+        <div className="min-h-screen bg-gray-50 overflow-x-hidden flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-8 text-center max-w-sm w-full shadow-lg">
             <FileCheck className="h-12 w-12 mx-auto mb-4 text-gray-400" />
             <h3 className="font-bold text-gray-900 mb-2">Project Not Found</h3>
@@ -96,7 +96,7 @@ const ProjectDetailsPage: React.FC = () => {
 
   return (
     <DashboardLayout userRole={isBusinessClient ? 'business_client' : 'content_creator'}>
-      <div className="min-h-screen bg-dc-gray overflow-x-hidden md:max-w-4xl md:mx-auto">
+      <div className="min-h-screen bg-gray-50 overflow-x-hidden md:max-w-4xl md:mx-auto">
         {/* Template D — Hero image area */}
         <div className="relative h-44 bg-gradient-to-br from-dc-teal to-dc-teal-dark overflow-hidden">
           {/* Header overlay on hero */}

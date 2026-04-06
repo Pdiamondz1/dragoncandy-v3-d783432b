@@ -41,7 +41,7 @@ const CampaignDetailsPage: React.FC = () => {
   if (isLoading) {
     return (
       <DashboardLayout userRole={userRole}>
-        <div className="min-h-screen bg-dc-gray overflow-x-hidden">
+        <div className="min-h-screen bg-gray-50 overflow-x-hidden">
           <div className="p-4 space-y-4">
             <Skeleton className="h-10 w-48" />
             <Skeleton className="h-64 w-full rounded-2xl" />
@@ -54,7 +54,7 @@ const CampaignDetailsPage: React.FC = () => {
   if (error || !campaign) {
     return (
       <DashboardLayout userRole={userRole}>
-        <div className="min-h-screen bg-dc-gray overflow-x-hidden flex items-center justify-center p-4">
+        <div className="min-h-screen bg-gray-50 overflow-x-hidden flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl p-8 text-center space-y-4 w-full max-w-sm">
             <AlertCircle className="h-12 w-12 text-red-400 mx-auto" />
             <h2 className="text-lg font-bold text-gray-900">Campaign not found</h2>
@@ -75,7 +75,7 @@ const CampaignDetailsPage: React.FC = () => {
 
   return (
     <DashboardLayout userRole={userRole}>
-      <div className="min-h-screen bg-dc-gray overflow-x-hidden">
+      <div className="min-h-screen bg-gray-50 overflow-x-hidden">
         {/* Hero placeholder — teal gradient band */}
         <div className="relative h-40 bg-gradient-to-br from-dc-teal to-dc-teal-dark">
           {/* Header overlay */}
