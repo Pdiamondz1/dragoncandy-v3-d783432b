@@ -15,9 +15,10 @@ Add Brand/Sponsor as a visible, selectable role across the public-facing pages. 
 | `src/components/landing/HeroSection.tsx` | Add 3rd Brand CTA button |
 | `src/components/landing/Header.tsx` | Add "For Brands" nav link |
 | `src/components/landing/BottomCTA.tsx` | Add 3rd Brand CTA + update copy |
-| `src/pages/LandingPage.tsx` | Add "For Brands & Sponsors" section |
-| `src/components/auth/RoleSelection.tsx` | Add 3rd Brand card |
-| `src/pages/AuthPage.tsx` | Add brand routing + login page copy |
+| `src/pages/LandingPage.tsx` | Add "For Brands & Sponsors" section (id="brands") |
+| `src/components/auth/RoleSelection.tsx` | Add 3rd Brand card, widen SelectedRole type |
+| `src/components/auth/AuthForm.tsx` | Widen `preSelectedRole` type to include `'brand'`, update role icon/label display |
+| `src/pages/AuthPage.tsx` | Widen `selectedRole`/`handleSelectRole` types, add brand routing + login copy |
 
 ## Design
 
@@ -25,19 +26,21 @@ Add Brand/Sponsor as a visible, selectable role across the public-facing pages. 
 
 Replace the current 2-button layout with 3 CTA buttons:
 
-- **"I'm a Business -- Get Started"** — teal solid button, links to `/auth?mode=signup` with `role=business_client`
-- **"I'm a Brand/Sponsor -- Launch Campaigns"** — pink solid button, links to `/auth?mode=signup` with `role=brand`
-- **"I'm a Creator -- Join the Marketplace"** — outlined button, links to `/auth?mode=signup` with `role=content_creator`
+- **"I'm a Business — Get Started"** — teal solid button, links to `/auth?mode=signup`
+- **"I'm a Brand/Sponsor — Launch Campaigns"** — pink solid button, links to `/auth?mode=signup`
+- **"I'm a Creator — Join the Marketplace"** — outlined button, links to `/auth?mode=signup`
+
+All three link to the role selection screen (no URL-based role pre-selection — users always pick their role on the selection screen).
 
 Responsive layout: stack vertically on mobile, row on desktop.
 
 ### 2. Navigation (`Header.tsx`)
 
-Add "For Brands" link between "For Businesses" and "For Creators" in both desktop and mobile nav. The link scrolls to the new "For Brands & Sponsors" section on the landing page.
+Add "For Brands" link between "For Businesses" and "For Creators" in both desktop and mobile nav. The link scrolls to the new "For Brands & Sponsors" section via `scrollToSection("brands")`.
 
 ### 3. New Landing Page Section: "For Brands & Sponsors"
 
-Insert after the existing Features section, before Bottom CTA:
+Insert after the existing Features section, before Bottom CTA. Section element uses `id="brands"` for nav scroll targeting.
 
 - **Headline:** "Scale Your Creator Campaigns Across Local Markets"
 - **Subtext:** "Run sponsored content campaigns with vetted local creators. AI-powered targeting, real-time analytics, and multi-location management."
@@ -45,7 +48,9 @@ Insert after the existing Features section, before Bottom CTA:
   - "Multi-Location Campaigns" — Run across cities
   - "Performance Analytics" — Track engagement & ROI
   - "Managed Creator Network" — Vetted, rated creators
-- **CTA:** "Launch Your First Campaign" (teal solid) linking to `/auth?mode=signup` with `role=brand`
+- **CTA:** "Launch Your First Campaign" (teal solid) linking to `/auth?mode=signup`
+
+**Color rationale:** Section-level CTAs use teal for consistency with the site's primary action color. Hero and bottom CTAs use role-specific colors (teal for business, pink for brand, outlined for creator) for visual differentiation.
 
 Visual style matches existing landing page sections (same spacing, typography, card patterns).
 
@@ -70,20 +75,41 @@ type SelectedRole = "business_client" | "content_creator" | "brand" | null;
 
 Cards should stack on mobile and display in a row on desktop. Match existing card styling patterns.
 
-### 6. Auth Page — Post-Signup Routing (`AuthPage.tsx`)
+### 6. Auth Form (`AuthForm.tsx`)
 
-Add brand case to the profile completion redirect logic:
+Widen the `preSelectedRole` prop type to include `'brand'`:
+```typescript
+preSelectedRole?: "business_client" | "content_creator" | "brand";
+```
+
+Update the role icon/label display logic (currently a binary ternary) to handle three roles:
+- `business_client` → Store icon, "Business" label
+- `brand` → Megaphone icon, "Brand" label
+- `content_creator` → Camera icon, "Creator" label
+
+### 7. Auth Page — Post-Signup Routing (`AuthPage.tsx`)
+
+Widen inline union types for `selectedRole` state and `handleSelectRole` parameter to include `'brand'`.
+
+Add brand case to the profile completion redirect logic, following the existing pattern (check `business_profiles.is_completed` since brand users use the same table with `account_type='brand'`):
 ```typescript
 } else if (profile.role === 'brand') {
-  navigate('/profile/brand');
+  // Check business_profiles.is_completed for brand users (same table, account_type='brand')
+  if (!businessProfile?.is_completed) {
+    navigate('/profile/brand');
+  } else {
+    navigate('/dashboard/brand');
+  }
 }
 ```
 
-### 7. Login Page (`AuthPage.tsx`, login mode)
+### 8. Login Page (`AuthPage.tsx`, login mode)
 
-Add text below the login form:
+Replace the existing `AuthModeToggle` "Don't have an account? Sign up" text with:
 **"New here? Sign up as a Business, Brand, or Creator"**
 — "Sign up" is a link to `/auth?mode=signup`
+
+This replaces (not supplements) the existing signup prompt to avoid duplicate CTAs.
 
 ## Existing Infrastructure (no changes needed)
 
