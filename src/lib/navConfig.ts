@@ -11,10 +11,7 @@ import {
   BarChart3,
   QrCode,
   Search,
-  Heart,
-  Play,
   Plus,
-  List,
   Megaphone,
   User,
 } from 'lucide-react';
@@ -32,7 +29,6 @@ export interface BottomNavItem {
   label: string;
   href: string;
   isCenter?: boolean;
-  isDonny?: boolean;
 }
 
 // ── Sidebar nav (desktop) ──────────────────────────────────────────────────
@@ -90,21 +86,17 @@ export const businessBottomNav: BottomNavItem[] = [
 
 export const creatorBottomNav: BottomNavItem[] = [
   { icon: LayoutDashboard, label: 'Home', href: '/dashboard/creator' },
-  { icon: Heart, label: 'Applied', href: '/dashboard/creator/applications' },
-  { icon: Play, label: 'Projects', href: '/dashboard/creator/projects' },
-  { icon: Plus, label: 'Browse', href: '/dashboard/creator/campaigns', isCenter: true, isDonny: true },
-  { icon: List, label: 'Campaigns', href: '/dashboard/creator/campaigns' },
-  { icon: Megaphone, label: 'Earnings', href: '/dashboard/creator/earnings' },
+  { icon: DollarSign, label: 'Earnings', href: '/dashboard/creator/earnings' },
+  { icon: Plus, label: 'Browse', href: '/dashboard/creator/campaigns', isCenter: true },
+  { icon: MessageSquare, label: 'Messages', href: '/dashboard/creator/messages' },
   { icon: User, label: 'Profile', href: '/dashboard/creator/settings' },
 ];
 
 export const brandBottomNav: BottomNavItem[] = [
   { icon: LayoutDashboard, label: 'Home', href: '/dashboard/brand' },
-  { icon: Heart, label: 'Creators', href: '/dashboard/brand/creators' },
-  { icon: Play, label: 'Discover', href: '/dashboard/brand/discover-campaigns' },
-  { icon: Plus, label: 'Add', href: '/dashboard/brand/discover-campaigns', isCenter: true, isDonny: true },
-  { icon: List, label: 'Sponsors', href: '/dashboard/brand/sponsorships' },
-  { icon: Megaphone, label: 'Analytics', href: '/dashboard/brand/analytics' },
+  { icon: BarChart3, label: 'Analytics', href: '/dashboard/brand/analytics' },
+  { icon: Plus, label: 'Discover', href: '/dashboard/brand/discover-campaigns', isCenter: true },
+  { icon: MessageSquare, label: 'Messages', href: '/dashboard/brand/messages' },
   { icon: User, label: 'Profile', href: '/dashboard/brand/settings' },
 ];
 
