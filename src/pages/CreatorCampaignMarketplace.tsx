@@ -12,6 +12,7 @@ import { CreatorApplicationCard } from '@/components/campaigns/CreatorApplicatio
 import MarketplaceLoadingState from '@/components/campaigns/MarketplaceLoadingState';
 import MarketplaceErrorState from '@/components/campaigns/MarketplaceErrorState';
 import { useCampaignFilters } from '@/hooks/useCampaignFilters';
+import { useGeoDistance } from '@/hooks/useGeoDistance';
 import { useDonnyMatches } from '@/hooks/useDonnyMatches';
 import { CampaignSearchFilters } from '@/components/campaigns/CampaignSearchFilters';
 import { DonnyPicksRow } from '@/components/campaigns/DonnyPicksRow';
@@ -33,6 +34,8 @@ const CreatorCampaignMarketplace = () => {
   const { data: activeCollabs = [], isLoading: activeLoading } = useCreatorCollaborations('active');
   const { data: completedCollabs = [], isLoading: completedLoading } = useCreatorCollaborations('completed');
 
+  const { campaigns: geoCampaigns } = useGeoDistance(campaigns);
+
   const {
     filters,
     filteredCampaigns: filteredBySearch,
@@ -41,8 +44,11 @@ const CreatorCampaignMarketplace = () => {
     setContentType,
     setDeliveryTier,
     setSortBy,
+    setDistanceRadius,
+    setBudgetMin,
+    setBudgetMax,
     clearFilters,
-  } = useCampaignFilters(campaigns);
+  } = useCampaignFilters(geoCampaigns);
 
   const donnyPicks = useDonnyMatches(filteredBySearch);
 
@@ -202,8 +208,19 @@ const CreatorCampaignMarketplace = () => {
               onContentTypeChange={setContentType}
               onDeliveryTierChange={setDeliveryTier}
               onSortChange={setSortBy}
+              onDistanceChange={setDistanceRadius}
+              onBudgetMinChange={setBudgetMin}
+              onBudgetMaxChange={setBudgetMax}
               onClearFilters={clearFilters}
             />
+
+            {donnyPicks.length === 0 && swipeCampaigns.length > 0 && (
+              <div className="px-4 pb-1">
+                <p className="text-xs text-white/40 text-center">
+                  We're still learning your preferences. Complete more campaigns to improve your matches.
+                </p>
+              </div>
+            )}
 
             {/* Swipe card stack — mobile */}
             <div className="flex-1 px-4 pb-4 md:hidden">
@@ -223,13 +240,23 @@ const CreatorCampaignMarketplace = () => {
               )}
               {swipeCampaigns.length === 0 && hasActiveFilters && (
                 <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
-                  <p className="text-gray-900 font-semibold mb-2">No campaigns found</p>
-                  <p className="text-gray-500 text-sm mb-4">Try different filters or check back soon.</p>
+                  <p className="text-white font-semibold mb-2">
+                    {filters.distanceRadius !== 'any'
+                      ? 'No campaigns in your area yet.'
+                      : 'No campaigns found.'}
+                  </p>
+                  <p className="text-white/60 text-sm mb-4">
+                    {filters.distanceRadius !== 'any'
+                      ? 'Expand your search radius or check back soon.'
+                      : 'Try different filters or ask Donny for suggestions.'}
+                  </p>
                   <button
-                    onClick={clearFilters}
+                    onClick={filters.distanceRadius !== 'any'
+                      ? () => setDistanceRadius('any')
+                      : clearFilters}
                     className="rounded-full bg-dc-teal text-white text-sm font-bold px-6 py-2 hover:bg-dc-teal-dark transition-colors"
                   >
-                    Clear filters
+                    {filters.distanceRadius !== 'any' ? 'Expand radius' : 'Clear filters'}
                   </button>
                 </div>
               )}
