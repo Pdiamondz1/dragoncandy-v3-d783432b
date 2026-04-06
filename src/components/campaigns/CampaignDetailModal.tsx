@@ -65,12 +65,12 @@ export const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/50 z-40 lg:block"
+        className="fixed inset-0 bg-black/50 z-[55] lg:block"
         onClick={onClose}
       />
 
       {/* Modal */}
-      <div className="fixed inset-0 z-50 flex items-end lg:items-center lg:justify-center">
+      <div className="fixed inset-0 z-[60] flex items-end lg:items-center lg:justify-center">
         <div className="w-full h-full lg:h-auto lg:max-h-[90vh] lg:max-w-lg bg-white lg:rounded-2xl overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
           {/* Sticky header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 flex-shrink-0">
