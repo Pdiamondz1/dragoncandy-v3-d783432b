@@ -23,19 +23,21 @@ export function useBrandActiveCampaigns() {
         .from('campaigns')
         .select('id, title, status, deadline')
         .eq('user_id', user.id)
-        .in('status', ['draft', 'published', 'active'])
+        .in('status', ['published', 'active'])
         .order('created_at', { ascending: false })
         .limit(5);
 
       if (ownError) throw ownError;
 
       // 2. Get brand's sponsorships with campaign details
-      const { data: brandProfile } = await supabase
+      const { data: brandProfile, error: profileError } = await supabase
         .from('business_profiles')
         .select('id')
         .eq('user_id', user.id)
         .eq('account_type', 'brand')
         .maybeSingle();
+
+      if (profileError) throw profileError;
 
       let sponsoredItems: BrandCampaignItem[] = [];
 
