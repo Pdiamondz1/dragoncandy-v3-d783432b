@@ -4,6 +4,9 @@ import type {
   ContentTypeFilter,
   DeliveryTierFilter,
   SortOption,
+  DistanceRadius,
+  BudgetMinPreset,
+  BudgetMaxPreset,
   CampaignFilterState,
 } from '@/hooks/useCampaignFilters';
 import logo from '@/assets/Transparent_DragonCandy_logo.png';
@@ -16,14 +19,21 @@ interface CampaignSearchFiltersProps {
   onContentTypeChange: (ct: ContentTypeFilter) => void;
   onDeliveryTierChange: (dt: DeliveryTierFilter) => void;
   onSortChange: (sort: SortOption) => void;
+  onDistanceChange: (radius: DistanceRadius) => void;
+  onBudgetMinChange: (min: BudgetMinPreset) => void;
+  onBudgetMaxChange: (max: BudgetMaxPreset) => void;
   onClearFilters: () => void;
 }
 
 const CONTENT_TYPE_PILLS: { value: ContentTypeFilter; label: string }[] = [
   { value: 'all', label: 'All' },
   { value: 'photo', label: 'Photo' },
+  { value: 'video', label: 'Video' },
   { value: 'reel', label: 'Reel' },
   { value: 'story', label: 'Story' },
+];
+
+const MORE_CONTENT_PILLS: { value: ContentTypeFilter; label: string }[] = [
   { value: 'carousel', label: 'Carousel' },
 ];
 
@@ -34,7 +44,31 @@ const DELIVERY_TIER_PILLS: { value: DeliveryTierFilter; label: string }[] = [
   { value: 'standard', label: 'Standard' },
 ];
 
+const DISTANCE_PILLS: { value: DistanceRadius; label: string }[] = [
+  { value: 'any', label: 'Any' },
+  { value: 5, label: '5 mi' },
+  { value: 10, label: '10 mi' },
+  { value: 25, label: '25 mi' },
+  { value: 50, label: '50 mi' },
+];
+
+const BUDGET_MIN_PILLS: { value: BudgetMinPreset; label: string }[] = [
+  { value: 'any', label: 'Any' },
+  { value: 50, label: '$50+' },
+  { value: 100, label: '$100+' },
+  { value: 250, label: '$250+' },
+];
+
+const BUDGET_MAX_PILLS: { value: BudgetMaxPreset; label: string }[] = [
+  { value: 'any', label: 'Any' },
+  { value: 250, label: '≤$250' },
+  { value: 500, label: '≤$500' },
+  { value: 1000, label: '≤$1k' },
+  { value: 2000, label: '≤$2k+' },
+];
+
 const SORT_OPTIONS: { value: SortOption; label: string }[] = [
+  { value: 'nearest', label: 'Nearest' },
   { value: 'newest', label: 'Newest' },
   { value: 'budget', label: 'Highest Budget' },
   { value: 'ending_soon', label: 'Ending Soon' },
@@ -48,6 +82,9 @@ export const CampaignSearchFilters: React.FC<CampaignSearchFiltersProps> = ({
   onContentTypeChange,
   onDeliveryTierChange,
   onSortChange,
+  onDistanceChange,
+  onBudgetMinChange,
+  onBudgetMaxChange,
   onClearFilters,
 }) => {
   const [searchOpen, setSearchOpen] = useState(false);
@@ -76,8 +113,14 @@ export const CampaignSearchFilters: React.FC<CampaignSearchFiltersProps> = ({
     debounceRef.current = setTimeout(() => onSearchChange(value), 300);
   };
 
+  const SectionLabel: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+    <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">
+      {children}
+    </div>
+  );
+
   return (
-    <div className="px-4 pt-3 pb-2 space-y-2">
+    <div className="bg-white rounded-b-2xl px-4 pt-3 pb-2 space-y-2">
       {/* Search row */}
       <div className="flex items-center gap-2">
         {searchOpen ? (
@@ -105,7 +148,7 @@ export const CampaignSearchFilters: React.FC<CampaignSearchFiltersProps> = ({
           <>
             <button
               onClick={() => setSearchOpen(true)}
-              className="w-9 h-9 rounded-full bg-white border border-gray-200 flex items-center justify-center flex-shrink-0 hover:border-dc-teal transition-colors"
+              className="w-9 h-9 rounded-full bg-gray-50 border border-gray-200 flex items-center justify-center flex-shrink-0 hover:border-dc-teal transition-colors"
             >
               <Search className="w-4 h-4 text-gray-500" />
             </button>
@@ -117,7 +160,7 @@ export const CampaignSearchFilters: React.FC<CampaignSearchFiltersProps> = ({
                   className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${
                     filters.contentType === pill.value
                       ? 'bg-dc-teal text-white'
-                      : 'bg-white text-gray-600 border border-gray-200 hover:border-dc-teal'
+                      : 'bg-gray-50 text-gray-600 border border-gray-200 hover:border-dc-teal'
                   }`}
                 >
                   {pill.label}
@@ -128,7 +171,7 @@ export const CampaignSearchFilters: React.FC<CampaignSearchFiltersProps> = ({
         )}
         <button
           onClick={() => setExpanded(!expanded)}
-          className="w-9 h-9 rounded-full bg-white border border-gray-200 flex items-center justify-center flex-shrink-0 hover:border-dc-teal transition-colors"
+          className="w-9 h-9 rounded-full bg-gray-50 border border-gray-200 flex items-center justify-center flex-shrink-0 hover:border-dc-teal transition-colors"
         >
           {expanded ? (
             <ChevronUp className="w-4 h-4 text-gray-500" />
@@ -147,7 +190,7 @@ export const CampaignSearchFilters: React.FC<CampaignSearchFiltersProps> = ({
               className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${
                 filters.contentType === pill.value
                   ? 'bg-dc-teal text-white'
-                  : 'bg-white text-gray-600 border border-gray-200 hover:border-dc-teal'
+                  : 'bg-gray-50 text-gray-600 border border-gray-200 hover:border-dc-teal'
               }`}
             >
               {pill.label}
@@ -166,13 +209,90 @@ export const CampaignSearchFilters: React.FC<CampaignSearchFiltersProps> = ({
                 className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${
                   filters.deliveryTier === pill.value
                     ? 'bg-dc-pink text-white'
-                    : 'bg-white text-gray-600 border border-gray-200 hover:border-dc-pink'
+                    : 'bg-gray-50 text-gray-600 border border-gray-200 hover:border-dc-pink'
                 }`}
               >
                 {pill.label}
               </button>
             ))}
           </div>
+
+          <div>
+            <SectionLabel>More Content Types</SectionLabel>
+            <div className="flex gap-1.5 overflow-x-auto scrollbar-hide mb-2.5">
+              {MORE_CONTENT_PILLS.map((pill) => (
+                <button
+                  key={pill.value}
+                  onClick={() => onContentTypeChange(pill.value)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${
+                    filters.contentType === pill.value
+                      ? 'bg-dc-teal text-white'
+                      : 'bg-gray-50 text-gray-600 border border-gray-200 hover:border-dc-teal'
+                  }`}
+                >
+                  {pill.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <SectionLabel>Distance</SectionLabel>
+            <div className="flex gap-1.5 overflow-x-auto scrollbar-hide mb-2.5">
+              {DISTANCE_PILLS.map((pill) => (
+                <button
+                  key={String(pill.value)}
+                  onClick={() => onDistanceChange(pill.value)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${
+                    filters.distanceRadius === pill.value
+                      ? 'bg-dc-teal text-white'
+                      : 'bg-gray-50 text-gray-600 border border-gray-200 hover:border-dc-teal'
+                  }`}
+                >
+                  {pill.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <SectionLabel>Budget Min</SectionLabel>
+            <div className="flex gap-1.5 overflow-x-auto scrollbar-hide mb-2.5">
+              {BUDGET_MIN_PILLS.map((pill) => (
+                <button
+                  key={String(pill.value)}
+                  onClick={() => onBudgetMinChange(pill.value)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${
+                    filters.budgetMin === pill.value
+                      ? 'bg-dc-teal text-white'
+                      : 'bg-gray-50 text-gray-600 border border-gray-200 hover:border-dc-teal'
+                  }`}
+                >
+                  {pill.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <SectionLabel>Budget Max</SectionLabel>
+            <div className="flex gap-1.5 overflow-x-auto scrollbar-hide mb-2.5">
+              {BUDGET_MAX_PILLS.map((pill) => (
+                <button
+                  key={String(pill.value)}
+                  onClick={() => onBudgetMaxChange(pill.value)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${
+                    filters.budgetMax === pill.value
+                      ? 'bg-dc-teal text-white'
+                      : 'bg-gray-50 text-gray-600 border border-gray-200 hover:border-dc-teal'
+                  }`}
+                >
+                  {pill.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div className="flex items-center justify-between">
             <select
               value={filters.sortBy}
@@ -195,7 +315,7 @@ export const CampaignSearchFilters: React.FC<CampaignSearchFiltersProps> = ({
         </div>
       )}
 
-      <p className="text-xs text-white/60 px-1">
+      <p className="text-xs text-gray-400 px-1">
         {filteredCount} campaign{filteredCount !== 1 ? 's' : ''} available
       </p>
     </div>
