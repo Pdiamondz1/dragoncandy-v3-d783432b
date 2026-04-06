@@ -80,7 +80,7 @@ export function DonnyChatSheet({ open, onOpenChange, initialMessage }: DonnyChat
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto px-3 py-4 space-y-3 bg-[#A8A8A0]">
+        <div className="flex-1 overflow-y-auto px-3 py-4 space-y-3 bg-teal-50">
           {messages.length === 0 && !isStreaming && (
             <div className="flex gap-2 items-end">
               <DonnyAvatar size="sm" state="idle" />

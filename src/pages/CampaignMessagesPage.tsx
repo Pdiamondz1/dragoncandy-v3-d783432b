@@ -45,7 +45,7 @@ const CampaignMessagesPage: React.FC = () => {
   if (isLoading) {
     return (
       <DashboardLayout userRole={userRole as 'business_client' | 'content_creator'}>
-        <div className="min-h-screen overflow-x-hidden bg-dc-gray">
+        <div className="min-h-screen overflow-x-hidden bg-teal-50">
           <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
             <div className="w-7" />
             <h1 className="flex-1 text-center font-sans text-base font-bold text-gray-900 uppercase tracking-wide">
@@ -65,7 +65,7 @@ const CampaignMessagesPage: React.FC = () => {
   if (error || !campaign) {
     return (
       <DashboardLayout userRole={userRole as 'business_client' | 'content_creator'}>
-        <div className="min-h-screen overflow-x-hidden bg-dc-gray">
+        <div className="min-h-screen overflow-x-hidden bg-teal-50">
           <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
             <button
               onClick={handleBack}
@@ -101,7 +101,7 @@ const CampaignMessagesPage: React.FC = () => {
   if (!recipientId) {
     return (
       <DashboardLayout userRole={userRole as 'business_client' | 'content_creator'}>
-        <div className="min-h-screen overflow-x-hidden bg-dc-gray">
+        <div className="min-h-screen overflow-x-hidden bg-teal-50">
           <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
             <button
               onClick={handleBack}
@@ -138,7 +138,7 @@ const CampaignMessagesPage: React.FC = () => {
 
   return (
     <DashboardLayout userRole={userRole as 'business_client' | 'content_creator'}>
-      <div className="min-h-screen overflow-x-hidden bg-dc-gray md:max-w-4xl md:mx-auto">
+      <div className="min-h-screen overflow-x-hidden bg-teal-50 md:max-w-4xl md:mx-auto">
         {/* Template B header */}
         <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
           <button
