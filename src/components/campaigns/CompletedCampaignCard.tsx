@@ -102,7 +102,9 @@ export const CompletedCampaignCard: React.FC<CompletedCampaignCardProps> = ({ co
       <div className="mt-3">
         {hasReview ? (
           <div className="flex items-center gap-2">
-            <StarRating rating={submitted ? reviewRating : (collaboration.existing_review_rating ?? 5)} />
+            {(submitted ? reviewRating : collaboration.existing_review_rating) ? (
+              <StarRating rating={submitted ? reviewRating : collaboration.existing_review_rating!} />
+            ) : null}
             <span className="text-[11px] text-gray-400">Review submitted</span>
           </div>
         ) : showReviewForm ? (

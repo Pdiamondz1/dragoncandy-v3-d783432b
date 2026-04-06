@@ -31,7 +31,7 @@ function getDeadlineDisplay(deadline: string | null): { text: string; urgent: bo
   const days = Math.floor(diffMs / 86400000);
 
   if (days > 0) return { text: `Due in ${days}d ${hrs % 24}h`, urgent: false, overdue: false };
-  if (hrs > 0) return { text: `Due in ${hrs}h ${mins}m`, urgent: hrs < 1, overdue: false };
+  if (hrs > 0) return { text: `Due in ${hrs}h ${mins}m`, urgent: false, overdue: false };
   return { text: `Due in ${mins}m`, urgent: true, overdue: false };
 }
 
