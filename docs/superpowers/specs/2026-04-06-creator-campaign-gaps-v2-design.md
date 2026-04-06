@@ -48,17 +48,25 @@ export const US_CITY_COORDS: Record<string, { lat: number; lng: number }> = {
 Two pure functions:
 
 - `haversineDistance(lat1, lng1, lat2, lng2): number` — returns distance in miles between two coordinate pairs.
-- `lookupCityCoords(city: string, country: string): { lat: number; lng: number } | null` — normalizes the city name and looks it up in the static map. Returns null for unknown cities. Only processes US (`country === 'US'` or `'United States'`).
+- `lookupCityCoords(city: string, country: string): { lat: number; lng: number } | null` — normalizes the city name (lowercase, trim) and looks it up in the static map. Returns null for unknown cities. Country is normalized before comparison: lowercase, strip periods, handle common variants (`'us'`, `'usa'`, `'u.s.'`, `'u.s.a.'`, `'united states'`). All match to US. Non-US countries return null.
 
 **New hook: `src/hooks/useGeoDistance.ts`**
 
-Takes the creator's city (from `useCreatorMatchProfile`) and an array of campaigns. Returns the same campaigns enriched with `distanceMiles: number | null`. Memoized. Pure client-side computation.
+Calls `useCreatorMatchProfile` internally to get the creator's city/country. Accepts an array of campaigns as its only parameter. Returns an object with `{ campaigns: GeoEnrichedCampaign[], creatorHasCoords: boolean }`. The `creatorHasCoords` flag lets the UI know whether distance-based features are meaningful.
 
 ```ts
 export interface GeoEnrichedCampaign extends PublicCampaign {
   distanceMiles: number | null;
 }
+
+export const useGeoDistance = (campaigns: PublicCampaign[]) => {
+  const { data: profile } = useCreatorMatchProfile();
+  // ... memoized enrichment logic
+  return { campaigns: enriched, creatorHasCoords: boolean };
+};
 ```
+
+The enrichment is memoized via `useMemo` over `[profile, campaigns]`. While the creator profile query is loading, all campaigns get `distanceMiles: null` and `creatorHasCoords` is `false` — no loading spinner needed, the page renders normally and distance features gracefully degrade.
 
 Campaigns where either the creator or business city is unknown get `distanceMiles: null`. These campaigns are NOT excluded — they pass through distance filters but sort to the bottom under "Nearest" sorting.
 
@@ -76,18 +84,27 @@ budgetMax: 'any' | 250 | 500 | 1000 | 2000;
 
 Add to `ContentTypeFilter`: `'video'`
 
+The `'video'` filter is a **superset** of all video-based content types: it matches `video_reel`, `tiktok`, and `youtube_short` (the same types that `'reel'` matches). The distinction is semantic: "Video" is the broad category pill in the top row, while "Reel" is a more specific filter for short-form vertical video. In practice, for MVP, they match the same DB values. If new video content types are added later (e.g. `long_form_video`), `'video'` would include them while `'reel'` would not. Add `VIDEO_TYPES` constant: `['video_reel', 'tiktok', 'youtube_short']` — shared by both `'video'` and `'reel'` filters for now.
+
 Add to `SortOption`: `'nearest'`
 
 New filter functions:
 
 - `matchesDistance(campaign, radius)` — if radius is `'any'`, pass. If campaign has no `distanceMiles`, pass (don't exclude unknowns). Otherwise, `distanceMiles <= radius`.
-- `matchesBudget(campaign, min, max)` — compares against `fixed_price` or `budget_min`/`budget_max`. If campaign budget is unknown, pass.
+- `matchesBudget(campaign, min, max)` — logic:
+  - Campaign's effective budget: `fixed_price` if set, otherwise fall back to `budget_min`/`budget_max` range.
+  - For `budgetMin` filter: campaign passes if its max payout (`fixed_price ?? budget_max ?? 0`) >= filter min. (Campaign must offer at least this much.)
+  - For `budgetMax` filter: campaign passes if its entry price (`fixed_price ?? budget_min ?? 0`) <= filter max. (Campaign's starting price must be at or below this.)
+  - If campaign has no budget data at all (`fixed_price`, `budget_min`, `budget_max` all null), pass through (don't exclude unknowns).
+  - **Min/max conflict:** if user selects `budgetMin` > `budgetMax`, auto-reset `budgetMax` to `'any'`. (Handled in the setter callback, not the filter function.)
 
 New sort:
 
 - `'nearest'` — sort by `distanceMiles` ascending. Campaigns with `null` distance go last.
 
 `hasActiveFilters` updated to include distance and budget checks.
+
+`clearFilters` resets all fields to defaults: `{ searchTerm: '', contentType: 'all', deliveryTier: 'all', sortBy: 'newest', distanceRadius: 'any', budgetMin: 'any', budgetMax: 'any' }`.
 
 ### 3. UI Components
 
@@ -116,11 +133,13 @@ Pill styling:
 **Modified: `src/components/campaigns/CampaignSwipeCard.tsx`**
 
 When a campaign has a match score (is a Donny Pick):
+- **Replaces** the existing `DonnyPicksBadge` overlay with a new banner treatment:
 - Teal gradient banner at top of card: `bg-gradient-to-br from-dc-teal to-teal-600`
 - Left: dragon icon + "Donny's Pick" white bold text
 - Right: white pill badge with "95% Match" in teal
 - Bottom of card info area: "Matches: Photography, Located in Philadelphia" in small gray text
 - Card border: `border-2 border-dc-teal`
+- The existing `DonnyPicksBadge` component remains available for the desktop `DonnyPicksRow` (unchanged) but is no longer rendered on swipe cards.
 
 Regular cards remain unchanged.
 
@@ -147,7 +166,7 @@ Regular cards remain unchanged.
 
 Full sort options: Nearest | Highest Budget | Newest | Ending Soon
 
-"Nearest" sorts by `distanceMiles` ascending, nulls last. If creator has no coords, all campaigns treated as equal distance (original order preserved).
+"Nearest" sorts by `distanceMiles` ascending, nulls last. If creator has no coords, all campaigns treated as equal distance (original order preserved). The "Nearest" sort option is always visible in the dropdown — no disabling or hiding. When it has no effect (no creator coords), it simply preserves the existing order, which is a fine UX.
 
 ## New Files
 
