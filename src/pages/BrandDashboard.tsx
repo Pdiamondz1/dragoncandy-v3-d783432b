@@ -7,14 +7,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Search, TrendingUp, Users, DollarSign, Target, Sparkles, Calendar, BarChart3, Loader2, AlertCircle } from 'lucide-react';
-import { AskBar } from '@/components/ai-assistant';
-import { useAIChatModal } from '@/contexts/AIChatModalContext';
-import { DonnyCard } from '@/components/donny/DonnyCard';
+import { DonnyAIBar } from '@/components/dashboard/DonnyAIBar';
 
 const BrandDashboard = () => {
   const { profile } = useAuth();
   const navigate = useNavigate();
-  const { openModal } = useAIChatModal();
   const { data: stats, isLoading: statsLoading, isError: statsError } = useBrandDashboardStats();
 
   if (!profile) {
@@ -108,17 +105,8 @@ const BrandDashboard = () => {
         <div className="bg-gradient-to-b from-dc-pink-bg to-pink-50 px-4 pt-6 pb-8">
           <div className="max-w-2xl lg:max-w-4xl mx-auto space-y-4">
 
-            {/* Donny AI Card */}
-            <DonnyCard
-              onOpenChat={(message) => {
-                window.dispatchEvent(
-                  new CustomEvent('donny-open-chat', { detail: { message } })
-                );
-              }}
-            />
-
-            {/* Ask Bar */}
-            <AskBar onClick={openModal} userRole="brand" />
+            {/* Donny AI Bar */}
+            <DonnyAIBar placeholder="Ask Donny... 'Show me campaign ROI' or 'Find top creators'" />
 
             {/* Welcome Header */}
             <div>
