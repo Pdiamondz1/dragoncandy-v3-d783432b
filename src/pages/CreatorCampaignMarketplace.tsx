@@ -56,8 +56,6 @@ const CreatorCampaignMarketplace = () => {
     return <MarketplaceErrorState />;
   }
 
-  const availableFilteredCount = availableFilteredCount;
-
   const donnyPickIds = new Set(donnyPicks.map((p) => p.campaign.id));
 
   const availableCampaigns = filteredBySearch.filter(
@@ -68,6 +66,8 @@ const CreatorCampaignMarketplace = () => {
     ...donnyPicks.map((p) => p.campaign),
     ...availableCampaigns,
   ];
+
+  const availableFilteredCount = swipeCampaigns.length;
 
   const matchScoresMap = new Map(
     donnyPicks.map((p) => [p.campaign.id, { score: p.score, matchReasons: p.matchReasons }])
