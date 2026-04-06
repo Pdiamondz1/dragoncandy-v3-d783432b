@@ -123,7 +123,7 @@ const BrandDashboard = () => {
                     <div className="text-center">
                       <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold mb-1">Monthly</p>
                       <p className="text-3xl font-extrabold text-gray-900">
-                        ${stats?.monthlyBudget.toLocaleString() || 0}
+                        ${(stats?.monthlyBudget ?? 0).toLocaleString()}
                       </p>
                       <p className="text-xs text-gray-500 mt-1">
                         {stats?.monthlyBudget ? 'Set in profile' : 'Not set'}
@@ -132,7 +132,7 @@ const BrandDashboard = () => {
                     <div className="text-center">
                       <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold mb-1">Allocated</p>
                       <p className="text-3xl font-extrabold text-gray-900">
-                        ${stats?.allocatedBudget.toLocaleString() || 0}
+                        ${(stats?.allocatedBudget ?? 0).toLocaleString()}
                       </p>
                       <p className="text-xs text-gray-500 mt-1">
                         {stats?.budgetPercentage || 0}% of budget
@@ -141,7 +141,7 @@ const BrandDashboard = () => {
                     <div className="text-center">
                       <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold mb-1">Available</p>
                       <p className="text-3xl font-extrabold text-dc-teal">
-                        ${stats?.availableBudget.toLocaleString() || 0}
+                        ${(stats?.availableBudget ?? 0).toLocaleString()}
                       </p>
                       <p className="text-xs text-gray-500 mt-1">Ready to allocate</p>
                     </div>
