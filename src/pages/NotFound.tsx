@@ -13,11 +13,11 @@ const NotFound = () => {
   }, [location.pathname]);
 
   return (
-    <div className="bg-dc-gray min-h-screen flex items-center justify-center p-4">
+    <div className="bg-gray-50 min-h-screen flex items-center justify-center p-4">
       <div className="text-center space-y-4">
         <h1 className="text-6xl font-extrabold text-dc-teal">404</h1>
-        <p className="text-xl font-bold text-white">Page not found</p>
-        <p className="text-sm text-white/70">The page you're looking for doesn't exist.</p>
+        <p className="text-xl font-bold text-gray-900">Page not found</p>
+        <p className="text-sm text-gray-500">The page you're looking for doesn't exist.</p>
         <button
           onClick={() => navigate('/')}
           className="inline-block rounded-full bg-dc-teal text-white font-bold py-3 px-8 hover:bg-dc-teal/90 transition-colors"

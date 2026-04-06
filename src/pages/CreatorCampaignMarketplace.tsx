@@ -143,7 +143,7 @@ const CreatorCampaignMarketplace = () => {
 
   return (
     <DashboardLayout userRole="content_creator">
-      <div className="flex flex-col min-h-screen bg-dc-gray">
+      <div className="flex flex-col min-h-screen bg-gray-50">
         {/* Page Header */}
         <div className="flex items-center justify-between px-4 pt-4 pb-2">
           <img src={logo} alt="Dragon Candy" className="w-12 h-12" />
@@ -217,14 +217,14 @@ const CreatorCampaignMarketplace = () => {
               </div>
               {swipeCampaigns.length > 0 && (
                 <div className="flex items-center justify-center gap-6 mt-4">
-                  <span className="text-xs text-white/50">← Skip</span>
-                  <span className="text-xs text-white/50">View Details →</span>
+                  <span className="text-xs text-gray-400">← Skip</span>
+                  <span className="text-xs text-gray-400">View Details →</span>
                 </div>
               )}
               {swipeCampaigns.length === 0 && hasActiveFilters && (
                 <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
-                  <p className="text-white font-semibold mb-2">No campaigns found</p>
-                  <p className="text-white/60 text-sm mb-4">Try different filters or check back soon.</p>
+                  <p className="text-gray-900 font-semibold mb-2">No campaigns found</p>
+                  <p className="text-gray-500 text-sm mb-4">Try different filters or check back soon.</p>
                   <button
                     onClick={clearFilters}
                     className="rounded-full bg-dc-teal text-white text-sm font-bold px-6 py-2 hover:bg-dc-teal-dark transition-colors"
@@ -304,7 +304,7 @@ const CreatorCampaignMarketplace = () => {
               </div>
             ) : applications.length === 0 ? (
               <div className="text-center py-12">
-                <p className="text-white/70 text-sm mb-2">No applications yet.</p>
+                <p className="text-gray-500 text-sm mb-2">No applications yet.</p>
                 <button
                   onClick={() => setActiveTab('available')}
                   className="text-dc-teal text-sm font-semibold hover:underline"
@@ -344,8 +344,8 @@ const CreatorCampaignMarketplace = () => {
               </div>
             ) : activeCollabs.length === 0 ? (
               <div className="text-center py-12">
-                <p className="text-white font-semibold mb-2">No active campaigns yet.</p>
-                <p className="text-white/60 text-sm mb-4">When a business accepts your application, your campaign will appear here.</p>
+                <p className="text-gray-900 font-semibold mb-2">No active campaigns yet.</p>
+                <p className="text-gray-500 text-sm mb-4">When a business accepts your application, your campaign will appear here.</p>
                 <button
                   onClick={() => setActiveTab('available')}
                   className="text-dc-teal text-sm font-semibold border border-dc-teal rounded-full px-6 py-2 hover:bg-teal-50/10 transition-colors"
@@ -381,8 +381,8 @@ const CreatorCampaignMarketplace = () => {
               </div>
             ) : completedCollabs.length === 0 ? (
               <div className="text-center py-12">
-                <p className="text-white font-semibold mb-2">No completed campaigns yet.</p>
-                <p className="text-white/60 text-sm">Your finished campaigns and earnings will show up here.</p>
+                <p className="text-gray-900 font-semibold mb-2">No completed campaigns yet.</p>
+                <p className="text-gray-500 text-sm">Your finished campaigns and earnings will show up here.</p>
               </div>
             ) : (
               <div className="space-y-3">
