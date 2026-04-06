@@ -3,6 +3,7 @@ import { Header } from "@/components/landing/Header";
 import { HeroSection } from "@/components/landing/HeroSection";
 import { HowItWorks } from "@/components/landing/HowItWorks";
 import { FeatureSection } from "@/components/landing/FeatureSection";
+import { BrandSection } from "@/components/landing/BrandSection";
 import { BottomCTA } from "@/components/landing/BottomCTA";
 import { PortfolioStrip } from "@/components/landing/PortfolioStrip";
 import { useAuth } from "@/hooks/useAuth";
@@ -31,6 +32,7 @@ export default function LandingPage() {
           <HeroSection />
           <HowItWorks />
           <FeatureSection />
+          <BrandSection />
           <BottomCTA />
         </main>
       </div>
