@@ -23,6 +23,12 @@ export const HeroSection: React.FC = () => {
           I'm a Business — Get Started
         </Button>
         <Button
+          className="w-full h-12 rounded-full bg-dc-pink-accent text-white font-bold text-base hover:bg-pink-600 hover:shadow-lg transition-all duration-300"
+          onClick={() => navigate('/auth?mode=signup')}
+        >
+          I'm a Brand/Sponsor — Launch Campaigns
+        </Button>
+        <Button
           variant="outline"
           className="w-full h-12 rounded-full bg-white text-dc-pink-accent font-semibold text-base border border-gray-200 hover:border-dc-teal hover:text-dc-teal transition-all duration-300"
           onClick={() => navigate('/auth?mode=signup')}
