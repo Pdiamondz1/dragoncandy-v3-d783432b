@@ -12,6 +12,11 @@ import { QuickActionButtons, type QuickAction } from '@/components/dashboard/Qui
 import { ActivityFeedCard } from '@/components/dashboard/ActivityFeedCard';
 import { Rocket, DollarSign, Users, TrendingUp, Loader2, AlertCircle } from 'lucide-react';
 
+function formatSpend(amount: number): string {
+  if (amount === 0) return '$0';
+  return amount >= 1000 ? `$${(amount / 1000).toFixed(1)}k` : `$${amount}`;
+}
+
 const BrandDashboard = () => {
   const { profile } = useAuth();
   const navigate = useNavigate();
@@ -27,11 +32,6 @@ const BrandDashboard = () => {
       </DashboardLayout>
     );
   }
-
-  const formatSpend = (amount: number) => {
-    if (amount === 0) return '$0';
-    return amount >= 1000 ? `$${(amount / 1000).toFixed(1)}k` : `$${amount}`;
-  };
 
   const brandStats: StatItem[] = [
     { label: 'Active Campaigns', value: statsLoading ? '...' : stats?.activeCampaigns ?? 0, icon: Rocket },
@@ -89,7 +89,11 @@ const BrandDashboard = () => {
                       title={campaign.title}
                       subtitle={campaign.subtitle}
                       status={campaign.status}
-                      onClick={() => navigate(`/dashboard/brand/discover-campaigns`)}
+                      onClick={() => navigate(
+                        campaign.type === 'own'
+                          ? `/dashboard/brand/campaigns/${campaign.id}`
+                          : `/dashboard/brand/discover-campaigns`
+                      )}
                     />
                   ))}
                 </div>

@@ -8,6 +8,7 @@ export interface BrandCampaignItem {
   title: string;
   subtitle: string;
   status: string;
+  type: 'own' | 'sponsored';
 }
 
 export function useBrandActiveCampaigns() {
@@ -66,6 +67,7 @@ export function useBrandActiveCampaigns() {
               title: campaign.title,
               subtitle: `Sponsored · $${Number(s.sponsorship_amount).toLocaleString()} budget`,
               status: s.status,
+              type: 'sponsored' as const,
             };
           });
       }
@@ -80,6 +82,7 @@ export function useBrandActiveCampaigns() {
           title: c.title,
           subtitle: `Due ${deadline}`,
           status: c.status,
+          type: 'own' as const,
         };
       });
 
