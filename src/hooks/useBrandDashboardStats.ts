@@ -3,14 +3,16 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 
 interface BrandDashboardStats {
-  activeSponsorships: number;
-  campaignsDiscovered: number;
-  creatorsConnected: number;
+  // Hybrid stats for DashboardStatsGrid
+  activeCampaigns: number;    // own campaigns + active sponsorships
+  totalSpend: number;          // sum of paid sponsorship amounts
+  creatorsConnected: number;   // direct conversations count
+  avgROI: number;              // average ROI percentage
+  // Budget fields (unchanged)
   monthlyBudget: number;
   allocatedBudget: number;
   availableBudget: number;
   budgetPercentage: number;
-  marketingROI: number;
 }
 
 export const useBrandDashboardStats = () => {
@@ -32,7 +34,16 @@ export const useBrandDashboardStats = () => {
       if (profileError) throw profileError;
       if (!brandProfile) throw new Error('Brand profile not found');
 
-      // Get active sponsorships (accepted and paid)
+      // Count brand's own campaigns
+      const { count: ownCampaignsCount, error: ownCampaignsError } = await supabase
+        .from('campaigns')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .in('status', ['active', 'published']);
+
+      if (ownCampaignsError) throw ownCampaignsError;
+
+      // Get sponsorships for this brand
       const { data: sponsorships, error: sponsorshipsError } = await supabase
         .from('campaign_sponsorships')
         .select('sponsorship_amount, status, payment_status')
@@ -44,18 +55,15 @@ export const useBrandDashboardStats = () => {
         s => s.status === 'accepted' && s.payment_status === 'paid'
       ).length || 0;
 
+      const activeCampaigns = (ownCampaignsCount || 0) + activeSponsorships;
+
+      const totalSpend = sponsorships?.filter(
+        s => s.payment_status === 'paid'
+      ).reduce((sum, s) => sum + (Number(s.sponsorship_amount) || 0), 0) || 0;
+
       const allocatedBudget = sponsorships?.filter(
         s => s.status === 'accepted' || s.status === 'pending'
       ).reduce((sum, s) => sum + (Number(s.sponsorship_amount) || 0), 0) || 0;
-
-      // Count available campaigns (open for sponsorship)
-      const { count: campaignsCount, error: campaignsError } = await supabase
-        .from('campaigns')
-        .select('*', { count: 'exact', head: true })
-        .eq('open_for_sponsorship', true)
-        .eq('status', 'published');
-
-      if (campaignsError) throw campaignsError;
 
       // Count direct conversations with creators
       const { data: conversations, error: conversationsError } = await supabase
@@ -70,23 +78,19 @@ export const useBrandDashboardStats = () => {
       // Calculate budget stats
       const monthlyBudget = Number(brandProfile.sponsorship_budget) || 0;
       const availableBudget = monthlyBudget - allocatedBudget;
-      const budgetPercentage = monthlyBudget > 0 
-        ? Math.round((allocatedBudget / monthlyBudget) * 100) 
+      const budgetPercentage = monthlyBudget > 0
+        ? Math.round((allocatedBudget / monthlyBudget) * 100)
         : 0;
 
-      // Calculate marketing ROI (placeholder - would need actual metrics)
-      // For now, using a simple formula: (active sponsorships * 15%) as estimated ROI
-      const marketingROI = activeSponsorships > 0 ? 15 : 0;
-
       const stats: BrandDashboardStats = {
-        activeSponsorships,
-        campaignsDiscovered: campaignsCount || 0,
+        activeCampaigns,
+        totalSpend,
         creatorsConnected,
+        avgROI: activeCampaigns > 0 ? 15 : 0,
         monthlyBudget,
         allocatedBudget,
         availableBudget,
         budgetPercentage,
-        marketingROI,
       };
 
       return stats;
