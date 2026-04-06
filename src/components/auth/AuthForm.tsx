@@ -3,14 +3,14 @@ import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { toast as sonnerToast } from "sonner";
-import { Eye, EyeOff, Store, Camera } from "lucide-react";
+import { Eye, EyeOff, Store, Camera, Megaphone } from "lucide-react";
 import ReCaptcha, { ReCaptchaHandle } from "./ReCaptcha";
 import type { UserRole as Role } from "@/types/user";
 
 interface AuthFormProps {
   mode: "login" | "signup";
   onError: (error: string | null) => void;
-  preSelectedRole?: "business_client" | "content_creator";
+  preSelectedRole?: "business_client" | "content_creator" | "brand";
   onChangeRole?: () => void;
 }
 
@@ -222,12 +222,17 @@ export const AuthForm = ({ mode, onError, preSelectedRole, onChangeRole }: AuthF
     }
   };
 
-  const roleIcon = preSelectedRole === "content_creator" ? (
-    <Camera className="w-4 h-4" />
-  ) : (
-    <Store className="w-4 h-4" />
-  );
-  const roleLabel = preSelectedRole === "content_creator" ? "Creator" : "Business";
+  const getRoleDisplay = () => {
+    switch (preSelectedRole) {
+      case "content_creator":
+        return { icon: <Camera className="w-4 h-4" />, label: "Creator" };
+      case "brand":
+        return { icon: <Megaphone className="w-4 h-4" />, label: "Brand" };
+      default:
+        return { icon: <Store className="w-4 h-4" />, label: "Business" };
+    }
+  };
+  const { icon: roleIcon, label: roleLabel } = getRoleDisplay();
 
   return (
     <div className="w-full max-w-sm md:max-w-md mx-auto">

@@ -16,7 +16,7 @@ const AuthPage = () => {
   const [mode, setMode] = useState<"login" | "signup">(initialMode);
   const [error, setError] = useState<string | null>(null);
   const [signupStep, setSignupStep] = useState<SignupStep>("role-selection");
-  const [selectedRole, setSelectedRole] = useState<"business_client" | "content_creator" | null>(null);
+  const [selectedRole, setSelectedRole] = useState<"business_client" | "content_creator" | "brand" | null>(null);
 
   const navigate = useNavigate();
   const { user, isAuthenticated, migrateCampaignData } = useAuth();
@@ -142,7 +142,7 @@ const AuthPage = () => {
     navigate(`/auth?mode=${newMode}`, { replace: true });
   };
 
-  const handleSelectRole = (role: "business_client" | "content_creator") => {
+  const handleSelectRole = (role: "business_client" | "content_creator" | "brand") => {
     setSelectedRole(role);
     setSignupStep("signup-form");
   };
