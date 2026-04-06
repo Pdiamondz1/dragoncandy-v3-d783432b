@@ -15,6 +15,7 @@ const scrollToSection = (id: string) => {
 const navLinks = [
   { label: "How It Works", target: "how-it-works" },
   { label: "For Businesses", target: "features" },
+  { label: "For Brands", target: "brands" },
   { label: "For Creators", target: "cta" },
 ];
 
