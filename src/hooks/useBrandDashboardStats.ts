@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 
-interface BrandDashboardStats {
+export interface BrandDashboardStats {
   // Hybrid stats for DashboardStatsGrid
   activeCampaigns: number;    // own campaigns + active sponsorships
   totalSpend: number;          // sum of paid sponsorship amounts
