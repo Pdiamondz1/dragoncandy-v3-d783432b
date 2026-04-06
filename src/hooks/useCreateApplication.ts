@@ -16,27 +16,22 @@ export const useCreateApplication = () => {
       introMessage,
       proposedTimeline,
       proposedRate,
-      portfolioFiles,
-      relevantExperience,
+      portfolioUrl,
     }: {
       campaignId: string;
       introMessage: string;
       proposedTimeline?: string;
       proposedRate?: number;
-      portfolioFiles?: File[];
-      relevantExperience?: string;
+      portfolioUrl?: string;
     }) => {
-      console.log('Creating application:', { 
-        campaignId, 
-        introMessage, 
-        proposedTimeline, 
+      console.log('Creating application:', {
+        campaignId,
+        introMessage,
+        proposedTimeline,
         proposedRate,
-        portfolioFiles: portfolioFiles?.length || 0,
-        relevantExperience
+        portfolioUrl,
       });
-      
-      // For now, we'll store the application without portfolio files
-      // Portfolio integration with Supabase storage would be implemented in a future iteration
+
       const { data, error } = await supabase
         .from('campaign_applications')
         .insert({
@@ -45,6 +40,7 @@ export const useCreateApplication = () => {
           intro_message: introMessage,
           proposed_timeline: proposedTimeline,
           proposed_rate: proposedRate,
+          portfolio_url: portfolioUrl,
         })
         .select()
         .single();

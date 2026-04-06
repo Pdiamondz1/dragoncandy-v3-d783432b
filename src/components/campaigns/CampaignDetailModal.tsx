@@ -1,7 +1,8 @@
 // src/components/campaigns/CampaignDetailModal.tsx
 
 import React, { useState, useRef, useEffect } from 'react';
-import { X } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { X, Download } from 'lucide-react';
 import { PublicCampaign } from '@/hooks/usePublicCampaigns';
 import { useCampaignDetail } from '@/hooks/useCampaignDetail';
 import DeliveryBadge from './DeliveryBadge';
@@ -170,16 +171,53 @@ export const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
               </div>
             )}
 
-            {/* Raw Footage Available */}
+            {/* Raw Footage */}
             {hasRawFootage && (
               <div className="px-4 py-4 border-b border-gray-100">
-                <div className="bg-teal-50 border border-teal-200 rounded-xl p-3 flex items-center gap-3">
-                  <span className="text-xl">📹</span>
-                  <div>
-                    <div className="text-sm font-semibold text-teal-700">Raw Footage Provided</div>
-                    <div className="text-xs text-gray-600 mt-0.5">The business has footage for you to use. Available after acceptance.</div>
+                {campaign.application_status === 'accepted' ? (
+                  <>
+                    <h3 className="text-sm font-bold text-gray-900 mb-2">📹 Raw Footage</h3>
+                    <div className="flex gap-2 overflow-x-auto pb-1">
+                      {detail?.media
+                        .filter(m => m.media_type === 'raw_footage')
+                        .map((item) => (
+                          <div key={item.id} className="flex-shrink-0">
+                            <div className="relative w-24 h-24 rounded-xl overflow-hidden border border-gray-200 group">
+                              <img
+                                src={item.thumbnail_url || item.file_url}
+                                alt={item.file_name}
+                                className="w-full h-full object-cover"
+                              />
+                              <a
+                                href={item.file_url}
+                                download={item.file_name}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <Download className="w-5 h-5 text-white" />
+                              </a>
+                            </div>
+                            <p className="text-[10px] text-gray-500 mt-1 truncate w-24">{item.file_name}</p>
+                            {item.file_size_bytes && (
+                              <p className="text-[10px] text-gray-400">
+                                {(item.file_size_bytes / 1048576).toFixed(1)} MB
+                              </p>
+                            )}
+                          </div>
+                        ))}
+                    </div>
+                  </>
+                ) : (
+                  <div className="bg-teal-50 border border-teal-200 rounded-xl p-3 flex items-center gap-3">
+                    <span className="text-xl">📹</span>
+                    <div>
+                      <div className="text-sm font-semibold text-teal-700">Raw Footage Provided</div>
+                      <div className="text-xs text-gray-600 mt-0.5">The business has footage for you to use. Available after acceptance.</div>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             )}
 
@@ -272,6 +310,15 @@ export const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
                   {location && <div className="text-xs text-gray-500">{location}</div>}
                 </div>
               </div>
+              {campaign.business_profile?.profile_slug && (
+                <Link
+                  to={`/business/${campaign.business_profile.profile_slug}`}
+                  className="text-xs text-dc-teal font-semibold hover:underline mt-2 inline-block"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  View Business Profile →
+                </Link>
+              )}
             </div>
 
             {/* Requirements */}

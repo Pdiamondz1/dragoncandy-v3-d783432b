@@ -15,6 +15,9 @@ import { useCampaignFilters } from '@/hooks/useCampaignFilters';
 import { useDonnyMatches } from '@/hooks/useDonnyMatches';
 import { CampaignSearchFilters } from '@/components/campaigns/CampaignSearchFilters';
 import { DonnyPicksRow } from '@/components/campaigns/DonnyPicksRow';
+import { useCreatorCollaborations } from '@/hooks/useCreatorCollaborations';
+import { ActiveCampaignCard } from '@/components/campaigns/ActiveCampaignCard';
+import { CompletedCampaignCard } from '@/components/campaigns/CompletedCampaignCard';
 import { MapPin, Target } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { formatBudget } from '@/lib/campaignUtils';
@@ -27,6 +30,8 @@ const CreatorCampaignMarketplace = () => {
   const queryClient = useQueryClient();
   const { data: campaigns = [], isLoading, error } = usePublicCampaigns(user?.id);
   const { data: applications = [], isLoading: appsLoading } = useCreatorApplications();
+  const { data: activeCollabs = [], isLoading: activeLoading } = useCreatorCollaborations('active');
+  const { data: completedCollabs = [], isLoading: completedLoading } = useCreatorCollaborations('completed');
 
   const {
     filters,
@@ -56,8 +61,6 @@ const CreatorCampaignMarketplace = () => {
     return <MarketplaceErrorState />;
   }
 
-  const availableFilteredCount = availableFilteredCount;
-
   const donnyPickIds = new Set(donnyPicks.map((p) => p.campaign.id));
 
   const availableCampaigns = filteredBySearch.filter(
@@ -68,6 +71,8 @@ const CreatorCampaignMarketplace = () => {
     ...donnyPicks.map((p) => p.campaign),
     ...availableCampaigns,
   ];
+
+  const availableFilteredCount = swipeCampaigns.length;
 
   const matchScoresMap = new Map(
     donnyPicks.map((p) => [p.campaign.id, { score: p.score, matchReasons: p.matchReasons }])
@@ -122,6 +127,7 @@ const CreatorCampaignMarketplace = () => {
         logo_url: application.business_profile.logo_url ?? undefined,
         city: application.business_profile.city ?? undefined,
         country: application.business_profile.country ?? undefined,
+        profile_slug: application.business_profile.profile_slug ?? undefined,
       } : undefined,
     };
     setDetailReadOnly(true);
@@ -131,8 +137,8 @@ const CreatorCampaignMarketplace = () => {
   const tabs: { id: Tab; label: string; badge?: number; disabled?: boolean }[] = [
     { id: 'available', label: 'Available' },
     { id: 'applied', label: 'Applied', badge: pendingCount > 0 ? pendingCount : undefined },
-    { id: 'active', label: 'Active', disabled: true },
-    { id: 'done', label: 'Done', disabled: true },
+    { id: 'active', label: 'Active', badge: activeCollabs.length > 0 ? activeCollabs.length : undefined },
+    { id: 'done', label: 'Done' },
   ];
 
   return (
@@ -314,6 +320,74 @@ const CreatorCampaignMarketplace = () => {
                     application={app}
                     onViewDetails={handleViewApplicationDetail}
                   />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'active' && (
+          <div className="flex-1 px-4 py-4">
+            {activeLoading ? (
+              <div className="space-y-3">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="bg-white rounded-2xl p-4 animate-pulse">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-gray-200" />
+                      <div className="flex-1">
+                        <div className="h-4 bg-gray-200 rounded w-3/4 mb-1" />
+                        <div className="h-3 bg-gray-200 rounded w-1/2" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : activeCollabs.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-white font-semibold mb-2">No active campaigns yet.</p>
+                <p className="text-white/60 text-sm mb-4">When a business accepts your application, your campaign will appear here.</p>
+                <button
+                  onClick={() => setActiveTab('available')}
+                  className="text-dc-teal text-sm font-semibold border border-dc-teal rounded-full px-6 py-2 hover:bg-teal-50/10 transition-colors"
+                >
+                  Browse Campaigns
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {activeCollabs.map((collab) => (
+                  <ActiveCampaignCard key={collab.id} collaboration={collab} />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'done' && (
+          <div className="flex-1 px-4 py-4">
+            {completedLoading ? (
+              <div className="space-y-3">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="bg-white rounded-2xl p-4 animate-pulse">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-gray-200" />
+                      <div className="flex-1">
+                        <div className="h-4 bg-gray-200 rounded w-3/4 mb-1" />
+                        <div className="h-3 bg-gray-200 rounded w-1/2" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : completedCollabs.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-white font-semibold mb-2">No completed campaigns yet.</p>
+                <p className="text-white/60 text-sm">Your finished campaigns and earnings will show up here.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {completedCollabs.map((collab) => (
+                  <CompletedCampaignCard key={collab.id} collaboration={collab} />
                 ))}
               </div>
             )}

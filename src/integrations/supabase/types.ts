@@ -275,6 +275,7 @@ export type Database = {
           id: string
           intro_message: string | null
           proposed_rate: number | null
+          portfolio_url: string | null
           proposed_timeline: string | null
           restaurant_approval_status: string | null
           status: Database["public"]["Enums"]["application_status"]
@@ -288,6 +289,7 @@ export type Database = {
           final_approval_status?: string | null
           id?: string
           intro_message?: string | null
+          portfolio_url?: string | null
           proposed_rate?: number | null
           proposed_timeline?: string | null
           restaurant_approval_status?: string | null
@@ -302,6 +304,7 @@ export type Database = {
           final_approval_status?: string | null
           id?: string
           intro_message?: string | null
+          portfolio_url?: string | null
           proposed_rate?: number | null
           proposed_timeline?: string | null
           restaurant_approval_status?: string | null

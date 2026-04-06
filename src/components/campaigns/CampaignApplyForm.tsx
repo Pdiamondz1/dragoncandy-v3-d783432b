@@ -7,6 +7,9 @@ import { useCreateApplication } from '@/hooks/useCreateApplication';
 import { formatBudget } from '@/lib/campaignUtils';
 import type { DeliveryTier } from '@/types/campaignMedia';
 import { TIER_LIMITS } from '@/types/campaignMedia';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from '@tanstack/react-query';
 
 interface CampaignApplyFormProps {
   campaign: PublicCampaign;
@@ -56,6 +59,38 @@ const CampaignApplyForm: React.FC<CampaignApplyFormProps> = ({
   const [pitch, setPitch] = useState('');
   const [submitted, setSubmitted] = useState(false);
 
+  const { user } = useAuth();
+  const [portfolioUrl, setPortfolioUrl] = useState('');
+  const [selectedThumbIndex, setSelectedThumbIndex] = useState<number | null>(null);
+
+  // Fetch creator's portfolio URLs and convert storage paths to public URLs
+  const { data: portfolioThumbnails = [] } = useQuery({
+    queryKey: ['creator-portfolio-urls', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      const { data: profile } = await supabase
+        .from('creator_profiles')
+        .select('portfolio_urls')
+        .eq('user_id', user.id)
+        .single();
+
+      if (!profile?.portfolio_urls?.length) return [];
+
+      return Promise.all(
+        profile.portfolio_urls.map(async (path: string) => {
+          if (path.startsWith('http://') || path.startsWith('https://')) {
+            return path;
+          }
+          const { data } = supabase.storage
+            .from('profile-assets')
+            .getPublicUrl(path);
+          return data.publicUrl;
+        })
+      );
+    },
+    enabled: !!user?.id,
+  });
+
   const createApplication = useCreateApplication();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -68,6 +103,7 @@ const CampaignApplyForm: React.FC<CampaignApplyFormProps> = ({
         introMessage: pitch || '',
         proposedTimeline: getISODate(selectedDate),
         proposedRate: isFixedPrice ? undefined : Number(proposedRate),
+        portfolioUrl: portfolioUrl || undefined,
       });
       setSubmitted(true);
       // Small delay so user sees success state before modal closes
@@ -172,6 +208,56 @@ const CampaignApplyForm: React.FC<CampaignApplyFormProps> = ({
         <p className="text-[11px] text-gray-400 mt-0.5">
           {pitch.length}/280 · Keep it short — 1-2 sentences is perfect
         </p>
+      </div>
+
+      {/* Portfolio Sample */}
+      <div className="mb-4">
+        <label className="text-xs font-semibold text-gray-700 block mb-1.5">
+          📎 Attach a Sample <span className="font-normal text-gray-400">(optional)</span>
+        </label>
+
+        {/* Thumbnail selector from existing portfolio */}
+        {portfolioThumbnails.length > 0 && (
+          <>
+            <div className="flex gap-2 overflow-x-auto pb-2">
+              {portfolioThumbnails.map((url, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => {
+                    if (selectedThumbIndex === i) {
+                      setSelectedThumbIndex(null);
+                      setPortfolioUrl('');
+                    } else {
+                      setSelectedThumbIndex(i);
+                      setPortfolioUrl(url);
+                    }
+                  }}
+                  className={`w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 border-2 transition-all ${
+                    selectedThumbIndex === i
+                      ? 'border-dc-teal ring-2 ring-dc-teal'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <img src={url} alt={`Portfolio ${i + 1}`} className="w-full h-full object-cover" />
+                </button>
+              ))}
+            </div>
+            <p className="text-[11px] text-gray-400 mb-2">— or paste a link —</p>
+          </>
+        )}
+
+        {/* Custom URL input — always enabled; typing deselects any thumbnail */}
+        <input
+          type="url"
+          value={portfolioUrl}
+          onChange={(e) => {
+            setPortfolioUrl(e.target.value);
+            setSelectedThumbIndex(null);
+          }}
+          placeholder="https://your-portfolio.com/sample"
+          className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-800 outline-none focus:border-dc-teal focus:ring-1 focus:ring-dc-teal"
+        />
       </div>
 
       {/* DragonDash urgency warning */}
