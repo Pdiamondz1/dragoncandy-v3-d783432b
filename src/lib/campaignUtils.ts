@@ -17,6 +17,18 @@ export function mapDeliveryType(dbValue: string | null | undefined): DeliveryTie
 }
 
 /**
+ * Maps UI DeliveryTier values to the DB delivery_type column values.
+ * The DB CHECK constraint expects ('standard', 'expedited', 'dragonrush').
+ */
+export function mapDeliveryTierToDb(tier: DeliveryTier): string {
+  switch (tier) {
+    case 'dragondash': return 'dragonrush';
+    case 'express': return 'expedited';
+    case 'standard': return 'standard';
+  }
+}
+
+/**
  * Returns a human-readable relative time string.
  * e.g., "2h ago", "1d ago", "3d ago", "2w ago"
  */

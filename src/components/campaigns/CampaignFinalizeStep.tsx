@@ -22,6 +22,7 @@ import type { PricingType } from './PricingTypeSelector';
 import type { CampaignAnalysis } from '@/types/campaign';
 import { useScopeValidation } from '@/hooks/useScopeValidation';
 import { ScopeValidationCard } from './ScopeValidationCard';
+import { mapDeliveryTierToDb } from '@/lib/campaignUtils';
 
 const finalizeSchema = z.object({
   title: z.string().min(3, 'Campaign name must be at least 3 characters'),
@@ -167,8 +168,8 @@ const CampaignFinalizeStep: React.FC<CampaignFinalizeStepProps> = ({
         deadline: format(campaignData.deadline, 'yyyy-MM-dd'),
         status,
         open_for_sponsorship: data.openForSponsorship,
-        // DragonDash fields
-        delivery_type: campaignData.deliveryType,
+        // DragonDash fields — map UI tier names to DB column values
+        delivery_type: mapDeliveryTierToDb(campaignData.deliveryType),
         delivery_fee: campaignData.deliveryFee,
         pricing_type: campaignData.pricingType,
         fixed_price: campaignData.pricingType === 'fixed' ? campaignData.fixedPrice : undefined,

@@ -7,6 +7,7 @@ import { CampaignAnalysis } from '@/types/campaign';
 import type { DeliveryTier } from '@/types/campaignMedia';
 import { TIER_LIMITS } from '@/types/campaignMedia';
 import type { ContentSource, StagedFile, Deliverable } from '@/types/campaignMedia';
+import { mapDeliveryTierToDb } from '@/lib/campaignUtils';
 
 export interface TimelineBudgetData {
   goals: string;
@@ -158,7 +159,7 @@ export const useCampaignWizard = () => {
           status: 'draft' as any,
           content_source: contentSource,
           ai_preview_status: 'none',
-          delivery_type: deliveryTier,
+          delivery_type: deliveryTier ? mapDeliveryTierToDb(deliveryTier) : undefined,
           delivery_fee: deliveryFee,
           ...(campaignAnalysis ? { ai_analysis: campaignAnalysis as any } : {}),
         } as any)
