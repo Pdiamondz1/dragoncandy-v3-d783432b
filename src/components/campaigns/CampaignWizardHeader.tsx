@@ -35,7 +35,7 @@ const CampaignWizardHeader: React.FC<CampaignWizardHeaderProps> = ({
                 <div className="flex flex-col items-center" style={{ width: '48px' }}>
                   <div className={`
                     w-7 h-7 md:w-10 md:h-10 rounded-full flex items-center justify-center text-[11px] md:text-sm font-semibold
-                    ${index <= currentStep
+                    ${index < currentStep
                       ? 'bg-primary text-primary-foreground'
                       : 'bg-muted text-muted-foreground'
                     }
@@ -44,7 +44,7 @@ const CampaignWizardHeader: React.FC<CampaignWizardHeaderProps> = ({
                   </div>
                   <span className={`
                     text-[8px] md:text-xs mt-0.5 font-medium text-center leading-tight w-full truncate
-                    ${index <= currentStep ? 'text-primary' : 'text-muted-foreground'}
+                    ${index < currentStep ? 'text-primary' : 'text-muted-foreground'}
                   `}>
                     {step.title}
                   </span>
@@ -52,7 +52,7 @@ const CampaignWizardHeader: React.FC<CampaignWizardHeaderProps> = ({
                 {index < steps.length - 1 && (
                   <div className={`
                     w-2 md:w-8 h-0.5
-                    ${index < currentStep ? 'bg-primary' : 'bg-muted'}
+                    ${index < currentStep - 1 ? 'bg-primary' : 'bg-muted'}
                   `} />
                 )}
               </div>

@@ -54,7 +54,7 @@ const CampaignWizard: React.FC = () => {
         {/* Template C Header */}
         <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
           <button
-            onClick={() => currentStep > 0 ? handleBack() : navigate('/dashboard/business/campaigns')}
+            onClick={() => currentStep > 1 ? handleBack() : navigate('/dashboard/business/campaigns')}
             className="text-dc-pink-accent mr-2"
             aria-label="Back"
           >
@@ -64,7 +64,7 @@ const CampaignWizard: React.FC = () => {
             Create Campaign
           </h1>
           <span className="text-xs text-gray-400 font-semibold">
-            {currentStep + 1}/{steps.length}
+            {currentStep}/{steps.length}
           </span>
         </div>
 
@@ -72,17 +72,17 @@ const CampaignWizard: React.FC = () => {
         <div className="px-4 py-6 pb-28 space-y-6 md:max-w-3xl md:mx-auto">
           <CampaignWizardHeader currentStep={currentStep} steps={steps} />
 
-          {/* Step 0: Delivery Tier */}
-          {currentStep === 0 && (
+          {/* Step 1: Delivery Tier */}
+          {currentStep === 1 && (
             <DeliveryTierStep
               selectedTier={deliveryTier}
               onSelect={handleTierSelect}
-              onContinue={() => setCurrentStep(1)}
+              onContinue={() => setCurrentStep(2)}
             />
           )}
 
-          {/* Step 1: Brief */}
-          {currentStep === 1 && (
+          {/* Step 2: Brief */}
+          {currentStep === 2 && (
             <CampaignBriefStep
               campaignGoal={campaignGoal}
               setCampaignGoal={setCampaignGoal}
@@ -97,21 +97,21 @@ const CampaignWizard: React.FC = () => {
               hasAnalysis={!!campaignAnalysis}
               onNext={() => {
                 if (campaignAnalysis) {
-                  setCurrentStep(2);
+                  setCurrentStep(3);
                 }
               }}
             />
           )}
 
-          {/* Step 2: Details */}
-          {currentStep === 2 && campaignAnalysis && deliveryTier && (
+          {/* Step 3: Details */}
+          {currentStep === 3 && campaignAnalysis && deliveryTier && (
             <div className="space-y-6">
               <CampaignCustomizeForm
                 initialData={campaignAnalysis}
                 onContinue={(data) => {
                   setCustomizedCampaign(data);
                 }}
-                onBackToAnalysis={() => setCurrentStep(1)}
+                onBackToAnalysis={() => setCurrentStep(2)}
               />
 
               <CampaignTimelineBudgetStep
@@ -126,13 +126,13 @@ const CampaignWizard: React.FC = () => {
                   budget_max: undefined,
                 }}
                 onContinue={handleContinueFromTimelineBudget}
-                onBackToCustomize={() => setCurrentStep(1)}
+                onBackToCustomize={() => setCurrentStep(2)}
               />
             </div>
           )}
 
-          {/* Step 3: Visuals & Footage */}
-          {currentStep === 3 && deliveryTier && (
+          {/* Step 4: Visuals & Footage */}
+          {currentStep === 4 && deliveryTier && (
             <CampaignVisualsStep
               deliveryTier={deliveryTier}
               referenceMedia={referenceMedia}
@@ -142,15 +142,15 @@ const CampaignWizard: React.FC = () => {
               deliverables={deliverables}
               onDeliverablesChange={setDeliverables}
               onContinue={handleContinueFromVisuals}
-              onBack={() => setCurrentStep(2)}
+              onBack={() => setCurrentStep(3)}
             />
           )}
 
-          {/* Step 4: Review & Launch */}
-          {currentStep === 4 && finalCampaignData && (
+          {/* Step 5: Review & Launch */}
+          {currentStep === 5 && finalCampaignData && (
             <CampaignFinalizeStep
               campaignData={finalCampaignData}
-              onBack={() => setCurrentStep(3)}
+              onBack={() => setCurrentStep(4)}
             />
           )}
         </div>

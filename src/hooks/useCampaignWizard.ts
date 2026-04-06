@@ -46,7 +46,7 @@ export interface FinalCampaignData {
 export const useCampaignWizard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [currentStep, setCurrentStep] = useState(0);
+  const [currentStep, setCurrentStep] = useState(1);
   const [campaignGoal, setCampaignGoal] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [campaignAnalysis, setCampaignAnalysis] = useState<CampaignAnalysis | null>(null);
@@ -103,7 +103,7 @@ export const useCampaignWizard = () => {
 
       console.log('Campaign analysis generated successfully:', data.analysis);
       setCampaignAnalysis(data.analysis);
-      setCurrentStep(2); // Step 2: Details (Brief is Step 1, so after AI generation go to Step 2)
+      setCurrentStep(3); // Step 3: Details (Brief is Step 2, so after AI generation go to Step 3)
       toast.success('Campaign analysis generated successfully!');
 
     } catch (error: any) {
@@ -177,7 +177,7 @@ export const useCampaignWizard = () => {
   const handleContinueFromTimelineBudget = (data: TimelineBudgetData) => {
     console.log('Timeline & Budget data received:', data);
     setTimelineBudgetData(data);
-    setCurrentStep(3); // Go to Visuals step (Step 3)
+    setCurrentStep(4); // Go to Visuals step (Step 4)
   };
 
   const handleContinueFromVisuals = () => {
@@ -205,11 +205,11 @@ export const useCampaignWizard = () => {
     };
 
     setFinalCampaignData(finalData);
-    setCurrentStep(4); // Review & Launch
+    setCurrentStep(5); // Review & Launch
   };
 
   const handleBack = () => {
-    if (currentStep > 0) {
+    if (currentStep > 1) {
       setCurrentStep(currentStep - 1);
     }
   };
