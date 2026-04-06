@@ -56,7 +56,7 @@ export function DonnyAskBar({ userRole }: DonnyAskBarProps) {
           <img
             src={donnyIcon}
             alt="Donny"
-            className="w-8 h-8 md:w-9 md:h-9 flex-shrink-0 rounded-full object-contain shadow-[0_0_8px_rgba(77,217,192,0.4)]"
+            className="w-10 h-10 md:w-11 md:h-11 flex-shrink-0 rounded-full object-contain shadow-[0_0_8px_rgba(77,217,192,0.4)]"
           />
           <input
             ref={inputRef}
