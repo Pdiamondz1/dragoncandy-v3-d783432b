@@ -42,19 +42,23 @@ Below the "Quick Pitch" textarea, add a new section:
 
 ```
 📎 Attach a Sample (optional)
-[Quick-select pills from creator_profiles.portfolio_urls if they exist]
-  [ portfolio-url-1.com ] [ portfolio-url-2.com ]
+
+[Thumbnail grid of creator's portfolio images — tap to select]
+  [ img1 ] [ img2 ] [ img3 ]
+
 — or —
-[ Paste a link to your best work for this type of campaign ]
+
+[ Paste a link to your best work ]
 ```
 
 **Behavior:**
 - Query `creator_profiles.portfolio_urls` for the current user
-- If the creator has portfolio URLs, render them as selectable pills (tap to select, teal border when active)
-- Below pills, show a text input for pasting a custom URL
-- Selecting a pill fills the text input; typing in the input deselects any pill
+- `portfolio_urls` are Supabase Storage paths (not displayable URLs). Convert them to public URLs using `supabase.storage.from('profile-assets').getPublicUrl(path)` — same pattern used in `PublicCreatorProfile.tsx:160-175` (handles both storage paths and `http://` URLs)
+- If the creator has portfolio items, render them as a horizontal scroll of small thumbnail images (w-16 h-16 rounded-xl). Tap to select (teal ring when active), tap again to deselect
+- Below thumbnails, show a text input for pasting a custom URL as an alternative
+- Selecting a thumbnail sets the portfolio URL to the public URL of that storage item; typing in the input deselects any thumbnail
 - The selected/entered URL is saved as `portfolio_url` on the application
-- Pass `portfolioUrl` through to `useCreateApplication` mutation
+- Pass `portfolioUrl` through to `useCreateApplication` mutation — add `portfolioUrl?: string` to the mutation input type AND to the Supabase `.insert()` call as `portfolio_url`
 
 ### Files to Modify
 - `src/components/campaigns/CampaignApplyForm.tsx` — add portfolio section UI + state
@@ -135,7 +139,7 @@ interface CreatorCollaboration {
   - Express: show hours remaining
   - Standard: show days remaining
   - If overdue: "Overdue by X" in red
-- Progress bar: derive from `deliverables_status` JSON — count statuses that are `submitted` or `approved` vs total
+- Progress bar: derive from `deliverables_status` JSON. Expected shape: `Record<string, 'pending' | 'in_progress' | 'submitted' | 'revision_requested' | 'approved'>` keyed by deliverable ID. Count entries with status `submitted` or `approved` as "done" vs total entries. If `deliverables_status` is null, fall back to a simple status display without a progress bar
 - Status badge (top-right corner):
   - "In Progress" — gray bg
   - "Revision Requested" — orange bg, draws attention
@@ -147,6 +151,14 @@ interface CreatorCollaboration {
 If `content_status === 'revision_requested'`, show an alert banner:
 ```
 ⚠️ Revision requested · Check deliverable feedback
+```
+
+### Empty State
+When no active collaborations exist:
+```
+"No active campaigns yet."
+"When a business accepts your application, your campaign will appear here."
+[ Browse Campaigns ] (teal outline button, switches to Available tab)
 ```
 
 ### Tab Integration
@@ -183,7 +195,7 @@ The "Done" tab is disabled. Creators can't see their completed work history or l
 **Elements:**
 - Business logo + campaign title + business name (same pattern as ActiveCampaignCard)
 - Completion date from `completed_at`
-- Budget earned: use `formatBudget(campaign)` from joined campaign data
+- Budget display: use `formatBudget(campaign)` to show the campaign budget. Note: for bid-range campaigns this shows the range, not the creator's actual agreed rate. Showing the exact payout would require joining `campaign_applications.proposed_rate` — defer that to a future "earnings dashboard" feature. For now, the campaign budget is sufficient context
 - Review state:
   - If a `project_reviews` row exists for this collaboration: show star rating
   - If not: show "Leave a Review" button (teal outline)
@@ -191,9 +203,23 @@ The "Done" tab is disabled. Creators can't see their completed work history or l
 - "View Details" link to see final deliverables
 
 ### Review Submission
-**Hook:** `useCreateReview` — insert into `project_reviews` table with `collaboration_id`, `rating`, `comment`, `reviewer_id`.
+**Hook:** `useCreateReview` — insert into `project_reviews` table with:
+- `collaboration_id` — from the collaboration
+- `rating` — 1-5 star rating from the creator
+- `review_text` — optional text comment
+- `reviewer_id` — `auth.uid()`
+- `reviewee_id` — the business user ID (derivable from `collaboration.campaign.user_id` via the joined campaign data)
+- `review_type` — `'creator_to_business'` (required, not nullable)
+- `is_public` — default `true`
 
-**Query for existing review:** Check `project_reviews` where `collaboration_id` matches — include in `useCreatorCollaborations` response or as a separate lightweight query.
+**Query for existing review:** Check `project_reviews` where `collaboration_id` matches and `reviewer_id = auth.uid()` — include in `useCreatorCollaborations` response or as a separate lightweight query.
+
+### Empty State
+When no completed collaborations exist:
+```
+"No completed campaigns yet."
+"Your finished campaigns and earnings will show up here."
+```
 
 ### Tab Integration
 In `CreatorCampaignMarketplace.tsx`:
@@ -216,7 +242,7 @@ The modal already receives `campaign` which is a `PublicCampaign` — this type 
 
 **Change in `CampaignDetailModal.tsx`:**
 
-Replace the current raw footage section (lines 174-184) with:
+Replace the current raw footage section (the `{hasRawFootage && (...)}` block) with:
 
 ```
 If hasRawFootage:
@@ -232,6 +258,8 @@ If hasRawFootage:
 ```
 
 **Data:** `detail.media` already contains items with `media_type === 'raw_footage'`. Filter these out and render them. Each has `file_url`, `thumbnail_url`, `file_name`, `file_size_bytes`.
+
+**File URL handling:** The existing reference media rendering (`CampaignDetailModal.tsx`) already uses `item.file_url` directly in `<img src>` tags — follow the same pattern. These are public Supabase Storage URLs. For downloads, use an `<a href={item.file_url} download={item.file_name} target="_blank">` anchor tag.
 
 ### Files to Modify
 - `src/components/campaigns/CampaignDetailModal.tsx` — conditional footage rendering
@@ -249,8 +277,8 @@ Add a "View Business Profile" link in the "About the Business" section of `Campa
 ### Implementation
 The route `/business/:slug` already exists (renders `PublicBusinessProfile`). Business profiles have a `profile_slug` field.
 
-**Change in `CampaignDetailModal.tsx` (lines 260-275):**
-After the business name/location div, add:
+**Change in `CampaignDetailModal.tsx`:**
+In the "About the Business" section, after the business name/location div, add:
 
 ```tsx
 <Link
@@ -265,8 +293,7 @@ After the business name/location div, add:
 
 ### Files to Modify
 - `src/components/campaigns/CampaignDetailModal.tsx` — add link
-- `src/hooks/usePublicCampaigns.ts` — add `profile_slug` to business_profile select
-- `src/hooks/usePublicCampaigns.ts` — update `PublicCampaign` type to include `profile_slug`
+- `src/hooks/usePublicCampaigns.ts` — add `profile_slug` to the business_profiles select query and to the `PublicCampaign.business_profile` type
 
 ---
 
@@ -290,6 +317,10 @@ After the business name/location div, add:
 **DB migrations:** 1 (add `portfolio_url` column)
 
 ---
+
+## Pre-existing Bug (fix during implementation)
+
+`CreatorCampaignMarketplace.tsx:59` has a self-referencing assignment: `const availableFilteredCount = availableFilteredCount;` — this will cause a runtime error. Fix to: `const availableFilteredCount = filteredBySearch.filter(c => !c.user_applied && !skippedIds.has(c.id)).length;` or derive from `swipeCampaigns.length`.
 
 ## Verification
 
