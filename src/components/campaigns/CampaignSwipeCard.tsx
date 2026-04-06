@@ -5,7 +5,6 @@ import { PublicCampaign } from '@/hooks/usePublicCampaigns';
 import { MapPin, Users } from 'lucide-react';
 import logo from '@/assets/Transparent_DragonCandy_logo.png';
 import DeliveryBadge from './DeliveryBadge';
-import { DonnyPicksBadge } from './DonnyPicksBadge';
 import { mapDeliveryType, getRelativeTime, formatBudget } from '@/lib/campaignUtils';
 
 interface CampaignSwipeCardProps {
@@ -180,12 +179,27 @@ const CardContent: React.FC<CardContentProps> = ({ campaign, onViewDetail, match
 
   return (
     <div
-      className="bg-white rounded-2xl shadow-xl overflow-hidden h-full flex flex-col cursor-grab active:cursor-grabbing"
+      className={`bg-white rounded-2xl shadow-xl overflow-hidden h-full flex flex-col cursor-grab active:cursor-grabbing ${
+        matchInfo ? 'border-2 border-dc-teal' : ''
+      }`}
       onClick={(e) => {
         e.stopPropagation();
         onViewDetail(campaign);
       }}
     >
+      {/* Donny Pick banner */}
+      {matchInfo && (
+        <div className="bg-gradient-to-br from-dc-teal to-teal-600 px-3.5 py-2 flex items-center justify-between flex-shrink-0">
+          <div className="flex items-center gap-1.5">
+            <img src={logo} alt="" className="w-4 h-4" />
+            <span className="text-xs font-bold text-white">Donny's Pick</span>
+          </div>
+          <span className="bg-white text-dc-teal text-[11px] font-extrabold px-2.5 py-0.5 rounded-full">
+            {matchInfo.score}% Match
+          </span>
+        </div>
+      )}
+
       {/* Hero image area — 60% height */}
       <div className="relative" style={{ height: '60%', flexShrink: 0 }}>
         {renderCoverImage()}
@@ -205,13 +219,6 @@ const CardContent: React.FC<CardContentProps> = ({ campaign, onViewDetail, match
           <div className="absolute top-3 left-3 z-10 flex items-center gap-1 bg-black/50 rounded-full px-2.5 py-1">
             <Users className="w-3 h-3 text-white" />
             <span className="text-white text-xs font-medium">{applicantCount} applied</span>
-          </div>
-        )}
-
-        {/* Donny Picks match badge — top-left, below applicant count */}
-        {matchInfo && (
-          <div className={`absolute left-3 z-10 ${applicantCount > 0 ? 'top-12' : 'top-3'}`}>
-            <DonnyPicksBadge score={matchInfo.score} />
           </div>
         )}
 
