@@ -2,9 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import type { UserRole } from '@/types/user';
 import { getBottomNav } from '@/lib/navConfig';
-import { DonnyNavButton } from './donny/DonnyNavButton';
+import { Plus } from 'lucide-react';
 import { DonnyChatSheet } from './donny/DonnyChatSheet';
-import donnyIcon from '@/assets/Donny_icon.png';
 
 interface MobileBottomNavProps {
   userRole: UserRole;
@@ -35,12 +34,6 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ userRole }) =>
           const Icon = item.icon;
           const active = isActive(item.href);
 
-          if (item.isDonny) {
-            return (
-              <DonnyNavButton key="donny" onClick={() => setDonnyChatOpen(true)} />
-            );
-          }
-
           if (item.isCenter) {
             return (
               <Link
@@ -49,8 +42,8 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ userRole }) =>
                 className="flex flex-col items-center -mt-4 min-h-[44px] min-w-[44px]"
                 aria-label={item.label}
               >
-                <span className="bg-dc-teal w-14 h-14 rounded-full shadow-lg shadow-dc-teal/30 -mt-4 flex items-center justify-center overflow-hidden">
-                  <img src={donnyIcon} alt="Create" className="w-10 h-10 object-contain" />
+                <span className="bg-dc-teal w-14 h-14 rounded-full shadow-lg shadow-dc-teal/30 -mt-4 flex items-center justify-center">
+                  <Plus className="w-7 h-7 text-white" />
                 </span>
               </Link>
             );
