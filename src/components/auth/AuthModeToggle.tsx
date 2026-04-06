@@ -10,15 +10,16 @@ export const AuthModeToggle = ({ mode, onModeChange, loading }: AuthModeTogglePr
   if (mode === "login") {
     return (
       <div className="mt-6 text-center text-sm">
-        <span className="text-gray-500">Don&apos;t have an account? </span>
+        <span className="text-gray-500">New here? </span>
         <button
           type="button"
           className="text-dc-pink-accent font-semibold hover:underline disabled:opacity-60"
           onClick={() => onModeChange("signup")}
           disabled={loading}
         >
-          Sign Up
+          Sign up
         </button>
+        <span className="text-gray-500"> as a Business, Brand, or Creator</span>
       </div>
     );
   }

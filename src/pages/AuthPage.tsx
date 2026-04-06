@@ -125,6 +125,28 @@ const AuthPage = () => {
         return;
       }
 
+      if (profile.role === 'brand') {
+        const { data: brandProfile } = await supabase
+          .from('business_profiles')
+          .select('is_completed')
+          .eq('user_id', user.id)
+          .single();
+
+        if (!brandProfile?.is_completed) {
+          navigate('/profile/brand');
+          return;
+        }
+
+        // Brand users don't need campaign data migration (only business_client uses migrateCampaignData).
+        // Clean up any anonymous data and route to brand dashboard.
+        if (hasAnon) {
+          localStorage.removeItem('anonymous_campaign_data');
+          localStorage.removeItem('anonymous_campaign_final');
+        }
+        navigate('/dashboard/brand', { replace: true });
+        return;
+      }
+
       // Fallback
       navigate('/', { replace: true });
     } catch (error: unknown) {
