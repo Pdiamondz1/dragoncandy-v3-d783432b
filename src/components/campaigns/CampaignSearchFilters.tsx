@@ -74,6 +74,12 @@ const SORT_OPTIONS: { value: SortOption; label: string }[] = [
   { value: 'ending_soon', label: 'Ending Soon' },
 ];
 
+const SectionLabel: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">
+    {children}
+  </div>
+);
+
 export const CampaignSearchFilters: React.FC<CampaignSearchFiltersProps> = ({
   filters,
   filteredCount,
@@ -112,12 +118,6 @@ export const CampaignSearchFilters: React.FC<CampaignSearchFiltersProps> = ({
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => onSearchChange(value), 300);
   };
-
-  const SectionLabel: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-    <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">
-      {children}
-    </div>
-  );
 
   return (
     <div className="bg-white rounded-b-2xl px-4 pt-3 pb-2 space-y-2">
@@ -201,7 +201,9 @@ export const CampaignSearchFilters: React.FC<CampaignSearchFiltersProps> = ({
 
       {expanded && (
         <div className="space-y-2 pt-1">
-          <div className="flex gap-1.5 overflow-x-auto scrollbar-hide">
+          <div>
+            <SectionLabel>Delivery Speed</SectionLabel>
+            <div className="flex gap-1.5 overflow-x-auto scrollbar-hide">
             {DELIVERY_TIER_PILLS.map((pill) => (
               <button
                 key={pill.value}
@@ -215,6 +217,7 @@ export const CampaignSearchFilters: React.FC<CampaignSearchFiltersProps> = ({
                 {pill.label}
               </button>
             ))}
+            </div>
           </div>
 
           <div>
