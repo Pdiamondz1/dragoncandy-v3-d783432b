@@ -23,6 +23,7 @@ interface ApplicationBusinessProfile {
   logo_url: string | null;
   city: string | null;
   country: string | null;
+  profile_slug: string | null;
 }
 
 export interface CreatorApplication {
@@ -70,7 +71,7 @@ export const useCreatorApplications = () => {
 
       const { data: businessProfiles, error: profileError } = await supabase
         .from('business_profiles')
-        .select('user_id, business_name, logo_url, city, country')
+        .select('user_id, business_name, logo_url, city, country, profile_slug')
         .in('user_id', campaignUserIds);
 
       if (profileError) throw profileError;
@@ -101,6 +102,7 @@ export const useCreatorApplications = () => {
             logo_url: businessProfile.logo_url,
             city: businessProfile.city,
             country: businessProfile.country,
+            profile_slug: businessProfile.profile_slug,
           } : undefined,
         };
       });

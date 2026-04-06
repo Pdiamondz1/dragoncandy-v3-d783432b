@@ -127,6 +127,7 @@ const CreatorCampaignMarketplace = () => {
         logo_url: application.business_profile.logo_url ?? undefined,
         city: application.business_profile.city ?? undefined,
         country: application.business_profile.country ?? undefined,
+        profile_slug: application.business_profile.profile_slug ?? undefined,
       } : undefined,
     };
     setDetailReadOnly(true);
