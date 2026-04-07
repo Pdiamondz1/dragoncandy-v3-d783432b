@@ -14,7 +14,6 @@ import { Play, Download, User, Mail, Phone, Clock, CheckCircle, XCircle, Loader2
 import { format } from 'date-fns';
 import { PromotionSubmission } from '@/hooks/usePromotions';
 import { useSignedVideoUrl } from '@/hooks/useSignedVideoUrl';
-import { supabase } from '@/integrations/supabase/client';
 
 interface VideoCardProps {
   submission: PromotionSubmission;
