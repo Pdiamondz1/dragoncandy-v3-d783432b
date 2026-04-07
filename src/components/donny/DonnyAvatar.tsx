@@ -26,13 +26,13 @@ export function DonnyAvatar({ state = 'idle', size = 'md', className }: DonnyAva
   return (
     <div
       className={cn(
-        'rounded-full flex items-center justify-center flex-shrink-0',
+        'rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden',
         sizeClasses[size],
         stateStyles[state],
         className
       )}
     >
-      <img src={donnyIcon} alt="Donny" className="w-full h-full object-cover rounded-full" />
+      <img src={donnyIcon} alt="Donny" className="w-full h-full object-cover rounded-full scale-[1.35]" />
     </div>
   );
 }
