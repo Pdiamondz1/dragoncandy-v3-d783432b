@@ -41,6 +41,9 @@ const formSchema = z.object({
   max_redemptions: z.number().optional().nullable(),
   video_max_duration: z.number().default(30),
   terms_conditions: z.string().optional(),
+}).refine((data) => data.end_date >= new Date().toISOString().split('T')[0], {
+  message: 'End date cannot be in the past',
+  path: ['end_date'],
 });
 
 export type EditPromotionFormData = z.infer<typeof formSchema>;
@@ -89,6 +92,10 @@ export const EditPromotionModal: React.FC<EditPromotionModalProps> = ({
   }, [promotion, open, form]);
 
   const onSubmit = async (values: EditPromotionFormData) => {
+    if (promotion && values.end_date < promotion.start_date.split('T')[0]) {
+      form.setError('end_date', { message: 'End date must be on or after the start date' });
+      return;
+    }
     await onSave(values);
     onOpenChange(false);
   };
