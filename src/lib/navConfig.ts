@@ -1,3 +1,4 @@
+// Navigation configuration for sidebar, bottom nav, and hamburger drawer
 import {
   LayoutDashboard,
   Target,
