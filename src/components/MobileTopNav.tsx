@@ -1,11 +1,11 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Menu, Settings, LogOut, LayoutDashboard, MessageSquare } from 'lucide-react';
+import { Menu, LogOut } from 'lucide-react';
 import dragonCandyLogo from '@/assets/Transparent_DragonCandy_logo.png';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useLogout } from '@/hooks/useLogout';
 import type { UserRole } from '@/types/user';
-import { getDashboardHref, getSettingsHref, getMessagesHref } from '@/lib/navConfig';
+import { getDrawerMenu } from '@/lib/navConfig';
 
 interface MobileTopNavProps {
   bgClass?: string;
@@ -21,10 +21,7 @@ export const MobileTopNav: React.FC<MobileTopNavProps> = ({
   displayName,
 }) => {
   const logout = useLogout();
-
-  const dashboardHref = userRole ? getDashboardHref(userRole) : '/';
-  const settingsHref = userRole ? getSettingsHref(userRole) : '/';
-  const messagesHref = userRole ? getMessagesHref(userRole) : '/';
+  const sections = userRole ? getDrawerMenu(userRole) : [];
 
   return (
     <header className={`sticky top-0 z-50 flex items-center justify-between px-4 py-2 ${bgClass} border-b border-border`}>
@@ -50,39 +47,36 @@ export const MobileTopNav: React.FC<MobileTopNavProps> = ({
             <Menu className="h-6 w-6 text-gray-600" />
           </button>
         </SheetTrigger>
-        <SheetContent side="right" className="w-64 pt-8">
-          <div className="flex flex-col gap-1">
-            <Link
-              to={dashboardHref}
-              className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-dc-teal/10 text-foreground text-base font-medium"
-            >
-              <LayoutDashboard className="h-5 w-5 text-dc-teal" />
-              Dashboard
-            </Link>
-            {userRole && (
-              <Link
-                to={messagesHref}
-                className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-dc-teal/10 text-foreground text-base font-medium"
-              >
-                <MessageSquare className="h-5 w-5 text-dc-teal" />
-                Messages
-              </Link>
-            )}
-            {userRole && (
-              <Link
-                to={settingsHref}
-                className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-dc-teal/10 text-foreground text-base font-medium"
-              >
-                <Settings className="h-5 w-5 text-dc-teal" />
-                Settings
-              </Link>
-            )}
+        <SheetContent side="right" className="w-72 pt-8 flex flex-col h-full">
+          <nav className="flex-1 overflow-y-auto">
+            {sections.map((section) => (
+              <div key={section.heading} className="mb-4">
+                <h3 className="px-4 mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  {section.heading}
+                </h3>
+                <div className="flex flex-col gap-0.5">
+                  {section.items.map((item) => (
+                    <Link
+                      key={item.href}
+                      to={item.href}
+                      className="flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-dc-teal/10 text-foreground text-sm font-medium transition-colors"
+                    >
+                      <item.icon className="h-5 w-5 text-dc-teal flex-shrink-0" />
+                      {item.label}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </nav>
+
+          <div className="border-t border-border pt-3 pb-4">
             <button
               onClick={logout}
-              className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-red-50 text-red-600 text-base font-medium w-full text-left mt-4"
+              className="flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-red-50 text-red-600 text-sm font-medium w-full text-left transition-colors"
             >
               <LogOut className="h-5 w-5" />
-              Log out
+              Sign Out
             </button>
           </div>
         </SheetContent>

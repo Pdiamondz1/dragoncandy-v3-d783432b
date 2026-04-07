@@ -11,11 +11,11 @@ export const useLogout = () => {
       await signOut();
       
       // Navigate to landing page after auth cleanup
-      navigate('/landing');
+      navigate('/auth');
     } catch (error) {
       console.error('Logout failed:', error);
       // Still navigate to landing page even if logout fails
-      navigate('/landing');
+      navigate('/auth');
     }
   };
 
