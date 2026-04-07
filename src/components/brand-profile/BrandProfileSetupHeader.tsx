@@ -4,7 +4,7 @@ import { Sparkles } from 'lucide-react';
 export const BrandProfileSetupHeader = () => {
   return (
     <div className="text-center space-y-4">
-      <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-pink-500 to-purple-600 mb-4">
+      <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-dc-teal mb-4">
         <Sparkles className="h-8 w-8 text-white" />
       </div>
       <h1 className="text-3xl font-bold">Welcome to DragonCandy</h1>

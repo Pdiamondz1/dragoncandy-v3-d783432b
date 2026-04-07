@@ -104,7 +104,7 @@ const BrandCampaignCard: React.FC<BrandCampaignCardProps> = ({
   const buttonConfig = getSponsorButtonContent();
 
   return (
-    <Card className="hover:shadow-lg transition-shadow duration-200">
+    <Card className="border-2 border-dc-teal rounded-2xl hover:shadow-lg transition-shadow duration-200 overflow-hidden">
       <CardHeader>
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1 space-y-2">
@@ -187,7 +187,7 @@ const BrandCampaignCard: React.FC<BrandCampaignCardProps> = ({
       <CardFooter className="gap-2">
         <Button
           variant="outline"
-          className="flex-1"
+          className="flex-1 rounded-full border-dc-teal text-dc-teal hover:bg-dc-teal/10"
           onClick={() => onViewDetails(campaign.id)}
         >
           View Details
@@ -197,7 +197,7 @@ const BrandCampaignCard: React.FC<BrandCampaignCardProps> = ({
             <TooltipTrigger asChild>
               <div className="flex-1">
                 <Button
-                  className="w-full"
+                  className="w-full rounded-full bg-dc-teal text-white font-bold hover:bg-dc-teal/90"
                   onClick={() => onSponsor(campaign.id, existingProposal)}
                   disabled={buttonConfig.disabled}
                 >

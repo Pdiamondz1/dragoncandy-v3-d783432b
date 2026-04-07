@@ -72,7 +72,7 @@ const BrandCampaignFilters: React.FC<BrandCampaignFiltersProps> = ({
   };
 
   return (
-    <div className="bg-card rounded-lg border p-6 space-y-6">
+    <div className="border-2 border-dc-teal rounded-2xl bg-white p-6 space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">Filter Campaigns</h2>
         <Button variant="ghost" size="sm" onClick={onReset}>

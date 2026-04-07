@@ -101,7 +101,7 @@ export const BrandProfileSetupForm = ({
 
       <Button
         type="submit"
-        className="w-full bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-700 hover:to-purple-700"
+        className="w-full rounded-full bg-dc-teal text-white font-bold hover:bg-dc-teal/90"
         disabled={loading}
       >
         {loading ? 'Setting Up Profile...' : 'Complete Brand Profile'}

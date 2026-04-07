@@ -20,7 +20,7 @@ const BrandMessages = () => {
   if (!profile) {
     return (
       <DashboardLayout userRole="brand">
-        <div className="min-h-screen overflow-x-hidden bg-teal-50">
+        <div className="min-h-screen overflow-x-hidden bg-white">
           <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
             <div className="w-7" />
             <h1 className="flex-1 text-center font-sans text-base font-bold text-gray-900 uppercase tracking-wide">
@@ -40,7 +40,7 @@ const BrandMessages = () => {
 
   return (
     <DashboardLayout userRole="brand">
-      <div className="min-h-screen overflow-x-hidden bg-teal-50 md:max-w-4xl md:mx-auto">
+      <div className="min-h-screen overflow-x-hidden bg-white md:max-w-4xl md:mx-auto">
         {/* Template B header */}
         <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
           <div className="w-7" />

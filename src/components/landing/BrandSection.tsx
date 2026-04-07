@@ -26,7 +26,7 @@ export const BrandSection: React.FC = () => {
 
   return (
     <div id="brands" className="mb-8 md:mb-12">
-      <h2 className="text-xl md:text-3xl lg:text-4xl font-extrabold uppercase text-[#111111] text-center mb-2">
+      <h2 className="text-xl md:text-3xl lg:text-4xl font-extrabold uppercase text-gray-900 text-center mb-2">
         For Brands & Sponsors
       </h2>
       <p className="text-sm md:text-base text-gray-500 text-center mb-8 md:mb-12 max-w-lg mx-auto leading-relaxed">
@@ -42,7 +42,7 @@ export const BrandSection: React.FC = () => {
             <div className="mb-1 p-2 rounded-xl bg-dc-teal/10">
               {feature.icon}
             </div>
-            <h3 className="text-sm font-bold text-[#111111] leading-tight">{feature.title}</h3>
+            <h3 className="text-sm font-bold text-gray-900 leading-tight">{feature.title}</h3>
             <p className="text-xs text-gray-500 leading-relaxed">{feature.description}</p>
           </div>
         ))}
