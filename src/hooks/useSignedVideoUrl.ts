@@ -7,43 +7,27 @@ export const useSignedVideoUrl = (videoUrl: string | null) => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchSignedUrl = async () => {
-      if (!videoUrl) {
-        setSignedUrl(null);
-        return;
-      }
+    if (!videoUrl) {
+      setSignedUrl(null);
+      return;
+    }
 
-      // Extract file path from URL
-      const bucketName = 'promotion-videos';
-      let filePath = videoUrl;
-      
-      // If it's already a full URL, extract the path
-      if (videoUrl.includes(bucketName)) {
-        const parts = videoUrl.split(`${bucketName}/`);
-        filePath = parts[parts.length - 1].split('?')[0]; // Remove query params if any
-      }
+    // The promotion-videos bucket is public, so we use getPublicUrl
+    // instead of createSignedUrl (which may fail on public buckets).
+    const bucketName = 'promotion-videos';
 
-      setIsLoading(true);
-      setError(null);
-
-      try {
-        const { data, error: signError } = await supabase.storage
-          .from(bucketName)
-          .createSignedUrl(filePath, 3600); // 1 hour expiry
-
-        if (signError) throw signError;
-        setSignedUrl(data.signedUrl);
-      } catch (err: any) {
-        console.error('Error getting signed URL:', err);
-        setError(err.message);
-        // Fallback to original URL
-        setSignedUrl(videoUrl);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchSignedUrl();
+    // If the URL already contains the bucket path, extract the file path
+    if (videoUrl.includes(bucketName)) {
+      const parts = videoUrl.split(`${bucketName}/`);
+      const filePath = parts[parts.length - 1].split('?')[0];
+      const { data } = supabase.storage
+        .from(bucketName)
+        .getPublicUrl(filePath);
+      setSignedUrl(data.publicUrl);
+    } else {
+      // Already a usable URL or a bare file path
+      setSignedUrl(videoUrl);
+    }
   }, [videoUrl]);
 
   return { signedUrl, isLoading, error };
