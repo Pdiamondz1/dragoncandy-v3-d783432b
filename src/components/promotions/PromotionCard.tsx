@@ -178,7 +178,7 @@ export const PromotionCard: React.FC<PromotionCardProps> = ({
                 <Pause className="h-4 w-4" />
               </Button>
             )}
-            {isPaused && onResume && (
+            {isPaused && !isExpired && onResume && (
               <Button variant="outline" size="sm" onClick={onResume}>
                 <Play className="h-4 w-4" />
               </Button>
