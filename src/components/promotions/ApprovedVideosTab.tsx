@@ -14,6 +14,7 @@ import { Play, Download, User, Mail, Phone, Clock, CheckCircle, XCircle, Loader2
 import { format } from 'date-fns';
 import { PromotionSubmission } from '@/hooks/usePromotions';
 import { useSignedVideoUrl } from '@/hooks/useSignedVideoUrl';
+import { toast } from '@/hooks/use-toast';
 
 interface VideoCardProps {
   submission: PromotionSubmission;
@@ -41,6 +42,7 @@ const VideoCard: React.FC<VideoCardProps> = ({ submission }) => {
       document.body.removeChild(a);
     } catch (error) {
       console.error('Download error:', error);
+      toast({ title: "Failed to download video", description: "Please try again.", variant: "destructive" });
     } finally {
       setIsDownloading(false);
     }
