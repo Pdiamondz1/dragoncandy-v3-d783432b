@@ -348,22 +348,27 @@ export const usePromotions = () => {
       let discountCode: string | undefined;
       let codeExpiresAt: string | undefined;
 
-      // If approved, generate discount code
+      // If approved, generate discount code with retry on collision
       if (status === 'approved') {
-        discountCode = generateDiscountCode();
         codeExpiresAt = submission.promotion?.end_date;
 
-        const { error: codeError } = await supabase
-          .from('discount_codes')
-          .insert({
-            promotion_id: submission.promotion_id,
-            submission_id: submissionId,
-            code: discountCode,
-            customer_email: submission.customer_email,
-            customer_phone: submission.customer_phone,
-            expires_at: codeExpiresAt,
-          });
-        if (codeError) throw codeError;
+        const maxAttempts = 3;
+        for (let attempt = 0; attempt < maxAttempts; attempt++) {
+          discountCode = generateDiscountCode();
+          const { error: codeError } = await supabase
+            .from('discount_codes')
+            .insert({
+              promotion_id: submission.promotion_id,
+              submission_id: submissionId,
+              code: discountCode,
+              customer_email: submission.customer_email,
+              customer_phone: submission.customer_phone,
+              expires_at: codeExpiresAt,
+            });
+          if (!codeError) break;
+          if (codeError.code === '23505' && attempt < maxAttempts - 1) continue;
+          throw codeError;
+        }
       }
 
       // Send notification via edge function
@@ -495,12 +500,13 @@ export const usePromotions = () => {
   };
 };
 
-// Helper function to generate alphanumeric discount code
+// Helper function to generate alphanumeric discount code using crypto-safe randomness
 function generateDiscountCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Excluding similar chars (0,O,1,I)
+  const randomValues = crypto.getRandomValues(new Uint8Array(8));
   let code = '';
   for (let i = 0; i < 8; i++) {
-    code += chars.charAt(Math.floor(Math.random() * chars.length));
+    code += chars.charAt(randomValues[i] % chars.length);
   }
   return code;
 }
