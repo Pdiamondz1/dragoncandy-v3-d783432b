@@ -35,9 +35,9 @@ class ErrorBoundary extends Component<Props, State> {
         <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
           <div className="text-center space-y-4 max-w-md p-6">
             <div className="text-2xl font-bold text-pink-600">DragonCandy</div>
-            <div className="text-xl font-medium text-red-600">Oops! Something went wrong</div>
+            <div className="text-xl font-medium text-gray-800">Something went wrong</div>
             <div className="text-gray-600">
-              We encountered an unexpected error. Please refresh the page to try again.
+              Refresh to try again.
             </div>
             {this.state.error && (
               <details className="mt-4 p-4 bg-gray-100 rounded-lg text-left text-sm">
@@ -56,19 +56,20 @@ class ErrorBoundary extends Component<Props, State> {
                 </div>
               </details>
             )}
+            {/* TODO: integrate Sentry error reporting */}
             <div className="space-y-2">
               <button
                 onClick={() => window.location.reload()}
-                className="block w-full px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors"
+                className="block w-full px-4 py-2 bg-[#4DD9C0] text-white rounded-full font-bold hover:bg-[#3ec4ac] transition-colors"
               >
-                Refresh Page
+                Refresh
               </button>
               <button
                 onClick={() => {
                   this.setState({ hasError: false, error: undefined });
                   window.location.href = '/landing';
                 }}
-                className="block w-full px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                className="block w-full px-4 py-2 bg-gray-600 text-white rounded-full hover:bg-gray-700 transition-colors"
               >
                 Go to Landing Page
               </button>
