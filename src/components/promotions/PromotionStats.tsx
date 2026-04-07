@@ -15,7 +15,9 @@ interface PromotionStatsProps {
 }
 
 export const PromotionStats: React.FC<PromotionStatsProps> = ({ stats }) => {
-  const { totalSubmissions, approvedCount, rejectedCount, pendingCount, redemptionCount, totalCodes } = stats;
+  if (!stats) return null;
+
+  const { totalSubmissions = 0, approvedCount = 0, rejectedCount = 0, pendingCount = 0, redemptionCount = 0, totalCodes = 0 } = stats;
   
   const approvalRate = totalSubmissions > 0 ? Math.round((approvedCount / totalSubmissions) * 100) : 0;
   const redemptionRate = totalCodes > 0 ? Math.round((redemptionCount / totalCodes) * 100) : 0;
