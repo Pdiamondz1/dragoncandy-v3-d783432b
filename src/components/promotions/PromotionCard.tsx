@@ -94,7 +94,7 @@ export const PromotionCard: React.FC<PromotionCardProps> = ({
     ? Math.min(100, ((promotion.current_redemptions || 0) / promotion.max_redemptions) * 100)
     : 0;
   
-  const isNearlyFull = promotion.max_redemptions && 
+  const isNearlyFull = promotion.max_redemptions != null &&
     (promotion.current_redemptions || 0) >= promotion.max_redemptions * 0.8;
 
   return (
