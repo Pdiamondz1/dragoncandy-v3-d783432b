@@ -1,9 +1,9 @@
-import React from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Menu } from "lucide-react";
 import dragonCandyLogo from "@/assets/Transparent_DragonCandy_logo.png";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetTrigger, SheetClose } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 const scrollToSection = (id: string) => {
   const el = document.getElementById(id);
@@ -21,6 +21,18 @@ const navLinks = [
 
 export const Header: React.FC = () => {
   const navigate = useNavigate();
+  const [sheetOpen, setSheetOpen] = useState(false);
+
+  const handleNavClick = (sectionId: string) => {
+    setSheetOpen(false);
+    // Wait for sheet close animation before scrolling
+    setTimeout(() => scrollToSection(sectionId), 350);
+  };
+
+  const handleNavigate = (path: string) => {
+    setSheetOpen(false);
+    setTimeout(() => navigate(path), 350);
+  };
 
   return (
     <header className="flex items-center justify-between py-4 bg-white animate-fade-in">
@@ -59,7 +71,7 @@ export const Header: React.FC = () => {
 
       {/* Mobile hamburger */}
       <div className="md:hidden">
-        <Sheet>
+        <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
           <SheetTrigger asChild>
             <button
               className="p-2 rounded-full hover:bg-gray-100 transition-colors"
@@ -71,33 +83,28 @@ export const Header: React.FC = () => {
           <SheetContent side="right" className="w-64 pt-8">
             <div className="flex flex-col gap-3">
               {navLinks.map((link) => (
-                <SheetClose asChild key={link.target}>
-                  <button
-                    onClick={() => scrollToSection(link.target)}
-                    className="w-full text-left px-4 py-2 rounded-full text-[#555555] hover:text-dc-teal font-medium bg-transparent border-none cursor-pointer"
-                  >
-                    {link.label}
-                  </button>
-                </SheetClose>
+                <button
+                  key={link.target}
+                  onClick={() => handleNavClick(link.target)}
+                  className="w-full text-left px-4 py-2 rounded-full text-[#555555] hover:text-dc-teal font-medium bg-transparent border-none cursor-pointer"
+                >
+                  {link.label}
+                </button>
               ))}
               <hr className="border-gray-200 my-1" />
-              <SheetClose asChild>
-                <Button
-                  variant="ghost"
-                  className="w-full justify-start rounded-full text-[#555555] hover:text-dc-teal"
-                  onClick={() => navigate('/auth?mode=login')}
-                >
-                  Login
-                </Button>
-              </SheetClose>
-              <SheetClose asChild>
-                <Button
-                  className="w-full rounded-full bg-dc-teal text-white font-bold hover:bg-dc-teal-dark"
-                  onClick={() => navigate('/auth?mode=signup')}
-                >
-                  Get Started
-                </Button>
-              </SheetClose>
+              <Button
+                variant="ghost"
+                className="w-full justify-start rounded-full text-[#555555] hover:text-dc-teal"
+                onClick={() => handleNavigate('/auth?mode=login')}
+              >
+                Login
+              </Button>
+              <Button
+                className="w-full rounded-full bg-dc-teal text-white font-bold hover:bg-dc-teal-dark"
+                onClick={() => handleNavigate('/auth?mode=signup')}
+              >
+                Get Started
+              </Button>
             </div>
           </SheetContent>
         </Sheet>

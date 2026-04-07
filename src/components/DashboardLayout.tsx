@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -138,12 +138,20 @@ const DashboardLayoutInner: React.FC<DashboardLayoutProps> = ({ children, userRo
   const location = useLocation();
   const { setUserRole } = useAIAssistantContext();
   const { isOpen: isAIChatOpen, openModal, closeModal } = useAIChatModal();
+  const [sidebarOpen, setSidebarOpen] = useState(!isMobile);
+
+  // Sync sidebar state when viewport crosses mobile/desktop boundary
+  useEffect(() => {
+    setSidebarOpen(!isMobile);
+  }, [isMobile]);
 
   const topNavBgClass =
-    userRole === 'business_client' || userRole === 'content_creator'
+    userRole === 'business_client' || userRole === 'content_creator' || userRole === 'brand'
       ? 'bg-gradient-to-b from-dc-pink-bg to-pink-50'
       : 'bg-white';
-  const showWelcome = userRole === 'business_client' && location.pathname === '/dashboard/business';
+  const showWelcome =
+    (userRole === 'business_client' && location.pathname === '/dashboard/business') ||
+    (userRole === 'brand' && location.pathname === '/dashboard/brand');
 
   useEffect(() => {
     setUserRole(userRole);
@@ -164,7 +172,7 @@ const DashboardLayoutInner: React.FC<DashboardLayoutProps> = ({ children, userRo
   }, [openModal, closeModal, isAIChatOpen]);
 
   return (
-    <SidebarProvider defaultOpen={!isMobile}>
+    <SidebarProvider open={sidebarOpen} onOpenChange={setSidebarOpen}>
       <div className="min-h-screen flex w-full bg-background overflow-x-hidden font-outfit">
         {/* Sidebar — desktop only */}
         <div className="hidden md:block">

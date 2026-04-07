@@ -159,18 +159,26 @@ export interface DrawerMenuSection {
 
 const businessDrawerMenu: DrawerMenuSection[] = [
   {
-    heading: 'Workspace',
+    heading: 'Navigation',
     items: [
-      { icon: History, label: 'Campaign History', href: '/dashboard/business/campaigns' },
+      { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard/business' },
+      { icon: Target, label: 'My Campaigns', href: '/dashboard/business/campaigns' },
+      { icon: Image, label: 'Dragon Feed', href: '/dashboard/business/dragon-feed' },
+      { icon: Activity, label: 'Inspiration', href: '/dashboard/business/activity' },
+      { icon: Users, label: 'Browse Creators', href: '/dashboard/business/creators' },
+      { icon: Briefcase, label: 'Projects', href: '/dashboard/business/projects' },
+      { icon: DollarSign, label: 'Sponsorships', href: '/dashboard/business/sponsorships' },
+      { icon: QrCode, label: 'Promotions', href: '/dashboard/business/promotions' },
+      { icon: MessageSquare, label: 'Messages', href: '/dashboard/business/messages' },
       { icon: BarChart3, label: 'Analytics', href: '/dashboard/analytics' },
-      { icon: CreditCard, label: 'Billing', href: '/dashboard/business/billing' },
-      { icon: Plug, label: 'Integrations', href: '/dashboard/business/integrations' },
-      { icon: FolderOpen, label: 'Brand Assets', href: '/dashboard/business/brand-assets' },
     ],
   },
   {
     heading: 'Account',
     items: [
+      { icon: CreditCard, label: 'Billing', href: '/dashboard/business/billing' },
+      { icon: Plug, label: 'Integrations', href: '/dashboard/business/integrations' },
+      { icon: FolderOpen, label: 'Brand Assets', href: '/dashboard/business/brand-assets' },
       { icon: Settings, label: 'Settings', href: '/dashboard/business/settings' },
     ],
   },
@@ -184,18 +192,24 @@ const businessDrawerMenu: DrawerMenuSection[] = [
 
 const creatorDrawerMenu: DrawerMenuSection[] = [
   {
-    heading: 'Workspace',
+    heading: 'Navigation',
     items: [
-      { icon: Palette, label: 'Portfolio Editor', href: '/dashboard/creator/portfolio' },
-      { icon: DollarSign, label: 'Earnings History', href: '/dashboard/creator/earnings' },
-      { icon: Wallet, label: 'Payout Settings', href: '/dashboard/creator/payout-settings' },
-      { icon: TrendingUp, label: 'Performance Analytics', href: '/dashboard/analytics' },
-      { icon: Plug, label: 'Integrations', href: '/dashboard/creator/integrations' },
+      { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard/creator' },
+      { icon: Search, label: 'Browse Campaigns', href: '/dashboard/creator/campaigns' },
+      { icon: Briefcase, label: 'My Applications', href: '/dashboard/creator/applications' },
+      { icon: Target, label: 'My Projects', href: '/dashboard/creator/projects' },
+      { icon: DollarSign, label: 'Earnings', href: '/dashboard/creator/earnings' },
+      { icon: Image, label: 'Dragon Feed', href: '/dashboard/creator/dragon-feed' },
+      { icon: MessageSquare, label: 'Messages', href: '/dashboard/creator/messages' },
+      { icon: BarChart3, label: 'Analytics', href: '/dashboard/analytics' },
     ],
   },
   {
     heading: 'Account',
     items: [
+      { icon: Palette, label: 'Portfolio Editor', href: '/dashboard/creator/portfolio' },
+      { icon: Wallet, label: 'Payout Settings', href: '/dashboard/creator/payout-settings' },
+      { icon: Plug, label: 'Integrations', href: '/dashboard/creator/integrations' },
       { icon: Settings, label: 'Settings', href: '/dashboard/creator/settings' },
     ],
   },
@@ -209,18 +223,24 @@ const creatorDrawerMenu: DrawerMenuSection[] = [
 
 const brandDrawerMenu: DrawerMenuSection[] = [
   {
-    heading: 'Workspace',
+    heading: 'Navigation',
+    items: [
+      { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard/brand' },
+      { icon: Search, label: 'Discover Campaigns', href: '/dashboard/brand/discover-campaigns' },
+      { icon: Target, label: 'Sponsorships', href: '/dashboard/brand/sponsorships' },
+      { icon: Users, label: 'Browse Creators', href: '/dashboard/brand/creators' },
+      { icon: MessageSquare, label: 'Messages', href: '/dashboard/brand/messages' },
+      { icon: BarChart3, label: 'Analytics', href: '/dashboard/analytics' },
+    ],
+  },
+  {
+    heading: 'Account',
     items: [
       { icon: FolderOpen, label: 'Asset Library', href: '/dashboard/brand/assets' },
       { icon: CreditCard, label: 'Billing', href: '/dashboard/brand/billing' },
       { icon: Eye, label: 'Audience Insights', href: '/dashboard/brand/audience-insights' },
       { icon: UserPlus, label: 'Team Members', href: '/dashboard/brand/team' },
       { icon: Archive, label: 'Campaign Archive', href: '/dashboard/brand/campaign-archive' },
-    ],
-  },
-  {
-    heading: 'Account',
-    items: [
       { icon: Settings, label: 'Settings', href: '/dashboard/brand/settings' },
     ],
   },

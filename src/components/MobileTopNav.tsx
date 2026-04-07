@@ -1,5 +1,5 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { Menu, LogOut } from 'lucide-react';
 import dragonCandyLogo from '@/assets/Transparent_DragonCandy_logo.png';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -21,7 +21,12 @@ export const MobileTopNav: React.FC<MobileTopNavProps> = ({
   displayName,
 }) => {
   const logout = useLogout();
+  const location = useLocation();
   const sections = userRole ? getDrawerMenu(userRole) : [];
+  const [sheetOpen, setSheetOpen] = useState(false);
+
+  const isActive = (href: string) =>
+    location.pathname === href || location.pathname.startsWith(href + '/');
 
   return (
     <header className={`sticky top-0 z-50 flex items-center justify-between px-4 py-2 ${bgClass} border-b border-border`}>
@@ -38,7 +43,7 @@ export const MobileTopNav: React.FC<MobileTopNavProps> = ({
         </div>
       )}
 
-      <Sheet>
+      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
         <SheetTrigger asChild>
           <button
             className="p-2 rounded-full hover:bg-muted transition-colors"
@@ -59,9 +64,16 @@ export const MobileTopNav: React.FC<MobileTopNavProps> = ({
                     <Link
                       key={item.href}
                       to={item.href}
-                      className="flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-dc-teal/10 text-foreground text-sm font-medium transition-colors"
+                      onClick={() => setSheetOpen(false)}
+                      className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+                        isActive(item.href)
+                          ? 'bg-dc-teal/12 text-dc-teal font-semibold'
+                          : 'hover:bg-dc-teal/10 text-foreground'
+                      }`}
                     >
-                      <item.icon className="h-5 w-5 text-dc-teal flex-shrink-0" />
+                      <item.icon className={`h-5 w-5 flex-shrink-0 ${
+                        isActive(item.href) ? 'text-dc-teal' : 'text-dc-teal'
+                      }`} />
                       {item.label}
                     </Link>
                   ))}
@@ -72,7 +84,7 @@ export const MobileTopNav: React.FC<MobileTopNavProps> = ({
 
           <div className="border-t border-border pt-3 pb-4">
             <button
-              onClick={logout}
+              onClick={() => { setSheetOpen(false); logout(); }}
               className="flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-red-50 text-red-600 text-sm font-medium w-full text-left transition-colors"
             >
               <LogOut className="h-5 w-5" />

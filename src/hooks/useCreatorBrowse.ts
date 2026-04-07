@@ -121,7 +121,7 @@ export const useCreatorBrowse = () => {
   const filteredCreators = useMemo(() => {
     let result = creators.filter(creator => {
     const matchesSearch =
-      creator.creator_name.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
+      (creator.creator_name || '').toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
       creator.bio?.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
       creator.skills?.some(skill => skill.toLowerCase().includes(filters.searchTerm.toLowerCase()));
 

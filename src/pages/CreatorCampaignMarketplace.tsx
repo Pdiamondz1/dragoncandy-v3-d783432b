@@ -22,7 +22,7 @@ import { CompletedCampaignCard } from '@/components/campaigns/CompletedCampaignC
 import { MapPin, Target } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { formatBudget } from '@/lib/campaignUtils';
-import logo from '@/assets/Transparent_DragonCandy_logo.png';
+
 
 type Tab = 'available' | 'applied' | 'active' | 'done';
 
@@ -152,8 +152,7 @@ const CreatorCampaignMarketplace = () => {
       <div className="flex flex-col min-h-screen bg-gray-50">
         {/* Page Header */}
         <div className="flex items-center justify-between px-4 pt-4 pb-2">
-          <img src={logo} alt="Dragon Candy" className="w-12 h-12" />
-          <div className="flex-1 px-3">
+          <div className="flex-1">
             <h1 className="text-xl font-bold text-gray-900 leading-tight">Campaigns</h1>
             <div className="flex items-center gap-1 mt-0.5">
               <MapPin className="w-3.5 h-3.5 text-dc-pink-accent flex-shrink-0" />
