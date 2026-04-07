@@ -17,8 +17,6 @@ export const ActivePromotionsTab: React.FC = () => {
     p.status === 'active' || p.status === 'paused'
   ) || [];
 
-  const draftPromotions = promotions?.filter(p => p.status === 'draft') || [];
-
   const handleEditSave = async (data: EditPromotionFormData) => {
     if (!editingPromotion) return;
     
@@ -93,7 +91,7 @@ export const ActivePromotionsTab: React.FC = () => {
         </Button>
       </div>
 
-      {activePromotions.length === 0 && draftPromotions.length === 0 ? (
+      {activePromotions.length === 0 ? (
         <div className="text-center py-12 bg-muted/30 rounded-lg">
           <QrCode className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
           <h3 className="text-lg font-medium mb-2">No Active Promotions</h3>
@@ -106,47 +104,18 @@ export const ActivePromotionsTab: React.FC = () => {
           </Button>
         </div>
       ) : (
-        <>
-          {activePromotions.length > 0 && (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {activePromotions.map(promotion => (
-                <PromotionCard
-                  key={promotion.id}
-                  promotion={promotion}
-                  onPause={() => updatePromotionStatus.mutate({ id: promotion.id, status: 'paused' })}
-                  onResume={() => updatePromotionStatus.mutate({ id: promotion.id, status: 'active' })}
-                  onEdit={() => setEditingPromotion(promotion)}
-                  onDelete={() => deletePromotion.mutate(promotion.id)}
-                />
-              ))}
-            </div>
-          )}
-
-          {draftPromotions.length > 0 && (
-            <div className="space-y-4">
-              <div>
-                <h4 className="text-md font-medium">Draft Promotions</h4>
-                <p className="text-sm text-muted-foreground">
-                  These promotions are not yet active. Click "Publish" to make them live.
-                </p>
-              </div>
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {draftPromotions.map(promotion => (
-                  <PromotionCard
-                    key={promotion.id}
-                    promotion={promotion}
-                    onPause={() => updatePromotionStatus.mutate({ id: promotion.id, status: 'paused' })}
-                    onResume={() => updatePromotionStatus.mutate({ id: promotion.id, status: 'active' })}
-                    onEdit={() => setEditingPromotion(promotion)}
-                    onDelete={() => deletePromotion.mutate(promotion.id)}
-                    showPublish
-                    onPublish={() => updatePromotionStatus.mutate({ id: promotion.id, status: 'active' })}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-        </>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {activePromotions.map(promotion => (
+            <PromotionCard
+              key={promotion.id}
+              promotion={promotion}
+              onPause={() => updatePromotionStatus.mutate({ id: promotion.id, status: 'paused' })}
+              onResume={() => updatePromotionStatus.mutate({ id: promotion.id, status: 'active' })}
+              onEdit={() => setEditingPromotion(promotion)}
+              onDelete={() => deletePromotion.mutate(promotion.id)}
+            />
+          ))}
+        </div>
       )}
 
       <CreatePromotionModal
