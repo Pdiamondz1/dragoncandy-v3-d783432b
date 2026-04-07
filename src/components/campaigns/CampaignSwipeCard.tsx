@@ -42,7 +42,7 @@ export const CampaignSwipeCard: React.FC<CampaignSwipeCardProps> = ({
 
   if (!campaigns.length) {
     return (
-      <div className="flex flex-col items-center justify-center h-[60vh] px-6 text-center">
+      <div className="flex flex-col items-center justify-center h-[calc(100dvh-220px)] max-h-[680px] px-6 text-center">
         <img src={logo} alt="Dragon Candy" className="w-20 h-20 mb-4 opacity-60" />
         <p className="text-white font-bold text-xl mb-2">All caught up!</p>
         <p className="text-white/70 text-sm">No more campaigns available right now. Check back soon.</p>
@@ -51,7 +51,7 @@ export const CampaignSwipeCard: React.FC<CampaignSwipeCardProps> = ({
   }
 
   return (
-    <div className="relative h-[60vh] touch-none select-none">
+    <div className="relative h-[calc(100dvh-220px)] max-h-[680px] touch-none select-none">
       {campaigns.map((campaign, index) => {
         const isFront = index === currentIndex;
         const isSecond = index === currentIndex - 1;
@@ -179,7 +179,7 @@ const CardContent: React.FC<CardContentProps> = ({ campaign, onViewDetail, match
 
   return (
     <div
-      className={`bg-white rounded-2xl shadow-xl overflow-hidden h-full flex flex-col cursor-grab active:cursor-grabbing ${
+      className={`bg-white rounded-2xl shadow-xl h-full flex flex-col cursor-grab active:cursor-grabbing overflow-hidden ${
         matchInfo ? 'border-2 border-dc-teal' : ''
       }`}
       onClick={(e) => {
@@ -241,61 +241,67 @@ const CardContent: React.FC<CardContentProps> = ({ campaign, onViewDetail, match
       </div>
 
       {/* Card body */}
-      <div className="flex flex-col flex-1 px-4 py-3 min-h-0">
-        {/* Budget + deliverable count */}
-        <div className="flex items-center justify-between flex-shrink-0">
-          <span className="text-dc-teal font-bold text-base">{formatBudget(campaign)}</span>
-          {deliverableCount > 0 && (
-            <span className="text-gray-500 text-xs">{deliverableCount} deliverable{deliverableCount !== 1 ? 's' : ''}</span>
+      <div className="flex flex-col flex-1 min-h-0">
+        {/* Scrollable details area */}
+        <div className="flex-1 overflow-y-auto px-4 py-3 min-h-0">
+          {/* Budget + deliverable count */}
+          <div className="flex items-center justify-between">
+            <span className="text-dc-teal font-bold text-base">{formatBudget(campaign)}</span>
+            {deliverableCount > 0 && (
+              <span className="text-gray-500 text-xs">{deliverableCount} deliverable{deliverableCount !== 1 ? 's' : ''}</span>
+            )}
+          </div>
+
+          {/* Content type pills */}
+          {contentTypes.length > 0 && (
+            <div className="flex gap-1.5 mt-2 flex-wrap">
+              {contentTypes.slice(0, 4).map((type) => (
+                <span
+                  key={type}
+                  className="bg-teal-50 text-teal-700 text-[10px] px-2 py-0.5 rounded-full border border-teal-200"
+                >
+                  {contentTypeLabels[type] ?? type}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* Business row */}
+          <div className="flex items-center gap-2 mt-2">
+            <div className="w-7 h-7 rounded-full ring-2 ring-dc-teal overflow-hidden flex-shrink-0 bg-dc-pink-bg flex items-center justify-center">
+              {businessLogo ? (
+                <img src={businessLogo} alt={businessName} className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-xs font-bold text-dc-teal-dark">
+                  {businessName.charAt(0).toUpperCase()}
+                </span>
+              )}
+            </div>
+            <span className="text-sm font-semibold text-gray-700 truncate">{businessName}</span>
+            <span className="text-dc-teal text-xs">✓</span>
+          </div>
+
+          {/* Match reasons */}
+          {matchInfo && matchInfo.matchReasons.length > 0 && (
+            <p className="text-[10px] text-gray-400 mt-1 line-clamp-2">
+              Matches your: {matchInfo.matchReasons.join(', ')}
+            </p>
           )}
         </div>
 
-        {/* Content type pills */}
-        {contentTypes.length > 0 && (
-          <div className="flex gap-1.5 mt-2 flex-wrap flex-shrink-0">
-            {contentTypes.slice(0, 4).map((type) => (
-              <span
-                key={type}
-                className="bg-teal-50 text-teal-700 text-[10px] px-2 py-0.5 rounded-full border border-teal-200"
-              >
-                {contentTypeLabels[type] ?? type}
-              </span>
-            ))}
-          </div>
-        )}
-
-        {/* Business row */}
-        <div className="flex items-center gap-2 mt-2 flex-shrink-0">
-          <div className="w-7 h-7 rounded-full ring-2 ring-dc-teal overflow-hidden flex-shrink-0 bg-dc-pink-bg flex items-center justify-center">
-            {businessLogo ? (
-              <img src={businessLogo} alt={businessName} className="w-full h-full object-cover" />
-            ) : (
-              <span className="text-xs font-bold text-dc-teal-dark">
-                {businessName.charAt(0).toUpperCase()}
-              </span>
-            )}
-          </div>
-          <span className="text-sm font-semibold text-gray-700 truncate">{businessName}</span>
-          <span className="text-dc-teal text-xs">✓</span>
+        {/* View Campaign CTA — pinned at bottom */}
+        <div className="relative flex-shrink-0 px-4 pb-3 pt-1">
+          <div className="absolute inset-x-0 -top-6 h-6 bg-gradient-to-t from-white to-transparent pointer-events-none" />
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onViewDetail(campaign);
+            }}
+            className="w-full bg-dc-teal text-white rounded-full h-11 font-bold hover:bg-dc-teal-dark transition-colors duration-150 active:scale-95 text-sm relative"
+          >
+            View Campaign
+          </button>
         </div>
-
-        {/* Match reasons */}
-        {matchInfo && matchInfo.matchReasons.length > 0 && (
-          <p className="text-[10px] text-gray-400 mt-1 flex-shrink-0">
-            Matches your: {matchInfo.matchReasons.join(', ')}
-          </p>
-        )}
-
-        {/* View Campaign CTA */}
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onViewDetail(campaign);
-          }}
-          className="w-full bg-dc-teal text-white rounded-full h-11 font-bold mt-auto flex-shrink-0 hover:bg-dc-teal-dark transition-colors duration-150 active:scale-95 text-sm"
-        >
-          View Campaign
-        </button>
       </div>
     </div>
   );
