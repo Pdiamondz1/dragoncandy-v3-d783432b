@@ -14,7 +14,7 @@ import {
 import { Check, X, Play, User, Mail, Phone, Clock, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { PromotionSubmission } from '@/hooks/usePromotions';
-import { useSignedVideoUrl } from '@/hooks/useSignedVideoUrl';
+import { useVideoUrl } from '@/hooks/useVideoUrl';
 
 interface SubmissionCardProps {
   submission: PromotionSubmission;
@@ -32,7 +32,7 @@ export const SubmissionCard: React.FC<SubmissionCardProps> = ({
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
   const [showVideoPreview, setShowVideoPreview] = useState(false);
-  const { signedUrl, isLoading: isLoadingUrl } = useSignedVideoUrl(submission.video_url);
+  const { resolvedUrl, isLoading: isLoadingUrl } = useVideoUrl(submission.video_url);
 
   const handleReject = () => {
     onReject(rejectionReason);
@@ -118,9 +118,9 @@ export const SubmissionCard: React.FC<SubmissionCardProps> = ({
           <div className="aspect-video bg-muted rounded-lg overflow-hidden flex items-center justify-center">
             {isLoadingUrl ? (
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            ) : signedUrl ? (
+            ) : resolvedUrl ? (
               <video 
-                src={signedUrl} 
+                src={resolvedUrl} 
                 controls 
                 className="w-full h-full object-contain"
               />

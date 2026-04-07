@@ -13,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Play, Download, User, Mail, Phone, Clock, CheckCircle, XCircle, Loader2, Film } from 'lucide-react';
 import { format } from 'date-fns';
 import { PromotionSubmission } from '@/hooks/usePromotions';
-import { useSignedVideoUrl } from '@/hooks/useSignedVideoUrl';
+import { useVideoUrl } from '@/hooks/useVideoUrl';
 import { toast } from '@/hooks/use-toast';
 
 interface VideoCardProps {
@@ -23,14 +23,14 @@ interface VideoCardProps {
 const VideoCard: React.FC<VideoCardProps> = ({ submission }) => {
   const [showVideoPreview, setShowVideoPreview] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
-  const { signedUrl, isLoading: isLoadingUrl } = useSignedVideoUrl(submission.video_url);
+  const { resolvedUrl, isLoading: isLoadingUrl } = useVideoUrl(submission.video_url);
 
   const handleDownload = async () => {
-    if (!signedUrl) return;
+    if (!resolvedUrl) return;
     
     setIsDownloading(true);
     try {
-      const response = await fetch(signedUrl);
+      const response = await fetch(resolvedUrl);
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -123,7 +123,7 @@ const VideoCard: React.FC<VideoCardProps> = ({ submission }) => {
               <Button 
                 className="flex-1"
                 onClick={handleDownload}
-                disabled={isDownloading || !signedUrl}
+                disabled={isDownloading || !resolvedUrl}
               >
                 {isDownloading ? (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -149,9 +149,9 @@ const VideoCard: React.FC<VideoCardProps> = ({ submission }) => {
           <div className="aspect-video bg-muted rounded-lg overflow-hidden flex items-center justify-center">
             {isLoadingUrl ? (
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            ) : signedUrl ? (
+            ) : resolvedUrl ? (
               <video 
-                src={signedUrl} 
+                src={resolvedUrl} 
                 controls 
                 autoPlay
                 className="w-full h-full object-contain"

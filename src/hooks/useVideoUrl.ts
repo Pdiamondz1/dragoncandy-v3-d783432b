@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
-export const useSignedVideoUrl = (videoUrl: string | null) => {
-  const [signedUrl, setSignedUrl] = useState<string | null>(null);
+export const useVideoUrl = (videoUrl: string | null) => {
+  const [resolvedUrl, setResolvedUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!videoUrl) {
-      setSignedUrl(null);
+      setResolvedUrl(null);
       return;
     }
 
@@ -23,12 +23,12 @@ export const useSignedVideoUrl = (videoUrl: string | null) => {
       const { data } = supabase.storage
         .from(bucketName)
         .getPublicUrl(filePath);
-      setSignedUrl(data.publicUrl);
+      setResolvedUrl(data.publicUrl);
     } else {
       // Already a usable URL or a bare file path
-      setSignedUrl(videoUrl);
+      setResolvedUrl(videoUrl);
     }
   }, [videoUrl]);
 
-  return { signedUrl, isLoading, error };
+  return { resolvedUrl, isLoading, error };
 };
