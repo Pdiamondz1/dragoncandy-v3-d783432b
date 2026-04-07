@@ -41,12 +41,13 @@ export const BrandCreatorCard: React.FC<BrandCreatorCardProps> = ({
     resolveAvatar();
   }, [creator.avatar_url]);
 
-  const initials = creator.creator_name
+  const initials = (creator.creator_name || '?')
     .split(' ')
     .map((w) => w[0])
+    .filter(Boolean)
     .join('')
     .toUpperCase()
-    .slice(0, 2);
+    .slice(0, 2) || '?';
 
   const locationStr = [creator.city, creator.country].filter(Boolean).join(', ');
   const visibleSkills = (creator.skills ?? []).slice(0, 2);

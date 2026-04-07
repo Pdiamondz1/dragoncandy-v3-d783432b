@@ -21,8 +21,8 @@ export function QuickActionButtons({ actions }: QuickActionButtonsProps) {
           asChild
           className={
             action.variant === 'primary'
-              ? 'flex-1 rounded-full bg-dc-teal hover:bg-dc-teal/90 text-white font-semibold'
-              : 'flex-1 rounded-full border-2 border-dc-teal bg-white text-gray-900 hover:bg-dc-teal/10 font-semibold'
+              ? 'flex-1 rounded-full bg-dc-teal hover:bg-dc-teal/90 text-white font-semibold text-center'
+              : 'flex-1 rounded-full border-2 border-dc-teal bg-white text-gray-900 hover:bg-dc-teal/10 font-semibold text-center'
           }
           variant={action.variant === 'primary' ? 'default' : 'outline'}
         >

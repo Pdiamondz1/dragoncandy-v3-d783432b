@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, Component, type ReactNode } from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
 import { CreatorBrowseHeader } from '@/components/creator-browse/CreatorBrowseHeader';
 import { CreatorMapView } from '@/components/creator-browse/CreatorMapView';
@@ -14,8 +14,55 @@ import { useBrandActiveCampaigns } from '@/hooks/useBrandActiveCampaigns';
 import { useInviteCreator } from '@/hooks/useCampaignInvitations';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, RefreshCw } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+
+/** Local error boundary so Browse Creators never crashes the whole app */
+class BrowseCreatorsErrorBoundary extends Component<
+  { children: ReactNode },
+  { hasError: boolean; error?: Error }
+> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    console.error('[BrandCreators] Caught render error:', error, info);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <DashboardLayout userRole="brand">
+          <div className="min-h-screen bg-white flex items-center justify-center p-4">
+            <div className="border-2 border-dc-teal rounded-2xl p-6 text-center max-w-sm w-full">
+              <AlertCircle className="h-10 w-10 text-red-400 mx-auto mb-3" />
+              <h3 className="font-bold text-gray-900 mb-2">Unable to load creators</h3>
+              <p className="text-gray-500 text-sm mb-4">
+                {this.state.error?.message || 'An unexpected error occurred.'}
+              </p>
+              <button
+                onClick={() => {
+                  this.setState({ hasError: false, error: undefined });
+                }}
+                className="inline-flex items-center gap-2 px-6 py-2.5 bg-teal-400 text-white rounded-full font-semibold text-sm hover:bg-teal-500 transition-colors"
+              >
+                <RefreshCw className="h-4 w-4" />
+                Retry
+              </button>
+            </div>
+          </div>
+        </DashboardLayout>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 const BrandCreators: React.FC = () => {
   const {
@@ -228,4 +275,10 @@ const BrandCreators: React.FC = () => {
   );
 };
 
-export default BrandCreators;
+const BrandCreatorsPage: React.FC = () => (
+  <BrowseCreatorsErrorBoundary>
+    <BrandCreators />
+  </BrowseCreatorsErrorBoundary>
+);
+
+export default BrandCreatorsPage;

@@ -101,7 +101,7 @@ export const ShortlistDrawer: React.FC<ShortlistDrawerProps> = ({
                       <img src={rc.avatarUrl} alt="" className="w-full h-full object-cover" />
                     ) : (
                       <span className="text-teal-600 text-xs font-bold">
-                        {rc.creator.creator_name[0]}
+                        {(rc.creator.creator_name || '?')[0]}
                       </span>
                     )}
                   </div>
