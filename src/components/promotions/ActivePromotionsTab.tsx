@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, QrCode } from 'lucide-react';
+import { AlertTriangle, PlusCircle, QrCode, RefreshCw } from 'lucide-react';
 import { usePromotions, Promotion, UpdatePromotionData } from '@/hooks/usePromotions';
 import { PromotionCard } from './PromotionCard';
 import { CreatePromotionModal } from './CreatePromotionModal';
@@ -9,7 +9,7 @@ import { PromotionStats } from './PromotionStats';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export const ActivePromotionsTab: React.FC = () => {
-  const { promotions, isLoading, updatePromotionStatus, updatePromotion, deletePromotion, stats } = usePromotions();
+  const { promotions, isLoading, isError, refetch, updatePromotionStatus, updatePromotion, deletePromotion, stats } = usePromotions();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingPromotion, setEditingPromotion] = useState<Promotion | null>(null);
 
@@ -53,6 +53,22 @@ export const ActivePromotionsTab: React.FC = () => {
             <Skeleton key={i} className="h-64" />
           ))}
         </div>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="text-center py-12 bg-muted/30 rounded-lg">
+        <AlertTriangle className="h-12 w-12 mx-auto text-destructive mb-4" />
+        <h3 className="text-lg font-medium mb-2">Failed to load promotions</h3>
+        <p className="text-muted-foreground mb-4">
+          Something went wrong. Please try again.
+        </p>
+        <Button variant="outline" onClick={() => refetch()}>
+          <RefreshCw className="h-4 w-4 mr-2" />
+          Retry
+        </Button>
       </div>
     );
   }

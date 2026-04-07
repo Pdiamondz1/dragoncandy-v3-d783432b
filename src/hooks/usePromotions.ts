@@ -113,7 +113,7 @@ export const usePromotions = () => {
   });
 
   // Fetch all promotions for the business
-  const { data: promotions, isLoading: promotionsLoading } = useQuery({
+  const { data: promotions, isLoading: promotionsLoading, isError: promotionsError, refetch: refetchPromotions } = useQuery({
     queryKey: ['promotions', user?.id],
     queryFn: async () => {
       if (!user?.id) return [];
@@ -484,6 +484,8 @@ export const usePromotions = () => {
     businessProfile,
     stats,
     isLoading: promotionsLoading || submissionsLoading || codesLoading || approvedLoading || rejectedLoading,
+    isError: promotionsError,
+    refetch: refetchPromotions,
     createPromotion,
     updatePromotionStatus,
     updatePromotion,
