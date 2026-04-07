@@ -20,6 +20,8 @@ const BusinessProfileSetup = () => {
   const [loading, setLoading] = useState(false);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [sampleFiles, setSampleFiles] = useState<File[]>([]);
+  const [logoUrl, setLogoUrl] = useState('');
+  const [sampleUrls, setSampleUrls] = useState<string[]>([]);
 
   const [formData, setFormData] = useState({
     business_name: '',
@@ -56,18 +58,6 @@ const BusinessProfileSetup = () => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const uploadFile = async (file: File, folder: string) => {
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${user?.id}/${folder}/${Date.now()}.${fileExt}`;
-
-    const { data, error } = await supabase.storage
-      .from('profile-assets')
-      .upload(fileName, file);
-
-    if (error) throw error;
-    return data.path;
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
@@ -75,21 +65,7 @@ const BusinessProfileSetup = () => {
     setLoading(true);
 
     try {
-      let logoUrl = '';
-      let sampleContentUrls: string[] = [];
-
-      // Upload logo if provided
-      if (logoFile) {
-        logoUrl = await uploadFile(logoFile, 'logos');
-      }
-
-      // Upload sample content files
-      if (sampleFiles.length > 0) {
-        const uploadPromises = sampleFiles.map(file => uploadFile(file, 'samples'));
-        sampleContentUrls = await Promise.all(uploadPromises);
-      }
-
-      // Save profile data
+      // Save profile data — files are already uploaded via FileUploadSection
       const { error } = await supabase
         .from('business_profiles')
         .upsert({
@@ -117,7 +93,7 @@ const BusinessProfileSetup = () => {
           x_url: formData.x_url,
           other_social_url: formData.other_social_url,
           logo_url: logoUrl,
-          sample_content_urls: sampleContentUrls,
+          sample_content_urls: sampleUrls,
           is_completed: true
         });
 
@@ -188,6 +164,10 @@ const BusinessProfileSetup = () => {
               sampleFiles={sampleFiles}
               onLogoChange={setLogoFile}
               onSampleFilesChange={setSampleFiles}
+              logoUrl={logoUrl}
+              sampleUrls={sampleUrls}
+              onLogoUrlChange={setLogoUrl}
+              onSampleUrlsChange={setSampleUrls}
             />
           </div>
 

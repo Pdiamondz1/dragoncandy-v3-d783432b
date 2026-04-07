@@ -15,6 +15,8 @@ interface BrandProfileSetupFormProps {
   onInputChange: (field: string, value: string) => void;
   onLogoChange: (file: File | null) => void;
   onSubmit: (e: React.FormEvent) => void;
+  logoUrl?: string;
+  onLogoUrlChange?: (url: string) => void;
 }
 
 const brandCategories = [
@@ -36,14 +38,16 @@ export const BrandProfileSetupForm = ({
   loading,
   onInputChange,
   onLogoChange,
-  onSubmit
+  onSubmit,
+  logoUrl,
+  onLogoUrlChange,
 }: BrandProfileSetupFormProps) => {
   return (
     <form onSubmit={onSubmit} className="space-y-6">
       {/* Enhanced Brand Profile Fields */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold">Basic Information</h3>
-        <BrandEnhancedProfileForm 
+        <BrandEnhancedProfileForm
           formData={formData}
           onInputChange={onInputChange}
         />
@@ -52,7 +56,7 @@ export const BrandProfileSetupForm = ({
       {/* Brand-specific fields */}
       <div className="space-y-4 border-t pt-6">
         <h3 className="text-lg font-semibold">Brand Details</h3>
-        
+
         <div className="space-y-2">
           <Label htmlFor="brandCategory">Brand Category *</Label>
           <Select
@@ -91,10 +95,12 @@ export const BrandProfileSetupForm = ({
         sampleFiles={[]}
         onLogoChange={onLogoChange}
         onSampleFilesChange={() => {}}
+        logoUrl={logoUrl}
+        onLogoUrlChange={onLogoUrlChange}
       />
 
       {/* Social media links */}
-      <SocialMediaLinks 
+      <SocialMediaLinks
         formData={formData}
         onInputChange={onInputChange}
       />

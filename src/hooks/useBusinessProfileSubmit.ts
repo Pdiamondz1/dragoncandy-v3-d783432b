@@ -2,6 +2,10 @@
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import {
+  uploadProfileAsset,
+  UploadError,
+} from '@/lib/storage/uploadProfileAsset';
 import type { BusinessProfileFormData } from './useBusinessProfileForm';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -10,32 +14,28 @@ type IndustryType = Database['public']['Enums']['industry_type'];
 export const useBusinessProfileSubmit = () => {
   const [loading, setLoading] = useState(false);
 
-  const uploadFile = async (file: File, folder: string, userId: string) => {
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${userId}/${folder}/${Date.now()}.${fileExt}`;
-    
-    const { data, error } = await supabase.storage
-      .from('profile-assets')
-      .upload(fileName, file);
-
-    if (error) throw error;
-    return data.path;
-  };
-
   const submitProfile = async (
     formData: BusinessProfileFormData,
     logoFile: File | null,
     userId: string,
-    isBrand: boolean = false
+    isBrand: boolean = false,
+    preUploadedLogoUrl?: string
   ) => {
     setLoading(true);
-    
+
     try {
       let logoUrl = formData.logo_url;
 
-      // Upload new logo if provided
-      if (logoFile) {
-        logoUrl = await uploadFile(logoFile, 'logos', userId);
+      // Use pre-uploaded URL if available, otherwise upload now
+      if (preUploadedLogoUrl) {
+        logoUrl = preUploadedLogoUrl;
+      } else if (logoFile) {
+        const result = await uploadProfileAsset({
+          file: logoFile,
+          userId,
+          kind: 'logo',
+        });
+        logoUrl = result.path;
       }
 
       const accountType = isBrand ? 'brand' : 'restaurant';
@@ -114,9 +114,12 @@ export const useBusinessProfileSubmit = () => {
       return true;
     } catch (error: any) {
       console.error('Error updating profile:', error);
+      const msg = error instanceof UploadError
+        ? `Upload failed: ${error.message}`
+        : error.message || 'Please try again.';
       toast({
         title: "Error updating profile",
-        description: error.message || "Please try again.",
+        description: msg,
         variant: "destructive"
       });
       return false;
@@ -125,9 +128,9 @@ export const useBusinessProfileSubmit = () => {
     }
   };
 
-  const handleSubmit = (onSuccess?: () => void, isBrand: boolean = false) => async (e: React.FormEvent, formData: BusinessProfileFormData, logoFile: File | null, userId: string) => {
+  const handleSubmit = (onSuccess?: () => void, isBrand: boolean = false) => async (e: React.FormEvent, formData: BusinessProfileFormData, logoFile: File | null, userId: string, preUploadedLogoUrl?: string) => {
     e.preventDefault();
-    const success = await submitProfile(formData, logoFile, userId, isBrand);
+    const success = await submitProfile(formData, logoFile, userId, isBrand, preUploadedLogoUrl);
     if (success && onSuccess) {
       onSuccess();
     }

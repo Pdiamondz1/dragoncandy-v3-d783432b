@@ -3,6 +3,10 @@ import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import {
+  uploadProfileAsset,
+  UploadError,
+} from '@/lib/storage/uploadProfileAsset';
 import type { CreatorProfileFormData } from './useCreatorProfileForm';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -12,42 +16,38 @@ export const useCreatorProfileSubmit = () => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
 
-  const uploadFile = async (file: File, folder: string) => {
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${user?.id}/${folder}/${Date.now()}.${fileExt}`;
-    
-    const { data, error } = await supabase.storage
-      .from('profile-assets')
-      .upload(fileName, file);
-
-    if (error) throw error;
-    return data.path;
-  };
-
   const submitProfile = async (
     formData: CreatorProfileFormData,
     selectedSkills: CreatorSkill[],
     avatarFile: File | null,
     portfolioPaths: string[],
-    isUpdate = false
+    isUpdate = false,
+    preUploadedAvatarUrl?: string
   ) => {
     if (!user) return false;
-    
+
     setLoading(true);
-    
+
     try {
       let avatarUrl = formData.avatar_url;
 
-      // Upload avatar if provided
-      if (avatarFile) {
-        avatarUrl = await uploadFile(avatarFile, 'avatars');
+      // Use pre-uploaded URL if available, otherwise upload now
+      if (preUploadedAvatarUrl) {
+        avatarUrl = preUploadedAvatarUrl;
+      } else if (avatarFile) {
+        const result = await uploadProfileAsset({
+          file: avatarFile,
+          userId: user.id,
+          kind: 'avatar',
+        });
+        avatarUrl = result.path;
       }
 
       // Portfolio files are already uploaded, use the paths directly
       const portfolioUrls = portfolioPaths;
 
       // Process languages array
-      const languagesArray = formData.languages_spoken 
+      const languagesArray = formData.languages_spoken
         ? formData.languages_spoken.split(',').map(lang => lang.trim()).filter(Boolean)
         : [];
 
@@ -105,17 +105,20 @@ export const useCreatorProfileSubmit = () => {
 
       toast({
         title: isUpdate ? "Profile updated successfully!" : "Profile created successfully!",
-        description: isUpdate 
-          ? "Your creator profile has been updated." 
+        description: isUpdate
+          ? "Your creator profile has been updated."
           : "Welcome to DragonCandy. You can now start browsing campaigns."
       });
 
       return true;
     } catch (error: any) {
       console.error('Error saving profile:', error);
+      const msg = error instanceof UploadError
+        ? `Upload failed: ${error.message}`
+        : error.message || 'Please try again.';
       toast({
         title: "Error saving profile",
-        description: error.message || "Please try again.",
+        description: msg,
         variant: "destructive"
       });
       return false;
@@ -124,8 +127,8 @@ export const useCreatorProfileSubmit = () => {
     }
   };
 
-  return { 
+  return {
     submitProfile,
-    loading 
+    loading
   };
 };

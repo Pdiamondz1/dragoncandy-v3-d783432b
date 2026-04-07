@@ -23,6 +23,8 @@ interface CreatorProfileSetupFormProps {
   onAvatarFileChange: (file: File | null) => void;
   onPortfolioPathsChange: (paths: string[]) => void;
   onSubmit: (e: React.FormEvent) => void;
+  avatarUrl?: string;
+  onAvatarUrlChange?: (url: string) => void;
 }
 
 export const CreatorProfileSetupForm = ({
@@ -36,31 +38,35 @@ export const CreatorProfileSetupForm = ({
   onSkillChange,
   onAvatarFileChange,
   onPortfolioPathsChange,
-  onSubmit
+  onSubmit,
+  avatarUrl,
+  onAvatarUrlChange,
 }: CreatorProfileSetupFormProps) => {
   return (
     <form onSubmit={onSubmit} className="space-y-6">
-      <EnhancedCreatorProfileForm 
+      <EnhancedCreatorProfileForm
         formData={formData}
         onInputChange={onInputChange}
       />
 
-      <AvatarUpload 
+      <AvatarUpload
         avatarFile={avatarFile}
         onAvatarFileChange={onAvatarFileChange}
+        avatarUrl={avatarUrl}
+        onAvatarUrlChange={onAvatarUrlChange}
       />
 
-      <SkillsSelection 
+      <SkillsSelection
         selectedSkills={selectedSkills}
         onSkillChange={onSkillChange}
       />
 
-      <CreatorSocialMediaLinks 
+      <CreatorSocialMediaLinks
         formData={formData}
         onInputChange={onInputChange}
       />
 
-      <PortfolioUpload 
+      <PortfolioUpload
         portfolioPaths={portfolioPaths}
         onPortfolioPathsChange={onPortfolioPathsChange}
       />

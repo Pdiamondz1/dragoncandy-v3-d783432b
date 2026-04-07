@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useLogout } from '@/hooks/useLogout';
@@ -13,6 +13,7 @@ const CreatorProfileSetup = () => {
   const logout = useLogout();
   const navigate = useNavigate();
   const { submitProfile, loading } = useCreatorProfileSubmit();
+  const [avatarUrl, setAvatarUrl] = useState('');
 
   const {
     formData,
@@ -34,7 +35,14 @@ const CreatorProfileSetup = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const success = await submitProfile(formData, selectedSkills, avatarFile, portfolioPaths);
+    const success = await submitProfile(
+      formData,
+      selectedSkills,
+      avatarFile,
+      portfolioPaths,
+      false,
+      avatarUrl || undefined
+    );
 
     // Redirect to creator dashboard on successful profile creation
     if (success) {
@@ -77,6 +85,8 @@ const CreatorProfileSetup = () => {
           onAvatarFileChange={setAvatarFile}
           onPortfolioPathsChange={setPortfolioPaths}
           onSubmit={handleSubmit}
+          avatarUrl={avatarUrl}
+          onAvatarUrlChange={setAvatarUrl}
         />
       </div>
     </div>

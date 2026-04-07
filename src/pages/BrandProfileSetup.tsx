@@ -12,6 +12,7 @@ const BrandProfileSetup = () => {
   const navigate = useNavigate();
   const { formData, logoFile, handleInputChange, setLogoFile } = useBusinessProfileForm();
   const { handleSubmit, loading } = useBusinessProfileSubmit();
+  const [logoUrl, setLogoUrl] = React.useState('');
 
   const onSubmit = handleSubmit(() => navigate('/dashboard/brand'), true);
 
@@ -80,7 +81,9 @@ const BrandProfileSetup = () => {
             loading={loading}
             onInputChange={handleInputChange}
             onLogoChange={setLogoFile}
-            onSubmit={(e) => onSubmit(e, formData, logoFile, user.id)}
+            onSubmit={(e) => onSubmit(e, formData, logoFile, user.id, logoUrl)}
+            logoUrl={logoUrl}
+            onLogoUrlChange={setLogoUrl}
           />
         </div>
       </div>
