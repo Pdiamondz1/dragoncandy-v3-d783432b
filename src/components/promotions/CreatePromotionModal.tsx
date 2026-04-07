@@ -43,6 +43,9 @@ const formSchema = z.object({
   max_redemptions: z.number().optional(),
   video_max_duration: z.number().default(30),
   terms_conditions: z.string().optional(),
+}).refine((data) => data.start_date >= new Date().toISOString().split('T')[0], {
+  message: 'Start date cannot be in the past',
+  path: ['start_date'],
 }).refine((data) => data.end_date >= data.start_date, {
   message: 'End date must be on or after the start date',
   path: ['end_date'],
