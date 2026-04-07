@@ -139,6 +139,45 @@ export type Database = {
         }
         Relationships: []
       }
+      brand_shortlists: {
+        Row: {
+          id: string
+          brand_id: string
+          creator_id: string
+          notes: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          brand_id: string
+          creator_id: string
+          notes?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          brand_id?: string
+          creator_id?: string
+          notes?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brand_shortlists_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "brand_shortlists_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       business_profiles: {
         Row: {
           account_type: string | null

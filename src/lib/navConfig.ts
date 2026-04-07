@@ -14,6 +14,18 @@ import {
   Plus,
   Megaphone,
   User,
+  History,
+  CreditCard,
+  Plug,
+  FolderOpen,
+  HelpCircle,
+  LogOut,
+  Palette,
+  TrendingUp,
+  Wallet,
+  Eye,
+  UserPlus,
+  Archive,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { UserRole } from '@/types/user';
@@ -95,7 +107,7 @@ export const creatorBottomNav: BottomNavItem[] = [
 export const brandBottomNav: BottomNavItem[] = [
   { icon: LayoutDashboard, label: 'Home', href: '/dashboard/brand' },
   { icon: Target, label: 'Campaigns', href: '/dashboard/brand/sponsorships' },
-  { icon: Plus, label: 'Create', href: '/dashboard/brand/campaigns/create', isCenter: true },
+  { icon: Users, label: 'Creators', href: '/dashboard/brand/creators', isCenter: true },
   { icon: MessageSquare, label: 'Messages', href: '/dashboard/brand/messages' },
   { icon: User, label: 'Profile', href: '/dashboard/brand/settings' },
 ];
@@ -130,4 +142,98 @@ export function getDashboardLabel(role: UserRole): string {
   if (role === 'business_client') return 'Business Dashboard';
   if (role === 'brand') return 'Brand Dashboard';
   return 'Creator Dashboard';
+}
+
+// ── Drawer menu (hamburger) ───────────────────────────────────────────────
+
+export interface DrawerMenuItem {
+  icon: LucideIcon;
+  label: string;
+  href: string;
+}
+
+export interface DrawerMenuSection {
+  heading: string;
+  items: DrawerMenuItem[];
+}
+
+const businessDrawerMenu: DrawerMenuSection[] = [
+  {
+    heading: 'Workspace',
+    items: [
+      { icon: History, label: 'Campaign History', href: '/dashboard/business/campaigns' },
+      { icon: BarChart3, label: 'Analytics', href: '/dashboard/analytics' },
+      { icon: CreditCard, label: 'Billing', href: '/dashboard/business/billing' },
+      { icon: Plug, label: 'Integrations', href: '/dashboard/business/integrations' },
+      { icon: FolderOpen, label: 'Brand Assets', href: '/dashboard/business/brand-assets' },
+    ],
+  },
+  {
+    heading: 'Account',
+    items: [
+      { icon: Settings, label: 'Settings', href: '/dashboard/business/settings' },
+    ],
+  },
+  {
+    heading: 'Support',
+    items: [
+      { icon: HelpCircle, label: 'Help', href: '/dashboard/business/help' },
+    ],
+  },
+];
+
+const creatorDrawerMenu: DrawerMenuSection[] = [
+  {
+    heading: 'Workspace',
+    items: [
+      { icon: Palette, label: 'Portfolio Editor', href: '/dashboard/creator/portfolio' },
+      { icon: DollarSign, label: 'Earnings History', href: '/dashboard/creator/earnings' },
+      { icon: Wallet, label: 'Payout Settings', href: '/dashboard/creator/payout-settings' },
+      { icon: TrendingUp, label: 'Performance Analytics', href: '/dashboard/analytics' },
+      { icon: Plug, label: 'Integrations', href: '/dashboard/creator/integrations' },
+    ],
+  },
+  {
+    heading: 'Account',
+    items: [
+      { icon: Settings, label: 'Settings', href: '/dashboard/creator/settings' },
+    ],
+  },
+  {
+    heading: 'Support',
+    items: [
+      { icon: HelpCircle, label: 'Help', href: '/dashboard/creator/help' },
+    ],
+  },
+];
+
+const brandDrawerMenu: DrawerMenuSection[] = [
+  {
+    heading: 'Workspace',
+    items: [
+      { icon: FolderOpen, label: 'Asset Library', href: '/dashboard/brand/assets' },
+      { icon: CreditCard, label: 'Billing', href: '/dashboard/brand/billing' },
+      { icon: Eye, label: 'Audience Insights', href: '/dashboard/brand/audience-insights' },
+      { icon: UserPlus, label: 'Team Members', href: '/dashboard/brand/team' },
+      { icon: Archive, label: 'Campaign Archive', href: '/dashboard/brand/campaign-archive' },
+    ],
+  },
+  {
+    heading: 'Account',
+    items: [
+      { icon: Settings, label: 'Settings', href: '/dashboard/brand/settings' },
+    ],
+  },
+  {
+    heading: 'Support',
+    items: [
+      { icon: HelpCircle, label: 'Help', href: '/dashboard/brand/help' },
+    ],
+  },
+];
+
+export function getDrawerMenu(role: UserRole): DrawerMenuSection[] {
+  if (role === 'business_client') return businessDrawerMenu;
+  if (role === 'brand') return brandDrawerMenu;
+  return creatorDrawerMenu;
 }
