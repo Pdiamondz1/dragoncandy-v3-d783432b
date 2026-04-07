@@ -122,6 +122,9 @@ export default function PromotionSubmissionPage() {
     } else if (result.reason === 'duplicate') {
       setError('You have already submitted a video for this promotion');
       setStep('error');
+    } else {
+      setError('Something went wrong submitting your video. Please try again.');
+      setStep('error');
     }
   };
 
