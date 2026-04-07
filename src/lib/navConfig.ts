@@ -95,7 +95,7 @@ export const creatorBottomNav: BottomNavItem[] = [
 export const brandBottomNav: BottomNavItem[] = [
   { icon: LayoutDashboard, label: 'Home', href: '/dashboard/brand' },
   { icon: Target, label: 'Campaigns', href: '/dashboard/brand/sponsorships' },
-  { icon: Plus, label: 'Create', href: '/dashboard/brand/discover-campaigns', isCenter: true },
+  { icon: Plus, label: 'Create', href: '/dashboard/brand/campaigns/create', isCenter: true },
   { icon: MessageSquare, label: 'Messages', href: '/dashboard/brand/messages' },
   { icon: User, label: 'Profile', href: '/dashboard/brand/settings' },
 ];

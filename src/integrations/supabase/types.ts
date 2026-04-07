@@ -721,8 +721,10 @@ export type Database = {
           ai_preview_status: string | null
           budget_max: number | null
           budget_min: number | null
+          campaign_type: string | null
           content_source: string | null
           created_at: string
+          creator_count: number | null
           deadline: string | null
           deliverables: string[] | null
           delivery_fee: number | null
@@ -730,17 +732,24 @@ export type Database = {
           description: string | null
           escrow_payment_intent_id: string | null
           escrow_status: string | null
+          exclusivity_days: number | null
           fixed_price: number | null
+          geographic_scope: string | null
           goals: string | null
+          hashtag_requirements: string | null
           id: string
           open_for_sponsorship: boolean | null
+          per_creator_cap: number | null
           platforms: string[] | null
           pricing_type: string | null
           status: Database["public"]["Enums"]["campaign_status"]
           style: string | null
+          tagline: string | null
+          target_creator_personas: string[] | null
           title: string
           tone: string | null
           updated_at: string
+          usage_rights_days: number | null
           user_id: string
         }
         Insert: {
@@ -749,8 +758,10 @@ export type Database = {
           ai_preview_status?: string | null
           budget_max?: number | null
           budget_min?: number | null
+          campaign_type?: string | null
           content_source?: string | null
           created_at?: string
+          creator_count?: number | null
           deadline?: string | null
           deliverables?: string[] | null
           delivery_fee?: number | null
@@ -758,17 +769,24 @@ export type Database = {
           description?: string | null
           escrow_payment_intent_id?: string | null
           escrow_status?: string | null
+          exclusivity_days?: number | null
           fixed_price?: number | null
+          geographic_scope?: string | null
           goals?: string | null
+          hashtag_requirements?: string | null
           id?: string
           open_for_sponsorship?: boolean | null
+          per_creator_cap?: number | null
           platforms?: string[] | null
           pricing_type?: string | null
           status?: Database["public"]["Enums"]["campaign_status"]
           style?: string | null
+          tagline?: string | null
+          target_creator_personas?: string[] | null
           title: string
           tone?: string | null
           updated_at?: string
+          usage_rights_days?: number | null
           user_id: string
         }
         Update: {
@@ -777,8 +795,10 @@ export type Database = {
           ai_preview_status?: string | null
           budget_max?: number | null
           budget_min?: number | null
+          campaign_type?: string | null
           content_source?: string | null
           created_at?: string
+          creator_count?: number | null
           deadline?: string | null
           deliverables?: string[] | null
           delivery_fee?: number | null
@@ -786,17 +806,24 @@ export type Database = {
           description?: string | null
           escrow_payment_intent_id?: string | null
           escrow_status?: string | null
+          exclusivity_days?: number | null
           fixed_price?: number | null
+          geographic_scope?: string | null
           goals?: string | null
+          hashtag_requirements?: string | null
           id?: string
           open_for_sponsorship?: boolean | null
+          per_creator_cap?: number | null
           platforms?: string[] | null
           pricing_type?: string | null
           status?: Database["public"]["Enums"]["campaign_status"]
           style?: string | null
+          tagline?: string | null
+          target_creator_personas?: string[] | null
           title?: string
           tone?: string | null
           updated_at?: string
+          usage_rights_days?: number | null
           user_id?: string
         }
         Relationships: [
