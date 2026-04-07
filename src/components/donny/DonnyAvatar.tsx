@@ -32,7 +32,7 @@ export function DonnyAvatar({ state = 'idle', size = 'md', className }: DonnyAva
         className
       )}
     >
-      <img src={donnyIcon} alt="Donny" className="w-[80%] h-[80%] object-contain" />
+      <img src={donnyIcon} alt="Donny" className="w-full h-full object-cover rounded-full" />
     </div>
   );
 }
