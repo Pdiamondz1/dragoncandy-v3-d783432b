@@ -65,6 +65,7 @@ import ForgotPassword from "./pages/ForgotPassword";
 import UpdatePassword from "./pages/UpdatePassword";
 import VerifyEmail from "./pages/VerifyEmail";
 import PromotionSubmissionPage from "./pages/PromotionSubmissionPage";
+import PromotionsErrorBoundary from "./components/promotions/PromotionsErrorBoundary";
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -100,7 +101,11 @@ const App = () => {
                   <Route path="/verify-email" element={<VerifyEmail />} />
                   
                   {/* Public Promotion Submission */}
-                  <Route path="/promo/:promotionId" element={<PromotionSubmissionPage />} />
+                  <Route path="/promo/:promotionId" element={
+                    <PromotionsErrorBoundary>
+                      <PromotionSubmissionPage />
+                    </PromotionsErrorBoundary>
+                  } />
                   
                   {/* Anonymous Campaign Creation */}
                   <Route path="/campaign/create" element={<AnonymousCampaignWizard />} />
@@ -276,7 +281,9 @@ const App = () => {
                   <Route path="/dashboard/business/promotions" element={
                     <ProtectedRoute>
                       <BusinessRoute>
-                        <BusinessPromotionalTools />
+                        <PromotionsErrorBoundary>
+                          <BusinessPromotionalTools />
+                        </PromotionsErrorBoundary>
                       </BusinessRoute>
                     </ProtectedRoute>
                   } />
