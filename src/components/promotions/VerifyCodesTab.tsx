@@ -27,6 +27,8 @@ export const VerifyCodesTab: React.FC = () => {
     try {
       await redeemCode.mutateAsync(searchCode.trim());
       setSearchCode('');
+    } catch {
+      // Hook's onError handles the toast; keep input value so user can retry
     } finally {
       setVerifying(false);
     }
