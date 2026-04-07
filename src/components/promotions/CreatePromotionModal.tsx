@@ -43,6 +43,9 @@ const formSchema = z.object({
   max_redemptions: z.number().optional(),
   video_max_duration: z.number().default(30),
   terms_conditions: z.string().optional(),
+}).refine((data) => data.end_date >= data.start_date, {
+  message: 'End date must be on or after the start date',
+  path: ['end_date'],
 });
 
 interface CreatePromotionModalProps {
