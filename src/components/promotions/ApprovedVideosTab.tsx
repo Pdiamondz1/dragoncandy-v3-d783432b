@@ -35,7 +35,8 @@ const VideoCard: React.FC<VideoCardProps> = ({ submission }) => {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `video-${submission.customer_name.replace(/\s+/g, '-')}-${format(new Date(submission.created_at), 'yyyy-MM-dd')}.mp4`;
+      const ext = submission.video_url?.split('.').pop()?.split('?')[0] || 'mp4';
+      a.download = `video-${submission.customer_name.replace(/\s+/g, '-')}-${format(new Date(submission.created_at), 'yyyy-MM-dd')}.${ext}`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
