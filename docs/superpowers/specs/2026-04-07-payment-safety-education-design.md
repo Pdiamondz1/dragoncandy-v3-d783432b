@@ -66,7 +66,7 @@ CREATE TABLE payment_events (
   event_type    TEXT NOT NULL,
   entity_type   TEXT NOT NULL CHECK (entity_type IN ('collaboration', 'sponsorship')),
   entity_id     UUID NOT NULL,
-  campaign_id   UUID NOT NULL REFERENCES campaigns(id),
+  campaign_id   UUID REFERENCES campaigns(id),  -- nullable for wallet withdrawals
   actor_id      UUID REFERENCES profiles(id),
   actor_role    TEXT NOT NULL CHECK (actor_role IN ('business', 'creator', 'brand', 'system', 'stripe')),
   -- Role mapping from DB: business_client → 'business', content_creator → 'creator', brand → 'brand'
