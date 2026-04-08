@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { writePaymentEvent } from "../_shared/payment-events.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -103,11 +104,32 @@ serve(async (req) => {
           platform_fee: platformFee.toString(),
           type: 'sponsorship_payout',
         },
-      });
+      }, { idempotencyKey: `sponsorship_payout_${sponsorshipId}` });
 
       logStep("Transfer created", { transferId: transfer.id, amount: restaurantPayout });
 
-      return new Response(JSON.stringify({ 
+      await writePaymentEvent(supabaseClient, {
+        event_type: 'payment_released',
+        entity_type: 'sponsorship',
+        entity_id: sponsorshipId,
+        campaign_id: sponsorship.campaign_id,
+        actor_role: 'system',
+        amount_cents: Math.round(restaurantPayout * 100),
+        stripe_id: transfer.id,
+      }, '[RELEASE-SPONSORSHIP-PAYOUT]');
+
+      await writePaymentEvent(supabaseClient, {
+        event_type: 'transfer_created',
+        entity_type: 'sponsorship',
+        entity_id: sponsorshipId,
+        campaign_id: sponsorship.campaign_id,
+        actor_role: 'system',
+        amount_cents: Math.round(restaurantPayout * 100),
+        stripe_id: transfer.id,
+        metadata: { destination: restaurantProfile.stripe_account_id },
+      }, '[RELEASE-SPONSORSHIP-PAYOUT]');
+
+      return new Response(JSON.stringify({
         success: true,
         transferId: transfer.id,
         amount: restaurantPayout,
@@ -117,21 +139,29 @@ serve(async (req) => {
         status: 200,
       });
     } else {
-      // Restaurant hasn't completed onboarding - add to pending balance
-      const newPendingBalance = (restaurantProfile?.pending_balance || 0) + restaurantPayout;
-      
-      await supabaseClient
-        .from('business_profiles')
-        .update({ pending_balance: newPendingBalance })
-        .eq('id', sponsorship.restaurant_id);
-
-      logStep("Added to pending balance", { 
-        previousBalance: restaurantProfile?.pending_balance || 0,
-        added: restaurantPayout,
-        newBalance: newPendingBalance,
+      // Restaurant hasn't completed onboarding - add to pending balance atomically
+      await supabaseClient.rpc('increment_pending_balance', {
+        p_user_id: restaurantProfile.user_id,
+        p_amount: restaurantPayout,
+        p_profile_type: 'business',
       });
 
-      return new Response(JSON.stringify({ 
+      logStep("Added to pending balance", {
+        previousBalance: restaurantProfile?.pending_balance || 0,
+        added: restaurantPayout,
+      });
+
+      await writePaymentEvent(supabaseClient, {
+        event_type: 'payout_pending_wallet',
+        entity_type: 'sponsorship',
+        entity_id: sponsorshipId,
+        campaign_id: sponsorship.campaign_id,
+        actor_role: 'system',
+        amount_cents: Math.round(restaurantPayout * 100),
+        metadata: { reason: 'Restaurant Stripe onboarding incomplete' },
+      }, '[RELEASE-SPONSORSHIP-PAYOUT]');
+
+      return new Response(JSON.stringify({
         success: true,
         amount: restaurantPayout,
         method: 'pending_balance',

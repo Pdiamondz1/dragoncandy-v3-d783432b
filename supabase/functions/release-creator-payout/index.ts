@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { writePaymentEvent } from "../_shared/payment-events.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -128,6 +129,37 @@ serve(async (req) => {
 
       logStep("Transfer created", { transferId: transfer.id, amount: creatorPayout });
 
+      await writePaymentEvent(supabaseClient, {
+        event_type: 'content_approved',
+        entity_type: 'collaboration',
+        entity_id: collaborationId,
+        campaign_id: campaign.id,
+        actor_id: user.id,
+        actor_role: 'business',
+      }, '[RELEASE-CREATOR-PAYOUT]');
+
+      await writePaymentEvent(supabaseClient, {
+        event_type: 'payment_released',
+        entity_type: 'collaboration',
+        entity_id: collaborationId,
+        campaign_id: campaign.id,
+        actor_id: user.id,
+        actor_role: 'business',
+        amount_cents: Math.round(creatorPayout * 100),
+        stripe_id: transfer.id,
+      }, '[RELEASE-CREATOR-PAYOUT]');
+
+      await writePaymentEvent(supabaseClient, {
+        event_type: 'transfer_created',
+        entity_type: 'collaboration',
+        entity_id: collaborationId,
+        campaign_id: campaign.id,
+        actor_role: 'system',
+        amount_cents: Math.round(creatorPayout * 100),
+        stripe_id: transfer.id,
+        metadata: { destination: creatorProfile.stripe_account_id },
+      }, '[RELEASE-CREATOR-PAYOUT]');
+
       // Update collaboration status
       const { error: collabUpdateError } = await supabaseClient
         .from('campaign_collaborations')
@@ -162,19 +194,36 @@ serve(async (req) => {
         status: 200,
       });
     } else {
-      // Creator hasn't completed onboarding - add to pending balance
-      const newPendingBalance = (creatorProfile?.pending_balance || 0) + creatorPayout;
-      
-      await supabaseClient
-        .from('creator_profiles')
-        .update({ pending_balance: newPendingBalance })
-        .eq('user_id', collaboration.creator_id);
+      // Creator hasn't completed onboarding - add to pending balance atomically
+      const newBalance = await supabaseClient.rpc('increment_pending_balance', {
+        p_user_id: collaboration.creator_id,
+        p_amount: creatorPayout,
+        p_profile_type: 'creator',
+      });
 
-      logStep("Added to pending balance", { 
+      logStep("Added to pending balance", {
         previousBalance: creatorProfile?.pending_balance || 0,
         added: creatorPayout,
-        newBalance: newPendingBalance,
       });
+
+      await writePaymentEvent(supabaseClient, {
+        event_type: 'content_approved',
+        entity_type: 'collaboration',
+        entity_id: collaborationId,
+        campaign_id: campaign.id,
+        actor_id: user.id,
+        actor_role: 'business',
+      }, '[RELEASE-CREATOR-PAYOUT]');
+
+      await writePaymentEvent(supabaseClient, {
+        event_type: 'payout_pending_wallet',
+        entity_type: 'collaboration',
+        entity_id: collaborationId,
+        campaign_id: campaign.id,
+        actor_role: 'system',
+        amount_cents: Math.round(creatorPayout * 100),
+        metadata: { reason: 'Creator Stripe onboarding incomplete' },
+      }, '[RELEASE-CREATOR-PAYOUT]');
 
       // Update collaboration status
       await supabaseClient

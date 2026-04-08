@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { writePaymentEvent } from "../_shared/payment-events.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -146,6 +147,19 @@ serve(async (req) => {
     }
 
     logStep("Transfer created", { transferId: transfer.id, amount: transfer.amount });
+
+    const profileType = profileTable === 'creator_profiles' ? 'creator' : 'business';
+    await writePaymentEvent(supabaseClient, {
+      event_type: 'transfer_created',
+      entity_type: profileType === 'creator' ? 'collaboration' : 'sponsorship',
+      entity_id: user.id,
+      campaign_id: null,
+      actor_id: user.id,
+      actor_role: profileType === 'creator' ? 'creator' : 'business',
+      amount_cents: amountInCents,
+      stripe_id: transfer.id,
+      metadata: { type: 'wallet_withdrawal' },
+    }, '[WITHDRAW-PENDING-BALANCE]');
 
     logStep("Withdrawal complete", { 
       transferId: transfer.id, 
