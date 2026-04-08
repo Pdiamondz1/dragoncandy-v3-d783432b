@@ -66,6 +66,7 @@ import UpdatePassword from "./pages/UpdatePassword";
 import VerifyEmail from "./pages/VerifyEmail";
 import PromotionSubmissionPage from "./pages/PromotionSubmissionPage";
 import PromotionsErrorBoundary from "./components/promotions/PromotionsErrorBoundary";
+import PaymentsPage from "@/pages/PaymentsPage";
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -473,6 +474,9 @@ const App = () => {
                     </ProtectedRoute>
                   } />
                   
+                  {/* Payments Route */}
+                  <Route path="/dashboard/payments" element={<ProtectedRoute><PaymentsPage /></ProtectedRoute>} />
+
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />
                   </Routes>

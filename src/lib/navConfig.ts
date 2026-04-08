@@ -57,6 +57,7 @@ export const businessSidebarNav: SidebarNavItem[] = [
   { icon: QrCode, label: 'Promotions', href: '/dashboard/business/promotions' },
   { icon: MessageSquare, label: 'Messages', href: '/dashboard/business/messages' },
   { icon: BarChart3, label: 'Analytics', href: '/dashboard/analytics' },
+  { icon: Wallet, label: 'Payments', href: '/dashboard/payments' },
   { icon: Settings, label: 'Settings', href: '/dashboard/business/settings' },
 ];
 
@@ -67,6 +68,7 @@ export const brandSidebarNav: SidebarNavItem[] = [
   { icon: Users, label: 'Browse Creators', href: '/dashboard/brand/creators' },
   { icon: MessageSquare, label: 'Messages', href: '/dashboard/brand/messages' },
   { icon: BarChart3, label: 'Analytics', href: '/dashboard/analytics' },
+  { icon: Wallet, label: 'Payments', href: '/dashboard/payments' },
   { icon: Settings, label: 'Settings', href: '/dashboard/brand/settings' },
 ];
 
@@ -78,6 +80,7 @@ export const creatorSidebarNav: SidebarNavItem[] = [
   { icon: DollarSign, label: 'Earnings', href: '/dashboard/creator/earnings' },
   { icon: MessageSquare, label: 'Messages', href: '/dashboard/creator/messages' },
   { icon: BarChart3, label: 'Analytics', href: '/dashboard/analytics' },
+  { icon: Wallet, label: 'Payments', href: '/dashboard/payments' },
   { icon: Settings, label: 'Settings', href: '/dashboard/creator/settings' },
 ];
 
