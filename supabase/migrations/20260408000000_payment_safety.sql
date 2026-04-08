@@ -50,7 +50,6 @@ CREATE POLICY "Sponsorship participants can view payment events"
         AND (
           cs.brand_id IN (SELECT bp.id FROM business_profiles bp WHERE bp.user_id = auth.uid())
           OR cs.restaurant_id IN (SELECT bp.id FROM business_profiles bp WHERE bp.user_id = auth.uid())
-          OR cs.creator_id IN (SELECT cp.id FROM creator_profiles cp WHERE cp.user_id = auth.uid())
         )
       )
     )
