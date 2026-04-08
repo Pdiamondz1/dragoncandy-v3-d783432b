@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { PaymentTimeline } from "@/components/payments/PaymentTimeline";
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -290,6 +291,17 @@ const BrandSponsorships = () => {
                       </div>
                       {getPaymentSection(sponsorship)}
                     </div>
+                  )}
+
+                  {/* Payment Timeline */}
+                  {sponsorship.id && sponsorship.campaign_id && (
+                    <PaymentTimeline
+                      entityType="sponsorship"
+                      entityId={sponsorship.id}
+                      campaignId={sponsorship.campaign_id}
+                      userRole="brand"
+                      variant="compact"
+                    />
                   )}
 
                   {sponsorship.proposal_message && (

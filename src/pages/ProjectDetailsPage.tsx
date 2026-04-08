@@ -1,5 +1,6 @@
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { PaymentTimeline } from "@/components/payments/PaymentTimeline";
 import DashboardLayout from '@/components/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -166,6 +167,17 @@ const ProjectDetailsPage: React.FC = () => {
               <p className="text-xs text-gray-500">Status</p>
             </div>
           </div>
+
+          {/* Payment Timeline */}
+          {collaboration?.id && collaboration?.campaign_id && (
+            <PaymentTimeline
+              entityType="collaboration"
+              entityId={collaboration.id}
+              campaignId={collaboration.campaign_id}
+              userRole={isCreator ? 'creator' : 'business'}
+              variant="compact"
+            />
+          )}
 
           {/* Creator Payout Banner (for creators only) */}
           {isCreator && <CreatorPayoutBanner creatorId={user!.id} />}
