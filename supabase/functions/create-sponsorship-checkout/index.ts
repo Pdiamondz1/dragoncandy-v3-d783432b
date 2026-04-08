@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { writePaymentEvent } from "../_shared/payment-events.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -51,6 +52,31 @@ serve(async (req) => {
       throw new Error("Missing required fields: sponsorshipId and amount");
     }
     logStep("Request payload", { sponsorshipId, amount, campaignTitle });
+
+    // Verify caller owns this sponsorship
+    const { data: sponsorship, error: sponsorshipError } = await adminClient
+      .from('campaign_sponsorships')
+      .select('brand_id, campaign_id')
+      .eq('id', sponsorshipId)
+      .single();
+
+    if (sponsorshipError || !sponsorship) {
+      throw new Error("Sponsorship not found");
+    }
+
+    const { data: brandProfile } = await adminClient
+      .from('business_profiles')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('id', sponsorship.brand_id)
+      .single();
+
+    if (!brandProfile) {
+      return new Response(JSON.stringify({ error: 'Not authorized to pay for this sponsorship' }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
 
@@ -116,6 +142,17 @@ serve(async (req) => {
     if (updateError) {
       logStep("Warning: Failed to update sponsorship status", { error: updateError.message });
     }
+
+    await writePaymentEvent(adminClient, {
+      event_type: 'escrow_authorized',
+      entity_type: 'sponsorship',
+      entity_id: sponsorshipId,
+      campaign_id: sponsorship.campaign_id,
+      actor_id: user.id,
+      actor_role: 'brand',
+      amount_cents: totalAmount,
+      stripe_id: session.id,
+    }, '[CREATE-SPONSORSHIP-CHECKOUT]');
 
     return new Response(JSON.stringify({ url: session.url, sessionId: session.id }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

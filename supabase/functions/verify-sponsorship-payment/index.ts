@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { writePaymentEvent } from "../_shared/payment-events.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -100,6 +101,17 @@ serve(async (req) => {
       if (updateError) {
         throw new Error(`Failed to update sponsorship payment status: ${updateError.message}`);
       }
+
+      await writePaymentEvent(supabaseClient, {
+        event_type: 'sponsorship_paid',
+        entity_type: 'sponsorship',
+        entity_id: sponsorshipId,
+        campaign_id: sponsorship.campaign_id,
+        actor_id: user.id,
+        actor_role: 'brand',
+        amount_cents: Math.round(sponsorship.sponsorship_amount * 100),
+        stripe_id: resolvedPaymentIntentId,
+      }, '[VERIFY-SPONSORSHIP-PAYMENT]');
 
       // Send email notifications to both parties
       try {
