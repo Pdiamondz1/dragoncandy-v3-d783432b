@@ -355,12 +355,16 @@ serve(async (req) => {
         break;
       }
 
-      // ── Transfer failed ──────────────────────────────────────────────────
-      case "transfer.failed": {
+      // ── Transfer updated (handles failures — Stripe has no transfer.failed event) ──
+      case "transfer.updated": {
         const transfer = event.data.object as Stripe.Transfer;
+        if (!transfer.reversed) {
+          // Not a failure/reversal — ignore routine updates
+          break;
+        }
         const metadata = transfer.metadata ?? {};
 
-        logStep("Transfer failed", { transferId: transfer.id, amount: transfer.amount });
+        logStep("Transfer reversed/failed", { transferId: transfer.id, amount: transfer.amount, reversed: transfer.reversed });
 
         const entityType = metadata.sponsorship_id ? 'sponsorship' : 'collaboration';
         const transferEntityId = metadata.collaboration_id || metadata.sponsorship_id;
