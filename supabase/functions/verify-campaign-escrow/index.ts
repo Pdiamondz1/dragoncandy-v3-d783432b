@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { writePaymentEvent } from "../_shared/payment-events.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -128,6 +129,16 @@ serve(async (req) => {
       .eq('id', campaignId);
 
     if (updateError) throw new Error("Failed to update campaign status");
+
+    await writePaymentEvent(supabaseClient, {
+      event_type: 'escrow_held',
+      entity_type: 'collaboration',
+      entity_id: campaignId,
+      campaign_id: campaignId,
+      actor_id: user.id,
+      actor_role: 'business',
+      stripe_id: actualPaymentIntentId,
+    }, '[VERIFY-CAMPAIGN-ESCROW]');
 
     // Create collaboration from accepted application (using service role - no RLS issues)
     const { data: acceptedApp } = await supabaseClient
