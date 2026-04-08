@@ -50,15 +50,13 @@ serve(async (req) => {
 
   logStep("Event received", { type: event.type, id: event.id });
 
-  // Idempotency: check if this event was already processed
-  const { data: existingEvent } = await supabase
+  // Idempotency: attempt to claim this event via insert (PK prevents duplicates)
+  const { error: lockError } = await supabase
     .from('stripe_webhook_events')
-    .select('event_id, status')
-    .eq('event_id', event.id)
-    .single();
+    .insert({ event_id: event.id, event_type: event.type, status: 'processing' });
 
-  if (existingEvent?.status === 'processed') {
-    logStep("Event already processed, skipping", { eventId: event.id });
+  if (lockError?.code === '23505') { // unique_violation — already processing or processed
+    logStep("Event already processing or processed, skipping", { eventId: event.id });
     return new Response(JSON.stringify({ received: true, skipped: true }), {
       headers: { "Content-Type": "application/json" },
       status: 200,
@@ -272,10 +270,15 @@ serve(async (req) => {
         logStep("Refund processed", { chargeId: charge.id, amount: refundAmount });
 
         if (metadata.type === "campaign_escrow" && metadata.campaign_id) {
-          await supabase
+          const { error: refundError } = await supabase
             .from("campaigns")
             .update({ escrow_status: "refunded" })
             .eq("id", metadata.campaign_id);
+
+          if (refundError) {
+            logStep("ERROR: Failed to update campaign refund status", { campaignId: metadata.campaign_id, error: refundError.message });
+            return new Response("DB update failed", { status: 500 });
+          }
 
           await writePaymentEvent(supabase, {
             event_type: 'refund_completed',
@@ -290,10 +293,15 @@ serve(async (req) => {
         }
 
         if (metadata.sponsorship_id) {
-          await supabase
+          const { error: spRefundError } = await supabase
             .from("campaign_sponsorships")
             .update({ payment_status: "refunded" })
             .eq("id", metadata.sponsorship_id);
+
+          if (spRefundError) {
+            logStep("ERROR: Failed to update sponsorship refund status", { sponsorshipId: metadata.sponsorship_id, error: spRefundError.message });
+            return new Response("DB update failed", { status: 500 });
+          }
 
           await writePaymentEvent(supabase, {
             event_type: 'refund_completed',
@@ -312,20 +320,25 @@ serve(async (req) => {
       case "charge.dispute.created": {
         const dispute = event.data.object as Stripe.Dispute;
         const charge = dispute.charge as string;
-        const metadata = (dispute as any).metadata ?? {};
+        const metadata = dispute.metadata ?? {};
 
         logStep("Dispute created", { disputeId: dispute.id, chargeId: charge, amount: dispute.amount, reason: dispute.reason });
 
-        await writePaymentEvent(supabase, {
-          event_type: 'dispute_created',
-          entity_type: metadata.type === 'campaign_escrow' ? 'collaboration' : 'sponsorship',
-          entity_id: metadata.collaboration_id || metadata.sponsorship_id || dispute.id,
-          campaign_id: metadata.campaign_id || null,
-          actor_role: 'stripe',
-          amount_cents: dispute.amount,
-          stripe_id: dispute.id,
-          metadata: { reason: dispute.reason, status: dispute.status, charge_id: charge },
-        }, '[STRIPE-WEBHOOK]');
+        const disputeEntityId = metadata.collaboration_id || metadata.sponsorship_id;
+        if (disputeEntityId) {
+          await writePaymentEvent(supabase, {
+            event_type: 'dispute_created',
+            entity_type: metadata.type === 'campaign_escrow' ? 'collaboration' : 'sponsorship',
+            entity_id: disputeEntityId,
+            campaign_id: metadata.campaign_id || null,
+            actor_role: 'stripe',
+            amount_cents: dispute.amount,
+            stripe_id: dispute.id,
+            metadata: { reason: dispute.reason, status: dispute.status, charge_id: charge },
+          }, '[STRIPE-WEBHOOK]');
+        } else {
+          logStep("Dispute has no entity IDs in metadata — skipping ledger write", { disputeId: dispute.id });
+        }
 
         try {
           await supabase.functions.invoke('send-notification-email', {
@@ -350,18 +363,22 @@ serve(async (req) => {
         logStep("Transfer failed", { transferId: transfer.id, amount: transfer.amount });
 
         const entityType = metadata.sponsorship_id ? 'sponsorship' : 'collaboration';
-        const entityId = metadata.collaboration_id || metadata.sponsorship_id || transfer.id;
+        const transferEntityId = metadata.collaboration_id || metadata.sponsorship_id;
 
-        await writePaymentEvent(supabase, {
-          event_type: 'transfer_failed',
-          entity_type: entityType,
-          entity_id: entityId,
-          campaign_id: metadata.campaign_id || null,
-          actor_role: 'stripe',
-          amount_cents: transfer.amount,
-          stripe_id: transfer.id,
-          metadata: { failure_message: (transfer as any).failure_message },
-        }, '[STRIPE-WEBHOOK]');
+        if (transferEntityId) {
+          await writePaymentEvent(supabase, {
+            event_type: 'transfer_failed',
+            entity_type: entityType,
+            entity_id: transferEntityId,
+            campaign_id: metadata.campaign_id || null,
+            actor_role: 'stripe',
+            amount_cents: transfer.amount,
+            stripe_id: transfer.id,
+            metadata: { failure_message: (transfer as any).failure_message },
+          }, '[STRIPE-WEBHOOK]');
+        } else {
+          logStep("Transfer has no entity IDs in metadata — skipping ledger write", { transferId: transfer.id });
+        }
 
         if (metadata.collaboration_id) {
           const { data: collab } = await supabase
@@ -370,11 +387,15 @@ serve(async (req) => {
             .eq('id', metadata.collaboration_id)
             .single();
           if (collab) {
-            await supabase.rpc('increment_pending_balance', {
+            const { error: rpcError } = await supabase.rpc('increment_pending_balance', {
               p_user_id: collab.creator_id,
               p_amount: transfer.amount / 100,
               p_profile_type: 'creator',
             });
+            if (rpcError) {
+              logStep("ERROR: Failed to restore pending balance after transfer failure", { error: rpcError.message, userId: collab.creator_id });
+              return new Response("Balance restore failed", { status: 500 });
+            }
           }
         }
         break;
@@ -388,8 +409,9 @@ serve(async (req) => {
     // Record failed processing (allows retry)
     await supabase
       .from('stripe_webhook_events')
-      .upsert({ event_id: event.id, event_type: event.type, status: 'failed', error_message: String(err) })
-      .then(() => {}, () => {}); // Ignore upsert errors in error handler
+      .update({ status: 'failed', error_message: String(err) })
+      .eq('event_id', event.id)
+      .then(() => {}, () => {}); // Ignore update errors in error handler
     // Return 500 so Stripe retries
     return new Response(`Handler error: ${String(err)}`, { status: 500 });
   }
@@ -397,7 +419,8 @@ serve(async (req) => {
   // Record successful processing
   await supabase
     .from('stripe_webhook_events')
-    .upsert({ event_id: event.id, event_type: event.type, status: 'processed' });
+    .update({ status: 'processed' })
+    .eq('event_id', event.id);
 
   return new Response(JSON.stringify({ received: true }), {
     headers: { "Content-Type": "application/json" },

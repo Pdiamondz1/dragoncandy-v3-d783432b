@@ -61,7 +61,7 @@ CREATE TABLE IF NOT EXISTS stripe_webhook_events (
   event_id      TEXT PRIMARY KEY,
   event_type    TEXT NOT NULL,
   processed_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-  status        TEXT NOT NULL DEFAULT 'processed' CHECK (status IN ('processed', 'failed')),
+  status        TEXT NOT NULL DEFAULT 'processed' CHECK (status IN ('processing', 'processed', 'failed')),
   error_message TEXT
 );
 
