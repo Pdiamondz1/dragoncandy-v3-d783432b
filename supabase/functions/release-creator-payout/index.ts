@@ -33,13 +33,21 @@ serve(async (req) => {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) throw new Error("No authorization header provided");
 
-    const token = authHeader.replace("Bearer ", "");
-    const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
-    if (userError) throw new Error(`Authentication error: ${userError.message}`);
-    
-    const user = userData.user;
-    if (!user) throw new Error("User not authenticated");
-    logStep("User authenticated", { userId: user.id });
+    // Allow service-role calls (from auto-approve-content cron)
+    const token = authHeader!.replace("Bearer ", "");
+    const isServiceRole = token === Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+    let callerId: string | null = null;
+    if (isServiceRole) {
+      logStep("Service-role call (auto-approve)");
+    } else {
+      const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
+      if (userError) throw new Error(`Authentication error: ${userError.message}`);
+      const user = userData.user;
+      if (!user) throw new Error("User not authenticated");
+      callerId = user.id;
+      logStep("User authenticated", { userId: user.id });
+    }
 
     const { collaborationId } = await req.json();
     if (!collaborationId) {
@@ -61,8 +69,8 @@ serve(async (req) => {
       throw new Error(`Failed to fetch collaboration: ${collabError?.message}`);
     }
 
-    // Verify the user is the campaign owner
-    if (collaboration.campaign.user_id !== user.id) {
+    // Verify the user is the campaign owner (skip for service-role auto-approve)
+    if (callerId && collaboration.campaign.user_id !== callerId) {
       throw new Error("Only the campaign owner can release payments");
     }
 
@@ -134,7 +142,7 @@ serve(async (req) => {
         entity_type: 'collaboration',
         entity_id: collaborationId,
         campaign_id: campaign.id,
-        actor_id: user.id,
+        actor_id: callerId ?? undefined,
         actor_role: 'business',
       }, '[RELEASE-CREATOR-PAYOUT]');
 
@@ -143,7 +151,7 @@ serve(async (req) => {
         entity_type: 'collaboration',
         entity_id: collaborationId,
         campaign_id: campaign.id,
-        actor_id: user.id,
+        actor_id: callerId ?? undefined,
         actor_role: 'business',
         amount_cents: Math.round(creatorPayout * 100),
         stripe_id: transfer.id,
@@ -211,7 +219,7 @@ serve(async (req) => {
         entity_type: 'collaboration',
         entity_id: collaborationId,
         campaign_id: campaign.id,
-        actor_id: user.id,
+        actor_id: callerId ?? undefined,
         actor_role: 'business',
       }, '[RELEASE-CREATOR-PAYOUT]');
 

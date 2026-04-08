@@ -86,3 +86,6 @@ verify_jwt = false
 
 [functions.donny-oauth-userinfo]
 verify_jwt = false
+
+[functions.auto-approve-content]
+verify_jwt = false
