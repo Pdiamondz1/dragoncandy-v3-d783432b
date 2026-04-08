@@ -141,25 +141,25 @@ export type Database = {
       }
       brand_shortlists: {
         Row: {
-          id: string
           brand_id: string
-          creator_id: string
-          notes: string | null
           created_at: string
+          creator_id: string
+          id: string
+          notes: string | null
         }
         Insert: {
-          id?: string
           brand_id: string
-          creator_id: string
-          notes?: string | null
           created_at?: string
+          creator_id: string
+          id?: string
+          notes?: string | null
         }
         Update: {
-          id?: string
           brand_id?: string
-          creator_id?: string
-          notes?: string | null
           created_at?: string
+          creator_id?: string
+          id?: string
+          notes?: string | null
         }
         Relationships: [
           {
@@ -314,7 +314,6 @@ export type Database = {
           id: string
           intro_message: string | null
           proposed_rate: number | null
-          portfolio_url: string | null
           proposed_timeline: string | null
           restaurant_approval_status: string | null
           status: Database["public"]["Enums"]["application_status"]
@@ -328,7 +327,6 @@ export type Database = {
           final_approval_status?: string | null
           id?: string
           intro_message?: string | null
-          portfolio_url?: string | null
           proposed_rate?: number | null
           proposed_timeline?: string | null
           restaurant_approval_status?: string | null
@@ -343,7 +341,6 @@ export type Database = {
           final_approval_status?: string | null
           id?: string
           intro_message?: string | null
-          portfolio_url?: string | null
           proposed_rate?: number | null
           proposed_timeline?: string | null
           restaurant_approval_status?: string | null
@@ -760,35 +757,30 @@ export type Database = {
           ai_preview_status: string | null
           budget_max: number | null
           budget_min: number | null
-          campaign_type: string | null
+          campaign_deliverables: Json | null
+          campaign_media: Json | null
           content_source: string | null
           created_at: string
-          creator_count: number | null
           deadline: string | null
           deliverables: string[] | null
           delivery_fee: number | null
+          delivery_tier: string | null
           delivery_type: string | null
           description: string | null
           escrow_payment_intent_id: string | null
           escrow_status: string | null
-          exclusivity_days: number | null
+          estimated_creation_minutes: number | null
           fixed_price: number | null
-          geographic_scope: string | null
           goals: string | null
-          hashtag_requirements: string | null
           id: string
           open_for_sponsorship: boolean | null
-          per_creator_cap: number | null
           platforms: string[] | null
           pricing_type: string | null
           status: Database["public"]["Enums"]["campaign_status"]
           style: string | null
-          tagline: string | null
-          target_creator_personas: string[] | null
           title: string
           tone: string | null
           updated_at: string
-          usage_rights_days: number | null
           user_id: string
         }
         Insert: {
@@ -797,35 +789,30 @@ export type Database = {
           ai_preview_status?: string | null
           budget_max?: number | null
           budget_min?: number | null
-          campaign_type?: string | null
+          campaign_deliverables?: Json | null
+          campaign_media?: Json | null
           content_source?: string | null
           created_at?: string
-          creator_count?: number | null
           deadline?: string | null
           deliverables?: string[] | null
           delivery_fee?: number | null
+          delivery_tier?: string | null
           delivery_type?: string | null
           description?: string | null
           escrow_payment_intent_id?: string | null
           escrow_status?: string | null
-          exclusivity_days?: number | null
+          estimated_creation_minutes?: number | null
           fixed_price?: number | null
-          geographic_scope?: string | null
           goals?: string | null
-          hashtag_requirements?: string | null
           id?: string
           open_for_sponsorship?: boolean | null
-          per_creator_cap?: number | null
           platforms?: string[] | null
           pricing_type?: string | null
           status?: Database["public"]["Enums"]["campaign_status"]
           style?: string | null
-          tagline?: string | null
-          target_creator_personas?: string[] | null
           title: string
           tone?: string | null
           updated_at?: string
-          usage_rights_days?: number | null
           user_id: string
         }
         Update: {
@@ -834,35 +821,30 @@ export type Database = {
           ai_preview_status?: string | null
           budget_max?: number | null
           budget_min?: number | null
-          campaign_type?: string | null
+          campaign_deliverables?: Json | null
+          campaign_media?: Json | null
           content_source?: string | null
           created_at?: string
-          creator_count?: number | null
           deadline?: string | null
           deliverables?: string[] | null
           delivery_fee?: number | null
+          delivery_tier?: string | null
           delivery_type?: string | null
           description?: string | null
           escrow_payment_intent_id?: string | null
           escrow_status?: string | null
-          exclusivity_days?: number | null
+          estimated_creation_minutes?: number | null
           fixed_price?: number | null
-          geographic_scope?: string | null
           goals?: string | null
-          hashtag_requirements?: string | null
           id?: string
           open_for_sponsorship?: boolean | null
-          per_creator_cap?: number | null
           platforms?: string[] | null
           pricing_type?: string | null
           status?: Database["public"]["Enums"]["campaign_status"]
           style?: string | null
-          tagline?: string | null
-          target_creator_personas?: string[] | null
           title?: string
           tone?: string | null
           updated_at?: string
-          usage_rights_days?: number | null
           user_id?: string
         }
         Relationships: [
@@ -1212,6 +1194,72 @@ export type Database = {
             columns: ["conversation_id"]
             isOneToOne: false
             referencedRelation: "donny_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      donny_campaign_previews: {
+        Row: {
+          ai_prompt_used: string | null
+          campaign_id: string
+          created_at: string | null
+          description: string | null
+          generation_model: string | null
+          id: string
+          is_approved: boolean | null
+          media_url: string | null
+          preview_data: Json
+          preview_type: string
+          sort_order: number | null
+          title: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          ai_prompt_used?: string | null
+          campaign_id: string
+          created_at?: string | null
+          description?: string | null
+          generation_model?: string | null
+          id?: string
+          is_approved?: boolean | null
+          media_url?: string | null
+          preview_data?: Json
+          preview_type: string
+          sort_order?: number | null
+          title: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          ai_prompt_used?: string | null
+          campaign_id?: string
+          created_at?: string | null
+          description?: string | null
+          generation_model?: string | null
+          id?: string
+          is_approved?: boolean | null
+          media_url?: string | null
+          preview_data?: Json
+          preview_type?: string
+          sort_order?: number | null
+          title?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "donny_campaign_previews_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "donny_campaign_previews_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
