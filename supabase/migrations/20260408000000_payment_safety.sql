@@ -50,6 +50,7 @@ CREATE POLICY "Sponsorship participants can view payment events"
         AND (
           cs.brand_id IN (SELECT bp.id FROM business_profiles bp WHERE bp.user_id = auth.uid())
           OR cs.restaurant_id IN (SELECT bp.id FROM business_profiles bp WHERE bp.user_id = auth.uid())
+          OR cs.creator_id IN (SELECT cp.id FROM creator_profiles cp WHERE cp.user_id = auth.uid())
         )
       )
     )
@@ -63,6 +64,9 @@ CREATE TABLE IF NOT EXISTS stripe_webhook_events (
   status        TEXT NOT NULL DEFAULT 'processed' CHECK (status IN ('processed', 'failed')),
   error_message TEXT
 );
+
+ALTER TABLE stripe_webhook_events ENABLE ROW LEVEL SECURITY;
+-- No permissive policies: only service_role (edge functions) can read/write
 
 -- 3. Fix campaign-deliverables storage policy
 DROP POLICY IF EXISTS "Users can view campaign deliverables" ON storage.objects;
@@ -130,7 +134,14 @@ CREATE OR REPLACE FUNCTION increment_pending_balance(
 ) RETURNS NUMERIC AS $$
 DECLARE
   new_balance NUMERIC;
+  caller_role TEXT;
 BEGIN
+  -- Only callable from edge functions (service_role), not from client
+  caller_role := coalesce(current_setting('request.jwt.claims', true)::json->>'role', '');
+  IF caller_role != 'service_role' THEN
+    RAISE EXCEPTION 'increment_pending_balance is server-only';
+  END IF;
+
   IF p_profile_type = 'creator' THEN
     UPDATE creator_profiles
     SET pending_balance = COALESCE(pending_balance, 0) + p_amount
