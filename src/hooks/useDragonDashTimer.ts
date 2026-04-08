@@ -156,6 +156,15 @@ export const useDragonDashTimer = (collaborationId: string | null) => {
 
       if (error) throw error;
 
+      // Fire-and-forget: write payment event for content_started
+      supabase.rpc('insert_payment_event', {
+        p_event_type: 'content_started',
+        p_entity_type: 'collaboration',
+        p_entity_id: collaborationId,
+        p_campaign_id: collab.campaign?.id ?? '',
+        p_metadata: {},
+      }).catch(() => {});
+
       toast({
         title: "Timer Started!",
         description: `You have ${formatTimeRemaining(duration)} to complete this content.`,

@@ -79,6 +79,15 @@ export const QuickApprovalCard: React.FC<QuickApprovalCardProps> = ({
         });
 
       if (messageError) throw messageError;
+
+      // Fire-and-forget: write payment event for revision_requested
+      supabase.rpc('insert_payment_event', {
+        p_event_type: 'revision_requested',
+        p_entity_type: 'collaboration',
+        p_entity_id: collaborationId,
+        p_campaign_id: campaignId,
+        p_metadata: { notes: revisionFeedback, revision_number: (revisionCount || 0) + 1 },
+      }).catch(() => {});
     },
     onSuccess: () => {
       toast.success('Revision request sent to creator');

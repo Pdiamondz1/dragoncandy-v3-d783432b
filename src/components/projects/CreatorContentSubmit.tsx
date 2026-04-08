@@ -82,6 +82,8 @@ const CreatorContentSubmit: React.FC<CreatorContentSubmitProps> = ({
 
   const submitContent = useMutation({
     mutationFn: async () => {
+      const previousContentStatus = contentStatus;
+
       const { error } = await supabase
         .from('campaign_collaborations')
         .update({
@@ -91,6 +93,16 @@ const CreatorContentSubmit: React.FC<CreatorContentSubmitProps> = ({
         .eq('id', collaborationId);
 
       if (error) throw error;
+
+      // Fire-and-forget: write payment event for content_submitted or content_resubmitted
+      const eventType = previousContentStatus === 'revision_requested' ? 'content_resubmitted' : 'content_submitted';
+      supabase.rpc('insert_payment_event', {
+        p_event_type: eventType,
+        p_entity_type: 'collaboration',
+        p_entity_id: collaborationId,
+        p_campaign_id: campaignId,
+        p_metadata: {},
+      }).catch(() => {});
 
       // Notify the business
       const { data: collaboration } = await supabase
