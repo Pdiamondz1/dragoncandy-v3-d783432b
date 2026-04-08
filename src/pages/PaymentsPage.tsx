@@ -2,8 +2,8 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Wallet } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
-import { DashboardLayout } from "@/components/layout/DashboardLayout";
+import { useAuth } from "@/hooks/useAuth";
+import DashboardLayout from "@/components/DashboardLayout";
 import { PaymentTimeline } from "@/components/payments/PaymentTimeline";
 import { PaymentSummaryCards } from "@/components/payments/PaymentSummaryCards";
 import { usePaymentNotifications } from "@/hooks/usePaymentNotifications";
@@ -24,9 +24,9 @@ function getUserRole(role: string | undefined): UserRole {
 }
 
 export default function PaymentsPage() {
-  const { user, userRole } = useAuth();
+  const { user, profile } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>('active');
-  const role = getUserRole(userRole);
+  const role = getUserRole(profile?.role);
 
   const { data: allEvents = [], isLoading } = useQuery({
     queryKey: ['all-payment-events', user?.id],

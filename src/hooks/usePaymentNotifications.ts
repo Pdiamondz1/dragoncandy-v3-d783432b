@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/hooks/useAuth";
 import { getPaymentMessage, type UserRole } from "@/lib/paymentEducation";
 import type { PaymentEvent } from "@/hooks/usePaymentTimeline";
 
