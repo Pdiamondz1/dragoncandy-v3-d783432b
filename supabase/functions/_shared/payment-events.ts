@@ -4,7 +4,7 @@ export interface PaymentEvent {
   event_type: string;
   entity_type: 'collaboration' | 'sponsorship';
   entity_id: string;
-  campaign_id: string;
+  campaign_id: string | null;
   actor_id?: string;
   actor_role: 'business' | 'creator' | 'brand' | 'system' | 'stripe';
   amount_cents?: number;
