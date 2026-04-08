@@ -4,9 +4,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Star, MapPin, User } from 'lucide-react';
+import { Star, MapPin, User, Play } from 'lucide-react';
 import PublicProfileReviews from '@/components/profiles/PublicProfileReviews';
 import ContactCreatorModal from '@/components/creator-profile/ContactCreatorModal';
+import { PortfolioLightbox } from '@/components/creator-profile/PortfolioLightbox';
 import logo from '@/assets/Transparent_DragonCandy_logo.png';
 
 interface CreatorProfile {
@@ -65,6 +66,8 @@ const PublicCreatorProfile = () => {
   const [notFound, setNotFound] = useState(false);
   const [portfolioUrls, setPortfolioUrls] = useState<string[]>([]);
   const [projectsCount, setProjectsCount] = useState<number>(0);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -338,12 +341,18 @@ const PublicCreatorProfile = () => {
       <div className="px-4 pb-4">
         <h2 className="text-sm font-bold text-gray-900 mb-2">Portfolio</h2>
         {portfolioUrls.length > 0 ? (
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 md:gap-3 lg:gap-4">
             {portfolioUrls.map((url, index) => {
               const contentType = getContentType(url);
               const isVideo = contentType === 'Reel';
               return (
-                <div key={url} className="aspect-square rounded-xl overflow-hidden relative">
+                <button
+                  key={url}
+                  type="button"
+                  onClick={() => { setLightboxIndex(index); setLightboxOpen(true); }}
+                  className="aspect-square rounded-xl overflow-hidden relative group cursor-pointer focus:outline-none focus:ring-2 focus:ring-dc-teal focus:ring-offset-2"
+                  aria-label={`View ${contentType || 'portfolio item'} ${index + 1}`}
+                >
                   {isVideo ? (
                     <video
                       src={url}
@@ -358,24 +367,39 @@ const PublicCreatorProfile = () => {
                       alt={`Portfolio item ${index + 1}`}
                       className="w-full h-full object-cover"
                       onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = 'none';
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                        const parent = target.parentElement;
+                        if (parent && !parent.querySelector('.portfolio-error')) {
+                          const placeholder = document.createElement('div');
+                          placeholder.className = 'portfolio-error w-full h-full bg-gray-200 flex items-center justify-center';
+                          placeholder.innerHTML = '<span class="text-gray-400 text-xs text-center px-2">Unable to load</span>';
+                          parent.appendChild(placeholder);
+                        }
                       }}
                       loading="lazy"
+                      decoding="async"
                     />
                   )}
                   {contentType && (
-                    <span className="absolute top-1.5 left-1.5 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded font-semibold">
+                    <span className={`absolute top-1.5 left-1.5 text-white text-[10px] px-1.5 py-0.5 rounded font-semibold ${
+                      contentType === 'Photo' ? 'bg-dc-teal/80' :
+                      contentType === 'Reel' ? 'bg-dc-pink/80' :
+                      'bg-black/60'
+                    }`}>
                       {contentType}
                     </span>
                   )}
                   {isVideo && (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="w-8 h-8 rounded-full bg-white/80 flex items-center justify-center">
-                        <div className="w-0 h-0 border-t-[6px] border-t-transparent border-b-[6px] border-b-transparent border-l-[10px] border-l-gray-800 ml-0.5" />
+                    <div className="absolute bottom-2 right-2">
+                      <div className="w-7 h-7 rounded-full bg-white/80 flex items-center justify-center">
+                        <Play className="h-3.5 w-3.5 text-gray-800 ml-0.5" fill="currentColor" />
                       </div>
                     </div>
                   )}
-                </div>
+                  {/* Hover overlay */}
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
+                </button>
               );
             })}
           </div>
@@ -385,6 +409,28 @@ const PublicCreatorProfile = () => {
           </p>
         )}
       </div>
+
+      {/* Portfolio Lightbox */}
+      {portfolioUrls.length > 0 && profile && (
+        <PortfolioLightbox
+          items={portfolioUrls.map((url) => ({
+            url,
+            type: getContentType(url),
+          }))}
+          currentIndex={lightboxIndex}
+          isOpen={lightboxOpen}
+          onClose={() => setLightboxOpen(false)}
+          onIndexChange={setLightboxIndex}
+          creator={{
+            id: profile.id,
+            user_id: profile.user_id,
+            creator_name: profile.creator_name,
+            avatar_url: profile.avatar_url,
+            bio: profile.bio,
+            response_time: profile.response_time,
+          }}
+        />
+      )}
 
       {/* Reviews Section — only shown when reviews exist */}
       {(profile.total_reviews ?? 0) > 0 && (

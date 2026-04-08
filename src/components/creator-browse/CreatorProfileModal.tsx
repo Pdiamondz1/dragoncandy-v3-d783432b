@@ -28,8 +28,10 @@ import {
   Twitter,
   Youtube,
   TrendingUp,
+  Play,
 } from 'lucide-react';
 import ContactCreatorModal from '@/components/creator-profile/ContactCreatorModal';
+import { PortfolioLightbox } from '@/components/creator-profile/PortfolioLightbox';
 import PublicProfileReviews from '@/components/profiles/PublicProfileReviews';
 
 interface CreatorProfile {
@@ -67,6 +69,14 @@ interface CreatorProfileModalProps {
   onClose: () => void;
 }
 
+const getContentType = (url: string): 'Photo' | 'Reel' | null => {
+  const ext = url.split('.').pop()?.toLowerCase().split('?')[0];
+  if (!ext) return null;
+  if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) return 'Photo';
+  if (['mp4', 'mov', 'webm'].includes(ext)) return 'Reel';
+  return null;
+};
+
 const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
   creator,
   isOpen,
@@ -75,6 +85,8 @@ const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
   const [fullProfile, setFullProfile] = useState<CreatorProfile | null>(null);
   const [portfolioUrls, setPortfolioUrls] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
 
   useEffect(() => {
     if (!isOpen || !creator) return;
@@ -402,22 +414,74 @@ const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
               <div>
                 <h3 className="text-lg font-semibold mb-3">Portfolio</h3>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  {portfolioUrls.map((url, index) => (
-                    <a
-                      key={index}
-                      href={url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="aspect-square rounded-lg overflow-hidden hover:opacity-80 transition-opacity"
-                    >
-                      <img
-                        src={url}
-                        alt={`Portfolio ${index + 1}`}
-                        className="w-full h-full object-cover"
-                      />
-                    </a>
-                  ))}
+                  {portfolioUrls.map((url, index) => {
+                    const contentType = getContentType(url);
+                    const isVideo = contentType === 'Reel';
+                    return (
+                      <button
+                        key={index}
+                        type="button"
+                        onClick={() => { setLightboxIndex(index); setLightboxOpen(true); }}
+                        className="aspect-square rounded-lg overflow-hidden hover:opacity-80 transition-opacity relative group cursor-pointer focus:outline-none focus:ring-2 focus:ring-dc-teal"
+                        aria-label={`View ${contentType || 'portfolio item'} ${index + 1}`}
+                      >
+                        {isVideo ? (
+                          <video
+                            src={url}
+                            className="w-full h-full object-cover"
+                            muted
+                            playsInline
+                            preload="metadata"
+                          />
+                        ) : (
+                          <img
+                            src={url}
+                            alt={`Portfolio ${index + 1}`}
+                            className="w-full h-full object-cover"
+                            loading="lazy"
+                            decoding="async"
+                          />
+                        )}
+                        {contentType && (
+                          <span className={`absolute top-1.5 left-1.5 text-white text-[10px] px-1.5 py-0.5 rounded font-semibold ${
+                            contentType === 'Photo' ? 'bg-dc-teal/80' :
+                            contentType === 'Reel' ? 'bg-dc-pink/80' :
+                            'bg-black/60'
+                          }`}>
+                            {contentType}
+                          </span>
+                        )}
+                        {isVideo && (
+                          <div className="absolute bottom-2 right-2">
+                            <div className="w-7 h-7 rounded-full bg-white/80 flex items-center justify-center">
+                              <Play className="h-3.5 w-3.5 text-gray-800 ml-0.5" fill="currentColor" />
+                            </div>
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
+
+                {/* Portfolio Lightbox */}
+                <PortfolioLightbox
+                  items={portfolioUrls.map((url) => ({
+                    url,
+                    type: getContentType(url),
+                  }))}
+                  currentIndex={lightboxIndex}
+                  isOpen={lightboxOpen}
+                  onClose={() => setLightboxOpen(false)}
+                  onIndexChange={setLightboxIndex}
+                  creator={{
+                    id: profile.id,
+                    user_id: profile.user_id,
+                    creator_name: profile.creator_name,
+                    avatar_url: profile.avatar_url,
+                    bio: profile.bio,
+                    response_time: profile.response_time,
+                  }}
+                />
               </div>
             )}
 
