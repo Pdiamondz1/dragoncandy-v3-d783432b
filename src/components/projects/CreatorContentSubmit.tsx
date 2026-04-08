@@ -64,11 +64,18 @@ const CreatorContentSubmit: React.FC<CreatorContentSubmitProps> = ({
           canSubmit: true 
         };
       case 'approved':
-        return { 
-          label: 'Approved', 
-          variant: 'default' as const, 
-          icon: CheckCircle2, 
-          canSubmit: false 
+        return {
+          label: 'Approved',
+          variant: 'default' as const,
+          icon: CheckCircle2,
+          canSubmit: false
+        };
+      case 'rejected':
+        return {
+          label: 'Rejected',
+          variant: 'destructive' as const,
+          icon: AlertCircle,
+          canSubmit: false
         };
       default:
         return { 
@@ -146,6 +153,22 @@ const CreatorContentSubmit: React.FC<CreatorContentSubmitProps> = ({
             <div>
               <p className="font-semibold">Content Approved!</p>
               <p className="text-sm opacity-80">Your payment will be processed shortly</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (contentStatus === 'rejected') {
+    return (
+      <Card className="border-red-200 bg-red-50 dark:bg-red-950/20">
+        <CardContent className="pt-6">
+          <div className="flex items-center gap-3 text-red-700 dark:text-red-400">
+            <AlertCircle className="h-6 w-6" />
+            <div>
+              <p className="font-semibold">Content Not Accepted</p>
+              <p className="text-sm opacity-80">The business did not accept the content. This project has been cancelled.</p>
             </div>
           </div>
         </CardContent>
