@@ -4,15 +4,26 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { 
-  CheckCircle2, 
-  RotateCcw, 
-  Clock, 
-  FileCheck, 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
+  CheckCircle2,
+  RotateCcw,
+  Clock,
+  FileCheck,
   AlertCircle,
   Loader2,
   Send,
-  Eye
+  Eye,
+  XCircle
 } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -42,6 +53,9 @@ const ContentApprovalPanel: React.FC<ContentApprovalPanelProps> = ({
   const queryClient = useQueryClient();
   const [revisionFeedback, setRevisionFeedback] = useState('');
   const [showRevisionForm, setShowRevisionForm] = useState(false);
+  const [showRejectForm, setShowRejectForm] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
+  const [showRejectConfirm, setShowRejectConfirm] = useState(false);
 
   const getStatusConfig = (status: string | null) => {
     switch (status) {
@@ -74,11 +88,18 @@ const ContentApprovalPanel: React.FC<ContentApprovalPanelProps> = ({
           description: 'Waiting for creator to make changes' 
         };
       case 'approved':
-        return { 
-          label: 'Approved', 
-          variant: 'default' as const, 
-          icon: CheckCircle2, 
-          description: 'Content has been approved' 
+        return {
+          label: 'Approved',
+          variant: 'default' as const,
+          icon: CheckCircle2,
+          description: 'Content has been approved'
+        };
+      case 'rejected':
+        return {
+          label: 'Rejected',
+          variant: 'destructive' as const,
+          icon: XCircle,
+          description: 'Content was rejected. Refund initiated.'
         };
       default:
         return { 
@@ -155,6 +176,26 @@ const ContentApprovalPanel: React.FC<ContentApprovalPanelProps> = ({
     },
     onError: (error: Error) => {
       toast.error(`Failed to request revision: ${error.message}`);
+    }
+  });
+
+  const rejectContent = useMutation({
+    mutationFn: async (reason: string) => {
+      const { data, error } = await supabase.functions.invoke('refund-campaign-escrow', {
+        body: { collaborationId, reason }
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      toast.success('Content rejected. Refund initiated.');
+      setRejectReason('');
+      setShowRejectForm(false);
+      queryClient.invalidateQueries({ queryKey: ['business-projects'] });
+      queryClient.invalidateQueries({ queryKey: ['collaboration'] });
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to reject content: ${error.message}`);
     }
   });
 
@@ -284,6 +325,70 @@ const ContentApprovalPanel: React.FC<ContentApprovalPanelProps> = ({
                   Maximum revisions ({MAX_REVISIONS}) reached. You can only approve the content now.
                 </AlertDescription>
               </Alert>
+            )}
+
+            {/* Reject Button — always available when submitted */}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-red-500 hover:text-red-700 hover:bg-red-50 mt-2"
+              onClick={() => setShowRejectForm(true)}
+            >
+              <XCircle className="h-4 w-4 mr-2" />
+              Reject & Refund
+            </Button>
+
+            {/* Reject Form */}
+            {showRejectForm && (
+              <div className="space-y-3 border-t pt-3 mt-2">
+                <p className="text-sm font-medium text-red-600">This will cancel the project and refund your payment.</p>
+                <Textarea
+                  placeholder="Explain why you're rejecting this content (required)..."
+                  value={rejectReason}
+                  onChange={(e) => setRejectReason(e.target.value)}
+                  rows={3}
+                />
+                <div className="flex gap-2">
+                  <AlertDialog open={showRejectConfirm} onOpenChange={setShowRejectConfirm}>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      disabled={!rejectReason.trim()}
+                      onClick={() => setShowRejectConfirm(true)}
+                    >
+                      Confirm Rejection
+                    </Button>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Reject Content & Request Refund?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This will permanently cancel the project, reject the creator's work, and initiate a refund to your payment method. This action cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          className="bg-red-600 hover:bg-red-700"
+                          onClick={() => rejectContent.mutate(rejectReason)}
+                          disabled={rejectContent.isPending}
+                        >
+                          {rejectContent.isPending ? 'Rejecting...' : 'Yes, Reject & Refund'}
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setShowRejectForm(false);
+                      setRejectReason('');
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
             )}
           </>
         )}

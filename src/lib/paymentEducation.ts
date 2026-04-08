@@ -6,7 +6,7 @@ export interface PaymentMessage {
 
 export type PaymentEventType =
   | 'escrow_authorized' | 'escrow_held' | 'escrow_failed' | 'escrow_expired'
-  | 'content_started' | 'content_submitted' | 'revision_requested' | 'content_resubmitted' | 'content_approved'
+  | 'content_started' | 'content_submitted' | 'revision_requested' | 'content_resubmitted' | 'content_approved' | 'content_rejected'
   | 'payment_released' | 'transfer_created' | 'transfer_failed' | 'payout_completed' | 'payout_pending_wallet'
   | 'sponsorship_paid'
   | 'refund_initiated' | 'refund_completed' | 'dispute_created' | 'dispute_resolved';
@@ -53,6 +53,14 @@ const businessMessages: Partial<Record<PaymentEventType, PaymentMessage>> = {
   content_approved: {
     title: "Content Approved",
     description: "You approved the content. The creator's payment is being processed now.",
+  },
+  content_rejected: {
+    title: "Content Rejected",
+    description: "You rejected the content and a refund has been initiated. Funds will be returned within 5-10 business days.",
+  },
+  refund_initiated: {
+    title: "Refund Processing",
+    description: "Your refund is being processed by Stripe. It will appear on your statement within 5-10 business days.",
   },
   payment_released: {
     title: "Payment Released",
@@ -113,6 +121,14 @@ const creatorMessages: Partial<Record<PaymentEventType, PaymentMessage>> = {
   content_approved: {
     title: "Content Approved!",
     description: "Great work! Your content has been approved and payment is on its way.",
+  },
+  content_rejected: {
+    title: "Content Not Accepted",
+    description: "The business did not accept your content for this project. The project has been cancelled.",
+  },
+  refund_initiated: {
+    title: "Project Cancelled",
+    description: "This project has been cancelled and the business has been refunded.",
   },
   payment_released: {
     title: "Getting Paid",

@@ -9,6 +9,7 @@ import {
   Send,
   FileCheck,
   AlertCircle,
+  XCircle,
 } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -156,6 +157,16 @@ export const QuickApprovalCard: React.FC<QuickApprovalCardProps> = ({
               Max revisions reached
             </div>
           )}
+
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-red-400 hover:text-red-600 text-xs"
+            onClick={() => window.location.href = `/dashboard/project/${collaborationId}`}
+          >
+            <XCircle className="h-3 w-3 mr-1" />
+            Reject
+          </Button>
         </div>
       ) : (
         <div className="space-y-2">
