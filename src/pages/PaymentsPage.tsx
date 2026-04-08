@@ -6,6 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { PaymentTimeline } from "@/components/payments/PaymentTimeline";
 import { PaymentSummaryCards } from "@/components/payments/PaymentSummaryCards";
+import { usePaymentNotifications } from "@/hooks/usePaymentNotifications";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import type { PaymentEvent } from "@/hooks/usePaymentTimeline";
@@ -41,6 +42,8 @@ export default function PaymentsPage() {
     refetchOnWindowFocus: true,
     refetchInterval: 30000,
   });
+
+  usePaymentNotifications(allEvents, role);
 
   // Group events by entity
   const entityMap = new Map<string, { entityType: 'collaboration' | 'sponsorship'; entityId: string; campaignId: string; events: PaymentEvent[] }>();

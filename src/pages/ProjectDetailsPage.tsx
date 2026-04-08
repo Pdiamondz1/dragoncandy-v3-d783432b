@@ -17,6 +17,8 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useCollaboration } from '@/hooks/useCollaboration';
+import { usePaymentTimeline } from '@/hooks/usePaymentTimeline';
+import { usePaymentNotifications } from '@/hooks/usePaymentNotifications';
 import ContentApprovalPanel from '@/components/projects/ContentApprovalPanel';
 import CreatorContentSubmit from '@/components/projects/CreatorContentSubmit';
 import CreatorPayoutBanner from '@/components/projects/CreatorPayoutBanner';
@@ -35,6 +37,8 @@ const ProjectDetailsPage: React.FC = () => {
   const { data: collaboration, isLoading, error } = useCollaboration(id!);
   const { data: files } = useFileUploads(collaboration?.campaign_id, 'deliverable');
   const { timerData, startContentCreation } = useDragonDashTimer(id || null);
+  const { data: timelineEvents } = usePaymentTimeline('collaboration', id);
+  usePaymentNotifications(timelineEvents, isCreator ? 'creator' : 'business');
 
   const isBusinessClient = profile?.role === 'business_client';
   const isCreator = profile?.role === 'content_creator';
