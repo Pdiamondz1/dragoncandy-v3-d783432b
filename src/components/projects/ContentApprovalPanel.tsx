@@ -13,6 +13,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import {
   CheckCircle2,
@@ -249,23 +250,44 @@ const ContentApprovalPanel: React.FC<ContentApprovalPanelProps> = ({
           <>
             {!showRevisionForm ? (
               <div className="flex gap-3">
-                <Button
-                  onClick={() => approveContent.mutate()}
-                  disabled={approveContent.isPending}
-                  className="flex-1 bg-green-600 hover:bg-green-700"
-                >
-                  {approveContent.isPending ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Approving...
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle2 className="h-4 w-4 mr-2" />
-                      Approve & Release Payment
-                    </>
-                  )}
-                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      disabled={approveContent.isPending}
+                      className="flex-1 bg-green-600 hover:bg-green-700"
+                    >
+                      {approveContent.isPending ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Approving...
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle2 className="h-4 w-4 mr-2" />
+                          Approve & Release Payment
+                        </>
+                      )}
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Approve Content & Release Payment?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will release payment to the creator immediately. This action cannot be undone. Make sure you're satisfied with the delivered content.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        className="bg-green-600 hover:bg-green-700"
+                        onClick={() => approveContent.mutate()}
+                        disabled={approveContent.isPending}
+                      >
+                        Yes, Approve & Pay
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
                 
                 {canRequestRevision && (
                   <Button

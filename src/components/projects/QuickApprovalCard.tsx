@@ -3,6 +3,17 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import {
   CheckCircle2,
   RotateCcw,
   Loader2,
@@ -121,24 +132,44 @@ export const QuickApprovalCard: React.FC<QuickApprovalCardProps> = ({
 
       {!showRevisionInput ? (
         <div className="flex gap-2">
-          <Button
-            onClick={() => approveContent.mutate()}
-            disabled={approveContent.isPending}
-            size="sm"
-            className="bg-green-600 hover:bg-green-700 text-white"
-          >
-            {approveContent.isPending ? (
-              <>
-                <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                Approving...
-              </>
-            ) : (
-              <>
-                <CheckCircle2 className="h-3 w-3 mr-1" />
-                Approve & Pay
-              </>
-            )}
-          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                disabled={approveContent.isPending}
+                size="sm"
+                className="bg-green-600 hover:bg-green-700 text-white"
+              >
+                {approveContent.isPending ? (
+                  <>
+                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                    Approving...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="h-3 w-3 mr-1" />
+                    Approve & Pay
+                  </>
+                )}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Release payment to creator?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will approve the content and release payment immediately. This cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  className="bg-green-600 hover:bg-green-700"
+                  onClick={() => approveContent.mutate()}
+                >
+                  Yes, Approve & Pay
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
 
           {canRequestRevision && (
             <Button
