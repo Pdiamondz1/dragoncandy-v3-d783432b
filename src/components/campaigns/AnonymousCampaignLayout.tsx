@@ -63,7 +63,7 @@ export const AnonymousCampaignLayout: React.FC<AnonymousCampaignLayoutProps> = (
         </header>
 
         {/* Main Content */}
-        <main className="flex-1 px-4 sm:px-6 lg:px-8">
+        <main className="flex-1 px-4 sm:px-6 lg:px-8 max-w-full overflow-x-hidden">
           {children}
         </main>
 

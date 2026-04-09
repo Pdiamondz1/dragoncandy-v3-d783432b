@@ -29,7 +29,7 @@ const CampaignWizardHeader: React.FC<CampaignWizardHeaderProps> = ({
       {/* Progress Steps */}
       <div className="mb-8 overflow-hidden">
         <div className="overflow-x-auto scrollbar-hide pb-1">
-          <div className="flex items-center w-max px-1 gap-0">
+          <div className="flex items-center justify-center w-full px-1 gap-0">
             {steps.map((step, index) => (
               <div key={step.number} className="flex items-center">
                 <div className="flex flex-col items-center" style={{ width: '48px' }}>

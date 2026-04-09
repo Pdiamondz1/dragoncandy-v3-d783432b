@@ -88,12 +88,12 @@ const PlatformSelector: React.FC<PlatformSelectorProps> = ({
           )}
         </div>
         
-        <div className="flex gap-2">
+        <div className="flex gap-2 w-full">
           <Input
             value={customPlatform}
             onChange={(e) => setCustomPlatform(e.target.value)}
             placeholder="Add custom platform"
-            className="flex-1"
+            className="flex-1 min-w-0"
             onKeyPress={(e) => {
               if (e.key === 'Enter') {
                 e.preventDefault();
