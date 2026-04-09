@@ -145,6 +145,8 @@ export const CreatorCard: React.FC<CreatorCardProps> = ({ creator }) => {
               src={thumbnailUrl}
               alt={creator.creator_name}
               className="w-full h-full object-cover"
+              loading="lazy"
+              onError={() => setThumbnailUrl(null)}
             />
           ) : (
             <div className="w-full h-full bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center">

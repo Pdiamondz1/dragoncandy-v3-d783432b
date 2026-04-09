@@ -24,6 +24,33 @@ interface ResolvedCreator {
   avatarUrl: string | null;
 }
 
+const ShortlistAvatar: React.FC<{ url: string | null; name: string; size: 'sm' | 'md' }> = ({ url, name, size }) => {
+  const [failed, setFailed] = useState(false);
+  const initials = name.split(' ').map((w) => w[0]).filter(Boolean).join('').toUpperCase().slice(0, 2) || '?';
+
+  if (size === 'sm') {
+    return (url && !failed) ? (
+      <img src={url} alt="" className="w-full h-full object-cover" loading="lazy" onError={() => setFailed(true)} />
+    ) : (
+      <span className="text-teal-600 text-xs font-bold">{initials[0]}</span>
+    );
+  }
+
+  return (url && !failed) ? (
+    <img
+      src={url}
+      alt={name}
+      className="w-10 h-10 rounded-full ring-2 ring-teal-400 object-cover flex-shrink-0"
+      loading="lazy"
+      onError={() => setFailed(true)}
+    />
+  ) : (
+    <div className="w-10 h-10 rounded-full ring-2 ring-teal-400 bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center flex-shrink-0">
+      <span className="text-white text-xs font-bold">{initials}</span>
+    </div>
+  );
+};
+
 export const ShortlistDrawer: React.FC<ShortlistDrawerProps> = ({
   shortlist,
   creators,
@@ -97,13 +124,7 @@ export const ShortlistDrawer: React.FC<ShortlistDrawerProps> = ({
                     key={rc.creator.id}
                     className="w-8 h-8 rounded-full border-2 border-white bg-teal-100 flex items-center justify-center overflow-hidden"
                   >
-                    {rc.avatarUrl ? (
-                      <img src={rc.avatarUrl} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                      <span className="text-teal-600 text-xs font-bold">
-                        {(rc.creator.creator_name || '?')[0]}
-                      </span>
-                    )}
+                    <ShortlistAvatar url={rc.avatarUrl} name={rc.creator.creator_name} size="sm" />
                   </div>
                 ))}
               </div>
@@ -138,19 +159,7 @@ export const ShortlistDrawer: React.FC<ShortlistDrawerProps> = ({
                     key={rc.creator.id}
                     className="flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-gray-50"
                   >
-                    {rc.avatarUrl ? (
-                      <img
-                        src={rc.avatarUrl}
-                        alt={rc.creator.creator_name}
-                        className="w-10 h-10 rounded-full ring-2 ring-teal-400 object-cover flex-shrink-0"
-                      />
-                    ) : (
-                      <div className="w-10 h-10 rounded-full ring-2 ring-teal-400 bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center flex-shrink-0">
-                        <span className="text-white text-xs font-bold">
-                          {rc.creator.creator_name.split(' ').map((w) => w[0]).join('').slice(0, 2)}
-                        </span>
-                      </div>
-                    )}
+                    <ShortlistAvatar url={rc.avatarUrl} name={rc.creator.creator_name} size="md" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-gray-900 truncate">
                         {rc.creator.creator_name}

@@ -75,6 +75,8 @@ export const BrandCreatorCard: React.FC<BrandCreatorCardProps> = ({
                 src={avatarUrl}
                 alt={creator.creator_name}
                 className="w-12 h-12 rounded-full ring-2 ring-teal-400 object-cover flex-shrink-0"
+                loading="lazy"
+                onError={() => setAvatarUrl(null)}
               />
             ) : (
               <div className="w-12 h-12 rounded-full ring-2 ring-teal-400 bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center flex-shrink-0">
