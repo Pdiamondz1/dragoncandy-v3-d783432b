@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
+import { cleanupCampaignMedia } from '@/lib/cleanupCampaignMedia';
 import type { Campaign } from './useCampaignQueries';
 
 export interface CreateCampaignData {
@@ -337,8 +338,15 @@ export const useUpdateCampaign = () => {
         } catch (error) {
           console.error('Failed to send campaign status update email:', error);
         }
+
+        // Clean up temporary reference media when campaign reaches terminal status
+        if (data.status === 'completed' || data.status === 'cancelled') {
+          cleanupCampaignMedia(data.id).catch((err) => {
+            console.error('Campaign media cleanup failed (non-blocking):', err);
+          });
+        }
       }
-      
+
       toast({
         title: 'Campaign updated successfully!',
         description: `"${data.title}" has been updated.${

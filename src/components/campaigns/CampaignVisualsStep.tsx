@@ -57,6 +57,9 @@ export function CampaignVisualsStep({
           existingFiles={referenceMedia}
           uploadProgress={uploadProgress}
         />
+        <p className="text-xs text-gray-400 mt-1">
+          Reference media is used during campaign creation and will be removed after the campaign completes. Delivered content from creators is kept permanently.
+        </p>
       </div>
 
       {/* Section B — Raw Footage Toggle */}
