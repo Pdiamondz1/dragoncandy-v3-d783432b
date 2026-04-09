@@ -105,8 +105,8 @@ export const PortfolioLightbox: React.FC<PortfolioLightboxProps> = ({
                 key={item.url}
                 src={item.url}
                 controls
-                autoPlay
                 playsInline
+                preload="metadata"
                 className="max-w-full max-h-[85vh] object-contain"
               />
             ) : (

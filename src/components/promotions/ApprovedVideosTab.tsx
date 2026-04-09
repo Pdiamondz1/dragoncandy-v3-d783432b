@@ -150,10 +150,11 @@ const VideoCard: React.FC<VideoCardProps> = ({ submission }) => {
             {isLoadingUrl ? (
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             ) : resolvedUrl ? (
-              <video 
-                src={resolvedUrl} 
-                controls 
-                autoPlay
+              <video
+                src={resolvedUrl}
+                controls
+                playsInline
+                preload="metadata"
                 className="w-full h-full object-contain"
               />
             ) : (

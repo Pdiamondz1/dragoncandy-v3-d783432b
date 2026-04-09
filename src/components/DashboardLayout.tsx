@@ -39,6 +39,7 @@ import { useAIChatModal } from '@/contexts/AIChatModalContext';
 import { MobileBottomNav } from '@/components/MobileBottomNav';
 import { MobileTopNav } from '@/components/MobileTopNav';
 import { DesktopGate } from '@/components/DesktopGate';
+import ErrorBoundary from '@/components/ErrorBoundary';
 import type { UserRole } from '@/types/user';
 import { getSidebarNav, getSettingsHref, getDashboardLabel } from '@/lib/navConfig';
 
@@ -253,7 +254,9 @@ const DashboardLayoutInner: React.FC<DashboardLayoutProps> = ({ children, userRo
           )}
 
           <main className={`${isMobile ? 'flex-1 min-h-screen overflow-x-hidden pb-24 w-full min-w-0 max-w-[100vw]' : 'flex-1 p-6 lg:p-8'} animate-fade-in`}>
-            {children}
+            <ErrorBoundary level="page">
+              {children}
+            </ErrorBoundary>
           </main>
         </SidebarInset>
 

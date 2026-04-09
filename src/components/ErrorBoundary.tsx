@@ -1,8 +1,11 @@
 
-import React, { Component, ReactNode } from 'react';
+import React, { Component, ErrorInfo, ReactNode } from 'react';
 
 interface Props {
   children: ReactNode;
+  fallback?: ReactNode;
+  onError?: (error: Error, errorInfo: ErrorInfo) => void;
+  level?: 'page' | 'section' | 'widget';
 }
 
 interface State {
@@ -17,62 +20,69 @@ class ErrorBoundary extends Component<Props, State> {
   }
 
   static getDerivedStateFromError(error: Error): State {
-    console.error('🚨 ErrorBoundary: Caught error:', error);
+    console.error('[ErrorBoundary] Caught error:', error);
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('🚨 ErrorBoundary: Component error details:', {
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error('[ErrorBoundary] Component error details:', {
       error: error.message,
       stack: error.stack,
-      errorInfo
+      componentStack: errorInfo.componentStack,
     });
+    this.props.onError?.(error, errorInfo);
   }
+
+  handleRetry = () => {
+    this.setState({ hasError: false, error: undefined });
+  };
 
   render() {
     if (this.state.hasError) {
+      if (this.props.fallback) return this.props.fallback;
+
+      const isPage = !this.props.level || this.props.level === 'page';
+
       return (
-        <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
-          <div className="text-center space-y-4 max-w-md p-6">
-            <div className="text-2xl font-bold text-pink-600">DragonCandy</div>
-            <div className="text-xl font-medium text-gray-800">Something went wrong</div>
-            <div className="text-gray-600">
-              Refresh to try again.
+        <div className={`flex flex-col items-center justify-center ${
+          isPage ? 'min-h-screen bg-gray-50' : 'min-h-[200px]'
+        } p-6 text-center`}>
+          <div className="max-w-md space-y-4">
+            {isPage && (
+              <div className="text-2xl font-bold text-pink-600">DragonCandy</div>
+            )}
+            <div className={isPage ? 'text-xl font-medium text-gray-800' : 'text-lg font-semibold text-gray-900'}>
+              {isPage ? 'Something went wrong' : 'This section had an issue'}
             </div>
+            <p className="text-sm text-gray-500">
+              {isPage
+                ? "We hit a bump. Let's try that again."
+                : "This part couldn't load properly."}
+            </p>
             {this.state.error && (
-              <details className="mt-4 p-4 bg-gray-100 rounded-lg text-left text-sm">
+              <details className="p-4 bg-gray-100 rounded-lg text-left text-sm">
                 <summary className="cursor-pointer font-medium">Error Details</summary>
                 <div className="mt-2 text-gray-700">
                   <div className="font-medium">Message:</div>
                   <div className="mb-2">{this.state.error.message}</div>
-                  {this.state.error.stack && (
-                    <>
-                      <div className="font-medium">Stack:</div>
-                      <pre className="text-xs overflow-auto max-h-32">
-                        {this.state.error.stack}
-                      </pre>
-                    </>
-                  )}
                 </div>
               </details>
             )}
-            {/* TODO: integrate Sentry error reporting */}
             <div className="space-y-2">
               <button
-                onClick={() => window.location.reload()}
-                className="block w-full px-4 py-2 bg-[#4DD9C0] text-white rounded-full font-bold hover:bg-[#3ec4ac] transition-colors"
+                onClick={this.handleRetry}
+                className="block w-full px-6 py-2.5 bg-[#4DD9C0] text-white rounded-full font-bold hover:bg-[#3ec4ac] transition-colors"
               >
-                Refresh
+                Try Again
               </button>
-              <button
-                onClick={() => {
-                  this.setState({ hasError: false, error: undefined });
-                  window.location.href = '/landing';
-                }}
-                className="block w-full px-4 py-2 bg-gray-600 text-white rounded-full hover:bg-gray-700 transition-colors"
-              >
-                Go to Landing Page
-              </button>
+              {isPage && (
+                <button
+                  onClick={() => { window.location.href = '/dashboard'; }}
+                  className="block w-full text-sm text-gray-400 hover:text-gray-600 underline"
+                >
+                  Go to Dashboard
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -83,4 +93,5 @@ class ErrorBoundary extends Component<Props, State> {
   }
 }
 
+export { ErrorBoundary };
 export default ErrorBoundary;

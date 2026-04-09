@@ -111,12 +111,13 @@ export const CreatorCard: React.FC<CreatorCardProps> = ({ creator }) => {
   const locationStr = [creator.city, creator.country].filter(Boolean).join(', ');
 
   // Creator initials for fallback
-  const initials = creator.creator_name
+  const initials = (creator.creator_name || '?')
     .split(' ')
     .map(w => w[0])
+    .filter(Boolean)
     .join('')
     .toUpperCase()
-    .slice(0, 2);
+    .slice(0, 2) || '?';
 
   // Skills display: first 2 + overflow
   const visibleSkills = (creator.skills ?? []).slice(0, 2);
@@ -165,7 +166,7 @@ export const CreatorCard: React.FC<CreatorCardProps> = ({ creator }) => {
         <div className="p-3 flex-1 flex flex-col justify-center min-w-0">
           {/* Name + Rating */}
           <div className="flex items-center gap-1.5 mb-0.5">
-            <span className="font-bold text-gray-900 text-sm truncate">{creator.creator_name}</span>
+            <span className="font-bold text-gray-900 text-sm truncate">{creator.creator_name || 'Unknown Creator'}</span>
             {creator.average_rating != null && (
               <span className="text-yellow-400 text-xs flex-shrink-0">★ {creator.average_rating.toFixed(1)}</span>
             )}

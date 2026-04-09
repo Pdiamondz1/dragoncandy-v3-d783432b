@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
+import ErrorBoundary from '@/components/ErrorBoundary';
 import { CreatorBrowseHeader } from '@/components/creator-browse/CreatorBrowseHeader';
 import { CreatorBrowseContent } from '@/components/creator-browse/CreatorBrowseContent';
 import { useCreatorBrowse } from '@/hooks/useCreatorBrowse';
 
-const CreatorBrowse: React.FC = () => {
+const CreatorBrowseInner: React.FC = () => {
   const {
     filteredCreators,
     filters,
@@ -68,5 +69,11 @@ const CreatorBrowse: React.FC = () => {
     </DashboardLayout>
   );
 };
+
+const CreatorBrowse: React.FC = () => (
+  <ErrorBoundary level="page">
+    <CreatorBrowseInner />
+  </ErrorBoundary>
+);
 
 export default CreatorBrowse;
