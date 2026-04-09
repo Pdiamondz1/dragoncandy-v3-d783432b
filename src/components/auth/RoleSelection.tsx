@@ -72,12 +72,12 @@ export const RoleSelection = ({ onSelectRole, onBackToLogin }: RoleSelectionProp
         </button>
 
         {/* Back to login */}
-        <div className="mt-6 text-center text-sm">
-          <span className="text-white/70">Already have an account? </span>
+        <div className="mt-8 mb-6 text-center text-base md:text-lg">
+          <span className="text-white/80">Already have an account?{' '}</span>
           <button
             type="button"
             onClick={onBackToLogin}
-            className="text-dc-teal font-semibold hover:underline"
+            className="text-white font-semibold underline underline-offset-2 hover:text-dc-teal transition-colors py-2 px-1"
           >
             Log in
           </button>
