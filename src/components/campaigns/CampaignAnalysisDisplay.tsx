@@ -9,7 +9,7 @@ import {
   Palette,
   MessageSquare,
   CheckSquare,
-  DollarSign,
+
   Edit,
   ArrowRight,
   Lightbulb,
@@ -151,7 +151,7 @@ const CampaignAnalysisDisplay: React.FC<CampaignAnalysisDisplayProps> = ({
       </div>
 
       {/* Timeline & Budget */}
-      {(analysis.timeline_recommendations || analysis.budget_recommendations) && (
+      {analysis.timeline_recommendations && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {analysis.timeline_recommendations && (
             <Card>
@@ -171,24 +171,6 @@ const CampaignAnalysisDisplay: React.FC<CampaignAnalysisDisplayProps> = ({
             </Card>
           )}
 
-          {analysis.budget_recommendations && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <DollarSign className="h-5 w-5 text-green-500" />
-                  Budget Recommendations
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <div className="text-lg font-semibold">
-                    ${analysis.budget_recommendations.min} - ${analysis.budget_recommendations.max}
-                  </div>
-                  <p className="text-sm text-muted-foreground">{analysis.budget_recommendations.reasoning}</p>
-                </div>
-              </CardContent>
-            </Card>
-          )}
         </div>
       )}
 
