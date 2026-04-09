@@ -135,11 +135,14 @@ const PricingTypeSelector: React.FC<PricingTypeSelectorProps> = ({
             <div className="relative">
               <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                type="number"
-                min="50"
-                step="25"
-                value={fixedPrice}
-                onChange={(e) => onFixedPriceChange(Number(e.target.value))}
+                type="text"
+                inputMode="numeric"
+                value={fixedPrice === 0 ? '' : String(fixedPrice)}
+                onChange={(e) => {
+                  const raw = e.target.value.replace(/[^0-9]/g, '');
+                  const cleaned = raw.replace(/^0+/, '') || '';
+                  onFixedPriceChange(cleaned === '' ? 0 : Number(cleaned));
+                }}
                 className="pl-9 text-lg font-semibold"
                 placeholder="Enter payout amount"
               />
