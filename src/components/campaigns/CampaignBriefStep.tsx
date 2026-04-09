@@ -44,18 +44,18 @@ const CampaignBriefStep: React.FC<CampaignBriefStepProps> = ({
       <Card>
         <CardHeader>
           <CardTitle>Step 1: Describe Your Campaign Goal</CardTitle>
-          <p className="text-gray-600 text-sm">Tell DragonCandy AI about your campaign vision</p>
+          <p className="text-gray-600 text-sm">Tell DragonCandy AI about your restaurant's content needs</p>
         </CardHeader>
         <CardContent className="space-y-4">
           <Textarea
-            placeholder="Example: I want to launch a new summer product line for my sustainable fashion brand. I need to reach eco-conscious millennials and Gen Z consumers through Instagram and TikTok. The campaign should feel authentic and showcase our commitment to sustainability while driving sales for our new collection. Budget is around $1500-2500 and we want to launch by July 15th."
+            placeholder="Example: We just launched a new weekend brunch menu at our downtown cafe and want to drive foot traffic. We need mouth-watering food photos and short-form video reels showcasing our signature dishes — think close-up shots of our avocado toast, latte art, and the cozy interior vibe. Target local foodies and brunch lovers on Instagram and TikTok within a 15-mile radius. Budget is around $200-500 and we'd love content ready by this weekend."
             value={campaignGoal}
             onChange={(e) => setCampaignGoal(e.target.value)}
             className="min-h-[150px] resize-none"
           />
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <Lightbulb className="h-4 w-4 text-yellow-500" />
-            Be specific about your goals, target audience, preferred platforms, budget range, and timeline for best results.
+            Be specific about your dishes, vibe, target audience, preferred platforms, budget range, and timeline for the best results.
           </div>
           <Button
             onClick={onGenerateWithAI}

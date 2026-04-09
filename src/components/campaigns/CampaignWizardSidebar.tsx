@@ -43,8 +43,8 @@ const CampaignWizardSidebar: React.FC = () => {
       content: '"We\'re launching a new yoga studio in downtown and need to attract busy professionals who want stress relief after work. Need authentic content that shows our calming atmosphere and expert instructors. Budget: $1000-1500."'
     },
     {
-      category: 'Fashion/Beauty',
-      content: '"Our sustainable fashion brand is releasing a summer collection. We want to reach eco-conscious Gen Z shoppers through TikTok and Instagram. Looking for diverse creators who can show how our pieces work in real life. Budget: $2000-3000."'
+      category: 'Cafe/Brunch',
+      content: '"Our downtown cafe just launched a new weekend brunch menu. We want to attract local foodies aged 22-35 through Instagram Reels and TikTok. Looking for creators who can capture mouth-watering close-ups and the cozy interior vibe. Budget: $200-500."'
     }
   ];
 

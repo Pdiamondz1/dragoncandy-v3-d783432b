@@ -18,7 +18,7 @@ export const BottomCTA = () => {
           className="w-full sm:w-auto sm:px-8 rounded-full bg-dc-teal text-white font-bold py-3 text-base lg:text-lg hover:bg-dc-teal-dark hover:shadow-glow-teal transition-all duration-300 group"
           onClick={() => navigate('/auth?mode=signup')}
         >
-          I'm a Business — Get Started
+          I'm a Restaurant — Get Started
           <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
         </Button>
         <Button

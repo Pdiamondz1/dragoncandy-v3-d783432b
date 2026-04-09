@@ -56,7 +56,7 @@ export const AnonymousCampaignLayout: React.FC<AnonymousCampaignLayoutProps> = (
           <Alert className="mx-6 my-4 bg-blue-50/90 backdrop-blur-sm border-blue-200 rounded-2xl shadow-sm">
             <Info className="h-4 w-4" />
             <AlertDescription className="text-sm text-blue-800">
-              <strong>Business clients only:</strong> Campaign publishing requires a business account. 
+              <strong>Restaurant accounts only:</strong> Campaign publishing requires a restaurant account.
               Content creators can browse and apply to campaigns instead.
             </AlertDescription>
           </Alert>

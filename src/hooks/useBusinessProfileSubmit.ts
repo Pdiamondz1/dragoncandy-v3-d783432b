@@ -108,7 +108,7 @@ export const useBusinessProfileSubmit = () => {
 
       toast({
         title: "Profile saved successfully!",
-        description: isBrand ? "Your brand profile has been created." : "Your business profile has been updated."
+        description: isBrand ? "Your brand profile has been created." : "Your restaurant profile has been updated."
       });
 
       return true;

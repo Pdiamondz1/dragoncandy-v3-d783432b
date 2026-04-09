@@ -371,7 +371,7 @@ const CreatorCampaignMarketplace = () => {
             ) : activeCollabs.length === 0 ? (
               <div className="text-center py-12">
                 <p className="text-gray-900 font-semibold mb-2">No active campaigns yet.</p>
-                <p className="text-gray-500 text-sm mb-4">When a business accepts your application, your campaign will appear here.</p>
+                <p className="text-gray-500 text-sm mb-4">When a restaurant accepts your application, your campaign will appear here.</p>
                 <button
                   onClick={() => setActiveTab('available')}
                   className="text-dc-teal text-sm font-semibold border border-dc-teal rounded-full px-6 py-2 hover:bg-teal-50/10 transition-colors"

@@ -131,7 +131,7 @@ const BusinessProfileSetup = () => {
           <ChevronLeft className="w-5 h-5" />
         </button>
         <h1 className="flex-1 text-center font-sans text-base font-bold text-gray-900 uppercase tracking-wide">
-          Business Profile Setup
+          Restaurant Profile Setup
         </h1>
         <div className="w-7" />
       </div>
@@ -139,14 +139,14 @@ const BusinessProfileSetup = () => {
       {/* Form Content */}
       <div className="px-4 py-6 pb-24 md:pb-0 max-w-2xl mx-auto">
         <p className="text-sm text-gray-500 mb-6">
-          Tell us about your business to get started with DragonCandy.
+          Tell us about your restaurant to get started with DragonCandy.
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Business Information Section */}
           <div>
             <p className="font-sans text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">
-              Business Information
+              Restaurant Information
             </p>
             <EnhancedBusinessProfileForm
               formData={formData}

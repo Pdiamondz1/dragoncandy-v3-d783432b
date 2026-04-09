@@ -124,7 +124,7 @@ export const FileUploadSection = ({
     <>
       {/* Logo Upload */}
       <div>
-        <Label>Business Logo</Label>
+        <Label>Restaurant Logo</Label>
         {logoPreviewSrc ? (
           <div className="mt-2 flex items-start gap-3">
             <div className="relative w-20 h-20 rounded-lg overflow-hidden border border-gray-200 flex-shrink-0">
@@ -163,7 +163,7 @@ export const FileUploadSection = ({
           >
             <Upload className="mx-auto h-10 w-10 text-[#4DD9C0] mb-2" />
             <p className="text-sm font-medium text-gray-700">
-              {logoUploading ? 'Uploading...' : 'Upload your business logo'}
+              {logoUploading ? 'Uploading...' : 'Upload your restaurant logo'}
             </p>
             <p className="text-xs text-gray-400 mt-1">
               JPG, PNG, WebP up to 10MB

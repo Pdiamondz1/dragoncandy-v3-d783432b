@@ -143,7 +143,7 @@ export function getMessagesHref(role: UserRole): string {
 }
 
 export function getDashboardLabel(role: UserRole): string {
-  if (role === 'business_client') return 'Business Dashboard';
+  if (role === 'business_client') return 'Restaurant Dashboard';
   if (role === 'brand') return 'Brand Dashboard';
   return 'Creator Dashboard';
 }

@@ -91,15 +91,15 @@ const businessMessages: Partial<Record<PaymentEventType, PaymentMessage>> = {
 const creatorMessages: Partial<Record<PaymentEventType, PaymentMessage>> = {
   escrow_authorized: {
     title: "Payment Incoming",
-    description: "The business is completing payment. Once confirmed, you can start working on the content.",
+    description: "The restaurant is completing payment. Once confirmed, you can start working on the content.",
   },
   escrow_held: {
     title: "Payment Secured",
-    description: "The business has paid. Your payment is locked in. Deliver your content and get paid when they approve it.",
+    description: "The restaurant has paid. Your payment is locked in. Deliver your content and get paid when they approve it.",
   },
   escrow_failed: {
     title: "Payment Issue",
-    description: "The business's payment didn't go through. They've been notified to try again.",
+    description: "The restaurant's payment didn't go through. They've been notified to try again.",
   },
   content_started: {
     title: "You're Working on It",
@@ -107,11 +107,11 @@ const creatorMessages: Partial<Record<PaymentEventType, PaymentMessage>> = {
   },
   content_submitted: {
     title: "Content Under Review",
-    description: "Your content is being reviewed by the business. You'll be notified when it's approved or if changes are needed.",
+    description: "Your content is being reviewed by the restaurant. You'll be notified when it's approved or if changes are needed.",
   },
   revision_requested: {
     title: "Revision Requested",
-    description: "The business has requested changes. Check their notes and resubmit when ready.",
+    description: "The restaurant has requested changes. Check their notes and resubmit when ready.",
     action: "View Feedback",
   },
   content_resubmitted: {
@@ -124,11 +124,11 @@ const creatorMessages: Partial<Record<PaymentEventType, PaymentMessage>> = {
   },
   content_rejected: {
     title: "Content Not Accepted",
-    description: "The business did not accept your content for this project. The project has been cancelled.",
+    description: "The restaurant did not accept your content for this project. The project has been cancelled.",
   },
   refund_initiated: {
     title: "Project Cancelled",
-    description: "This project has been cancelled and the business has been refunded.",
+    description: "This project has been cancelled and the restaurant has been refunded.",
   },
   payment_released: {
     title: "Getting Paid",
@@ -150,7 +150,7 @@ const creatorMessages: Partial<Record<PaymentEventType, PaymentMessage>> = {
   },
   refund_completed: {
     title: "Payment Refunded",
-    description: "The payment for this project has been refunded to the business.",
+    description: "The payment for this project has been refunded to the restaurant.",
   },
   dispute_created: {
     title: "Payment Under Review",

@@ -16,7 +16,7 @@ const options: {
     value: 'creator_shoots',
     icon: Camera,
     title: 'Creator shoots new content',
-    subtitle: 'A creator will visit your business and create fresh content',
+    subtitle: 'A creator will visit your restaurant and create fresh content',
   },
   {
     value: 'business_footage',

@@ -50,12 +50,12 @@ export const EnhancedBusinessProfileForm = ({ formData, onInputChange }: Enhance
     <>
       {/* Basic Business Information */}
       <div>
-        <Label htmlFor="business_name">Business Name *</Label>
+        <Label htmlFor="business_name">Restaurant Name *</Label>
         <Input
           id="business_name"
           value={formData.business_name}
           onChange={(e) => onInputChange('business_name', e.target.value)}
-          placeholder="Your Business Name"
+          placeholder="Your Restaurant Name"
           required
         />
       </div>
@@ -271,12 +271,12 @@ export const EnhancedBusinessProfileForm = ({ formData, onInputChange }: Enhance
 
       {/* Description */}
       <div>
-        <Label htmlFor="description">Company Description</Label>
+        <Label htmlFor="description">Restaurant Description</Label>
         <Textarea
           id="description"
           value={formData.description}
           onChange={(e) => onInputChange('description', e.target.value)}
-          placeholder="Tell us about your business..."
+          placeholder="Tell us about your restaurant..."
           rows={4}
         />
       </div>

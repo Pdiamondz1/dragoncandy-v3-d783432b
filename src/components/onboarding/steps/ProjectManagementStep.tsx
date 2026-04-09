@@ -42,7 +42,7 @@ export const ProjectManagementStep: React.FC<ProjectManagementStepProps> = ({ on
           Manage Your Projects
         </h2>
         <p className="text-gray-600">
-          Excel at project delivery to build a stellar reputation and grow your business.
+          Excel at project delivery to build a stellar reputation and grow your career.
         </p>
       </div>
 

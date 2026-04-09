@@ -27,9 +27,9 @@ export const RoleSelection = ({ onSelectRole, onBackToLogin }: RoleSelectionProp
             <Store className="w-7 h-7 text-teal-600" />
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-lg font-bold text-gray-900">I'm a Business</div>
+            <div className="text-lg font-bold text-gray-900">I'm a Restaurant</div>
             <div className="text-sm text-gray-500 leading-snug">
-              Restaurants & local businesses looking for content
+              Restaurants & cafes looking for content creators
             </div>
           </div>
           <span className="text-teal-400 text-xl flex-shrink-0">&#8250;</span>
@@ -65,7 +65,7 @@ export const RoleSelection = ({ onSelectRole, onBackToLogin }: RoleSelectionProp
           <div className="flex-1 min-w-0">
             <div className="text-lg font-bold text-gray-900">I'm a Creator</div>
             <div className="text-sm text-gray-500 leading-snug">
-              Content creators looking for gigs
+              Content creators looking for restaurant gigs
             </div>
           </div>
           <span className="text-gray-300 text-xl flex-shrink-0">&#8250;</span>

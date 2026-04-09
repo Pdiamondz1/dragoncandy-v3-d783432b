@@ -3,9 +3,9 @@ import React from "react";
 const steps = [
   {
     number: 1,
-    title: "Describe Your Campaign",
+    title: "Describe Your Restaurant's Content Needs",
     description:
-      "Tell Donny what you need. Paste your website URL and get a complete campaign brief in seconds.",
+      "Tell Donny what you need. Paste your restaurant's website URL and get a complete campaign brief in seconds.",
   },
   {
     number: 2,
@@ -15,7 +15,7 @@ const steps = [
   },
   {
     number: 3,
-    title: "Content Delivered Fast",
+    title: "Content for Your Restaurant — Fast",
     description:
       "Choose DragonDash for content in hours, or standard delivery in days. Approve, pay, done.",
   },

@@ -29,7 +29,7 @@ export const FeatureSection = () => {
         Why DragonCandy
       </h2>
       <p className="text-sm md:text-base text-gray-500 text-center mb-8 md:mb-12">
-        Everything you need to get great content, fast
+        Built for restaurants & cafes
       </p>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">

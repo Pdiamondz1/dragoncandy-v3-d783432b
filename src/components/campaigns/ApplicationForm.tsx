@@ -125,7 +125,7 @@ const ApplicationForm: React.FC<ApplicationFormProps> = ({
         <CardHeader>
           <CardTitle>Submit Your Application</CardTitle>
           <p className="text-sm text-muted-foreground">
-            Tell the business owner why you're the perfect fit for this campaign.
+            Tell the restaurant owner why you're the perfect fit for this campaign.
           </p>
         </CardHeader>
         <CardContent>

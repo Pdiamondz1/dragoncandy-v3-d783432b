@@ -27,7 +27,7 @@ export const BusinessSettingsForm = ({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Business Profile</CardTitle>
+        <CardTitle>Restaurant Profile</CardTitle>
       </CardHeader>
       <CardContent>
         <form onSubmit={onSubmit} className="space-y-6">
