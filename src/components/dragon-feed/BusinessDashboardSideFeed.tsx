@@ -342,6 +342,7 @@ const FeedCard: React.FC<FeedCardProps> = ({ item, onItemClick }) => {
                 muted
                 loop
                 playsInline
+                preload="metadata"
               />
             ) : (
               <img

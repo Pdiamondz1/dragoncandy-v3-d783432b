@@ -21,7 +21,6 @@ function MarqueeItem({ item }: { item: { id: string; url?: string; type?: string
             muted
             loop
             playsInline
-            autoPlay
             preload="metadata"
           />
         ) : (

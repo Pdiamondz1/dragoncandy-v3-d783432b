@@ -9,6 +9,8 @@ import {
 } from '@/lib/storage/uploadProfileAsset';
 import { CurrentPortfolioDisplay } from './CurrentPortfolioDisplay';
 
+const MAX_PORTFOLIO_ITEMS = 10;
+
 interface PortfolioUploadProps {
   portfolioPaths: string[];
   onPortfolioPathsChange: (paths: string[]) => void;
@@ -18,6 +20,9 @@ export const PortfolioUpload = ({
   portfolioPaths,
   onPortfolioPathsChange,
 }: PortfolioUploadProps) => {
+  const canUpload = portfolioPaths.length < MAX_PORTFOLIO_ITEMS;
+  const overLimit = portfolioPaths.length > MAX_PORTFOLIO_ITEMS;
+  const excessCount = portfolioPaths.length - MAX_PORTFOLIO_ITEMS;
   const { user } = useAuth();
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState({ done: 0, total: 0 });
@@ -34,7 +39,24 @@ export const PortfolioUpload = ({
     const files = e.target.files;
     if (!files?.length || !user) return;
 
-    const fileList = Array.from(files);
+    if (portfolioPaths.length >= MAX_PORTFOLIO_ITEMS) {
+      toast({
+        title: 'Portfolio limit reached',
+        description: `Remove an item first. Maximum ${MAX_PORTFOLIO_ITEMS} items allowed.`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const remainingSlots = MAX_PORTFOLIO_ITEMS - portfolioPaths.length;
+    const fileList = Array.from(files).slice(0, remainingSlots);
+
+    if (files.length > remainingSlots) {
+      toast({
+        title: `Only uploading ${remainingSlots} of ${files.length} files`,
+        description: `Portfolio limit is ${MAX_PORTFOLIO_ITEMS} items.`,
+      });
+    }
     setUploading(true);
     setProgress({ done: 0, total: fileList.length });
 
@@ -90,26 +112,53 @@ export const PortfolioUpload = ({
         />
       </div>
 
+      {/* Portfolio counter */}
+      <p className="text-sm text-gray-500 mt-2">
+        {portfolioPaths.length}/{MAX_PORTFOLIO_ITEMS} portfolio items
+      </p>
+
+      {/* Over-limit warning */}
+      {overLimit && (
+        <div className="mt-2 rounded-lg bg-amber-50 border border-amber-200 px-4 py-3">
+          <p className="text-sm text-amber-800">
+            You have {portfolioPaths.length} items (max {MAX_PORTFOLIO_ITEMS}). Please remove{' '}
+            {excessCount} item{excessCount !== 1 ? 's' : ''} to upload new content.
+          </p>
+        </div>
+      )}
+
       {/* Upload new items */}
       <div className="mt-4">
         <Label className="text-sm text-muted-foreground">Add New Items</Label>
-        <div
-          className="mt-2 border-2 border-dashed border-[#4DD9C0] rounded-lg p-6 text-center cursor-pointer hover:bg-teal-50/30 transition-colors"
-          onClick={() => inputRef.current?.click()}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => e.key === 'Enter' && inputRef.current?.click()}
-        >
-          <Upload className="mx-auto h-10 w-10 text-[#4DD9C0] mb-2" />
-          <p className="text-sm font-medium text-gray-700">
-            {uploading
-              ? `Uploading ${progress.done} of ${progress.total}...`
-              : 'Upload portfolio content'}
-          </p>
-          <p className="text-xs text-gray-400 mt-1">
-            JPG, PNG, MP4, MOV up to 50MB
-          </p>
-        </div>
+
+        {!canUpload && !overLimit && (
+          <div className="mt-2 rounded-lg bg-gray-50 border border-gray-200 px-4 py-3">
+            <p className="text-sm text-gray-600">
+              Portfolio limit reached ({MAX_PORTFOLIO_ITEMS}/{MAX_PORTFOLIO_ITEMS}). Remove an item to upload new content.
+            </p>
+          </div>
+        )}
+
+        {canUpload && (
+          <div
+            className="mt-2 border-2 border-dashed border-[#4DD9C0] rounded-lg p-6 text-center cursor-pointer hover:bg-teal-50/30 transition-colors"
+            onClick={() => inputRef.current?.click()}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => e.key === 'Enter' && inputRef.current?.click()}
+          >
+            <Upload className="mx-auto h-10 w-10 text-[#4DD9C0] mb-2" />
+            <p className="text-sm font-medium text-gray-700">
+              {uploading
+                ? `Uploading ${progress.done} of ${progress.total}...`
+                : 'Upload portfolio content'}
+            </p>
+            <p className="text-xs text-gray-400 mt-1">
+              JPG, PNG, MP4, MOV up to 50MB
+            </p>
+          </div>
+        )}
+
         <input
           ref={inputRef}
           type="file"
@@ -117,7 +166,7 @@ export const PortfolioUpload = ({
           multiple
           onChange={handleFileSelect}
           className="hidden"
-          disabled={uploading}
+          disabled={uploading || !canUpload}
         />
 
         {/* Newly-uploaded thumbnails */}

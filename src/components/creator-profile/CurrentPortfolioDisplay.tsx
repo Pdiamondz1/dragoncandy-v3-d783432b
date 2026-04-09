@@ -150,11 +150,12 @@ export const CurrentPortfolioDisplay = ({ portfolioPaths, onRemoveItem }: Curren
               />
             ) : (
               <div className="relative w-full h-full">
-                <video 
+                <video
                   src={item.url}
                   className="w-full h-full object-cover"
                   muted
                   playsInline
+                  preload="metadata"
                   onLoadedData={() => handleMediaLoad(item.path)}
                   onError={() => handleMediaError(item.path)}
                 />

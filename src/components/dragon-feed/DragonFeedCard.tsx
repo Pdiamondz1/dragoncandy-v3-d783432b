@@ -193,6 +193,7 @@ export const DragonFeedCard: React.FC<DragonFeedCardProps> = ({ media }) => {
                 muted
                 loop
                 playsInline
+                preload="metadata"
               />
             ) : (
               <img

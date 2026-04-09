@@ -45,7 +45,6 @@ export const PortfolioMediaItem = ({ url, type, creatorName, className = '' }: P
           muted
           loop
           playsInline
-          autoPlay
           preload="metadata"
         />
       ) : (
