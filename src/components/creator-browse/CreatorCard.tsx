@@ -127,7 +127,7 @@ export const CreatorCard: React.FC<CreatorCardProps> = ({ creator }) => {
             <img
               src={thumbnailUrl}
               alt={creator.creator_name}
-              className="w-full h-full object-cover"
+              className="w-full h-full object-cover object-top"
               loading="lazy"
               onError={() => {
                 // If we were showing a portfolio image, mark it failed so we fall back to avatar
