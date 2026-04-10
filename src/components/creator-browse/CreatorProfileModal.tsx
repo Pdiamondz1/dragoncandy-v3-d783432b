@@ -446,7 +446,7 @@ const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
                             className="w-full h-full object-cover"
                             muted
                             playsInline
-                            preload="metadata"
+                            preload="none"
                           />
                         ) : (
                           <img
