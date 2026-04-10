@@ -37,33 +37,37 @@ export const CreatorCard: React.FC<CreatorCardProps> = ({ creator }) => {
   const [resolvedPortfolioUrls, setResolvedPortfolioUrls] = useState<string[]>([]);
   const [isFavorite, setIsFavorite] = useState(() => getFavorites().includes(creator.id));
 
-  // Resolve portfolio images (keep existing logic)
+  // Resolve only the first portfolio image for the card thumbnail.
+  // Full portfolio resolution is deferred to CreatorProfileModal when it opens.
   useEffect(() => {
-    const loadPortfolioImages = async () => {
+    const loadFirstPortfolioImage = async () => {
       if (!creator.portfolio_urls || creator.portfolio_urls.length === 0) {
         setResolvedPortfolioUrls([]);
         return;
       }
 
-      const resolved = await Promise.all(
-        creator.portfolio_urls.map(async (url) => {
-          if (url.startsWith('http://') || url.startsWith('https://')) return url;
-          try {
-            const { data } = await supabase.storage
-              .from('profile-assets')
-              .createSignedUrl(url, 3600);
-            return data?.signedUrl ?? null;
-          } catch {
-            return null;
-          }
-        })
-      );
+      const firstUrl = creator.portfolio_urls[0];
+      if (!firstUrl) {
+        setResolvedPortfolioUrls([]);
+        return;
+      }
 
-      const valid = resolved.filter((u): u is string => u !== null);
-      setResolvedPortfolioUrls(valid);
+      if (firstUrl.startsWith('http://') || firstUrl.startsWith('https://')) {
+        setResolvedPortfolioUrls([firstUrl]);
+        return;
+      }
+
+      try {
+        const { data } = await supabase.storage
+          .from('profile-assets')
+          .createSignedUrl(firstUrl, 3600);
+        setResolvedPortfolioUrls(data?.signedUrl ? [data.signedUrl] : []);
+      } catch {
+        setResolvedPortfolioUrls([]);
+      }
     };
 
-    loadPortfolioImages();
+    loadFirstPortfolioImage();
   }, [creator.portfolio_urls]);
 
   // Resolve thumbnail: portfolio[0] -> avatar -> null
