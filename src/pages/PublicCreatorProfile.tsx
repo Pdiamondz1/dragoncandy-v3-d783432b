@@ -57,6 +57,17 @@ const getContentType = (url: string): 'Photo' | 'Reel' | null => {
   return null;
 };
 
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://zocahiffooqdybdhguqv.supabase.co';
+
+const toThumbnailUrl = (url: string, width = 540): string => {
+  if (getContentType(url) !== 'Photo') return url;
+  const marker = '/storage/v1/object/public/';
+  const idx = url.indexOf(marker);
+  if (idx === -1) return url;
+  const storagePath = url.substring(idx + marker.length);
+  return `${SUPABASE_URL}/storage/v1/render/image/public/${storagePath}?width=${width}&quality=75`;
+};
+
 const PublicCreatorProfile = () => {
   const { slug } = useParams();
   const { user } = useAuth();
@@ -165,6 +176,7 @@ const PublicCreatorProfile = () => {
 
       const urls = await Promise.all(
         profile.portfolio_urls.map(async (path) => {
+          if (!path) return null;
           try {
             if (path.startsWith('http://') || path.startsWith('https://')) {
               return path;
@@ -180,7 +192,7 @@ const PublicCreatorProfile = () => {
         })
       );
 
-      setPortfolioUrls(urls);
+      setPortfolioUrls(urls.filter((u): u is string => u !== null));
     };
 
     convertPortfolioUrls();
@@ -343,6 +355,7 @@ const PublicCreatorProfile = () => {
         {portfolioUrls.length > 0 ? (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 md:gap-3 lg:gap-4">
             {portfolioUrls.map((url, index) => {
+              if (!url) return null;
               const contentType = getContentType(url);
               const isVideo = contentType === 'Reel';
               return (
@@ -359,11 +372,11 @@ const PublicCreatorProfile = () => {
                       className="w-full h-full object-cover"
                       muted
                       playsInline
-                      preload="metadata"
+                      preload="none"
                     />
                   ) : (
                     <img
-                      src={url}
+                      src={toThumbnailUrl(url)}
                       alt={`Portfolio item ${index + 1}`}
                       className="w-full h-full object-cover"
                       onError={(e) => {
