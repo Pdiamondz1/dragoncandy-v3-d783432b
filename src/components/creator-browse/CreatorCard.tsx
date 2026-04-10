@@ -62,15 +62,14 @@ export const CreatorCard: React.FC<CreatorCardProps> = ({ creator }) => {
   const [isFavorite, setIsFavorite] = useState(() => getFavorites().includes(creator.id));
 
   // Resolve thumbnail synchronously — no async effects, no network flood.
-  // Priority: first non-video portfolio image → avatar → null
-  // Each source has its own error flag so a failed portfolio image still falls back to avatar.
+  // Priority: avatar (intentional headshot) → first non-video portfolio image → null
   const thumbnailUrl = useMemo(() => {
+    if (creator.avatar_url && !avatarImgFailed) {
+      return resolveStorageUrl(creator.avatar_url, 300);
+    }
     const firstPortfolio = creator.portfolio_urls?.[0];
     if (firstPortfolio && !isVideoPath(firstPortfolio) && !portfolioImgFailed) {
       return resolveStorageUrl(firstPortfolio, 300);
-    }
-    if (creator.avatar_url && !avatarImgFailed) {
-      return resolveStorageUrl(creator.avatar_url, 300);
     }
     return null;
   }, [creator.portfolio_urls, creator.avatar_url, portfolioImgFailed, avatarImgFailed]);
@@ -130,12 +129,11 @@ export const CreatorCard: React.FC<CreatorCardProps> = ({ creator }) => {
               className="w-full h-full object-cover"
               loading="lazy"
               onError={() => {
-                // If we were showing a portfolio image, mark it failed so we fall back to avatar
-                const firstPortfolio = creator.portfolio_urls?.[0];
-                if (firstPortfolio && !isVideoPath(firstPortfolio) && !portfolioImgFailed) {
-                  setPortfolioImgFailed(true);
-                } else {
+                // If we were showing the avatar, mark it failed so we fall back to portfolio
+                if (creator.avatar_url && !avatarImgFailed) {
                   setAvatarImgFailed(true);
+                } else {
+                  setPortfolioImgFailed(true);
                 }
               }}
             />
