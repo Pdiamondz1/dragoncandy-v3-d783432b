@@ -11,6 +11,17 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://zocahiffooqdybdhguqv.supabase.co';
+
+const toThumbnailUrl = (url: string, width = 128): string => {
+  const marker = '/storage/v1/object/public/';
+  const idx = url.indexOf(marker);
+  if (idx === -1) return url;
+  const storagePath = url.substring(idx + marker.length);
+  if (/\.(mp4|mov|webm|avi)(\?|$)/i.test(storagePath)) return url;
+  return `${SUPABASE_URL}/storage/v1/render/image/public/${storagePath}?width=${width}&quality=75`;
+};
+
 interface CampaignApplyFormProps {
   campaign: PublicCampaign;
   deliveryTier: DeliveryTier | null;
@@ -76,8 +87,9 @@ const CampaignApplyForm: React.FC<CampaignApplyFormProps> = ({
 
       if (!profile?.portfolio_urls?.length) return [];
 
-      return Promise.all(
+      const urls = await Promise.all(
         profile.portfolio_urls.map(async (path: string) => {
+          if (!path) return null;
           if (path.startsWith('http://') || path.startsWith('https://')) {
             return path;
           }
@@ -87,6 +99,7 @@ const CampaignApplyForm: React.FC<CampaignApplyFormProps> = ({
           return data.publicUrl;
         })
       );
+      return urls.filter((u): u is string => u !== null);
     },
     enabled: !!user?.id,
   });
@@ -239,7 +252,7 @@ const CampaignApplyForm: React.FC<CampaignApplyFormProps> = ({
                       : 'border-gray-200 hover:border-gray-300'
                   }`}
                 >
-                  <img src={url} alt={`Portfolio ${i + 1}`} className="w-full h-full object-cover" />
+                  <img src={toThumbnailUrl(url)} alt={`Portfolio ${i + 1}`} className="w-full h-full object-cover" loading="lazy" />
                 </button>
               ))}
             </div>
