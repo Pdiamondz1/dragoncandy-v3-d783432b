@@ -24,6 +24,7 @@ export const usePromotionSubmission = () => {
         .from('promotion_submissions')
         .select('id')
         .eq('promotion_id', promotionId)
+        .in('status', ['pending', 'approved'])
         .or(`customer_email.eq.${email},customer_phone.eq.${phone}`)
         .maybeSingle();
 
