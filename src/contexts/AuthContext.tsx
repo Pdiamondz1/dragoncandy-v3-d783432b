@@ -187,7 +187,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log('🔄 AuthProvider: Auth state changed:', event, session?.user?.email || 'no user');
-        
+
+        // Skip events that only refresh the JWT — they produce a new user
+        // object reference which would re-trigger every useEffect keyed on [user],
+        // tearing down and recreating Realtime subscriptions unnecessarily.
+        if (event === 'TOKEN_REFRESHED' || event === 'MFA_CHALLENGE_VERIFIED') {
+          return;
+        }
+
         try {
           setSession(session);
           setUser(session?.user ?? null);
