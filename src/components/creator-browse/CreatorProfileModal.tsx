@@ -465,11 +465,11 @@ const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
                         {isVideo ? (
                           <div className="w-full h-full bg-gradient-to-br from-gray-800 to-gray-900 relative">
                             <video
-                              src={url}
+                              src={`${url}#t=0.5`}
                               className="w-full h-full object-cover"
                               muted
                               playsInline
-                              preload="none"
+                              preload="metadata"
                             />
                           </div>
                         ) : (
