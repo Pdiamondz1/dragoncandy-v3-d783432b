@@ -42,6 +42,7 @@ const formSchema = z.object({
   end_date: z.string().min(1, 'End date is required'),
   max_redemptions: z.number().optional(),
   video_max_duration: z.number().default(30),
+  accepted_content: z.enum(['both', 'video', 'photo']).default('both'),
   terms_conditions: z.string().optional(),
 }).refine((data) => data.start_date >= new Date().toISOString().split('T')[0], {
   message: 'Start date cannot be in the past',
@@ -73,6 +74,7 @@ export const CreatePromotionModal: React.FC<CreatePromotionModalProps> = ({
       start_date: new Date().toISOString().split('T')[0],
       end_date: '',
       video_max_duration: 30,
+      accepted_content: 'both' as const,
       terms_conditions: '',
     },
   });
@@ -89,7 +91,7 @@ export const CreatePromotionModal: React.FC<CreatePromotionModalProps> = ({
         <DialogHeader>
           <DialogTitle>Create New Promotion</DialogTitle>
           <DialogDescription>
-            Set up a video promotion to incentivize customer content creation.
+            Set up a promotion to incentivize customer content — videos or photos.
           </DialogDescription>
         </DialogHeader>
 
@@ -198,6 +200,30 @@ export const CreatePromotionModal: React.FC<CreatePromotionModalProps> = ({
               />
             </div>
 
+            <FormField
+              control={form.control}
+              name="accepted_content"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Accepted Content Types</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="both">Video & Photo</SelectItem>
+                      <SelectItem value="video">Video Only</SelectItem>
+                      <SelectItem value="photo">Photo Only</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormDescription>Choose what customers can submit</FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
@@ -226,12 +252,13 @@ export const CreatePromotionModal: React.FC<CreatePromotionModalProps> = ({
                   <FormItem>
                     <FormLabel>Max Video Duration (seconds)</FormLabel>
                     <FormControl>
-                      <Input 
-                        type="number" 
-                        {...field} 
+                      <Input
+                        type="number"
+                        {...field}
                         onChange={e => field.onChange(Number(e.target.value))}
                       />
                     </FormControl>
+                    <FormDescription>Applies to video submissions only</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}

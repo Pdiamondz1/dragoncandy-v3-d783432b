@@ -69,6 +69,7 @@ export interface CreatePromotionData {
   end_date: string;
   max_redemptions?: number;
   video_max_duration?: number;
+  accepted_content?: 'both' | 'video' | 'photo';
   terms_conditions?: string;
 }
 
