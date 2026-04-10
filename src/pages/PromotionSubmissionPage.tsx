@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { VideoUploader } from '@/components/promotions/VideoUploader';
 import { CustomerInfoForm, CustomerInfoFormData } from '@/components/promotions/CustomerInfoForm';
 import { usePromotionSubmission } from '@/hooks/usePromotionSubmission';
-import { Gift, Video, User, CheckCircle, AlertCircle, ArrowRight, ArrowLeft, Loader2 } from 'lucide-react';
+import { Gift, Video, ImagePlus, User, CheckCircle, AlertCircle, ArrowRight, ArrowLeft, Loader2 } from 'lucide-react';
 
 type Step = 'welcome' | 'video' | 'info' | 'success' | 'error';
 
@@ -35,6 +35,7 @@ export default function PromotionSubmissionPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [videoFile, setVideoFile] = useState<File | null>(null);
+  const isPhoto = videoFile?.type.startsWith('image/') ?? false;
   
   const { submitPromotion, isSubmitting } = usePromotionSubmission();
 
@@ -120,10 +121,10 @@ export default function PromotionSubmissionPage() {
     if (result.success) {
       setStep('success');
     } else if (result.reason === 'duplicate') {
-      setError('You have already submitted a video for this promotion');
+      setError('You have already submitted for this promotion');
       setStep('error');
     } else {
-      setError('Something went wrong submitting your video. Please try again.');
+      setError('Something went wrong with your submission. Please try again.');
       setStep('error');
     }
   };
@@ -204,8 +205,8 @@ export default function PromotionSubmissionPage() {
               <div className="flex items-start gap-3 p-3 bg-dc-teal/5 rounded-xl">
                 <Video className="w-5 h-5 text-dc-teal mt-0.5 shrink-0" />
                 <div>
-                  <p className="font-medium text-gray-900 text-sm">Record a short video</p>
-                  <p className="text-xs text-gray-500">{promotion.video_max_duration || 30} seconds or less</p>
+                  <p className="font-medium text-gray-900 text-sm">Record a video or snap a photo</p>
+                  <p className="text-xs text-gray-500">Video: {promotion.video_max_duration || 30}s max • Photo: JPG, PNG, HEIC</p>
                 </div>
               </div>
               <div className="flex items-start gap-3 p-3 bg-dc-teal/5 rounded-xl">
@@ -244,9 +245,9 @@ export default function PromotionSubmissionPage() {
               Back
             </button>
             <div className="border-2 border-dc-teal rounded-2xl p-4">
-              <p className="font-sans text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">Record Your Video</p>
+              <p className="font-sans text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">Share Your Experience</p>
               <p className="text-xs text-gray-500 mb-4">
-                Create a {promotion.video_max_duration || 30}-second video about your experience
+                Record a {promotion.video_max_duration || 30}-second video or upload a photo
               </p>
               <VideoUploader
                 onVideoSelected={handleVideoSelected}
@@ -283,14 +284,14 @@ export default function PromotionSubmissionPage() {
             <div className="w-20 h-20 rounded-full bg-dc-teal/10 flex items-center justify-center mx-auto">
               <CheckCircle className="w-10 h-10 text-dc-teal" />
             </div>
-            <h2 className="text-xl font-bold text-gray-900">Video Submitted!</h2>
+            <h2 className="text-xl font-bold text-gray-900">Submission Received!</h2>
             <p className="text-gray-500 text-sm">
-              Your video is now pending review. Once approved, you'll receive your discount code via email and SMS.
+              Your {isPhoto ? 'photo' : 'video'} is now pending review. Once approved, you'll receive your discount code via email and SMS.
             </p>
             <div className="p-4 bg-dc-teal/5 rounded-xl text-left">
               <p className="text-sm font-semibold text-gray-900">What happens next?</p>
               <ul className="text-xs text-gray-500 mt-2 space-y-1">
-                <li>• {businessName} will review your video</li>
+                <li>• {businessName} will review your submission</li>
                 <li>• You'll receive your unique discount code</li>
                 <li>• Show the code when you visit to redeem</li>
               </ul>

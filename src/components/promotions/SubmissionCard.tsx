@@ -11,10 +11,16 @@ import {
   DialogHeader, 
   DialogTitle 
 } from '@/components/ui/dialog';
-import { Check, X, Play, User, Mail, Phone, Clock, Loader2 } from 'lucide-react';
+import { Check, X, Play, User, Mail, Phone, Clock, Loader2, Image } from 'lucide-react';
 import { format } from 'date-fns';
 import { PromotionSubmission } from '@/hooks/usePromotions';
 import { useVideoUrl } from '@/hooks/useVideoUrl';
+
+const isImageUrl = (url: string | null | undefined): boolean => {
+  if (!url) return false;
+  const ext = url.split('.').pop()?.toLowerCase().split('?')[0];
+  return !!ext && ['jpg', 'jpeg', 'png', 'gif', 'webp', 'heic', 'heif'].includes(ext);
+};
 
 interface SubmissionCardProps {
   submission: PromotionSubmission;
@@ -73,14 +79,18 @@ export const SubmissionCard: React.FC<SubmissionCardProps> = ({
             </div>
           </div>
 
-          {/* Video Preview Button */}
-          <Button 
-            variant="outline" 
-            className="w-full" 
+          {/* Media Preview Button */}
+          <Button
+            variant="outline"
+            className="w-full"
             onClick={() => setShowVideoPreview(true)}
           >
-            <Play className="h-4 w-4 mr-2" />
-            Preview Video
+            {isImageUrl(submission.video_url) ? (
+              <Image className="h-4 w-4 mr-2" />
+            ) : (
+              <Play className="h-4 w-4 mr-2" />
+            )}
+            {isImageUrl(submission.video_url) ? 'Preview Photo' : 'Preview Video'}
           </Button>
 
           {/* Action Buttons */}
@@ -106,11 +116,11 @@ export const SubmissionCard: React.FC<SubmissionCardProps> = ({
         </CardContent>
       </Card>
 
-      {/* Video Preview Dialog */}
+      {/* Media Preview Dialog */}
       <Dialog open={showVideoPreview} onOpenChange={setShowVideoPreview}>
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
-            <DialogTitle>Video Preview</DialogTitle>
+            <DialogTitle>{isImageUrl(submission.video_url) ? 'Photo' : 'Video'} Preview</DialogTitle>
             <DialogDescription>
               Submitted by {submission.customer_name}
             </DialogDescription>
@@ -119,13 +129,17 @@ export const SubmissionCard: React.FC<SubmissionCardProps> = ({
             {isLoadingUrl ? (
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             ) : resolvedUrl ? (
-              <video 
-                src={resolvedUrl} 
-                controls 
-                className="w-full h-full object-contain"
-              />
+              isImageUrl(submission.video_url) ? (
+                <img src={resolvedUrl} alt={`Submission by ${submission.customer_name}`} className="w-full h-full object-contain" />
+              ) : (
+                <video
+                  src={resolvedUrl}
+                  controls
+                  className="w-full h-full object-contain"
+                />
+              )
             ) : (
-              <p className="text-muted-foreground">Unable to load video</p>
+              <p className="text-muted-foreground">Unable to load media</p>
             )}
           </div>
         </DialogContent>

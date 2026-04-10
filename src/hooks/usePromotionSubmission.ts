@@ -11,6 +11,8 @@ interface SubmissionData {
   marketingRightsAccepted: boolean;
 }
 
+const isImageFile = (file: File): boolean => file.type.startsWith('image/');
+
 export const usePromotionSubmission = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCheckingDuplicate, setIsCheckingDuplicate] = useState(false);
@@ -48,14 +50,16 @@ export const usePromotionSubmission = () => {
       if (hasExisting) {
         toast({
           title: "Already Submitted",
-          description: "You have already submitted a video for this promotion.",
+          description: "You have already submitted for this promotion.",
           variant: "destructive",
         });
         return { success: false, reason: 'duplicate' };
       }
 
-      // Upload video to storage - preserve original quality
-      const fileExt = data.videoFile.name.split('.').pop() || 'mp4';
+      const isImage = isImageFile(data.videoFile);
+
+      // Upload to storage - preserve original quality
+      const fileExt = data.videoFile.name.split('.').pop() || (isImage ? 'jpg' : 'mp4');
       const fileName = `${data.promotionId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
 
       const { error: uploadError } = await supabase.storage
@@ -63,7 +67,7 @@ export const usePromotionSubmission = () => {
         .upload(fileName, data.videoFile, {
           cacheControl: '3600',
           upsert: false,
-          contentType: data.videoFile.type || 'video/mp4',
+          contentType: data.videoFile.type || (isImage ? 'image/jpeg' : 'video/mp4'),
         });
 
       if (uploadError) throw uploadError;
@@ -73,8 +77,8 @@ export const usePromotionSubmission = () => {
         .from('promotion-videos')
         .getPublicUrl(fileName);
 
-      // Get video duration (approximate from file size, or use actual if available)
-      const videoDuration = Math.min(30, Math.ceil(data.videoFile.size / (1024 * 1024) * 10));
+      // Get video duration (approximate from file size) — 0 for images
+      const videoDuration = isImage ? 0 : Math.min(30, Math.ceil(data.videoFile.size / (1024 * 1024) * 10));
 
       // Create submission record
       const { error: insertError } = await supabase
@@ -93,8 +97,8 @@ export const usePromotionSubmission = () => {
       if (insertError) throw insertError;
 
       toast({
-        title: "Video Submitted!",
-        description: "Your video is now pending review. You'll receive your discount code soon!",
+        title: "Submission Received!",
+        description: `Your ${isImage ? 'photo' : 'video'} is now pending review. You'll receive your discount code soon!`,
       });
 
       return { success: true };
@@ -102,7 +106,7 @@ export const usePromotionSubmission = () => {
       console.error('Error submitting promotion:', error);
       toast({
         title: "Submission Failed",
-        description: error.message || "Failed to submit your video. Please try again.",
+        description: error.message || "Failed to submit. Please try again.",
         variant: "destructive",
       });
       return { success: false, reason: 'error' };

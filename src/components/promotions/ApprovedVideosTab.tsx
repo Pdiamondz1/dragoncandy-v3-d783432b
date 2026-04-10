@@ -10,11 +10,17 @@ import {
   DialogTitle 
 } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Play, Download, User, Mail, Phone, Clock, CheckCircle, XCircle, Loader2, Film } from 'lucide-react';
+import { Play, Download, User, Mail, Phone, Clock, CheckCircle, XCircle, Loader2, Film, Image } from 'lucide-react';
 import { format } from 'date-fns';
 import { PromotionSubmission } from '@/hooks/usePromotions';
 import { useVideoUrl } from '@/hooks/useVideoUrl';
 import { toast } from '@/hooks/use-toast';
+
+const isImageUrl = (url: string | null | undefined): boolean => {
+  if (!url) return false;
+  const ext = url.split('.').pop()?.toLowerCase().split('?')[0];
+  return !!ext && ['jpg', 'jpeg', 'png', 'gif', 'webp', 'heic', 'heif'].includes(ext);
+};
 
 interface VideoCardProps {
   submission: PromotionSubmission;
@@ -36,7 +42,8 @@ const VideoCard: React.FC<VideoCardProps> = ({ submission }) => {
       const a = document.createElement('a');
       a.href = url;
       const ext = submission.video_url?.split('.').pop()?.split('?')[0] || 'mp4';
-      a.download = `video-${submission.customer_name.replace(/\s+/g, '-')}-${format(new Date(submission.created_at), 'yyyy-MM-dd')}.${ext}`;
+      const prefix = isImageUrl(submission.video_url) ? 'photo' : 'video';
+      a.download = `${prefix}-${submission.customer_name.replace(/\s+/g, '-')}-${format(new Date(submission.created_at), 'yyyy-MM-dd')}.${ext}`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
@@ -55,17 +62,17 @@ const VideoCard: React.FC<VideoCardProps> = ({ submission }) => {
     <>
       <Card className="hover:shadow-md transition-shadow">
         <CardHeader className="pb-3">
-          <div className="flex items-start justify-between">
-            <div>
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0 flex-1">
               <CardTitle className="text-lg flex items-center gap-2">
-                <User className="h-4 w-4" />
-                {submission.customer_name}
+                <User className="h-4 w-4 shrink-0" />
+                <span className="truncate">{submission.customer_name}</span>
               </CardTitle>
-              <CardDescription className="mt-1">
+              <CardDescription className="mt-1 line-clamp-2">
                 {submission.promotion?.title}
               </CardDescription>
             </div>
-            <Badge variant={isApproved ? "default" : "destructive"} className="flex items-center gap-1">
+            <Badge variant={isApproved ? "default" : "destructive"} className="flex items-center gap-1 shrink-0">
               {isApproved ? (
                 <>
                   <CheckCircle className="h-3 w-3" />
@@ -111,13 +118,17 @@ const VideoCard: React.FC<VideoCardProps> = ({ submission }) => {
 
           {/* Action Buttons */}
           <div className="flex gap-2">
-            <Button 
-              variant="outline" 
-              className="flex-1" 
+            <Button
+              variant="outline"
+              className="flex-1"
               onClick={() => setShowVideoPreview(true)}
             >
-              <Play className="h-4 w-4 mr-2" />
-              Watch
+              {isImageUrl(submission.video_url) ? (
+                <Image className="h-4 w-4 mr-2" />
+              ) : (
+                <Play className="h-4 w-4 mr-2" />
+              )}
+              {isImageUrl(submission.video_url) ? 'View' : 'Watch'}
             </Button>
             {isApproved && (
               <Button 
@@ -137,11 +148,11 @@ const VideoCard: React.FC<VideoCardProps> = ({ submission }) => {
         </CardContent>
       </Card>
 
-      {/* Video Preview Dialog */}
+      {/* Media Preview Dialog */}
       <Dialog open={showVideoPreview} onOpenChange={setShowVideoPreview}>
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
-            <DialogTitle>Video from {submission.customer_name}</DialogTitle>
+            <DialogTitle>{isImageUrl(submission.video_url) ? 'Photo' : 'Video'} from {submission.customer_name}</DialogTitle>
             <DialogDescription>
               {submission.promotion?.title} • {format(new Date(submission.created_at), 'MMM d, yyyy')}
             </DialogDescription>
@@ -150,15 +161,13 @@ const VideoCard: React.FC<VideoCardProps> = ({ submission }) => {
             {isLoadingUrl ? (
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             ) : resolvedUrl ? (
-              <video
-                src={resolvedUrl}
-                controls
-                playsInline
-                preload="metadata"
-                className="w-full h-full object-contain"
-              />
+              isImageUrl(submission.video_url) ? (
+                <img src={resolvedUrl} alt={`Submission by ${submission.customer_name}`} className="w-full h-full object-contain" />
+              ) : (
+                <video src={resolvedUrl} controls playsInline preload="metadata" className="w-full h-full object-contain" />
+              )
             ) : (
-              <p className="text-muted-foreground">Unable to load video</p>
+              <p className="text-muted-foreground">Unable to load media</p>
             )}
           </div>
         </DialogContent>

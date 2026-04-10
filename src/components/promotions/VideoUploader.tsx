@@ -1,7 +1,7 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Video, Upload, Camera, StopCircle, RotateCcw, Check, SwitchCamera, Smartphone } from 'lucide-react';
+import { Video, Upload, Camera, StopCircle, RotateCcw, Check, SwitchCamera, Smartphone, ImagePlus } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 interface VideoUploaderProps {
@@ -30,6 +30,8 @@ export const VideoUploader: React.FC<VideoUploaderProps> = ({
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const nativeCaptureRef = useRef<HTMLInputElement>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+  const nativePhotoRef = useRef<HTMLInputElement>(null);
 
   const startCamera = async (mode: 'user' | 'environment' = facingMode) => {
     try {
@@ -145,10 +147,13 @@ export const VideoUploader: React.FC<VideoUploaderProps> = ({
     const file = event.target.files?.[0];
     if (!file) return;
 
-    if (!file.type.startsWith('video/')) {
+    const isVideo = file.type.startsWith('video/');
+    const isImage = file.type.startsWith('image/');
+
+    if (!isVideo && !isImage) {
       toast({
         title: "Invalid file type",
-        description: "Please upload a video file",
+        description: "Please upload a video or photo file",
         variant: "destructive",
       });
       return;
@@ -156,7 +161,7 @@ export const VideoUploader: React.FC<VideoUploaderProps> = ({
 
     if (file.size > maxSizeMB * 1024 * 1024) {
       toast({
-        title: "Video too large",
+        title: "File too large",
         description: `Maximum file size is ${maxSizeMB}MB`,
         variant: "destructive",
       });
@@ -177,6 +182,12 @@ export const VideoUploader: React.FC<VideoUploaderProps> = ({
     if (nativeCaptureRef.current) {
       nativeCaptureRef.current.value = '';
     }
+    if (photoInputRef.current) {
+      photoInputRef.current.value = '';
+    }
+    if (nativePhotoRef.current) {
+      nativePhotoRef.current.value = '';
+    }
   };
 
   const confirmVideo = () => {
@@ -195,11 +206,11 @@ export const VideoUploader: React.FC<VideoUploaderProps> = ({
     <Card className="p-4 space-y-4">
       <div className="relative aspect-video bg-muted rounded-lg overflow-hidden">
         {videoPreview ? (
-          <video
-            src={videoPreview}
-            controls
-            className="w-full h-full object-cover"
-          />
+          selectedFile?.type.startsWith('image/') ? (
+            <img src={videoPreview} alt="Preview" className="w-full h-full object-contain" />
+          ) : (
+            <video src={videoPreview} controls className="w-full h-full object-cover" />
+          )
         ) : (
           <video
             ref={videoRef}
@@ -248,6 +259,7 @@ export const VideoUploader: React.FC<VideoUploaderProps> = ({
           <>
             {!isRecording ? (
               <div className="grid grid-cols-1 gap-3">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Video</p>
                 <div className="grid grid-cols-2 gap-3">
                   <Button
                     onClick={startRecording}
@@ -276,6 +288,29 @@ export const VideoUploader: React.FC<VideoUploaderProps> = ({
                   <Upload className="w-5 h-5" />
                   Upload Existing Video
                 </Button>
+
+                <div className="border-t border-muted my-1" />
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Photo</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <Button
+                    variant="outline"
+                    onClick={() => nativePhotoRef.current?.click()}
+                    className="flex items-center gap-2"
+                    size="lg"
+                  >
+                    <Camera className="w-5 h-5" />
+                    Take Photo
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    onClick={() => photoInputRef.current?.click()}
+                    className="flex items-center gap-2"
+                    size="lg"
+                  >
+                    <ImagePlus className="w-5 h-5" />
+                    Upload Photo
+                  </Button>
+                </div>
               </div>
             ) : (
               <Button
@@ -306,7 +341,7 @@ export const VideoUploader: React.FC<VideoUploaderProps> = ({
               size="lg"
             >
               <Check className="w-5 h-5" />
-              Use This Video
+              {selectedFile?.type.startsWith('image/') ? 'Use This Photo' : 'Use This Video'}
             </Button>
           </div>
         )}
@@ -331,8 +366,27 @@ export const VideoUploader: React.FC<VideoUploaderProps> = ({
         className="hidden"
       />
 
+      {/* Hidden file input for photo upload */}
+      <input
+        ref={photoInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleFileUpload}
+        className="hidden"
+      />
+
+      {/* Native photo capture input - opens device camera */}
+      <input
+        ref={nativePhotoRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        onChange={handleFileUpload}
+        className="hidden"
+      />
+
       <p className="text-xs text-muted-foreground text-center">
-        Max {maxDuration} seconds • Max {maxSizeMB}MB • MP4, MOV, or WebM
+        Video: Max {maxDuration}s • MP4, MOV, WebM | Photo: JPG, PNG, HEIC • Max {maxSizeMB}MB
       </p>
     </Card>
   );
