@@ -92,6 +92,26 @@ const toThumbnailUrl = (url: string, width = 540): string => {
   return `${SUPABASE_URL}/storage/v1/render/image/public/${storagePath}?width=${width}&quality=75`;
 };
 
+/**
+ * Resolve a raw avatar storage path or full URL into a displayable image-transform URL.
+ * Returns undefined if the input is falsy.
+ */
+const resolveAvatarUrl = (raw: string | null | undefined, width = 160): string | undefined => {
+  if (!raw) return undefined;
+  if (raw.startsWith('http://') || raw.startsWith('https://')) {
+    // Already a full URL — route through image transform if it's a Supabase storage URL
+    const marker = '/storage/v1/object/public/';
+    const idx = raw.indexOf(marker);
+    if (idx !== -1) {
+      const storagePath = raw.substring(idx + marker.length);
+      return `${SUPABASE_URL}/storage/v1/render/image/public/${storagePath}?width=${width}&quality=75`;
+    }
+    return raw;
+  }
+  // Relative storage path — build image transform URL directly
+  return `${SUPABASE_URL}/storage/v1/render/image/public/profile-assets/${raw}?width=${width}&quality=75`;
+};
+
 const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
   creator,
   isOpen,
@@ -207,7 +227,7 @@ const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
             {/* Header Section */}
             <div className="flex items-start gap-4">
               <Avatar className="h-20 w-20">
-                <AvatarImage src={profile.avatar_url} />
+                <AvatarImage src={resolveAvatarUrl(profile.avatar_url)} />
                 <AvatarFallback>
                   <User className="h-10 w-10" />
                 </AvatarFallback>
@@ -443,13 +463,15 @@ const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
                         aria-label={`View ${contentType || 'portfolio item'} ${index + 1}`}
                       >
                         {isVideo ? (
-                          <video
-                            src={url}
-                            className="w-full h-full object-cover"
-                            muted
-                            playsInline
-                            preload="none"
-                          />
+                          <div className="w-full h-full bg-gradient-to-br from-gray-800 to-gray-900 relative">
+                            <video
+                              src={url}
+                              className="w-full h-full object-cover"
+                              muted
+                              playsInline
+                              preload="none"
+                            />
+                          </div>
                         ) : (
                           <img
                             src={toThumbnailUrl(url)}

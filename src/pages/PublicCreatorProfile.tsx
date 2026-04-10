@@ -68,6 +68,20 @@ const toThumbnailUrl = (url: string, width = 540): string => {
   return `${SUPABASE_URL}/storage/v1/render/image/public/${storagePath}?width=${width}&quality=75`;
 };
 
+const resolveAvatarUrl = (raw: string | null | undefined, width = 160): string | undefined => {
+  if (!raw) return undefined;
+  if (raw.startsWith('http://') || raw.startsWith('https://')) {
+    const marker = '/storage/v1/object/public/';
+    const idx = raw.indexOf(marker);
+    if (idx !== -1) {
+      const storagePath = raw.substring(idx + marker.length);
+      return `${SUPABASE_URL}/storage/v1/render/image/public/${storagePath}?width=${width}&quality=75`;
+    }
+    return raw;
+  }
+  return `${SUPABASE_URL}/storage/v1/render/image/public/profile-assets/${raw}?width=${width}&quality=75`;
+};
+
 const PublicCreatorProfile = () => {
   const { slug } = useParams();
   const { user } = useAuth();
@@ -232,7 +246,7 @@ const PublicCreatorProfile = () => {
     );
   }
 
-  const heroImage = portfolioUrls[0] || profile.avatar_url;
+  const heroImage = portfolioUrls[0] || resolveAvatarUrl(profile.avatar_url, 800);
 
   return (
     <div className="bg-gray-50 min-h-screen">
@@ -261,7 +275,7 @@ const PublicCreatorProfile = () => {
       {/* White Profile Card — overlaps hero */}
       <div className="bg-white rounded-3xl -mt-6 relative z-10 mx-4 px-4 py-3 flex items-center gap-3 shadow-md">
         <Avatar className="w-16 h-16 ring-2 ring-dc-teal flex-shrink-0">
-          <AvatarImage src={profile.avatar_url} />
+          <AvatarImage src={resolveAvatarUrl(profile.avatar_url)} />
           <AvatarFallback className="bg-dc-teal/20">
             <User className="h-8 w-8 text-dc-teal" />
           </AvatarFallback>
@@ -367,13 +381,15 @@ const PublicCreatorProfile = () => {
                   aria-label={`View ${contentType || 'portfolio item'} ${index + 1}`}
                 >
                   {isVideo ? (
-                    <video
-                      src={url}
-                      className="w-full h-full object-cover"
-                      muted
-                      playsInline
-                      preload="none"
-                    />
+                    <div className="w-full h-full bg-gradient-to-br from-gray-800 to-gray-900 relative">
+                      <video
+                        src={url}
+                        className="w-full h-full object-cover"
+                        muted
+                        playsInline
+                        preload="none"
+                      />
+                    </div>
                   ) : (
                     <img
                       src={toThumbnailUrl(url)}
