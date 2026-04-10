@@ -47,22 +47,33 @@ const toggleFavorite = (id: string): boolean => {
   return !isFav;
 };
 
+/** Return true if the file extension looks like a video format. */
+const isVideoPath = (url: string): boolean => {
+  const ext = url.split('.').pop()?.toLowerCase().split('?')[0];
+  return !!ext && ['mp4', 'mov', 'webm', 'avi', 'mkv'].includes(ext);
+};
+
 export const CreatorCard: React.FC<CreatorCardProps> = ({ creator }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isPortfolioOpen, setIsPortfolioOpen] = useState(false);
   const [portfolioIndex, setPortfolioIndex] = useState(0);
-  const [thumbnailError, setThumbnailError] = useState(false);
+  const [portfolioImgFailed, setPortfolioImgFailed] = useState(false);
+  const [avatarImgFailed, setAvatarImgFailed] = useState(false);
   const [isFavorite, setIsFavorite] = useState(() => getFavorites().includes(creator.id));
 
   // Resolve thumbnail synchronously — no async effects, no network flood.
-  // Priority: first portfolio image → avatar → null
+  // Priority: first non-video portfolio image → avatar → null
+  // Each source has its own error flag so a failed portfolio image still falls back to avatar.
   const thumbnailUrl = useMemo(() => {
-    if (thumbnailError) return null;
     const firstPortfolio = creator.portfolio_urls?.[0];
-    if (firstPortfolio) return resolveStorageUrl(firstPortfolio, 300);
-    if (creator.avatar_url) return resolveStorageUrl(creator.avatar_url, 300);
+    if (firstPortfolio && !isVideoPath(firstPortfolio) && !portfolioImgFailed) {
+      return resolveStorageUrl(firstPortfolio, 300);
+    }
+    if (creator.avatar_url && !avatarImgFailed) {
+      return resolveStorageUrl(creator.avatar_url, 300);
+    }
     return null;
-  }, [creator.portfolio_urls, creator.avatar_url, thumbnailError]);
+  }, [creator.portfolio_urls, creator.avatar_url, portfolioImgFailed, avatarImgFailed]);
 
   // Resolved portfolio URLs for the portfolio modal (synchronous)
   const resolvedPortfolioUrls = useMemo(() => {
@@ -108,7 +119,7 @@ export const CreatorCard: React.FC<CreatorCardProps> = ({ creator }) => {
     <>
       <div
         onClick={handleCardClick}
-        className="bg-white border border-gray-200 rounded-2xl overflow-hidden flex shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+        className="bg-white border border-gray-200 rounded-2xl overflow-hidden flex shadow-sm hover:shadow-md transition-shadow cursor-pointer h-36"
       >
         {/* Thumbnail */}
         <div className="w-[110px] sm:w-[130px] flex-shrink-0 relative">
@@ -118,7 +129,15 @@ export const CreatorCard: React.FC<CreatorCardProps> = ({ creator }) => {
               alt={creator.creator_name}
               className="w-full h-full object-cover"
               loading="lazy"
-              onError={() => setThumbnailError(true)}
+              onError={() => {
+                // If we were showing a portfolio image, mark it failed so we fall back to avatar
+                const firstPortfolio = creator.portfolio_urls?.[0];
+                if (firstPortfolio && !isVideoPath(firstPortfolio) && !portfolioImgFailed) {
+                  setPortfolioImgFailed(true);
+                } else {
+                  setAvatarImgFailed(true);
+                }
+              }}
             />
           ) : (
             <div className="w-full h-full bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center">
