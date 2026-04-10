@@ -1,10 +1,29 @@
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
+import React, { useState, useMemo } from 'react';
 import CreatorProfileModal from './CreatorProfileModal';
 import { CreatorPortfolioModal } from '@/components/creator-profile/CreatorPortfolioModal';
 import { Heart } from 'lucide-react';
 import type { CreatorProfile } from '@/hooks/useCreatorBrowse';
+
+const SUPABASE_URL = 'https://zocahiffooqdybdhguqv.supabase.co';
+
+/** Build a public URL for a storage path, with optional image transform for thumbnails. */
+const resolveStorageUrl = (raw: string | null | undefined, width?: number): string | undefined => {
+  if (!raw) return undefined;
+  if (raw.startsWith('http://') || raw.startsWith('https://')) {
+    if (!width) return raw;
+    // Apply image transform only to Supabase storage URLs
+    const marker = '/storage/v1/object/public/';
+    const idx = raw.indexOf(marker);
+    if (idx === -1) return raw;
+    const storagePath = raw.substring(idx + marker.length);
+    return `${SUPABASE_URL}/storage/v1/render/image/public/${storagePath}?width=${width}&quality=75`;
+  }
+  // Relative storage path
+  if (width) {
+    return `${SUPABASE_URL}/storage/v1/render/image/public/profile-assets/${raw}?width=${width}&quality=75`;
+  }
+  return `${SUPABASE_URL}/storage/v1/object/public/profile-assets/${raw}`;
+};
 
 interface CreatorCardProps {
   creator: CreatorProfile;
@@ -29,80 +48,29 @@ const toggleFavorite = (id: string): boolean => {
 };
 
 export const CreatorCard: React.FC<CreatorCardProps> = ({ creator }) => {
-  const { user } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isPortfolioOpen, setIsPortfolioOpen] = useState(false);
   const [portfolioIndex, setPortfolioIndex] = useState(0);
-  const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
-  const [resolvedPortfolioUrls, setResolvedPortfolioUrls] = useState<string[]>([]);
+  const [thumbnailError, setThumbnailError] = useState(false);
   const [isFavorite, setIsFavorite] = useState(() => getFavorites().includes(creator.id));
 
-  // Resolve only the first portfolio image for the card thumbnail.
-  // Full portfolio resolution is deferred to CreatorProfileModal when it opens.
-  useEffect(() => {
-    const loadFirstPortfolioImage = async () => {
-      if (!creator.portfolio_urls || creator.portfolio_urls.length === 0) {
-        setResolvedPortfolioUrls([]);
-        return;
-      }
+  // Resolve thumbnail synchronously — no async effects, no network flood.
+  // Priority: first portfolio image → avatar → null
+  const thumbnailUrl = useMemo(() => {
+    if (thumbnailError) return null;
+    const firstPortfolio = creator.portfolio_urls?.[0];
+    if (firstPortfolio) return resolveStorageUrl(firstPortfolio, 300);
+    if (creator.avatar_url) return resolveStorageUrl(creator.avatar_url, 300);
+    return null;
+  }, [creator.portfolio_urls, creator.avatar_url, thumbnailError]);
 
-      const firstUrl = creator.portfolio_urls[0];
-      if (!firstUrl) {
-        setResolvedPortfolioUrls([]);
-        return;
-      }
-
-      if (firstUrl.startsWith('http://') || firstUrl.startsWith('https://')) {
-        setResolvedPortfolioUrls([firstUrl]);
-        return;
-      }
-
-      try {
-        const { data } = await supabase.storage
-          .from('profile-assets')
-          .createSignedUrl(firstUrl, 3600);
-        setResolvedPortfolioUrls(data?.signedUrl ? [data.signedUrl] : []);
-      } catch {
-        setResolvedPortfolioUrls([]);
-      }
-    };
-
-    loadFirstPortfolioImage();
+  // Resolved portfolio URLs for the portfolio modal (synchronous)
+  const resolvedPortfolioUrls = useMemo(() => {
+    const first = creator.portfolio_urls?.[0];
+    if (!first) return [];
+    const url = resolveStorageUrl(first);
+    return url ? [url] : [];
   }, [creator.portfolio_urls]);
-
-  // Resolve thumbnail: portfolio[0] -> avatar -> null
-  useEffect(() => {
-    const loadThumbnail = async () => {
-      // Try portfolio first
-      if (resolvedPortfolioUrls.length > 0) {
-        setThumbnailUrl(resolvedPortfolioUrls[0]);
-        return;
-      }
-
-      // Try avatar
-      if (creator.avatar_url) {
-        if (creator.avatar_url.startsWith('http://') || creator.avatar_url.startsWith('https://')) {
-          setThumbnailUrl(creator.avatar_url);
-          return;
-        }
-        try {
-          const { data } = await supabase.storage
-            .from('profile-assets')
-            .createSignedUrl(creator.avatar_url, 3600);
-          if (data?.signedUrl) {
-            setThumbnailUrl(data.signedUrl);
-            return;
-          }
-        } catch {
-          // fall through to null
-        }
-      }
-
-      setThumbnailUrl(null);
-    };
-
-    loadThumbnail();
-  }, [creator.avatar_url, resolvedPortfolioUrls]);
 
   const handleCardClick = () => setIsModalOpen(true);
 
@@ -150,7 +118,7 @@ export const CreatorCard: React.FC<CreatorCardProps> = ({ creator }) => {
               alt={creator.creator_name}
               className="w-full h-full object-cover"
               loading="lazy"
-              onError={() => setThumbnailUrl(null)}
+              onError={() => setThumbnailError(true)}
             />
           ) : (
             <div className="w-full h-full bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center">
