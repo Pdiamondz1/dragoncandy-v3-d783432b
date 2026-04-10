@@ -124,6 +124,7 @@ const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
           if (data.portfolio_urls && data.portfolio_urls.length > 0) {
             const urls = await Promise.all(
               data.portfolio_urls.map(async (url: string) => {
+                if (!url) return null;
                 if (url.startsWith('http://') || url.startsWith('https://')) {
                   return url;
                 }
@@ -133,7 +134,7 @@ const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
                 return urlData.publicUrl;
               })
             );
-            setPortfolioUrls(urls);
+            setPortfolioUrls(urls.filter((u): u is string => u !== null));
           }
         }
       } catch (error) {
@@ -430,6 +431,7 @@ const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
                 <h3 className="text-lg font-semibold mb-3">Portfolio</h3>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                   {portfolioUrls.map((url, index) => {
+                    if (!url) return null;
                     const contentType = getContentType(url);
                     const isVideo = contentType === 'Reel';
                     return (
