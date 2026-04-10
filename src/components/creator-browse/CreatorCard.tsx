@@ -122,12 +122,12 @@ export const CreatorCard: React.FC<CreatorCardProps> = ({ creator }) => {
         className="bg-white border border-gray-200 rounded-2xl overflow-hidden flex shadow-sm hover:shadow-md transition-shadow cursor-pointer h-36"
       >
         {/* Thumbnail */}
-        <div className="w-[110px] sm:w-[130px] flex-shrink-0 relative bg-gray-100">
+        <div className="w-36 flex-shrink-0 relative">
           {thumbnailUrl ? (
             <img
               src={thumbnailUrl}
               alt={creator.creator_name}
-              className="w-full h-full object-contain"
+              className="w-full h-full object-cover"
               loading="lazy"
               onError={() => {
                 // If we were showing a portfolio image, mark it failed so we fall back to avatar
