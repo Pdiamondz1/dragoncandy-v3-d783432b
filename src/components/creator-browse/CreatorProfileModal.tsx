@@ -77,6 +77,21 @@ const getContentType = (url: string): 'Photo' | 'Reel' | null => {
   return null;
 };
 
+const SUPABASE_URL = 'https://zocahiffooqdybdhguqv.supabase.co';
+
+/**
+ * Convert a raw Supabase public storage URL to an image-transform thumbnail URL.
+ * Returns the original URL unchanged for video files or non-Supabase URLs.
+ */
+const toThumbnailUrl = (url: string, width = 540): string => {
+  if (getContentType(url) !== 'Photo') return url;
+  const marker = '/storage/v1/object/public/';
+  const idx = url.indexOf(marker);
+  if (idx === -1) return url;
+  const storagePath = url.substring(idx + marker.length);
+  return `${SUPABASE_URL}/storage/v1/render/image/public/${storagePath}?width=${width}&quality=75`;
+};
+
 const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
   creator,
   isOpen,
@@ -435,7 +450,7 @@ const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
                           />
                         ) : (
                           <img
-                            src={url}
+                            src={toThumbnailUrl(url)}
                             alt={`Portfolio ${index + 1}`}
                             className="w-full h-full object-cover"
                             loading="lazy"
