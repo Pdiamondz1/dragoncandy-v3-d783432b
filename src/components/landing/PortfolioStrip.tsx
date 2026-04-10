@@ -1,6 +1,25 @@
 import React from "react";
 import { useCreatorPortfolioFeed } from "@/hooks/useCreatorPortfolioFeed";
 
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://zocahiffooqdybdhguqv.supabase.co';
+
+const toThumbnailUrl = (url: string, width = 320): string => {
+  // Check for video files — pass through unchanged
+  if (/\.(mp4|mov|webm|avi)(\?|$)/i.test(url)) return url;
+
+  // Handle both public URLs (/object/public/) and signed URLs (/object/sign/)
+  for (const marker of ['/storage/v1/object/public/', '/storage/v1/object/sign/']) {
+    const idx = url.indexOf(marker);
+    if (idx === -1) continue;
+    let storagePath = url.substring(idx + marker.length);
+    // Strip query string (signed token) from the path
+    const qIdx = storagePath.indexOf('?');
+    if (qIdx !== -1) storagePath = storagePath.substring(0, qIdx);
+    return `${SUPABASE_URL}/storage/v1/render/image/public/${storagePath}?width=${width}&quality=75`;
+  }
+  return url;
+};
+
 const placeholderTiles = [
   { id: "p1", bg: "bg-gray-200" },
   { id: "p2", bg: "bg-gray-300" },
@@ -21,11 +40,11 @@ function MarqueeItem({ item }: { item: { id: string; url?: string; type?: string
             muted
             loop
             playsInline
-            preload="metadata"
+            preload="none"
           />
         ) : (
           <img
-            src={item.url}
+            src={toThumbnailUrl(item.url)}
             alt={`Portfolio work by ${item.creatorName}`}
             className="w-full h-full object-cover"
             loading="lazy"
