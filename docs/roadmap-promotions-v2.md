@@ -30,7 +30,7 @@ Toast classifies APIs by integration type (partner, custom, standard, analytics)
   Files: `supabase/migrations/20260412_toast_sync_events.sql`
 - [x] **TASK-004** — Extend `promotion_submissions` with `social_handles jsonb DEFAULT '{}'`
   Files: `supabase/migrations/20260412_social_handles.sql`
-- [ ] **TASK-005** — Toast read-model views: menu_performance, traffic_patterns, redemption_history
+- [x] **TASK-005** — Toast read-model views: menu_performance, traffic_patterns, redemption_history
   Files: `supabase/migrations/20260412_toast_views.sql`
 
 ## Phase 2 — Toast OAuth & Token Refresh
