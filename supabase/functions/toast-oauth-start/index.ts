@@ -24,9 +24,6 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const TOAST_OAUTH_AUTHORIZE_URL = Deno.env.get("TOAST_OAUTH_AUTHORIZE_URL")!;
-const TOAST_CLIENT_ID = Deno.env.get("TOAST_CLIENT_ID")!;
-const TOAST_OAUTH_REDIRECT_URI = Deno.env.get("TOAST_OAUTH_REDIRECT_URI")!;
 
 // ---------------------------------------------------------------------------
 // Crypto helpers
@@ -65,6 +62,21 @@ async function signState(payload: string): Promise<string> {
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
+  }
+
+  // --- Guard: check Toast env vars ---
+  const TOAST_OAUTH_AUTHORIZE_URL = Deno.env.get("TOAST_OAUTH_AUTHORIZE_URL");
+  const TOAST_CLIENT_ID = Deno.env.get("TOAST_CLIENT_ID");
+  const TOAST_OAUTH_REDIRECT_URI = Deno.env.get("TOAST_OAUTH_REDIRECT_URI");
+
+  if (!TOAST_OAUTH_AUTHORIZE_URL || !TOAST_CLIENT_ID || !TOAST_OAUTH_REDIRECT_URI) {
+    return new Response(
+      JSON.stringify({
+        error: "toast_not_configured",
+        message: "Toast API credentials are not configured yet.",
+      }),
+      { status: 503, headers: { "Content-Type": "application/json", ...corsHeaders } },
+    );
   }
 
   try {
