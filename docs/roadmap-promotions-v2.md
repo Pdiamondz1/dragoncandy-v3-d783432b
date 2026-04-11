@@ -93,7 +93,7 @@ Toast classifies APIs by integration type (partner, custom, standard, analytics)
   Files: `src/App.tsx`
 
 ## Phase 9 — Pre-Launch Hardening
-- [ ] **TASK-027** — E2E: connect Toast → publish → simulated webhook → redemption count
+- [x] **TASK-027** — E2E: connect Toast → publish → simulated webhook → redemption count
   Files: `tests/e2e/toast-integration.spec.ts`
 - [ ] **TASK-028** — Mobile + desktop QA on Lovable preview; `lg:` screenshot baselines
   Files: `qa-promotions-v2.md`
