@@ -18,14 +18,26 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const TOAST_OAUTH_TOKEN_URL = Deno.env.get("TOAST_OAUTH_TOKEN_URL")!;
-const TOAST_CLIENT_ID = Deno.env.get("TOAST_CLIENT_ID")!;
-const TOAST_CLIENT_SECRET = Deno.env.get("TOAST_CLIENT_SECRET")!;
 
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200 });
   }
+
+    // --- Guard: check Toast env vars ---
+    const TOAST_OAUTH_TOKEN_URL = Deno.env.get("TOAST_OAUTH_TOKEN_URL");
+    const TOAST_CLIENT_ID = Deno.env.get("TOAST_CLIENT_ID");
+    const TOAST_CLIENT_SECRET = Deno.env.get("TOAST_CLIENT_SECRET");
+
+    if (!TOAST_OAUTH_TOKEN_URL || !TOAST_CLIENT_ID || !TOAST_CLIENT_SECRET) {
+      return new Response(
+        JSON.stringify({
+          error: "toast_not_configured",
+          message: "Toast API credentials are not configured yet.",
+        }),
+        { status: 503, headers: { "Content-Type": "application/json" } },
+      );
+    }
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
   const results: Array<{ connection_id: string; status: string; error?: string }> = [];
