@@ -47,7 +47,7 @@ Toast classifies APIs by integration type (partner, custom, standard, analytics)
 - [x] **TASK-010** — Edge Function `toast-discount-push` (ledger-first) — **GATED on partner tier**
   Files: `supabase/functions/toast-discount-push/index.ts`
   Notes: If standard-only at launch, stub this function to log intent and skip the Toast call. Ship internal code generation as before.
-- [ ] **TASK-011** — Hook promotion publish/edit/end to `toast-discount-push`
+- [x] **TASK-011** — Hook promotion publish/edit/end to `toast-discount-push`
   Files: `src/features/promotions/hooks/usePromotionMutations.ts`
 - [ ] **TASK-012** — Sync status badge (Synced / Pending / Failed / Tier-Unavailable)
   Files: `src/features/promotions/components/SyncStatusBadge.tsx`
