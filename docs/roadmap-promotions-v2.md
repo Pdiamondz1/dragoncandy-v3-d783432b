@@ -49,7 +49,7 @@ Toast classifies APIs by integration type (partner, custom, standard, analytics)
   Notes: If standard-only at launch, stub this function to log intent and skip the Toast call. Ship internal code generation as before.
 - [x] **TASK-011** — Hook promotion publish/edit/end to `toast-discount-push`
   Files: `src/features/promotions/hooks/usePromotionMutations.ts`
-- [ ] **TASK-012** — Sync status badge (Synced / Pending / Failed / Tier-Unavailable)
+- [x] **TASK-012** — Sync status badge (Synced / Pending / Failed / Tier-Unavailable)
   Files: `src/features/promotions/components/SyncStatusBadge.tsx`
 
 ## Phase 4 — Inbound Redemption Webhook

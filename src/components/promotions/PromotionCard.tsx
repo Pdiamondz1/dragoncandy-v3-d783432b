@@ -13,6 +13,8 @@ import { Calendar, Gift, QrCode, Users, Pause, Play, Copy, Check, MoreVertical, 
 import { format, isAfter, isBefore } from 'date-fns';
 import { Promotion } from '@/hooks/usePromotions';
 import { toast } from '@/hooks/use-toast';
+import { SyncStatusBadge } from '@/features/promotions/components/SyncStatusBadge';
+import { useToastSyncStatus } from '@/features/promotions/hooks/useToastSyncStatus';
 
 interface PromotionCardProps {
   promotion: Promotion;
@@ -33,6 +35,7 @@ export const PromotionCard: React.FC<PromotionCardProps> = ({
   const [showQRModal, setShowQRModal] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [copied, setCopied] = useState(false);
+  const { data: syncStatus } = useToastSyncStatus(promotion.id);
   
   const now = new Date();
   const startDate = new Date(promotion.start_date);
@@ -108,6 +111,7 @@ export const PromotionCard: React.FC<PromotionCardProps> = ({
             </div>
             <div className="flex items-center gap-2">
               {getStatusBadge()}
+              {syncStatus && <SyncStatusBadge status={syncStatus} />}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" className="h-8 w-8">
