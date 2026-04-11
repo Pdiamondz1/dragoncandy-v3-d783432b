@@ -95,7 +95,7 @@ Toast classifies APIs by integration type (partner, custom, standard, analytics)
 ## Phase 9 — Pre-Launch Hardening
 - [x] **TASK-027** — E2E: connect Toast → publish → simulated webhook → redemption count
   Files: `tests/e2e/toast-integration.spec.ts`
-- [ ] **TASK-028** — Mobile + desktop QA on Lovable preview; `lg:` screenshot baselines
+- [x] **TASK-028** — Mobile + desktop QA on Lovable preview; `lg:` screenshot baselines
   Files: `qa-promotions-v2.md`
 - [ ] **TASK-029** — Runbook: token rotation, webhook replay, disconnect flow
   Files: `docs/runbooks/toast.md`
