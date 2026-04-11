@@ -69,6 +69,7 @@ import PromotionsErrorBoundary from "./components/promotions/PromotionsErrorBoun
 import PaymentsPage from "@/pages/PaymentsPage";
 import HelpBriefPage from "@/pages/help/promotions/HelpBriefPage";
 import { HelpBriefDrawer } from "@/features/donny/HelpBriefDrawer";
+import { DonnyDock } from "@/components/DonnyDock";
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -486,6 +487,7 @@ const App = () => {
                   <Route path="*" element={<NotFound />} />
                   </Routes>
                   <HelpBriefDrawer />
+                  <DonnyDock />
                 </BrowserRouter>
               </TooltipProvider>
             </AnalyticsProvider>

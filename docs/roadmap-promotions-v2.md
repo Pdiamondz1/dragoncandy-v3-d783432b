@@ -89,7 +89,7 @@ Toast classifies APIs by integration type (partner, custom, standard, analytics)
 - [x] **TASK-025** — `DonnyDock.tsx` floating chat icon, portal-rendered
   Files: `src/components/DonnyDock.tsx`
   Notes: `fixed bottom-4 right-4 z-50`. Mobile 56px, desktop `lg:w-14 lg:h-14`. Teal pulse, pink hover.
-- [ ] **TASK-026** — Mount `DonnyDock` in root layout; hide on `/auth/*`
+- [x] **TASK-026** — Mount `DonnyDock` in root layout; hide on `/auth/*`
   Files: `src/App.tsx`
 
 ## Phase 9 — Pre-Launch Hardening
