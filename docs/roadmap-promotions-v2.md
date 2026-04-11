@@ -56,7 +56,7 @@ Toast classifies APIs by integration type (partner, custom, standard, analytics)
 - [x] **TASK-013** — Edge Function `toast-redemption-webhook` with HMAC verification
   Files: `supabase/functions/toast-redemption-webhook/index.ts`
   Notes: Reject unsigned. Idempotent via `toast_event_guid`. Ledger write before `promotion_redemptions` update.
-- [ ] **TASK-014** — Redemption counter + sparkline on Promotion detail
+- [x] **TASK-014** — Redemption counter + sparkline on Promotion detail
   Files: `src/features/promotions/components/RedemptionMetrics.tsx`
 
 ## Phase 5 — Social Handle Capture

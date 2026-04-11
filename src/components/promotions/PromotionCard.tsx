@@ -15,6 +15,7 @@ import { Promotion } from '@/hooks/usePromotions';
 import { toast } from '@/hooks/use-toast';
 import { SyncStatusBadge } from '@/features/promotions/components/SyncStatusBadge';
 import { useToastSyncStatus } from '@/features/promotions/hooks/useToastSyncStatus';
+import { RedemptionMetrics } from '@/features/promotions/components/RedemptionMetrics';
 
 interface PromotionCardProps {
   promotion: Promotion;
@@ -151,12 +152,12 @@ export const PromotionCard: React.FC<PromotionCardProps> = ({
               <Gift className="h-4 w-4" />
               <span className="font-medium text-foreground">{discountDisplay}</span>
             </div>
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Users className="h-4 w-4" />
-              <span>
-                {promotion.current_redemptions || 0}
-                {promotion.max_redemptions ? ` / ${promotion.max_redemptions}` : ''} redeemed
-              </span>
+            <div className="flex items-center gap-2 text-muted-foreground col-span-2 sm:col-span-1">
+              <RedemptionMetrics
+                promotionId={promotion.id}
+                currentRedemptions={promotion.current_redemptions || 0}
+                maxRedemptions={promotion.max_redemptions}
+              />
             </div>
             <div className="flex items-center gap-2 text-muted-foreground">
               <Calendar className="h-4 w-4" />
