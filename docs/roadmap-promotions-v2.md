@@ -78,7 +78,7 @@ Toast classifies APIs by integration type (partner, custom, standard, analytics)
 ## Phase 7 — How-To Briefs (MDX)
 - [x] **TASK-021** — `/help/promotions/$slug` route + MDX loader
   Files: `src/routes/help/promotions/$slug.tsx`, `vite.config.ts`
-- [ ] **TASK-022** — Author 5 MDX briefs
+- [x] **TASK-022** — Author 5 MDX briefs
   Files: `src/content/help/promotions/{connect-toast,create-promotion,customer-flow,read-donny-insights,troubleshooting}.mdx`
 - [ ] **TASK-023** — "?" tooltips on Promotions UI deep-linking to briefs
   Files: `src/features/promotions/components/HelpTooltip.tsx`

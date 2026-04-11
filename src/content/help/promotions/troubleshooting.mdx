@@ -1,0 +1,97 @@
+---
+title: "Troubleshooting Promotions & Toast"
+slug: troubleshooting
+audience: restaurant
+estimatedTime: "4 minutes"
+lastUpdated: 2026-04-11
+---
+
+# Troubleshooting Promotions & Toast
+
+Running into something unexpected? This brief covers the most common issues with promotions and the Toast integration, along with quick fixes.
+
+## Toast connection issues
+
+### "Not Connected" after authorizing
+
+**Symptom:** You went through the Toast login flow but the card still shows gray "Not Connected."
+
+**Fix:**
+1. Check your browser — pop-up blockers can interrupt the OAuth redirect. Disable them for dragoncandy.io and try again.
+2. Make sure you authorized with a Toast **admin** account. Manager-level credentials may not have API permission.
+3. Try a different browser or clear cookies for toast.com and dragoncandy.io.
+
+### Status shows "Error" or "Expired"
+
+**Symptom:** The Toast card has a red "Error" or orange "Expired" pill.
+
+**Fix:**
+- **Error:** Usually a temporary Toast API outage. Wait 10 minutes and click **Test Connection**. If it persists, disconnect and reconnect.
+- **Expired:** Your access token expired and the automatic refresh failed. Click **Connect Toast** again to re-authorize. This takes 30 seconds and won't lose your historical data.
+
+### "Test Connection" fails on webhook registration
+
+**Symptom:** Menu items and orders load fine, but the webhook line shows ✗.
+
+**Fix:** This is usually a Toast-side delay in registering new webhook endpoints. Wait 15 minutes and test again. If it still fails after an hour, contact support — there may be a firewall rule on Toast's side blocking outbound webhook calls to your endpoint.
+
+## Promotion issues
+
+### Customers see "This promotion is no longer active"
+
+**Possible causes:**
+- The promotion's end date has passed — check the date range in your promotion settings
+- You manually paused or ended the promotion
+- The status was changed to "draft" or "closed"
+
+**Fix:** Edit the promotion and extend the end date, or set status back to "active."
+
+### Discount code not arriving
+
+**Symptom:** You approved the submission but the customer says they never got a code.
+
+**Check:**
+1. Open the **Codes** tab and search by the customer's email — if the code exists, it was generated successfully
+2. Ask the customer to check spam/junk folders (email) or blocked messages (SMS)
+3. Verify the email and phone on the submission are correct — typos happen
+
+If the code doesn't exist at all, there may have been a generation error. Try rejecting and re-approving the submission, which triggers a fresh code.
+
+### Duplicate submission blocked but customer is new
+
+**Symptom:** A customer says they've never submitted but gets the "already submitted" error.
+
+**Cause:** Someone else used the same email address or phone number for a prior submission on the same promotion.
+
+**Fix:** This is by design to prevent code farming. If you trust the customer, you can manually create a discount code for them in the **Codes** tab.
+
+## Sync status issues
+
+### Badge shows "Tier-Unavailable"
+
+This means your Toast integration is on **Standard** access — discount codes work through DragonCandy but don't automatically sync to the Toast POS. This is normal and doesn't affect the customer experience. Codes are still delivered via email/SMS and can be redeemed manually at the register.
+
+To enable automatic POS sync, ask your account manager about upgrading to Partner-tier integration.
+
+### Badge shows "Pending" for a long time
+
+Sync events are fire-and-forget — if Toast is temporarily unreachable, the badge stays on "Pending" until the next successful sync. Usually resolves within 30 minutes. If it stays pending for more than an hour, check the Toast card status in Settings.
+
+### Badge shows "Failed"
+
+A sync attempt reached Toast but was rejected. Common causes:
+- The discount value exceeds Toast's configured maximum
+- The promotion title contains characters Toast doesn't allow
+- Toast's discount API had a transient error
+
+Check the error in the sync event log (visible in the promotion detail page) and adjust accordingly.
+
+## Still stuck?
+
+Tap the Donny icon and say "help me troubleshoot my Toast connection" — Donny can check your connection status and sync history in real time and walk you through the fix.
+
+If it's something Donny can't resolve, reach out to support@dragoncandy.io with your restaurant name and a screenshot of the error.
+
+---
+
+**← Back to:** [Connect Toast](/help/promotions/connect-toast)
