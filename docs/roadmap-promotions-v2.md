@@ -24,7 +24,7 @@ Toast classifies APIs by integration type (partner, custom, standard, analytics)
   Notes: Output `audit-promotions-v2.md`. STOP if the prior Promotions audit prompt is mid-flight. Confirm shapes of `promotion_redemptions`, `promotion_submissions`. Confirm current Toast tier status with Dame.
 
 ## Phase 1 — Ledger & Schema Foundation
-- [ ] **TASK-002** — `toast_connections` table with pgsodium encryption + RLS
+- [x] **TASK-002** — `toast_connections` table with pgsodium encryption + RLS
   Files: `supabase/migrations/20260412_toast_connections.sql`
 - [ ] **TASK-003** — `toast_sync_events` ledger table + unique index on `toast_event_guid`
   Files: `supabase/migrations/20260412_toast_sync_events.sql`
