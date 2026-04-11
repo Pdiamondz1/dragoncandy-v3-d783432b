@@ -6,6 +6,7 @@ import { PendingReviewsTab } from '@/components/promotions/PendingReviewsTab';
 import { VerifyCodesTab } from '@/components/promotions/VerifyCodesTab';
 import { ApprovedVideosTab } from '@/components/promotions/ApprovedVideosTab';
 import { DonnyCampaignCTA } from '@/features/promotions/components/DonnyCampaignCTA';
+import { HelpTooltip } from '@/features/promotions/components/HelpTooltip';
 import { QrCode, Video, Ticket, Film } from 'lucide-react';
 import { usePromotions } from '@/hooks/usePromotions';
 
@@ -19,8 +20,12 @@ const BusinessPromotionalTools: React.FC = () => {
       <div className="min-h-screen overflow-x-hidden pb-24 md:pb-0 md:max-w-4xl md:mx-auto">
         {/* Template A: Pink gradient header */}
         <div className="bg-gradient-to-b from-dc-pink-bg to-pink-50 px-4 pt-6 pb-4">
-          <h1 className="font-sans text-sm font-bold uppercase tracking-wide text-dc-teal">
+          <h1 className="font-sans text-sm font-bold uppercase tracking-wide text-dc-teal inline-flex items-center gap-2">
             Promotional Tools
+            <HelpTooltip
+              slug="create-promotion"
+              summary="Create QR-based promotions that turn customers into content creators. They film or snap, you reward them with a discount."
+            />
           </h1>
           <p className="text-xs text-gray-500 mt-1">
             Create QR-based video promotions to incentivize customer content creation.
