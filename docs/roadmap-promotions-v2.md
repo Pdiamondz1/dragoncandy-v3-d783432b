@@ -26,7 +26,7 @@ Toast classifies APIs by integration type (partner, custom, standard, analytics)
 ## Phase 1 — Ledger & Schema Foundation
 - [x] **TASK-002** — `toast_connections` table with pgsodium encryption + RLS
   Files: `supabase/migrations/20260412_toast_connections.sql`
-- [ ] **TASK-003** — `toast_sync_events` ledger table + unique index on `toast_event_guid`
+- [x] **TASK-003** — `toast_sync_events` ledger table + unique index on `toast_event_guid`
   Files: `supabase/migrations/20260412_toast_sync_events.sql`
 - [ ] **TASK-004** — Extend `promotion_submissions` with `social_handles jsonb DEFAULT '{}'`
   Files: `supabase/migrations/20260412_social_handles.sql`
