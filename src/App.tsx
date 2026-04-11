@@ -68,6 +68,7 @@ import PromotionSubmissionPage from "./pages/PromotionSubmissionPage";
 import PromotionsErrorBoundary from "./components/promotions/PromotionsErrorBoundary";
 import PaymentsPage from "@/pages/PaymentsPage";
 import HelpBriefPage from "@/pages/help/promotions/HelpBriefPage";
+import { HelpBriefDrawer } from "@/features/donny/HelpBriefDrawer";
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -484,6 +485,7 @@ const App = () => {
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />
                   </Routes>
+                  <HelpBriefDrawer />
                 </BrowserRouter>
               </TooltipProvider>
             </AnalyticsProvider>

@@ -1,6 +1,7 @@
 import ReactMarkdown from 'react-markdown';
 import { DonnyAvatar } from './DonnyAvatar';
 import { DonnyRichCard } from './DonnyRichCard';
+import { parseAndDispatchDeepLink } from '@/features/donny/deepLinks';
 import type { DonnyMessage as DonnyMessageType, DonnyAvatarState } from '@/types/donny';
 
 interface DonnyMessageProps {
@@ -46,11 +47,26 @@ export function DonnyMessage({ message, avatarState = 'idle', isLatestAssistant 
                   ul: ({ children }) => <ul className="list-disc list-inside mb-1.5 space-y-0.5">{children}</ul>,
                   ol: ({ children }) => <ol className="list-decimal list-inside mb-1.5 space-y-0.5">{children}</ol>,
                   li: ({ children }) => <li className="text-sm">{children}</li>,
-                  a: ({ href, children }) => (
-                    <a href={href} target="_blank" rel="noopener noreferrer" className="text-[#EC4899] underline underline-offset-2">
-                      {children}
-                    </a>
-                  ),
+                  a: ({ href, children }) => {
+                    // Intercept help brief links to open in drawer
+                    const helpMatch = href?.match(/\/help\/promotions\/([a-z0-9-]+)/);
+                    if (helpMatch) {
+                      return (
+                        <button
+                          type="button"
+                          onClick={() => parseAndDispatchDeepLink(`open help: ${helpMatch[1]}`)}
+                          className="text-[#EC4899] underline underline-offset-2 cursor-pointer"
+                        >
+                          {children}
+                        </button>
+                      );
+                    }
+                    return (
+                      <a href={href} target="_blank" rel="noopener noreferrer" className="text-[#EC4899] underline underline-offset-2">
+                        {children}
+                      </a>
+                    );
+                  },
                   code: ({ children }) => (
                     <code className="bg-black/10 rounded px-1 py-0.5 text-xs font-mono">{children}</code>
                   ),

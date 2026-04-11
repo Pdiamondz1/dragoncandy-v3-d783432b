@@ -82,7 +82,7 @@ Toast classifies APIs by integration type (partner, custom, standard, analytics)
   Files: `src/content/help/promotions/{connect-toast,create-promotion,customer-flow,read-donny-insights,troubleshooting}.mdx`
 - [x] **TASK-023** — "?" tooltips on Promotions UI deep-linking to briefs
   Files: `src/features/promotions/components/HelpTooltip.tsx`
-- [ ] **TASK-024** — Donny deep-link handler for `open help: <slug>`
+- [x] **TASK-024** — Donny deep-link handler for `open help: <slug>`
   Files: `src/features/donny/deepLinks.ts`
 
 ## Phase 8 — Global Donny Dock
