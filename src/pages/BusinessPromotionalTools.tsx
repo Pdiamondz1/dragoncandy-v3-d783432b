@@ -5,6 +5,7 @@ import { ActivePromotionsTab } from '@/components/promotions/ActivePromotionsTab
 import { PendingReviewsTab } from '@/components/promotions/PendingReviewsTab';
 import { VerifyCodesTab } from '@/components/promotions/VerifyCodesTab';
 import { ApprovedVideosTab } from '@/components/promotions/ApprovedVideosTab';
+import { DonnyCampaignCTA } from '@/features/promotions/components/DonnyCampaignCTA';
 import { QrCode, Video, Ticket, Film } from 'lucide-react';
 import { usePromotions } from '@/hooks/usePromotions';
 
@@ -34,6 +35,9 @@ const BusinessPromotionalTools: React.FC = () => {
               <p className="text-3xl font-extrabold text-gray-900">{approvedCount}</p>
               <p className="text-xs text-gray-500">Approved Videos</p>
             </div>
+          </div>
+          <div className="mt-4">
+            <DonnyCampaignCTA />
           </div>
         </div>
 
