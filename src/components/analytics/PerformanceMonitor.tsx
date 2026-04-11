@@ -6,16 +6,20 @@ export const PerformanceMonitor: React.FC = () => {
   const { trackPerformance, trackEvent } = useAnalyticsContext();
 
   useEffect(() => {
-    // Monitor Core Web Vitals
-    const observer = new PerformanceObserver((list) => {
-      for (const entry of list.getEntries()) {
-        if (entry.entryType === 'measure') {
-          trackPerformance(entry.name, entry.duration);
+    // Monitor Core Web Vitals (guarded — not all browsers support PerformanceObserver)
+    let observer: PerformanceObserver | null = null;
+    try {
+      observer = new PerformanceObserver((list) => {
+        for (const entry of list.getEntries()) {
+          if (entry.entryType === 'measure') {
+            trackPerformance(entry.name, entry.duration);
+          }
         }
-      }
-    });
-
-    observer.observe({ entryTypes: ['measure'] });
+      });
+      observer.observe({ entryTypes: ['measure'] });
+    } catch {
+      // PerformanceObserver not supported — skip monitoring
+    }
 
     // Monitor memory usage (if available)
     const checkMemoryUsage = () => {
@@ -53,7 +57,7 @@ export const PerformanceMonitor: React.FC = () => {
     window.addEventListener('unhandledrejection', unhandledRejectionHandler);
 
     return () => {
-      observer.disconnect();
+      observer?.disconnect();
       clearInterval(memoryInterval);
       window.removeEventListener('error', errorHandler);
       window.removeEventListener('unhandledrejection', unhandledRejectionHandler);

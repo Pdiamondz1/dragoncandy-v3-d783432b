@@ -93,7 +93,9 @@ const App = () => {
           <AIAssistantProvider>
             <AIChatModalProvider>
             <AnalyticsProvider>
-              <PerformanceMonitor />
+              <ErrorBoundary level="widget" fallback={null}>
+                <PerformanceMonitor />
+              </ErrorBoundary>
               <TooltipProvider>
                 <Toaster />
                 <Sonner />
@@ -487,7 +489,9 @@ const App = () => {
                   <Route path="*" element={<NotFound />} />
                   </Routes>
                   <HelpBriefDrawer />
-                  <DonnyDock />
+                  <ErrorBoundary level="widget" fallback={null}>
+                    <DonnyDock />
+                  </ErrorBoundary>
                 </BrowserRouter>
               </TooltipProvider>
             </AnalyticsProvider>

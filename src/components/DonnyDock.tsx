@@ -138,12 +138,14 @@ export function DonnyDock() {
         )}
       </button>
 
-      {/* Chat drawer — reuses existing DonnyChatSheet */}
-      <DonnyChatSheet
-        open={chatOpen}
-        onOpenChange={setChatOpen}
-        initialMessage={initialMessage}
-      />
+      {/* Chat drawer — only mounted when open to avoid eager Supabase queries */}
+      {chatOpen && (
+        <DonnyChatSheet
+          open={chatOpen}
+          onOpenChange={setChatOpen}
+          initialMessage={initialMessage}
+        />
+      )}
     </>
   );
 
