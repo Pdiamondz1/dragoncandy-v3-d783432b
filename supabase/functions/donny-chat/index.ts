@@ -357,6 +357,12 @@ const TOOL_DEFINITIONS = [
       required: ["campaign_id", "preview_types"],
     },
   },
+  // --- Toast Insights Tool ---
+  {
+    name: "get_toast_insights",
+    description: "Get Toast POS insights for the restaurant: menu performance, traffic patterns by day/hour, and promotion redemption history over the last 30 days. Returns empty arrays when no Toast data is available.",
+    input_schema: { type: "object", properties: {} },
+  },
 ];
 
 // Build system prompt with user context
@@ -389,6 +395,7 @@ function buildSystemPrompt(
 - Guide new users through onboarding
 - Schedule content posts across Instagram, TikTok, YouTube, Twitter/X, and Facebook with AI-optimized timing
 - Generate visual previews for campaigns including mood boards, content templates, storyboards, and example clip breakdowns so brands can see the vision before creators start working
+- Retrieve Toast POS insights (menu performance, traffic patterns, redemption history) to make data-driven campaign recommendations
 
 ## User Context
 - Name: ${profile.full_name || "there"}
@@ -411,6 +418,8 @@ function buildSystemPrompt(
 - If a tool fails: explain the error conversationally and suggest how to fix it.
 - Use tools proactively — if the user asks about campaigns, call get_campaigns. Don't just describe what you could do.
 - When you call a tool that returns data, present it conversationally.
+- When recommending campaigns using Toast data: cite specific menu items and time windows (e.g. "your burgers peak Fri 6-9pm"). Never fabricate Toast data.
+- If get_toast_insights returns empty arrays for all three categories, say "I don't have Toast data for your restaurant yet" — do NOT guess or hallucinate menu items or traffic patterns.
 
 ## Rich Cards
 When presenting creators or campaigns from tool results, include a JSON code block with the card data. Format:
@@ -1169,6 +1178,37 @@ async function executeTool(
       }
       const previewData = await previewResponse.json();
       return { result: previewData };
+    }
+
+    // --- Toast Insights Tool ---
+    case "get_toast_insights": {
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+
+      const [menuResult, trafficResult, redemptionResult] = await Promise.all([
+        supabaseAdmin
+          .from("toast_menu_performance")
+          .select("*")
+          .eq("business_id", userId),
+        supabaseAdmin
+          .from("toast_traffic_patterns")
+          .select("*")
+          .eq("business_id", userId),
+        supabaseAdmin
+          .from("toast_redemption_history")
+          .select("*")
+          .eq("business_id", userId)
+          .gte("last_redemption_at", thirtyDaysAgo),
+      ]);
+
+      return {
+        result: {
+          business_id: userId,
+          lookback_days: 30,
+          menu_performance: menuResult.data ?? [],
+          traffic_patterns: trafficResult.data ?? [],
+          redemption_history: redemptionResult.data ?? [],
+        },
+      };
     }
 
     default:

@@ -70,7 +70,7 @@ Toast classifies APIs by integration type (partner, custom, standard, analytics)
 ## Phase 6 — Donny Toast Intelligence
 - [x] **TASK-018** — Edge Function `donny-toast-context` aggregating 3 views
   Files: `supabase/functions/donny-toast-context/index.ts`
-- [ ] **TASK-019** — Register `get_toast_insights` tool in Donny + system prompt update
+- [x] **TASK-019** — Register `get_toast_insights` tool in Donny + system prompt update
   Files: `supabase/functions/donny-chat/tools.ts`, `supabase/functions/donny-chat/system-prompt.ts`
 - [ ] **TASK-020** — "Ask Donny for campaign ideas" CTA on Promotions index
   Files: `src/features/promotions/components/DonnyCampaignCTA.tsx`
