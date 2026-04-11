@@ -21,11 +21,6 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const TOAST_OAUTH_TOKEN_URL = Deno.env.get("TOAST_OAUTH_TOKEN_URL")!;
-const TOAST_CLIENT_ID = Deno.env.get("TOAST_CLIENT_ID")!;
-const TOAST_CLIENT_SECRET = Deno.env.get("TOAST_CLIENT_SECRET")!;
-const TOAST_OAUTH_REDIRECT_URI = Deno.env.get("TOAST_OAUTH_REDIRECT_URI")!;
-const DRAGONCANDY_APP_URL = Deno.env.get("DRAGONCANDY_APP_URL") || "https://dragoncandy.io";
 
 // ---------------------------------------------------------------------------
 // Crypto helpers (same algorithm as toast-oauth-start)
@@ -66,6 +61,23 @@ serve(async (req: Request) => {
   // but handle OPTIONS defensively.
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200 });
+  }
+
+  // --- Guard: check Toast env vars ---
+  const TOAST_OAUTH_TOKEN_URL = Deno.env.get("TOAST_OAUTH_TOKEN_URL");
+  const TOAST_CLIENT_ID = Deno.env.get("TOAST_CLIENT_ID");
+  const TOAST_CLIENT_SECRET = Deno.env.get("TOAST_CLIENT_SECRET");
+  const TOAST_OAUTH_REDIRECT_URI = Deno.env.get("TOAST_OAUTH_REDIRECT_URI");
+  const DRAGONCANDY_APP_URL = Deno.env.get("DRAGONCANDY_APP_URL") || "https://dragoncandy.io";
+
+  if (!TOAST_OAUTH_TOKEN_URL || !TOAST_CLIENT_ID || !TOAST_CLIENT_SECRET || !TOAST_OAUTH_REDIRECT_URI) {
+    return new Response(
+      JSON.stringify({
+        error: "toast_not_configured",
+        message: "Toast API credentials are not configured yet.",
+      }),
+      { status: 503, headers: { "Content-Type": "application/json" } },
+    );
   }
 
   const settingsUrl = `${DRAGONCANDY_APP_URL}/settings`;
