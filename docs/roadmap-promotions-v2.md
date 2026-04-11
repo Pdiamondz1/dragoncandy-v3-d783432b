@@ -97,7 +97,7 @@ Toast classifies APIs by integration type (partner, custom, standard, analytics)
   Files: `tests/e2e/toast-integration.spec.ts`
 - [x] **TASK-028** — Mobile + desktop QA on Lovable preview; `lg:` screenshot baselines
   Files: `qa-promotions-v2.md`
-- [ ] **TASK-029** — Runbook: token rotation, webhook replay, disconnect flow
+- [x] **TASK-029** — Runbook: token rotation, webhook replay, disconnect flow
   Files: `docs/runbooks/toast.md`
 
 ---
