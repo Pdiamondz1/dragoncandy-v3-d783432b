@@ -44,7 +44,7 @@ Toast classifies APIs by integration type (partner, custom, standard, analytics)
   Files: `src/features/settings/ToastConnectionCard.tsx`
 
 ## Phase 3 — Discount Sync (branch on tier)
-- [ ] **TASK-010** — Edge Function `toast-discount-push` (ledger-first) — **GATED on partner tier**
+- [x] **TASK-010** — Edge Function `toast-discount-push` (ledger-first) — **GATED on partner tier**
   Files: `supabase/functions/toast-discount-push/index.ts`
   Notes: If standard-only at launch, stub this function to log intent and skip the Toast call. Ship internal code generation as before.
 - [ ] **TASK-011** — Hook promotion publish/edit/end to `toast-discount-push`
