@@ -40,7 +40,7 @@ Toast classifies APIs by integration type (partner, custom, standard, analytics)
   Files: `supabase/functions/toast-oauth-callback/index.ts`
 - [x] **TASK-008** — Edge Function `toast-token-refresh` + pg_cron every 30min
   Files: `supabase/functions/toast-token-refresh/index.ts`, `supabase/migrations/20260412_cron.sql`
-- [ ] **TASK-009** — Restaurant Settings: "Connect Toast" card with status pill
+- [x] **TASK-009** — Restaurant Settings: "Connect Toast" card with status pill
   Files: `src/features/settings/ToastConnectionCard.tsx`
 
 ## Phase 3 — Discount Sync (branch on tier)

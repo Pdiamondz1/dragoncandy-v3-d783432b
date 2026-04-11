@@ -7,6 +7,7 @@ import DashboardLayout from '@/components/DashboardLayout';
 import { BusinessSettingsHeader } from '@/components/business-profile/BusinessSettingsHeader';
 import { BusinessSettingsForm } from '@/components/business-profile/BusinessSettingsForm';
 import { RestaurantPaymentSettings } from '@/components/business-profile/RestaurantPaymentSettings';
+import { ToastConnectionCard } from '@/features/settings/ToastConnectionCard';
 import { useBusinessProfileForm } from '@/hooks/useBusinessProfileForm';
 import { useBusinessProfileSubmit } from '@/hooks/useBusinessProfileSubmit';
 
@@ -76,6 +77,7 @@ const BusinessSettings = () => {
         <div className="p-4 space-y-6">
           <BusinessSettingsHeader />
           <RestaurantPaymentSettings />
+          <ToastConnectionCard />
           <BusinessSettingsForm
             formData={formData}
             logoFile={logoFile}
