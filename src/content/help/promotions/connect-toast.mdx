@@ -1,0 +1,66 @@
+---
+title: "Connect Your Toast POS to DragonCandy"
+slug: connect-toast
+audience: restaurant
+estimatedTime: "5 minutes"
+lastUpdated: 2026-04-11
+---
+
+# Connect Your Toast POS to DragonCandy
+
+Linking Toast lets Donny see what's actually selling at your restaurant — and turns every promotion you run into measurable redemption data. This brief walks you through the one-time connection.
+
+## What you'll need
+- Admin access to your Toast account
+- Your Toast location name or GUID (found in Toast Web → **Settings → Restaurant Info**)
+- About 5 minutes
+
+## What DragonCandy reads from Toast
+Toast organizes its data through several APIs, and DragonCandy only touches the ones it needs:
+- **Menu & discounts** (Toast `config` API) — so Donny knows your actual items and pricing
+- **Orders** (Toast `orders` API) — to count promotion redemptions when customers check out
+- **Traffic patterns** — aggregated by hour and day, never per-customer
+
+DragonCandy never reads employee records, payroll, cash drawer events, or customer credit card data. You can review the full Toast API catalog at [doc.toasttab.com/doc/devguide/apiOverview.html](https://doc.toasttab.com/doc/devguide/apiOverview.html).
+
+## Step 1 — Open your Settings
+From any page, click your restaurant name (top-right) → **Settings** → **Integrations**. Find the card labeled **Toast POS** with a teal **Connect Toast** button.
+
+On mobile, tap the menu icon, then **Settings → Integrations**. The Connect card stacks to full width.
+
+## Step 2 — Authorize DragonCandy in Toast
+Clicking **Connect Toast** opens a Toast-hosted login window. Sign in with your Toast admin credentials. Toast will show you exactly which permissions DragonCandy is requesting — review them and click **Allow**.
+
+You'll be bounced back to DragonCandy automatically. The status pill on the Toast card should flip from gray **Not Connected** to teal **Connected**.
+
+> **Heads up:** DragonCandy never sees or stores your Toast password. Authorization happens entirely on Toast's servers, and we only receive a revocable access token that's encrypted at rest in our database.
+
+## Step 3 — Verify the connection
+Back on the Integrations page, click **Test Connection** on the Toast card. Within a few seconds you should see:
+- ✅ Menu items loaded: *N items*
+- ✅ Last 7 days of orders synced
+- ✅ Webhook endpoint registered
+
+If any line shows a red ✗, jump to the [Troubleshooting brief](/help/promotions/troubleshooting).
+
+## What happens next
+Within about 15 minutes of connecting, Donny will have enough context to start suggesting campaigns based on your real sales data. Try asking Donny:
+
+> "What's my slowest day this month, and what promotion would fill it?"
+
+Donny will pull traffic patterns from Toast, cross-reference your menu's margins, and suggest a specific campaign — item, discount, audience, and timing.
+
+## About discount code sync
+If your DragonCandy account is on a Toast **Partner-tier** integration, promotion codes you publish in DragonCandy automatically create matching discounts inside Toast — customers can redeem them at the register without any cashier training. If you're on **Standard access**, discount codes still work through DragonCandy's own redemption flow, but they won't appear inside the Toast POS UI. Your account manager can confirm which tier you're on, or check the badge on the Toast card: **Sync: Two-way** means partner, **Sync: Read-only** means standard.
+
+## Disconnecting
+You can disconnect Toast any time from the same card. Disconnecting:
+- Revokes the DragonCandy access token on Toast's side
+- Stops all future syncs
+- Leaves your historical redemption data intact
+
+---
+
+**Next brief:** [Create Your First Promotion](/help/promotions/create-promotion) →
+
+*Need help? Tap the Donny icon in the bottom-right corner of any page and say "help me connect Toast" — Donny will walk you through it live.*

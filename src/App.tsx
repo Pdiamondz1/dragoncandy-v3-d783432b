@@ -67,6 +67,7 @@ import VerifyEmail from "./pages/VerifyEmail";
 import PromotionSubmissionPage from "./pages/PromotionSubmissionPage";
 import PromotionsErrorBoundary from "./components/promotions/PromotionsErrorBoundary";
 import PaymentsPage from "@/pages/PaymentsPage";
+import HelpBriefPage from "@/pages/help/promotions/HelpBriefPage";
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -108,6 +109,9 @@ const App = () => {
                     </PromotionsErrorBoundary>
                   } />
                   
+                  {/* Help Briefs */}
+                  <Route path="/help/promotions/:slug" element={<HelpBriefPage />} />
+
                   {/* Anonymous Campaign Creation */}
                   <Route path="/campaign/create" element={<AnonymousCampaignWizard />} />
                   <Route path="/auth/forgot" element={<ForgotPassword />} />

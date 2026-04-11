@@ -76,7 +76,7 @@ Toast classifies APIs by integration type (partner, custom, standard, analytics)
   Files: `src/features/promotions/components/DonnyCampaignCTA.tsx`
 
 ## Phase 7 — How-To Briefs (MDX)
-- [ ] **TASK-021** — `/help/promotions/$slug` route + MDX loader
+- [x] **TASK-021** — `/help/promotions/$slug` route + MDX loader
   Files: `src/routes/help/promotions/$slug.tsx`, `vite.config.ts`
 - [ ] **TASK-022** — Author 5 MDX briefs
   Files: `src/content/help/promotions/{connect-toast,create-promotion,customer-flow,read-donny-insights,troubleshooting}.mdx`
