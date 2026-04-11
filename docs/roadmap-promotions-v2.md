@@ -36,7 +36,7 @@ Toast classifies APIs by integration type (partner, custom, standard, analytics)
 ## Phase 2 — Toast OAuth & Token Refresh
 - [x] **TASK-006** — Edge Function `toast-oauth-start` (signed state cookie)
   Files: `supabase/functions/toast-oauth-start/index.ts`
-- [ ] **TASK-007** — Edge Function `toast-oauth-callback` (exchange, encrypt, persist)
+- [x] **TASK-007** — Edge Function `toast-oauth-callback` (exchange, encrypt, persist)
   Files: `supabase/functions/toast-oauth-callback/index.ts`
 - [ ] **TASK-008** — Edge Function `toast-token-refresh` + pg_cron every 30min
   Files: `supabase/functions/toast-token-refresh/index.ts`, `supabase/migrations/20260412_cron.sql`
