@@ -9,6 +9,7 @@ interface SubmissionData {
   customerPhone: string;
   videoFile: File;
   marketingRightsAccepted: boolean;
+  socialHandles?: Record<string, string>;
 }
 
 const isImageFile = (file: File): boolean => file.type.startsWith('image/');
@@ -92,6 +93,7 @@ export const usePromotionSubmission = () => {
           video_url: urlData.publicUrl,
           video_duration: videoDuration,
           marketing_rights_accepted: data.marketingRightsAccepted,
+          social_handles: data.socialHandles || {},
           status: 'pending',
         });
 

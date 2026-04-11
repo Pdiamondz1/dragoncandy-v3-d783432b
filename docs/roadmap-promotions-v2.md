@@ -60,7 +60,7 @@ Toast classifies APIs by integration type (partner, custom, standard, analytics)
   Files: `src/features/promotions/components/RedemptionMetrics.tsx`
 
 ## Phase 5 — Social Handle Capture
-- [ ] **TASK-015** — 5 optional handle fields on submission form (IG, TikTok, FB, X, YouTube)
+- [x] **TASK-015** — 5 optional handle fields on submission form (IG, TikTok, FB, X, YouTube)
   Files: `src/features/promotions/submission/SubmissionForm.tsx`
 - [ ] **TASK-016** — Stub `validateHandle(platform, handle)` returning `{valid:true}`
   Files: `src/lib/social/validateHandle.ts`

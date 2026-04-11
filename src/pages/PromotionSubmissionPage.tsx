@@ -6,6 +6,7 @@ import { VideoUploader } from '@/components/promotions/VideoUploader';
 import { CustomerInfoForm, CustomerInfoFormData } from '@/components/promotions/CustomerInfoForm';
 import { usePromotionSubmission } from '@/hooks/usePromotionSubmission';
 import { Gift, Video, ImagePlus, User, CheckCircle, AlertCircle, ArrowRight, ArrowLeft, Loader2 } from 'lucide-react';
+import { SocialHandleFields, useSocialHandles } from '@/features/promotions/submission/SubmissionForm';
 
 type Step = 'welcome' | 'video' | 'info' | 'success' | 'error';
 
@@ -38,6 +39,7 @@ export default function PromotionSubmissionPage() {
   const isPhoto = videoFile?.type.startsWith('image/') ?? false;
   
   const { submitPromotion, isSubmitting } = usePromotionSubmission();
+  const { handles, setHandles, getSanitized } = useSocialHandles();
 
   useEffect(() => {
     const fetchPromotion = async () => {
@@ -116,6 +118,7 @@ export default function PromotionSubmissionPage() {
       customerPhone: data.customerPhone,
       videoFile,
       marketingRightsAccepted: data.marketingRightsAccepted,
+      socialHandles: getSanitized(),
     });
 
     if (result.success) {
@@ -270,6 +273,9 @@ export default function PromotionSubmissionPage() {
             <div className="border-2 border-dc-teal rounded-2xl p-4">
               <p className="font-sans text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">Almost Done!</p>
               <p className="text-xs text-gray-500 mb-4">Enter your details to receive your discount code</p>
+              <div className="mb-5">
+                <SocialHandleFields value={handles} onChange={setHandles} />
+              </div>
               <CustomerInfoForm
                 onSubmit={handleInfoSubmit}
                 isSubmitting={isSubmitting}
