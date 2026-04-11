@@ -15,6 +15,7 @@ import { Check, X, Play, User, Mail, Phone, Clock, Loader2, Image } from 'lucide
 import { format } from 'date-fns';
 import { PromotionSubmission } from '@/hooks/usePromotions';
 import { useVideoUrl } from '@/hooks/useVideoUrl';
+import { SocialHandleChips } from '@/features/promotions/review/SubmissionRow';
 
 const isImageUrl = (url: string | null | undefined): boolean => {
   if (!url) return false;
@@ -78,6 +79,9 @@ export const SubmissionCard: React.FC<SubmissionCardProps> = ({
               <span>Submitted {format(new Date(submission.created_at), 'MMM d, yyyy h:mm a')}</span>
             </div>
           </div>
+
+          {/* Social Handle Chips */}
+          <SocialHandleChips socialHandles={submission.social_handles} />
 
           {/* Media Preview Button */}
           <Button

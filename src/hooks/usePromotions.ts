@@ -39,6 +39,7 @@ export interface PromotionSubmission {
   reviewed_by: string | null;
   created_at: string;
   updated_at: string;
+  social_handles?: Record<string, string>;
   promotion?: Promotion;
 }
 

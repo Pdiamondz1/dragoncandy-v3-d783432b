@@ -64,7 +64,7 @@ Toast classifies APIs by integration type (partner, custom, standard, analytics)
   Files: `src/features/promotions/submission/SubmissionForm.tsx`
 - [x] **TASK-016** — Stub `validateHandle(platform, handle)` returning `{valid:true}`
   Files: `src/lib/social/validateHandle.ts`
-- [ ] **TASK-017** — Display handles in restaurant submission review panel
+- [x] **TASK-017** — Display handles in restaurant submission review panel
   Files: `src/features/promotions/review/SubmissionRow.tsx`
 
 ## Phase 6 — Donny Toast Intelligence
