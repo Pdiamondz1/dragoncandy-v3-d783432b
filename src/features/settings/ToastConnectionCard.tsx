@@ -95,6 +95,7 @@ export const ToastConnectionCard = () => {
   const [disconnectOpen, setDisconnectOpen] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
   const [restaurantGuid, setRestaurantGuid] = useState('');
+  const [notConfigured, setNotConfigured] = useState(false);
   const [businessId, setBusinessId] = useState<string | null>(null);
 
   const status = deriveStatus(connection);
@@ -134,6 +135,23 @@ export const ToastConnectionCard = () => {
     fetchConnection();
   }, [fetchConnection]);
 
+  // Probe Toast config on mount (only when not connected)
+  useEffect(() => {
+    if (!businessId || connection) return;
+    (async () => {
+      try {
+        const { data } = await supabase.functions.invoke('toast-oauth-start', {
+          body: { business_id: businessId },
+        });
+        if (data?.error === 'toast_not_configured') {
+          setNotConfigured(true);
+        }
+      } catch {
+        // Ignore — user will see the error when they click Connect
+      }
+    })();
+  }, [businessId, connection]);
+
   // Handle return from OAuth flow
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -164,7 +182,13 @@ export const ToastConnectionCard = () => {
       const { data, error } = await supabase.functions.invoke('toast-oauth-start', {
         body: { business_id: businessId, restaurant_guid: restaurantGuid || undefined },
       });
-      if (error) throw error;
+      if (error) {
+        if (data?.error === 'toast_not_configured') {
+          setNotConfigured(true);
+          return;
+        }
+        throw error;
+      }
       if (data?.redirect_url) {
         window.location.href = data.redirect_url;
       }
@@ -182,7 +206,13 @@ export const ToastConnectionCard = () => {
     setTesting(true);
     try {
       const { data, error } = await supabase.functions.invoke('toast-token-refresh', {});
-      if (error) throw error;
+      if (error) {
+        if (data?.error === 'toast_not_configured') {
+          setNotConfigured(true);
+          return;
+        }
+        throw error;
+      }
       toast({
         title: 'Connection healthy',
         description: `Toast responded successfully. ${data?.refreshed || 0} token(s) refreshed.`,
@@ -260,40 +290,54 @@ export const ToastConnectionCard = () => {
         <CardContent className="space-y-4">
           {/* --- Not connected state --- */}
           {status === 'not_connected' && (
-            <div className="rounded-xl border-2 border-dashed border-gray-200 p-5 lg:grid lg:grid-cols-2 lg:gap-6">
-              <div className="space-y-3 mb-4 lg:mb-0">
-                <p className="text-sm text-gray-600 leading-relaxed">
-                  Connect your Toast POS so DragonCandy can read menus and
-                  count promotion redemptions at the register.
-                </p>
-                <div className="space-y-2">
-                  <Label htmlFor="restaurant-guid" className="text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Restaurant GUID <span className="normal-case text-gray-400">(optional)</span>
-                  </Label>
-                  <Input
-                    id="restaurant-guid"
-                    value={restaurantGuid}
-                    onChange={(e) => setRestaurantGuid(e.target.value)}
-                    placeholder="e.g. abc12345-def6-7890-ghij-klmnopqrstuv"
-                    className="font-mono text-sm"
-                  />
+            notConfigured ? (
+              <div className="rounded-xl border border-teal-200 bg-teal-50/50 p-5 flex items-start gap-3">
+                <Zap className="w-5 h-5 text-teal-500 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-teal-800">
+                    Toast integration coming soon
+                  </p>
+                  <p className="text-sm text-teal-600 mt-1">
+                    We're finalizing our partnership with Toast POS. You'll be able to connect here once it's ready.
+                  </p>
                 </div>
               </div>
-              <div className="flex items-end lg:justify-end">
-                <Button
-                  onClick={handleConnect}
-                  disabled={connecting}
-                  className="w-full lg:w-auto rounded-full bg-teal-500 hover:bg-teal-600 text-white font-semibold px-8"
-                >
-                  {connecting ? (
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  ) : (
-                    <Wifi className="w-4 h-4 mr-2" />
-                  )}
-                  {connecting ? 'Connecting...' : 'Connect Toast'}
-                </Button>
+            ) : (
+              <div className="rounded-xl border-2 border-dashed border-gray-200 p-5 lg:grid lg:grid-cols-2 lg:gap-6">
+                <div className="space-y-3 mb-4 lg:mb-0">
+                  <p className="text-sm text-gray-600 leading-relaxed">
+                    Connect your Toast POS so DragonCandy can read menus and
+                    count promotion redemptions at the register.
+                  </p>
+                  <div className="space-y-2">
+                    <Label htmlFor="restaurant-guid" className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Restaurant GUID <span className="normal-case text-gray-400">(optional)</span>
+                    </Label>
+                    <Input
+                      id="restaurant-guid"
+                      value={restaurantGuid}
+                      onChange={(e) => setRestaurantGuid(e.target.value)}
+                      placeholder="e.g. abc12345-def6-7890-ghij-klmnopqrstuv"
+                      className="font-mono text-sm"
+                    />
+                  </div>
+                </div>
+                <div className="flex items-end lg:justify-end">
+                  <Button
+                    onClick={handleConnect}
+                    disabled={connecting}
+                    className="w-full lg:w-auto rounded-full bg-teal-500 hover:bg-teal-600 text-white font-semibold px-8"
+                  >
+                    {connecting ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <Wifi className="w-4 h-4 mr-2" />
+                    )}
+                    {connecting ? 'Connecting...' : 'Connect Toast'}
+                  </Button>
+                </div>
               </div>
-            </div>
+            )
           )}
 
           {/* --- Connected / Error / Expired state --- */}
