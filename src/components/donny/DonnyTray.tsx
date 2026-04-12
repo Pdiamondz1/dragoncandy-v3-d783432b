@@ -29,7 +29,7 @@ export function DonnyTray() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-white">
+    <div className="flex flex-col h-full bg-white pb-[env(safe-area-inset-bottom)]">
       {/* Header */}
       <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100">
         <DonnyAvatar size="sm" state={avatarState} />
