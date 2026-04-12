@@ -15,14 +15,14 @@ export function DonnyNavButton() {
   return (
     <button
       onClick={handleClick}
-      className="flex flex-col items-center -mt-4 min-h-[44px] min-w-[44px]"
+      className="flex flex-col items-center min-h-[44px] min-w-[44px] -mt-3"
       aria-label="Open Donny"
     >
-      <span className="w-40 h-40 -mt-6 flex items-center justify-center">
+      <span className="w-12 h-12 rounded-full bg-white shadow-[0_0_0_3px_rgba(77,217,192,0.35),0_2px_8px_rgba(0,0,0,0.08)] flex items-center justify-center -mt-3 transition-transform active:scale-95">
         <img
           src={donnyEmblem}
           alt="Donny"
-          className="w-40 h-40 object-contain"
+          className="w-10 h-10 object-contain"
         />
       </span>
     </button>
