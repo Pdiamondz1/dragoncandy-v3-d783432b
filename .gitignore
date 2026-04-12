@@ -27,3 +27,4 @@ dist-ssr
 
 # Superpowers brainstorm artifacts
 .superpowers/
+.worktrees/
