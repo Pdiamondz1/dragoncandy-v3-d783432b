@@ -183,7 +183,7 @@ const AuthPage = () => {
       {/* Top nav — logo left, hamburger right */}
       <div className="flex items-center px-5 pt-6 pb-2">
         <Link to="/">
-          <img src={dragonCandyLogo} alt="DragonCandy" className="h-14 w-14" />
+          <img src={dragonCandyLogo} alt="DragonCandy" className="w-[100px] md:w-[120px] lg:w-[140px] h-auto" />
         </Link>
       </div>
 
