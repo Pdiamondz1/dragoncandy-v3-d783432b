@@ -31,7 +31,7 @@ export function DonnyChatView() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-white">
+    <div className="flex flex-col h-full bg-white pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
       <DonnyChatHeader
         avatarState={avatarState}
         onCollapse={collapse}

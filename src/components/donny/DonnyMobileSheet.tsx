@@ -55,7 +55,7 @@ export function DonnyMobileSheet() {
         className={cn(
           'fixed left-0 right-0 bottom-0 z-[61] md:hidden rounded-t-2xl shadow-2xl transition-all duration-300 ease-out',
           stage === 'tray' && 'h-[35vh]',
-          stage === 'chat' && 'h-[calc(100vh-env(safe-area-inset-top))]'
+          stage === 'chat' && 'top-0 h-full'
         )}
       >
         {/* Drag handle */}

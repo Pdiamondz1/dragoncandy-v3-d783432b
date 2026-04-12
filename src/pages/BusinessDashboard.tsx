@@ -6,7 +6,7 @@ import DashboardLayout from '@/components/DashboardLayout';
 import { Loader2, ChevronRight } from 'lucide-react';
 import { ActivityFeedCard } from '@/components/dashboard/ActivityFeedCard';
 import { useBusinessActiveCampaigns } from '@/hooks/useBusinessActiveCampaigns';
-import donnyIcon from '@/assets/Donny_icon.png';
+import donnyIcon from '@/assets/donny-emblem.png';
 
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return 'No deadline';

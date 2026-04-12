@@ -1,5 +1,5 @@
 import React from 'react';
-import dragonEmblem from '@/assets/Donny_icon.png';
+import dragonEmblem from '@/assets/donny-emblem.png';
 import { cn } from '@/lib/utils';
 
 interface AskBarProps {
