@@ -39,7 +39,7 @@ export function DonnyChatView() {
       />
 
       {/* Messages */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-3 bg-teal-50/30 space-y-3">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto overscroll-contain px-4 py-3 bg-teal-50/30 space-y-3">
         {messages.map((msg, i) => (
           <DonnyMessage
             key={msg.id ?? i}

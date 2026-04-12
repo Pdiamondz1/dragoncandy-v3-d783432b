@@ -6,8 +6,11 @@ import { cn } from '@/lib/utils';
 
 export function DonnyMobileSheet() {
   const { stage, expand, collapse, close } = useDonnyContext();
+  const handleRef = useRef<HTMLDivElement>(null);
   const dragStartY = useRef<number | null>(null);
 
+  // Only attach drag gestures to the drag handle, not the entire sheet.
+  // This prevents scrolling inside the chat from triggering collapse.
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     dragStartY.current = e.touches[0].clientY;
   }, []);
@@ -18,7 +21,6 @@ export function DonnyMobileSheet() {
       const deltaY = e.changedTouches[0].clientY - dragStartY.current;
       dragStartY.current = null;
 
-      // Drag up → expand, drag down → collapse/close
       if (deltaY < -50 && stage === 'tray') {
         expand();
       } else if (deltaY > 50) {
@@ -50,16 +52,19 @@ export function DonnyMobileSheet() {
 
       {/* Sheet */}
       <div
-        onTouchStart={handleTouchStart}
-        onTouchEnd={handleTouchEnd}
         className={cn(
           'fixed left-0 right-0 bottom-0 z-[61] md:hidden rounded-t-2xl shadow-2xl transition-all duration-300 ease-out',
-          stage === 'tray' && 'h-[40vh]',
-          stage === 'chat' && 'top-0 h-full'
+          stage === 'tray' && 'h-[40dvh]',
+          stage === 'chat' && 'top-0 h-[100dvh]'
         )}
       >
-        {/* Drag handle */}
-        <div className="flex justify-center pt-2 pb-1 bg-white rounded-t-2xl">
+        {/* Drag handle — only this area triggers swipe gestures */}
+        <div
+          ref={handleRef}
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+          className="flex justify-center pt-2 pb-1 bg-white rounded-t-2xl cursor-grab"
+        >
           <div className="w-9 h-1 bg-gray-300 rounded-full" />
         </div>
 
