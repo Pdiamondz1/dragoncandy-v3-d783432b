@@ -6,7 +6,6 @@ import { useBrandActiveCampaigns } from '@/hooks/useBrandActiveCampaigns';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { DashboardHero } from '@/components/dashboard/DashboardHero';
-import { DonnyAIBar } from '@/components/dashboard/DonnyAIBar';
 import { DashboardStatsGrid, type StatItem } from '@/components/dashboard/DashboardStatsGrid';
 import { QuickActionButtons, type QuickAction } from '@/components/dashboard/QuickActionButtons';
 import { ActivityFeedCard } from '@/components/dashboard/ActivityFeedCard';
@@ -53,7 +52,6 @@ const BrandDashboard = () => {
           roleLabel="Brand Dashboard"
           userName={profile.business_name || 'Brand Partner'}
         >
-          <DonnyAIBar placeholder='Ask Donny... "Create a sponsored campaign for 5 cities"' />
           <DashboardStatsGrid stats={brandStats} isLoading={statsLoading} />
           <QuickActionButtons actions={brandActions} />
         </DashboardHero>
