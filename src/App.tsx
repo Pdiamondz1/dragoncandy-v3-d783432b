@@ -5,8 +5,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
-import { AIAssistantProvider } from "@/contexts/AIAssistantContext";
-import { AIChatModalProvider } from "@/contexts/AIChatModalContext";
+import { DonnyProvider } from "@/contexts/DonnyProvider";
+import { DonnyDesktopPanel } from "@/components/donny/DonnyDesktopPanel";
 import { AnalyticsProvider } from "@/components/analytics/AnalyticsProvider";
 import { PerformanceMonitor } from "@/components/analytics/PerformanceMonitor";
 import ErrorBoundary from "@/components/ErrorBoundary";
@@ -69,7 +69,8 @@ import PromotionsErrorBoundary from "./components/promotions/PromotionsErrorBoun
 import PaymentsPage from "@/pages/PaymentsPage";
 import HelpBriefPage from "@/pages/help/promotions/HelpBriefPage";
 import { HelpBriefDrawer } from "@/features/donny/HelpBriefDrawer";
-import { DonnyDock } from "@/components/DonnyDock";
+import { useAuth } from "@/hooks/useAuth";
+import type { UserRole } from "@/types/user";
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -82,6 +83,12 @@ const queryClient = new QueryClient({
   },
 });
 
+function DonnyProviderWithAuth({ children }: { children: React.ReactNode }) {
+  const { profile } = useAuth();
+  const userRole = (profile?.role as UserRole) ?? 'content_creator';
+  return <DonnyProvider userRole={userRole}>{children}</DonnyProvider>;
+}
+
 const App = () => {
   console.log('🚀 App: Starting DragonCandy application');
   
@@ -90,8 +97,6 @@ const App = () => {
       <ThemeProvider>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          <AIAssistantProvider>
-            <AIChatModalProvider>
             <AnalyticsProvider>
               <ErrorBoundary level="widget" fallback={null}>
                 <PerformanceMonitor />
@@ -100,6 +105,9 @@ const App = () => {
                 <Toaster />
                 <Sonner />
                 <BrowserRouter>
+                <DonnyProviderWithAuth>
+                <div className="flex h-screen">
+                <div className="flex-1 overflow-auto">
                   <Routes>
                   <Route path="/" element={<Index />} />
                   <Route path="/landing" element={<LandingPage />} />
@@ -489,14 +497,13 @@ const App = () => {
                   <Route path="*" element={<NotFound />} />
                   </Routes>
                   <HelpBriefDrawer />
-                  <ErrorBoundary level="widget" fallback={null}>
-                    <DonnyDock />
-                  </ErrorBoundary>
+                </div>
+                <DonnyDesktopPanel />
+                </div>
+                </DonnyProviderWithAuth>
                 </BrowserRouter>
               </TooltipProvider>
             </AnalyticsProvider>
-            </AIChatModalProvider>
-          </AIAssistantProvider>
         </AuthProvider>
       </QueryClientProvider>
       </ThemeProvider>

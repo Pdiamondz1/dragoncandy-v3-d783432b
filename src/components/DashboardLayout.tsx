@@ -33,9 +33,6 @@ import { useLogout } from '@/hooks/useLogout';
 import { useProfileData } from '@/hooks/useProfileData';
 import NotificationDropdown from '@/components/notifications/NotificationDropdown';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { AIChatModal } from '@/components/ai-assistant';
-import { useAIAssistantContext } from '@/contexts/AIAssistantContext';
-import { useAIChatModal } from '@/contexts/AIChatModalContext';
 import { MobileBottomNav } from '@/components/MobileBottomNav';
 import { MobileTopNav } from '@/components/MobileTopNav';
 import { DesktopGate } from '@/components/DesktopGate';
@@ -137,8 +134,6 @@ const DashboardLayoutInner: React.FC<DashboardLayoutProps> = ({ children, userRo
   const { avatarUrl, displayName } = useProfileData();
   const isMobile = useIsMobile();
   const location = useLocation();
-  const { setUserRole } = useAIAssistantContext();
-  const { isOpen: isAIChatOpen, openModal, closeModal } = useAIChatModal();
   const [sidebarOpen, setSidebarOpen] = useState(!isMobile);
 
   // Sync sidebar state when viewport crosses mobile/desktop boundary
@@ -153,24 +148,6 @@ const DashboardLayoutInner: React.FC<DashboardLayoutProps> = ({ children, userRo
   const showWelcome =
     (userRole === 'business_client' && location.pathname === '/dashboard/business') ||
     (userRole === 'brand' && location.pathname === '/dashboard/brand');
-
-  useEffect(() => {
-    setUserRole(userRole);
-  }, [userRole, setUserRole]);
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault();
-        openModal();
-      }
-      if (e.key === 'Escape' && isAIChatOpen) {
-        closeModal();
-      }
-    };
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [openModal, closeModal, isAIChatOpen]);
 
   return (
     <SidebarProvider open={sidebarOpen} onOpenChange={setSidebarOpen}>
@@ -263,7 +240,6 @@ const DashboardLayoutInner: React.FC<DashboardLayoutProps> = ({ children, userRo
         {/* Mobile bottom nav */}
         {isMobile && <MobileBottomNav userRole={userRole} />}
 
-        <AIChatModal isOpen={isAIChatOpen} onClose={closeModal} userRole={userRole} />
       </div>
     </SidebarProvider>
   );
