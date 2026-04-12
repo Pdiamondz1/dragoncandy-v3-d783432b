@@ -62,7 +62,7 @@ const AppSidebar: React.FC<AppSidebarProps> = ({ userRole }) => {
 
   return (
     <Sidebar className={collapsed ? 'w-14' : 'w-60'} collapsible="icon">
-      <SidebarHeader className="border-b border-sidebar-border bg-sidebar">
+      <SidebarHeader className="bg-sidebar">
         <div className="flex items-center justify-center px-2 py-3">
           <Link to="/" className="transition-transform duration-200 hover:scale-105">
             <img
