@@ -11,10 +11,10 @@ interface DonnyAvatarProps {
 }
 
 const sizeClasses = {
-  xs: 'w-10 h-10',
-  sm: 'w-14 h-14',
-  md: 'w-20 h-20',
-  lg: 'w-28 h-28',
+  xs: 'w-20 h-20',
+  sm: 'w-28 h-28',
+  md: 'w-40 h-40',
+  lg: 'w-56 h-56',
 };
 
 const badgeSizeClasses = {
