@@ -1,27 +1,31 @@
-import { useDonnyDashboard } from '@/hooks/useDonnyDashboard';
-import donnyIcon from '@/assets/Donny_icon.png';
-import dragonEmblem from '@/assets/Donny_icon.png';
+import { DonnyAvatar } from './DonnyAvatar';
+import { useDonnyContext } from '@/contexts/DonnyProvider';
 
-interface DonnyNavButtonProps {
-  onClick: () => void;
-}
+export function DonnyNavButton() {
+  const { stage, open, close, unreadCount, avatarState } = useDonnyContext();
 
-export function DonnyNavButton({ onClick }: DonnyNavButtonProps) {
-  const { data: suggestion } = useDonnyDashboard();
-  const hasNotification = !!suggestion;
+  const handleClick = () => {
+    if (stage === 'closed') {
+      open();
+    } else {
+      close();
+    }
+  };
 
   return (
     <button
-      onClick={onClick}
-      className="flex flex-col items-center -mt-4 relative"
+      onClick={handleClick}
+      className="flex flex-col items-center -mt-4 min-h-[44px] min-w-[44px]"
+      aria-label="Open Donny"
     >
-      <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#4DD9C0] to-[#00E5CC] flex items-center justify-center shadow-lg shadow-teal-400/40 border-[3px] border-white">
-        <img src={donnyIcon} alt="Donny" className="w-full h-full object-cover rounded-full" />
-      </div>
-      {hasNotification && (
-        <span className="absolute top-0 right-0 w-3 h-3 bg-[#EC4899] rounded-full border-2 border-white" />
-      )}
-      <span className="text-[10px] text-[#4DD9C0] font-bold mt-0.5">Donny</span>
+      <span className="bg-white w-14 h-14 rounded-full shadow-lg shadow-dc-teal/30 -mt-4 flex items-center justify-center border-[3px] border-white">
+        <DonnyAvatar
+          size="lg"
+          state={unreadCount > 0 ? 'action_needed' : avatarState}
+          badgeCount={unreadCount}
+          glow={unreadCount > 0}
+        />
+      </span>
     </button>
   );
 }

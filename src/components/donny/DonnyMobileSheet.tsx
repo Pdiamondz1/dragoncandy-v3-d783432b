@@ -1,0 +1,71 @@
+import { useEffect, useRef, useCallback } from 'react';
+import { useDonnyContext } from '@/contexts/DonnyProvider';
+import { DonnyTray } from './DonnyTray';
+import { DonnyChatView } from './DonnyChatView';
+import { cn } from '@/lib/utils';
+
+export function DonnyMobileSheet() {
+  const { stage, expand, collapse, close } = useDonnyContext();
+  const dragStartY = useRef<number | null>(null);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    dragStartY.current = e.touches[0].clientY;
+  }, []);
+
+  const handleTouchEnd = useCallback(
+    (e: React.TouchEvent) => {
+      if (dragStartY.current === null) return;
+      const deltaY = e.changedTouches[0].clientY - dragStartY.current;
+      dragStartY.current = null;
+
+      // Drag up → expand, drag down → collapse/close
+      if (deltaY < -50 && stage === 'tray') {
+        expand();
+      } else if (deltaY > 50) {
+        if (stage === 'chat') collapse();
+        else if (stage === 'tray') close();
+      }
+    },
+    [stage, expand, collapse, close]
+  );
+
+  // Close on escape
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') close();
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [close]);
+
+  if (stage === 'closed') return null;
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div
+        className="fixed inset-0 z-[60] bg-black/30 md:hidden"
+        onClick={close}
+      />
+
+      {/* Sheet */}
+      <div
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        className={cn(
+          'fixed left-0 right-0 bottom-0 z-[61] md:hidden rounded-t-2xl shadow-2xl transition-all duration-300 ease-out',
+          stage === 'tray' && 'h-[35vh]',
+          stage === 'chat' && 'h-[calc(100vh-env(safe-area-inset-top))]'
+        )}
+      >
+        {/* Drag handle */}
+        <div className="flex justify-center pt-2 pb-1 bg-white rounded-t-2xl">
+          <div className="w-9 h-1 bg-gray-300 rounded-full" />
+        </div>
+
+        {stage === 'tray' && <DonnyTray />}
+        {stage === 'chat' && <DonnyChatView />}
+      </div>
+    </>
+  );
+}

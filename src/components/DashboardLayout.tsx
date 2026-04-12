@@ -33,11 +33,10 @@ import { useLogout } from '@/hooks/useLogout';
 import { useProfileData } from '@/hooks/useProfileData';
 import NotificationDropdown from '@/components/notifications/NotificationDropdown';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { AIChatModal } from '@/components/ai-assistant';
-import { useAIAssistantContext } from '@/contexts/AIAssistantContext';
-import { useAIChatModal } from '@/contexts/AIChatModalContext';
 import { MobileBottomNav } from '@/components/MobileBottomNav';
 import { MobileTopNav } from '@/components/MobileTopNav';
+import { DonnyAvatar } from '@/components/donny/DonnyAvatar';
+import { useDonnyContext } from '@/contexts/DonnyProvider';
 import { DesktopGate } from '@/components/DesktopGate';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import type { UserRole } from '@/types/user';
@@ -137,8 +136,7 @@ const DashboardLayoutInner: React.FC<DashboardLayoutProps> = ({ children, userRo
   const { avatarUrl, displayName } = useProfileData();
   const isMobile = useIsMobile();
   const location = useLocation();
-  const { setUserRole } = useAIAssistantContext();
-  const { isOpen: isAIChatOpen, openModal, closeModal } = useAIChatModal();
+  const { stage, open, close, unreadCount, avatarState } = useDonnyContext();
   const [sidebarOpen, setSidebarOpen] = useState(!isMobile);
 
   // Sync sidebar state when viewport crosses mobile/desktop boundary
@@ -153,24 +151,6 @@ const DashboardLayoutInner: React.FC<DashboardLayoutProps> = ({ children, userRo
   const showWelcome =
     (userRole === 'business_client' && location.pathname === '/dashboard/business') ||
     (userRole === 'brand' && location.pathname === '/dashboard/brand');
-
-  useEffect(() => {
-    setUserRole(userRole);
-  }, [userRole, setUserRole]);
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault();
-        openModal();
-      }
-      if (e.key === 'Escape' && isAIChatOpen) {
-        closeModal();
-      }
-    };
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [openModal, closeModal, isAIChatOpen]);
 
   return (
     <SidebarProvider open={sidebarOpen} onOpenChange={setSidebarOpen}>
@@ -207,6 +187,19 @@ const DashboardLayoutInner: React.FC<DashboardLayoutProps> = ({ children, userRo
                 <div className="flex items-center gap-3">
                   <ThemeToggle />
                   <NotificationDropdown />
+
+                  <button
+                    onClick={() => stage === 'closed' ? open() : close()}
+                    className="relative hidden md:block"
+                    aria-label="Open Donny"
+                  >
+                    <DonnyAvatar
+                      size="md"
+                      state={unreadCount > 0 ? 'action_needed' : avatarState}
+                      badgeCount={unreadCount}
+                      glow={unreadCount > 0}
+                    />
+                  </button>
 
                   <div className="w-px h-6 bg-border mx-1" />
 
@@ -263,7 +256,6 @@ const DashboardLayoutInner: React.FC<DashboardLayoutProps> = ({ children, userRo
         {/* Mobile bottom nav */}
         {isMobile && <MobileBottomNav userRole={userRole} />}
 
-        <AIChatModal isOpen={isAIChatOpen} onClose={closeModal} userRole={userRole} />
       </div>
     </SidebarProvider>
   );

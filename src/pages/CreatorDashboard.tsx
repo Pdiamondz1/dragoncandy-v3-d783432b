@@ -12,7 +12,6 @@ import { Button } from '@/components/ui/button';
 import { DollarSign, Target, Star, Clock, Loader2 } from 'lucide-react';
 import RatingPromptManager from '@/components/reviews/RatingPromptManager';
 import { DashboardHero } from '@/components/dashboard/DashboardHero';
-import { DonnyAIBar } from '@/components/dashboard/DonnyAIBar';
 import { DashboardStatsGrid, type StatItem } from '@/components/dashboard/DashboardStatsGrid';
 import { QuickActionButtons, type QuickAction } from '@/components/dashboard/QuickActionButtons';
 
@@ -76,9 +75,6 @@ const CreatorDashboard = () => {
           roleLabel="Creator Dashboard"
           userName={profile.creator_name || profile.full_name}
         >
-          {/* Donny AI Bar */}
-          <DonnyAIBar placeholder='Ask Donny... "Find campaigns near me"' />
-
           {/* Rating Prompts */}
           <RatingPromptManager />
 
