@@ -42,6 +42,7 @@ export interface BottomNavItem {
   label: string;
   href: string;
   isCenter?: boolean;
+  isDonny?: boolean;
 }
 
 // ── Sidebar nav (desktop) ──────────────────────────────────────────────────
@@ -95,7 +96,7 @@ export function getSidebarNav(role: UserRole): SidebarNavItem[] {
 export const businessBottomNav: BottomNavItem[] = [
   { icon: LayoutDashboard, label: 'Home', href: '/dashboard/business' },
   { icon: Megaphone, label: 'Campaigns', href: '/dashboard/business/campaigns' },
-  { icon: Plus, label: 'Create', href: '/dashboard/business/campaigns/create', isCenter: true },
+  { icon: Plus, label: 'Donny', href: '#donny', isCenter: true, isDonny: true },
   { icon: MessageSquare, label: 'Messages', href: '/dashboard/business/messages' },
   { icon: User, label: 'Profile', href: '/dashboard/business/settings' },
 ];
@@ -103,7 +104,7 @@ export const businessBottomNav: BottomNavItem[] = [
 export const creatorBottomNav: BottomNavItem[] = [
   { icon: LayoutDashboard, label: 'Home', href: '/dashboard/creator' },
   { icon: DollarSign, label: 'Earnings', href: '/dashboard/creator/earnings' },
-  { icon: Plus, label: 'Browse', href: '/dashboard/creator/campaigns', isCenter: true },
+  { icon: Plus, label: 'Donny', href: '#donny', isCenter: true, isDonny: true },
   { icon: MessageSquare, label: 'Messages', href: '/dashboard/creator/messages' },
   { icon: User, label: 'Profile', href: '/dashboard/creator/settings' },
 ];
@@ -111,7 +112,7 @@ export const creatorBottomNav: BottomNavItem[] = [
 export const brandBottomNav: BottomNavItem[] = [
   { icon: LayoutDashboard, label: 'Home', href: '/dashboard/brand' },
   { icon: Target, label: 'Campaigns', href: '/dashboard/brand/sponsorships' },
-  { icon: Users, label: 'Creators', href: '/dashboard/brand/creators', isCenter: true },
+  { icon: Plus, label: 'Donny', href: '#donny', isCenter: true, isDonny: true },
   { icon: MessageSquare, label: 'Messages', href: '/dashboard/brand/messages' },
   { icon: User, label: 'Profile', href: '/dashboard/brand/settings' },
 ];
