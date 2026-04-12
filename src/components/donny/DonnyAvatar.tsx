@@ -43,7 +43,6 @@ export function DonnyAvatar({
     <div className={cn('relative inline-flex flex-shrink-0', className)}>
       <div
         className={cn(
-          'rounded-full overflow-hidden',
           sizeClasses[size],
           stateStyles[state],
           glow && 'shadow-[0_0_12px_rgba(77,217,192,0.5)]'
@@ -53,7 +52,7 @@ export function DonnyAvatar({
           src={donnyEmblem}
           alt="Donny"
           loading="lazy"
-          className="w-full h-full object-cover rounded-full"
+          className="w-full h-full object-contain"
         />
       </div>
       {badgeCount != null && badgeCount > 0 && (

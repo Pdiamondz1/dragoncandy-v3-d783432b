@@ -53,20 +53,22 @@ export function DonnyMobileSheet() {
       {/* Sheet */}
       <div
         className={cn(
-          'fixed left-0 right-0 bottom-0 z-[61] md:hidden rounded-t-2xl shadow-2xl transition-all duration-300 ease-out',
-          stage === 'tray' && 'h-[40dvh]',
-          stage === 'chat' && 'top-0 h-[100dvh]'
+          'fixed z-[61] md:hidden shadow-2xl transition-all duration-300 ease-out',
+          stage === 'tray' && 'left-0 right-0 bottom-0 h-[40dvh] rounded-t-2xl',
+          stage === 'chat' && 'inset-0 h-[100dvh]'
         )}
       >
-        {/* Drag handle — only this area triggers swipe gestures */}
-        <div
-          ref={handleRef}
-          onTouchStart={handleTouchStart}
-          onTouchEnd={handleTouchEnd}
-          className="flex justify-center pt-2 pb-1 bg-white rounded-t-2xl cursor-grab"
-        >
-          <div className="w-9 h-1 bg-gray-300 rounded-full" />
-        </div>
+        {/* Drag handle — only visible in tray mode, triggers swipe gestures */}
+        {stage === 'tray' && (
+          <div
+            ref={handleRef}
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
+            className="flex justify-center pt-2 pb-1 bg-white rounded-t-2xl cursor-grab"
+          >
+            <div className="w-9 h-1 bg-gray-300 rounded-full" />
+          </div>
+        )}
 
         {stage === 'tray' && <DonnyTray />}
         {stage === 'chat' && <DonnyChatView />}

@@ -18,7 +18,7 @@ export function DonnyChatInput({ onSubmit, disabled }: DonnyChatInputProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex items-center gap-2 px-3 py-2 bg-white border-t border-gray-100">
+    <form onSubmit={handleSubmit} className="flex items-center gap-2 px-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] bg-white border-t border-gray-100">
       <button type="button" className="w-7 h-7 rounded-full bg-gray-900 flex items-center justify-center text-white flex-shrink-0">
         <Plus className="w-4 h-4" />
       </button>
