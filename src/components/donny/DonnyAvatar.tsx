@@ -1,38 +1,72 @@
 import { cn } from '@/lib/utils';
 import type { DonnyAvatarState } from '@/types/donny';
-import donnyIcon from '@/assets/Donny_icon.png';
+import donnyEmblem from '@/assets/donny-emblem.png';
 
 interface DonnyAvatarProps {
+  size: 'xs' | 'sm' | 'md' | 'lg';
   state?: DonnyAvatarState;
-  size?: 'sm' | 'md' | 'lg';
+  showBadge?: boolean;
+  badgeCount?: number;
+  glow?: boolean;
   className?: string;
 }
 
 const sizeClasses = {
-  sm: 'w-6 h-6 text-sm',
-  md: 'w-10 h-10 text-xl',
-  lg: 'w-14 h-14 text-3xl',
+  xs: 'w-5 h-5',
+  sm: 'w-6 h-6',
+  md: 'w-8 h-8',
+  lg: 'w-10 h-10',
+};
+
+const badgeSizeClasses = {
+  xs: 'w-3 h-3 text-[6px] -top-0.5 -right-0.5',
+  sm: 'w-3.5 h-3.5 text-[7px] -top-0.5 -right-0.5',
+  md: 'w-4 h-4 text-[8px] -top-1 -right-1',
+  lg: 'w-5 h-5 text-[9px] -top-1 -right-1',
 };
 
 const stateStyles: Record<DonnyAvatarState, string> = {
-  idle: 'bg-gradient-to-br from-[#4DD9C0] to-[#00E5CC] animate-[breathe_3s_ease-in-out_infinite]',
-  thinking: 'bg-gradient-to-br from-[#4DD9C0] to-[#00E5CC] animate-[pulse_1s_ease-in-out_infinite]',
-  celebrating: 'bg-gradient-to-br from-[#4DD9C0] to-[#00E5CC] animate-[bounce_0.5s_ease-in-out_3]',
-  error: 'bg-gradient-to-br from-[#F9A8D4] to-[#EC4899] animate-[shake_0.3s_ease-in-out_2]',
-  action_needed: 'bg-gradient-to-br from-[#FACC15] to-[#F59E0B] animate-[pulse_1.5s_ease-in-out_infinite]',
+  idle: '',
+  thinking: 'animate-pulse',
+  celebrating: 'animate-bounce',
+  error: 'animate-pulse',
+  action_needed: 'animate-pulse',
 };
 
-export function DonnyAvatar({ state = 'idle', size = 'md', className }: DonnyAvatarProps) {
+export function DonnyAvatar({
+  size,
+  state = 'idle',
+  showBadge = false,
+  badgeCount,
+  glow = false,
+  className,
+}: DonnyAvatarProps) {
   return (
-    <div
-      className={cn(
-        'rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden',
-        sizeClasses[size],
-        stateStyles[state],
-        className
+    <div className={cn('relative inline-flex flex-shrink-0', className)}>
+      <div
+        className={cn(
+          'rounded-full overflow-hidden',
+          sizeClasses[size],
+          stateStyles[state],
+          glow && 'shadow-[0_0_12px_rgba(77,217,192,0.5)]'
+        )}
+      >
+        <img
+          src={donnyEmblem}
+          alt="Donny"
+          className="w-full h-full object-cover rounded-full"
+        />
+      </div>
+      {showBadge && badgeCount != null && badgeCount > 0 && (
+        <span
+          className={cn(
+            'absolute flex items-center justify-center rounded-full bg-[#EC4899] text-white font-bold border-2 border-white',
+            badgeSizeClasses[size]
+          )}
+        >
+          {badgeCount > 9 ? '9+' : badgeCount}
+        </span>
       )}
-    >
-      <img src={donnyIcon} alt="Donny" className="w-full h-full object-cover rounded-full scale-[1.35]" />
     </div>
   );
 }
