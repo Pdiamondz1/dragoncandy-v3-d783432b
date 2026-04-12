@@ -5,7 +5,6 @@ import donnyEmblem from '@/assets/donny-emblem.png';
 interface DonnyAvatarProps {
   size: 'xs' | 'sm' | 'md' | 'lg';
   state?: DonnyAvatarState;
-  showBadge?: boolean;
   badgeCount?: number;
   glow?: boolean;
   className?: string;
@@ -36,7 +35,6 @@ const stateStyles: Record<DonnyAvatarState, string> = {
 export function DonnyAvatar({
   size,
   state = 'idle',
-  showBadge = false,
   badgeCount,
   glow = false,
   className,
@@ -54,10 +52,11 @@ export function DonnyAvatar({
         <img
           src={donnyEmblem}
           alt="Donny"
+          loading="lazy"
           className="w-full h-full object-cover rounded-full"
         />
       </div>
-      {showBadge && badgeCount != null && badgeCount > 0 && (
+      {badgeCount != null && badgeCount > 0 && (
         <span
           className={cn(
             'absolute flex items-center justify-center rounded-full bg-[#EC4899] text-white font-bold border-2 border-white',
