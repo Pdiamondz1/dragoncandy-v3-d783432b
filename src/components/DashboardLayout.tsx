@@ -35,6 +35,8 @@ import NotificationDropdown from '@/components/notifications/NotificationDropdow
 import { useIsMobile } from '@/hooks/use-mobile';
 import { MobileBottomNav } from '@/components/MobileBottomNav';
 import { MobileTopNav } from '@/components/MobileTopNav';
+import { DonnyAvatar } from '@/components/donny/DonnyAvatar';
+import { useDonnyContext } from '@/contexts/DonnyProvider';
 import { DesktopGate } from '@/components/DesktopGate';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import type { UserRole } from '@/types/user';
@@ -134,6 +136,7 @@ const DashboardLayoutInner: React.FC<DashboardLayoutProps> = ({ children, userRo
   const { avatarUrl, displayName } = useProfileData();
   const isMobile = useIsMobile();
   const location = useLocation();
+  const { stage, open, close, unreadCount, avatarState } = useDonnyContext();
   const [sidebarOpen, setSidebarOpen] = useState(!isMobile);
 
   // Sync sidebar state when viewport crosses mobile/desktop boundary
@@ -184,6 +187,19 @@ const DashboardLayoutInner: React.FC<DashboardLayoutProps> = ({ children, userRo
                 <div className="flex items-center gap-3">
                   <ThemeToggle />
                   <NotificationDropdown />
+
+                  <button
+                    onClick={() => stage === 'closed' ? open() : close()}
+                    className="relative hidden md:block"
+                    aria-label="Open Donny"
+                  >
+                    <DonnyAvatar
+                      size="md"
+                      state={unreadCount > 0 ? 'action_needed' : avatarState}
+                      badgeCount={unreadCount}
+                      glow={unreadCount > 0}
+                    />
+                  </button>
 
                   <div className="w-px h-6 bg-border mx-1" />
 
