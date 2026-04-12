@@ -1,6 +1,8 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import mdx from "@mdx-js/rollup";
+import remarkFrontmatter from "remark-frontmatter";
+import remarkGfm from "remark-gfm";
 import path from "path";
 import { componentTagger } from "lovable-tagger";
 
@@ -11,7 +13,7 @@ export default defineConfig(({ mode }) => ({
     port: 8080,
   },
   plugins: [
-    mdx(),
+    mdx({ remarkPlugins: [remarkFrontmatter, remarkGfm] }),
     react(),
     mode === 'development' &&
     componentTagger(),
