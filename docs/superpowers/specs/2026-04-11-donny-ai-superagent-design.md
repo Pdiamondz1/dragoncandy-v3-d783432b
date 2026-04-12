@@ -216,14 +216,21 @@ Lightweight AI call that takes raw event data and returns a summary + priority. 
 
 RLS policy: users can only read/update their own nudges.
 
+### Nudge Creation: Database Trigger Approach
+
+Nudges are created server-side via Supabase database webhooks (pg_net) to avoid client-side race conditions across multiple tabs/devices:
+
+1. A database trigger on source tables (e.g., `campaign_applications` INSERT) fires a webhook to the `donny-nudge-frame` edge function
+2. The edge function generates the AI summary + priority and inserts a row into `donny_nudges`
+3. The client-side `useDonnyNudges` hook subscribes to `donny_nudges` via Supabase real-time and renders new nudges as they appear
+
 ### Nudge Lifecycle
 
-1. Event occurs in Supabase → real-time subscription detects it
-2. `donny-nudge-frame` edge function called → generates summary + priority
-3. Row inserted into `donny_nudges`
-4. `useDonnyNudges` subscription picks it up → appears in tray
-5. User acts (tap Approve) → `acted_at` set, action executed, card shows confirmation
-6. User dismisses → `dismissed_at` set, card fades out
+1. Event occurs in Supabase → database trigger fires webhook to `donny-nudge-frame`
+2. Edge function generates summary + priority → inserts row into `donny_nudges`
+3. `useDonnyNudges` real-time subscription picks it up → appears in tray
+4. User acts (tap Approve) → `acted_at` set, action executed, card shows confirmation
+5. User dismisses → `dismissed_at` set, card fades out
 
 ---
 
@@ -374,7 +381,7 @@ Notification badge: pink accent (`#EC4899`), positioned top-right of avatar.
 - Remove `donny-open-chat` custom event listeners
 - Remove unused imports and references
 
-### Phase 2 (Future): Voice Input
+### Future: Voice Input
 
 - Add mic button to `DonnyChatInput`
 - Use Web Speech API for browser-native speech-to-text
