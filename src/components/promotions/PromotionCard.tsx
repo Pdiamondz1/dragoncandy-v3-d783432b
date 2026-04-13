@@ -1,15 +1,16 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { 
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Calendar, Gift, QrCode, Users, Pause, Play, Copy, Check, MoreVertical, Pencil, Trash2, Download, AlertTriangle } from 'lucide-react';
+import { Calendar, Gift, QrCode, Users, Pause, Play, Copy, Check, MoreVertical, Pencil, Trash2, Download, AlertTriangle, ChevronRight } from 'lucide-react';
 import { format, isAfter, isBefore } from 'date-fns';
 import { Promotion } from '@/hooks/usePromotions';
 import { toast } from '@/hooks/use-toast';
@@ -33,6 +34,7 @@ export const PromotionCard: React.FC<PromotionCardProps> = ({
   onEdit,
   onDelete,
 }) => {
+  const navigate = useNavigate();
   const [showQRModal, setShowQRModal] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -103,7 +105,10 @@ export const PromotionCard: React.FC<PromotionCardProps> = ({
 
   return (
     <>
-      <Card className="hover:shadow-md transition-shadow">
+      <Card
+        className="hover:shadow-md transition-shadow cursor-pointer"
+        onClick={() => navigate(`/dashboard/business/promotions/${promotion.id}`)}
+      >
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between">
             <div className="flex-1">
@@ -115,7 +120,7 @@ export const PromotionCard: React.FC<PromotionCardProps> = ({
               {syncStatus && <SyncStatusBadge status={syncStatus} />}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => e.stopPropagation()}>
                     <MoreVertical className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
@@ -168,7 +173,7 @@ export const PromotionCard: React.FC<PromotionCardProps> = ({
             </div>
           </div>
 
-          <div className="flex gap-2 pt-2">
+          <div className="flex gap-2 pt-2" onClick={(e) => e.stopPropagation()}>
             <Button
               variant="outline"
               size="sm"
@@ -189,6 +194,12 @@ export const PromotionCard: React.FC<PromotionCardProps> = ({
               </Button>
             )}
           </div>
+          <button
+            className="flex items-center gap-1 text-xs font-medium text-dc-teal hover:underline pt-1"
+            onClick={() => navigate(`/dashboard/business/promotions/${promotion.id}`)}
+          >
+            View details <ChevronRight className="w-3 h-3" />
+          </button>
         </CardContent>
       </Card>
 

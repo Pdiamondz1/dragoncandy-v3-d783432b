@@ -65,6 +65,7 @@ import ForgotPassword from "./pages/ForgotPassword";
 import UpdatePassword from "./pages/UpdatePassword";
 import VerifyEmail from "./pages/VerifyEmail";
 import PromotionSubmissionPage from "./pages/PromotionSubmissionPage";
+import PromotionDetailPage from "./pages/PromotionDetailPage";
 import PromotionsErrorBoundary from "./components/promotions/PromotionsErrorBoundary";
 import PaymentsPage from "@/pages/PaymentsPage";
 import HelpBriefPage from "@/pages/help/promotions/HelpBriefPage";
@@ -300,6 +301,15 @@ const App = () => {
                       <BusinessRoute>
                         <PromotionsErrorBoundary>
                           <BusinessPromotionalTools />
+                        </PromotionsErrorBoundary>
+                      </BusinessRoute>
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/dashboard/business/promotions/:promotionId" element={
+                    <ProtectedRoute>
+                      <BusinessRoute>
+                        <PromotionsErrorBoundary>
+                          <PromotionDetailPage />
                         </PromotionsErrorBoundary>
                       </BusinessRoute>
                     </ProtectedRoute>
