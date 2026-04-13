@@ -18,11 +18,11 @@ export function DonnyNavButton() {
       className="flex flex-col items-center min-h-[44px] min-w-[44px] -mt-3"
       aria-label="Open Donny"
     >
-      <span className="w-12 h-12 rounded-full bg-white shadow-[0_0_0_3px_rgba(77,217,192,0.35),0_2px_8px_rgba(0,0,0,0.08)] flex items-center justify-center -mt-3 transition-transform active:scale-95">
+      <span className="w-[52px] h-[52px] rounded-full bg-white shadow-[0_0_0_3px_rgba(77,217,192,0.35),0_2px_8px_rgba(0,0,0,0.08)] flex items-center justify-center -mt-3 transition-transform active:scale-95">
         <img
           src={donnyEmblem}
           alt="Donny"
-          className="w-10 h-10 object-contain"
+          className="w-11 h-11 object-contain"
         />
       </span>
     </button>
