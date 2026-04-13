@@ -118,18 +118,17 @@ export const CreatorCard: React.FC<CreatorCardProps> = ({ creator }) => {
     <>
       <div
         onClick={handleCardClick}
-        className="bg-white border border-gray-200 rounded-2xl overflow-hidden flex shadow-sm hover:shadow-md transition-shadow cursor-pointer h-44"
+        className="bg-white border border-gray-200 rounded-2xl overflow-hidden flex flex-col shadow-sm hover:shadow-md transition-shadow cursor-pointer"
       >
-        {/* Thumbnail */}
-        <div className="w-44 flex-shrink-0 relative bg-gray-100">
+        {/* Thumbnail — full image visible, no cropping */}
+        <div className="w-full aspect-square relative bg-gray-100">
           {thumbnailUrl ? (
             <img
               src={thumbnailUrl}
               alt={creator.creator_name}
-              className="w-full h-full object-cover object-top"
+              className="w-full h-full object-contain"
               loading="lazy"
               onError={() => {
-                // If we were showing the avatar, mark it failed so we fall back to portfolio
                 if (creator.avatar_url && !avatarImgFailed) {
                   setAvatarImgFailed(true);
                 } else {
@@ -139,13 +138,13 @@ export const CreatorCard: React.FC<CreatorCardProps> = ({ creator }) => {
             />
           ) : (
             <div className="w-full h-full bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center">
-              <span className="text-white text-xl font-bold">{initials}</span>
+              <span className="text-white text-3xl font-bold">{initials}</span>
             </div>
           )}
           {/* Heart */}
           <button
             onClick={handleHeartClick}
-            className="absolute top-2 right-2 bg-white/90 rounded-full w-7 h-7 flex items-center justify-center hover:bg-white transition-colors"
+            className="absolute top-2 right-2 bg-white/90 rounded-full w-8 h-8 flex items-center justify-center hover:bg-white transition-colors"
           >
             <Heart
               className={`h-4 w-4 ${isFavorite ? 'fill-pink-300 text-pink-300' : 'text-gray-300'}`}
@@ -154,7 +153,7 @@ export const CreatorCard: React.FC<CreatorCardProps> = ({ creator }) => {
         </div>
 
         {/* Info */}
-        <div className="p-3 flex-1 flex flex-col justify-center min-w-0">
+        <div className="p-3 flex flex-col min-w-0">
           {/* Name + Rating */}
           <div className="flex items-center gap-1.5 mb-0.5">
             <span className="font-bold text-gray-900 text-sm truncate">{creator.creator_name || 'Unknown Creator'}</span>
@@ -187,7 +186,7 @@ export const CreatorCard: React.FC<CreatorCardProps> = ({ creator }) => {
 
           {/* Metrics */}
           {metricParts.length > 0 && (
-            <p className="text-xs text-gray-400">{metricParts.join(' · ')}</p>
+            <p className="text-xs text-gray-400 mb-2">{metricParts.join(' · ')}</p>
           )}
 
           {/* CTA Button */}
@@ -196,7 +195,7 @@ export const CreatorCard: React.FC<CreatorCardProps> = ({ creator }) => {
               e.stopPropagation();
               handleCardClick();
             }}
-            className="mt-2 w-full bg-teal-400 text-white rounded-full font-semibold text-sm py-1.5 hover:bg-teal-500 transition-colors"
+            className="mt-auto w-full bg-teal-400 text-white rounded-full font-semibold text-sm py-2 hover:bg-teal-500 transition-colors"
           >
             View Profile
           </button>
