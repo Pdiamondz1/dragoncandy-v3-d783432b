@@ -109,7 +109,7 @@ const CreatorContentSubmit: React.FC<CreatorContentSubmitProps> = ({
         p_entity_id: collaborationId,
         p_campaign_id: campaignId,
         p_metadata: {},
-      }).then(() => {}).catch(() => {});
+      }).then(() => {}, () => {});
 
       // Notify the business
       const { data: collaboration } = await supabase

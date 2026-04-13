@@ -209,7 +209,7 @@ export const useUpdateCampaign = () => {
       }
 
       console.log('Updated campaign:', data);
-      return data as Campaign;
+      return data as unknown as Campaign;
     },
     onSuccess: async (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['campaigns'] });

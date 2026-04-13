@@ -99,7 +99,7 @@ export const QuickApprovalCard: React.FC<QuickApprovalCardProps> = ({
         p_entity_id: collaborationId,
         p_campaign_id: campaignId,
         p_metadata: { notes: revisionFeedback, revision_number: (revisionCount || 0) + 1 },
-      }).then(() => {}).catch(() => {});
+      }).then(() => {}, () => {});
     },
     onSuccess: () => {
       toast.success('Revision request sent to creator');

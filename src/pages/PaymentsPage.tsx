@@ -68,7 +68,7 @@ export default function PaymentsPage() {
   const displayed = activeTab === 'active' ? activeEntities : activeTab === 'completed' ? completedEntities : issueEntities;
 
   return (
-    <DashboardLayout>
+    <DashboardLayout userRole={profile?.role as any ?? 'business_client'}>
       <div className="space-y-6 p-4 max-w-2xl mx-auto">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 uppercase tracking-wide">Your Payments</h1>

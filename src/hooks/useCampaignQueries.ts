@@ -58,7 +58,7 @@ export const useCampaignsList = (filterByOwnership: boolean = true) => {
       }
 
       console.log('Fetched campaigns:', data);
-      return data as Campaign[];
+      return data as unknown as Campaign[];
     },
     enabled: !!user,
   });
@@ -81,7 +81,7 @@ export const useCampaignById = (id: string) => {
       }
 
       console.log('Fetched campaign:', data);
-      return data as Campaign;
+      return data as unknown as Campaign;
     },
     enabled: !!id,
   });
