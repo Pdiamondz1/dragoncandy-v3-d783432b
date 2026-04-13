@@ -37,10 +37,10 @@ export const CreatorBrowseContent: React.FC<CreatorBrowseContentProps> = ({
   if (isLoading) {
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-        {[1, 2, 3, 4, 5, 6].map((i) => (
-          <div key={i} className="h-44 bg-gray-100 rounded-2xl animate-pulse" />
-        ))}
-      </div>
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <div key={i} className="aspect-square bg-gray-100 rounded-2xl animate-pulse" />
+          ))}
+        </div>
     );
   }
 
