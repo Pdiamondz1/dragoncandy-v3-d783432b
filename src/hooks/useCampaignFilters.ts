@@ -22,9 +22,9 @@ export interface CampaignFilterState {
 }
 
 interface BudgetFields {
-  fixed_price: number | null;
-  budget_min: number | null;
-  budget_max: number | null;
+  fixed_price?: number | null;
+  budget_min?: number | null;
+  budget_max?: number | null;
 }
 
 export function matchesDistance(

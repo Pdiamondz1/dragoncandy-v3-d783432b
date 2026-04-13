@@ -41,7 +41,7 @@ export const useCreateCampaign = () => {
         .insert({
           ...campaignData,
           user_id: user!.id,
-        })
+        } as any)
         .select()
         .single();
 
@@ -51,7 +51,7 @@ export const useCreateCampaign = () => {
       }
 
       console.log('Created campaign:', data);
-      return data as Campaign;
+      return data as unknown as Campaign;
     },
     onSuccess: async (data) => {
       queryClient.invalidateQueries({ queryKey: ['campaigns'] });
@@ -197,7 +197,7 @@ export const useUpdateCampaign = () => {
       console.log('Updating campaign:', id, updates);
       const { data, error } = await supabase
         .from('campaigns')
-        .update(updates)
+        .update(updates as any)
         .eq('id', id)
         .eq('user_id', user!.id)
         .select()

@@ -103,13 +103,13 @@ const CreatorContentSubmit: React.FC<CreatorContentSubmitProps> = ({
 
       // Fire-and-forget: write payment event for content_submitted or content_resubmitted
       const eventType = previousContentStatus === 'revision_requested' ? 'content_resubmitted' : 'content_submitted';
-      supabase.rpc('insert_payment_event', {
+      supabase.rpc('insert_payment_event' as any, {
         p_event_type: eventType,
         p_entity_type: 'collaboration',
         p_entity_id: collaborationId,
         p_campaign_id: campaignId,
         p_metadata: {},
-      }).catch(() => {});
+      }).then(() => {}).catch(() => {});
 
       // Notify the business
       const { data: collaboration } = await supabase

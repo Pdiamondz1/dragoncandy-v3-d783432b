@@ -161,13 +161,13 @@ const ContentApprovalPanel: React.FC<ContentApprovalPanelProps> = ({
       if (messageError) throw messageError;
 
       // Fire-and-forget: write payment event for revision_requested
-      supabase.rpc('insert_payment_event', {
+      supabase.rpc('insert_payment_event' as any, {
         p_event_type: 'revision_requested',
         p_entity_type: 'collaboration',
         p_entity_id: collaborationId,
         p_campaign_id: campaignId,
         p_metadata: { notes: feedback, revision_number: (revisionCount || 0) + 1 },
-      }).catch(() => {});
+      }).then(() => {}).catch(() => {});
     },
     onSuccess: () => {
       toast.success('Revision request sent to creator');
