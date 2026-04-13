@@ -214,7 +214,7 @@ export const usePublicCampaigns = (userId?: string) => {
       );
 
       console.log('Fetched public campaigns:', enrichedCampaigns);
-      return enrichedCampaigns as PublicCampaign[];
+      return enrichedCampaigns as unknown as PublicCampaign[];
     },
     enabled: true,
   });

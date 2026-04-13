@@ -116,12 +116,12 @@ export const ToastConnectionCard = () => {
       if (biz) setBusinessId(biz.id);
 
       // Get existing toast connection
-      const { data: conn } = await supabase
-        .from('toast_connections')
+      const { data: conn } = await (supabase
+        .from('toast_connections' as any)
         .select('id, restaurant_guid, status, token_expires_at, last_sync_at, error_message, scopes, created_at')
         .eq('user_id', user.id)
         .eq('status', 'active')
-        .maybeSingle();
+        .maybeSingle() as any);
 
       setConnection(conn);
     } catch (err) {
@@ -230,10 +230,10 @@ export const ToastConnectionCard = () => {
     if (!connection) return;
     setDisconnecting(true);
     try {
-      const { error } = await supabase
-        .from('toast_connections')
+      const { error } = await (supabase
+        .from('toast_connections' as any)
         .update({ status: 'revoked', updated_at: new Date().toISOString() })
-        .eq('id', connection.id);
+        .eq('id', connection.id) as any);
       if (error) throw error;
 
       toast({ title: 'Toast disconnected', description: 'Your connection has been revoked.' });

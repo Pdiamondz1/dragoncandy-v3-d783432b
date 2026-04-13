@@ -185,10 +185,9 @@ const CampaignFinalizeStep: React.FC<CampaignFinalizeStepProps> = ({
 
       if (campaignData.draftCampaignId) {
         // Update existing draft campaign
-        // @ts-expect-error — content_source not in generated types yet
         const { data: updatedCampaign, error: updateError } = await supabase
           .from('campaigns')
-          .update(campaignPayload)
+          .update(campaignPayload as any)
           .eq('id', campaignData.draftCampaignId)
           .select('id')
           .single();
@@ -197,12 +196,11 @@ const CampaignFinalizeStep: React.FC<CampaignFinalizeStepProps> = ({
         campaign = updatedCampaign;
       } else {
         // Create a new campaign
-        campaign = await createCampaign.mutateAsync(campaignPayload);
+        campaign = await createCampaign.mutateAsync(campaignPayload as any);
       }
 
       // Insert structured deliverables if present
       if (campaignData.structuredDeliverables?.length) {
-        // @ts-expect-error — campaign_deliverables not in generated types yet
         const { error: delError } = await supabase
           .from('campaign_deliverables')
           .insert(

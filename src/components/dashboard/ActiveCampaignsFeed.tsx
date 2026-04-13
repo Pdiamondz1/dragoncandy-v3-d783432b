@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useBusinessActiveCampaigns, type ActiveCampaignItem } from '@/hooks/useBusinessActiveCampaigns';
 import { Loader2 } from 'lucide-react';
 
-const statusStyles: Record<ActiveCampaignItem['status'], string> = {
+const statusStyles: Record<string, string> = {
   active: 'bg-emerald-50 text-emerald-700',
   published: 'bg-emerald-50 text-emerald-700',
   pending: 'bg-amber-50 text-amber-700',

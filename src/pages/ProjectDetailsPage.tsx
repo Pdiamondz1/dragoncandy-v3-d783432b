@@ -38,10 +38,9 @@ const ProjectDetailsPage: React.FC = () => {
   const { data: files } = useFileUploads(collaboration?.campaign_id, 'deliverable');
   const { timerData, startContentCreation } = useDragonDashTimer(id || null);
   const { data: timelineEvents } = usePaymentTimeline('collaboration', id);
-  usePaymentNotifications(timelineEvents, isCreator ? 'creator' : 'business');
-
   const isBusinessClient = profile?.role === 'business_client';
   const isCreator = profile?.role === 'content_creator';
+  usePaymentNotifications(timelineEvents, isCreator ? 'creator' : 'business');
   const isDragonDash = collaboration?.campaign?.delivery_type && collaboration.campaign.delivery_type !== 'standard';
 
   const getDeliveryLabel = (type: string | null) => {

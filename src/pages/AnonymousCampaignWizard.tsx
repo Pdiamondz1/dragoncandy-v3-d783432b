@@ -135,6 +135,8 @@ const AnonymousCampaignWizard: React.FC = () => {
         {/* Step 4: Timeline & Budget */}
         {currentStep === 4 && (
           <CampaignTimelineBudgetStep
+            deliveryTier="standard"
+            deliveryFee={0}
             initialData={{
               goals: customizedCampaign ? (
                 Array.isArray(customizedCampaign.goals)

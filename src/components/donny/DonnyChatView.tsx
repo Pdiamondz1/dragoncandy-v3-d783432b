@@ -47,7 +47,7 @@ export function DonnyChatView() {
             avatarState={avatarState}
             isLatestAssistant={
               msg.role === 'assistant' &&
-              i === messages.findLastIndex((m) => m.role === 'assistant')
+              (() => { const idx = messages.length - 1 - [...messages].reverse().findIndex((m) => m.role === 'assistant'); return idx >= 0 && idx < messages.length && i === idx; })()
             }
           />
         ))}
