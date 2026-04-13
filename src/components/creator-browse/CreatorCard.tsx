@@ -118,44 +118,47 @@ export const CreatorCard: React.FC<CreatorCardProps> = ({ creator }) => {
     <>
       <div
         onClick={handleCardClick}
-        className="bg-white border border-gray-200 rounded-2xl overflow-hidden flex flex-col shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+        className="bg-white border border-gray-200 rounded-2xl overflow-hidden flex flex-row items-start p-4 gap-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer relative"
       >
-        {/* Thumbnail — full image visible, no cropping */}
-        <div className="w-full aspect-square relative bg-gray-100">
-          {thumbnailUrl ? (
-            <img
-              src={thumbnailUrl}
-              alt={creator.creator_name}
-              className="w-full h-full object-contain"
-              loading="lazy"
-              onError={() => {
-                if (creator.avatar_url && !avatarImgFailed) {
-                  setAvatarImgFailed(true);
-                } else {
-                  setPortfolioImgFailed(true);
-                }
-              }}
-            />
-          ) : (
-            <div className="w-full h-full bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center">
-              <span className="text-white text-3xl font-bold">{initials}</span>
-            </div>
-          )}
-          {/* Heart */}
-          <button
-            onClick={handleHeartClick}
-            className="absolute top-2 right-2 bg-white/90 rounded-full w-8 h-8 flex items-center justify-center hover:bg-white transition-colors"
-          >
-            <Heart
-              className={`h-4 w-4 ${isFavorite ? 'fill-pink-300 text-pink-300' : 'text-gray-300'}`}
-            />
-          </button>
+        {/* Circular Avatar — full image visible */}
+        <div className="flex-shrink-0 relative">
+          <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden bg-gray-100 ring-2 ring-teal-400">
+            {thumbnailUrl ? (
+              <img
+                src={thumbnailUrl}
+                alt={creator.creator_name}
+                className="w-full h-full object-cover"
+                loading="lazy"
+                onError={() => {
+                  if (creator.avatar_url && !avatarImgFailed) {
+                    setAvatarImgFailed(true);
+                  } else {
+                    setPortfolioImgFailed(true);
+                  }
+                }}
+              />
+            ) : (
+              <div className="w-full h-full bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center">
+                <span className="text-white text-xl font-bold">{initials}</span>
+              </div>
+            )}
+          </div>
         </div>
 
+        {/* Heart — top right */}
+        <button
+          onClick={handleHeartClick}
+          className="absolute top-3 right-3 bg-white/90 rounded-full w-8 h-8 flex items-center justify-center hover:bg-white transition-colors"
+        >
+          <Heart
+            className={`h-4 w-4 ${isFavorite ? 'fill-pink-300 text-pink-300' : 'text-gray-300'}`}
+          />
+        </button>
+
         {/* Info */}
-        <div className="p-3 flex flex-col min-w-0">
+        <div className="flex-1 min-w-0 flex flex-col">
           {/* Name + Rating */}
-          <div className="flex items-center gap-1.5 mb-0.5">
+          <div className="flex items-center gap-1.5 mb-0.5 pr-8">
             <span className="font-bold text-gray-900 text-sm truncate">{creator.creator_name || 'Unknown Creator'}</span>
             {creator.average_rating != null && (
               <span className="text-yellow-400 text-xs flex-shrink-0">★ {creator.average_rating.toFixed(1)}</span>
