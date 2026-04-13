@@ -17,7 +17,7 @@ export const DonnyPicksRow: React.FC<DonnyPicksRowProps> = ({ picks, onViewDetai
   return (
     <div className="mb-6">
       <div className="flex items-center gap-2 mb-3">
-        <img src={logo} alt="" className="w-6 h-6" />
+        <img src={logo} alt="" style={{ width: '19.44px', height: '19.44px' }} />
         <div>
           <h2 className="text-sm font-bold text-gray-900">Donny's Picks for You</h2>
           <p className="text-[11px] text-gray-500">Matched based on your skills, location, and ratings</p>
