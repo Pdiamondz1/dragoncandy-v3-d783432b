@@ -120,14 +120,14 @@ export const CreatorCard: React.FC<CreatorCardProps> = ({ creator }) => {
         onClick={handleCardClick}
         className="bg-white border border-gray-200 rounded-2xl overflow-hidden flex flex-row items-start p-4 gap-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer relative"
       >
-        {/* Avatar — full image visible, no cropping */}
+        {/* Avatar — circular with face-anchored crop */}
         <div className="flex-shrink-0 self-center">
-          <div className="w-16 h-16 aspect-square rounded-xl overflow-hidden ring-2 ring-teal-400">
+          <div className="w-16 h-16 rounded-full overflow-hidden ring-2 ring-teal-400">
             {thumbnailUrl ? (
               <img
                 src={thumbnailUrl}
                 alt={creator.creator_name}
-                className="w-full h-full object-contain"
+                className="w-full h-full object-cover object-top"
                 loading="lazy"
                 onError={() => {
                   if (creator.avatar_url && !avatarImgFailed) {
