@@ -122,7 +122,7 @@ export const CreatorCard: React.FC<CreatorCardProps> = ({ creator }) => {
       >
         {/* Avatar — full image visible, no cropping */}
         <div className="flex-shrink-0 relative">
-          <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl overflow-hidden bg-gray-100 border border-gray-200">
+          <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl overflow-hidden border border-gray-200">
             {thumbnailUrl ? (
               <img
                 src={thumbnailUrl}
