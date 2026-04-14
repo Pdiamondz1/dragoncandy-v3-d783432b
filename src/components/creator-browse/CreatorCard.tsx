@@ -61,15 +61,15 @@ export const CreatorCard: React.FC<CreatorCardProps> = ({ creator }) => {
   const [avatarImgFailed, setAvatarImgFailed] = useState(false);
   const [isFavorite, setIsFavorite] = useState(() => getFavorites().includes(creator.id));
 
-  // Resolve thumbnail synchronously — no async effects, no network flood.
-  // Priority: avatar (intentional headshot) → first non-video portfolio image → null
+  // Resolve thumbnail synchronously — prefer the uploaded avatar and use the
+  // original asset URL so the full photo can render without transform cropping.
   const thumbnailUrl = useMemo(() => {
     if (creator.avatar_url && !avatarImgFailed) {
-      return resolveStorageUrl(creator.avatar_url, 300);
+      return resolveStorageUrl(creator.avatar_url);
     }
     const firstPortfolio = creator.portfolio_urls?.[0];
     if (firstPortfolio && !isVideoPath(firstPortfolio) && !portfolioImgFailed) {
-      return resolveStorageUrl(firstPortfolio, 300);
+      return resolveStorageUrl(firstPortfolio);
     }
     return null;
   }, [creator.portfolio_urls, creator.avatar_url, portfolioImgFailed, avatarImgFailed]);
@@ -120,14 +120,14 @@ export const CreatorCard: React.FC<CreatorCardProps> = ({ creator }) => {
         onClick={handleCardClick}
         className="bg-white border border-gray-200 rounded-2xl overflow-hidden flex flex-row items-start p-4 gap-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer relative"
       >
-        {/* Avatar — portrait container with full image visible */}
-        <div className="flex-shrink-0 self-center">
-          <div className="w-24 h-24 rounded-xl flex-shrink-0 bg-gray-100 ring-2 ring-teal-400 overflow-hidden">
+        {/* Avatar — preserve the full uploaded photo */}
+        <div className="w-24 flex-shrink-0 self-center">
+          <div className="max-h-32 rounded-xl bg-gray-100 ring-2 ring-teal-400 overflow-hidden flex items-center justify-center">
             {thumbnailUrl ? (
               <img
                 src={thumbnailUrl}
                 alt={creator.creator_name}
-                className="w-full h-full object-contain"
+                className="block w-full h-auto max-h-32 object-contain"
                 loading="lazy"
                 onError={() => {
                   if (creator.avatar_url && !avatarImgFailed) {
@@ -138,7 +138,7 @@ export const CreatorCard: React.FC<CreatorCardProps> = ({ creator }) => {
                 }}
               />
             ) : (
-              <div className="w-full h-full bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center">
+              <div className="w-full h-24 bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center">
                 <span className="text-white text-xl font-bold">{initials}</span>
               </div>
             )}
