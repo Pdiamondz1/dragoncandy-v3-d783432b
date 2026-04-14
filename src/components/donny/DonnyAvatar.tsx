@@ -13,8 +13,8 @@ interface DonnyAvatarProps {
 const sizeClasses = {
   xs: 'w-7 h-7',
   sm: 'w-9 h-9',
-  md: 'w-11 h-11',
-  lg: 'w-14 h-14',
+  md: 'w-10 h-10',
+  lg: 'w-12 h-12',
 };
 
 const badgeSizeClasses = {
@@ -52,7 +52,7 @@ export function DonnyAvatar({
           src={donnyEmblem}
           alt="Donny"
           loading="lazy"
-          className="w-full h-full object-contain"
+          className="w-full h-full object-cover rounded-full"
         />
       </div>
       {badgeCount != null && badgeCount > 0 && (

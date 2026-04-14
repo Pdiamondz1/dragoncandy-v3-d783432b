@@ -40,7 +40,7 @@ const BusinessDashboard = () => {
                 <img
                   src={donnyIcon}
                   alt="Donny"
-                  className="w-24 h-24 object-contain mb-6"
+                  className="w-20 h-20 object-cover rounded-full mb-6"
                 />
                 <h1 className="text-2xl font-bold text-gray-900 mb-2">
                   Ready to grow, {profile.full_name || 'there'}?
