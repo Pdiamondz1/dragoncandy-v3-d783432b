@@ -75,11 +75,11 @@ const resolveAvatarUrl = (raw: string | null | undefined, width = 160): string |
     const idx = raw.indexOf(marker);
     if (idx !== -1) {
       const storagePath = raw.substring(idx + marker.length);
-      return `${SUPABASE_URL}/storage/v1/render/image/public/${storagePath}?width=${width}&quality=75`;
+      return `${SUPABASE_URL}/storage/v1/render/image/public/${storagePath}?width=${width}&height=${width}&resize=cover&quality=75`;
     }
     return raw;
   }
-  return `${SUPABASE_URL}/storage/v1/render/image/public/profile-assets/${raw}?width=${width}&quality=75`;
+  return `${SUPABASE_URL}/storage/v1/render/image/public/profile-assets/${raw}?width=${width}&height=${width}&resize=cover&quality=75`;
 };
 
 const PublicCreatorProfile = () => {

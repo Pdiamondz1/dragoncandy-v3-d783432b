@@ -35,7 +35,7 @@ export const useProfileData = () => {
     // Use Supabase image transform when a target width is provided
     if (width) {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://zocahiffooqdybdhguqv.supabase.co';
-      return `${supabaseUrl}/storage/v1/render/image/public/profile-assets/${filePath}?width=${width}&quality=75`;
+      return `${supabaseUrl}/storage/v1/render/image/public/profile-assets/${filePath}?width=${width}&height=${width}&resize=cover&quality=75`;
     }
 
     // Convert storage path to public URL
