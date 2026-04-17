@@ -117,31 +117,31 @@ const VideoCard: React.FC<VideoCardProps> = ({ submission }) => {
           )}
 
           {/* Action Buttons */}
-          <div className="flex flex-wrap gap-2">
+          <div className="grid grid-cols-1 gap-2">
             <Button
               variant="outline"
               size="sm"
-              className="flex-1 min-w-0 px-2"
+              className="w-full min-w-0 justify-center px-3"
               onClick={() => setShowVideoPreview(true)}
             >
               {isImageUrl(submission.video_url) ? (
-                <Image className="h-4 w-4 mr-1 shrink-0" />
+                <Image className="h-4 w-4 shrink-0" />
               ) : (
-                <Play className="h-4 w-4 mr-1 shrink-0" />
+                <Play className="h-4 w-4 shrink-0" />
               )}
               <span className="truncate">{isImageUrl(submission.video_url) ? 'View' : 'Watch'}</span>
             </Button>
             {isApproved && (
               <Button
                 size="sm"
-                className="flex-1 min-w-0 px-2"
+                className="w-full min-w-0 justify-center px-3"
                 onClick={handleDownload}
                 disabled={isDownloading || !resolvedUrl}
               >
                 {isDownloading ? (
-                  <Loader2 className="h-4 w-4 mr-1 shrink-0 animate-spin" />
+                  <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
                 ) : (
-                  <Download className="h-4 w-4 mr-1 shrink-0" />
+                  <Download className="h-4 w-4 shrink-0" />
                 )}
                 <span className="truncate">Download</span>
               </Button>
