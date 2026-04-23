@@ -20,7 +20,7 @@ const BusinessPromotionalTools: React.FC = () => {
         {/* Template A: Pink gradient header */}
         <div className="bg-gradient-to-b from-dc-pink-bg to-pink-50 px-4 pt-6 pb-4">
           <h1 className="font-sans text-sm font-bold uppercase tracking-wide text-dc-teal inline-flex items-center gap-2">
-            Promotional Tools
+            Customer Generated Content Campaigns
             <HelpTooltip
               slug="create-promotion"
               summary="Create QR-based promotions that turn customers into content creators. They film or snap, you reward them with a discount."
