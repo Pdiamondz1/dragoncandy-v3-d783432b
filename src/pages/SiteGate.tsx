@@ -13,7 +13,6 @@ export const isSiteUnlocked = () => {
 };
 
 export default function SiteGate() {
-  const navigate = useNavigate();
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
