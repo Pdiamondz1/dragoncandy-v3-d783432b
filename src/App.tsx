@@ -17,6 +17,8 @@ import { BusinessRoute } from "@/components/BusinessRoute";
 import { BrandRoute } from "@/components/BrandRoute";
 import Index from "./pages/Index";
 import LandingPage from "./pages/LandingPage";
+import SiteGate, { isSiteUnlocked } from "./pages/SiteGate";
+import { Navigate } from "react-router-dom";
 import NotFound from "./pages/NotFound";
 import AuthPage from "./pages/AuthPage";
 import ProfileOnboarding from "./pages/ProfileOnboarding";
@@ -110,8 +112,9 @@ const App = () => {
                 <div className="flex h-screen">
                 <div className="flex-1 overflow-auto">
                   <Routes>
-                  <Route path="/" element={<Index />} />
-                  <Route path="/landing" element={<LandingPage />} />
+                  <Route path="/" element={isSiteUnlocked() ? <Index /> : <SiteGate />} />
+                  <Route path="/home" element={isSiteUnlocked() ? <Index /> : <Navigate to="/" replace />} />
+                  <Route path="/landing" element={isSiteUnlocked() ? <LandingPage /> : <Navigate to="/" replace />} />
                   <Route path="/auth" element={<AuthPage />} />
                   <Route path="/verify-email" element={<VerifyEmail />} />
                   
