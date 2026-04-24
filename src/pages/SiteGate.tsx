@@ -1,5 +1,4 @@
 import { useState, FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
 import dragonCandyLogo from '@/assets/Transparent_DragonCandy_logo.png';
 
 const SITE_PASSWORD = 'dragoncandy2026';
