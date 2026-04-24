@@ -17,6 +17,8 @@ import { BusinessRoute } from "@/components/BusinessRoute";
 import { BrandRoute } from "@/components/BrandRoute";
 import Index from "./pages/Index";
 import LandingPage from "./pages/LandingPage";
+import SiteGate, { isSiteUnlocked } from "./pages/SiteGate";
+import { Navigate } from "react-router-dom";
 import NotFound from "./pages/NotFound";
 import AuthPage from "./pages/AuthPage";
 import ProfileOnboarding from "./pages/ProfileOnboarding";
