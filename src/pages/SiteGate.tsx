@@ -26,8 +26,9 @@ export default function SiteGate() {
       } catch {
         /* ignore */
       }
-      // Send to Index, which will route to dashboard if signed in or to /landing if not.
-      navigate('/home', { replace: true });
+      // Reload at root so the route re-evaluates isSiteUnlocked() and renders Index,
+      // which routes to the user's dashboard if signed in or to /landing otherwise.
+      window.location.replace('/');
     } else {
       setError('Incorrect password. Please try again.');
     }
