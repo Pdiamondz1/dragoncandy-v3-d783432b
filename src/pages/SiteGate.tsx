@@ -2,11 +2,30 @@ import { useState, FormEvent } from 'react';
 import dragonCandyLogo from '@/assets/Transparent_DragonCandy_logo.png';
 
 const SITE_PASSWORD = 'dragoncandy2026';
-export const SITE_GATE_KEY = 'dc_site_unlocked';
+export const SITE_GATE_KEY = 'dc_site_unlocked_until';
+const ONE_HOUR_MS = 60 * 60 * 1000;
+
+// Paths that should remain publicly accessible (do not gate).
+// Keep this list narrow — only routes that strictly need public access.
+const PUBLIC_PATH_PREFIXES = [
+  '/promo/', // public promotion submission via QR
+];
+
+export const isPublicPath = (pathname: string) => {
+  return PUBLIC_PATH_PREFIXES.some((p) => pathname.startsWith(p));
+};
 
 export const isSiteUnlocked = () => {
   try {
-    return sessionStorage.getItem(SITE_GATE_KEY) === 'true';
+    const raw = localStorage.getItem(SITE_GATE_KEY);
+    if (!raw) return false;
+    const expiresAt = parseInt(raw, 10);
+    if (!Number.isFinite(expiresAt)) return false;
+    if (Date.now() >= expiresAt) {
+      localStorage.removeItem(SITE_GATE_KEY);
+      return false;
+    }
+    return true;
   } catch {
     return false;
   }
@@ -20,13 +39,23 @@ export default function SiteGate() {
     e.preventDefault();
     if (password.trim() === SITE_PASSWORD) {
       try {
-        sessionStorage.setItem(SITE_GATE_KEY, 'true');
+        localStorage.setItem(SITE_GATE_KEY, String(Date.now() + ONE_HOUR_MS));
       } catch {
         /* ignore */
       }
-      // Reload at root so the route re-evaluates isSiteUnlocked() and renders Index,
-      // which routes to the user's dashboard if signed in or to /landing otherwise.
-      window.location.replace('/');
+      // Reload at the originally requested path (preserved in sessionStorage by the gate guard),
+      // falling back to root.
+      let target = '/';
+      try {
+        const saved = sessionStorage.getItem('dc_gate_redirect');
+        if (saved) {
+          sessionStorage.removeItem('dc_gate_redirect');
+          target = saved;
+        }
+      } catch {
+        /* ignore */
+      }
+      window.location.replace(target);
     } else {
       setError('Incorrect password. Please try again.');
     }
