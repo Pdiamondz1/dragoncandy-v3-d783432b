@@ -112,7 +112,7 @@ const App = () => {
                 <div className="flex h-screen">
                 <div className="flex-1 overflow-auto">
                   <Routes>
-                  <Route path="/" element={<SiteGate />} />
+                  <Route path="/" element={isSiteUnlocked() ? <Index /> : <SiteGate />} />
                   <Route path="/home" element={isSiteUnlocked() ? <Index /> : <Navigate to="/" replace />} />
                   <Route path="/landing" element={isSiteUnlocked() ? <LandingPage /> : <Navigate to="/" replace />} />
                   <Route path="/auth" element={<AuthPage />} />
