@@ -653,24 +653,32 @@ async function executeTool(
     case "match_creators": {
       let query = supabaseAdmin
         .from("creator_profiles")
-        .select("id, user_id, profiles!inner(full_name, avatar_url, location), specialty, platforms, rating, completed_projects")
+        .select("id, user_id, creator_name, avatar_url, bio, skills, location, average_rating, total_reviews, instagram_url, tiktok_url, youtube_url, facebook_url, linkedin_url, x_url")
+        .eq("is_completed", true)
         .limit(10);
-      if (args.niche) query = query.ilike("specialty", `%${args.niche}%`);
-      if (args.location) query = query.ilike("profiles.location", `%${args.location}%`);
-      if (args.min_rating) query = query.gte("rating", args.min_rating);
-      query = query.order("rating", { ascending: false });
+      if (args.niche) query = query.ilike("bio", `%${args.niche}%`);
+      if (args.location) query = query.ilike("location", `%${args.location}%`);
+      if (args.min_rating) query = query.gte("average_rating", args.min_rating);
+      query = query.order("average_rating", { ascending: false, nullsFirst: false });
       const { data, error } = await query;
       if (error) throw error;
       return {
         result: (data ?? []).map((c: any) => ({
           id: c.user_id,
-          name: c.profiles?.full_name ?? "Unknown",
-          avatar_url: c.profiles?.avatar_url,
-          location: c.profiles?.location ?? null,
-          platforms: c.platforms ?? [],
-          niche: c.specialty ?? "General",
-          rating: c.rating ?? 0,
-          project_count: c.completed_projects ?? 0,
+          name: c.creator_name ?? "Unknown",
+          avatar_url: c.avatar_url,
+          location: c.location ?? null,
+          platforms: [
+            c.instagram_url && "instagram",
+            c.tiktok_url && "tiktok",
+            c.youtube_url && "youtube",
+            c.facebook_url && "facebook",
+            c.linkedin_url && "linkedin",
+            c.x_url && "x",
+          ].filter(Boolean),
+          niche: (c.skills ?? []).join(", ") || "General",
+          rating: c.average_rating ?? 0,
+          project_count: c.total_reviews ?? 0,
         })),
       };
     }
@@ -678,7 +686,7 @@ async function executeTool(
     case "get_creator_profile": {
       const { data, error } = await supabaseAdmin
         .from("creator_profiles")
-        .select("id, user_id, profiles!inner(full_name, avatar_url, bio), specialty, platforms, rating, completed_projects, hourly_rate, portfolio_url")
+        .select("id, user_id, creator_name, avatar_url, bio, skills, location, average_rating, total_reviews, base_rate_per_hour, portfolio_urls, instagram_url, tiktok_url, youtube_url")
         .eq("user_id", args.creator_id)
         .single();
       if (error) throw error;
@@ -692,7 +700,7 @@ async function executeTool(
           campaign_id: args.campaign_id,
           creator_id: args.creator_id,
           invited_by: userId,
-          message: args.message ?? null,
+          invitation_message: args.message ?? null,
           status: "pending",
         })
         .select("id, status")
@@ -705,7 +713,7 @@ async function executeTool(
     case "get_applications": {
       const { data, error } = await supabaseAdmin
         .from("campaign_applications")
-        .select("id, status, pitch, proposed_rate, applicant_id, profiles!inner(full_name, avatar_url)")
+        .select("id, status, intro_message, proposed_rate, creator_id, profiles!creator_id(full_name, avatar_url)")
         .eq("campaign_id", args.campaign_id)
         .eq("status", "pending");
       if (error) throw error;
@@ -717,8 +725,8 @@ async function executeTool(
         .from("campaign_applications")
         .insert({
           campaign_id: args.campaign_id,
-          applicant_id: userId,
-          pitch: args.pitch,
+          creator_id: userId,
+          intro_message: args.pitch,
           proposed_rate: args.proposed_rate,
           status: "pending",
         })
@@ -734,26 +742,16 @@ async function executeTool(
         .from("campaign_applications")
         .update({ status: newStatus })
         .eq("id", args.application_id)
-        .select("id, status, campaign_id")
+        .select("id, status, campaign_id, creator_id")
         .single();
       if (error) throw error;
 
-      // If accepted, create a collaboration
       if (args.action === "accept" && data) {
-        const { data: app } = await supabaseAdmin
-          .from("campaign_applications")
-          .select("applicant_id, proposed_rate, campaign_id")
-          .eq("id", args.application_id)
-          .single();
-
-        if (app) {
-          await supabaseAdmin.from("campaign_collaborations").insert({
-            campaign_id: app.campaign_id,
-            creator_id: app.applicant_id,
-            agreed_rate: app.proposed_rate,
-            status: "active",
-          });
-        }
+        await supabaseAdmin.from("campaign_collaborations").insert({
+          campaign_id: data.campaign_id,
+          creator_id: data.creator_id,
+          status: "active",
+        });
       }
       return { result: { id: data.id, status: newStatus } };
     }
@@ -762,8 +760,8 @@ async function executeTool(
     case "get_submissions": {
       const { data, error } = await supabaseAdmin
         .from("file_uploads")
-        .select("id, file_name, file_url, status, created_at, uploader_id, profiles!inner(full_name)")
-        .eq("collaboration_id", args.collaboration_id)
+        .select("id, filename, file_path, upload_status, created_at, uploaded_by")
+        .eq("campaign_id", args.collaboration_id)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return { result: data };
@@ -772,9 +770,9 @@ async function executeTool(
     case "approve_content": {
       const { data, error } = await supabaseAdmin
         .from("file_uploads")
-        .update({ status: "approved" })
+        .update({ upload_status: "approved" })
         .eq("id", args.submission_id)
-        .select("id, file_name, status")
+        .select("id, filename, upload_status")
         .single();
       if (error) throw error;
       return { result: data };
@@ -783,17 +781,17 @@ async function executeTool(
     case "request_revision": {
       const { data, error } = await supabaseAdmin
         .from("file_uploads")
-        .update({ status: "revision_requested" })
+        .update({ upload_status: "revision_requested" })
         .eq("id", args.submission_id)
-        .select("id, file_name, status")
+        .select("id, filename, upload_status")
         .single();
       if (error) throw error;
 
       // Add feedback as a file comment
       await supabaseAdmin.from("file_comments").insert({
-        file_id: args.submission_id,
+        file_upload_id: args.submission_id,
         user_id: userId,
-        content: args.feedback,
+        comment_text: args.feedback,
       });
       return { result: { id: data.id, status: "revision_requested", feedback: args.feedback } };
     }
@@ -802,14 +800,14 @@ async function executeTool(
     case "prepare_payment": {
       const { data, error } = await supabaseAdmin
         .from("campaign_collaborations")
-        .select("id, agreed_rate, creator_id, profiles!inner(full_name), campaigns!inner(title)")
+        .select("id, status, creator_id, profiles!creator_id(full_name), campaigns!campaign_id(title)")
         .eq("id", args.collaboration_id)
+        .returns<{ id: string; status: string; creator_id: string; profiles: { full_name: string } | null; campaigns: { title: string } | null }>()
         .single();
       if (error) throw error;
       return {
         result: {
           collaboration_id: data.id,
-          amount: data.agreed_rate,
           recipient_name: data.profiles?.full_name,
           campaign_title: data.campaigns?.title,
           payment_url: `/dashboard/business/payments/${data.id}`,
@@ -820,7 +818,7 @@ async function executeTool(
     case "get_payment_status": {
       const { data, error } = await supabaseAdmin
         .from("campaign_collaborations")
-        .select("id, agreed_rate, payment_status, campaigns!inner(title), profiles!inner(full_name)")
+        .select("id, status, campaigns!campaign_id(title), profiles!creator_id(full_name)")
         .eq("id", args.collaboration_id)
         .single();
       if (error) throw error;
@@ -829,20 +827,29 @@ async function executeTool(
 
     // --- Profile Tools ---
     case "update_profile": {
-      const updates: Record<string, any> = {};
-      if (args.full_name) updates.full_name = args.full_name;
-      if (args.bio) updates.bio = args.bio;
-      if (args.business_name) updates.business_name = args.business_name;
-      if (args.location) updates.location = args.location;
+      const updates: Promise<{ error: any }>[] = [];
 
-      const { data, error } = await supabaseAdmin
-        .from("profiles")
-        .update(updates)
-        .eq("id", userId)
-        .select("id, full_name, bio, business_name, location")
-        .single();
-      if (error) throw error;
-      return { result: data };
+      if (args.full_name) {
+        updates.push(supabaseAdmin.from("profiles").update({ full_name: args.full_name }).eq("id", userId));
+      }
+      if (args.bio || args.location) {
+        const fields: Record<string, string> = {};
+        if (args.bio) fields.bio = args.bio;
+        if (args.location) fields.location = args.location;
+        updates.push(supabaseAdmin.from("creator_profiles").update(fields).eq("user_id", userId));
+      }
+      if (args.business_name || args.location) {
+        const fields: Record<string, string> = {};
+        if (args.business_name) fields.business_name = args.business_name;
+        if (args.location) fields.location = args.location;
+        updates.push(supabaseAdmin.from("business_profiles").update(fields).eq("user_id", userId));
+      }
+
+      const results = await Promise.all(updates);
+      const firstError = results.find((r) => r.error);
+      if (firstError?.error) throw firstError.error;
+
+      return { result: { id: userId, full_name: args.full_name, bio: args.bio, business_name: args.business_name, location: args.location } };
     }
 
     case "get_dashboard_summary": {
@@ -860,7 +867,7 @@ async function executeTool(
         supabaseAdmin
           .from("campaign_applications")
           .select("id, status")
-          .eq("applicant_id", userId)
+          .eq("creator_id", userId)
           .eq("status", "pending"),
       ]);
       return {
@@ -876,23 +883,33 @@ async function executeTool(
     case "get_onboarding_step": {
       const { data: profile } = await supabaseAdmin
         .from("profiles")
-        .select("role, full_name, business_name")
+        .select("role, full_name")
         .eq("id", userId)
         .single();
 
-      // Determine which onboarding fields are still empty
       const isBusiness = profile?.role === "business_client" || profile?.role === "brand";
+
+      let businessName: string | null = null;
+      if (isBusiness) {
+        const { data: bp } = await supabaseAdmin
+          .from("business_profiles")
+          .select("business_name")
+          .eq("user_id", userId)
+          .maybeSingle();
+        businessName = bp?.business_name ?? null;
+      }
+
       const steps = isBusiness
         ? [
-            { field: "business_name", label: "Business name", completed: !!profile?.business_name },
-            { field: "content_type", label: "Content type", completed: false }, // Check via campaigns
+            { field: "business_name", label: "Business name", completed: !!businessName },
+            { field: "content_type", label: "Content type", completed: false },
             { field: "budget_range", label: "Budget range", completed: false },
             { field: "logo", label: "Logo upload", completed: false },
           ]
         : [
             { field: "platforms", label: "Platforms", completed: false },
-            { field: "niche", label: "Niche/specialty", completed: false },
-            { field: "portfolio_url", label: "Portfolio link", completed: false },
+            { field: "niche", label: "Niche/skills", completed: false },
+            { field: "portfolio_urls", label: "Portfolio link", completed: false },
             { field: "automation_level", label: "Automation preference", completed: false },
           ];
 
@@ -912,18 +929,24 @@ async function executeTool(
       const field = args.field;
       const value = args.value;
 
-      if (field === "business_name" || field === "full_name" || field === "bio" || field === "location") {
-        await supabaseAdmin.from("profiles").update({ [field]: value }).eq("id", userId);
+      if (field === "full_name") {
+        await supabaseAdmin.from("profiles").update({ full_name: value }).eq("id", userId);
+      } else if (field === "business_name") {
+        await supabaseAdmin.from("business_profiles").update({ business_name: value }).eq("user_id", userId);
+      } else if (field === "bio" || field === "location") {
+        await supabaseAdmin.from("creator_profiles").update({ [field]: value }).eq("user_id", userId);
       } else if (field === "automation_level") {
-        // Upsert creator automation preferences
         await supabaseAdmin.from("creator_automation_preferences").upsert({
           user_id: userId,
           automation_level: value,
           updated_at: new Date().toISOString(),
         }, { onConflict: "user_id" });
-      } else if (field === "platforms" || field === "niche" || field === "portfolio_url") {
-        const updateField = field === "niche" ? "specialty" : field;
-        await supabaseAdmin.from("creator_profiles").update({ [updateField]: value }).eq("user_id", userId);
+      } else if (field === "niche" || field === "skills") {
+        const skills = Array.isArray(value) ? value : [value];
+        await supabaseAdmin.from("creator_profiles").update({ skills }).eq("user_id", userId);
+      } else if (field === "portfolio_urls" || field === "portfolio_url") {
+        const urls = Array.isArray(value) ? value : [value];
+        await supabaseAdmin.from("creator_profiles").update({ portfolio_urls: urls }).eq("user_id", userId);
       }
 
       return { result: { field, saved: true } };
@@ -1011,8 +1034,8 @@ async function executeTool(
         .from("campaign_applications")
         .select("id, campaigns!inner(user_id)")
         .or(
-          `and(applicant_id.eq.${userId},campaigns.user_id.eq.${args.recipient_id}),` +
-          `and(applicant_id.eq.${args.recipient_id},campaigns.user_id.eq.${userId})`
+          `and(creator_id.eq.${userId},campaigns.user_id.eq.${args.recipient_id}),` +
+          `and(creator_id.eq.${args.recipient_id},campaigns.user_id.eq.${userId})`
         )
         .limit(1);
 
@@ -1289,15 +1312,15 @@ serve(async (req) => {
       .eq("status", "published")
       .limit(10);
 
-    const { data: pendingApps } = await supabaseAdmin
+    const { count: pendingAppCount } = await supabaseAdmin
       .from("campaign_applications")
-      .select("id")
-      .eq("applicant_id", userId)
+      .select("id", { count: "exact", head: true })
+      .eq("creator_id", userId)
       .eq("status", "pending");
 
     const userContext = {
       campaigns: campaigns ?? [],
-      pendingApplications: pendingApps?.length ?? 0,
+      pendingApplications: pendingAppCount ?? 0,
     };
 
     // Load conversation history
