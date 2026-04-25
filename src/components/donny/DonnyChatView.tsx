@@ -39,7 +39,14 @@ export function DonnyChatView() {
       />
 
       {/* Messages */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto overscroll-contain px-4 py-3 bg-teal-50/30 space-y-3">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto overscroll-contain px-4 py-3 bg-teal-50/30 space-y-3" role="log" aria-label="Donny conversation" aria-live="polite">
+        {messages.length === 0 && !isStreaming && (
+          <div className="flex flex-col items-center justify-center h-full text-center px-6">
+            <div className="text-3xl mb-2">🐉</div>
+            <p className="text-sm font-semibold text-[#111]">Hey! I'm Donny</p>
+            <p className="text-xs text-[#555] mt-1">Ask me anything — find creators, manage campaigns, check analytics, or just brainstorm ideas.</p>
+          </div>
+        )}
         {messages.map((msg, i) => (
           <DonnyMessage
             key={msg.id ?? i}

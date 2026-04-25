@@ -423,7 +423,7 @@ function buildSystemPrompt(
 
 ## Rich Cards
 When presenting creators or campaigns from tool results, include a JSON code block with the card data. Format:
-- Creator: \`\`\`json\\n{ "type": "creator_profile", "data": { "id": "...", "name": "...", ... } }\\n\`\`\`
+- Creator: \`\`\`json\\n{ "type": "creator_profile", "data": { "id": "...", "name": "...", "profile_slug": "...", ... } }\\n\`\`\`
 - Campaign: \`\`\`json\\n{ "type": "campaign_summary", "data": { "id": "...", "title": "...", ... } }\\n\`\`\`
 - Payment: \`\`\`json\\n{ "type": "payment_confirmation", "data": { "collaboration_id": "...", "amount": ..., ... } }\\n\`\`\``;
 
@@ -440,7 +440,8 @@ async function checkRateLimit(userId: string, supabaseAdmin: any): Promise<boole
     .select("id")
     .eq("user_id", userId);
 
-  if (convError || !convRows || convRows.length === 0) return true; // Allow on error — fail open
+  if (convError) return false;
+  if (!convRows || convRows.length === 0) return true;
 
   const convIds = convRows.map((r: any) => r.id);
 
@@ -452,7 +453,7 @@ async function checkRateLimit(userId: string, supabaseAdmin: any): Promise<boole
     .gte("created_at", oneHourAgo)
     .in("conversation_id", convIds);
 
-  if (error) return true; // Allow on error — fail open
+  if (error) return false;
   return (count ?? 0) < 30;
 }
 
@@ -653,7 +654,7 @@ async function executeTool(
     case "match_creators": {
       let query = supabaseAdmin
         .from("creator_profiles")
-        .select("id, user_id, creator_name, avatar_url, bio, skills, location, average_rating, total_reviews, instagram_url, tiktok_url, youtube_url, facebook_url, linkedin_url, x_url")
+        .select("id, user_id, creator_name, avatar_url, bio, skills, location, average_rating, total_reviews, profile_slug, instagram_url, tiktok_url, youtube_url, facebook_url, linkedin_url, x_url")
         .eq("is_completed", true)
         .limit(10);
       if (args.niche) query = query.ilike("bio", `%${args.niche}%`);
@@ -667,6 +668,7 @@ async function executeTool(
           id: c.user_id,
           name: c.creator_name ?? "Unknown",
           avatar_url: c.avatar_url,
+          profile_slug: c.profile_slug ?? null,
           location: c.location ?? null,
           platforms: [
             c.instagram_url && "instagram",
@@ -761,7 +763,7 @@ async function executeTool(
       const { data, error } = await supabaseAdmin
         .from("file_uploads")
         .select("id, filename, file_path, upload_status, created_at, uploaded_by")
-        .eq("campaign_id", args.collaboration_id)
+        .eq("collaboration_id", args.collaboration_id)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return { result: data };
@@ -800,11 +802,14 @@ async function executeTool(
     case "prepare_payment": {
       const { data, error } = await supabaseAdmin
         .from("campaign_collaborations")
-        .select("id, status, creator_id, profiles!creator_id(full_name), campaigns!campaign_id(title)")
+        .select("id, status, creator_id, profiles!creator_id(full_name), campaigns!campaign_id(title, user_id)")
         .eq("id", args.collaboration_id)
-        .returns<{ id: string; status: string; creator_id: string; profiles: { full_name: string } | null; campaigns: { title: string } | null }>()
+        .returns<{ id: string; status: string; creator_id: string; profiles: { full_name: string } | null; campaigns: { title: string; user_id: string } | null }>()
         .single();
       if (error) throw error;
+      if (data.campaigns?.user_id !== userId && data.creator_id !== userId) {
+        throw new Error("You don't have access to this collaboration");
+      }
       return {
         result: {
           collaboration_id: data.id,
@@ -818,11 +823,15 @@ async function executeTool(
     case "get_payment_status": {
       const { data, error } = await supabaseAdmin
         .from("campaign_collaborations")
-        .select("id, status, campaigns!campaign_id(title), profiles!creator_id(full_name)")
+        .select("id, status, creator_id, campaigns!campaign_id(title, user_id), profiles!creator_id(full_name)")
         .eq("id", args.collaboration_id)
         .single();
       if (error) throw error;
-      return { result: data };
+      const campaignOwner = (data as any).campaigns?.user_id;
+      if (campaignOwner !== userId && data.creator_id !== userId) {
+        throw new Error("You don't have access to this collaboration");
+      }
+      return { result: { id: data.id, status: data.status, campaigns: (data as any).campaigns, profiles: data.profiles } };
     }
 
     // --- Profile Tools ---
@@ -1498,7 +1507,7 @@ serve(async (req) => {
     let richCard = null;
     let displayContent = finalContent;
     const richCardMatch = finalContent.match(
-      /```json\n(\{[\s\S]*?"type":\s*"(creator_profile|campaign_summary|payment_confirmation)"[\s\S]*?\})\n```/
+      /```json\s*\n(\{[\s\S]*?"type":\s*"(creator_profile|campaign_summary|payment_confirmation|application_summary)"[\s\S]*?\})\s*\n```/
     );
     if (richCardMatch) {
       try {

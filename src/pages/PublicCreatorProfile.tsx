@@ -102,10 +102,7 @@ const PublicCreatorProfile = () => {
         return;
       }
 
-      try {
-        const { data, error } = await supabase
-          .from('creator_profiles')
-          .select(`
+      const fields = `
             id,
             user_id,
             creator_name,
@@ -135,10 +132,27 @@ const PublicCreatorProfile = () => {
             created_at,
             average_rating,
             total_reviews
-          `)
+          `;
+
+      try {
+        // Try slug first, then fall back to user_id lookup
+        let { data, error } = await supabase
+          .from('creator_profiles')
+          .select(fields)
           .eq('profile_slug', slug)
           .eq('profile_visibility', 'public')
-          .single();
+          .maybeSingle();
+
+        if (!data) {
+          const fallback = await supabase
+            .from('creator_profiles')
+            .select(fields)
+            .eq('user_id', slug)
+            .eq('profile_visibility', 'public')
+            .maybeSingle();
+          data = fallback.data;
+          error = fallback.error;
+        }
 
         if (error || !data) {
           setNotFound(true);

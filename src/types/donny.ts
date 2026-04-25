@@ -18,6 +18,7 @@ export interface DonnyRichCardCreatorProfile {
     id: string;
     name: string;
     avatar_url: string | null;
+    profile_slug: string | null;
     platforms: string[];
     niche: string;
     rating: number;

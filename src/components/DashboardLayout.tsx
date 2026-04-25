@@ -68,7 +68,7 @@ const AppSidebar: React.FC<AppSidebarProps> = ({ userRole }) => {
             <img
               src={dragonCandyLogo}
               alt="DragonCandy"
-              className={collapsed ? 'h-8' : 'w-[140px] h-auto'}
+              className={collapsed ? 'h-8' : 'w-[100px] h-auto'}
             />
           </Link>
         </div>

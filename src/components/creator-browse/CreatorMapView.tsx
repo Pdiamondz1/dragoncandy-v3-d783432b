@@ -143,7 +143,7 @@ export const CreatorMapView: React.FC<CreatorMapViewProps> = ({
   };
 
   const handleViewProfile = (creatorId: string) => {
-    navigate(`/profile/creator/${creatorId}`);
+    navigate(`/creator/${creatorId}`);
   };
 
   if (loadError) {

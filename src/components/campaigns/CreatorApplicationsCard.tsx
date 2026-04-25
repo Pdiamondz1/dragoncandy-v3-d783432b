@@ -152,7 +152,7 @@ export const CreatorApplicationsCard = ({ campaignId }: CreatorApplicationsCardP
                       onClick={() => {
                         // Navigate to public creator profile
                         const creatorId = application.creator_id;
-                        window.open(`/profile/creator/${creatorId}`, '_blank');
+                        window.open(`/creator/${creatorId}`, '_blank');
                       }}
                     >
                       View Creator Profile

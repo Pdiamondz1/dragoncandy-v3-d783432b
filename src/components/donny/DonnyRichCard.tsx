@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button';
 import type { DonnyRichCard as RichCardType } from '@/types/donny';
 import { useNavigate } from 'react-router-dom';
+import { useDonnyContext } from '@/contexts/DonnyProvider';
 
 interface DonnyRichCardProps {
   card: RichCardType;
@@ -8,6 +9,7 @@ interface DonnyRichCardProps {
 
 export function DonnyRichCard({ card }: DonnyRichCardProps) {
   const navigate = useNavigate();
+  const { sendMessage } = useDonnyContext();
 
   switch (card.type) {
     case 'creator_profile':
@@ -25,7 +27,7 @@ export function DonnyRichCard({ card }: DonnyRichCardProps) {
             </div>
             <div>
               <div className="text-sm font-bold text-[#111]">{card.data.name}</div>
-              <div className="text-xs text-[#555]">{card.data.platforms.join(' · ')} · {card.data.niche}</div>
+              <div className="text-xs text-[#555]">{(card.data.platforms ?? []).join(' · ')}{card.data.niche ? ` · ${card.data.niche}` : ''}</div>
               <div className="text-xs text-[#EC4899]">⭐ {card.data.rating} · {card.data.project_count} projects</div>
             </div>
           </div>
@@ -33,7 +35,7 @@ export function DonnyRichCard({ card }: DonnyRichCardProps) {
             <Button
               size="sm"
               className="flex-1 rounded-full bg-[#4DD9C0] hover:bg-[#3cc5ad] text-white text-xs"
-              onClick={() => navigate(`/profile/creator/${card.data.id}`)}
+              onClick={() => navigate(`/creator/${card.data.profile_slug || card.data.id}`)}
             >
               View Portfolio
             </Button>
@@ -41,6 +43,7 @@ export function DonnyRichCard({ card }: DonnyRichCardProps) {
               size="sm"
               variant="outline"
               className="flex-1 rounded-full border-[#EC4899] text-[#EC4899] text-xs"
+              onClick={() => sendMessage(`Invite ${card.data.name} to my campaign`)}
             >
               Invite
             </Button>

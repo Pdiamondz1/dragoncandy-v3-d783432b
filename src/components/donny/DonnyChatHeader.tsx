@@ -16,10 +16,10 @@ export function DonnyChatHeader({ avatarState, onCollapse, onClose }: DonnyChatH
         <div className="font-bold text-sm text-white">Donny</div>
         <div className="text-[10px] text-white/80">Your AI assistant</div>
       </div>
-      <button onClick={onCollapse} className="text-white/70 hover:text-white">
+      <button onClick={onCollapse} aria-label="Minimize Donny" className="text-white/70 hover:text-white">
         <ChevronDown className="w-5 h-5" />
       </button>
-      <button onClick={onClose} className="text-white/70 hover:text-white">
+      <button onClick={onClose} aria-label="Close Donny" className="text-white/70 hover:text-white">
         <X className="w-5 h-5" />
       </button>
     </div>
