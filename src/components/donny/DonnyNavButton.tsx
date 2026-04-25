@@ -22,7 +22,7 @@ export function DonnyNavButton() {
         <img
           src={donnyEmblem}
           alt="Donny"
-          className="w-full h-full object-cover"
+          className="w-full h-full object-cover scale-[1.35]"
         />
       </span>
     </button>

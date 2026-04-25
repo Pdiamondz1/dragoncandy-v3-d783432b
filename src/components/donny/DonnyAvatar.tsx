@@ -44,6 +44,7 @@ export function DonnyAvatar({
       <div
         className={cn(
           sizeClasses[size],
+          'overflow-hidden rounded-full',
           stateStyles[state],
           glow && 'shadow-[0_0_12px_rgba(77,217,192,0.5)]'
         )}
@@ -52,7 +53,7 @@ export function DonnyAvatar({
           src={donnyEmblem}
           alt="Donny"
           loading="lazy"
-          className="w-full h-full object-cover rounded-full"
+          className="w-full h-full object-cover scale-[1.35]"
         />
       </div>
       {badgeCount != null && badgeCount > 0 && (

@@ -37,11 +37,13 @@ const BusinessDashboard = () => {
 
               {/* HERO — Create a Campaign with Donny */}
               <div className="flex flex-col items-center text-center lg:sticky lg:top-20 py-8 lg:py-16">
-                <img
-                  src={donnyIcon}
-                  alt="Donny"
-                  className="w-20 h-20 object-cover rounded-full mb-6"
-                />
+                <div className="w-20 h-20 rounded-full overflow-hidden mb-6">
+                  <img
+                    src={donnyIcon}
+                    alt="Donny"
+                    className="w-full h-full object-cover scale-[1.35]"
+                  />
+                </div>
                 <h1 className="text-2xl font-bold text-gray-900 mb-2">
                   Ready to grow, {profile.full_name || 'there'}?
                 </h1>
