@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { writePaymentEvent } from "../_shared/payment-events.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -49,7 +50,7 @@ serve(async (req) => {
     // Verify user is a participant in the collaboration
     const { data: collab, error: collabError } = await adminClient
       .from('campaign_collaborations')
-      .select('id, content_status, creator_id, campaign_id, campaigns!inner(user_id)')
+      .select('id, content_status, creator_id, campaign_id, dispute_outcome, campaigns!inner(user_id)')
       .eq('id', collaboration_id)
       .single();
 
@@ -61,51 +62,131 @@ serve(async (req) => {
 
     const isCreator = collab.creator_id === userId;
     const isBusiness = (collab as any).campaigns?.user_id === userId;
+
+    // Check brand access via campaign sponsorships
+    let isBrand = false;
     if (!isCreator && !isBusiness) {
+      const { data: sponsorship } = await adminClient
+        .from('campaign_sponsorships')
+        .select('brand_id')
+        .eq('campaign_id', collab.campaign_id)
+        .single();
+      if (sponsorship) {
+        const { data: brandProfile } = await adminClient
+          .from('business_profiles')
+          .select('user_id')
+          .eq('id', sponsorship.brand_id)
+          .single();
+        isBrand = brandProfile?.user_id === userId;
+      }
+    }
+
+    if (!isCreator && !isBusiness && !isBrand) {
       return new Response(JSON.stringify({ error: 'Access denied' }), {
         status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const isApproved = collab.content_status === 'approved';
+    // Determine access level based on content_status and role
+    const status = collab.content_status;
+    const disputeOutcome = (collab as any).dispute_outcome;
+    let canDownload = false;
+    let accessDenied = false;
+    let message = '';
 
-    // If approved or if user is the creator (they own the content), provide download URL
-    if (isApproved || isCreator) {
-      const { data: signedData, error: signError } = await adminClient.storage
-        .from(bucket_name)
-        .createSignedUrl(file_path, 3600);
-
-      if (signError) {
-        return new Response(JSON.stringify({ error: 'Failed to generate URL' }), {
-          status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+    if (status === 'pending' || status === 'in_progress') {
+      if (isCreator) {
+        // Creator can view their own content
+        canDownload = false;
+        message = 'Content is still in progress.';
+      } else {
+        // Business/Brand: no access to pending/in-progress content
+        accessDenied = true;
+        message = 'Content is not yet available for review.';
       }
+    } else if (status === 'submitted') {
+      // Creator can view own; business/brand get preview only
+      canDownload = false;
+      message = isCreator
+        ? 'Content submitted for review.'
+        : 'Preview only. Content is awaiting review.';
+    } else if (status === 'revision_requested') {
+      // Creator can view + re-upload; business/brand get preview only
+      canDownload = false;
+      message = isCreator
+        ? 'Revision requested. You may re-upload.'
+        : 'Preview only. Revision has been requested.';
+    } else if (status === 'approved' || status === 'auto_approved') {
+      // Full download for everyone
+      canDownload = true;
+      message = 'Content approved. Full download available.';
+    } else if (status === 'rejected' || status === 'disputed') {
+      if (isCreator) {
+        canDownload = false;
+        message = 'Content has been ' + status + '.';
+      } else {
+        canDownload = false;
+        message = 'Preview only. Content has been ' + status + '.';
+      }
+    } else if (status === 'resolved') {
+      if (disputeOutcome === 'approved') {
+        // Resolved in favor of approval — full download
+        canDownload = true;
+        message = 'Dispute resolved. Full download available.';
+      } else if (disputeOutcome === 'refund') {
+        if (isCreator) {
+          canDownload = false;
+          message = 'Dispute resolved with refund. View only.';
+        } else {
+          accessDenied = true;
+          message = 'Dispute resolved with refund. Access revoked.';
+        }
+      } else {
+        // Unknown dispute outcome — default to preview
+        canDownload = false;
+        message = 'Dispute resolved. Preview only.';
+      }
+    } else {
+      // Unknown status — default to preview for safety
+      canDownload = false;
+      message = 'Preview only.';
+    }
 
-      return new Response(JSON.stringify({
-        signed_url: signedData.signedUrl,
-        can_download: true,
-        content_status: collab.content_status,
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    // Log file access (fire-and-forget)
+    writePaymentEvent(adminClient, {
+      event_type: 'file_accessed',
+      entity_type: 'collaboration',
+      entity_id: collaboration_id,
+      campaign_id: collab.campaign_id,
+      actor_id: userId,
+      actor_role: isCreator ? 'creator' : isBrand ? 'brand' : 'business',
+      metadata: { file_path, can_download: canDownload },
+    }, '[GET-WATERMARKED-PREVIEW]');
+
+    if (accessDenied) {
+      return new Response(JSON.stringify({ error: message }), {
+        status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // Not approved and user is business - provide preview-only URL (no download)
+    // Generate signed URL with appropriate expiry
+    const expirySeconds = canDownload ? 3600 : 900;
+    const signOptions = canDownload ? { download: true } : {};
     const { data: signedData, error: signError } = await adminClient.storage
       .from(bucket_name)
-      .createSignedUrl(file_path, 3600);
+      .createSignedUrl(file_path, expirySeconds, signOptions);
 
     if (signError) {
-      return new Response(JSON.stringify({ error: 'Failed to generate preview URL' }), {
+      return new Response(JSON.stringify({ error: 'Failed to generate URL' }), {
         status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
     return new Response(JSON.stringify({
       signed_url: signedData.signedUrl,
-      can_download: false,
+      can_download: canDownload,
       content_status: collab.content_status,
-      message: 'Preview only. Download available after content approval.',
+      message,
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

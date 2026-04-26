@@ -1,5 +1,4 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { writePaymentEvent } from "../_shared/payment-events.ts";
 
@@ -15,6 +14,13 @@ const AUTO_APPROVE_HOURS: Record<string, number> = {
   dragonrush: 4,
 };
 
+// Extra hours granted when brand requests a review extension
+const EXTENSION_HOURS: Record<string, number> = {
+  standard: 24,
+  expedited: 24,
+  dragonrush: 2,
+};
+
 serve(async (_req) => {
   const supabaseClient = createClient(
     Deno.env.get("SUPABASE_URL") ?? "",
@@ -25,18 +31,16 @@ serve(async (_req) => {
   try {
     logStep("Scheduled check started");
 
-    const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
-    if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
-
     // Find all collaborations with content_status='submitted' and their delivery type
     const { data: overdue, error: fetchError } = await supabaseClient
       .from('campaign_collaborations')
       .select(`
-        id, campaign_id, creator_id, content_status, updated_at,
+        id, campaign_id, creator_id, content_status, submitted_at, review_extended,
         campaign:campaigns(id, user_id, delivery_type, escrow_status, fixed_price, budget_max, delivery_fee, pricing_type)
       `)
       .eq('content_status', 'submitted')
-      .eq('status', 'active');
+      .eq('status', 'active')
+      .not('submitted_at', 'is', null);
 
     if (fetchError) {
       logStep("ERROR fetching collaborations", { error: fetchError.message });
@@ -56,8 +60,13 @@ serve(async (_req) => {
       if (!campaign) continue;
 
       const deliveryType = campaign.delivery_type || 'standard';
-      const approveAfterHours = AUTO_APPROVE_HOURS[deliveryType] ?? AUTO_APPROVE_HOURS.standard;
-      const submittedAt = new Date(collab.updated_at).getTime();
+      const baseHours = AUTO_APPROVE_HOURS[deliveryType] ?? AUTO_APPROVE_HOURS.standard;
+      const extensionHours = collab.review_extended
+        ? (EXTENSION_HOURS[deliveryType] ?? 24)
+        : 0;
+      const approveAfterHours = baseHours + extensionHours;
+
+      const submittedAt = new Date(collab.submitted_at!).getTime();
       const hoursElapsed = (now - submittedAt) / (1000 * 60 * 60);
 
       if (hoursElapsed < approveAfterHours) continue;
@@ -69,14 +78,26 @@ serve(async (_req) => {
         threshold: approveAfterHours,
       });
 
+      // Transition via state machine before triggering payout
+      const { error: transitionError } = await supabaseClient
+        .rpc('transition_content_status', {
+          p_collaboration_id: collab.id,
+          p_new_status: 'auto_approved',
+        });
+
+      if (transitionError) {
+        logStep("Transition failed", { collaborationId: collab.id, error: transitionError.message });
+        continue;
+      }
+
       // Write auto-approval event
       await writePaymentEvent(supabaseClient, {
-        event_type: 'content_approved',
+        event_type: 'content_auto_approved',
         entity_type: 'collaboration',
         entity_id: collab.id,
         campaign_id: campaign.id,
         actor_role: 'system',
-        metadata: { auto_approved: true, hours_elapsed: Math.round(hoursElapsed) },
+        metadata: { auto_approved: true, hours_elapsed: Math.round(hoursElapsed), delivery_type: deliveryType },
       }, '[AUTO-APPROVE-CONTENT]');
 
       // Invoke release-creator-payout internally via fetch (service-role auth)

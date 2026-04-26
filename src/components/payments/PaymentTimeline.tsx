@@ -1,4 +1,4 @@
-import { CheckCircle, AlertCircle } from "lucide-react";
+import { CheckCircle, AlertCircle, AlertTriangle, Clock } from "lucide-react";
 import { usePaymentTimeline, type PaymentEvent } from "@/hooks/usePaymentTimeline";
 import { getPaymentMessage, type UserRole } from "@/lib/paymentEducation";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -13,11 +13,21 @@ interface PaymentTimelineProps {
   variant: 'compact' | 'full';
 }
 
-const failureEvents = new Set(['escrow_failed', 'escrow_expired', 'transfer_failed', 'dispute_created']);
+const failureEvents = new Set([
+  'escrow_failed', 'escrow_expired', 'transfer_failed', 'dispute_created',
+  'content_rejected', 'dispute_opened',
+]);
+const warningEvents = new Set(['review_extended', 'revision_requested']);
 
 function getStepIcon(event: PaymentEvent, isLatest: boolean) {
   if (failureEvents.has(event.event_type)) {
     return <AlertCircle className="w-5 h-5 text-red-400" />;
+  }
+  if (warningEvents.has(event.event_type)) {
+    return <AlertTriangle className="w-5 h-5 text-amber-400" />;
+  }
+  if (event.event_type === 'content_auto_approved' || event.event_type === 'dispute_resolved') {
+    return <CheckCircle className="w-5 h-5 text-green-500" />;
   }
   if (isLatest) {
     return <div className="w-5 h-5 rounded-full bg-teal-400 ring-2 ring-teal-200 animate-pulse" />;
@@ -97,6 +107,11 @@ export function PaymentTimeline({ entityType, entityId, userRole, variant }: Pay
                   )}
                   {variant === 'full' && event.event_type === 'revision_requested' && event.metadata?.notes && (
                     <p className="text-xs text-amber-600 mt-1 italic">"{String(event.metadata.notes)}"</p>
+                  )}
+                  {event.metadata?.platform_fee && (
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      Platform fee: ${(Number(event.metadata.platform_fee) / 100).toFixed(2)}
+                    </p>
                   )}
                   {isLatest && message.action && (
                     <Button size="sm" variant="outline" className="mt-2 h-7 text-xs rounded-full border-teal-300 text-teal-600">

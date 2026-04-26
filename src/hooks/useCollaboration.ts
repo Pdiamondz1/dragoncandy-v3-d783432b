@@ -10,6 +10,10 @@ export interface CollaborationDetails {
   content_started_at: string | null;
   content_deadline: string | null;
   revision_count: number;
+  submitted_at: string | null;
+  review_extended: boolean;
+  dispute_reason: string | null;
+  dispute_outcome: string | null;
   business_completion_status: string | null;
   creator_completion_status: string | null;
   completed_at: string | null;
@@ -59,6 +63,10 @@ export function useCollaboration(collaborationId: string) {
           content_started_at,
           content_deadline,
           revision_count,
+          submitted_at,
+          review_extended,
+          dispute_reason,
+          dispute_outcome,
           business_completion_status,
           creator_completion_status,
           completed_at,
@@ -109,6 +117,10 @@ export function useCollaboration(collaborationId: string) {
         content_started_at: data.content_started_at,
         content_deadline: data.content_deadline,
         revision_count: data.revision_count ?? 0,
+        submitted_at: data.submitted_at ?? null,
+        review_extended: data.review_extended ?? false,
+        dispute_reason: data.dispute_reason ?? null,
+        dispute_outcome: data.dispute_outcome ?? null,
         business_completion_status: data.business_completion_status,
         creator_completion_status: data.creator_completion_status,
         completed_at: data.completed_at,

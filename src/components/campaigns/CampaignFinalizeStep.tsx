@@ -459,6 +459,32 @@ const CampaignFinalizeStep: React.FC<CampaignFinalizeStepProps> = ({
         </div>
       )}
 
+      {/* Payment Summary */}
+      <div className="rounded-xl border border-gray-200 bg-white p-4 space-y-2 mb-6">
+        <h4 className="font-semibold text-sm text-gray-600 uppercase tracking-wide">Payment Summary</h4>
+        <div className="flex justify-between text-sm">
+          <span className="text-gray-600">Content budget</span>
+          <span className="font-medium">
+            {campaignData.pricingType === 'fixed'
+              ? `$${campaignData.fixedPrice?.toFixed(2)}`
+              : `$${campaignData.budgetMin}–$${campaignData.budgetMax}`}
+          </span>
+        </div>
+        {campaignData.deliveryFee > 0 && (
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-600">Delivery fee ({campaignData.deliveryType})</span>
+            <span className="font-medium">${campaignData.deliveryFee.toFixed(2)}</span>
+          </div>
+        )}
+        <div className="border-t pt-2 flex justify-between text-sm font-bold">
+          <span>Total you pay</span>
+          <span>${getTotalCost().toFixed(2)}</span>
+        </div>
+        <p className="text-xs text-gray-400">
+          A 5% service fee is deducted from the creator's payout — you are not charged extra.
+        </p>
+      </div>
+
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           <Card>

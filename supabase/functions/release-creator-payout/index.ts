@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { writePaymentEvent } from "../_shared/payment-events.ts";
+import { calculatePlatformFee } from "../_shared/platform-fee.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -106,9 +107,7 @@ serve(async (req) => {
     const deliveryFee = campaign.delivery_fee || 0;
     payoutAmount += deliveryFee;
 
-    // Platform takes 5%
-    const platformFee = payoutAmount * 0.05;
-    const creatorPayout = payoutAmount - platformFee;
+    const { feeDollars: platformFee, netPayoutDollars: creatorPayout } = calculatePlatformFee(payoutAmount);
 
     logStep("Payout calculation", { 
       baseAmount: payoutAmount - deliveryFee,

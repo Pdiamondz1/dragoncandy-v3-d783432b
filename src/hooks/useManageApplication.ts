@@ -12,29 +12,57 @@ export const useManageApplication = () => {
     mutationFn: async ({
       applicationId,
       status,
+      approvalRole,
     }: {
       applicationId: string;
       status: 'accepted' | 'rejected' | 'counter_offered';
+      approvalRole?: 'brand' | 'restaurant';
     }) => {
-      console.log('Updating application status:', { applicationId, status });
-      
-      const { data, error } = await supabase
-        .from('campaign_applications')
-        .update({ status })
-        .eq('id', applicationId)
-        .select()
-        .single();
+      console.log('Updating application status:', { applicationId, status, approvalRole });
 
-      if (error) {
-        console.error('Error updating application:', error);
-        throw error;
+      if (approvalRole) {
+        // Joint approval: set role-specific column, trigger handles final_approval_status
+        const column = approvalRole === 'brand'
+          ? 'brand_approval_status'
+          : 'restaurant_approval_status';
+        const approvalStatus = status === 'accepted' ? 'approved' : status === 'rejected' ? 'rejected' : 'pending';
+
+        const { error } = await supabase
+          .from('campaign_applications')
+          .update({ [column]: approvalStatus })
+          .eq('id', applicationId);
+        if (error) throw error;
+
+        // Refetch to get the trigger-computed final_approval_status
+        const { data: app, error: fetchError } = await supabase
+          .from('campaign_applications')
+          .select('*, campaigns(title)')
+          .eq('id', applicationId)
+          .single();
+        if (fetchError) throw fetchError;
+
+        // Sync legacy status column when final is resolved
+        if (app.final_approval_status === 'approved') {
+          await supabase.from('campaign_applications').update({ status: 'accepted' }).eq('id', applicationId);
+        } else if (app.final_approval_status === 'rejected') {
+          await supabase.from('campaign_applications').update({ status: 'rejected' }).eq('id', applicationId);
+        }
+
+        return app;
+      } else {
+        // Non-sponsored: direct status update + set restaurant_approval_status for consistency
+        const { data, error } = await supabase
+          .from('campaign_applications')
+          .update({
+            status,
+            restaurant_approval_status: status === 'accepted' ? 'approved' : status === 'rejected' ? 'rejected' : 'pending'
+          })
+          .eq('id', applicationId)
+          .select()
+          .single();
+        if (error) throw error;
+        return data;
       }
-
-      // Note: Collaboration is NOT created here anymore.
-      // It will be created after the restaurant pays escrow (verify-campaign-escrow).
-
-      console.log('Updated application:', data);
-      return data;
     },
     onSuccess: async (data) => {
       queryClient.invalidateQueries({ queryKey: ['campaign-applications'] });

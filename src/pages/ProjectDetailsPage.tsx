@@ -259,6 +259,11 @@ const ProjectDetailsPage: React.FC = () => {
               revisionCount={collaboration.revision_count}
               creatorId={collaboration.creator_id}
               creatorName={collaboration.creator_profile?.creator_name || 'Creator'}
+              submittedAt={collaboration.submitted_at}
+              reviewExtended={collaboration.review_extended}
+              deliveryType={collaboration.campaign.delivery_type || 'standard'}
+              disputeReason={collaboration.dispute_reason}
+              disputeOutcome={collaboration.dispute_outcome}
             />
           ) : (
             <div className="space-y-3">
@@ -277,6 +282,8 @@ const ProjectDetailsPage: React.FC = () => {
                 contentStatus={collaboration.content_status}
                 revisionCount={collaboration.revision_count}
                 businessName={collaboration.business_profile?.business_name || 'Client'}
+                disputeReason={collaboration.dispute_reason}
+                disputeOutcome={collaboration.dispute_outcome}
               />
             </div>
           )}
@@ -310,6 +317,7 @@ const ProjectDetailsPage: React.FC = () => {
                     file={file}
                     contentStatus={collaboration.content_status}
                     isBusinessClient={isBusinessClient}
+                    collaborationId={collaboration.id}
                   />
                 ))}
               </div>

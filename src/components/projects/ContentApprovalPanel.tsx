@@ -3,7 +3,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,12 +22,14 @@ import {
   AlertCircle,
   Loader2,
   Send,
-  Eye,
   XCircle
 } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { ReviewCountdownTimer } from './ReviewCountdownTimer';
+import { RejectContentModal } from './RejectContentModal';
+import { DisputeStatusBanner } from './DisputeStatusBanner';
 
 interface ContentApprovalPanelProps {
   collaborationId: string;
@@ -37,6 +38,11 @@ interface ContentApprovalPanelProps {
   revisionCount: number;
   creatorId: string;
   creatorName: string;
+  submittedAt: string | null;
+  reviewExtended: boolean;
+  deliveryType: string;
+  disputeReason: string | null;
+  disputeOutcome: string | null;
   onApproved?: () => void;
 }
 
@@ -49,14 +55,17 @@ const ContentApprovalPanel: React.FC<ContentApprovalPanelProps> = ({
   revisionCount,
   creatorId,
   creatorName,
+  submittedAt,
+  reviewExtended,
+  deliveryType,
+  disputeReason,
+  disputeOutcome,
   onApproved
 }) => {
   const queryClient = useQueryClient();
   const [revisionFeedback, setRevisionFeedback] = useState('');
   const [showRevisionForm, setShowRevisionForm] = useState(false);
-  const [showRejectForm, setShowRejectForm] = useState(false);
-  const [rejectReason, setRejectReason] = useState('');
-  const [showRejectConfirm, setShowRejectConfirm] = useState(false);
+  const [rejectModalOpen, setRejectModalOpen] = useState(false);
 
   const getStatusConfig = (status: string | null) => {
     switch (status) {
@@ -102,6 +111,27 @@ const ContentApprovalPanel: React.FC<ContentApprovalPanelProps> = ({
           icon: XCircle,
           description: 'Content was rejected. Refund initiated.'
         };
+      case 'auto_approved':
+        return {
+          label: 'Auto-Approved',
+          variant: 'default' as const,
+          icon: CheckCircle2,
+          description: 'Content was auto-approved after review window expired'
+        };
+      case 'disputed':
+        return {
+          label: 'Disputed',
+          variant: 'destructive' as const,
+          icon: AlertCircle,
+          description: 'Content is under dispute'
+        };
+      case 'resolved':
+        return {
+          label: 'Resolved',
+          variant: 'secondary' as const,
+          icon: CheckCircle2,
+          description: 'Dispute has been resolved'
+        };
       default:
         return { 
           label: 'Unknown', 
@@ -135,17 +165,13 @@ const ContentApprovalPanel: React.FC<ContentApprovalPanelProps> = ({
 
   const requestRevision = useMutation({
     mutationFn: async (feedback: string) => {
-      // Update collaboration status
-      const { error: updateError } = await supabase
-        .from('campaign_collaborations')
-        .update({
-          content_status: 'revision_requested',
-          revision_count: (revisionCount || 0) + 1,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', collaborationId);
+      // Transition via state machine RPC
+      const { error: transitionError } = await supabase.rpc('transition_content_status', {
+        p_collaboration_id: collaborationId,
+        p_new_status: 'revision_requested',
+      });
 
-      if (updateError) throw updateError;
+      if (transitionError) throw transitionError;
 
       // Send a message with the revision feedback
       const { error: messageError } = await supabase
@@ -177,26 +203,6 @@ const ContentApprovalPanel: React.FC<ContentApprovalPanelProps> = ({
     },
     onError: (error: Error) => {
       toast.error(`Failed to request revision: ${error.message}`);
-    }
-  });
-
-  const rejectContent = useMutation({
-    mutationFn: async (reason: string) => {
-      const { data, error } = await supabase.functions.invoke('refund-campaign-escrow', {
-        body: { collaborationId, reason }
-      });
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      toast.success('Content rejected. Refund initiated.');
-      setRejectReason('');
-      setShowRejectForm(false);
-      queryClient.invalidateQueries({ queryKey: ['business-projects'] });
-      queryClient.invalidateQueries({ queryKey: ['collaboration'] });
-    },
-    onError: (error: Error) => {
-      toast.error(`Failed to reject content: ${error.message}`);
     }
   });
 
@@ -237,12 +243,30 @@ const ContentApprovalPanel: React.FC<ContentApprovalPanelProps> = ({
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
+        <DisputeStatusBanner
+          contentStatus={contentStatus}
+          disputeReason={disputeReason}
+          disputeOutcome={disputeOutcome}
+          viewerRole="business"
+        />
+
         {/* Revision Counter */}
         {revisionCount > 0 && (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <RotateCcw className="h-4 w-4" />
             <span>Revisions used: {revisionCount} / {MAX_REVISIONS}</span>
           </div>
+        )}
+
+        {/* Auto-approval countdown timer */}
+        {contentStatus === 'submitted' && (
+          <ReviewCountdownTimer
+            collaborationId={collaborationId}
+            submittedAt={submittedAt}
+            reviewExtended={reviewExtended}
+            deliveryType={deliveryType}
+            contentStatus={contentStatus}
+          />
         )}
 
         {/* Action Buttons - Only show when content is submitted */}
@@ -340,78 +364,21 @@ const ContentApprovalPanel: React.FC<ContentApprovalPanelProps> = ({
               </div>
             )}
 
-            {!canRequestRevision && !showRevisionForm && (
-              <Alert>
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>
-                  Maximum revisions ({MAX_REVISIONS}) reached. You can only approve the content now.
-                </AlertDescription>
-              </Alert>
+            {!canRequestRevision && isSubmitted && (
+              <Button
+                variant="destructive"
+                className="w-full rounded-full"
+                onClick={() => setRejectModalOpen(true)}
+              >
+                Reject Content
+              </Button>
             )}
 
-            {/* Reject Button — always available when submitted */}
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-red-500 hover:text-red-700 hover:bg-red-50 mt-2"
-              onClick={() => setShowRejectForm(true)}
-            >
-              <XCircle className="h-4 w-4 mr-2" />
-              Reject & Refund
-            </Button>
-
-            {/* Reject Form */}
-            {showRejectForm && (
-              <div className="space-y-3 border-t pt-3 mt-2">
-                <p className="text-sm font-medium text-red-600">This will cancel the project and refund your payment.</p>
-                <Textarea
-                  placeholder="Explain why you're rejecting this content (required)..."
-                  value={rejectReason}
-                  onChange={(e) => setRejectReason(e.target.value)}
-                  rows={3}
-                />
-                <div className="flex gap-2">
-                  <AlertDialog open={showRejectConfirm} onOpenChange={setShowRejectConfirm}>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      disabled={!rejectReason.trim()}
-                      onClick={() => setShowRejectConfirm(true)}
-                    >
-                      Confirm Rejection
-                    </Button>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Reject Content & Request Refund?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          This will permanently cancel the project, reject the creator's work, and initiate a refund to your payment method. This action cannot be undone.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                          className="bg-red-600 hover:bg-red-700"
-                          onClick={() => rejectContent.mutate(rejectReason)}
-                          disabled={rejectContent.isPending}
-                        >
-                          {rejectContent.isPending ? 'Rejecting...' : 'Yes, Reject & Refund'}
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setShowRejectForm(false);
-                      setRejectReason('');
-                    }}
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </div>
-            )}
+            <RejectContentModal
+              open={rejectModalOpen}
+              onOpenChange={setRejectModalOpen}
+              collaborationId={collaborationId}
+            />
           </>
         )}
 
