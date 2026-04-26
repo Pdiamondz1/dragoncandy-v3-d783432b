@@ -40,6 +40,7 @@ import CreatorSettings from "./pages/CreatorSettings";
 import CampaignsPage from "./pages/CampaignsPage";
 import CampaignWizard from "./pages/CampaignWizard";
 import AnonymousCampaignWizard from "./pages/AnonymousCampaignWizard";
+import CampaignCreator from "./pages/CampaignCreator";
 import CampaignDetailsPage from "./pages/CampaignDetailsPage";
 import CampaignEditPage from "./pages/CampaignEditPage";
 import DirectMessagesPage from "./pages/DirectMessagesPage";
@@ -130,7 +131,7 @@ const App = () => {
                   <Route path="/help/promotions/:slug" element={<HelpBriefPage />} />
 
                   {/* Anonymous Campaign Creation */}
-                  <Route path="/campaign/create" element={<AnonymousCampaignWizard />} />
+                  <Route path="/campaign/create" element={<CampaignCreator />} />
                   <Route path="/auth/forgot" element={<ForgotPassword />} />
                   <Route path="/auth/update-password" element={<UpdatePassword />} />
                   <Route path="/profile/onboarding" element={
@@ -214,7 +215,7 @@ const App = () => {
                   <Route path="/dashboard/business/campaigns/create" element={
                     <ProtectedRoute>
                       <BusinessRoute>
-                        <CampaignWizard />
+                        <CampaignCreator />
                       </BusinessRoute>
                     </ProtectedRoute>
                   } />
@@ -379,7 +380,7 @@ const App = () => {
                   <Route path="/dashboard/brand/campaigns/create" element={
                     <ProtectedRoute>
                       <BrandRoute>
-                        <BrandCreateCampaign />
+                        <CampaignCreator />
                       </BrandRoute>
                     </ProtectedRoute>
                   } />
