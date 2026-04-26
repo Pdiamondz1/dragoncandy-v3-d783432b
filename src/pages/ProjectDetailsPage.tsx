@@ -310,6 +310,7 @@ const ProjectDetailsPage: React.FC = () => {
                     file={file}
                     contentStatus={collaboration.content_status}
                     isBusinessClient={isBusinessClient}
+                    collaborationId={collaboration.id}
                   />
                 ))}
               </div>

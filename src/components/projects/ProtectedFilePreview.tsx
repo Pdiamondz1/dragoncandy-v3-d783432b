@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Download, Eye, FileText, Lock, Play } from 'lucide-react';
+import { Download, Eye, FileText, Lock } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface ProtectedFilePreviewProps {
@@ -15,37 +15,56 @@ interface ProtectedFilePreviewProps {
   };
   contentStatus: string | null;
   isBusinessClient: boolean;
+  collaborationId: string;
 }
 
 const ProtectedFilePreview: React.FC<ProtectedFilePreviewProps> = ({
   file,
   contentStatus,
   isBusinessClient,
+  collaborationId,
 }) => {
+  // Optimistic approval check used as initial canDownload to avoid UI flash;
+  // the edge function response is the authoritative source
+  const isApproved = ['approved', 'auto_approved'].includes(contentStatus || '');
+  const isImage = file.mime_type?.startsWith('image/');
+  const isVideo = file.mime_type?.startsWith('video/');
+
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [showPreview, setShowPreview] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [canDownload, setCanDownload] = useState(isApproved || !isBusinessClient);
 
-  const isApproved = contentStatus === 'approved';
-  const isImage = file.mime_type?.startsWith('image/');
-  const isVideo = file.mime_type?.startsWith('video/');
-  const canDownload = isApproved || !isBusinessClient;
-
-  const fetchPreviewUrl = async () => {
+  const fetchPreviewUrl = async (): Promise<string | null> => {
     setLoading(true);
     try {
-      const { data } = await supabase.storage
-        .from(file.bucket_name)
-        .createSignedUrl(file.file_path, 3600);
-      if (data?.signedUrl) {
-        setPreviewUrl(data.signedUrl);
+      const response = await supabase.functions.invoke('get-watermarked-preview', {
+        body: {
+          file_path: file.file_path,
+          bucket_name: file.bucket_name,
+          collaboration_id: collaborationId,
+        },
+      });
+      if (response.data?.signed_url) {
+        setPreviewUrl(response.data.signed_url);
+        setCanDownload(response.data.can_download ?? false);
+        return response.data.signed_url;
       }
+      return null;
     } catch (err) {
       console.error('Error fetching preview URL:', err);
+      return null;
     } finally {
       setLoading(false);
     }
   };
+
+  // Auto-fetch URL on mount for images/videos so preview is ready
+  useEffect(() => {
+    if (isImage || isVideo) {
+      fetchPreviewUrl();
+    }
+  }, [file.file_path, file.bucket_name, collaborationId]);
 
   const handlePreview = async () => {
     if (!previewUrl) await fetchPreviewUrl();
@@ -54,13 +73,7 @@ const ProtectedFilePreview: React.FC<ProtectedFilePreviewProps> = ({
 
   const handleDownload = async () => {
     if (!canDownload) return;
-    let url = previewUrl;
-    if (!url) {
-      const { data } = await supabase.storage
-        .from(file.bucket_name)
-        .createSignedUrl(file.file_path, 3600);
-      url = data?.signedUrl || null;
-    }
+    const url = previewUrl || await fetchPreviewUrl();
     if (url) {
       const link = document.createElement('a');
       link.href = url;
@@ -85,8 +98,8 @@ const ProtectedFilePreview: React.FC<ProtectedFilePreviewProps> = ({
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {!isApproved && isBusinessClient && (
-            <Badge variant="outline" className="text-xs gap-1">
+          {!canDownload && (
+            <Badge variant="outline" className="text-xs gap-1 bg-yellow-100 text-yellow-800 border-yellow-200">
               <Lock className="h-3 w-3" />
               Preview Only
             </Badge>
@@ -118,7 +131,7 @@ const ProtectedFilePreview: React.FC<ProtectedFilePreviewProps> = ({
             <div
               className="relative select-none"
               onContextMenu={(e) => {
-                if (!isApproved && isBusinessClient) e.preventDefault();
+                if (!canDownload) e.preventDefault();
               }}
             >
               <img
@@ -127,7 +140,7 @@ const ProtectedFilePreview: React.FC<ProtectedFilePreviewProps> = ({
                 className="w-full max-h-96 object-contain"
                 draggable={false}
               />
-              {!isApproved && isBusinessClient && (
+              {!canDownload && (
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden">
                   <div className="absolute inset-0 flex flex-wrap items-center justify-center gap-8 -rotate-30 scale-150 opacity-20">
                     {Array.from({ length: 12 }).map((_, i) => (
@@ -148,17 +161,17 @@ const ProtectedFilePreview: React.FC<ProtectedFilePreviewProps> = ({
             <div
               className="relative"
               onContextMenu={(e) => {
-                if (!isApproved && isBusinessClient) e.preventDefault();
+                if (!canDownload) e.preventDefault();
               }}
             >
               <video
                 src={previewUrl}
                 controls
-                controlsList={!isApproved && isBusinessClient ? 'nodownload' : undefined}
-                disablePictureInPicture={!isApproved && isBusinessClient}
+                controlsList={!canDownload ? 'nodownload' : undefined}
+                disablePictureInPicture={!canDownload}
                 className="w-full max-h-96"
               />
-              {!isApproved && isBusinessClient && (
+              {!canDownload && (
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                   <div className="absolute inset-0 flex flex-wrap items-center justify-center gap-8 -rotate-30 scale-150 opacity-15">
                     {Array.from({ length: 12 }).map((_, i) => (
