@@ -31,8 +31,8 @@ A new Supabase edge function that serves as the single code path for all invitat
 **What it does (in order):**
 1. **Validates** — checks campaign exists and is published, creator exists, no duplicate pending invitation for this campaign+creator pair
 2. **Inserts** into `campaign_invitations` table (status: `pending`)
-3. **Sends email** — calls existing `send-notification-email` edge function with `campaign_invitation` template (template already exists)
-4. **Creates Donny message** — inserts a message into the creator's Donny conversation summarizing the campaign (deliverables, budget, deadline) with the business's personal note if provided. Includes a link to the campaign detail page.
+3. **Sends email** — calls `send-notification-email` edge function with a new `campaign_invitation` template (must be added to the `NotificationType` union and `templates` record in `send-notification-email/index.ts`). Template data fields: `campaign_title`, `business_name`, `invitation_message`, `campaign_detail_url`.
+4. **Creates Donny message** — looks up the creator's Donny conversation via `SELECT id FROM donny_conversations WHERE user_id = creator_id ORDER BY last_message_at DESC LIMIT 1`. If no conversation exists, creates one first (`INSERT INTO donny_conversations (user_id)`). Inserts a message summarizing the campaign (deliverables, budget, deadline) with the business's personal note if provided. Includes a link to the campaign detail page.
 5. **Returns** the created invitation record (or existing record with `already_invited: true` flag for duplicates)
 
 **Error handling:**
@@ -40,6 +40,7 @@ A new Supabase edge function that serves as the single code path for all invitat
 - Campaign not published → 400 error
 - Creator doesn't exist → 400 error
 - Inviter doesn't own the campaign → 403 error
+- `creator_id === invited_by` (self-invite) → 400 error
 
 **Who calls it:**
 - Donny's `invite_creator` tool (replaces current raw insert)
@@ -55,8 +56,14 @@ Two sub-features that solve different sides of the same problem — AI context a
 When the user navigates to a campaign detail page (`/dashboard/business/campaigns/:id`), the DonnyProvider:
 - Extracts the campaign ID from the URL
 - Fetches basic campaign data (title, status, creator count, budget range)
-- Includes a `campaign_context` field in every `donny-chat` edge function call: `{ campaign_id, title, status, creator_count, budget_min, budget_max }`
+- Stores this as `campaignContext` state in the provider
 - Clears the context when the user navigates away from a campaign page
+
+**Changes required across the context-passing chain:**
+
+1. **`DonnyProvider` (`src/contexts/DonnyProvider.tsx`)** — add `campaignContext` state, extract campaign ID from `location.pathname` via regex, fetch campaign data with React Query, expose via context
+2. **`useDonny` hook (`src/hooks/useDonny.ts`)** — read `campaignContext` from the provider and include it in the `supabase.functions.invoke('donny-chat', { body: { ... campaign_context } })` call (currently the body only passes `conversation_id` and `message`)
+3. **`donny-chat` edge function** — read `campaign_context` from the request body, include campaign details in `buildSystemPrompt` (alongside the existing `page_url` context), and make `invite_creator` tool read `campaign_id` from this context when the user doesn't specify one
 
 This lets Donny reference the campaign naturally ("I see you're looking at your Steak Night campaign") and auto-fill `campaign_id` for tools like `invite_creator` without requiring the user to specify which campaign.
 
@@ -100,7 +107,7 @@ Each matched creator card in the AI Match tab gets an "Invite" button (teal pill
 - "Send Invitation" confirm button
 - Calls `send-campaign-invitation` with the selected campaign ID
 
-**Frontend hook:** A shared `useInviteCreator` hook wraps the edge function call for entry points 3B and 3C. Handles loading state, error handling, and success toast.
+**Frontend hook:** The existing `useInviteCreator` hook in `src/hooks/useCampaignInvitations.ts` currently does a raw insert into `campaign_invitations`. Modify it to call the `send-campaign-invitation` edge function instead, so all side effects (email, Donny message) fire. Entry points 3B and 3C both use this hook. Also update `useBulkInvite` in `src/hooks/useBulkInvite.ts` to call the edge function per invitation (it currently also does raw inserts).
 
 ### 4. Creator-Side Invitation Experience
 
@@ -130,7 +137,21 @@ The Donny chat UI renders this with two quick-action buttons:
 - **"View Campaign"** — navigates to campaign detail page with `?invited=true`
 - **"Decide Later"** — dismisses, invitation stays pending
 
-Quick-action buttons are rendered from structured metadata in the message (a `quick_actions` JSON field on the message, parsed by the chat UI). This avoids building a separate button system — the existing message rendering handles it.
+**Quick-action button implementation:**
+
+This requires a new `quick_actions` JSONB column on the `donny_messages` table (DB migration needed). Schema:
+
+```json
+[
+  { "label": "View Campaign", "action": "navigate", "url": "/dashboard/creator/campaigns/:id?invited=true" },
+  { "label": "Decide Later", "action": "dismiss" }
+]
+```
+
+Changes needed:
+1. **Migration:** `ALTER TABLE donny_messages ADD COLUMN quick_actions JSONB DEFAULT NULL`
+2. **TypeScript types:** Add `quick_actions?: QuickAction[]` to the `DonnyMessage` type in `src/types/donny.ts`
+3. **DonnyMessage component** (`src/components/donny/DonnyMessage.tsx`): Add rendering logic — when `quick_actions` is present, render a row of pill buttons below the message bubble. "navigate" actions use `useNavigate()`, "dismiss" actions hide the buttons.
 
 #### 4C. Campaign Detail Page — Invitation Banner
 
@@ -140,19 +161,21 @@ When the creator arrives at the campaign detail page via an invitation (detected
 - The existing "Apply Now" button and application form work as-is — no changes to the application flow
 - The creator "accepts" by applying; "declines" by doing nothing
 
-No separate accept/decline flow — this keeps the codebase simple and avoids a parallel workflow.
+**Invitation status lifecycle:** When a creator submits a campaign application, check if a pending invitation exists for this user+campaign pair. If so, update `campaign_invitations.status` to `'accepted'`. This keeps the invitation data clean (no perpetually-pending records) and prevents the business from re-inviting someone who already applied. This check belongs in the application submission logic (the `campaign_applications` INSERT path).
+
+No separate accept/decline UI flow — this keeps the codebase simple and avoids a parallel workflow.
 
 ### 5. Notifications — Invitation Events
 
 **Changes to `useNotifications` hook (`src/hooks/useNotifications.ts`):**
-- Add realtime channel subscription for `campaign_invitations` table, filtered by `creator_id = current user`
+- Add realtime channel subscription for `campaign_invitations` table with server-side Postgres filter: `filter: 'creator_id=eq.${userId}'` (unlike the existing application/sponsorship subscriptions which filter client-side, invitations should use a server-side filter to avoid leaking invitation data to unrelated users)
 - On INSERT: create notification, show toast, increment badge
 - Notification includes `campaignId` for routing
 
 **Changes to `NotificationDropdown` (`src/components/notifications/NotificationDropdown.tsx`):**
 - Add routing case for `campaign_invitation` type → navigate to campaign detail with `?invited=true`
 
-**Email:** Handled by the `send-campaign-invitation` edge function calling `send-notification-email`. No changes to the email system.
+**Email:** Handled by the `send-campaign-invitation` edge function calling `send-notification-email`. Requires adding a `campaign_invitation` type and template to `send-notification-email/index.ts` (see Section 1, step 3).
 
 **What we're NOT doing:**
 - No database-backed notification storage (keeping localStorage)
@@ -169,14 +192,20 @@ No separate accept/decline flow — this keeps the codebase simple and avoids a 
 | `send-campaign-invitation` | `supabase/functions/send-campaign-invitation/` | New edge function |
 | `donny-chat` invite_creator tool | `supabase/functions/donny-chat/index.ts` | Modify to call new edge function |
 | `DonnyProvider` | `src/contexts/DonnyProvider.tsx` | Add campaign page context extraction |
-| `useInviteCreator` | `src/hooks/useInviteCreator.ts` | New shared hook for invitation calls |
+| `useInviteCreator` | `src/hooks/useCampaignInvitations.ts` | Modify to call edge function instead of raw insert |
+| `useBulkInvite` | `src/hooks/useBulkInvite.ts` | Modify to call edge function per invitation |
 | `CampaignConversationHeader` | `src/components/messaging/CampaignConversationHeader.tsx` | New banner component |
 | `InviteToCampaignModal` | `src/components/campaigns/InviteToCampaignModal.tsx` | New modal for profile entry point |
 | `useNotifications` | `src/hooks/useNotifications.ts` | Add invitation subscription |
 | `NotificationDropdown` | `src/components/notifications/NotificationDropdown.tsx` | Add invitation routing |
 | `CreatorCampaignDetails` | `src/components/campaign-details/CreatorCampaignDetails.tsx` | Add invitation banner |
 | `CampaignDetailsPage` | `src/pages/CampaignDetailsPage.tsx` | Read `?invited=true` param |
-| Creator matching cards (AI Match tab) | `src/components/campaigns/CreatorMatchingSection.tsx` | Add "Invite" button |
+| Creator match cards (AI Match tab) | `src/components/campaigns/CreatorMatchCard.tsx` | Add "Invite" button to each card |
+| `donny_messages` table | Migration | Add `quick_actions` JSONB column |
+| `DonnyMessage` component | `src/components/donny/DonnyMessage.tsx` | Add quick-action button rendering |
+| `DonnyMessage` type | `src/types/donny.ts` | Add `quick_actions` field |
+| `send-notification-email` | `supabase/functions/send-notification-email/index.ts` | Add `campaign_invitation` template |
+| `useDonny` hook | `src/hooks/useDonny.ts` | Pass `campaign_context` in edge function call |
 
 ## Data Flow
 
@@ -197,7 +226,7 @@ Creator taps notification or Donny's "View Campaign":
   → Navigates to /dashboard/creator/campaigns/:id?invited=true
   → Invitation banner shows on campaign detail page
   → Creator taps "Apply Now" → normal application form
-  → Application submitted → invitation status stays pending (not tracked further)
+  → Application submitted → invitation status updated to 'accepted'
 ```
 
 ## Out of Scope
