@@ -129,16 +129,20 @@ Deno.serve(async (req) => {
     }, '[REJECT-CONTENT]');
 
     // Ensure conversation exists between parties
-    const { data: existingConvo } = await supabaseClient
+    const { data: creatorConvos } = await supabaseClient
       .from('conversation_participants')
       .select('conversation_id')
-      .eq('user_id', user.id)
-      .in('conversation_id',
-        supabaseClient
+      .eq('user_id', collab.creator_id);
+
+    const creatorConvoIds = (creatorConvos || []).map(c => c.conversation_id);
+
+    const { data: existingConvo } = creatorConvoIds.length > 0
+      ? await supabaseClient
           .from('conversation_participants')
           .select('conversation_id')
-          .eq('user_id', collab.creator_id)
-      );
+          .eq('user_id', user.id)
+          .in('conversation_id', creatorConvoIds)
+      : { data: [] };
 
     if (!existingConvo || existingConvo.length === 0) {
       const { data: newConvo } = await supabaseClient
