@@ -29,6 +29,7 @@ import {
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { ReviewCountdownTimer } from './ReviewCountdownTimer';
 
 interface ContentApprovalPanelProps {
   collaborationId: string;
@@ -37,6 +38,11 @@ interface ContentApprovalPanelProps {
   revisionCount: number;
   creatorId: string;
   creatorName: string;
+  submittedAt: string | null;
+  reviewExtended: boolean;
+  deliveryType: string;
+  disputeReason: string | null;
+  disputeOutcome: string | null;
   onApproved?: () => void;
 }
 
@@ -49,6 +55,11 @@ const ContentApprovalPanel: React.FC<ContentApprovalPanelProps> = ({
   revisionCount,
   creatorId,
   creatorName,
+  submittedAt,
+  reviewExtended,
+  deliveryType,
+  disputeReason,
+  disputeOutcome,
   onApproved
 }) => {
   const queryClient = useQueryClient();
@@ -102,6 +113,27 @@ const ContentApprovalPanel: React.FC<ContentApprovalPanelProps> = ({
           icon: XCircle,
           description: 'Content was rejected. Refund initiated.'
         };
+      case 'auto_approved':
+        return {
+          label: 'Auto-Approved',
+          variant: 'default' as const,
+          icon: CheckCircle2,
+          description: 'Content was auto-approved after review window expired'
+        };
+      case 'disputed':
+        return {
+          label: 'Disputed',
+          variant: 'destructive' as const,
+          icon: AlertCircle,
+          description: 'Content is under dispute'
+        };
+      case 'resolved':
+        return {
+          label: 'Resolved',
+          variant: 'secondary' as const,
+          icon: CheckCircle2,
+          description: 'Dispute has been resolved'
+        };
       default:
         return { 
           label: 'Unknown', 
@@ -135,17 +167,13 @@ const ContentApprovalPanel: React.FC<ContentApprovalPanelProps> = ({
 
   const requestRevision = useMutation({
     mutationFn: async (feedback: string) => {
-      // Update collaboration status
-      const { error: updateError } = await supabase
-        .from('campaign_collaborations')
-        .update({
-          content_status: 'revision_requested',
-          revision_count: (revisionCount || 0) + 1,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', collaborationId);
+      // Transition via state machine RPC
+      const { error: transitionError } = await supabase.rpc('transition_content_status', {
+        p_collaboration_id: collaborationId,
+        p_new_status: 'revision_requested',
+      });
 
-      if (updateError) throw updateError;
+      if (transitionError) throw transitionError;
 
       // Send a message with the revision feedback
       const { error: messageError } = await supabase
@@ -243,6 +271,17 @@ const ContentApprovalPanel: React.FC<ContentApprovalPanelProps> = ({
             <RotateCcw className="h-4 w-4" />
             <span>Revisions used: {revisionCount} / {MAX_REVISIONS}</span>
           </div>
+        )}
+
+        {/* Auto-approval countdown timer */}
+        {contentStatus === 'submitted' && (
+          <ReviewCountdownTimer
+            collaborationId={collaborationId}
+            submittedAt={submittedAt}
+            reviewExtended={reviewExtended}
+            deliveryType={deliveryType}
+            contentStatus={contentStatus}
+          />
         )}
 
         {/* Action Buttons - Only show when content is submitted */}

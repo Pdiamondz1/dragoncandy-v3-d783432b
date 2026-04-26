@@ -259,6 +259,11 @@ const ProjectDetailsPage: React.FC = () => {
               revisionCount={collaboration.revision_count}
               creatorId={collaboration.creator_id}
               creatorName={collaboration.creator_profile?.creator_name || 'Creator'}
+              submittedAt={collaboration.submitted_at}
+              reviewExtended={collaboration.review_extended}
+              deliveryType={collaboration.campaign.delivery_type || 'standard'}
+              disputeReason={collaboration.dispute_reason}
+              disputeOutcome={collaboration.dispute_outcome}
             />
           ) : (
             <div className="space-y-3">
