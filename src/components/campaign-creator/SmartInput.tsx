@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Link, Image, PenLine, X } from 'lucide-react';
+import { Link, Image, PenLine, X, Sparkles } from 'lucide-react';
 
 interface SmartInputProps {
   onSubmit: (value: string, mode: 'url' | 'photo' | 'text') => void;
@@ -134,6 +134,16 @@ export function SmartInput({ onSubmit, isExtracting, externalValue }: SmartInput
           </div>
         )}
       </div>
+      {(value.trim() || attachments.length > 0) && (
+        <Button
+          className="w-full rounded-full bg-dc-teal hover:bg-dc-teal/90 text-white font-semibold text-base py-6"
+          disabled={isExtracting}
+          onClick={handleSubmit}
+        >
+          <Sparkles className="w-4 h-4 mr-2" />
+          {isExtracting ? 'Generating...' : 'Generate Campaign'}
+        </Button>
+      )}
       <div className="flex justify-center gap-3">
         <Button
           variant="outline"
