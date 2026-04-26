@@ -7,6 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import ConversationMessageThread from '@/components/messages/ConversationMessageThread';
 import { useConversations } from '@/hooks/useConversations';
 import { supabase } from '@/integrations/supabase/client';
+import { CampaignConversationHeader } from '@/components/messaging/CampaignConversationHeader';
 
 const DirectConversationPage: React.FC = () => {
   const { conversationId } = useParams<{ conversationId: string }>();
@@ -105,6 +106,11 @@ const DirectConversationPage: React.FC = () => {
             )}
           </div>
         </div>
+
+        {/* Campaign context banner */}
+        {conversation?.campaign_id && (
+          <CampaignConversationHeader campaignId={conversation.campaign_id} />
+        )}
 
         {/* Message Thread — fills remaining height */}
         <div className="flex-1 min-h-0 flex flex-col">
