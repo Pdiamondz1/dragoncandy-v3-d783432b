@@ -23,6 +23,7 @@ import { CampaignApplication } from '@/types/applications';
 import { useWithdrawApplication } from '@/hooks/useWithdrawApplication';
 import { useCounterOffers, useRespondToCounterOffer } from '@/hooks/useCounterOffers';
 import { useAuth } from '@/hooks/useAuth';
+import { JointApprovalStatus } from './JointApprovalStatus';
 
 interface DetailedApplicationCardProps {
   application: CampaignApplication;
@@ -118,6 +119,14 @@ const DetailedApplicationCard: React.FC<DetailedApplicationCardProps> = ({ appli
           </div>
           <ApplicationStatusBadge status={application.status} />
         </div>
+        {application.brand_approval_status && application.brand_approval_status !== 'pending' && (
+          <JointApprovalStatus
+            brandApprovalStatus={application.brand_approval_status || 'pending'}
+            restaurantApprovalStatus={application.restaurant_approval_status || 'pending'}
+            finalApprovalStatus={application.final_approval_status || 'pending'}
+            viewerRole="creator"
+          />
+        )}
       </CardHeader>
       <CardContent className="space-y-4">
         <div>
