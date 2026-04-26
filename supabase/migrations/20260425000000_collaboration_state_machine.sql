@@ -58,6 +58,18 @@ BEGIN
     RAISE EXCEPTION 'Collaboration % not found', p_collaboration_id;
   END IF;
 
+  -- Verify caller is a participant or service_role
+  IF p_actor_id IS NOT NULL THEN
+    IF NOT EXISTS (
+      SELECT 1 FROM campaign_collaborations cc
+      JOIN campaigns c ON c.id = cc.campaign_id
+      WHERE cc.id = p_collaboration_id
+      AND (cc.creator_id = p_actor_id OR c.user_id = p_actor_id)
+    ) THEN
+      RAISE EXCEPTION 'Access denied: not a participant in collaboration %', p_collaboration_id;
+    END IF;
+  END IF;
+
   -- Validate transition
   CASE v_current_status
     WHEN 'pending' THEN
@@ -89,7 +101,7 @@ BEGIN
     WHEN 'in_progress' THEN
       UPDATE campaign_collaborations
         SET content_status = p_new_status,
-            content_started_at = now()
+            content_started_at = COALESCE(content_started_at, now())
         WHERE id = p_collaboration_id;
 
     WHEN 'submitted' THEN
@@ -141,7 +153,7 @@ BEGIN
   RETURN NEXT;
   RETURN;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = 'public';
 
 -- ============================================================
 -- 4. Create content_disputes table
@@ -159,8 +171,8 @@ CREATE TABLE IF NOT EXISTS content_disputes (
   created_at       TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_content_disputes_collaboration ON content_disputes(collaboration_id);
-CREATE INDEX idx_content_disputes_status ON content_disputes(status);
+CREATE INDEX IF NOT EXISTS idx_content_disputes_collaboration ON content_disputes(collaboration_id);
+CREATE INDEX IF NOT EXISTS idx_content_disputes_status ON content_disputes(status);
 
 ALTER TABLE content_disputes ENABLE ROW LEVEL SECURITY;
 
@@ -221,7 +233,7 @@ $$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS trg_recompute_final_approval ON campaign_applications;
 CREATE TRIGGER trg_recompute_final_approval
-  BEFORE UPDATE OF brand_approval_status, restaurant_approval_status
+  BEFORE INSERT OR UPDATE OF brand_approval_status, restaurant_approval_status
   ON campaign_applications
   FOR EACH ROW
   EXECUTE FUNCTION recompute_final_approval();
@@ -342,4 +354,4 @@ BEGIN
     p_metadata
   );
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = 'public';
