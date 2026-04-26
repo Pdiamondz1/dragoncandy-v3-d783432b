@@ -15,6 +15,7 @@ import {
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { DisputeStatusBanner } from './DisputeStatusBanner';
 
 interface CreatorContentSubmitProps {
   collaborationId: string;
@@ -22,6 +23,8 @@ interface CreatorContentSubmitProps {
   contentStatus: string | null;
   revisionCount: number;
   businessName: string;
+  disputeReason: string | null;
+  disputeOutcome: string | null;
 }
 
 const CreatorContentSubmit: React.FC<CreatorContentSubmitProps> = ({
@@ -29,7 +32,9 @@ const CreatorContentSubmit: React.FC<CreatorContentSubmitProps> = ({
   campaignId,
   contentStatus,
   revisionCount,
-  businessName
+  businessName,
+  disputeReason,
+  disputeOutcome
 }) => {
   const queryClient = useQueryClient();
 
@@ -77,6 +82,27 @@ const CreatorContentSubmit: React.FC<CreatorContentSubmitProps> = ({
           icon: AlertCircle,
           canSubmit: false
         };
+      case 'auto_approved':
+        return {
+          label: 'Auto-Approved',
+          variant: 'default' as const,
+          icon: CheckCircle2,
+          canSubmit: false
+        };
+      case 'disputed':
+        return {
+          label: 'Disputed',
+          variant: 'destructive' as const,
+          icon: AlertCircle,
+          canSubmit: false
+        };
+      case 'resolved':
+        return {
+          label: 'Resolved',
+          variant: 'secondary' as const,
+          icon: CheckCircle2,
+          canSubmit: false
+        };
       default:
         return { 
           label: 'Unknown', 
@@ -89,26 +115,19 @@ const CreatorContentSubmit: React.FC<CreatorContentSubmitProps> = ({
 
   const submitContent = useMutation({
     mutationFn: async () => {
-      const previousContentStatus = contentStatus;
-
-      const { error } = await supabase
-        .from('campaign_collaborations')
-        .update({
-          content_status: 'submitted',
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', collaborationId);
-
+      const { error } = await supabase.rpc('transition_content_status', {
+        p_collaboration_id: collaborationId,
+        p_new_status: 'submitted',
+      });
       if (error) throw error;
 
-      // Fire-and-forget: write payment event for content_submitted or content_resubmitted
-      const eventType = previousContentStatus === 'revision_requested' ? 'content_resubmitted' : 'content_submitted';
+      const eventType = revisionCount > 0 ? 'content_resubmitted' : 'content_submitted';
       supabase.rpc('insert_payment_event' as any, {
         p_event_type: eventType,
         p_entity_type: 'collaboration',
         p_entity_id: collaborationId,
         p_campaign_id: campaignId,
-        p_metadata: {},
+        p_metadata: { revision_count: revisionCount },
       }).then(() => {}, () => {});
 
       // Notify the business
@@ -196,6 +215,13 @@ const CreatorContentSubmit: React.FC<CreatorContentSubmitProps> = ({
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
+        <DisputeStatusBanner
+          contentStatus={contentStatus}
+          disputeReason={disputeReason}
+          disputeOutcome={disputeOutcome}
+          viewerRole="creator"
+        />
+
         {/* Revision Counter */}
         {revisionCount > 0 && (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">

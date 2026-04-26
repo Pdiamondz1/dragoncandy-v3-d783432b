@@ -282,6 +282,8 @@ const ProjectDetailsPage: React.FC = () => {
                 contentStatus={collaboration.content_status}
                 revisionCount={collaboration.revision_count}
                 businessName={collaboration.business_profile?.business_name || 'Client'}
+                disputeReason={collaboration.dispute_reason}
+                disputeOutcome={collaboration.dispute_outcome}
               />
             </div>
           )}
