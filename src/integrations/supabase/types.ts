@@ -192,6 +192,51 @@ export type Database = {
           },
         ]
       }
+      business_contexts: {
+        Row: {
+          expires_at: string
+          extracted_at: string
+          extracted_data: Json
+          id: string
+          profile_id: string | null
+          source_type: string
+          source_url: string
+        }
+        Insert: {
+          expires_at?: string
+          extracted_at?: string
+          extracted_data: Json
+          id?: string
+          profile_id?: string | null
+          source_type: string
+          source_url: string
+        }
+        Update: {
+          expires_at?: string
+          extracted_at?: string
+          extracted_data?: Json
+          id?: string
+          profile_id?: string | null
+          source_type?: string
+          source_url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_contexts_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "business_contexts_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "safe_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       business_profiles: {
         Row: {
           account_type: string | null
