@@ -74,7 +74,7 @@ const CreatorSettings = () => {
 
   return (
     <DashboardLayout userRole="content_creator">
-      <div className="min-h-screen bg-gray-400 p-4">
+      <div className="min-h-screen bg-white p-4">
         <div className="max-w-lg mx-auto">
           <ProfileCompletionBar
             avatarUrl={formData.avatar_url || null}

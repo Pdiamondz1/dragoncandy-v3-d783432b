@@ -93,7 +93,7 @@ const BusinessSettings = () => {
 
   return (
     <DashboardLayout userRole="business_client">
-      <div className="min-h-screen bg-gray-400 p-4">
+      <div className="min-h-screen bg-white p-4">
         <div className="max-w-lg mx-auto">
           <ProfileCompletionBar
             avatarUrl={formData.logo_url || null}

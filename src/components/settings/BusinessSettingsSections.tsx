@@ -16,13 +16,6 @@ import { ToastConnectionCard } from '@/features/settings/ToastConnectionCard';
 import type { BusinessProfileFormData } from '@/hooks/useBusinessProfileForm';
 import type { CompletionResult } from '@/hooks/useProfileCompletion';
 
-const TIMEZONES = [
-  'UTC-12', 'UTC-11', 'UTC-10', 'UTC-9', 'UTC-8', 'UTC-7', 'UTC-6',
-  'UTC-5', 'UTC-4', 'UTC-3', 'UTC-2', 'UTC-1', 'UTC+0',
-  'UTC+1', 'UTC+2', 'UTC+3', 'UTC+4', 'UTC+5', 'UTC+6',
-  'UTC+7', 'UTC+8', 'UTC+9', 'UTC+10', 'UTC+11', 'UTC+12',
-];
-
 const INDUSTRY_OPTIONS = [
   { value: 'food', label: 'Food & Beverage' },
   { value: 'fashion', label: 'Fashion' },
@@ -154,27 +147,6 @@ export function BusinessSettingsSections({
           </div>
         </div>
 
-        <div>
-          <Label htmlFor="timezone">Timezone</Label>
-          <Select
-            value={formData.timezone}
-            onValueChange={(value) => {
-              onInputChange('timezone', value);
-              onFieldBlur();
-            }}
-          >
-            <SelectTrigger id="timezone" className="mt-1">
-              <SelectValue placeholder="Select timezone" />
-            </SelectTrigger>
-            <SelectContent>
-              {TIMEZONES.map((tz) => (
-                <SelectItem key={tz} value={tz}>
-                  {tz}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
       </SettingsSection>
 
       {/* 2. About & Goals */}
