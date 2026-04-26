@@ -114,7 +114,7 @@ const CreatorEarnings: React.FC = () => {
       return (data || []).map((collab: any) => {
         const campaign = collab.campaigns;
         const amount = campaign?.fixed_price || campaign?.budget_min || campaign?.budget_max || 0;
-        const platformFee = amount * 0.05;
+        const platformFee = amount * 0.05; // 5% platform fee — keep in sync with edge function PLATFORM_FEE_RATE
 
         return {
           id: collab.id,
@@ -446,25 +446,35 @@ const CreatorEarnings: React.FC = () => {
                     hasPlatformPendingBalance
                   );
 
+                  const grossAmount = payment.amount + payment.platformFee;
+
                   return (
                     <div
                       key={payment.id}
-                      className="flex items-center justify-between p-3 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors"
+                      className="p-3 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors space-y-1.5"
                     >
-                      <div className="flex-1 min-w-0 mr-3">
+                      <div className="flex items-center justify-between">
                         <p className="font-bold text-gray-900 text-sm truncate">{payment.campaignTitle}</p>
-                        <div className="flex items-center gap-2 mt-0.5 text-xs text-gray-500 flex-wrap">
-                          <span className="shrink-0">
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="text-xs text-gray-500">
                             {payment.date ? format(new Date(payment.date), 'MMM d, yyyy') : 'Date unknown'}
                           </span>
-                          <span className="shrink-0">Fee: {formatCurrency(payment.platformFee)}</span>
+                          {getStatusBadge(displayStatus)}
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <span className="font-extrabold text-gray-900 text-sm">
-                          {formatCurrency(payment.amount)}
-                        </span>
-                        {getStatusBadge(displayStatus)}
+                      <div className="flex flex-col gap-0.5">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600">Campaign value</span>
+                          <span>{formatCurrency(grossAmount)}</span>
+                        </div>
+                        <div className="flex justify-between text-sm text-red-500">
+                          <span>DragonCandy fee (5%)</span>
+                          <span>-{formatCurrency(payment.platformFee)}</span>
+                        </div>
+                        <div className="flex justify-between text-sm font-bold border-t pt-1">
+                          <span>Your payout</span>
+                          <span className="text-teal-600">{formatCurrency(payment.amount)}</span>
+                        </div>
                       </div>
                     </div>
                   );
