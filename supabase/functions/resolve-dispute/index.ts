@@ -61,6 +61,22 @@ Deno.serve(async (req) => {
       );
     }
 
+    if (outcome === 'partial_payment' && splitPercentage !== undefined) {
+      if (splitPercentage < 1 || splitPercentage > 99) {
+        return new Response(
+          JSON.stringify({ error: "splitPercentage must be between 1 and 99" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+        );
+      }
+    }
+
+    if (!stripeKey) {
+      return new Response(
+        JSON.stringify({ error: "STRIPE_SECRET_KEY is not set" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+      );
+    }
+
     logStep("Resolving dispute", { disputeId, outcome });
 
     // Fetch dispute + collaboration + campaign
@@ -157,21 +173,51 @@ Deno.serve(async (req) => {
         });
       }
 
+      // Decrement budget by the refunded portion
+      const businessRefundDollars = refundAmountCents / 100;
+      await supabaseClient.rpc('decrement_budget_spent', {
+        p_campaign_id: collab.campaign_id,
+        p_amount: businessRefundDollars,
+      });
+
       logStep("Partial payment", { creatorSplit, creatorAmountCents, refundAmountCents });
     } else if (outcome === 'approved') {
-      // Approve content and release full payout
-      const payoutResponse = await fetch(
-        `${Deno.env.get("SUPABASE_URL")}/functions/v1/release-creator-payout`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
-          },
-          body: JSON.stringify({ collaborationId: dispute.collaboration_id }),
-        }
-      );
-      logStep("Payout via release-creator-payout", { status: payoutResponse.status });
+      // Full payout to creator (inline — avoids release-creator-payout overwriting content_status)
+      const { netPayoutDollars } = calculatePlatformFee(totalAmount);
+
+      const { data: creatorProfile } = await supabaseClient
+        .from('creator_profiles')
+        .select('stripe_account_id, stripe_onboarding_complete')
+        .eq('user_id', collab.creator_id)
+        .single();
+
+      if (creatorProfile?.stripe_account_id && creatorProfile?.stripe_onboarding_complete) {
+        await stripe.transfers.create({
+          amount: Math.round(netPayoutDollars * 100),
+          currency: 'usd',
+          destination: creatorProfile.stripe_account_id,
+          metadata: { dispute_id: disputeId, type: 'dispute_approved_payout' },
+        }, { idempotencyKey: `dispute_approved_${disputeId}` });
+      } else {
+        await supabaseClient.rpc('increment_pending_balance', {
+          p_user_id: collab.creator_id,
+          p_amount: netPayoutDollars,
+          p_profile_type: 'creator',
+        });
+      }
+
+      // Mark collaboration completed
+      await supabaseClient
+        .from('campaign_collaborations')
+        .update({ status: 'completed', completed_at: new Date().toISOString() })
+        .eq('id', dispute.collaboration_id);
+
+      await supabaseClient
+        .from('campaigns')
+        .update({ escrow_status: 'released' })
+        .eq('id', collab.campaign_id);
+
+      logStep("Full payout issued", { amount: Math.round(netPayoutDollars * 100) });
     }
 
     // Transition content_status to resolved

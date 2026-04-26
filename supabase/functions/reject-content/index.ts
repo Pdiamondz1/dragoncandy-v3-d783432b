@@ -105,6 +105,10 @@ Deno.serve(async (req) => {
 
     if (disputeError) {
       logStep("Dispute creation failed", { error: disputeError.message });
+      return new Response(
+        JSON.stringify({ error: "Content rejected but failed to create dispute record. Please contact support." }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+      );
     }
 
     // Write payment events
