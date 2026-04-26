@@ -28,7 +28,11 @@ const DEFAULT_QUICK_CHIPS: Record<string, DonnyQuickChip[]> = {
   ],
 };
 
-export function useDonny() {
+interface UseDonnyOptions {
+  campaignContext?: { campaign_id: string; title: string; status: string } | null;
+}
+
+export function useDonny(options?: UseDonnyOptions) {
   const { user, profile } = useAuth();
   const queryClient = useQueryClient();
   const [streamingContent, setStreamingContent] = useState('');
@@ -143,6 +147,10 @@ export function useDonny() {
         body: {
           conversation_id: conversation.id,
           message: content,
+          context: {
+            page_url: window.location.pathname,
+            campaign_context: options?.campaignContext ?? undefined,
+          },
         },
       });
 

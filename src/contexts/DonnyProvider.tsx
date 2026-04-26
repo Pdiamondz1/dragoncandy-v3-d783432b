@@ -1,5 +1,6 @@
-import { createContext, useContext, useState, useCallback, useMemo, type ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, type ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 import { useDonny } from '@/hooks/useDonny';
 import { useDonnyNudges } from '@/hooks/useDonnyNudges';
 import { useDonnyQuickChips } from '@/hooks/useDonnyQuickChips';
@@ -32,6 +33,7 @@ interface DonnyContextValue {
   currentPage: string;
   userRole: UserRole;
   quickChips: QuickChip[];
+  campaignContext: { campaign_id: string; title: string; status: string } | null;
 }
 
 const DonnyContext = createContext<DonnyContextValue | null>(null);
@@ -51,8 +53,42 @@ export function DonnyProvider({ children, userRole }: DonnyProviderProps) {
   const [stage, setStage] = useState<DonnyStage>('closed');
   const location = useLocation();
 
+  const campaignMatch = location.pathname.match(/\/campaigns\/([a-f0-9-]+)/);
+  const campaignIdFromUrl = campaignMatch?.[1] ?? null;
+
+  const [campaignContext, setCampaignContext] = useState<{
+    campaign_id: string;
+    title: string;
+    status: string;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!campaignIdFromUrl) {
+      setCampaignContext(null);
+      return;
+    }
+
+    const fetchCampaign = async () => {
+      const { data } = await supabase
+        .from('campaigns')
+        .select('id, title, status')
+        .eq('id', campaignIdFromUrl)
+        .single();
+
+      if (data) {
+        setCampaignContext({
+          campaign_id: data.id,
+          title: data.title,
+          status: data.status,
+        });
+      }
+    };
+
+    fetchCampaign();
+  }, [campaignIdFromUrl]);
+
   // Existing chat hook
-  const donny = useDonny();
+  const donny = useDonny({ campaignContext });
 
   // Nudges
   const {
@@ -121,12 +157,13 @@ export function DonnyProvider({ children, userRole }: DonnyProviderProps) {
       currentPage: location.pathname,
       userRole,
       quickChips,
+      campaignContext,
     }),
     [
       stage, open, expand, collapse, close,
       nudges, unreadCount, executeAction, dismissNudge,
       donny.messages, donny.conversation, donny.avatarState, donny.isStreaming,
-      sendMessage, location.pathname, userRole, quickChips,
+      sendMessage, location.pathname, userRole, quickChips, campaignContext,
     ]
   );
 
