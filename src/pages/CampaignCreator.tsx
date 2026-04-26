@@ -18,7 +18,7 @@ export default function CampaignCreator() {
 
   if (screen === 'drop') {
     return (
-      <div className="min-h-screen bg-[#A8A8A0]">
+      <div className="min-h-screen bg-white">
         <DropScreen onSubmit={submitInput} isExtracting={isExtracting} extractionMessages={extractionMessages} />
       </div>
     );
@@ -27,7 +27,7 @@ export default function CampaignCreator() {
   // Screen 2: Launchpad — mobile layout
   if (isMobile || !editedCampaign) {
     return (
-      <div className="min-h-screen bg-[#A8A8A0] pt-4">
+      <div className="min-h-screen bg-white pt-4">
         <LaunchpadScreen
           ideas={campaignIdeas || []}
           selectedIdeaId={selectedIdeaId}
@@ -56,7 +56,7 @@ export default function CampaignCreator() {
 
   // Desktop split view
   return (
-    <div className="min-h-screen bg-[#A8A8A0]">
+    <div className="min-h-screen bg-white">
       <div className="flex gap-6 max-w-6xl mx-auto pt-6 px-6">
         <div className="flex-1 min-w-0">
           <LaunchpadScreen

@@ -9,10 +9,10 @@ export function DonnyGreeting({ isExtracting }: DonnyGreetingProps) {
     <div className="flex flex-col items-center gap-4 py-8">
       <DonnyAvatar size="lg" state={isExtracting ? 'thinking' : 'idle'} glow={isExtracting} />
       <div className="text-center">
-        <h1 className="text-2xl font-bold text-white uppercase tracking-wide">
+        <h1 className="text-2xl font-bold text-gray-900 uppercase tracking-wide">
           Create a Campaign
         </h1>
-        <p className="text-sm text-gray-200 mt-2">
+        <p className="text-sm text-gray-500 mt-2">
           Paste a link, drop a photo, or tell me about your business
         </p>
       </div>
