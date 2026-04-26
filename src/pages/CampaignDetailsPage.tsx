@@ -1,6 +1,8 @@
 
 import React, { useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowLeft, Edit, Users, Target, AlertCircle, Send, CheckCircle, FolderOpen } from 'lucide-react';
@@ -26,6 +28,26 @@ const CampaignDetailsPage: React.FC = () => {
   const isCreatorView = location.pathname.includes('/creator/');
   const userRole = isCreatorView ? 'content_creator' : 'business_client';
   const isOwnCampaign = campaign?.user_id === user?.id;
+
+  const searchParams = new URLSearchParams(location.search);
+  const isInvitedByParam = searchParams.get('invited') === 'true';
+
+  const { data: pendingInvitation } = useQuery({
+    queryKey: ['pending-invitation', id, user?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('campaign_invitations')
+        .select('id')
+        .eq('campaign_id', id!)
+        .eq('creator_id', user!.id)
+        .eq('status', 'pending')
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!id && !!user && isCreatorView,
+  });
+
+  const isInvited = isInvitedByParam || !!pendingInvitation;
 
   const { hasApplied, applicationStatus, isLoading: isCheckingStatus } = useCreatorApplicationStatus(id);
 
@@ -77,7 +99,7 @@ const CampaignDetailsPage: React.FC = () => {
       <DashboardLayout userRole={userRole}>
         <div className="min-h-screen bg-gray-50 overflow-x-hidden pb-28">
           <div className="md:max-w-2xl md:mx-auto md:mt-6">
-            <CreatorCampaignDetails campaign={campaign} />
+            <CreatorCampaignDetails campaign={campaign} isInvited={isInvited} />
 
             {/* Creator action buttons */}
             <div className="px-5 mt-4">

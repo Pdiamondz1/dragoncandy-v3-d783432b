@@ -2,9 +2,11 @@ import type { Campaign } from '@/hooks/useCampaignQueries';
 import { CampaignHero } from './CampaignHero';
 import { CampaignQuickStats } from './CampaignQuickStats';
 import { CampaignDetailSection } from './CampaignDetailSection';
+import { InvitationBanner } from './InvitationBanner';
 
 interface CreatorCampaignDetailsProps {
   campaign: Campaign;
+  isInvited?: boolean;
 }
 
 const TIER_TIMEFRAMES: Record<string, string> = {
@@ -19,7 +21,7 @@ const TIER_LABELS: Record<string, string> = {
   standard: 'Standard',
 };
 
-export function CreatorCampaignDetails({ campaign }: CreatorCampaignDetailsProps) {
+export function CreatorCampaignDetails({ campaign, isInvited }: CreatorCampaignDetailsProps) {
   const tierLabel = campaign.delivery_type ? TIER_LABELS[campaign.delivery_type] ?? 'Standard' : 'Standard';
   const tierTimeframe = campaign.delivery_type ? TIER_TIMEFRAMES[campaign.delivery_type] ?? '' : '';
   const tierEmoji = campaign.delivery_type === 'dragonrush' ? '🐉' : campaign.delivery_type === 'expedited' ? '⚡' : '📦';
@@ -40,6 +42,12 @@ export function CreatorCampaignDetails({ campaign }: CreatorCampaignDetailsProps
   return (
     <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
       <CampaignHero campaign={campaign} />
+
+      {isInvited && (
+        <InvitationBanner
+          businessName={(campaign.ai_analysis as Record<string, unknown>)?.business_name as string | undefined}
+        />
+      )}
 
       <div className="px-5 pt-4 pb-6">
         <CampaignQuickStats
