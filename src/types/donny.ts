@@ -88,6 +88,12 @@ export interface DonnyToolCall {
   };
 }
 
+export interface DonnyQuickAction {
+  label: string;
+  action: 'navigate' | 'dismiss';
+  url?: string;
+}
+
 // Stored message
 export interface DonnyMessage {
   id: string;
@@ -97,6 +103,7 @@ export interface DonnyMessage {
   tool_calls: DonnyToolCall[] | null;
   tool_result: Record<string, unknown> | null;
   rich_card: DonnyRichCard | null;
+  quick_actions: DonnyQuickAction[] | null;
   created_at: string;
 }
 

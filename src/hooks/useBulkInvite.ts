@@ -21,33 +21,36 @@ export function useBulkInvite() {
 
   return useMutation({
     mutationFn: async ({ campaignId, creatorIds, message }: BulkInviteParams): Promise<BulkInviteResult> => {
-      let sent = 0;
-      let duplicates = 0;
-      let errors = 0;
+      const results = { sent: 0, duplicates: 0, errors: 0 };
 
-      // Insert one at a time to gracefully handle duplicates
       for (const creatorId of creatorIds) {
-        const { error } = await supabase
-          .from('campaign_invitations')
-          .insert({
-            campaign_id: campaignId,
-            creator_id: creatorId,
-            invited_by: user!.id,
-            invitation_message: message ?? null,
+        try {
+          const { data, error } = await supabase.functions.invoke('send-campaign-invitation', {
+            body: {
+              campaign_id: campaignId,
+              creator_id: creatorId,
+              invited_by: user!.id,
+              invitation_message: message,
+            },
           });
 
-        if (error) {
-          if (error.message?.includes('duplicate key')) {
-            duplicates++;
-          } else {
-            errors++;
+          if (error) {
+            results.errors++;
+            continue;
           }
-        } else {
-          sent++;
+
+          const result = typeof data === 'string' ? JSON.parse(data) : data;
+          if (result.already_invited) {
+            results.duplicates++;
+          } else {
+            results.sent++;
+          }
+        } catch {
+          results.errors++;
         }
       }
 
-      return { sent, duplicates, errors };
+      return results;
     },
     onSuccess: (result, variables) => {
       queryClient.invalidateQueries({ queryKey: ['campaign-invitations', variables.campaignId] });

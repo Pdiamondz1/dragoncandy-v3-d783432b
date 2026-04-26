@@ -22,6 +22,7 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { useCampaignMatches, useGenerateMatches, CreatorMatch } from '@/hooks/useCampaignMatches';
+import { useInviteCreator, useCampaignInvitations } from '@/hooks/useCampaignInvitations';
 import CreatorMatchCard from './CreatorMatchCard';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
@@ -70,6 +71,14 @@ const CreatorMatchingSection: React.FC<CreatorMatchingSectionProps> = ({ campaig
   const [activeTab, setActiveTab] = useState('ai-matches');
   const [sortBy, setSortBy] = useState<SortOption>('score');
   const [filterBy, setFilterBy] = useState<FilterOption>('all');
+
+  const inviteCreator = useInviteCreator();
+  const { data: invitations } = useCampaignInvitations(campaignId);
+  const invitedCreatorIds = new Set((invitations || []).map(inv => inv.creator_id));
+
+  const handleInvite = (creatorId: string) => {
+    inviteCreator.mutate({ campaignId, creatorId });
+  };
 
   // Fetch all available creators as fallback
   const { data: availableCreators = [], isLoading: creatorsLoading, isError: creatorsError } = useQuery({
@@ -259,7 +268,11 @@ const CreatorMatchingSection: React.FC<CreatorMatchingSectionProps> = ({ campaig
                       </Badge>
                     </div>
                   )}
-                  <CreatorMatchCard match={match} />
+                  <CreatorMatchCard
+                    match={match}
+                    isInvited={invitedCreatorIds.has(match.creator_id)}
+                    onInvite={handleInvite}
+                  />
                 </div>
               ))}
             </div>

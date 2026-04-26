@@ -43,52 +43,44 @@ export const useInviteCreator = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ 
-      campaignId, 
-      creatorId, 
-      message 
-    }: { 
-      campaignId: string; 
-      creatorId: string; 
-      message?: string; 
+    mutationFn: async ({
+      campaignId,
+      creatorId,
+      message,
+    }: {
+      campaignId: string;
+      creatorId: string;
+      message?: string;
     }) => {
-      console.log('Inviting creator:', { campaignId, creatorId, message });
-      
-      const { data, error } = await supabase
-        .from('campaign_invitations')
-        .insert({
+      const { data, error } = await supabase.functions.invoke('send-campaign-invitation', {
+        body: {
           campaign_id: campaignId,
           creator_id: creatorId,
           invited_by: user!.id,
           invitation_message: message,
-        })
-        .select()
-        .single();
+        },
+      });
 
-      if (error) {
-        console.error('Error inviting creator:', error);
-        throw error;
-      }
+      if (error) throw error;
 
-      console.log('Creator invited:', data);
-      return data as CampaignInvitation;
+      const result = typeof data === 'string' ? JSON.parse(data) : data;
+      if (result.error) throw new Error(result.error);
+
+      return result as { invitation: CampaignInvitation; already_invited: boolean };
     },
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['campaign-invitations', variables.campaignId] });
       toast({
-        title: 'Invitation sent successfully!',
-        description: 'The creator will be notified about your campaign.',
+        title: data.already_invited ? 'Already invited' : 'Invitation sent!',
+        description: data.already_invited
+          ? 'This creator has already been invited to this campaign.'
+          : 'The creator will be notified via email and in-app message.',
       });
     },
-    onError: (error: any) => {
-      console.error('Creator invitation failed:', error);
-      const errorMessage = error.message?.includes('duplicate key') 
-        ? 'You have already invited this creator to this campaign.'
-        : 'Failed to send invitation. Please try again later.';
-      
+    onError: (error: Error) => {
       toast({
         title: 'Failed to send invitation',
-        description: errorMessage,
+        description: error.message || 'Please try again later.',
         variant: 'destructive',
       });
     },

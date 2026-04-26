@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import { DonnyAvatar } from './DonnyAvatar';
 import { DonnyRichCard } from './DonnyRichCard';
@@ -11,6 +13,9 @@ interface DonnyMessageProps {
 }
 
 export function DonnyMessage({ message, avatarState = 'idle', isLatestAssistant = false }: DonnyMessageProps) {
+  const navigate = useNavigate();
+  const [dismissedActions, setDismissedActions] = useState(false);
+
   if (message.role === 'tool') return null; // Tool messages are internal, not rendered
 
   const isUser = message.role === 'user';
@@ -79,6 +84,30 @@ export function DonnyMessage({ message, avatarState = 'idle', isLatestAssistant 
           </div>
         )}
         {message.rich_card && <DonnyRichCard card={message.rich_card} />}
+        {message.quick_actions && message.quick_actions.length > 0 && !dismissedActions && (
+          <div className="flex gap-2 flex-wrap mt-2">
+            {message.quick_actions.map((action, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => {
+                  if (action.action === 'navigate' && action.url) {
+                    navigate(action.url);
+                  } else if (action.action === 'dismiss') {
+                    setDismissedActions(true);
+                  }
+                }}
+                className={
+                  action.action === 'navigate'
+                    ? 'bg-[#4DD9C0] text-white text-xs font-semibold px-4 py-2 rounded-full'
+                    : 'bg-white text-[#EC4899] border border-gray-200 text-xs font-semibold px-4 py-2 rounded-full'
+                }
+              >
+                {action.label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

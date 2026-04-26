@@ -32,7 +32,8 @@ type NotificationType =
   | 'content_started'
   | 'counter_offer'
   | 'counter_offer_response'
-  | 'sponsorship_payment_confirmed';
+  | 'sponsorship_payment_confirmed'
+  | 'campaign_invitation';
 
 interface NotificationEmailRequest {
   to?: string;
@@ -70,6 +71,8 @@ interface NotificationEmailRequest {
     deliveryTime?: string;
     paymentMethod?: string; // 'stripe_transfer' or 'pending_balance'
     isRecipient?: boolean; // true if recipient received payment, false if they paid
+    invitationMessage?: string;
+    campaignUrl?: string;
   };
 }
 
@@ -642,6 +645,25 @@ const handler = async (req: Request): Promise<Response> => {
                   View Sponsorship
                 </a>
               </p>
+            </div>
+          </div>
+        `,
+      },
+      campaign_invitation: {
+        subject: `You're invited to a campaign on DragonCandy!`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: linear-gradient(135deg, #4DD9C0, #00C9B0); padding: 20px; text-align: center;">
+              <h1 style="color: white; margin: 0;">Campaign Invitation</h1>
+            </div>
+            <div style="padding: 20px;">
+              <p>Hi there!</p>
+              <p><strong>${data.businessName}</strong> has invited you to their campaign: <strong>${data.campaignTitle}</strong></p>
+              ${data.invitationMessage ? '<p style="background: #f0fdfa; border-left: 3px solid #4DD9C0; padding: 12px; margin: 16px 0; font-style: italic;">' + data.invitationMessage + '</p>' : ''}
+              <p>Check out the campaign details and apply if you're interested:</p>
+              <div style="text-align: center; margin: 24px 0;">
+                <a href="${data.campaignUrl}" style="background: #4DD9C0; color: white; padding: 12px 32px; border-radius: 24px; text-decoration: none; font-weight: bold;">View Campaign</a>
+              </div>
             </div>
           </div>
         `,

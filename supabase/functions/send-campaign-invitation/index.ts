@@ -1,0 +1,231 @@
+import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+interface InvitationRequest {
+  campaign_id: string;
+  creator_id: string;
+  invited_by: string;
+  invitation_message?: string;
+}
+
+serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+
+  try {
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const { campaign_id, creator_id, invited_by, invitation_message } =
+      (await req.json()) as InvitationRequest;
+
+    // --- Validation ---
+    if (!campaign_id || !creator_id || !invited_by) {
+      return new Response(
+        JSON.stringify({ error: "campaign_id, creator_id, and invited_by are required" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    if (creator_id === invited_by) {
+      return new Response(
+        JSON.stringify({ error: "Cannot invite yourself" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    // Check campaign exists and is published
+    const { data: campaign, error: campaignError } = await supabase
+      .from("campaigns")
+      .select("id, title, user_id, status, budget_min, budget_max, deadline, creator_count, description, delivery_type, ai_analysis")
+      .eq("id", campaign_id)
+      .single();
+
+    if (campaignError || !campaign) {
+      return new Response(
+        JSON.stringify({ error: "Campaign not found" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    if (campaign.status !== "published") {
+      return new Response(
+        JSON.stringify({ error: "Campaign is not published" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    if (campaign.user_id !== invited_by) {
+      return new Response(
+        JSON.stringify({ error: "Only the campaign owner can send invitations" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    // Check creator exists
+    const { data: creator, error: creatorError } = await supabase
+      .from("profiles")
+      .select("id, full_name, email")
+      .eq("id", creator_id)
+      .single();
+
+    if (creatorError || !creator) {
+      return new Response(
+        JSON.stringify({ error: "Creator not found" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    // Check for duplicate pending invitation
+    const { data: existing } = await supabase
+      .from("campaign_invitations")
+      .select("id, status")
+      .eq("campaign_id", campaign_id)
+      .eq("creator_id", creator_id)
+      .eq("status", "pending")
+      .maybeSingle();
+
+    if (existing) {
+      return new Response(
+        JSON.stringify({ invitation: existing, already_invited: true }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    // --- Insert invitation ---
+    const { data: invitation, error: insertError } = await supabase
+      .from("campaign_invitations")
+      .insert({
+        campaign_id,
+        creator_id,
+        invited_by,
+        invitation_message: invitation_message || null,
+        status: "pending",
+      })
+      .select()
+      .single();
+
+    if (insertError) {
+      console.error("Error inserting invitation:", insertError);
+      return new Response(
+        JSON.stringify({ error: "Failed to create invitation" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    // --- Get business name ---
+    const { data: businessProfile } = await supabase
+      .from("business_profiles")
+      .select("business_name")
+      .eq("user_id", invited_by)
+      .maybeSingle();
+
+    const businessName = businessProfile?.business_name || "A business";
+
+    // --- Send email notification ---
+    try {
+      await fetch(`${SUPABASE_URL}/functions/v1/send-notification-email`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          type: "campaign_invitation",
+          data: {
+            recipientUserId: creator_id,
+            businessName,
+            campaignTitle: campaign.title,
+            invitationMessage: invitation_message || "",
+            campaignUrl: `https://dragoncandy.io/dashboard/creator/campaigns/${campaign_id}?invited=true`,
+          },
+        }),
+      });
+    } catch (emailError) {
+      console.error("Failed to send invitation email:", emailError);
+    }
+
+    // --- Create Donny proactive message ---
+    try {
+      // Find or create creator's Donny conversation
+      let { data: donnyConvo } = await supabase
+        .from("donny_conversations" as any)
+        .select("id")
+        .eq("user_id", creator_id)
+        .order("last_message_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (!donnyConvo) {
+        const { data: newConvo } = await supabase
+          .from("donny_conversations" as any)
+          .insert({ user_id: creator_id })
+          .select("id")
+          .single();
+        donnyConvo = newConvo;
+      }
+
+      if (donnyConvo) {
+        const emoji = (campaign.ai_analysis as any)?.emoji || "📣";
+        const budgetStr = campaign.budget_min && campaign.budget_max
+          ? `$${campaign.budget_min}–$${campaign.budget_max}`
+          : "TBD";
+        const deadlineStr = campaign.deadline
+          ? new Date(campaign.deadline).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+          : "TBD";
+
+        let messageContent = `Hey! 🎉 **${businessName}** just invited you to their campaign **"${campaign.title}"**!\n\n`;
+        messageContent += `Here's the quick scoop:\n`;
+        messageContent += `• ${emoji} ${campaign.description?.substring(0, 100) || "Content creation campaign"}\n`;
+        messageContent += `• 💰 ${budgetStr} budget\n`;
+        messageContent += `• 📅 Due by ${deadlineStr}\n`;
+
+        if (invitation_message) {
+          messageContent += `\nThey said: _"${invitation_message}"_\n`;
+        }
+
+        const quickActions = [
+          {
+            label: "View Campaign",
+            action: "navigate",
+            url: `/dashboard/creator/campaigns/${campaign_id}?invited=true`,
+          },
+          { label: "Decide Later", action: "dismiss" },
+        ];
+
+        await supabase.from("donny_messages" as any).insert({
+          conversation_id: donnyConvo.id,
+          role: "assistant",
+          content: messageContent,
+          quick_actions: quickActions,
+        });
+
+        // Update conversation last_message_at
+        await supabase
+          .from("donny_conversations" as any)
+          .update({ last_message_at: new Date().toISOString() })
+          .eq("id", donnyConvo.id);
+      }
+    } catch (donnyError) {
+      console.error("Failed to create Donny message:", donnyError);
+    }
+
+    return new Response(
+      JSON.stringify({ invitation, already_invited: false }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  } catch (err) {
+    console.error("send-campaign-invitation error:", err);
+    return new Response(
+      JSON.stringify({ error: "Internal server error" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
+});
