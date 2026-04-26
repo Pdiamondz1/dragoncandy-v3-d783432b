@@ -44,17 +44,17 @@ export async function detectLocation(): Promise<{ city: string; country: string 
 
 export function useAutoDetect(): AutoDetectResult {
   const [state, setState] = useState<AutoDetectResult>({
-    timezone: '',
+    timezone: detectTimezone(),
     city: '',
     country: '',
     loading: true,
   });
 
   useEffect(() => {
-    const timezone = detectTimezone();
-    setState(prev => ({ ...prev, timezone }));
+    let cancelled = false;
 
     detectLocation().then(location => {
+      if (cancelled) return;
       setState(prev => ({
         ...prev,
         city: location?.city ?? '',
@@ -62,6 +62,8 @@ export function useAutoDetect(): AutoDetectResult {
         loading: false,
       }));
     });
+
+    return () => { cancelled = true; };
   }, []);
 
   return state;
