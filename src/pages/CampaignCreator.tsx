@@ -24,20 +24,27 @@ export default function CampaignCreator() {
   const navRole = userRole || 'business_client';
 
   if (screen === 'drop') {
-    return (
-      <div className="min-h-screen bg-white pb-20 md:pb-0">
-        <div className="absolute top-6 left-6 z-10">
-          <button
-            onClick={() => navigate(-1)}
-            className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span>Back to Dashboard</span>
-          </button>
+    if (isMobile) {
+      return (
+        <div className="min-h-screen bg-white pb-20">
+          <div className="absolute top-6 left-6 z-10">
+            <button
+              onClick={() => navigate(-1)}
+              className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>Back to Dashboard</span>
+            </button>
+          </div>
+          <DropScreen onSubmit={submitInput} isExtracting={isExtracting} extractionMessages={extractionMessages} />
+          <MobileBottomNav userRole={navRole} />
         </div>
+      );
+    }
+    return (
+      <DashboardLayout userRole={navRole}>
         <DropScreen onSubmit={submitInput} isExtracting={isExtracting} extractionMessages={extractionMessages} />
-        {isMobile && <MobileBottomNav userRole={navRole} />}
-      </div>
+      </DashboardLayout>
     );
   }
 
