@@ -41,16 +41,6 @@ export const useAnonymousCampaignWizard = () => {
     deadline: campaignData.timelineBudgetData.deadline ? new Date(campaignData.timelineBudgetData.deadline) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // Default to 30 days from now
   } : null;
 
-  // Debug logging
-  console.log('Debug - useAnonymousCampaignWizard:', {
-    currentStep,
-    campaignData: campaignData ? 'exists' : 'null',
-    timelineBudgetData: campaignData?.timelineBudgetData ? 'exists' : 'null',
-    finalCampaignData: finalCampaignData ? 'exists' : 'null',
-    hasAnalysis: !!campaignAnalysis,
-    hasCustomized: !!customizedCampaign
-  });
-
   const setCampaignGoal = (goal: string) => {
     updateCampaignGoal(goal);
   };
@@ -64,13 +54,9 @@ export const useAnonymousCampaignWizard = () => {
     setIsGenerating(true);
     
     try {
-      console.log('Calling generate-campaign-analysis with goal:', campaignGoal);
-      
       const { data, error } = await supabase.functions.invoke('generate-campaign-analysis', {
         body: { campaignGoal }
       });
-
-      console.log('Supabase function response:', { data, error });
 
       if (error) {
         console.error('Supabase function error:', error);
@@ -89,7 +75,6 @@ export const useAnonymousCampaignWizard = () => {
         throw new Error('No analysis data in response');
       }
 
-      console.log('Campaign analysis generated successfully:', data.analysis);
       updateCampaignAnalysis(data.analysis);
       toast.success('Campaign analysis generated successfully!');
 

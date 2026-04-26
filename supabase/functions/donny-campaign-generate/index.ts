@@ -48,6 +48,103 @@ async function fetchAndExtract(url: string): Promise<FetchedContent> {
   return { title, description, bodyText };
 }
 
+async function generateCampaignIdeas(
+  pageContent: string,
+  sourceType: string,
+  role: string | null
+): Promise<{ business_context: Record<string, unknown>; campaign_ideas: unknown[] }> {
+  const systemPrompt = `You are Donny, a creative AI assistant for DragonCandy — a marketplace connecting restaurants with content creators.
+
+Given information about a business, you will:
+1. Extract structured business context (name, location, cuisine, vibe, etc.)
+2. Generate exactly 3 DIVERSE campaign ideas. Each idea must be a DIFFERENT campaign type.
+
+Campaign types to choose from: ugc_content, launch_hype, ongoing_presence, event_promo, seasonal.
+Platforms: instagram, tiktok, facebook, youtube, google_business, multi_platform.
+Content types: photo, video_reel, story, carousel, tiktok, youtube_short.
+Aspect ratios: 9:16, 16:9, 1:1, 4:5.
+Delivery tiers: dragondash (rush, 1-3 hours), express (24-48 hours), standard (5-7 days).
+
+Respond ONLY with valid JSON matching this exact schema:
+{
+  "business_context": {
+    "source_url": "<url or empty string>",
+    "source_type": "<google_business|instagram|website|yelp|photo|manual>",
+    "business_name": "<name>",
+    "cuisine_type": "<type or null>",
+    "location": { "city": "<city>", "state": "<state or null>", "country": "<country>" },
+    "rating": <number or null>,
+    "review_count": <number or null>,
+    "price_range": "<$ or $$ or $$$ or $$$$ or null>",
+    "photos": [],
+    "vibe_tags": ["<tag1>", "<tag2>"],
+    "review_highlights": ["<highlight1>"],
+    "social_links": { "instagram": "<url or null>", "tiktok": "<url or null>", "website": "<url or null>" }
+  },
+  "campaign_ideas": [
+    {
+      "id": "<uuid>",
+      "emoji": "<single emoji>",
+      "title": "<short catchy title>",
+      "description": "<one sentence>",
+      "campaign_type": "<type>",
+      "recommended_platforms": ["<platform>"],
+      "deliverables": [
+        {
+          "description": "<what the creator makes>",
+          "content_type": "<type>",
+          "platform": "<platform>",
+          "aspect_ratio": "<ratio>",
+          "estimated_duration": <seconds or null>
+        }
+      ],
+      "budget_range": { "min": <number>, "max": <number> },
+      "timeline_days": <number>,
+      "tier": "<dragondash|express|standard>",
+      "tier_reasoning": "<one sentence why this tier>",
+      "style_direction": "<visual style guidance>",
+      "target_creator_persona": ["<persona>"],
+      "key_messages": ["<message>"],
+      "hashtags": ["<hashtag>"]
+    }
+  ]
+}`;
+
+  const userPrompt = `Source type: ${sourceType}
+Role: ${role || 'anonymous'}
+
+Business information:
+${pageContent}
+
+Generate 3 diverse campaign ideas based on this business.`;
+
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${OPENAI_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'gpt-4o',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+      temperature: 0.8,
+      response_format: { type: 'json_object' },
+    }),
+  });
+
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`OpenAI API error: ${err}`);
+  }
+
+  const data = await response.json();
+  const content = data.choices[0].message.content;
+  return JSON.parse(content);
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -91,6 +188,32 @@ serve(async (req) => {
 
     // Parse and validate request body
     const body = await req.json();
+
+    // Detect the new "Donny-First" campaign creator format
+    const isNewFormat = 'source_type' in body;
+
+    if (isNewFormat) {
+      const { source_url, source_type, photo_url, manual_text, role } = body;
+
+      let pageContent = '';
+
+      if (source_type === 'manual' && manual_text) {
+        pageContent = manual_text;
+      } else if (source_type === 'photo' && photo_url) {
+        pageContent = `[Photo uploaded: ${photo_url}]`;
+      } else if (source_url) {
+        const extracted = await fetchAndExtract(source_url);
+        pageContent = `Title: ${extracted.title}\nDescription: ${extracted.description}\nContent: ${extracted.bodyText}`;
+      }
+
+      const ideasResponse = await generateCampaignIdeas(pageContent, source_type, role);
+
+      return new Response(JSON.stringify(ideasResponse), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Legacy format — existing callers continue unchanged below
     const {
       source_url,
       page_content,
