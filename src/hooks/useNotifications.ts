@@ -6,7 +6,7 @@ import { toast } from '@/hooks/use-toast';
 
 export interface Notification {
   id: string;
-  type: 'application_received' | 'application_status_changed' | 'milestone_completed' | 'sponsorship_proposal_received' | 'sponsorship_status_changed' | 'content_liked';
+  type: 'application_received' | 'application_status_changed' | 'milestone_completed' | 'sponsorship_proposal_received' | 'sponsorship_status_changed' | 'content_liked' | 'campaign_invitation';
   title: string;
   message: string;
   read: boolean;
@@ -437,10 +437,55 @@ export const useNotifications = () => {
       )
       .subscribe();
 
+    const invitationChannel = supabase
+      .channel('invitation-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'campaign_invitations',
+          filter: `creator_id=eq.${user.id}`,
+        },
+        async (payload) => {
+          console.log('New campaign invitation received:', payload);
+
+          let campaignTitle = 'a campaign';
+          try {
+            const { data: campaign } = await supabase
+              .from('campaigns')
+              .select('title')
+              .eq('id', payload.new.campaign_id)
+              .single();
+            if (campaign) campaignTitle = campaign.title;
+          } catch {}
+
+          toast({
+            title: 'Campaign Invitation!',
+            description: `You've been invited to "${campaignTitle}"`,
+          });
+
+          const notification: Notification = {
+            id: `invite-${payload.new.id}`,
+            type: 'campaign_invitation',
+            title: 'Campaign Invitation',
+            message: `You've been invited to "${campaignTitle}"`,
+            read: false,
+            created_at: new Date().toISOString(),
+            data: { campaign_id: payload.new.campaign_id, invitation_id: payload.new.id },
+          };
+
+          setNotifications(prev => [notification, ...prev]);
+          setUnreadCount(prev => prev + 1);
+        }
+      )
+      .subscribe();
+
     return () => {
       supabase.removeChannel(applicationChannel);
       supabase.removeChannel(sponsorshipChannel);
       supabase.removeChannel(likesChannel);
+      supabase.removeChannel(invitationChannel);
     };
   }, [user]);
 

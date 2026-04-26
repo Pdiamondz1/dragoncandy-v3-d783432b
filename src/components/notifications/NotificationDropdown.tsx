@@ -55,6 +55,10 @@ const NotificationDropdown: React.FC = () => {
       navigate('/dashboard/creator/applications');
     } else if (notification.type === 'content_liked') {
       navigate('/dashboard/creator/dragon-feed');
+    } else if (notification.type === 'campaign_invitation') {
+      if (notification.data?.campaign_id) {
+        navigate(`/dashboard/creator/campaigns/${notification.data.campaign_id}?invited=true`);
+      }
     }
   };
 
