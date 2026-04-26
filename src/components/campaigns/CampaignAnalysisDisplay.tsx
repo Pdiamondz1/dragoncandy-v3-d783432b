@@ -36,119 +36,137 @@ const CampaignAnalysisDisplay: React.FC<CampaignAnalysisDisplayProps> = ({
   return (
     <div className="space-y-6">
       {/* Campaign Title */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-xl sm:text-2xl text-center text-blue-600 break-words">
-            {analysis.title}
-          </CardTitle>
-        </CardHeader>
-      </Card>
+      {analysis.title && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-xl sm:text-2xl text-center text-blue-600 break-words">
+              {analysis.title}
+            </CardTitle>
+          </CardHeader>
+        </Card>
+      )}
 
       {/* Campaign Overview */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Target className="h-5 w-5 text-blue-500" />
-              Campaign Description
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-foreground">{analysis.description}</p>
-          </CardContent>
-        </Card>
+        {analysis.description && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Target className="h-5 w-5 text-blue-500" />
+                Campaign Description
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-foreground">{analysis.description}</p>
+            </CardContent>
+          </Card>
+        )}
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Target className="h-5 w-5 text-green-500" />
-              Campaign Goals
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {analysis.goals.map((goal, index) => (
-                <div key={index} className="flex items-center gap-2">
-                  <CheckSquare className="h-4 w-4 text-green-500" />
-                  <span className="text-foreground">{goal}</span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+        {analysis.goals && analysis.goals.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Target className="h-5 w-5 text-green-500" />
+                Campaign Goals
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {analysis.goals.map((goal, index) => (
+                  <div key={index} className="flex items-center gap-2">
+                    <CheckSquare className="h-4 w-4 text-green-500" />
+                    <span className="text-foreground">{goal}</span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Target Audience & Platforms */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Users className="h-5 w-5 text-purple-500" />
-              Target Audience
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-foreground">{analysis.target_audience}</p>
-          </CardContent>
-        </Card>
+      {(analysis.target_audience || (analysis.recommended_platforms && analysis.recommended_platforms.length > 0)) && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {analysis.target_audience && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Users className="h-5 w-5 text-purple-500" />
+                  Target Audience
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-foreground">{analysis.target_audience}</p>
+              </CardContent>
+            </Card>
+          )}
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <MessageSquare className="h-5 w-5 text-pink-500" />
-              Recommended Platforms
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-2">
-              {analysis.recommended_platforms.map((platform, index) => (
-                <Badge key={index} variant="secondary" className="text-sm">
-                  {platform}
-                </Badge>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+          {analysis.recommended_platforms && analysis.recommended_platforms.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <MessageSquare className="h-5 w-5 text-pink-500" />
+                  Recommended Platforms
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-2">
+                  {analysis.recommended_platforms.map((platform, index) => (
+                    <Badge key={index} variant="secondary" className="text-sm">
+                      {platform}
+                    </Badge>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
 
       {/* Content Types & Key Messages */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Palette className="h-5 w-5 text-orange-500" />
-              Content Types
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-2">
-              {analysis.content_types.map((type, index) => (
-                <Badge key={index} variant="outline" className="text-sm">
-                  {type}
-                </Badge>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <MessageSquare className="h-5 w-5 text-indigo-500" />
-              Key Messages
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {analysis.key_messages.map((message, index) => (
-                <div key={index} className="text-sm text-foreground">
-                  • {message}
+      {((analysis.content_types && analysis.content_types.length > 0) || (analysis.key_messages && analysis.key_messages.length > 0)) && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {analysis.content_types && analysis.content_types.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Palette className="h-5 w-5 text-orange-500" />
+                  Content Types
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-2">
+                  {analysis.content_types.map((type, index) => (
+                    <Badge key={index} variant="outline" className="text-sm">
+                      {type}
+                    </Badge>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {analysis.key_messages && analysis.key_messages.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <MessageSquare className="h-5 w-5 text-indigo-500" />
+                  Key Messages
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {analysis.key_messages.map((message, index) => (
+                    <div key={index} className="text-sm text-foreground">
+                      • {message}
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
 
       {/* Timeline & Budget */}
       {analysis.timeline_recommendations && (
@@ -175,24 +193,26 @@ const CampaignAnalysisDisplay: React.FC<CampaignAnalysisDisplayProps> = ({
       )}
 
       {/* Success Metrics */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <CheckSquare className="h-5 w-5 text-teal-500" />
-            Success Metrics
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-            {analysis.success_metrics.map((metric, index) => (
-              <div key={index} className="flex items-center gap-2">
-                <CheckSquare className="h-4 w-4 text-teal-500" />
-                <span className="text-foreground">{metric}</span>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+      {analysis.success_metrics && analysis.success_metrics.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <CheckSquare className="h-5 w-5 text-teal-500" />
+              Success Metrics
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              {analysis.success_metrics.map((metric, index) => (
+                <div key={index} className="flex items-center gap-2">
+                  <CheckSquare className="h-4 w-4 text-teal-500" />
+                  <span className="text-foreground">{metric}</span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Creative Brief Section */}
       {(analysis.content_ideas || analysis.hashtags || analysis.captions || analysis.posting_schedule || analysis.style_direction) && (

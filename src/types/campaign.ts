@@ -14,14 +14,14 @@ export interface PostingScheduleEntry {
 }
 
 export interface CampaignAnalysis {
-  title: string;
-  description: string;
-  target_audience: string;
-  goals: string[];
-  recommended_platforms: string[];
-  content_types: string[];
-  key_messages: string[];
-  success_metrics: string[];
+  title?: string;
+  description?: string;
+  target_audience?: string;
+  goals?: string[];
+  recommended_platforms?: string[];
+  content_types?: string[];
+  key_messages?: string[];
+  success_metrics?: string[];
   budget_recommendations?: {
     min: number;
     max: number;
