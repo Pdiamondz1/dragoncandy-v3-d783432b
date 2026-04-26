@@ -1,12 +1,17 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Link, Image, PenLine } from 'lucide-react';
+import { Link, Image, PenLine, X } from 'lucide-react';
 
 interface SmartInputProps {
   onSubmit: (value: string, mode: 'url' | 'photo' | 'text') => void;
   isExtracting: boolean;
   externalValue?: string;
+}
+
+interface Attachment {
+  type: 'url' | 'photo';
+  value: string;
+  name?: string;
 }
 
 const PLACEHOLDERS = [
@@ -17,7 +22,9 @@ const PLACEHOLDERS = [
 
 export function SmartInput({ onSubmit, isExtracting, externalValue }: SmartInputProps) {
   const [value, setValue] = useState('');
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -33,51 +40,100 @@ export function SmartInput({ onSubmit, isExtracting, externalValue }: SmartInput
     }
   }, [externalValue]);
 
-  const handlePaste = useCallback((e: React.ClipboardEvent<HTMLInputElement>) => {
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${Math.max(56, el.scrollHeight)}px`;
+  }, [value]);
+
+  const handleSubmit = useCallback(() => {
+    const text = value.trim();
+    if (!text && attachments.length === 0) return;
+    const hasUrl = attachments.some((a) => a.type === 'url') ||
+      text.startsWith('http://') || text.startsWith('https://');
+    const hasPhoto = attachments.some((a) => a.type === 'photo');
+    const mode = hasPhoto ? 'photo' : hasUrl ? 'url' : 'text';
+    const parts = [text, ...attachments.map((a) => a.value)].filter(Boolean);
+    onSubmit(parts.join('\n'), mode);
+  }, [value, attachments, onSubmit]);
+
+  const handlePaste = useCallback((e: React.ClipboardEvent<HTMLTextAreaElement>) => {
     const pasted = e.clipboardData.getData('text');
     if (pasted && (pasted.startsWith('http://') || pasted.startsWith('https://'))) {
       e.preventDefault();
-      setValue(pasted);
-      onSubmit(pasted, 'url');
+      setAttachments((prev) => [...prev, { type: 'url', value: pasted }]);
     }
-  }, [onSubmit]);
+  }, []);
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && value.trim()) {
-      const isUrl = value.startsWith('http://') || value.startsWith('https://');
-      onSubmit(value.trim(), isUrl ? 'url' : 'text');
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit();
     }
-  }, [value, onSubmit]);
+  }, [handleSubmit]);
 
   const handlePhotoUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const objectUrl = URL.createObjectURL(file);
-    onSubmit(objectUrl, 'photo');
-  }, [onSubmit]);
+    setAttachments((prev) => [...prev, { type: 'photo', value: objectUrl, name: file.name }]);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }, []);
+
+  const removeAttachment = useCallback((index: number) => {
+    setAttachments((prev) => prev.filter((_, i) => i !== index));
+  }, []);
 
   const handleUrlButtonClick = useCallback(() => {
-    if (value.trim()) {
-      const isUrl = value.startsWith('http://') || value.startsWith('https://');
-      onSubmit(value.trim(), isUrl ? 'url' : 'text');
-    }
-  }, [value, onSubmit]);
+    handleSubmit();
+  }, [handleSubmit]);
 
   const handleTextButtonClick = useCallback(() => {
-    if (value.trim()) onSubmit(value.trim(), 'text');
-  }, [value, onSubmit]);
+    handleSubmit();
+  }, [handleSubmit]);
 
   return (
     <div className="w-full space-y-4">
-      <Input
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        onPaste={handlePaste}
-        onKeyDown={handleKeyDown}
-        placeholder={PLACEHOLDERS[placeholderIndex]}
-        disabled={isExtracting}
-        className="h-14 text-lg rounded-full px-6 bg-white border-teal-300 focus:border-teal-400 focus:ring-teal-400/20"
-      />
+      <div className="rounded-2xl border-2 border-teal-300 bg-white focus-within:border-teal-400 focus-within:ring-2 focus-within:ring-teal-400/20 overflow-hidden">
+        <textarea
+          ref={textareaRef}
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onPaste={handlePaste}
+          onKeyDown={handleKeyDown}
+          placeholder={PLACEHOLDERS[placeholderIndex]}
+          disabled={isExtracting}
+          rows={1}
+          className="w-full min-h-[56px] max-h-[200px] text-lg px-6 py-4 bg-transparent border-none outline-none resize-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
+        />
+        {attachments.length > 0 && (
+          <div className="flex flex-wrap gap-2 px-4 pb-3">
+            {attachments.map((att, i) => (
+              <div key={i} className="flex items-center gap-2 bg-teal-50 border border-teal-200 rounded-full px-3 py-1.5 text-xs max-w-[280px]">
+                {att.type === 'url' ? (
+                  <>
+                    <Link className="w-3 h-3 text-teal-600 flex-shrink-0" />
+                    <span className="truncate text-gray-700">{att.value}</span>
+                  </>
+                ) : (
+                  <>
+                    <Image className="w-3 h-3 text-teal-600 flex-shrink-0" />
+                    <span className="truncate text-gray-700">{att.name || 'Photo'}</span>
+                  </>
+                )}
+                <button
+                  type="button"
+                  onClick={() => removeAttachment(i)}
+                  className="flex-shrink-0 text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
       <div className="flex justify-center gap-3">
         <Button
           variant="outline"

@@ -5,6 +5,7 @@ import { DropScreen } from '@/components/campaign-creator/DropScreen';
 import { LaunchpadScreen } from '@/components/campaign-creator/LaunchpadScreen';
 import { CampaignPreviewCard } from '@/components/campaign-creator/CampaignPreviewCard';
 import { AuthenticationModal } from '@/components/auth/AuthenticationModal';
+import { MobileBottomNav } from '@/components/MobileBottomNav';
 
 export default function CampaignCreator() {
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -16,10 +17,13 @@ export default function CampaignCreator() {
     launchCampaign, saveDraft,
   } = useCampaignCreator();
 
+  const navRole = userRole || 'business_client';
+
   if (screen === 'drop') {
     return (
-      <div className="min-h-screen bg-white">
+      <div className="min-h-screen bg-white pb-20">
         <DropScreen onSubmit={submitInput} isExtracting={isExtracting} extractionMessages={extractionMessages} />
+        {isMobile && <MobileBottomNav userRole={navRole} />}
       </div>
     );
   }
@@ -27,7 +31,7 @@ export default function CampaignCreator() {
   // Screen 2: Launchpad — mobile layout
   if (isMobile || !editedCampaign) {
     return (
-      <div className="min-h-screen bg-white pt-4">
+      <div className="min-h-screen bg-white pt-4 pb-20">
         <LaunchpadScreen
           ideas={campaignIdeas || []}
           selectedIdeaId={selectedIdeaId}
@@ -50,6 +54,7 @@ export default function CampaignCreator() {
           isOpen={showAuthModal}
           onClose={() => setShowAuthModal(false)}
         />
+        <MobileBottomNav userRole={navRole} />
       </div>
     );
   }
