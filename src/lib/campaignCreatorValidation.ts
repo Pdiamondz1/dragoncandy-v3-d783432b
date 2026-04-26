@@ -43,6 +43,7 @@ export const campaignIdeaSchema = z.object({
   emoji: z.string(),
   title: z.string(),
   description: z.string(),
+  tagline: z.string().optional().default(''),
   campaign_type: campaignTypeSchema.catch('ugc_content'),
   recommended_platforms: z.array(platformSchema).min(1),
   deliverables: z.array(ideaDeliverableSchema).min(1),
@@ -80,4 +81,10 @@ export const launchValidationSchema = z.object({
     'Deadline must be in the future'
   ),
   delivery_type: z.enum(['standard', 'expedited', 'dragonrush']),
+  tagline: z.string().max(120).optional().default(''),
+  per_creator_cap: z.number().min(0).optional().default(0),
+  usage_rights_days: z.number().min(0).optional().default(30),
+  exclusivity_days: z.number().min(0).optional().default(0),
+  geographic_scope: z.enum(['city', 'region', 'national']).optional().default('city'),
+  target_creator_count: z.number().min(1).optional().default(2),
 });
