@@ -21,10 +21,7 @@ import SiteGateGuard from "@/components/SiteGateGuard";
 import { Navigate } from "react-router-dom";
 import NotFound from "./pages/NotFound";
 import AuthPage from "./pages/AuthPage";
-import ProfileOnboarding from "./pages/ProfileOnboarding";
-import BusinessProfileSetup from "./pages/BusinessProfileSetup";
-import BrandProfileSetup from "./pages/BrandProfileSetup";
-import CreatorProfileSetup from "./pages/CreatorProfileSetup";
+import ProfileSetup from "./pages/ProfileSetup";
 import BusinessDashboard from "./pages/BusinessDashboard";
 import BrandDashboard from "./pages/BrandDashboard";
 import BrandSponsorships from "./pages/BrandSponsorships";
@@ -32,7 +29,6 @@ import BrandCreators from "./pages/BrandCreators";
 import BrandAnalytics from "./pages/BrandAnalytics";
 import ROIDashboard from "./pages/ROIDashboard";
 import BrandMessages from "./pages/BrandMessages";
-import BrandSettings from "./pages/BrandSettings";
 import BrandCampaignDetails from "./pages/BrandCampaignDetails";
 import CreatorDashboard from "./pages/CreatorDashboard";
 import BusinessSettings from "./pages/BusinessSettings";
@@ -133,42 +129,19 @@ const App = () => {
                   <Route path="/campaign/create" element={<AnonymousCampaignWizard />} />
                   <Route path="/auth/forgot" element={<ForgotPassword />} />
                   <Route path="/auth/update-password" element={<UpdatePassword />} />
-                  <Route path="/profile/onboarding" element={
+                  <Route path="/profile/setup" element={
                     <VerifiedRoute>
-                      <ProfileOnboarding />
+                      <ProfileSetup />
                     </VerifiedRoute>
                   } />
-                  <Route path="/profile/business" element={
-                    <VerifiedRoute>
-                      <BusinessProfileSetup />
-                    </VerifiedRoute>
-                  } />
-                  {/* Legacy/alias paths support for external email links */}
-                  <Route path="/business-profile-setup" element={
-                    <VerifiedRoute>
-                      <BusinessProfileSetup />
-                    </VerifiedRoute>
-                  } />
-                  <Route path="/profile/brand" element={
-                    <VerifiedRoute>
-                      <BrandProfileSetup />
-                    </VerifiedRoute>
-                  } />
-                  <Route path="/brand-profile-setup" element={
-                    <VerifiedRoute>
-                      <BrandProfileSetup />
-                    </VerifiedRoute>
-                  } />
-                  <Route path="/profile/creator" element={
-                    <VerifiedRoute>
-                      <CreatorProfileSetup />
-                    </VerifiedRoute>
-                  } />
-                  <Route path="/creator-profile-setup" element={
-                    <VerifiedRoute>
-                      <CreatorProfileSetup />
-                    </VerifiedRoute>
-                  } />
+                  {/* Redirects from old onboarding/setup paths */}
+                  <Route path="/profile/onboarding" element={<Navigate to="/profile/setup" replace />} />
+                  <Route path="/profile/business" element={<Navigate to="/profile/setup" replace />} />
+                  <Route path="/business-profile-setup" element={<Navigate to="/profile/setup" replace />} />
+                  <Route path="/profile/brand" element={<Navigate to="/profile/setup" replace />} />
+                  <Route path="/brand-profile-setup" element={<Navigate to="/profile/setup" replace />} />
+                  <Route path="/profile/creator" element={<Navigate to="/profile/setup" replace />} />
+                  <Route path="/creator-profile-setup" element={<Navigate to="/profile/setup" replace />} />
                   
                   {/* Protected Dashboard Routes */}
                   <Route path="/dashboard/business" element={
@@ -369,13 +342,7 @@ const App = () => {
                       </BrandRoute>
                     </ProtectedRoute>
                   } />
-                  <Route path="/dashboard/brand/settings" element={
-                    <ProtectedRoute>
-                      <BrandRoute>
-                        <BrandSettings />
-                      </BrandRoute>
-                    </ProtectedRoute>
-                  } />
+                  <Route path="/dashboard/brand/settings" element={<Navigate to="/dashboard/business/settings" replace />} />
                   <Route path="/dashboard/brand/campaigns/create" element={
                     <ProtectedRoute>
                       <BrandRoute>
