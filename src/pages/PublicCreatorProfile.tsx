@@ -8,6 +8,7 @@ import { Star, MapPin, User, Play } from 'lucide-react';
 import PublicProfileReviews from '@/components/profiles/PublicProfileReviews';
 import ContactCreatorModal from '@/components/creator-profile/ContactCreatorModal';
 import { PortfolioLightbox } from '@/components/creator-profile/PortfolioLightbox';
+import { InviteToCampaignModal } from '@/components/campaigns/InviteToCampaignModal';
 import logo from '@/assets/Transparent_DragonCandy_logo.png';
 
 interface CreatorProfile {
@@ -84,7 +85,7 @@ const resolveAvatarUrl = (raw: string | null | undefined, width = 160): string |
 
 const PublicCreatorProfile = () => {
   const { slug } = useParams();
-  const { user } = useAuth();
+  const { user, profile: authProfile } = useAuth();
   const navigate = useNavigate();
   const [profile, setProfile] = useState<CreatorProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -93,6 +94,7 @@ const PublicCreatorProfile = () => {
   const [projectsCount, setProjectsCount] = useState<number>(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
+  const [showInviteModal, setShowInviteModal] = useState(false);
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -496,6 +498,8 @@ const PublicCreatorProfile = () => {
           bio: profile.bio,
           response_time: profile.response_time
         };
+        const isBusinessUser =
+          authProfile?.role === 'business_client' || authProfile?.role === 'brand';
         return (
           <div className="px-4 pb-8 space-y-3">
             <ContactCreatorModal
@@ -506,6 +510,14 @@ const PublicCreatorProfile = () => {
                 </Button>
               }
             />
+            {isBusinessUser && (
+              <Button
+                onClick={() => setShowInviteModal(true)}
+                className="w-full rounded-full bg-dc-teal text-white font-bold h-14 text-base uppercase tracking-wide hover:bg-dc-teal/90"
+              >
+                Invite to Campaign
+              </Button>
+            )}
             <ContactCreatorModal
               creator={creatorForModal}
               trigger={
@@ -517,6 +529,14 @@ const PublicCreatorProfile = () => {
                 </Button>
               }
             />
+            {isBusinessUser && (
+              <InviteToCampaignModal
+                open={showInviteModal}
+                onOpenChange={setShowInviteModal}
+                creatorId={profile.user_id}
+                creatorName={profile.creator_name}
+              />
+            )}
           </div>
         );
       })()}
