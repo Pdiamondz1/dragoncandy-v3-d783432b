@@ -91,6 +91,18 @@ export const useCreateApplication = () => {
       } catch (error) {
         console.error('Failed to send notification email:', error);
       }
+
+      // Update invitation status to 'accepted' if creator was invited
+      try {
+        await supabase
+          .from('campaign_invitations')
+          .update({ status: 'accepted' })
+          .eq('campaign_id', data.campaign_id)
+          .eq('creator_id', user!.id)
+          .eq('status', 'pending');
+      } catch (invErr) {
+        console.error('Failed to update invitation status:', invErr);
+      }
     },
     onError: (error) => {
       console.error('Application submission failed:', error);
