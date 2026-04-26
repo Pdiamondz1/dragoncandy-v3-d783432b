@@ -369,7 +369,11 @@ const TOOL_DEFINITIONS = [
 function buildSystemPrompt(
   profile: Record<string, any>,
   userContext: { campaigns: any[]; pendingApplications: number },
-  requestContext?: { page_url?: string; surface?: string }
+  requestContext?: {
+    page_url?: string;
+    surface?: string;
+    campaign_context?: { campaign_id: string; title: string; status: string };
+  }
 ): string {
   const roleContext =
     profile.role === "business_client" || profile.role === "brand"
@@ -406,6 +410,11 @@ function buildSystemPrompt(
 
   if (requestContext?.page_url) {
     prompt += `\n- Currently viewing: ${requestContext.page_url}`;
+  }
+
+  if (requestContext?.campaign_context) {
+    const cc = requestContext.campaign_context;
+    prompt += `\n- Viewing campaign: "${cc.title}" (ID: ${cc.campaign_id}, status: ${cc.status}). Use this as the default campaign for tools like invite_creator unless the user specifies otherwise.`;
   }
 
   prompt += `
@@ -597,7 +606,12 @@ async function executeTool(
   toolName: string,
   args: Record<string, any>,
   userId: string,
-  supabaseAdmin: any
+  supabaseAdmin: any,
+  requestContext?: {
+    page_url?: string;
+    surface?: string;
+    campaign_context?: { campaign_id: string; title: string; status: string };
+  }
 ): Promise<{ result: any }> {
   switch (toolName) {
     // --- Campaign Tools ---
@@ -696,19 +710,37 @@ async function executeTool(
     }
 
     case "invite_creator": {
-      const { data, error } = await supabaseAdmin
-        .from("campaign_invitations")
-        .insert({
-          campaign_id: args.campaign_id,
+      const resolvedCampaignId = args.campaign_id || requestContext?.campaign_context?.campaign_id;
+
+      if (!resolvedCampaignId) {
+        return { result: { success: false, error: "No campaign specified. Please tell me which campaign to use." } };
+      }
+
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/send-campaign-invitation`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          campaign_id: resolvedCampaignId,
           creator_id: args.creator_id,
           invited_by: userId,
-          invitation_message: args.message ?? null,
-          status: "pending",
-        })
-        .select("id, status")
-        .single();
-      if (error) throw error;
-      return { result: { id: data.id, status: "invitation_sent" } };
+          invitation_message: args.message || null,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        return { result: { success: false, error: result.error || "Failed to send invitation" } };
+      }
+
+      if (result.already_invited) {
+        return { result: { success: true, already_invited: true, message: "This creator has already been invited to this campaign." } };
+      }
+
+      return { result: { success: true, invitation_id: result.invitation.id } };
     }
 
     // --- Application Tools ---
@@ -1420,7 +1452,7 @@ serve(async (req) => {
         let status = "completed";
 
         try {
-          const execution = await executeTool(toolUse.name, toolUse.input, userId, supabaseAdmin);
+          const execution = await executeTool(toolUse.name, toolUse.input, userId, supabaseAdmin, requestContext);
           toolResult = execution.result;
         } catch (err: any) {
           toolResult = { error: err.message };
