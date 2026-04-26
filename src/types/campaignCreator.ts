@@ -47,13 +47,19 @@ export interface CampaignIdea {
 export interface EditableCampaign {
   title: string;
   description: string;
+  tagline: string;
   campaign_type: CampaignType;
   platforms: Platform[];
   deliverables: Deliverable[];
   budget_min: number;
   budget_max: number;
+  per_creator_cap: number;
+  usage_rights_days: number;
+  exclusivity_days: number;
   deadline: string;
   delivery_type: 'standard' | 'expedited' | 'dragonrush';
+  geographic_scope: 'city' | 'region' | 'national';
+  target_creator_count: number;
   style_direction: string;
   target_creator_persona: string[];
   key_messages: string[];
