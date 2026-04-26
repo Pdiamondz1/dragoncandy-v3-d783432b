@@ -20,13 +20,6 @@ import type { Database } from '@/integrations/supabase/types';
 
 type CreatorSkill = Database['public']['Enums']['creator_skill'];
 
-const TIMEZONES = [
-  'UTC-12', 'UTC-11', 'UTC-10', 'UTC-9', 'UTC-8', 'UTC-7', 'UTC-6',
-  'UTC-5', 'UTC-4', 'UTC-3', 'UTC-2', 'UTC-1', 'UTC+0',
-  'UTC+1', 'UTC+2', 'UTC+3', 'UTC+4', 'UTC+5', 'UTC+6',
-  'UTC+7', 'UTC+8', 'UTC+9', 'UTC+10', 'UTC+11', 'UTC+12',
-];
-
 interface CreatorSettingsSectionsProps {
   formData: CreatorProfileFormData;
   selectedSkills: CreatorSkill[];
@@ -130,27 +123,6 @@ export function CreatorSettingsSections({
           </div>
         </div>
 
-        <div>
-          <Label htmlFor="timezone">Timezone</Label>
-          <Select
-            value={formData.timezone}
-            onValueChange={(value) => {
-              onInputChange('timezone', value);
-              onFieldBlur();
-            }}
-          >
-            <SelectTrigger id="timezone">
-              <SelectValue placeholder="Select timezone" />
-            </SelectTrigger>
-            <SelectContent>
-              {TIMEZONES.map((tz) => (
-                <SelectItem key={tz} value={tz}>
-                  {tz}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
       </SettingsSection>
 
       {/* 2. Rates & Availability */}

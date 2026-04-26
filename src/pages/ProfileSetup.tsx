@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { AvatarCropModal } from '@/components/settings/AvatarCropModal';
 import { MapPin } from 'lucide-react';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -64,13 +65,19 @@ export default function ProfileSetup() {
   // Shared state
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setAvatarFile(file);
-    setAvatarPreview(URL.createObjectURL(file));
+    setCropSrc(URL.createObjectURL(file));
+  };
+
+  const handleCropComplete = (croppedFile: File) => {
+    setAvatarFile(croppedFile);
+    setAvatarPreview(URL.createObjectURL(croppedFile));
+    setCropSrc(null);
   };
 
   const toggleSkill = (skill: CreatorSkill) => {
@@ -137,7 +144,7 @@ export default function ProfileSetup() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-400 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-white flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="bg-white rounded-3xl p-6 shadow-lg">
           {/* Avatar / Logo upload */}
@@ -298,6 +305,16 @@ export default function ProfileSetup() {
           </p>
         </div>
       </div>
+
+      {cropSrc && (
+        <AvatarCropModal
+          open
+          imageSrc={cropSrc}
+          cropShape={isCreator ? 'round' : 'rect'}
+          onComplete={handleCropComplete}
+          onCancel={() => setCropSrc(null)}
+        />
+      )}
     </div>
   );
 }
