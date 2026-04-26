@@ -26,7 +26,7 @@ function ideaToEditableCampaign(idea: CampaignIdea): EditableCampaign {
     content_type: d.content_type,
     platform: d.platform,
     aspect_ratio: d.aspect_ratio,
-    max_duration_seconds: d.estimated_duration,
+    max_duration_seconds: d.estimated_duration ?? undefined,
     description: d.description,
   }));
 
@@ -318,7 +318,8 @@ export function useCampaignCreator() {
       }
     },
     onError: (err) => {
-      toast.error('Launch failed', { description: String(err) });
+      console.error('Campaign launch error:', err);
+      toast.error('Launch failed — please check your campaign details and try again');
     },
   });
 
