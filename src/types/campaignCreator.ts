@@ -31,6 +31,7 @@ export interface CampaignIdea {
   emoji: string;
   title: string;
   description: string;
+  tagline?: string;
   campaign_type: CampaignType;
   recommended_platforms: Platform[];
   deliverables: IdeaDeliverable[];
