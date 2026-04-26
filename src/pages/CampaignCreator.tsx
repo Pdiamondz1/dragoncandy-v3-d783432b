@@ -48,69 +48,50 @@ export default function CampaignCreator() {
     );
   }
 
-  // Screen 2: Launchpad — mobile layout
-  if (isMobile || !editedCampaign) {
+  const launchpadProps = {
+    ideas: campaignIdeas || [],
+    selectedIdeaId,
+    editedCampaign,
+    brandFields,
+    userRole,
+    isExtracting,
+    extractionMessages,
+    isAuthenticated,
+    isLaunching,
+    onSelectIdea: selectIdea,
+    onRegenerate: regenerateIdeas,
+    updateField,
+    updateBrandField,
+    onLaunch: launchCampaign,
+    onSaveDraft: saveDraft,
+    onAuthRequired: () => setShowAuthModal(true),
+  };
+
+  // Screen 2: Mobile
+  if (isMobile) {
     return (
       <div className="min-h-screen bg-white pt-4 pb-20">
-        <LaunchpadScreen
-          ideas={campaignIdeas || []}
-          selectedIdeaId={selectedIdeaId}
-          editedCampaign={editedCampaign}
-          brandFields={brandFields}
-          userRole={userRole}
-          isExtracting={isExtracting}
-          extractionMessages={extractionMessages}
-          isAuthenticated={isAuthenticated}
-          isLaunching={isLaunching}
-          onSelectIdea={selectIdea}
-          onRegenerate={regenerateIdeas}
-          updateField={updateField}
-          updateBrandField={updateBrandField}
-          onLaunch={launchCampaign}
-          onSaveDraft={saveDraft}
-          onAuthRequired={() => setShowAuthModal(true)}
-        />
-        <AuthenticationModal
-          isOpen={showAuthModal}
-          onClose={() => setShowAuthModal(false)}
-        />
+        <LaunchpadScreen {...launchpadProps} />
+        <AuthenticationModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
         <MobileBottomNav userRole={navRole} />
       </div>
     );
   }
 
-  // Desktop split view — wrapped in DashboardLayout for sidebar + header
+  // Screen 2: Desktop — always wrapped in DashboardLayout
   return (
     <DashboardLayout userRole={navRole}>
       <div className="flex gap-6 max-w-6xl mx-auto">
         <div className="flex-1 min-w-0">
-          <LaunchpadScreen
-            ideas={campaignIdeas || []}
-            selectedIdeaId={selectedIdeaId}
-            editedCampaign={editedCampaign}
-            brandFields={brandFields}
-            userRole={userRole}
-            isExtracting={isExtracting}
-            extractionMessages={extractionMessages}
-            isAuthenticated={isAuthenticated}
-            isLaunching={isLaunching}
-            onSelectIdea={selectIdea}
-            onRegenerate={regenerateIdeas}
-            updateField={updateField}
-            updateBrandField={updateBrandField}
-            onLaunch={launchCampaign}
-            onSaveDraft={saveDraft}
-            onAuthRequired={() => setShowAuthModal(true)}
-          />
+          <LaunchpadScreen {...launchpadProps} />
         </div>
-        <div className="w-80 flex-shrink-0 hidden md:block">
-          <CampaignPreviewCard campaign={editedCampaign} />
-        </div>
+        {editedCampaign && (
+          <div className="w-80 flex-shrink-0 hidden md:block">
+            <CampaignPreviewCard campaign={editedCampaign} />
+          </div>
+        )}
       </div>
-      <AuthenticationModal
-        isOpen={showAuthModal}
-        onClose={() => setShowAuthModal(false)}
-      />
+      <AuthenticationModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
     </DashboardLayout>
   );
 }
