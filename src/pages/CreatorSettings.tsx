@@ -1,18 +1,19 @@
-import React, { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { toast } from 'sonner';
 import DashboardLayout from '@/components/DashboardLayout';
-import { CreatorSettingsHeader } from '@/components/creator-profile/CreatorSettingsHeader';
-import { CreatorSettingsForm } from '@/components/creator-profile/CreatorSettingsForm';
+import { ProfileCompletionBar } from '@/components/settings/ProfileCompletionBar';
+import { CreatorSettingsSections } from '@/components/settings/CreatorSettingsSections';
 import { useCreatorProfileForm } from '@/hooks/useCreatorProfileForm';
 import { useCreatorProfileLoad } from '@/hooks/useCreatorProfileLoad';
 import { useCreatorProfileSubmit } from '@/hooks/useCreatorProfileSubmit';
-import { useToast } from '@/hooks/use-toast';
+import { calculateCreatorCompletion } from '@/hooks/useProfileCompletion';
 
 const CreatorSettings = () => {
-  const { submitProfile, loading } = useCreatorProfileSubmit();
+  const { submitProfile } = useCreatorProfileSubmit();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { toast } = useToast();
-  
+  const [activeSection, setActiveSection] = useState<string | undefined>(undefined);
+
   const {
     formData,
     avatarFile,
@@ -22,61 +23,79 @@ const CreatorSettings = () => {
     handleSkillChange,
     setAvatarFile,
     setPortfolioPaths,
-    setFormDataFromProfile
+    setFormDataFromProfile,
   } = useCreatorProfileForm();
 
-  const { user } = useCreatorProfileLoad(setFormDataFromProfile);
+  useCreatorProfileLoad(setFormDataFromProfile);
 
   // Handle Stripe onboarding return
   useEffect(() => {
     if (searchParams.get('stripe_onboarding') === 'complete') {
-      toast({
-        title: 'Stripe Setup Complete!',
-        description: 'Your payout account is now connected. You can receive payments.',
-      });
+      toast.success('Stripe Setup Complete! Your payout account is now connected. You can receive payments.');
       setSearchParams({});
     } else if (searchParams.get('stripe_refresh') === 'true') {
-      toast({
-        title: 'Stripe Setup Incomplete',
-        description: 'Please complete your Stripe onboarding to receive payouts.',
-        variant: 'destructive',
-      });
+      toast.error('Stripe Setup Incomplete. Please complete your Stripe onboarding to receive payouts.');
       setSearchParams({});
     }
-  }, [searchParams, setSearchParams, toast]);
+  }, [searchParams, setSearchParams]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user) return;
-    
+  const handleFieldBlur = async () => {
     const success = await submitProfile(formData, selectedSkills, avatarFile, portfolioPaths, true);
     if (success) {
       setAvatarFile(null);
+      toast.success('Saved', { duration: 1500 });
     }
   };
 
+  const handleNudgeClick = () => {
+    if (completion.nextSection) {
+      setActiveSection(completion.nextSection);
+    }
+  };
+
+  const completion = calculateCreatorCompletion({
+    creator_name: formData.creator_name,
+    bio: formData.bio,
+    skills: selectedSkills,
+    avatar_url: formData.avatar_url || null,
+    base_rate_per_hour: formData.base_rate_per_hour ? parseFloat(formData.base_rate_per_hour) : null,
+    portfolio_urls: portfolioPaths.length > 0 ? portfolioPaths : null,
+    instagram_url: formData.instagram_url || null,
+    tiktok_url: formData.tiktok_url || null,
+    youtube_url: formData.youtube_url || null,
+    facebook_url: formData.facebook_url || null,
+    linkedin_url: formData.linkedin_url || null,
+    x_url: formData.x_url || null,
+    other_social_url: formData.other_social_url || null,
+    website_url: formData.website_url || null,
+    city: formData.city || null,
+    country: formData.country || null,
+  });
+
   return (
     <DashboardLayout userRole="content_creator">
-      <div className="min-h-screen bg-white overflow-x-hidden pb-24 md:pb-0 md:max-w-3xl md:mx-auto">
-        {/* Template C header */}
-        <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
-          <div className="flex-1 text-center">
-            <h1 className="font-sans text-base font-bold text-gray-900 uppercase tracking-wide">Settings</h1>
-          </div>
-        </div>
-        <div className="p-4">
-          <CreatorSettingsHeader />
-          <CreatorSettingsForm
+      <div className="min-h-screen bg-gray-400 p-4">
+        <div className="max-w-lg mx-auto">
+          <ProfileCompletionBar
+            avatarUrl={formData.avatar_url || null}
+            displayName={formData.creator_name || 'Creator'}
+            roleLabel="Content Creator"
+            completion={completion}
+            isCreator={true}
+            onNudgeClick={handleNudgeClick}
+          />
+          <CreatorSettingsSections
             formData={formData}
             selectedSkills={selectedSkills}
             avatarFile={avatarFile}
             portfolioPaths={portfolioPaths}
-            loading={loading}
+            completion={completion}
             onInputChange={handleInputChange}
             onSkillChange={handleSkillChange}
             onAvatarFileChange={setAvatarFile}
             onPortfolioPathsChange={setPortfolioPaths}
-            onSubmit={handleSubmit}
+            onFieldBlur={handleFieldBlur}
+            defaultSection={activeSection}
           />
         </div>
       </div>
