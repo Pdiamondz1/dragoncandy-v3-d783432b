@@ -11,7 +11,7 @@ interface SmartInputProps {
 const PLACEHOLDERS = [
   'Paste your Google Business link...',
   'Paste your Instagram profile...',
-  'Or just describe your business...',
+  'Or just describe your restaurant...',
 ];
 
 export function SmartInput({ onSubmit, isExtracting }: SmartInputProps) {

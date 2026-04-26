@@ -11,31 +11,31 @@ export const ideaDeliverableSchema = z.object({
   content_type: contentTypeSchema.catch('video_reel'),
   platform: platformSchema.catch('instagram'),
   aspect_ratio: aspectRatioSchema.catch('9:16'),
-  estimated_duration: z.number().optional(),
+  estimated_duration: z.number().nullish(),
 });
 
 export const businessContextSchema = z.object({
-  source_url: z.string(),
-  source_type: z.enum(['google_business', 'instagram', 'website', 'yelp', 'photo', 'manual']),
+  source_url: z.string().default(''),
+  source_type: z.enum(['google_business', 'instagram', 'website', 'yelp', 'photo', 'manual']).catch('website'),
   business_name: z.string(),
-  cuisine_type: z.string().optional(),
+  cuisine_type: z.string().nullish(),
   location: z.object({
-    city: z.string(),
-    state: z.string().optional(),
-    country: z.string(),
-  }),
-  rating: z.number().optional(),
-  review_count: z.number().optional(),
-  price_range: z.enum(['$', '$$', '$$$', '$$$$']).optional(),
+    city: z.string().default(''),
+    state: z.string().nullish(),
+    country: z.string().default(''),
+  }).catch({ city: '', state: null, country: '' }),
+  rating: z.number().nullish(),
+  review_count: z.number().nullish(),
+  price_range: z.enum(['$', '$$', '$$$', '$$$$']).nullish(),
   photos: z.array(z.string()).default([]),
   vibe_tags: z.array(z.string()).default([]),
-  hours: z.record(z.string()).optional(),
+  hours: z.record(z.string()).nullish(),
   social_links: z.object({
-    instagram: z.string().optional(),
-    tiktok: z.string().optional(),
-    website: z.string().optional(),
-  }).optional(),
-  review_highlights: z.array(z.string()).optional(),
+    instagram: z.string().nullish(),
+    tiktok: z.string().nullish(),
+    website: z.string().nullish(),
+  }).nullish(),
+  review_highlights: z.array(z.string()).default([]),
 });
 
 export const campaignIdeaSchema = z.object({

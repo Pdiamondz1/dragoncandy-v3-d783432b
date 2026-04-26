@@ -4,16 +4,16 @@ export interface BusinessContext {
   source_url: string;
   source_type: 'google_business' | 'instagram' | 'website' | 'yelp' | 'photo' | 'manual';
   business_name: string;
-  cuisine_type?: string;
-  location: { city: string; state?: string; country: string };
-  rating?: number;
-  review_count?: number;
-  price_range?: '$' | '$$' | '$$$' | '$$$$';
+  cuisine_type?: string | null;
+  location: { city: string; state?: string | null; country: string };
+  rating?: number | null;
+  review_count?: number | null;
+  price_range?: '$' | '$$' | '$$$' | '$$$$' | null;
   photos: string[];
   vibe_tags: string[];
-  hours?: Record<string, string>;
-  social_links?: { instagram?: string; tiktok?: string; website?: string };
-  review_highlights?: string[];
+  hours?: Record<string, string> | null;
+  social_links?: { instagram?: string | null; tiktok?: string | null; website?: string | null } | null;
+  review_highlights: string[];
 }
 
 export interface IdeaDeliverable {
@@ -21,7 +21,7 @@ export interface IdeaDeliverable {
   content_type: ContentType;
   platform: Platform;
   aspect_ratio: AspectRatio;
-  estimated_duration?: number;
+  estimated_duration?: number | null;
 }
 
 export type CampaignType = 'ugc_content' | 'launch_hype' | 'ongoing_presence' | 'event_promo' | 'seasonal';

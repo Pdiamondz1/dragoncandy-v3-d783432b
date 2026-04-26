@@ -163,7 +163,7 @@ export function useCampaignCreator() {
     const addMessage = (msg: string) => setExtractionMessages((prev) => [...prev, msg]);
 
     try {
-      if (mode === 'url') addMessage("Checking out your business...");
+      if (mode === 'url') addMessage("Checking out your restaurant...");
       else if (mode === 'photo') addMessage("Analyzing your photo...");
       else addMessage("Got it, let me work with that...");
 
@@ -200,8 +200,9 @@ export function useCampaignCreator() {
 
       setScreen('launchpad');
     } catch (err) {
-      addMessage("I couldn't read that — want to try a different link, or just tell me about your business?");
-      toast.error('Extraction failed', { description: String(err) });
+      addMessage("I couldn't read that — want to try a different link, or just tell me about your restaurant?");
+      console.error('Campaign extraction error:', err);
+      toast.error('Extraction failed — try a different link or describe your restaurant instead');
     } finally {
       setIsExtracting(false);
     }

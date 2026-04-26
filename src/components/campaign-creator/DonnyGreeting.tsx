@@ -13,7 +13,7 @@ export function DonnyGreeting({ isExtracting }: DonnyGreetingProps) {
           Create a Campaign
         </h1>
         <p className="text-sm text-gray-500 mt-2">
-          Paste a link, drop a photo, or tell me about your business
+          Paste a link, drop a photo, or tell me about your restaurant
         </p>
       </div>
     </div>
