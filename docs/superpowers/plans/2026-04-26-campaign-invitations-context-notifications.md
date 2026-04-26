@@ -61,12 +61,11 @@ In `supabase/functions/send-notification-email/index.ts`, add `'campaign_invitat
 
 - [ ] **Step 2: Add data fields to NotificationEmailRequest interface**
 
-In the `NotificationEmailRequest` interface's `data` object (around line 41-73), add the new fields needed by the campaign_invitation template:
+In the `NotificationEmailRequest` interface's `data` object (around line 41-73), add the new fields needed by the campaign_invitation template. Note: `businessName` already exists in the interface, so only add these two:
 
 ```typescript
 invitationMessage?: string;
 campaignUrl?: string;
-businessName?: string;
 ```
 
 - [ ] **Step 3: Add email template**
@@ -861,18 +860,23 @@ Update the `CreatorMatchCard` rendering (around lines 252-263) to pass these pro
 />
 ```
 
-- [ ] **Step 2: Verify TypeScript compiles**
+- [ ] **Step 2: Hide the "Apply Now" button on business-facing cards**
+
+The `CreatorMatchCard` component (around line 238-257) has an "Apply Now" button intended for creator-facing views. Since the AI Match tab is a business-facing view, the "Apply Now" button is confusing. In `CreatorMatchingSection.tsx`, when rendering CreatorMatchCard, the `onInvite` prop being set signals this is a business context. The `CreatorMatchCard` already conditionally renders invite vs apply — if both `onInvite` and the apply button show, check the component and ensure only the invite button renders when `onInvite` is provided.
+
+- [ ] **Step 3: Verify TypeScript compiles**
 
 Run: `npx tsc --noEmit 2>&1 | head -10`
 
-- [ ] **Step 3: Test in browser**
+- [ ] **Step 4: Test in browser**
 
 Run `npm run dev`. Navigate to a campaign's AI Match tab. Verify:
 - "Invite" button appears on each creator card
+- No duplicate "Apply Now" button shows alongside "Invite"
 - Clicking "Invite" sends the invitation and button changes to "Invited"
 - Toast confirms success
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
 git add src/components/campaigns/CreatorMatchingSection.tsx
@@ -1187,6 +1191,7 @@ In `src/pages/CampaignDetailsPage.tsx`, after the existing `useLocation()` call 
 
 ```typescript
 import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 const searchParams = new URLSearchParams(location.search);
 const isInvitedByParam = searchParams.get('invited') === 'true';
@@ -1333,12 +1338,12 @@ export function CampaignConversationHeader({ campaignId }: CampaignConversationH
 
 In `src/pages/DirectConversationPage.tsx`, the conversation object is fetched via `useConversations()` (line 15) and the current one is found on line 23: `const conversation = conversations.find(c => c.conversation_id === conversationId)`. The conversation type from `useConversations` includes `campaign_id: string | null` (from `src/hooks/useConversations.ts:15`).
 
-Add the import and render the header below the chat header div (after line 86, below the `<ArrowLeft>` back button section):
+Add the import and render the header below the chat header div. The chat header `</div>` closes around line 107, before the `ConversationMessageThread` component:
 
 ```tsx
 import { CampaignConversationHeader } from '@/components/messaging/CampaignConversationHeader';
 
-// After the closing </div> of the chat header (around line 100), before the message thread:
+// After the closing </div> of the chat header (around line 107), before ConversationMessageThread:
 {conversation?.campaign_id && (
   <CampaignConversationHeader campaignId={conversation.campaign_id} />
 )}
