@@ -46,7 +46,7 @@ serve(async (req) => {
 
     const { data: campaign, error: campaignError } = await supabaseClient
       .from('campaigns')
-      .select('id, user_id, escrow_payment_intent_id, escrow_status, status, title')
+      .select('id, user_id, escrow_payment_intent_id, escrow_status, status, title, fixed_price, budget_max, pricing_type, delivery_fee, delivery_type, per_creator_cap, creator_count, budget_spent')
       .eq('id', campaignId)
       .single();
 
@@ -140,6 +140,68 @@ serve(async (req) => {
       stripe_id: actualPaymentIntentId,
     }, '[VERIFY-CAMPAIGN-ESCROW]');
 
+    // Budget validation
+    const { data: application } = await supabaseClient
+      .from('campaign_applications')
+      .select('proposed_rate')
+      .eq('campaign_id', campaignId)
+      .eq('status', 'accepted')
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (application && campaign.per_creator_cap && application.proposed_rate > campaign.per_creator_cap) {
+      logStep("Per-creator cap exceeded", {
+        proposed: application.proposed_rate,
+        cap: campaign.per_creator_cap,
+      });
+      if (actualPaymentIntentId) {
+        await stripe.refunds.create({ payment_intent: actualPaymentIntentId });
+      }
+      return new Response(
+        JSON.stringify({ error: `Creator's rate ($${application.proposed_rate}) exceeds per-creator cap ($${campaign.per_creator_cap})` }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+      );
+    }
+
+    const budgetMax = campaign.budget_max || campaign.fixed_price || 0;
+    const budgetSpent = campaign.budget_spent || 0;
+    const proposedRate = application?.proposed_rate || 0;
+
+    if (budgetMax > 0 && budgetSpent + proposedRate > budgetMax) {
+      logStep("Budget pool exceeded", {
+        budgetSpent,
+        proposedRate,
+        budgetMax,
+      });
+      if (actualPaymentIntentId) {
+        await stripe.refunds.create({ payment_intent: actualPaymentIntentId });
+      }
+      return new Response(
+        JSON.stringify({ error: `Accepting at $${proposedRate} would exceed remaining budget ($${budgetMax - budgetSpent} remaining)` }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+      );
+    }
+
+    if (campaign.creator_count) {
+      const { count } = await supabaseClient
+        .from('campaign_collaborations')
+        .select('id', { count: 'exact', head: true })
+        .eq('campaign_id', campaignId)
+        .eq('status', 'active');
+
+      if ((count || 0) >= campaign.creator_count) {
+        logStep("Creator count full", { current: count, max: campaign.creator_count });
+        if (actualPaymentIntentId) {
+          await stripe.refunds.create({ payment_intent: actualPaymentIntentId });
+        }
+        return new Response(
+          JSON.stringify({ error: `Campaign already has ${campaign.creator_count} active creators` }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+        );
+      }
+    }
+
     // Create collaboration from accepted application (using service role - no RLS issues)
     const { data: acceptedApp } = await supabaseClient
       .from('campaign_applications')
@@ -173,6 +235,15 @@ serve(async (req) => {
           logStep("WARNING: Failed to create collaboration", { error: collabError.message });
         } else {
           logStep("Collaboration created successfully", { creatorId: acceptedApp.creator_id });
+
+          // Track budget spend
+          if (proposedRate > 0) {
+            await supabaseClient.rpc('increment_budget_spent', {
+              p_campaign_id: campaignId,
+              p_amount: proposedRate,
+            });
+            logStep("Budget incremented", { amount: proposedRate });
+          }
         }
       } else {
         logStep("Collaboration already exists");
