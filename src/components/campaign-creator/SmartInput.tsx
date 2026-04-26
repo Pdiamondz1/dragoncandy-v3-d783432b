@@ -6,6 +6,7 @@ import { Link, Image, PenLine } from 'lucide-react';
 interface SmartInputProps {
   onSubmit: (value: string, mode: 'url' | 'photo' | 'text') => void;
   isExtracting: boolean;
+  externalValue?: string;
 }
 
 const PLACEHOLDERS = [
@@ -14,7 +15,7 @@ const PLACEHOLDERS = [
   'Or just describe your restaurant...',
 ];
 
-export function SmartInput({ onSubmit, isExtracting }: SmartInputProps) {
+export function SmartInput({ onSubmit, isExtracting, externalValue }: SmartInputProps) {
   const [value, setValue] = useState('');
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -25,6 +26,12 @@ export function SmartInput({ onSubmit, isExtracting }: SmartInputProps) {
     }, 3000);
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    if (externalValue !== undefined) {
+      setValue(externalValue);
+    }
+  }, [externalValue]);
 
   const handlePaste = useCallback((e: React.ClipboardEvent<HTMLInputElement>) => {
     const pasted = e.clipboardData.getData('text');

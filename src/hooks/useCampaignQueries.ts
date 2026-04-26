@@ -26,6 +26,16 @@ export interface Campaign {
   fixed_price?: number;
   escrow_status?: 'none' | 'pending' | 'held' | 'released' | 'refunded';
   escrow_payment_intent_id?: string;
+  // Campaign detail fields
+  tagline?: string;
+  campaign_type?: string;
+  per_creator_cap?: number;
+  usage_rights_days?: number;
+  exclusivity_days?: number;
+  geographic_scope?: 'city' | 'region' | 'national';
+  creator_count?: number;
+  target_creator_personas?: string[];
+  hashtag_requirements?: string;
   // AI-generated campaign analysis
   ai_analysis?: CampaignAnalysis | null;
   ai_preview_status?: string | null;
