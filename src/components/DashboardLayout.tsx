@@ -30,6 +30,8 @@ import { Settings, LogOut, PlusCircle, HelpCircle } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { useAuth } from '@/hooks/useAuth';
 import { useLogout } from '@/hooks/useLogout';
+import { useInactivityTimeout } from '@/hooks/useInactivityTimeout';
+import { InactivityWarningDialog } from '@/components/InactivityWarningDialog';
 import { useProfileData } from '@/hooks/useProfileData';
 import NotificationDropdown from '@/components/notifications/NotificationDropdown';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -135,6 +137,7 @@ const AppSidebar: React.FC<AppSidebarProps> = ({ userRole }) => {
 const DashboardLayoutInner: React.FC<DashboardLayoutProps> = ({ children, userRole }) => {
   const { user, activeOrg } = useAuth();
   const logout = useLogout();
+  const { showWarning, confirmActive } = useInactivityTimeout(logout);
   const { avatarUrl, displayName } = useProfileData();
   const isMobile = useIsMobile();
   const location = useLocation();
@@ -276,6 +279,7 @@ const DashboardLayoutInner: React.FC<DashboardLayoutProps> = ({ children, userRo
         {/* Mobile bottom nav */}
         {isMobile && <MobileBottomNav userRole={userRole} />}
 
+        <InactivityWarningDialog open={showWarning} onConfirm={confirmActive} />
       </div>
     </SidebarProvider>
   );
