@@ -116,7 +116,7 @@ export default function ProfileSetup() {
           country: autoDetect.country || null,
           timezone: autoDetect.timezone || null,
           is_completed: true,
-        });
+        }, { onConflict: 'user_id' });
         if (error) throw error;
         toast.success('Your creator profile is live!');
         navigate('/dashboard/creator');
@@ -130,7 +130,7 @@ export default function ProfileSetup() {
           country: autoDetect.country || null,
           timezone: autoDetect.timezone || null,
           is_completed: true,
-        });
+        }, { onConflict: 'user_id' });
         if (error) throw error;
         toast.success('Your business profile is live!');
         navigate('/dashboard/business');
