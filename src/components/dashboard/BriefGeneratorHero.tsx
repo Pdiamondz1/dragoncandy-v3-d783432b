@@ -53,6 +53,11 @@ export function BriefGeneratorHero({ orgId }: BriefGeneratorHeroProps) {
     const trimmed = url.trim();
     if (!trimmed) return;
 
+    try { new URL(trimmed); } catch {
+      toast.error('Please enter a valid URL (e.g. https://example.com)');
+      return;
+    }
+
     if (!gate.allowed) {
       setShowPaywall(true);
       return;
@@ -72,15 +77,15 @@ export function BriefGeneratorHero({ orgId }: BriefGeneratorHeroProps) {
       const result = data as GeneratedBrief;
       setBrief(result);
 
-      // Record the generation
       if (user?.id && orgId) {
-        await supabase.from('campaign_brief_generations' as any).insert({
+        const { error: insertError } = await supabase.from('campaign_brief_generations' as any).insert({
           user_id: user.id,
           org_id: orgId,
           source_url: trimmed,
-          brief_data: result,
+          brief_jsonb: result,
           generated_at: new Date().toISOString(),
         });
+        if (insertError) console.warn('Failed to record brief generation:', insertError);
       }
     } catch (err) {
       console.error('Brief generation failed:', err);
@@ -95,8 +100,11 @@ export function BriefGeneratorHero({ orgId }: BriefGeneratorHeroProps) {
   }, [url, gate.allowed, runProgressAnimation, user?.id, orgId]);
 
   const handleSaveForLater = useCallback(() => {
-    toast.success('Brief saved! Find it in your campaign drafts.');
-  }, []);
+    if (brief) {
+      localStorage.setItem('pendingBrief', JSON.stringify(brief));
+      toast.success('Brief saved locally. Create a campaign when you\'re ready.');
+    }
+  }, [brief]);
 
   // Progress animation view
   if (isGenerating) {
@@ -172,8 +180,8 @@ export function BriefGeneratorHero({ orgId }: BriefGeneratorHeroProps) {
                 Content suggestions
               </p>
               <ul className="list-disc list-inside text-sm text-gray-700 space-y-1 mt-1">
-                {brief.content_suggestions.map((suggestion) => (
-                  <li key={suggestion}>{suggestion}</li>
+                {brief.content_suggestions.map((suggestion, i) => (
+                  <li key={`${i}-${suggestion}`}>{suggestion}</li>
                 ))}
               </ul>
             </div>
@@ -216,7 +224,7 @@ export function BriefGeneratorHero({ orgId }: BriefGeneratorHeroProps) {
           <Globe className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
           <Input
             type="url"
-            placeholder="Paste your restaurant URL"
+            placeholder="Paste your website URL"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             className="pl-10"
