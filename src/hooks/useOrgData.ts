@@ -208,7 +208,7 @@ export function useUpdateOrgUnit() {
         .single();
 
       if (error) throw error;
-      return data as OrgUnit;
+      return data as unknown as OrgUnit;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: KEYS.orgUnits(data.org_id) });

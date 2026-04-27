@@ -44,9 +44,9 @@ export const useCreatorUpcomingDeadlines = () => {
 
         const now = new Date();
         
-        return collaborations
-          .filter(collab => collab.campaigns?.deadline) // Filter out null deadlines
-          .map(collab => {
+        return (collaborations as any[])
+          .filter((collab: any) => collab.campaigns?.deadline)
+          .map((collab: any) => {
             const deadline = new Date(collab.campaigns?.deadline!);
             const diffTime = deadline.getTime() - now.getTime();
             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
