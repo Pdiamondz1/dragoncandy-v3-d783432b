@@ -40,6 +40,7 @@ CREATE TABLE IF NOT EXISTS public.campaign_templates (
     'product_launch', 'seasonal', 'ugc', 'brand_awareness', 'event'
   )),
   template_data jsonb NOT NULL DEFAULT '{}',
+  display_order integer NOT NULL DEFAULT 0,
   is_active boolean NOT NULL DEFAULT true,
   created_at timestamptz NOT NULL DEFAULT now()
 );
@@ -56,17 +57,17 @@ CREATE POLICY "Service role manages templates"
   USING (true) WITH CHECK (true);
 
 -- Seed 5 templates
-INSERT INTO public.campaign_templates (title, description, category, template_data) VALUES
+INSERT INTO public.campaign_templates (title, description, category, template_data, display_order) VALUES
   ('Product Launch UGC', 'User-generated content to launch a new product with authentic creator voices.', 'product_launch',
-   '{"content_types":["short_video","photo_carousel"],"platforms":["instagram","tiktok"],"budget_range":{"min":500,"max":2000},"timeline_days":14,"deliverables_count":3}'::jsonb),
+   '{"content_types":["short_video","photo_carousel"],"platforms":["instagram","tiktok"],"budget_range":{"min":500,"max":2000},"timeline_days":14,"deliverables_count":3}'::jsonb, 1),
   ('Seasonal Promo', 'Holiday or seasonal content push to drive foot traffic and online orders.', 'seasonal',
-   '{"content_types":["short_video","story"],"platforms":["instagram","tiktok"],"budget_range":{"min":300,"max":1500},"timeline_days":7,"deliverables_count":2}'::jsonb),
+   '{"content_types":["short_video","story"],"platforms":["instagram","tiktok"],"budget_range":{"min":300,"max":1500},"timeline_days":7,"deliverables_count":2}'::jsonb, 2),
   ('UGC Collection', 'Collect authentic user-generated content for your brand library.', 'ugc',
-   '{"content_types":["photo","short_video"],"platforms":["instagram"],"budget_range":{"min":200,"max":1000},"timeline_days":21,"deliverables_count":5}'::jsonb),
+   '{"content_types":["photo","short_video"],"platforms":["instagram"],"budget_range":{"min":200,"max":1000},"timeline_days":21,"deliverables_count":5}'::jsonb, 3),
   ('Brand Awareness', 'Long-term storytelling campaign to build brand recognition with creators.', 'brand_awareness',
-   '{"content_types":["long_video","blog_post","photo_carousel"],"platforms":["youtube","instagram","tiktok"],"budget_range":{"min":1000,"max":5000},"timeline_days":30,"deliverables_count":4}'::jsonb),
+   '{"content_types":["long_video","blog_post","photo_carousel"],"platforms":["youtube","instagram","tiktok"],"budget_range":{"min":1000,"max":5000},"timeline_days":30,"deliverables_count":4}'::jsonb, 4),
   ('Event Coverage', 'Same-day creator content from your event, launch party, or pop-up.', 'event',
-   '{"content_types":["short_video","story","photo"],"platforms":["instagram","tiktok"],"budget_range":{"min":500,"max":3000},"timeline_days":3,"deliverables_count":3}'::jsonb);
+   '{"content_types":["short_video","story","photo"],"platforms":["instagram","tiktok"],"budget_range":{"min":500,"max":3000},"timeline_days":3,"deliverables_count":3}'::jsonb, 5);
 
 -- Pricing funnel analytics
 CREATE TABLE IF NOT EXISTS public.pricing_funnel_events (
