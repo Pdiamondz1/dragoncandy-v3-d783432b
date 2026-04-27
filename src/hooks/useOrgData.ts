@@ -95,7 +95,7 @@ export function useOrgUnits(orgId?: string | null) {
         .order('name', { ascending: true });
 
       if (error) throw error;
-      return (data ?? []) as OrgUnit[];
+      return (data ?? []) as unknown as OrgUnit[];
     },
     enabled: !!orgId,
   });
@@ -115,7 +115,7 @@ export function useActiveOrgUnit(orgUnitId?: string | null) {
         .maybeSingle();
 
       if (error) throw error;
-      return data as OrgUnit | null;
+      return data as unknown as OrgUnit | null;
     },
     enabled: !!orgUnitId,
   });
@@ -177,7 +177,7 @@ export function useCreateOrgUnit(orgId?: string | null) {
         .single();
 
       if (error) throw error;
-      return data as OrgUnit;
+      return data as unknown as OrgUnit;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: KEYS.orgUnits(orgId ?? undefined) });
@@ -232,7 +232,7 @@ export function useDeleteOrgUnit() {
         .single();
 
       if (error) throw error;
-      return data as Pick<OrgUnit, 'id' | 'org_id'>;
+      return data as unknown as Pick<OrgUnit, 'id' | 'org_id'>;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: KEYS.orgUnits(data.org_id) });
@@ -257,7 +257,7 @@ export function useMyOrgRole(orgId?: string | null) {
         .maybeSingle();
 
       if (error) throw error;
-      return data as OrgMember | null;
+      return data as unknown as OrgMember | null;
     },
     enabled: !!orgId && !!user,
   });
