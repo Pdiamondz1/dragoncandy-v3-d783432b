@@ -19,6 +19,7 @@ interface FileUploadSectionProps {
   sampleUrls?: string[];
   onLogoUrlChange?: (url: string) => void;
   onSampleUrlsChange?: (urls: string[]) => void;
+  logoOnly?: boolean;
 }
 
 export const FileUploadSection = ({
@@ -30,6 +31,7 @@ export const FileUploadSection = ({
   sampleUrls = [],
   onLogoUrlChange,
   onSampleUrlsChange,
+  logoOnly = false,
 }: FileUploadSectionProps) => {
   const { user } = useAuth();
   const [logoUploading, setLogoUploading] = useState(false);
@@ -200,7 +202,7 @@ export const FileUploadSection = ({
       </div>
 
       {/* Sample Content Upload */}
-      <div>
+      {!logoOnly && <div>
         <Label>Sample / Preferred Content</Label>
         <div
           className="mt-2 border-2 border-dashed border-dc-teal rounded-lg p-6 text-center cursor-pointer hover:bg-teal-50/30 transition-colors"
@@ -255,7 +257,7 @@ export const FileUploadSection = ({
             ))}
           </div>
         )}
-      </div>
+      </div>}
     </>
   );
 };

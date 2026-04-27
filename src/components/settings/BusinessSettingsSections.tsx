@@ -91,6 +91,15 @@ export function BusinessSettingsSections({
         title="Business Info"
         subtitle="Name, industry, and location"
       >
+        <FileUploadSection
+          logoFile={logoFile}
+          sampleFiles={[]}
+          onLogoChange={onLogoChange}
+          onSampleFilesChange={() => undefined}
+          logoUrl={formData.logo_url}
+          logoOnly
+        />
+
         <div>
           <Label htmlFor="business_name">Business Name</Label>
           <Input

@@ -14,6 +14,7 @@ import { SettingsSection } from './SettingsSection';
 import { SkillsSelection } from '@/components/creator-profile/SkillsSelection';
 import { CreatorSocialMediaLinks } from '@/components/creator-profile/CreatorSocialMediaLinks';
 import { PortfolioUpload } from '@/components/creator-profile/PortfolioUpload';
+import { AvatarUpload } from '@/components/creator-profile/AvatarUpload';
 import type { CreatorProfileFormData } from '@/hooks/useCreatorProfileForm';
 import type { CompletionResult } from '@/hooks/useProfileCompletion';
 import type { Database } from '@/integrations/supabase/types';
@@ -37,10 +38,12 @@ interface CreatorSettingsSectionsProps {
 export function CreatorSettingsSections({
   formData,
   selectedSkills,
+  avatarFile,
   portfolioPaths,
   completion,
   onInputChange,
   onSkillChange,
+  onAvatarFileChange,
   onPortfolioPathsChange,
   onFieldBlur,
   defaultSection,
@@ -72,6 +75,13 @@ export function CreatorSettingsSections({
         title="Profile"
         subtitle="Name, bio, skills, and location"
       >
+        <AvatarUpload
+          avatarFile={avatarFile}
+          onAvatarFileChange={onAvatarFileChange}
+          avatarUrl={formData.avatar_url}
+          onAvatarUrlChange={(url) => onInputChange('avatar_url', url)}
+        />
+
         <div>
           <Label htmlFor="creator_name">Display Name</Label>
           <Input
