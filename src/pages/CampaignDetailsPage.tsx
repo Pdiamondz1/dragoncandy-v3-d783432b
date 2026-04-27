@@ -5,17 +5,23 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft, Edit, Users, Target, AlertCircle, Send, CheckCircle, FolderOpen } from 'lucide-react';
+import { ArrowLeft, Edit, Users, Target, AlertCircle } from 'lucide-react';
 import { useCampaign } from '@/hooks/useCampaigns';
 import CampaignDetailsOverview from '@/components/campaigns/CampaignDetailsOverview';
 import ApplicationsListFixed from '@/components/campaigns/ApplicationsListFixed';
 import CreatorMatchingSection from '@/components/campaigns/CreatorMatchingSection';
 import { CreatorCampaignDetails } from '@/components/campaign-details/CreatorCampaignDetails';
+import { StickyApplyCTA } from '@/components/campaign-details/StickyApplyCTA';
+import { OneTapApplySheet } from '@/components/campaigns/OneTapApplySheet';
+import { ApplyConfirmation } from '@/components/campaigns/ApplyConfirmation';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/hooks/useAuth';
 import { useCreatorApplicationStatus } from '@/hooks/useCreatorApplicationStatus';
+import { useCampaignDetailEnriched } from '@/hooks/useCampaignDetailEnriched';
+import { useCreateApplication } from '@/hooks/useCreateApplication';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import ApplicationForm from '@/components/campaigns/ApplicationForm';
+import type { DonnyPitchResult } from '@/hooks/useDonnyApplyPitch';
 
 const CampaignDetailsPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -23,7 +29,6 @@ const CampaignDetailsPage: React.FC = () => {
   const location = useLocation();
   const { user } = useAuth();
   const { campaign, isLoading, error } = useCampaign(id!);
-  const [showApplicationDialog, setShowApplicationDialog] = useState(false);
 
   const isCreatorView = location.pathname.includes('/creator/');
   const userRole = isCreatorView ? 'content_creator' : 'business_client';
@@ -49,14 +54,78 @@ const CampaignDetailsPage: React.FC = () => {
 
   const isInvited = isInvitedByParam || !!pendingInvitation;
 
-  const { hasApplied, applicationStatus, isLoading: isCheckingStatus } = useCreatorApplicationStatus(id);
+  const { hasApplied, applicationStatus } = useCreatorApplicationStatus(id);
+  const { data: enrichedDetail } = useCampaignDetailEnriched(
+    id ?? null,
+    campaign?.user_id ?? null
+  );
+  const createApplication = useCreateApplication();
 
   const canApply = isCreatorView && !isOwnCampaign && campaign?.status === 'published' && !hasApplied;
-  const showAppliedBadge = isCreatorView && hasApplied && applicationStatus === 'pending';
-  const showAcceptedButton = isCreatorView && hasApplied && applicationStatus === 'accepted';
   const canReapply = isCreatorView && hasApplied && applicationStatus === 'rejected';
 
+  // One-tap apply flow state
+  const [showApplySheet, setShowApplySheet] = useState(false);
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [showLegacyForm, setShowLegacyForm] = useState(false);
+
+  const businessName =
+    enrichedDetail?.businessProfile?.business_name ??
+    ((campaign?.ai_analysis as Record<string, unknown>)?.business_name as string | undefined);
+
   const backHref = isCreatorView ? '/dashboard/creator/campaigns' : '/dashboard/business/campaigns';
+
+  const handleDonnySend = async (pitch: DonnyPitchResult) => {
+    if (!campaign) return;
+    try {
+      const tierDates: Record<string, number> = { dragonrush: 0, expedited: 2, standard: 7 };
+      const daysOut = campaign.delivery_type ? tierDates[campaign.delivery_type] ?? 7 : 7;
+      const targetDate = new Date();
+      targetDate.setDate(targetDate.getDate() + daysOut);
+      const pad = (n: number) => String(n).padStart(2, '0');
+      const proposedTimeline = `${targetDate.getFullYear()}-${pad(targetDate.getMonth() + 1)}-${pad(targetDate.getDate())}`;
+
+      await createApplication.mutateAsync({
+        campaignId: campaign.id,
+        introMessage: pitch.pitch,
+        proposedRate: pitch.suggested_rate,
+        proposedTimeline,
+        portfolioUrl: pitch.suggested_portfolio_piece_url ?? undefined,
+      });
+
+      // Log to donny_events
+      supabase
+        .from('donny_events' as any)
+        .insert({
+          event_type: 'apply_with_donny',
+          user_id: user!.id,
+          campaign_id: campaign.id,
+          payload: { used_edit: false, pitch_source: pitch.pitch_source },
+        })
+        .then(() => {});
+
+      setShowApplySheet(false);
+      setShowConfirmation(true);
+    } catch {
+      // Error handled by useCreateApplication's onError toast
+    }
+  };
+
+  const handleEditDetails = (pitch: DonnyPitchResult) => {
+    // Log that user chose to edit
+    supabase
+      .from('donny_events' as any)
+      .insert({
+        event_type: 'apply_edit_details',
+        user_id: user!.id,
+        campaign_id: campaign?.id,
+        payload: {},
+      })
+      .then(() => {});
+
+    setShowApplySheet(false);
+    setShowLegacyForm(true);
+  };
 
   if (isLoading) {
     return (
@@ -93,75 +162,64 @@ const CampaignDetailsPage: React.FC = () => {
     );
   }
 
-  // Creator view — new sectioned layout
+  // Creator view — rebuilt with full brief + one-tap apply
   if (isCreatorView) {
     return (
       <DashboardLayout userRole={userRole}>
-        <div className="min-h-screen bg-gray-50 overflow-x-hidden pb-28">
+        <div className="min-h-screen bg-gray-50 overflow-x-hidden pb-24">
           <div className="md:max-w-2xl md:mx-auto md:mt-6">
-            <CreatorCampaignDetails campaign={campaign} isInvited={isInvited} />
-
-            {/* Creator action buttons */}
-            <div className="px-5 mt-4">
-              {canApply && (
-                <button
-                  onClick={() => setShowApplicationDialog(true)}
-                  className="w-full rounded-full bg-dc-teal text-white font-bold py-3.5 flex items-center justify-center gap-2"
-                >
-                  <Send className="h-4 w-4" />
-                  Apply Now
-                </button>
-              )}
-              {showAppliedBadge && (
-                <div className="w-full rounded-full bg-gray-100 text-gray-500 font-bold py-3.5 flex items-center justify-center gap-2">
-                  <CheckCircle className="h-4 w-4" />
-                  Applied (Pending)
-                </div>
-              )}
-              {showAcceptedButton && (
-                <button
-                  onClick={() => navigate('/dashboard/creator/projects')}
-                  className="w-full rounded-full bg-dc-teal text-white font-bold py-3.5 flex items-center justify-center gap-2"
-                >
-                  <FolderOpen className="h-4 w-4" />
-                  View Project
-                </button>
-              )}
-              {canReapply && (
-                <button
-                  onClick={() => setShowApplicationDialog(true)}
-                  className="w-full rounded-full border-2 border-dc-teal text-dc-teal font-bold py-3.5 flex items-center justify-center gap-2"
-                >
-                  <Send className="h-4 w-4" />
-                  Apply Again
-                </button>
-              )}
-              {campaign.creator_count && (
-                <p className="text-center text-xs text-gray-500 mt-2">
-                  {campaign.creator_count} spots total
-                </p>
-              )}
-            </div>
+            <CreatorCampaignDetails
+              campaign={campaign}
+              enrichedDetail={enrichedDetail}
+              isInvited={isInvited}
+              hasApplied={hasApplied}
+            />
           </div>
 
-          <Dialog open={showApplicationDialog} onOpenChange={setShowApplicationDialog}>
+          <StickyApplyCTA
+            canApply={canApply || canReapply}
+            hasApplied={hasApplied}
+            applicationStatus={applicationStatus}
+            onApply={() => setShowApplySheet(true)}
+            onViewProject={() => navigate('/dashboard/creator/projects')}
+            spotsTotal={campaign.creator_count}
+          />
+
+          <OneTapApplySheet
+            open={showApplySheet}
+            onOpenChange={setShowApplySheet}
+            campaign={campaign}
+            onSend={handleDonnySend}
+            onEditDetails={handleEditDetails}
+          />
+
+          <Dialog open={showLegacyForm} onOpenChange={setShowLegacyForm}>
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Apply to Campaign</DialogTitle>
               </DialogHeader>
               <ApplicationForm
                 campaign={campaign}
-                onSuccess={() => setShowApplicationDialog(false)}
-                onCancel={() => setShowApplicationDialog(false)}
+                onSuccess={() => {
+                  setShowLegacyForm(false);
+                  setShowConfirmation(true);
+                }}
+                onCancel={() => setShowLegacyForm(false)}
               />
             </DialogContent>
           </Dialog>
+
+          <ApplyConfirmation
+            open={showConfirmation}
+            onClose={() => setShowConfirmation(false)}
+            businessName={businessName}
+          />
         </div>
       </DashboardLayout>
     );
   }
 
-  // Business/brand owner view — existing tab layout
+  // Business/brand owner view — existing tab layout (unchanged)
   return (
     <DashboardLayout userRole={userRole}>
       <div className="min-h-screen bg-gray-50 overflow-x-hidden">
