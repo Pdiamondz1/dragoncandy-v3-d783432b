@@ -11,6 +11,7 @@ import { useCreatorProfileSubmit } from '@/hooks/useCreatorProfileSubmit';
 import { calculateCreatorCompletion } from '@/hooks/useProfileCompletion';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { DeleteUserSheet } from '@/components/org/DeleteUserSheet';
+import { Coachmark } from '@/components/guidance/Coachmark';
 
 const CreatorSettings = () => {
   const { submitProfile } = useCreatorProfileSubmit();
@@ -105,10 +106,12 @@ const CreatorSettings = () => {
           <Accordion type="single" collapsible className="mt-6">
             <AccordionItem value="danger" className="border-red-200">
               <AccordionTrigger className="text-red-600 hover:text-red-700">
-                <div className="flex items-center gap-2">
-                  <ShieldAlert className="h-4 w-4" />
-                  Danger Zone
-                </div>
+                <Coachmark coachmarkKey="delete_org_danger" title="Destructive actions" body="Read carefully. Deletion is permanent after 30 days.">
+                  <div className="flex items-center gap-2">
+                    <ShieldAlert className="h-4 w-4" />
+                    Danger Zone
+                  </div>
+                </Coachmark>
               </AccordionTrigger>
               <AccordionContent className="space-y-4">
                 <button

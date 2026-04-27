@@ -6,6 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Sparkles, Loader2 } from 'lucide-react';
 import { DRAGONSHARE_FEE_RATE } from '@/types/dragonshare';
 import type { DragonSharePostWithRelations, BoostTierLabel } from '@/types/dragonshare';
+import { Coachmark } from '@/components/guidance/Coachmark';
 
 interface Props {
   open: boolean;
@@ -65,20 +66,22 @@ export function BoostConfirmationSheet({ open, onOpenChange, post, amountCents, 
             <p className="text-sm text-muted-foreground">boost to {post.creator?.full_name}</p>
           </div>
 
-          <div className="rounded-xl bg-muted p-4 space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Creator gets</span>
-              <span className="font-medium">${(creatorPayoutCents / 100).toFixed(2)} (80%)</span>
+          <Coachmark coachmarkKey="boost_tier_recommended" title="Donny's recommendation" body="Based on the post's estimated reach and engagement.">
+            <div className="rounded-xl bg-muted p-4 space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Creator gets</span>
+                <span className="font-medium">${(creatorPayoutCents / 100).toFixed(2)} (80%)</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">DragonCandy fee</span>
+                <span className="font-medium">${(platformFeeCents / 100).toFixed(2)} (20%)</span>
+              </div>
+              <div className="border-t pt-2 flex justify-between font-semibold">
+                <span>You pay</span>
+                <span>${(amountCents / 100).toFixed(2)}</span>
+              </div>
             </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">DragonCandy fee</span>
-              <span className="font-medium">${(platformFeeCents / 100).toFixed(2)} (20%)</span>
-            </div>
-            <div className="border-t pt-2 flex justify-between font-semibold">
-              <span>You pay</span>
-              <span>${(amountCents / 100).toFixed(2)}</span>
-            </div>
-          </div>
+          </Coachmark>
 
           <Button
             className="w-full rounded-full"

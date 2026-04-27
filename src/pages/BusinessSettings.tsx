@@ -17,6 +17,7 @@ import { useMyOrgRole } from '@/hooks/useOrgData';
 import { DeleteOrgSheet } from '@/components/org/DeleteOrgSheet';
 import { LeaveOrgSheet } from '@/components/org/LeaveOrgSheet';
 import { DeleteUserSheet } from '@/components/org/DeleteUserSheet';
+import { Coachmark } from '@/components/guidance/Coachmark';
 
 const BusinessSettings = () => {
   const { user, activeOrg } = useAuth();
@@ -128,10 +129,12 @@ const BusinessSettings = () => {
           <Accordion type="single" collapsible className="mt-6">
             <AccordionItem value="danger" className="border-red-200">
               <AccordionTrigger className="text-red-600 hover:text-red-700">
-                <div className="flex items-center gap-2">
-                  <ShieldAlert className="h-4 w-4" />
-                  Danger Zone
-                </div>
+                <Coachmark coachmarkKey="delete_org_danger" title="Destructive actions" body="Read carefully. Deletion is permanent after 30 days.">
+                  <div className="flex items-center gap-2">
+                    <ShieldAlert className="h-4 w-4" />
+                    Danger Zone
+                  </div>
+                </Coachmark>
               </AccordionTrigger>
               <AccordionContent className="space-y-4">
                 {isOwner ? (

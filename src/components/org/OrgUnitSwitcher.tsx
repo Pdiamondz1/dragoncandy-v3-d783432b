@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { useAuth } from '@/hooks/useAuth';
 import { useOrgUnits, useUpdateActiveUnit } from '@/hooks/useOrgData';
 import type { OrgUnit } from '@/types/org';
+import { Coachmark } from '@/components/guidance/Coachmark';
 
 interface OrgUnitSwitcherProps {
   onAddUnit?: () => void;
@@ -91,6 +92,7 @@ export function OrgUnitSwitcher({ onAddUnit, canManage }: OrgUnitSwitcherProps) 
   };
 
   return (
+    <Coachmark coachmarkKey="org_switcher" title="Switch units here" body="Manage multiple locations or products from one account.">
     <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <Button
@@ -152,5 +154,6 @@ export function OrgUnitSwitcher({ onAddUnit, canManage }: OrgUnitSwitcherProps) 
         )}
       </PopoverContent>
     </Popover>
+    </Coachmark>
   );
 }

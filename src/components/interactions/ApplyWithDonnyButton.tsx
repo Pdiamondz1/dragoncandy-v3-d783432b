@@ -2,6 +2,7 @@ import { useState } from "react";
 import { motion, useReducedMotion, AnimatePresence } from "@/lib/motion";
 import { Button } from "@/components/ui/button";
 import { Check, Sparkles } from "lucide-react";
+import { Coachmark } from "@/components/guidance/Coachmark";
 
 interface ApplyWithDonnyButtonProps {
   onApply: () => Promise<void>;
@@ -40,21 +41,23 @@ export function ApplyWithDonnyButton({ onApply, disabled }: ApplyWithDonnyButton
   }
 
   return (
-    <motion.div
-      whileTap={reducedMotion ? undefined : { scale: 0.98, y: 2 }}
-      transition={{ duration: 0.05 }}
-      className="w-full"
-    >
-      <Button
-        variant="dc-primary"
+    <Coachmark coachmarkKey="apply_with_donny" title="One tap to apply" body="Donny pre-fills everything. Just review and send.">
+      <motion.div
+        whileTap={reducedMotion ? undefined : { scale: 0.98, y: 2 }}
+        transition={{ duration: 0.05 }}
         className="w-full"
-        onClick={handleClick}
-        disabled={disabled || state === "generating"}
-        isLoading={state === "generating"}
       >
-        <Sparkles className="h-4 w-4 mr-1" />
-        {state === "generating" ? "Donny is writing..." : "Apply with Donny"}
-      </Button>
-    </motion.div>
+        <Button
+          variant="dc-primary"
+          className="w-full"
+          onClick={handleClick}
+          disabled={disabled || state === "generating"}
+          isLoading={state === "generating"}
+        >
+          <Sparkles className="h-4 w-4 mr-1" />
+          {state === "generating" ? "Donny is writing..." : "Apply with Donny"}
+        </Button>
+      </motion.div>
+    </Coachmark>
   );
 }

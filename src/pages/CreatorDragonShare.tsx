@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Sparkles, ExternalLink, Clock, CheckCircle, XCircle } from 'lucide-react';
 import type { DragonSharePostWithRelations, PostStatus } from '@/types/dragonshare';
+import { Coachmark } from '@/components/guidance/Coachmark';
 
 type Tab = 'submitted' | 'boosted' | 'expired';
 
@@ -44,10 +45,12 @@ const CreatorDragonShare: React.FC = () => {
             <span className="text-xs text-muted-foreground">
               {monthlyCount ?? 0}/{FREE_LIMIT} this month
             </span>
-            <Button onClick={() => setSubmitOpen(true)} disabled={!canSubmit}>
-              <Sparkles className="mr-2 h-4 w-4" />
-              Submit Post
-            </Button>
+            <Coachmark coachmarkKey="dragonshare_submit" title="Paste a link, tag a brand, get paid" body="Submit posts you've already made about brands you love.">
+              <Button onClick={() => setSubmitOpen(true)} disabled={!canSubmit}>
+                <Sparkles className="mr-2 h-4 w-4" />
+                Submit Post
+              </Button>
+            </Coachmark>
           </div>
         </div>
 
