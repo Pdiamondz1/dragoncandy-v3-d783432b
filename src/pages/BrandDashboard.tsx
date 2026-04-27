@@ -10,6 +10,9 @@ import { DashboardStatsGrid, type StatItem } from '@/components/dashboard/Dashbo
 import { QuickActionButtons, type QuickAction } from '@/components/dashboard/QuickActionButtons';
 import { ActivityFeedCard } from '@/components/dashboard/ActivityFeedCard';
 import { Rocket, DollarSign, Users, TrendingUp, Loader2, AlertCircle } from 'lucide-react';
+import { DragonShareStatTile } from '@/components/dragonshare/DragonShareStatTile';
+import { useOrgBoostStats } from '@/hooks/useDragonShare';
+import { useOrg } from '@/hooks/useOrgData';
 
 function formatSpend(amount: number): string {
   if (amount === 0) return '$0';
@@ -21,6 +24,8 @@ const BrandDashboard = () => {
   const navigate = useNavigate();
   const { data: stats, isLoading: statsLoading, isError: statsError } = useBrandDashboardStats();
   const { data: campaigns, isLoading: campaignsLoading } = useBrandActiveCampaigns();
+  const { data: org } = useOrg();
+  const { data: dsBoosts } = useOrgBoostStats(org?.id);
 
   if (!profile) {
     return (
@@ -53,6 +58,15 @@ const BrandDashboard = () => {
           userName={profile.business_name || 'Brand Partner'}
         >
           <DashboardStatsGrid stats={brandStats} isLoading={statsLoading} />
+
+          {/* DragonShare boosts tile */}
+          <DragonShareStatTile
+            label="DragonShare boosts"
+            totalCents={dsBoosts?.totalCents ?? 0}
+            count={dsBoosts?.count ?? 0}
+            href="/dashboard/brand/dragonshare"
+          />
+
           <QuickActionButtons actions={brandActions} />
         </DashboardHero>
 

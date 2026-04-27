@@ -7,6 +7,9 @@ import { Loader2, ChevronRight } from 'lucide-react';
 import { ActivityFeedCard } from '@/components/dashboard/ActivityFeedCard';
 import { useBusinessActiveCampaigns } from '@/hooks/useBusinessActiveCampaigns';
 import donnyIcon from '@/assets/donny-emblem.png';
+import { DragonShareStatTile } from '@/components/dragonshare/DragonShareStatTile';
+import { useOrgBoostStats } from '@/hooks/useDragonShare';
+import { useOrg } from '@/hooks/useOrgData';
 
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return 'No deadline';
@@ -18,6 +21,8 @@ const BusinessDashboard = () => {
   const { profile } = useAuth();
   const navigate = useNavigate();
   const { data: campaigns, isLoading: campaignsLoading } = useBusinessActiveCampaigns();
+  const { data: org } = useOrg();
+  const { data: dsBoosts } = useOrgBoostStats(org?.id);
 
   if (!profile) {
     return <div>Loading...</div>;
@@ -60,6 +65,16 @@ const BusinessDashboard = () => {
 
               {/* LIVE STATE — Active campaigns */}
               <div className="py-8 lg:py-16">
+                {/* DragonShare boosts tile */}
+                <div className="mb-4">
+                  <DragonShareStatTile
+                    label="DragonShare boosts"
+                    totalCents={dsBoosts?.totalCents ?? 0}
+                    count={dsBoosts?.count ?? 0}
+                    href="/dashboard/business/dragonshare"
+                  />
+                </div>
+
                 <div className="flex items-center justify-between mb-3">
                   <p className="font-sans text-sm font-bold uppercase tracking-wide text-dc-teal">
                     Your Active Campaigns

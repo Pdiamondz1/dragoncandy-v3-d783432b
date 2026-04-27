@@ -14,12 +14,15 @@ import RatingPromptManager from '@/components/reviews/RatingPromptManager';
 import { DashboardHero } from '@/components/dashboard/DashboardHero';
 import { DashboardStatsGrid, type StatItem } from '@/components/dashboard/DashboardStatsGrid';
 import { QuickActionButtons, type QuickAction } from '@/components/dashboard/QuickActionButtons';
+import { DragonShareStatTile } from '@/components/dragonshare/DragonShareStatTile';
+import { useCreatorDragonShareEarnings } from '@/hooks/useDragonShare';
 
 const CreatorDashboard = () => {
   const { user, profile } = useAuth();
   const { data: stats, isLoading: statsLoading } = useCreatorDashboardStats();
   const { data: activities, isLoading: activitiesLoading } = useCreatorRecentActivity();
   const { data: deadlines, isLoading: deadlinesLoading } = useCreatorUpcomingDeadlines();
+  const { data: dsEarnings } = useCreatorDragonShareEarnings();
 
   if (!profile) {
     return (
@@ -80,6 +83,14 @@ const CreatorDashboard = () => {
 
           {/* Stats Grid */}
           <DashboardStatsGrid stats={creatorStats} isLoading={statsLoading} />
+
+          {/* DragonShare earnings tile */}
+          <DragonShareStatTile
+            label="DragonShare earnings"
+            totalCents={dsEarnings?.totalCents ?? 0}
+            count={dsEarnings?.count ?? 0}
+            href="/dashboard/creator/dragonshare"
+          />
 
           {/* Quick Actions */}
           <QuickActionButtons actions={creatorActions} />
