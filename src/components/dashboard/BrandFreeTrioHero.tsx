@@ -56,7 +56,7 @@ export function BrandFreeTrioHero({ orgId }: BrandFreeTrioHeroProps) {
   };
 
   const handleTemplates = () => {
-    navigate('/dashboard/brand/templates');
+    navigate('/dashboard/brand/campaigns/create');
   };
 
   const templateCount = templates?.length ?? 0;
