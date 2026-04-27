@@ -7,6 +7,7 @@ import {
   uploadProfileAsset,
   UploadError,
 } from '@/lib/storage/uploadProfileAsset';
+import { AvatarCropModal } from '@/components/settings/AvatarCropModal';
 
 interface AvatarUploadProps {
   avatarFile: File | null;
@@ -24,21 +25,30 @@ export const AvatarUpload = ({
   const { user } = useAuth();
   const [uploading, setUploading] = useState(false);
   const [localPreview, setLocalPreview] = useState<string | null>(null);
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !user) return;
+    if (!file) return;
+    const objectUrl = URL.createObjectURL(file);
+    setCropSrc(objectUrl);
+    if (inputRef.current) inputRef.current.value = '';
+  };
+
+  const handleCropComplete = async (croppedFile: File) => {
+    setCropSrc(null);
+    if (!user) return;
 
     setUploading(true);
     try {
       const { url } = await uploadProfileAsset({
-        file,
+        file: croppedFile,
         userId: user.id,
         kind: 'avatar',
       });
-      onAvatarFileChange(file);
-      setLocalPreview(URL.createObjectURL(file));
+      onAvatarFileChange(croppedFile);
+      setLocalPreview(URL.createObjectURL(croppedFile));
       onAvatarUrlChange?.(url);
       toast({ title: 'Profile photo uploaded \u2713' });
     } catch (err) {
@@ -115,6 +125,15 @@ export const AvatarUpload = ({
         className="hidden"
         disabled={uploading}
       />
+      {cropSrc && (
+        <AvatarCropModal
+          open
+          imageSrc={cropSrc}
+          cropShape="round"
+          onComplete={handleCropComplete}
+          onCancel={() => setCropSrc(null)}
+        />
+      )}
     </div>
   );
 };

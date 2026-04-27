@@ -8,6 +8,7 @@ import {
   UploadError,
   type ProfileAssetKind,
 } from '@/lib/storage/uploadProfileAsset';
+import { AvatarCropModal } from '@/components/settings/AvatarCropModal';
 
 interface FileUploadSectionProps {
   logoFile: File | null;
@@ -38,22 +39,31 @@ export const FileUploadSection = ({
   const [localSamplePreviews, setLocalSamplePreviews] = useState<
     { url: string; name: string }[]
   >([]);
+  const [logoCropSrc, setLogoCropSrc] = useState<string | null>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const sampleInputRef = useRef<HTMLInputElement>(null);
 
-  const handleLogoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleLogoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !user) return;
+    if (!file) return;
+    const objectUrl = URL.createObjectURL(file);
+    setLogoCropSrc(objectUrl);
+    if (logoInputRef.current) logoInputRef.current.value = '';
+  };
+
+  const handleLogoCropComplete = async (croppedFile: File) => {
+    setLogoCropSrc(null);
+    if (!user) return;
 
     setLogoUploading(true);
     try {
       const { url } = await uploadProfileAsset({
-        file,
+        file: croppedFile,
         userId: user.id,
         kind: 'logo',
       });
-      onLogoChange(file);
-      setLocalLogoPreview(URL.createObjectURL(file));
+      onLogoChange(croppedFile);
+      setLocalLogoPreview(URL.createObjectURL(croppedFile));
       onLogoUrlChange?.(url);
       toast({ title: 'Logo uploaded \u2713' });
     } catch (err) {
@@ -178,6 +188,15 @@ export const FileUploadSection = ({
           className="hidden"
           disabled={logoUploading}
         />
+        {logoCropSrc && (
+          <AvatarCropModal
+            open
+            imageSrc={logoCropSrc}
+            cropShape="rect"
+            onComplete={handleLogoCropComplete}
+            onCancel={() => setLogoCropSrc(null)}
+          />
+        )}
       </div>
 
       {/* Sample Content Upload */}
