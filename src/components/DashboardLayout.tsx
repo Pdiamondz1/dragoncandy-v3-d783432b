@@ -41,6 +41,7 @@ import { OrgUnitSwitcher } from '@/components/org/OrgUnitSwitcher';
 import { useMyOrgRole } from '@/hooks/useOrgData';
 import { DesktopGate } from '@/components/DesktopGate';
 import ErrorBoundary from '@/components/ErrorBoundary';
+import { DonnyHelpButton } from '@/components/donny-help/DonnyHelpButton';
 import type { UserRole } from '@/types/user';
 import { getSidebarNav, getSettingsHref, getDashboardLabel } from '@/lib/navConfig';
 
@@ -270,6 +271,8 @@ const DashboardLayoutInner: React.FC<DashboardLayoutProps> = ({ children, userRo
         {/* Mobile bottom nav */}
         {isMobile && <MobileBottomNav userRole={userRole} />}
 
+        {/* Floating Donny Help button */}
+        <DonnyHelpButton />
       </div>
     </SidebarProvider>
   );
