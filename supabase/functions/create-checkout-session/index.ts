@@ -36,7 +36,12 @@ serve(async (req) => {
     const stripe = new Stripe(stripeSecretKey, { apiVersion: '2023-10-16' });
 
     // Authenticate user via JWT
-    const authHeader = req.headers.get('Authorization')!;
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
     const { data: { user }, error: authError } = await supabase.auth.getUser(
       authHeader.replace('Bearer ', '')
     );
@@ -97,10 +102,17 @@ serve(async (req) => {
       });
       customerId = customer.id;
 
-      await supabase
+      const { error: custError } = await supabase
         .from('organizations')
         .update({ stripe_customer_id: customerId })
         .eq('id', org_id);
+
+      if (custError) {
+        console.error('[create-checkout-session] Failed to store customer ID:', custError.message);
+        return new Response(JSON.stringify({ error: 'Failed to link payment account' }), {
+          status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
     }
 
     // Build line items: base price + per-seat add-on
@@ -127,7 +139,8 @@ serve(async (req) => {
       status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (err) {
-    return new Response(JSON.stringify({ error: (err as Error).message }), {
+    console.error('[create-checkout-session]', err);
+    return new Response(JSON.stringify({ error: 'Internal server error' }), {
       status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }

@@ -22,7 +22,12 @@ serve(async (req) => {
     const stripe = new Stripe(stripeSecretKey, { apiVersion: '2023-10-16' });
 
     // Authenticate user via JWT
-    const authHeader = req.headers.get('Authorization')!;
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
     const { data: { user }, error: authError } = await supabase.auth.getUser(
       authHeader.replace('Bearer ', '')
     );
@@ -61,8 +66,8 @@ serve(async (req) => {
       .eq('invitation_status', 'active')
       .single();
 
-    if (!membership) {
-      return new Response(JSON.stringify({ error: 'You are not a member of this organization' }), {
+    if (membership?.role !== 'owner') {
+      return new Response(JSON.stringify({ error: 'Only org owners can manage billing' }), {
         status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
@@ -76,7 +81,8 @@ serve(async (req) => {
       status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (err) {
-    return new Response(JSON.stringify({ error: (err as Error).message }), {
+    console.error('[create-billing-portal-session]', err);
+    return new Response(JSON.stringify({ error: 'Internal server error' }), {
       status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }

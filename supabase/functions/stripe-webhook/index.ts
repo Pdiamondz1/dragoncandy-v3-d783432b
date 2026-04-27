@@ -452,9 +452,7 @@ serve(async (req) => {
         const subscription = event.data.object as Stripe.Subscription;
         const customerId = subscription.customer as string;
         const subscriptionId = subscription.id;
-        const priceId = subscription.items.data[0]?.price?.id ?? null;
 
-        // Map Stripe Price IDs to subscription tiers
         const PRICE_TO_TIER: Record<string, string> = {
           'price_test_starter_monthly': 'starter',
           'price_test_starter_annual': 'starter',
@@ -463,11 +461,13 @@ serve(async (req) => {
           'price_test_pro_monthly': 'pro',
           'price_test_pro_annual': 'pro',
         };
+        const VALID_TIERS = new Set(['starter', 'growth', 'pro']);
 
         let tier = 'free';
         if (subscription.status === 'active' && subscription.items?.data?.length) {
           const basePriceId = subscription.items.data[0].price.id;
-          tier = PRICE_TO_TIER[basePriceId] || subscription.metadata?.tier || 'free';
+          const metaTier = subscription.metadata?.tier;
+          tier = PRICE_TO_TIER[basePriceId] || (metaTier && VALID_TIERS.has(metaTier) ? metaTier : 'free');
         }
 
         logStep("Subscription upserted", { customerId, subscriptionId, status: subscription.status, tier });
