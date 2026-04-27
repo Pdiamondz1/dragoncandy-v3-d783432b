@@ -65,6 +65,7 @@ export function TierComparisonGrid({ highlightTier, onSelectTier }: TierComparis
         <Switch
           checked={annual}
           onCheckedChange={setAnnual}
+          aria-label="Toggle annual billing"
           className="data-[state=checked]:bg-teal-500"
         />
         <span className={`text-sm font-medium ${annual ? 'text-gray-900' : 'text-gray-400'}`}>
@@ -113,17 +114,15 @@ export function TierComparisonGrid({ highlightTier, onSelectTier }: TierComparis
             )}
 
             {/* Seat info */}
-            <p className="mt-3 text-xs text-gray-500">{seatNote(tier)}</p>
+            {(() => { const note = seatNote(tier); return note ? <p className="mt-3 text-xs text-gray-500">{note}</p> : null; })()}
 
             {/* CTA */}
             <Button
               onClick={() => onSelectTier?.(tier)}
               className={`mt-6 w-full rounded-full font-semibold ${
-                popular || isHighlighted(tier)
-                  ? 'bg-teal-500 hover:bg-teal-600 text-white'
-                  : tier === 'free'
-                    ? 'bg-white border border-gray-300 text-gray-800 hover:bg-gray-50'
-                    : 'bg-teal-500 hover:bg-teal-600 text-white'
+                tier === 'free' && !isHighlighted(tier)
+                  ? 'bg-white border border-gray-300 text-gray-800 hover:bg-gray-50'
+                  : 'bg-teal-500 hover:bg-teal-600 text-white'
               }`}
             >
               {ctaLabel(tier)}
