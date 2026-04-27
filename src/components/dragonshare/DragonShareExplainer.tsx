@@ -22,7 +22,7 @@ const CREATOR_STEPS = [
   {
     icon: DollarSign,
     number: 3,
-    text: "If they boost it, you get paid. 80% to you, 20% to DragonCandy. No negotiation.",
+    text: "If they boost it, you get paid. No negotiation.",
   },
 ];
 
