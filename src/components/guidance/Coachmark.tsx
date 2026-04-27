@@ -78,9 +78,9 @@ export function Coachmark({ coachmarkKey, title, body, children }: CoachmarkProp
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 4 }}
             transition={{ duration: 0.15 }}
-            className="absolute z-50 top-full left-1/2 -translate-x-1/2 mt-2 w-56 bg-dc-dark text-white rounded-lg p-3 shadow-xl"
+            className="absolute z-50 top-full right-0 mt-2 w-56 bg-dc-dark text-white rounded-lg p-3 shadow-xl"
           >
-            <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-dc-dark rotate-45" />
+            <div className="absolute -top-1.5 right-4 w-3 h-3 bg-dc-dark rotate-45" />
             <p className="text-xs font-semibold mb-1">{title}</p>
             <p className="text-xs text-gray-300 leading-relaxed">{body}</p>
             <button
