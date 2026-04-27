@@ -1,6 +1,7 @@
 
 import { Header } from "@/components/landing/Header";
 import { HeroSection } from "@/components/landing/HeroSection";
+import { BriefGeneratorPreview } from "@/components/landing/BriefGeneratorPreview";
 import { HowItWorks } from "@/components/landing/HowItWorks";
 import { FeatureSection } from "@/components/landing/FeatureSection";
 import { BrandSection } from "@/components/landing/BrandSection";
@@ -30,6 +31,7 @@ export default function LandingPage() {
 
         <main className="py-6 md:py-10 lg:py-12">
           <HeroSection />
+          <BriefGeneratorPreview />
           <HowItWorks />
           <FeatureSection />
           <BrandSection />

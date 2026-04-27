@@ -40,6 +40,21 @@ export default function Index() {
             return;
           }
 
+          // Check for pending brief from anonymous lead magnet
+          const pendingBrief = localStorage.getItem('pendingBrief');
+          if (pendingBrief) {
+            try {
+              const brief = JSON.parse(pendingBrief);
+              await supabase.from('campaign_brief_generations' as any).insert({
+                user_id: user.id,
+                brief_jsonb: brief,
+              });
+            } catch (e) {
+              console.warn('Failed to save pending brief:', e);
+            }
+            localStorage.removeItem('pendingBrief');
+          }
+
           // If profile exists, check role-specific profile completion before redirect
           if (profile?.role === 'business_client') {
             console.log('🏢 Index: Checking business profile completion');
