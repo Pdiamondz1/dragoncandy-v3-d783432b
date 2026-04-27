@@ -41,10 +41,12 @@ CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA extensions;
 | `updated_at` | timestamptz | default now() |
 
 **Indexes:**
-- IVFFlat on `embedding` column using cosine distance for fast similarity search
+- HNSW on `embedding` column using cosine distance (works without pre-populated data, unlike IVFFlat which requires existing rows for centroid computation; HNSW supported in pgvector 0.5+)
 - `(source_type, created_at)` for filtered retrieval
 
-**RLS:** Public read for embeddings (needed for edge function queries). Service role insert/update/delete.
+**Trigger:** `handle_updated_at()` on UPDATE for `updated_at` auto-maintenance (reuse existing trigger function).
+
+**RLS:** Authenticated read only (edge functions use service role key which bypasses RLS; public read would unnecessarily expose knowledge chunks and embeddings to unauthenticated users). Service role insert/update/delete.
 
 **Seed data (~60–80 chunks):**
 - 18 help articles chunked into ~36 chunks
@@ -60,12 +62,28 @@ CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA extensions;
 
 **Input:** `{ texts: string[] }` (batch up to 100)
 **Output:** `{ embeddings: number[][] }`
-**Implementation:** Calls OpenAI `text-embedding-3-small` API (1536 dimensions, $0.02/1M tokens)
+**Implementation:** Calls OpenAI `text-embedding-3-small` API (1536 dimensions, $0.02/1M tokens). The `OPENAI_API_KEY` environment variable already exists in Supabase Edge Functions (used by `donny-campaign-generate`).
 **Auth:** Service role only (internal utility, not user-facing)
+
+**Error handling / fallback:** If the OpenAI embedding API is unavailable, the orchestrator falls back to Postgres full-text search (`ts_vector`) over `donny_knowledge.content`. This degrades accuracy but maintains availability. The `donny_knowledge` table includes a generated `search_vector tsvector` column for this fallback path.
 
 ### 1.3 Orchestrator — `donny-orchestrator` Edge Function
 
-**Single entry point** replacing the existing `donny-help` edge function for all Donny interactions.
+**Architecture note — relationship to existing Donny edge functions:**
+
+The codebase currently has two Donny edge functions:
+- `donny-help` — simple Claude call with static system prompt, used by the now-deleted `DonnyHelpSheet`
+- `donny-chat` — full 21-tool Claude agent (create_campaign, get_campaigns, search, etc.), used by `DonnyProvider` → `useDonny` hook → `DonnyTray`/`DonnyChatView`
+
+The `donny-orchestrator` **replaces both**. It subsumes:
+- `donny-help`'s knowledge/guidance role (now handled by RAG + Guidance Agent)
+- `donny-chat`'s action tools (migrated into sub-agent tool definitions — Campaign Agent gets the campaign CRUD tools, DragonShare Agent gets share/boost tools, etc.)
+
+After migration: `donny-help` is deleted. `donny-chat` is deprecated (kept temporarily for rollback safety, removed post-launch). All Donny interactions route through `donny-orchestrator`.
+
+The existing `DonnyProvider` / `useDonny` hook is updated to call `donny-orchestrator` instead of `donny-chat`. The provider's message state and conversation management are preserved — the orchestrator receives `conversation_history` from the provider's existing in-memory message array (last 10 messages passed per request).
+
+**Single entry point** for all Donny interactions.
 
 **Input:**
 ```typescript
@@ -105,6 +123,15 @@ CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA extensions;
 
 **Auth:** Requires authenticated user (JWT)
 **Performance target:** <3s p90 response time
+
+**Latency budget:**
+- Embed query (OpenAI API): ~100-200ms
+- Cosine similarity search (pgvector HNSW): ~50ms
+- Fetch user context (Supabase query): ~50ms
+- Claude tool_use call (first token): ~1-2s
+- Sub-agent DB queries: ~100-200ms
+- Claude final response: ~500ms-1s
+- **Total estimated:** 1.8-3.5s — within target for p90. If exceeded in production, switch to streaming responses.
 
 ### 1.4 Sub-Agent Tool Definitions
 
@@ -166,17 +193,23 @@ Each sub-agent is a module within the orchestrator. Claude invokes them via `too
 - **Mobile:** Bottom nav center icon → `DonnyMobileSheet` (tray + chat stages)
 - **Desktop:** Top header Donny icon → same sheet/panel
 
-**Changes to existing Donny tray/chat:**
+**Changes to existing `DonnyProvider` / `useDonny` system:**
 
-1. **Tray stage** — Add page-aware suggestion chips using the existing `helpSuggestions.ts` data. Wire `getSuggestionsForPage(pathname)` into the tray's quick-action chips area.
+1. **Tray stage** — Add page-aware suggestion chips. Move `helpSuggestions.ts` from `src/components/donny-help/` to `src/lib/donny/helpSuggestions.ts` (the `donny-help/` directory is being cleaned up). Wire `getSuggestionsForPage(pathname)` into the tray's quick-action chips area.
 
-2. **Chat stage** — Route all queries through `donny-orchestrator` instead of the old `donny-help` function. Update `useDonnyHelp` hook to call the new endpoint.
+2. **Chat stage** — Update `DonnyProvider` to call `donny-orchestrator` instead of `donny-chat`. The provider already manages conversation state in memory — pass the last 10 messages as `conversation_history` in each orchestrator request. The `useDonny` hook API surface (`open`, `expand`, `collapse`, `close`, `sendMessage`) remains unchanged.
 
-3. **External trigger** — Expose `openDonnyWithContext(query: string)` from the Donny tray provider so other components (help article CTAs, coachmarks) can open Donny with a pre-loaded question.
+3. **New method: `openDonnyWithContext(query: string)`** — Add to `DonnyProvider` context. Implementation: calls `open()` → `expand()` → then `sendMessage(query)` with a short sequencing delay (100ms between expand and send to let the chat view mount). This allows external components (help article CTAs, coachmarks) to open Donny with a pre-loaded question.
+
+**Role string mapping:** The codebase uses `business_client`, `content_creator`, and `brand` as role identifiers. The orchestrator and sub-agents must use these exact strings, not the friendly names "Restaurant"/"Creator"/"Brand".
 
 **Components to delete:**
 - `src/components/donny-help/DonnyHelpButton.tsx` — redundant with existing nav
 - `src/components/donny-help/DonnyHelpSheet.tsx` — absorbed into existing tray/chat
+- `src/hooks/useDonnyHelp.ts` — replaced by updated `useDonny` calling orchestrator
+
+**Components to move:**
+- `src/components/donny-help/helpSuggestions.ts` → `src/lib/donny/helpSuggestions.ts`
 
 ### 1.6 Logging
 
@@ -383,7 +416,7 @@ Public route (no auth required). Design system consistent with landing page.
 
 - **4-tier comparison grid:** Free / Starter $199 / Growth $499 / Pro $999
 - **"Most Popular" badge** on Growth
-- **Annual toggle:** 20% discount (uses Stripe Coupon)
+- **Annual toggle:** 20% discount via separate annual Price IDs in Stripe (not coupons — cleaner billing, no coupon management)
 - **Feature comparison rows** matching tier-features map
 - **Per-seat add-on footnotes:** Starter $29/seat, Growth $39/seat, Pro $49/seat
 - **Enterprise:** "Talk to sales" link below the grid
@@ -405,16 +438,22 @@ Document all Stripe test-mode Price IDs:
 1. Auth: requires authenticated user who is org owner
 2. Look up or create Stripe Customer for the org
 3. Create Stripe Checkout Session with correct Price ID + per-seat quantity line item
-4. Return `{ checkout_url: string }`
+4. Store `tier` in Checkout Session metadata (`metadata.tier = tier`) for webhook derivation
+5. Return `{ checkout_url: string }`
 
-**Webhook handling:** On `checkout.session.completed` → update `organizations.subscription_tier`. Extend the existing `stripe-webhook` function.
+**Webhook handling — CRITICAL FIX:** The existing `stripe-webhook` handler hardcodes all active subscriptions to `'pro'` tier (lines ~458-459). This must be fixed to derive tier from the subscription's Price ID or session metadata:
+- On `checkout.session.completed`: read `metadata.tier` → update `organizations.subscription_tier`
+- On `customer.subscription.updated`: map the subscription's active Price ID to tier using a `PRICE_TO_TIER` lookup table (defined alongside `STRIPE_PRICES.md`)
+- On `customer.subscription.deleted`: set tier back to `'free'`
+
+**Per-seat sync:** When `organizations.seat_count` changes (via the existing `trg_org_members_seat_count` trigger), the `sync-seat-count` edge function must also update the Stripe subscription's per-seat line item quantity. Extend the existing function to call `stripe.subscriptions.update()` with the new quantity.
 
 #### `create-billing-portal-session` Edge Function
 
-**Input:** `{ org_id: string }`
+**Input:** `{ customer_id: string }` (matches the existing call signature in `OrgBillingPage.tsx`)
 **Flow:**
 1. Auth: requires authenticated user who is org owner/admin
-2. Look up Stripe Customer ID from org
+2. Verify the customer_id belongs to the user's org (prevent IDOR)
 3. Create Stripe Customer Portal session
 4. Return `{ portal_url: string }`
 
@@ -438,7 +477,7 @@ Renders on the restaurant dashboard as a hero card (existing dashboard widgets m
 3-card hero on brand dashboard:
 
 - **Card A — Match Report** (teal accent): "Get the top 5 creators for your brief — ranked and scored. 1 report/month free." CTA: "Generate match report" → calls `donny-match-report` edge function
-- **Card B — Brand Brief** (pink accent): "Paste your product URL. Donny builds positioning, persona, and content angles. 1/week free." CTA: "Generate brand brief" → same brief flow with brand persona prompt
+- **Card B — Brand Brief** (pink accent): "Paste your product URL. Donny builds positioning, persona, and content angles. 1/week free." CTA: "Generate brand brief" → same brief generation flow but with a brand-persona system prompt variant (new prompt, reuses existing generation infrastructure). **Note:** This is new scope — a brand-specific prompt variant for `donny-campaign-generate` that emphasizes product positioning and brand persona over restaurant menu parsing.
 - **Card C — Sponsored Templates** (gray accent): "5 brand-specific campaign templates. Customize and launch any time." CTA: "Browse templates" → opens template browser, clone to drafts
 
 **Below grid:** Slim banner — "These tools stay free forever. Add creator delivery, real-time analytics, and multi-market campaigns when you're ready." [See plans → /pricing]
@@ -448,7 +487,8 @@ Renders on the restaurant dashboard as a hero card (existing dashboard widgets m
 ### 3.9 Unauthenticated Brief Preview (Landing Page Lead Magnet)
 
 - Brief generator input embedded on the public landing page
-- Rate limit: 1x per IP per day (checked in edge function via `x-forwarded-for` header, tracked in `campaign_brief_generations` with null `org_id`/`user_id`)
+- Rate limit: 1x per IP per day (checked in edge function). IP extraction: parse `x-forwarded-for` header, take the **first** (client) IP, strip whitespace. Store as single `inet` value in `campaign_brief_generations` with null `org_id`/`user_id`. **Known limitation:** IP-based limiting is imperfect (shared IPs, spoofing) — acceptable for pre-launch, upgrade to browser fingerprinting post-launch.
+- **Auth note:** The existing `donny-campaign-generate` function uses custom Donny token auth (`validateDonnyToken`). For unauthenticated landing page briefs, create a thin wrapper edge function `generate-anonymous-brief` that handles IP rate limiting and calls the generation logic directly (without requiring a Donny token). This avoids modifying the existing function's auth model.
 - Brief generates → full reveal → "Save this brief — sign up free, no card required"
 - Brief stored in `localStorage` as `pendingBrief`
 - On signup → onboarding flow checks `localStorage.getItem('pendingBrief')` → auto-attaches to new account's campaign drafts → clears localStorage
