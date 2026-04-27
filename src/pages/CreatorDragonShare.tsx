@@ -2,6 +2,7 @@ import { useState } from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
 import { useCreatorDragonSharePosts, useCreatorMonthlySubmissionCount } from '@/hooks/useDragonShare';
 import { DragonShareSubmitSheet } from '@/components/dragonshare/DragonShareSubmitSheet';
+import { DragonShareExplainer } from '@/components/dragonshare/DragonShareExplainer';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Sparkles, ExternalLink, Clock, CheckCircle, XCircle } from 'lucide-react';
@@ -80,17 +81,12 @@ const CreatorDragonShare: React.FC = () => {
             ))}
           </div>
         ) : filteredPosts.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-teal-300 p-8 text-center">
-            <Sparkles className="mx-auto h-10 w-10 text-teal-400 mb-3" />
-            <p className="font-medium">No posts here yet</p>
-            <p className="text-sm text-muted-foreground mt-1">
-              {activeTab === 'submitted' ? 'Submit your first organic post to get started!' :
-               activeTab === 'boosted' ? 'When brands boost your posts, they\'ll appear here.' :
-               'Expired posts will show up here.'}
-            </p>
-          </div>
+          <DragonShareExplainer role="creator" />
         ) : (
           <div className="space-y-4">
+            <div className="flex justify-end">
+              <DragonShareExplainer role="creator" collapsed />
+            </div>
             {filteredPosts.map((post) => (
               <CreatorPostCard key={post.id} post={post} />
             ))}

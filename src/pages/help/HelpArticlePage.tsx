@@ -3,6 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useDonnyContext } from "@/contexts/DonnyProvider";
 import { ArrowLeft, ThumbsUp, ThumbsDown, Sparkles, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DCSkeleton } from "@/components/ui/dc-skeleton";
@@ -10,6 +11,7 @@ import { DCSkeleton } from "@/components/ui/dc-skeleton";
 export default function HelpArticlePage() {
   const { slug } = useParams<{ slug: string }>();
   const { user } = useAuth();
+  const { openDonnyWithContext } = useDonnyContext();
   const [feedback, setFeedback] = useState<boolean | null>(null);
 
   const { data: article, isLoading } = useQuery({
@@ -124,11 +126,13 @@ export default function HelpArticlePage() {
 
         {/* CTAs */}
         <div className="mt-8 flex flex-col sm:flex-row gap-3">
-          <Button variant="dc-primary" className="flex-1" asChild>
-            <Link to={`/help?donny=${slug}`}>
-              <Sparkles className="w-4 h-4 mr-1.5" />
-              Talk to Donny about this
-            </Link>
+          <Button
+            variant="dc-primary"
+            className="flex-1"
+            onClick={() => openDonnyWithContext(`Help me understand: ${article.title}`)}
+          >
+            <Sparkles className="w-4 h-4 mr-1.5" />
+            Talk to Donny about this
           </Button>
           <Button variant="dc-outline" className="flex-1" asChild>
             <a href={`mailto:support@dragoncandy.io?subject=Help: ${article.title}`}>

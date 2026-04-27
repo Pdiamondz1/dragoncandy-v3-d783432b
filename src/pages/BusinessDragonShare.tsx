@@ -5,6 +5,7 @@ import { useOrg } from '@/hooks/useOrgData';
 import { useMyOrgRole } from '@/hooks/useOrgData';
 import { useAuth } from '@/hooks/useAuth';
 import { DragonSharePostCard } from '@/components/dragonshare/DragonSharePostCard';
+import { DragonShareExplainer } from '@/components/dragonshare/DragonShareExplainer';
 import { Sparkles, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
@@ -75,22 +76,25 @@ export function BusinessDragonSharePage({ userRole }: { userRole: UserRole }) {
             ))}
           </div>
         ) : filteredPosts.length === 0 ? (
-          <Coachmark coachmarkKey="dragonshare_inbox" title="Creators talking about you" body="One tap to boost. The creator gets 80%.">
-            <div className="rounded-2xl border border-dashed border-teal-300 p-8 text-center">
-              <Users className="mx-auto h-10 w-10 text-teal-400 mb-3" />
-              <p className="font-medium">No DragonShare posts yet</p>
-              <p className="text-sm text-muted-foreground mt-1 max-w-sm mx-auto">
-                Creators post about you organically all the time — when they submit those posts here, you'll see them. Want to invite your favorite creators directly?
-              </p>
-              <Button
-                variant="outline"
-                className="mt-4 rounded-full"
-                onClick={() => navigate(userRole === 'business_client' ? '/dashboard/business/creators' : '/dashboard/brand/creators')}
-              >
-                Invite a Creator
-              </Button>
-            </div>
-          </Coachmark>
+          <div className="space-y-6">
+            <Coachmark coachmarkKey="dragonshare_inbox" title="Creators talking about you" body="One tap to boost. The creator gets 80%.">
+              <div className="rounded-2xl border border-dashed border-teal-300 p-8 text-center">
+                <Users className="mx-auto h-10 w-10 text-teal-400 mb-3" />
+                <p className="font-medium">No DragonShare posts yet</p>
+                <p className="text-sm text-muted-foreground mt-1 max-w-sm mx-auto">
+                  Creators post about you organically all the time — when they submit those posts here, you'll see them. Want to invite your favorite creators directly?
+                </p>
+                <Button
+                  variant="outline"
+                  className="mt-4 rounded-full"
+                  onClick={() => navigate(userRole === 'business_client' ? '/dashboard/business/creators' : '/dashboard/brand/creators')}
+                >
+                  Invite a Creator
+                </Button>
+              </div>
+            </Coachmark>
+            <DragonShareExplainer role="brand" />
+          </div>
         ) : (
           <div className="space-y-4">
             {filteredPosts.map((post) => (
