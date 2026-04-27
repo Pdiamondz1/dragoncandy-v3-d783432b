@@ -117,29 +117,32 @@ const CardContent: React.FC<CardContentProps> = ({ campaign, onViewDetail, match
   const contentTypes = campaign.content_types ?? [];
 
   // Cover image fallback rendering
+  const [imgError, setImgError] = useState(false);
+
+  const brandedFallback = (
+    <div className="w-full h-full bg-gradient-to-br from-dc-teal via-dc-pink/40 to-dc-teal-dark flex items-center justify-center">
+      <div className="text-center px-4">
+        <img src={logo} alt="Dragon Candy" className="w-16 h-16 mx-auto mb-2 opacity-70" draggable={false} />
+        <p className="text-white/80 font-bold text-sm line-clamp-2">{campaign.title}</p>
+      </div>
+    </div>
+  );
+
   const renderCoverImage = () => {
-    if (campaign.cover_image_url && campaign.cover_image_type === 'reference') {
+    if (imgError || !campaign.cover_image_url) return brandedFallback;
+
+    if (campaign.cover_image_type === 'reference' || campaign.cover_image_type === 'ai_preview') {
       return (
         <img
           src={campaign.cover_image_url}
           alt={campaign.title}
           className="w-full h-full object-cover"
           draggable={false}
+          onError={() => setImgError(true)}
         />
       );
     }
-    if (campaign.cover_image_url && campaign.cover_image_type === 'ai_preview') {
-      return (
-        <img
-          src={campaign.cover_image_url}
-          alt={campaign.title}
-          className="w-full h-full object-cover"
-          draggable={false}
-        />
-      );
-    }
-    if (campaign.cover_image_url && campaign.cover_image_type === 'logo') {
-      // Blurred logo treatment
+    if (campaign.cover_image_type === 'logo') {
       return (
         <div className="w-full h-full relative overflow-hidden">
           <img
@@ -147,6 +150,7 @@ const CardContent: React.FC<CardContentProps> = ({ campaign, onViewDetail, match
             alt="Campaign logo"
             className="w-full h-full object-cover scale-150 blur-2xl opacity-60"
             draggable={false}
+            onError={() => setImgError(true)}
           />
           <img
             src={campaign.cover_image_url}
@@ -157,15 +161,7 @@ const CardContent: React.FC<CardContentProps> = ({ campaign, onViewDetail, match
         </div>
       );
     }
-    // Branded gradient fallback
-    return (
-      <div className="w-full h-full bg-gradient-to-br from-dc-teal via-dc-pink/40 to-dc-teal-dark flex items-center justify-center">
-        <div className="text-center px-4">
-          <img src={logo} alt="Dragon Candy" className="w-16 h-16 mx-auto mb-2 opacity-70" draggable={false} />
-          <p className="text-white/80 font-bold text-sm line-clamp-2">{campaign.title}</p>
-        </div>
-      </div>
-    );
+    return brandedFallback;
   };
 
   const contentTypeLabels: Record<string, string> = {

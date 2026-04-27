@@ -16,7 +16,7 @@ import donnyIcon from '@/assets/donny-emblem.png';
 import { DragonShareStatTile } from '@/components/dragonshare/DragonShareStatTile';
 import { useOrgBoostStats } from '@/hooks/useDragonShare';
 import { useOrg } from '@/hooks/useOrgData';
-import { BriefGeneratorHero } from '@/components/dashboard/BriefGeneratorHero';
+
 
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return 'No deadline';
@@ -75,8 +75,6 @@ const BusinessDashboard = () => {
           roleLabel="Restaurant Dashboard"
           userName={profile.full_name || 'there'}
         >
-          <BriefGeneratorHero orgId={org?.id} />
-
           <DashboardStatsGrid stats={businessStats} isLoading={campaignsLoading} />
 
           <DragonShareStatTile
