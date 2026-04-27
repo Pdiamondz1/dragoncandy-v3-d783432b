@@ -60,7 +60,7 @@ export const AvatarUpload = ({
       <Label>Profile Picture</Label>
       {previewSrc ? (
         <div className="mt-2 flex items-start gap-3">
-          <div className="relative w-20 h-20 rounded-full overflow-hidden border-2 border-[#4DD9C0] flex-shrink-0">
+          <div className="relative w-20 h-20 rounded-full overflow-hidden border-2 border-dc-teal flex-shrink-0">
             <img
               src={previewSrc}
               alt="Avatar preview"
@@ -70,7 +70,7 @@ export const AvatarUpload = ({
               className="absolute top-0 right-0"
               aria-label="Uploaded successfully"
             >
-              <CheckCircle className="w-4 h-4 text-[#4DD9C0] drop-shadow" />
+              <CheckCircle className="w-4 h-4 text-dc-teal drop-shadow" />
             </span>
           </div>
           <div className="min-w-0 pt-2">
@@ -83,7 +83,7 @@ export const AvatarUpload = ({
             </p>
             <button
               type="button"
-              className="text-sm text-[#4DD9C0] hover:underline mt-1"
+              className="text-sm text-dc-teal hover:underline mt-1"
               onClick={() => inputRef.current?.click()}
             >
               Replace
@@ -92,13 +92,13 @@ export const AvatarUpload = ({
         </div>
       ) : (
         <div
-          className="mt-2 border-2 border-dashed border-[#4DD9C0] rounded-lg p-6 text-center cursor-pointer hover:bg-teal-50/30 transition-colors"
+          className="mt-2 border-2 border-dashed border-dc-teal rounded-lg p-6 text-center cursor-pointer hover:bg-teal-50/30 transition-colors"
           onClick={() => inputRef.current?.click()}
           role="button"
           tabIndex={0}
           onKeyDown={(e) => e.key === 'Enter' && inputRef.current?.click()}
         >
-          <Upload className="mx-auto h-10 w-10 text-[#4DD9C0] mb-2" />
+          <Upload className="mx-auto h-10 w-10 text-dc-teal mb-2" />
           <p className="text-sm font-medium text-gray-700">
             {uploading ? 'Uploading...' : 'Upload your profile picture'}
           </p>

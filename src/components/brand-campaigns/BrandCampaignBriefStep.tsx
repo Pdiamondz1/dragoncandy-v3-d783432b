@@ -88,7 +88,7 @@ export const BrandCampaignBriefStep = ({
   return (
     <div className="space-y-6">
       {/* Campaign Name */}
-      <Card className="rounded-2xl border border-teal-300">
+      <Card className="rounded-2xl border border-dc-teal">
         <CardContent className="p-4 space-y-2">
           <label className="text-sm font-semibold text-gray-800">
             Campaign Name <span className="text-red-500">*</span>
@@ -102,7 +102,7 @@ export const BrandCampaignBriefStep = ({
       </Card>
 
       {/* Tagline */}
-      <Card className="rounded-2xl border border-teal-300">
+      <Card className="rounded-2xl border border-dc-teal">
         <CardContent className="p-4 space-y-2">
           <label className="text-sm font-semibold text-gray-800">
             Tagline
@@ -116,7 +116,7 @@ export const BrandCampaignBriefStep = ({
       </Card>
 
       {/* Brand Goal */}
-      <Card className="rounded-2xl border border-teal-300">
+      <Card className="rounded-2xl border border-dc-teal">
         <CardContent className="p-4 space-y-3">
           <label className="text-sm font-semibold text-gray-800">
             Brand Goal
@@ -141,7 +141,7 @@ export const BrandCampaignBriefStep = ({
       </Card>
 
       {/* Target Creator Personas */}
-      <Card className="rounded-2xl border border-teal-300">
+      <Card className="rounded-2xl border border-dc-teal">
         <CardContent className="p-4 space-y-3">
           <label className="text-sm font-semibold text-gray-800">
             Target Creator Personas
@@ -166,7 +166,7 @@ export const BrandCampaignBriefStep = ({
       </Card>
 
       {/* Platforms */}
-      <Card className="rounded-2xl border border-teal-300">
+      <Card className="rounded-2xl border border-dc-teal">
         <CardContent className="p-4 space-y-3">
           <label className="text-sm font-semibold text-gray-800">
             Platforms
@@ -191,7 +191,7 @@ export const BrandCampaignBriefStep = ({
       </Card>
 
       {/* Geographic Scope */}
-      <Card className="rounded-2xl border border-teal-300">
+      <Card className="rounded-2xl border border-dc-teal">
         <CardContent className="p-4 space-y-3">
           <label className="text-sm font-semibold text-gray-800">
             Geographic Scope
@@ -216,7 +216,7 @@ export const BrandCampaignBriefStep = ({
       </Card>
 
       {/* Campaign Vision */}
-      <Card className="rounded-2xl border border-teal-300">
+      <Card className="rounded-2xl border border-dc-teal">
         <CardContent className="p-4 space-y-2">
           <label className="text-sm font-semibold text-gray-800">
             Campaign Vision

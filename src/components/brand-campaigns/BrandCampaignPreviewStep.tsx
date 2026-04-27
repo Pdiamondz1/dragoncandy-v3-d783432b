@@ -50,7 +50,7 @@ export const BrandCampaignPreviewStep: React.FC<BrandCampaignPreviewStepProps> =
   if (isSaving) {
     return (
       <div className="flex flex-col items-center justify-center py-16 gap-4">
-        <Loader2 className="h-8 w-8 animate-spin text-teal-400" />
+        <Loader2 className="h-8 w-8 animate-spin text-dc-teal" />
         <p className="text-sm text-gray-500 font-medium">Saving draft for preview...</p>
       </div>
     );
@@ -72,7 +72,7 @@ export const BrandCampaignPreviewStep: React.FC<BrandCampaignPreviewStepProps> =
               Skip Preview
             </Button>
             <Button
-              className="flex-1 rounded-full bg-teal-400 hover:bg-teal-500 text-white"
+              className="flex-1 rounded-full bg-dc-teal hover:bg-dc-teal/90 text-white"
               onClick={saveDraft}
             >
               Try Again

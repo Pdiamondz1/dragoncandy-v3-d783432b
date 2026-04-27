@@ -69,7 +69,7 @@ export const CompletedCampaignCard: React.FC<CompletedCampaignCardProps> = ({ co
   };
 
   return (
-    <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+    <div className="bg-white rounded-2xl p-4 shadow-dc-sm border border-gray-100">
       {/* Header: logo + title */}
       <div className="flex items-start gap-3">
         <div className="w-10 h-10 rounded-full ring-2 ring-dc-teal overflow-hidden flex-shrink-0 bg-dc-pink-bg flex items-center justify-center">

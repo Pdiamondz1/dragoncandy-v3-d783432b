@@ -70,7 +70,7 @@ export const BrandCampaignDetailsStep = ({
   return (
     <div className="space-y-6">
       {/* Budget & Scale */}
-      <Card className="rounded-2xl border border-teal-300">
+      <Card className="rounded-2xl border border-dc-teal">
         <CardContent className="p-4 space-y-4">
           <h3 className="text-sm font-semibold text-gray-800">Budget & Scale</h3>
 
@@ -142,7 +142,7 @@ export const BrandCampaignDetailsStep = ({
       </Card>
 
       {/* Deliverables */}
-      <Card className="rounded-2xl border border-teal-300">
+      <Card className="rounded-2xl border border-dc-teal">
         <CardContent className="p-4 space-y-3">
           <h3 className="text-sm font-semibold text-gray-800">
             Required Deliverable Mix <span className="text-red-500">*</span>
@@ -156,7 +156,7 @@ export const BrandCampaignDetailsStep = ({
       </Card>
 
       {/* Brand Assets */}
-      <Card className="rounded-2xl border border-teal-300">
+      <Card className="rounded-2xl border border-dc-teal">
         <CardContent className="p-4 space-y-3">
           <h3 className="text-sm font-semibold text-gray-800">Brand Assets</h3>
 
@@ -199,7 +199,7 @@ export const BrandCampaignDetailsStep = ({
       </Card>
 
       {/* Requirements */}
-      <Card className="rounded-2xl border border-teal-300">
+      <Card className="rounded-2xl border border-dc-teal">
         <CardContent className="p-4 space-y-4">
           <h3 className="text-sm font-semibold text-gray-800">Requirements</h3>
 

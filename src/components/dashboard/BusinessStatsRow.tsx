@@ -4,7 +4,7 @@ import { Loader2 } from 'lucide-react';
 
 function StatCard({ metric }: { metric: BusinessMetric }) {
   return (
-    <div className="bg-white rounded-xl p-3 shadow-sm text-center">
+    <div className="bg-white rounded-xl p-3 shadow-dc-sm text-center">
       <div className="text-xl font-extrabold text-gray-900">{metric.value}</div>
       <div className="text-[10px] text-gray-500 mt-1 leading-tight">{metric.label}</div>
       {metric.trend && (
@@ -17,7 +17,7 @@ function StatCard({ metric }: { metric: BusinessMetric }) {
         </div>
       )}
       {metric.emptyNudge && !metric.trend && (
-        <div className="text-[10px] text-gray-400 mt-1">{metric.emptyNudge}</div>
+        <div className="text-[10px] text-gray-500 mt-1">{metric.emptyNudge}</div>
       )}
     </div>
   );
@@ -30,7 +30,7 @@ export function BusinessStatsRow() {
     return (
       <div className="grid grid-cols-4 gap-2 sm:gap-3">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="bg-white rounded-xl p-3 shadow-sm flex items-center justify-center h-20">
+          <div key={i} className="bg-white rounded-xl p-3 shadow-dc-sm flex items-center justify-center h-20">
             <Loader2 className="w-4 h-4 text-gray-300 animate-spin" />
           </div>
         ))}

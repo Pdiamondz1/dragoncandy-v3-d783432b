@@ -74,7 +74,7 @@ export const CreatorApplicationCard: React.FC<CreatorApplicationCardProps> = ({
     : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300';
 
   return (
-    <div className={`bg-white rounded-2xl p-4 shadow-sm ${config.borderClass} ${config.opacity}`}>
+    <div className={`bg-white rounded-2xl p-4 shadow-dc-sm ${config.borderClass} ${config.opacity}`}>
       <div className="flex items-center gap-3 mb-3">
         {/* Business avatar */}
         <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-dc-teal/20 to-dc-pink/20 flex items-center justify-center flex-shrink-0 overflow-hidden">

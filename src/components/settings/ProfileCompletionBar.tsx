@@ -18,8 +18,8 @@ export function ProfileCompletionBar({
   onNudgeClick,
 }: ProfileCompletionBarProps) {
   const gradientClass = isCreator
-    ? 'from-teal-400 to-emerald-400'
-    : 'from-pink-300 to-pink-500';
+    ? 'from-dc-teal to-dc-teal-dark'
+    : 'from-dc-pink to-dc-pink-accent';
 
   return (
     <div className={`bg-gradient-to-br ${gradientClass} p-5 rounded-2xl text-white mb-4`}>

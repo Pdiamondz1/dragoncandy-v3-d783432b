@@ -75,7 +75,7 @@ const SORT_OPTIONS: { value: SortOption; label: string }[] = [
 ];
 
 const SectionLabel: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">
+  <div className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
     {children}
   </div>
 );
@@ -318,7 +318,7 @@ export const CampaignSearchFilters: React.FC<CampaignSearchFiltersProps> = ({
         </div>
       )}
 
-      <p className="text-xs text-gray-400 px-1">
+      <p className="text-xs text-gray-500 px-1">
         {filteredCount} campaign{filteredCount !== 1 ? 's' : ''} available
       </p>
     </div>

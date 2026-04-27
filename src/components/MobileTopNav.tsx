@@ -56,7 +56,7 @@ export const MobileTopNav: React.FC<MobileTopNavProps> = ({
           <nav className="flex-1 overflow-y-auto">
             {sections.map((section) => (
               <div key={section.heading} className="mb-4">
-                <h3 className="px-4 mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                <h3 className="px-4 mb-1 text-xs font-bold uppercase tracking-wide text-dc-teal">
                   {section.heading}
                 </h3>
                 <div className="flex flex-col gap-0.5">

@@ -78,7 +78,7 @@ const AppSidebar: React.FC<AppSidebarProps> = ({ userRole }) => {
 
       <SidebarContent className="bg-sidebar">
         <SidebarGroup>
-          <SidebarGroupLabel className="text-dc-teal text-[10px] font-bold tracking-[0.2em] uppercase px-3">
+          <SidebarGroupLabel className="text-dc-teal text-xs font-bold tracking-wide uppercase px-3">
             Navigation
           </SidebarGroupLabel>
           <SidebarGroupContent>

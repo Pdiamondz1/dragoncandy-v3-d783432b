@@ -74,12 +74,12 @@ export const BrandCreatorCard: React.FC<BrandCreatorCardProps> = ({
               <img
                 src={avatarUrl}
                 alt={creator.creator_name}
-                className="w-12 h-12 rounded-full ring-2 ring-teal-400 object-cover flex-shrink-0"
+                className="w-12 h-12 rounded-full ring-2 ring-dc-teal object-cover flex-shrink-0"
                 loading="lazy"
                 onError={() => setAvatarUrl(null)}
               />
             ) : (
-              <div className="w-12 h-12 rounded-full ring-2 ring-teal-400 bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center flex-shrink-0">
+              <div className="w-12 h-12 rounded-full ring-2 ring-dc-teal bg-gradient-to-br from-dc-teal to-dc-teal-dark flex items-center justify-center flex-shrink-0">
                 <span className="text-white text-sm font-bold">{initials}</span>
               </div>
             )}
@@ -161,7 +161,7 @@ export const BrandCreatorCard: React.FC<BrandCreatorCardProps> = ({
               e.stopPropagation();
               onInvite(creator.user_id);
             }}
-            className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-teal-400 text-white rounded-full text-sm font-semibold hover:bg-teal-500 transition-colors"
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-dc-teal text-white rounded-full text-sm font-semibold hover:bg-dc-teal/90 transition-colors"
           >
             <Send className="h-4 w-4" />
             Invite

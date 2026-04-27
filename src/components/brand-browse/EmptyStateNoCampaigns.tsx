@@ -6,7 +6,7 @@ export const EmptyStateNoCampaigns: React.FC = () => {
   return (
     <div className="flex flex-col items-center justify-center py-20 px-4">
       <div className="w-16 h-16 rounded-full bg-teal-50 flex items-center justify-center mb-4">
-        <Megaphone className="h-8 w-8 text-teal-400" />
+        <Megaphone className="h-8 w-8 text-dc-teal" />
       </div>
       <h3 className="text-lg font-bold text-gray-900 mb-2 text-center">
         Create a campaign first
@@ -16,7 +16,7 @@ export const EmptyStateNoCampaigns: React.FC = () => {
       </p>
       <Link
         to="/dashboard/brand/campaigns/create"
-        className="px-8 py-3 bg-teal-400 text-white rounded-full font-semibold text-sm hover:bg-teal-500 transition-colors"
+        className="px-8 py-3 bg-dc-teal text-white rounded-full font-semibold text-sm hover:bg-dc-teal/90 transition-colors"
       >
         Create Campaign
       </Link>

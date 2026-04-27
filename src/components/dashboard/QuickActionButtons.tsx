@@ -9,7 +9,7 @@ export interface QuickAction {
 }
 
 interface QuickActionButtonsProps {
-  actions: [QuickAction, QuickAction]; // Exactly 2 buttons
+  actions: [QuickAction, QuickAction];
 }
 
 export function QuickActionButtons({ actions }: QuickActionButtonsProps) {
@@ -19,12 +19,8 @@ export function QuickActionButtons({ actions }: QuickActionButtonsProps) {
         <Button
           key={action.label}
           asChild
-          className={
-            action.variant === 'primary'
-              ? 'flex-1 rounded-full bg-dc-teal hover:bg-dc-teal/90 text-white font-semibold text-center'
-              : 'flex-1 rounded-full border-2 border-dc-teal bg-white text-gray-900 hover:bg-dc-teal/10 font-semibold text-center'
-          }
-          variant={action.variant === 'primary' ? 'default' : 'outline'}
+          variant={action.variant === 'primary' ? 'dc-primary' : 'dc-outline'}
+          className="flex-1 text-center"
         >
           <Link to={action.to}>{action.label}</Link>
         </Button>

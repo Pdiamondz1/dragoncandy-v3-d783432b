@@ -30,9 +30,9 @@ const ShortlistAvatar: React.FC<{ url: string | null; name: string; size: 'sm' |
 
   if (size === 'sm') {
     return (url && !failed) ? (
-      <img src={url} alt="" className="w-full h-full object-cover" loading="lazy" onError={() => setFailed(true)} />
+      <img src={url} alt="Creator avatar" className="w-full h-full object-cover" loading="lazy" onError={() => setFailed(true)} />
     ) : (
-      <span className="text-teal-600 text-xs font-bold">{initials[0]}</span>
+      <span className="text-dc-teal text-xs font-bold">{initials[0]}</span>
     );
   }
 
@@ -40,12 +40,12 @@ const ShortlistAvatar: React.FC<{ url: string | null; name: string; size: 'sm' |
     <img
       src={url}
       alt={name}
-      className="w-10 h-10 rounded-full ring-2 ring-teal-400 object-cover flex-shrink-0"
+      className="w-10 h-10 rounded-full ring-2 ring-dc-teal object-cover flex-shrink-0"
       loading="lazy"
       onError={() => setFailed(true)}
     />
   ) : (
-    <div className="w-10 h-10 rounded-full ring-2 ring-teal-400 bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center flex-shrink-0">
+    <div className="w-10 h-10 rounded-full ring-2 ring-dc-teal bg-gradient-to-br from-dc-teal to-dc-teal-dark flex items-center justify-center flex-shrink-0">
       <span className="text-white text-xs font-bold">{initials}</span>
     </div>
   );
@@ -114,7 +114,7 @@ export const ShortlistDrawer: React.FC<ShortlistDrawerProps> = ({
         <div className="fixed bottom-[calc(env(safe-area-inset-bottom)+60px)] md:bottom-4 left-2 right-2 md:left-auto md:right-4 md:w-80 z-40">
           <button
             onClick={() => onOpenChange(true)}
-            className="w-full flex items-center justify-between px-4 py-3 bg-white border border-teal-300 rounded-2xl shadow-lg hover:shadow-xl transition-shadow"
+            className="w-full flex items-center justify-between px-4 py-3 bg-white border border-dc-teal rounded-2xl shadow-lg hover:shadow-xl transition-shadow"
           >
             <div className="flex items-center gap-2">
               {/* Avatar stack */}
@@ -186,7 +186,7 @@ export const ShortlistDrawer: React.FC<ShortlistDrawerProps> = ({
                     <select
                       onChange={(e) => onSelectCampaign(e.target.value || null)}
                       value={selectedCampaignId ?? ''}
-                      className="w-full px-3 py-2 bg-gray-100 rounded-xl text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-teal-400"
+                      className="w-full px-3 py-2 bg-gray-100 rounded-xl text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-dc-teal"
                     >
                       <option value="">Select campaign...</option>
                       {campaigns.map((c) => (
@@ -202,7 +202,7 @@ export const ShortlistDrawer: React.FC<ShortlistDrawerProps> = ({
                 <button
                   onClick={handleBulkInvite}
                   disabled={!selectedCampaignId || isBulkInviting || count === 0}
-                  className="w-full flex items-center justify-center gap-2 py-3 bg-teal-400 text-white rounded-full font-semibold text-sm hover:bg-teal-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full flex items-center justify-center gap-2 py-3 bg-dc-teal text-white rounded-full font-semibold text-sm hover:bg-dc-teal/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Send className="h-4 w-4" />
                   {isBulkInviting

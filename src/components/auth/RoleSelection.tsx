@@ -21,10 +21,10 @@ export const RoleSelection = ({ onSelectRole, onBackToLogin }: RoleSelectionProp
         <button
           type="button"
           onClick={() => onSelectRole("business_client")}
-          className="w-full bg-white rounded-2xl border-2 border-teal-400 p-6 flex items-center gap-5 shadow-md hover:shadow-lg transition-shadow text-left"
+          className="w-full bg-white rounded-2xl border-2 border-dc-teal p-6 flex items-center gap-5 shadow-md hover:shadow-lg transition-shadow text-left"
         >
           <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-teal-50 to-teal-200 flex items-center justify-center flex-shrink-0">
-            <Store className="w-7 h-7 text-teal-600" />
+            <Store className="w-7 h-7 text-dc-teal" />
           </div>
           <div className="flex-1 min-w-0">
             <div className="text-lg font-bold text-gray-900">I'm a Restaurant</div>
@@ -32,7 +32,7 @@ export const RoleSelection = ({ onSelectRole, onBackToLogin }: RoleSelectionProp
               Restaurants & cafes looking for content creators
             </div>
           </div>
-          <span className="text-teal-400 text-xl flex-shrink-0">&#8250;</span>
+          <span className="text-dc-teal text-xl flex-shrink-0">&#8250;</span>
         </button>
 
         {/* Brand/Sponsor card */}

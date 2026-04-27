@@ -35,10 +35,10 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ userRole }) =>
                 className="flex flex-col items-center gap-0.5 py-1 min-h-[44px] min-w-[44px]"
                 aria-label={item.label}
               >
-                <Icon className={`h-5 w-5 ${active ? 'text-dc-teal font-bold' : 'text-[#888888]'}`} />
+                <Icon className={`h-5 w-5 ${active ? 'text-dc-teal font-bold' : 'text-gray-400'}`} />
                 <span
                   className={`text-[10px] leading-tight truncate ${
-                    active ? 'text-dc-teal font-semibold' : 'text-[#888888]'
+                    active ? 'text-dc-teal font-semibold' : 'text-gray-400'
                   }`}
                 >
                   {item.label}

@@ -187,7 +187,7 @@ export function DragonShareSubmitSheet({ open, onOpenChange }: Props) {
                     }`}
                   >
                     {org.logo_url ? (
-                      <img src={org.logo_url} alt="" className="h-8 w-8 rounded-full ring-2 ring-teal-400" />
+                      <img src={org.logo_url} alt="Brand logo" className="h-8 w-8 rounded-full ring-2 ring-teal-400" />
                     ) : (
                       <div className="h-8 w-8 rounded-full bg-teal-100 flex items-center justify-center text-xs font-bold text-teal-600">
                         {org.name.charAt(0)}

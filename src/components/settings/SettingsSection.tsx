@@ -29,7 +29,7 @@ export function SettingsSection({
     ? accentColor === 'pink'
       ? 'text-pink-500'
       : 'text-teal-500'
-    : 'text-gray-400';
+    : 'text-gray-500';
 
   return (
     <AccordionItem value={value} className={`bg-white rounded-2xl mb-3 border-0 overflow-hidden ${borderClass}`}>

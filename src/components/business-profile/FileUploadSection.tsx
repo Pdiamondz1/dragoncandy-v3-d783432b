@@ -137,7 +137,7 @@ export const FileUploadSection = ({
                 className="absolute top-1 right-1"
                 aria-label="Uploaded successfully"
               >
-                <CheckCircle className="w-4 h-4 text-[#4DD9C0] drop-shadow" />
+                <CheckCircle className="w-4 h-4 text-dc-teal drop-shadow" />
               </span>
             </div>
             <div className="min-w-0">
@@ -146,7 +146,7 @@ export const FileUploadSection = ({
               </p>
               <button
                 type="button"
-                className="text-sm text-[#4DD9C0] hover:underline mt-1"
+                className="text-sm text-dc-teal hover:underline mt-1"
                 onClick={() => logoInputRef.current?.click()}
               >
                 Replace
@@ -155,13 +155,13 @@ export const FileUploadSection = ({
           </div>
         ) : (
           <div
-            className="mt-2 border-2 border-dashed border-[#4DD9C0] rounded-lg p-6 text-center cursor-pointer hover:bg-teal-50/30 transition-colors"
+            className="mt-2 border-2 border-dashed border-dc-teal rounded-lg p-6 text-center cursor-pointer hover:bg-teal-50/30 transition-colors"
             onClick={() => logoInputRef.current?.click()}
             role="button"
             tabIndex={0}
             onKeyDown={(e) => e.key === 'Enter' && logoInputRef.current?.click()}
           >
-            <Upload className="mx-auto h-10 w-10 text-[#4DD9C0] mb-2" />
+            <Upload className="mx-auto h-10 w-10 text-dc-teal mb-2" />
             <p className="text-sm font-medium text-gray-700">
               {logoUploading ? 'Uploading...' : 'Upload your restaurant logo'}
             </p>
@@ -184,13 +184,13 @@ export const FileUploadSection = ({
       <div>
         <Label>Sample / Preferred Content</Label>
         <div
-          className="mt-2 border-2 border-dashed border-[#4DD9C0] rounded-lg p-6 text-center cursor-pointer hover:bg-teal-50/30 transition-colors"
+          className="mt-2 border-2 border-dashed border-dc-teal rounded-lg p-6 text-center cursor-pointer hover:bg-teal-50/30 transition-colors"
           onClick={() => sampleInputRef.current?.click()}
           role="button"
           tabIndex={0}
           onKeyDown={(e) => e.key === 'Enter' && sampleInputRef.current?.click()}
         >
-          <Upload className="mx-auto h-10 w-10 text-[#4DD9C0] mb-2" />
+          <Upload className="mx-auto h-10 w-10 text-dc-teal mb-2" />
           <p className="text-sm font-medium text-gray-700">
             {sampleUploading
               ? `Uploading ${sampleProgress.done} of ${sampleProgress.total}...`
@@ -227,7 +227,7 @@ export const FileUploadSection = ({
                   className="absolute top-1 right-1"
                   aria-label="Uploaded successfully"
                 >
-                  <CheckCircle className="w-4 h-4 text-[#4DD9C0] drop-shadow" />
+                  <CheckCircle className="w-4 h-4 text-dc-teal drop-shadow" />
                 </span>
                 <p className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-[10px] px-1 py-0.5 truncate">
                   {truncateName(item.name)}

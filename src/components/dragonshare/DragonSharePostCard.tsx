@@ -22,7 +22,7 @@ export function DragonSharePostCard({ post, canBoost, onSkip }: Props) {
         <div className="p-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             {post.creator?.avatar_url ? (
-              <img src={post.creator.avatar_url} alt="" className="h-10 w-10 rounded-full ring-2 ring-teal-400" />
+              <img src={post.creator.avatar_url} alt="Creator avatar" className="h-10 w-10 rounded-full ring-2 ring-teal-400" />
             ) : (
               <div className="h-10 w-10 rounded-full bg-teal-100 flex items-center justify-center text-sm font-bold text-teal-600">
                 {post.creator?.full_name?.charAt(0) ?? '?'}

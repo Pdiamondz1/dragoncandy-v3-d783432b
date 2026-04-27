@@ -65,7 +65,7 @@ export const ActiveCampaignCard: React.FC<ActiveCampaignCardProps> = ({ collabor
   const statusBadge = getStatusBadge(collaboration.content_status);
 
   return (
-    <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+    <div className="bg-white rounded-2xl p-4 shadow-dc-sm border border-gray-100">
       {/* Header: logo + title + status badge */}
       <div className="flex items-start gap-3">
         <div className="w-10 h-10 rounded-full ring-2 ring-dc-teal overflow-hidden flex-shrink-0 bg-dc-pink-bg flex items-center justify-center">
@@ -112,7 +112,7 @@ export const ActiveCampaignCard: React.FC<ActiveCampaignCardProps> = ({ collabor
         <div className="mt-3">
           <div className="flex items-center justify-between mb-1">
             <span className="text-[11px] text-gray-500">📦 {progress.done}/{progress.total} deliverables submitted</span>
-            <span className="text-[11px] text-gray-400">{Math.round((progress.done / progress.total) * 100)}%</span>
+            <span className="text-[11px] text-gray-500">{Math.round((progress.done / progress.total) * 100)}%</span>
           </div>
           <div className="w-full bg-gray-100 rounded-full h-1.5">
             <div

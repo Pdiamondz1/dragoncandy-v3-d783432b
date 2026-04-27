@@ -144,7 +144,7 @@ const CardContent: React.FC<CardContentProps> = ({ campaign, onViewDetail, match
         <div className="w-full h-full relative overflow-hidden">
           <img
             src={campaign.cover_image_url}
-            alt=""
+            alt="Campaign logo"
             className="w-full h-full object-cover scale-150 blur-2xl opacity-60"
             draggable={false}
           />
@@ -191,7 +191,7 @@ const CardContent: React.FC<CardContentProps> = ({ campaign, onViewDetail, match
       {matchInfo && (
         <div className="bg-gradient-to-br from-dc-teal to-teal-600 px-3.5 py-2 flex items-center justify-between flex-shrink-0">
           <div className="flex items-center gap-1.5">
-            <img src={logo} alt="" className="w-4 h-4" />
+            <img src={logo} alt="Business logo" className="w-4 h-4" />
             <span className="text-xs font-bold text-white">Donny's Pick</span>
           </div>
           <span className="bg-white text-dc-teal text-[11px] font-extrabold px-2.5 py-0.5 rounded-full">

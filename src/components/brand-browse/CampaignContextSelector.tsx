@@ -42,7 +42,7 @@ export const CampaignContextSelector: React.FC<CampaignContextSelectorProps> = (
     <div className="relative" ref={ref}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-3 py-1.5 bg-teal-50 border border-teal-200 rounded-full text-sm text-teal-700 hover:bg-teal-100 transition-colors max-w-[200px]"
+        className="flex items-center gap-2 px-3 py-1.5 bg-teal-50 border border-teal-200 rounded-full text-sm text-dc-teal hover:bg-teal-100 transition-colors max-w-[200px]"
       >
         <Target className="h-3.5 w-3.5 flex-shrink-0" />
         <span className="truncate">
@@ -57,7 +57,7 @@ export const CampaignContextSelector: React.FC<CampaignContextSelectorProps> = (
           <button
             onClick={() => { onSelect(null); setIsOpen(false); }}
             className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 transition-colors ${
-              !selectedId ? 'text-teal-600 font-medium' : 'text-gray-500'
+              !selectedId ? 'text-dc-teal font-medium' : 'text-gray-500'
             }`}
           >
             No campaign (browse all)
@@ -68,7 +68,7 @@ export const CampaignContextSelector: React.FC<CampaignContextSelectorProps> = (
               key={campaign.id}
               onClick={() => { onSelect(campaign.id); setIsOpen(false); }}
               className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 transition-colors ${
-                selectedId === campaign.id ? 'text-teal-600 font-medium' : 'text-gray-700'
+                selectedId === campaign.id ? 'text-dc-teal font-medium' : 'text-gray-700'
               }`}
             >
               <div className="truncate font-medium">{campaign.title}</div>

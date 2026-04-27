@@ -132,7 +132,7 @@ function CreatorPostCard({ post }: { post: DragonSharePostWithRelations }) {
       <div className="flex items-center justify-between text-sm">
         <div className="flex items-center gap-2">
           {post.target_org?.logo_url && (
-            <img src={post.target_org.logo_url} alt="" className="h-5 w-5 rounded-full" />
+            <img src={post.target_org.logo_url} alt="Brand logo" className="h-5 w-5 rounded-full" />
           )}
           <span className="text-muted-foreground">{post.target_org?.name ?? 'Unknown org'}</span>
         </div>

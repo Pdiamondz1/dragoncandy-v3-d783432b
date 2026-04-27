@@ -149,7 +149,7 @@ const CreatorCampaignMarketplace = () => {
 
   return (
     <DashboardLayout userRole="content_creator">
-      <div className="flex flex-col min-h-screen bg-gray-50">
+      <div className="flex flex-col min-h-screen bg-white">
         {/* Page Header */}
         <div className="flex items-center justify-between px-4 pt-4 pb-2">
           <div className="flex-1">
@@ -301,7 +301,7 @@ const CreatorCampaignMarketplace = () => {
                           </button>
                         </div>
                         {campaign.business_profile?.business_name && (
-                          <p className="text-xs text-gray-400">by {campaign.business_profile.business_name}</p>
+                          <p className="text-xs text-gray-500">by {campaign.business_profile.business_name}</p>
                         )}
                       </CardContent>
                     </Card>
