@@ -72,6 +72,9 @@ import TeamPage from "@/pages/TeamPage";
 import OrgBillingPage from "@/pages/OrgBillingPage";
 import RestoreAccountPage from "@/pages/RestoreAccountPage";
 import InviteAcceptPage from "@/pages/InviteAcceptPage";
+import CreatorDragonShare from "./pages/CreatorDragonShare";
+import { BusinessDragonShare, BrandDragonShare } from "./pages/BusinessDragonShare";
+import AdminDragonShareQueue from "./pages/AdminDragonShareQueue";
 import HelpBriefPage from "@/pages/help/promotions/HelpBriefPage";
 import { HelpBriefDrawer } from "@/features/donny/HelpBriefDrawer";
 import { useAuth } from "@/hooks/useAuth";
@@ -302,6 +305,7 @@ const App = () => {
                   <Route path="/dashboard/business/locations" element={<ProtectedRoute><BusinessRoute><OrgUnitsPage /></BusinessRoute></ProtectedRoute>} />
                   <Route path="/dashboard/business/team" element={<ProtectedRoute><BusinessRoute><TeamPage /></BusinessRoute></ProtectedRoute>} />
                   <Route path="/dashboard/business/billing" element={<ProtectedRoute><BusinessRoute><OrgBillingPage /></BusinessRoute></ProtectedRoute>} />
+                  <Route path="/dashboard/business/dragonshare" element={<ProtectedRoute><BusinessRoute><BusinessDragonShare /></BusinessRoute></ProtectedRoute>} />
 
                   {/* Brand Routes */}
                   <Route path="/dashboard/brand/discover-campaigns" element={
@@ -373,6 +377,7 @@ const App = () => {
                   <Route path="/dashboard/brand/products" element={<ProtectedRoute><BrandRoute><OrgUnitsPage /></BrandRoute></ProtectedRoute>} />
                   <Route path="/dashboard/brand/team" element={<ProtectedRoute><BrandRoute><TeamPage /></BrandRoute></ProtectedRoute>} />
                   <Route path="/dashboard/brand/billing" element={<ProtectedRoute><BrandRoute><OrgBillingPage /></BrandRoute></ProtectedRoute>} />
+                  <Route path="/dashboard/brand/dragonshare" element={<ProtectedRoute><BrandRoute><BrandDragonShare /></BrandRoute></ProtectedRoute>} />
 
                   {/* Business Messages Route */}
                   <Route path="/dashboard/business/messages" element={
@@ -425,6 +430,11 @@ const App = () => {
                   <Route path="/dashboard/creator/dragon-feed" element={
                     <ProtectedRoute>
                       <CreatorDragonFeed />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/dashboard/creator/dragonshare" element={
+                    <ProtectedRoute>
+                      <CreatorDragonShare />
                     </ProtectedRoute>
                   } />
 
@@ -493,6 +503,13 @@ const App = () => {
                   {/* Restore Account & Invite Routes */}
                   <Route path="/restore-account" element={<ProtectedRoute><RestoreAccountPage /></ProtectedRoute>} />
                   <Route path="/invite/accept" element={<InviteAcceptPage />} />
+
+                  {/* Admin DragonShare Queue Route */}
+                  <Route path="/admin/dragonshare-queue" element={
+                    <ProtectedRoute>
+                      <AdminDragonShareQueue />
+                    </ProtectedRoute>
+                  } />
 
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />
