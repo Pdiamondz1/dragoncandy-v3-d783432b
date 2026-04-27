@@ -4,6 +4,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { useBrandDashboardStats } from '@/hooks/useBrandDashboardStats';
 import { useBrandActiveCampaigns } from '@/hooks/useBrandActiveCampaigns';
 import DashboardLayout from '@/components/DashboardLayout';
+import { DCTour } from '@/components/guidance/DCTour';
+import { useTour } from '@/hooks/useTour';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { DashboardHero } from '@/components/dashboard/DashboardHero';
 import { DashboardStatsGrid, type StatItem } from '@/components/dashboard/DashboardStatsGrid';
@@ -27,6 +29,7 @@ const BrandDashboard = () => {
   const { data: campaigns, isLoading: campaignsLoading } = useBrandActiveCampaigns();
   const { data: org } = useOrg();
   const { data: dsBoosts } = useOrgBoostStats(org?.id);
+  const { showTour, tourSteps, completeTour, skipTour } = useTour('/dashboard/brand');
 
   if (!profile) {
     return (
@@ -69,15 +72,19 @@ const BrandDashboard = () => {
           roleLabel="Brand Dashboard"
           userName={profile.business_name || 'Brand Partner'}
         >
-          <DashboardStatsGrid stats={brandStats} isLoading={statsLoading} />
+          <div data-tour="free-trio">
+            <DashboardStatsGrid stats={brandStats} isLoading={statsLoading} />
+          </div>
 
           {/* DragonShare boosts tile */}
-          <DragonShareStatTile
-            label="DragonShare boosts"
-            totalCents={dsBoosts?.totalCents ?? 0}
-            count={dsBoosts?.count ?? 0}
-            href="/dashboard/brand/dragonshare"
-          />
+          <div data-tour="dragonshare-inbox">
+            <DragonShareStatTile
+              label="DragonShare boosts"
+              totalCents={dsBoosts?.totalCents ?? 0}
+              count={dsBoosts?.count ?? 0}
+              href="/dashboard/brand/dragonshare"
+            />
+          </div>
 
           <QuickActionButtons actions={brandActions} />
         </DashboardHero>
@@ -176,6 +183,10 @@ const BrandDashboard = () => {
 
           </div>
         </div>
+
+        {showTour && tourSteps.length > 0 && (
+          <DCTour steps={tourSteps} onComplete={completeTour} onSkip={skipTour} />
+        )}
       </div>
     </DashboardLayout>
   );

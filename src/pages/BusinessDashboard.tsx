@@ -3,6 +3,8 @@ import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import DashboardLayout from '@/components/DashboardLayout';
+import { DCTour } from '@/components/guidance/DCTour';
+import { useTour } from '@/hooks/useTour';
 import { Loader2, ChevronRight, Megaphone, Users, DollarSign, TrendingUp } from 'lucide-react';
 import { DCSkeleton, DCSkeletonGrid } from '@/components/ui/dc-skeleton';
 import { ActivityFeedCard } from '@/components/dashboard/ActivityFeedCard';
@@ -27,6 +29,7 @@ const BusinessDashboard = () => {
   const { data: campaigns, isLoading: campaignsLoading } = useBusinessActiveCampaigns();
   const { data: org } = useOrg();
   const { data: dsBoosts } = useOrgBoostStats(org?.id);
+  const { showTour, tourSteps, completeTour, skipTour } = useTour('/dashboard/business');
 
   if (!profile) {
     return (
@@ -80,7 +83,9 @@ const BusinessDashboard = () => {
             href="/dashboard/business/dragonshare"
           />
 
-          <QuickActionButtons actions={businessActions} />
+          <div data-tour="brief-generator">
+            <QuickActionButtons actions={businessActions} />
+          </div>
         </DashboardHero>
 
         {/* White body content */}
@@ -139,6 +144,9 @@ const BusinessDashboard = () => {
 
           </div>
         </div>
+        {showTour && tourSteps.length > 0 && (
+          <DCTour steps={tourSteps} onComplete={completeTour} onSkip={skipTour} />
+        )}
       </div>
     </DashboardLayout>
   );

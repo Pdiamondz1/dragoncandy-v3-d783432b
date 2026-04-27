@@ -1,5 +1,7 @@
 import React from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
+import { DCTour } from '@/components/guidance/DCTour';
+import { useTour } from '@/hooks/useTour';
 import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -24,6 +26,7 @@ const CreatorDashboard = () => {
   const { data: activities, isLoading: activitiesLoading } = useCreatorRecentActivity();
   const { data: deadlines, isLoading: deadlinesLoading } = useCreatorUpcomingDeadlines();
   const { data: dsEarnings } = useCreatorDragonShareEarnings();
+  const { showTour, tourSteps, completeTour, skipTour } = useTour('/dashboard/creator');
 
   if (!profile) {
     return (
@@ -94,18 +97,24 @@ const CreatorDashboard = () => {
           <RatingPromptManager />
 
           {/* Stats Grid */}
-          <DashboardStatsGrid stats={creatorStats} isLoading={statsLoading} />
+          <div data-tour="profile-completion">
+            <DashboardStatsGrid stats={creatorStats} isLoading={statsLoading} />
+          </div>
 
           {/* DragonShare earnings tile */}
-          <DragonShareStatTile
-            label="DragonShare earnings"
-            totalCents={dsEarnings?.totalCents ?? 0}
-            count={dsEarnings?.count ?? 0}
-            href="/dashboard/creator/dragonshare"
-          />
+          <div data-tour="dragonshare-nav">
+            <DragonShareStatTile
+              label="DragonShare earnings"
+              totalCents={dsEarnings?.totalCents ?? 0}
+              count={dsEarnings?.count ?? 0}
+              href="/dashboard/creator/dragonshare"
+            />
+          </div>
 
           {/* Quick Actions */}
-          <QuickActionButtons actions={creatorActions} />
+          <div data-tour="browse-campaigns">
+            <QuickActionButtons actions={creatorActions} />
+          </div>
         </DashboardHero>
 
         {/* White body content */}
@@ -200,6 +209,10 @@ const CreatorDashboard = () => {
 
           </div>
         </div>
+
+        {showTour && tourSteps.length > 0 && (
+          <DCTour steps={tourSteps} onComplete={completeTour} onSkip={skipTour} />
+        )}
       </div>
     </DashboardLayout>
   );
