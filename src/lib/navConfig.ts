@@ -27,6 +27,8 @@ import {
   Eye,
   UserPlus,
   Archive,
+  Building2,
+  Users2,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { UserRole } from '@/types/user';
@@ -59,6 +61,9 @@ export const businessSidebarNav: SidebarNavItem[] = [
   { icon: MessageSquare, label: 'Messages', href: '/dashboard/business/messages' },
   { icon: BarChart3, label: 'Analytics', href: '/dashboard/analytics' },
   { icon: Wallet, label: 'Payments', href: '/dashboard/payments' },
+  { icon: Building2, label: 'Locations', href: '/dashboard/business/locations' },
+  { icon: Users2, label: 'Team', href: '/dashboard/business/team' },
+  { icon: CreditCard, label: 'Billing', href: '/dashboard/business/billing' },
   { icon: Settings, label: 'Settings', href: '/dashboard/business/settings' },
 ];
 
@@ -70,6 +75,9 @@ export const brandSidebarNav: SidebarNavItem[] = [
   { icon: MessageSquare, label: 'Messages', href: '/dashboard/brand/messages' },
   { icon: BarChart3, label: 'Analytics', href: '/dashboard/analytics' },
   { icon: Wallet, label: 'Payments', href: '/dashboard/payments' },
+  { icon: Building2, label: 'Products', href: '/dashboard/brand/products' },
+  { icon: Users2, label: 'Team', href: '/dashboard/brand/team' },
+  { icon: CreditCard, label: 'Billing', href: '/dashboard/brand/billing' },
   { icon: Settings, label: 'Settings', href: '/dashboard/brand/settings' },
 ];
 

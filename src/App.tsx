@@ -67,6 +67,11 @@ import PromotionSubmissionPage from "./pages/PromotionSubmissionPage";
 import PromotionDetailPage from "./pages/PromotionDetailPage";
 import PromotionsErrorBoundary from "./components/promotions/PromotionsErrorBoundary";
 import PaymentsPage from "@/pages/PaymentsPage";
+import OrgUnitsPage from "@/pages/OrgUnitsPage";
+import TeamPage from "@/pages/TeamPage";
+import OrgBillingPage from "@/pages/OrgBillingPage";
+import RestoreAccountPage from "@/pages/RestoreAccountPage";
+import InviteAcceptPage from "@/pages/InviteAcceptPage";
 import HelpBriefPage from "@/pages/help/promotions/HelpBriefPage";
 import { HelpBriefDrawer } from "@/features/donny/HelpBriefDrawer";
 import { useAuth } from "@/hooks/useAuth";
@@ -293,6 +298,11 @@ const App = () => {
                     </ProtectedRoute>
                   } />
 
+                  {/* Business Org Routes */}
+                  <Route path="/dashboard/business/locations" element={<ProtectedRoute><BusinessRoute><OrgUnitsPage /></BusinessRoute></ProtectedRoute>} />
+                  <Route path="/dashboard/business/team" element={<ProtectedRoute><BusinessRoute><TeamPage /></BusinessRoute></ProtectedRoute>} />
+                  <Route path="/dashboard/business/billing" element={<ProtectedRoute><BusinessRoute><OrgBillingPage /></BusinessRoute></ProtectedRoute>} />
+
                   {/* Brand Routes */}
                   <Route path="/dashboard/brand/discover-campaigns" element={
                     <ProtectedRoute>
@@ -358,6 +368,11 @@ const App = () => {
                       </BrandRoute>
                     </ProtectedRoute>
                   } />
+
+                  {/* Brand Org Routes */}
+                  <Route path="/dashboard/brand/products" element={<ProtectedRoute><BrandRoute><OrgUnitsPage /></BrandRoute></ProtectedRoute>} />
+                  <Route path="/dashboard/brand/team" element={<ProtectedRoute><BrandRoute><TeamPage /></BrandRoute></ProtectedRoute>} />
+                  <Route path="/dashboard/brand/billing" element={<ProtectedRoute><BrandRoute><OrgBillingPage /></BrandRoute></ProtectedRoute>} />
 
                   {/* Business Messages Route */}
                   <Route path="/dashboard/business/messages" element={
@@ -474,6 +489,10 @@ const App = () => {
                   
                   {/* Payments Route */}
                   <Route path="/dashboard/payments" element={<ProtectedRoute><PaymentsPage /></ProtectedRoute>} />
+
+                  {/* Restore Account & Invite Routes */}
+                  <Route path="/restore-account" element={<ProtectedRoute><RestoreAccountPage /></ProtectedRoute>} />
+                  <Route path="/invite/accept" element={<InviteAcceptPage />} />
 
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />

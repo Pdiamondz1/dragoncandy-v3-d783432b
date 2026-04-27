@@ -37,6 +37,8 @@ import { MobileBottomNav } from '@/components/MobileBottomNav';
 import { MobileTopNav } from '@/components/MobileTopNav';
 import { DonnyAvatar } from '@/components/donny/DonnyAvatar';
 import { useDonnyContext } from '@/contexts/DonnyProvider';
+import { OrgUnitSwitcher } from '@/components/org/OrgUnitSwitcher';
+import { useMyOrgRole } from '@/hooks/useOrgData';
 import { DesktopGate } from '@/components/DesktopGate';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import type { UserRole } from '@/types/user';
@@ -131,13 +133,15 @@ const AppSidebar: React.FC<AppSidebarProps> = ({ userRole }) => {
 };
 
 const DashboardLayoutInner: React.FC<DashboardLayoutProps> = ({ children, userRole }) => {
-  const { user } = useAuth();
+  const { user, activeOrg } = useAuth();
   const logout = useLogout();
   const { avatarUrl, displayName } = useProfileData();
   const isMobile = useIsMobile();
   const location = useLocation();
   const { stage, open, close, unreadCount, avatarState } = useDonnyContext();
   const [sidebarOpen, setSidebarOpen] = useState(!isMobile);
+  const { data: myRole } = useMyOrgRole(activeOrg?.id);
+  const canManageUnits = myRole?.role === 'owner' || myRole?.role === 'admin';
 
   // Sync sidebar state when viewport crosses mobile/desktop boundary
   useEffect(() => {
@@ -185,6 +189,16 @@ const DashboardLayoutInner: React.FC<DashboardLayoutProps> = ({ children, userRo
                 </div>
 
                 <div className="flex items-center gap-3">
+                  {userRole !== 'content_creator' && (
+                    <OrgUnitSwitcher
+                      canManage={canManageUnits}
+                      onAddUnit={() => {
+                        window.location.href = activeOrg?.org_type === 'restaurant'
+                          ? '/dashboard/business/locations'
+                          : '/dashboard/brand/products';
+                      }}
+                    />
+                  )}
                   <ThemeToggle />
                   <NotificationDropdown />
 
