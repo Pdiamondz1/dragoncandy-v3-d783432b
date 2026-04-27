@@ -34,6 +34,7 @@ interface DonnyContextValue {
   userRole: UserRole;
   quickChips: QuickChip[];
   campaignContext: { campaign_id: string; title: string; status: string } | null;
+  openDonnyWithContext: (query: string) => void;
 }
 
 const DonnyContext = createContext<DonnyContextValue | null>(null);
@@ -138,6 +139,16 @@ export function DonnyProvider({ children, userRole }: DonnyProviderProps) {
     [donny]
   );
 
+  const openDonnyWithContext = useCallback((query: string) => {
+    open();
+    setTimeout(() => {
+      expand();
+      setTimeout(() => {
+        sendMessage(query);
+      }, 100);
+    }, 100);
+  }, [open, expand, sendMessage]);
+
   const value = useMemo<DonnyContextValue>(
     () => ({
       stage,
@@ -158,12 +169,14 @@ export function DonnyProvider({ children, userRole }: DonnyProviderProps) {
       userRole,
       quickChips,
       campaignContext,
+      openDonnyWithContext,
     }),
     [
       stage, open, expand, collapse, close,
       nudges, unreadCount, executeAction, dismissNudge,
       donny.messages, donny.conversation, donny.avatarState, donny.isStreaming,
       sendMessage, location.pathname, userRole, quickChips, campaignContext,
+      openDonnyWithContext,
     ]
   );
 

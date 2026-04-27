@@ -33,7 +33,7 @@ interface UseDonnyOptions {
 }
 
 export function useDonny(options?: UseDonnyOptions) {
-  const { user, profile } = useAuth();
+  const { user, profile, activeOrg } = useAuth();
   const queryClient = useQueryClient();
   const [streamingContent, setStreamingContent] = useState('');
   const [avatarState, setAvatarState] = useState<DonnyAvatarState>('idle');
@@ -142,22 +142,39 @@ export function useDonny(options?: UseDonnyOptions) {
 
       if (insertError) throw insertError;
 
-      // Call edge function — it handles GPT-4o + tool execution + saving assistant message
-      const { data, error: fnError } = await supabase.functions.invoke('donny-chat', {
+      // Call orchestrator edge function
+      const { data, error: fnError } = await supabase.functions.invoke('donny-orchestrator', {
         body: {
-          conversation_id: conversation.id,
-          message: content,
-          context: {
-            page_url: window.location.pathname,
-            campaign_context: options?.campaignContext ?? undefined,
-          },
+          query: content,
+          page_path: window.location.pathname,
+          page_context: options?.campaignContext || {},
+          user_role: profile?.role || 'content_creator',
+          org_id: activeOrg?.id,
+          conversation_history: messages.slice(-10).map(m => ({
+            role: m.role === 'user' ? 'user' as const : 'assistant' as const,
+            content: m.content || '',
+          })),
         },
       });
 
       if (fnError) throw fnError;
 
-      // Edge function saves the assistant message to DB.
-      // Realtime subscription picks it up and invalidates the query.
+      // Orchestrator returns { answer, suggested_actions, agent_used }
+      // Save assistant message to DB (donny-chat used to do this server-side)
+      if (data?.answer) {
+        await supabase
+          .from('donny_messages' as any)
+          .insert({
+            conversation_id: conversation.id,
+            role: 'assistant',
+            content: data.answer,
+            metadata: {
+              agent_used: data.agent_used,
+              suggested_actions: data.suggested_actions,
+            },
+          });
+      }
+
       return data;
     },
     onSuccess: () => {

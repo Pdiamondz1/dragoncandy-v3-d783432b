@@ -2,6 +2,7 @@ import { DonnyAvatar } from './DonnyAvatar';
 import { DonnyNudgeCard } from './DonnyNudgeCard';
 import { DonnyTrayInput } from './DonnyTrayInput';
 import { useDonnyContext } from '@/contexts/DonnyProvider';
+import { getSuggestionsForPage } from '@/lib/donny/helpSuggestions';
 import { cn } from '@/lib/utils';
 
 export function DonnyTray() {
@@ -15,6 +16,8 @@ export function DonnyTray() {
     sendMessage,
     expand,
   } = useDonnyContext();
+
+  const pageSuggestions = getSuggestionsForPage(window.location.pathname);
 
   const handleChipTap = (message: string, requiresChat: boolean) => {
     sendMessage(message);
@@ -57,6 +60,24 @@ export function DonnyTray() {
           />
         ))}
       </div>
+
+      {/* Page-aware help suggestions */}
+      {pageSuggestions.length > 0 && (
+        <div className="px-3 py-2 border-t border-gray-100">
+          <p className="text-[10px] text-gray-400 mb-1 uppercase tracking-wide">Help on this page</p>
+          <div className="flex flex-wrap gap-1.5">
+            {pageSuggestions.map((s) => (
+              <button
+                key={s.label}
+                onClick={() => handleChipTap(s.question, true)}
+                className="whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium border bg-gray-50 border-gray-200 text-gray-600 transition-colors"
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Quick chips */}
       {quickChips.length > 0 && (
