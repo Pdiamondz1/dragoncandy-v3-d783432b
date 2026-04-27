@@ -63,6 +63,9 @@ verify_jwt = false
 [functions.donny-chat]
 verify_jwt = false
 
+[functions.donny-help]
+verify_jwt = false
+
 [functions.donny-campaign-generate]
 verify_jwt = false
 
