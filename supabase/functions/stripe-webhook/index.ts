@@ -201,6 +201,25 @@ serve(async (req) => {
             .eq("payment_status", "pending");
           logStep("Sponsorship marked failed", { sponsorshipId: metadata.sponsorship_id });
         }
+
+        // DragonShare boost payment failed
+        if (metadata.type === "dragonshare_boost" && metadata.boost_id) {
+          await supabase
+            .from("dragonshare_boosts")
+            .update({ status: "failed" })
+            .eq("id", metadata.boost_id)
+            .eq("status", "pending");
+
+          await supabase.from("dragonshare_events").insert({
+            event_type: "boost_failed",
+            actor_org_id: metadata.boosting_org_id,
+            post_id: metadata.post_id,
+            boost_id: metadata.boost_id,
+            payload: { failure_message: failureMessage },
+          });
+
+          logStep("DragonShare boost payment failed", { boostId: metadata.boost_id });
+        }
         break;
       }
 
@@ -401,6 +420,28 @@ serve(async (req) => {
               return new Response("Balance restore failed", { status: 500 });
             }
           }
+        }
+
+        // DragonShare boost transfer failed
+        if (metadata.type === "dragonshare_boost" && metadata.boost_id) {
+          await supabase
+            .from("dragonshare_boosts")
+            .update({ status: "failed" })
+            .eq("id", metadata.boost_id);
+
+          await supabase
+            .from("dragonshare_payouts")
+            .update({ status: "reversed", failure_reason: "Transfer reversed" })
+            .eq("boost_id", metadata.boost_id);
+
+          await supabase.from("dragonshare_events").insert({
+            event_type: "boost_failed",
+            post_id: metadata.post_id,
+            boost_id: metadata.boost_id,
+            payload: { failure_message: (transfer as any).failure_message, reversed: true },
+          });
+
+          logStep("DragonShare boost transfer reversed", { boostId: metadata.boost_id });
         }
         break;
       }
