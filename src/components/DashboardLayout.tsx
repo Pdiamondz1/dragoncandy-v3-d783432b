@@ -41,9 +41,6 @@ import { OrgUnitSwitcher } from '@/components/org/OrgUnitSwitcher';
 import { useMyOrgRole } from '@/hooks/useOrgData';
 import { DesktopGate } from '@/components/DesktopGate';
 import ErrorBoundary from '@/components/ErrorBoundary';
-import { DonnyHelpButton } from '@/components/donny-help/DonnyHelpButton';
-import { DCTour } from '@/components/guidance/DCTour';
-import { useTour } from '@/hooks/useTour';
 import type { UserRole } from '@/types/user';
 import { getSidebarNav, getSettingsHref, getDashboardLabel } from '@/lib/navConfig';
 
@@ -145,7 +142,6 @@ const DashboardLayoutInner: React.FC<DashboardLayoutProps> = ({ children, userRo
   const [sidebarOpen, setSidebarOpen] = useState(!isMobile);
   const { data: myRole } = useMyOrgRole(activeOrg?.id);
   const canManageUnits = myRole?.role === 'owner' || myRole?.role === 'admin';
-  const { showTour, tourSteps, completeTour, skipTour } = useTour();
 
   // Sync sidebar state when viewport crosses mobile/desktop boundary
   useEffect(() => {
@@ -280,15 +276,6 @@ const DashboardLayoutInner: React.FC<DashboardLayoutProps> = ({ children, userRo
         {/* Mobile bottom nav */}
         {isMobile && <MobileBottomNav userRole={userRole} />}
 
-        {/* Floating Donny Help button */}
-        <div data-tour="donny-help">
-          <DonnyHelpButton />
-        </div>
-
-        {/* First-run tour */}
-        {showTour && tourSteps.length > 0 && (
-          <DCTour steps={tourSteps} onComplete={completeTour} onSkip={skipTour} />
-        )}
       </div>
     </SidebarProvider>
   );
