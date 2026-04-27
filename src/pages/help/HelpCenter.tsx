@@ -1,9 +1,10 @@
 import { useState, useMemo } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Search, BookOpen, Megaphone, Zap, CreditCard, Shield, ChevronDown } from "lucide-react";
+import { Search, BookOpen, Megaphone, Zap, CreditCard, Shield, ChevronDown, ArrowLeft } from "lucide-react";
 import { DCSkeleton } from "@/components/ui/dc-skeleton";
+import { Button } from "@/components/ui/button";
 
 interface HelpArticle {
   id: string;
@@ -24,6 +25,7 @@ const CATEGORIES = [
 ] as const;
 
 export default function HelpCenter() {
+  const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [openCategories, setOpenCategories] = useState<Set<string>>(
     new Set(CATEGORIES.map((c) => c.key))
@@ -65,6 +67,16 @@ export default function HelpCenter() {
   return (
     <div className="min-h-screen bg-white">
       <div className="max-w-2xl lg:max-w-3xl mx-auto px-4 py-8 lg:py-12">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => navigate(-1)}
+          className="mb-4 -ml-2 text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="mr-1 h-4 w-4" />
+          Back
+        </Button>
+
         <h1 className="text-2xl lg:text-3xl font-bold text-dc-dark mb-2">
           Help Center
         </h1>
@@ -150,6 +162,25 @@ export default function HelpCenter() {
             <p className="text-xs text-gray-400 mt-1">
               Try different keywords or ask Donny
             </p>
+          </div>
+        )}
+
+        {!isLoading && !search && articles.length === 0 && (
+          <div className="text-center py-16 space-y-3">
+            <BookOpen className="h-10 w-10 text-gray-300 mx-auto" />
+            <p className="text-sm text-gray-500">
+              Help articles are coming soon
+            </p>
+            <p className="text-xs text-gray-400">
+              In the meantime, tap Donny for instant answers
+            </p>
+            <Button
+              variant="outline"
+              className="rounded-full mt-2"
+              onClick={() => navigate(-1)}
+            >
+              Go back
+            </Button>
           </div>
         )}
       </div>

@@ -140,14 +140,23 @@ const CreatorDashboard = () => {
                   </div>
                 ) : activities && activities.length > 0 ? (
                   <div className="space-y-4">
-                    {activities.map((activity) => (
-                      <div key={activity.id} className="flex items-center space-x-4">
-                        <Badge variant={getActivityBadgeVariant(activity.status)}>
-                          {activity.status}
-                        </Badge>
-                        <span className="text-sm text-gray-700">{activity.description}</span>
-                      </div>
-                    ))}
+                    {activities.map((activity) => {
+                      const inner = (
+                        <div className={`flex items-center space-x-4 ${activity.campaign_id ? 'cursor-pointer hover:bg-gray-50 -mx-2 px-2 py-1 rounded-lg transition-colors' : ''}`}>
+                          <Badge variant={getActivityBadgeVariant(activity.status)}>
+                            {activity.status}
+                          </Badge>
+                          <span className="text-sm text-gray-700">{activity.description}</span>
+                        </div>
+                      );
+                      return activity.campaign_id ? (
+                        <Link key={activity.id} to={`/dashboard/creator/campaigns/${activity.campaign_id}`}>
+                          {inner}
+                        </Link>
+                      ) : (
+                        <div key={activity.id}>{inner}</div>
+                      );
+                    })}
                   </div>
                 ) : (
                   <div className="text-center py-8 text-gray-500">
@@ -177,14 +186,23 @@ const CreatorDashboard = () => {
                   </div>
                 ) : deadlines && deadlines.length > 0 ? (
                   <div className="space-y-4">
-                    {deadlines.map((deadline) => (
-                      <div key={deadline.id} className={`border-l-4 ${getDeadlineColor(deadline.daysUntilDeadline)} pl-4`}>
-                        <h4 className="font-semibold text-gray-900">{deadline.title}</h4>
-                        <p className="text-sm text-gray-500">
-                          Due in {deadline.daysUntilDeadline} {deadline.daysUntilDeadline === 1 ? 'day' : 'days'}
-                        </p>
-                      </div>
-                    ))}
+                    {deadlines.map((deadline) => {
+                      const inner = (
+                        <div className={`border-l-4 ${getDeadlineColor(deadline.daysUntilDeadline)} pl-4 ${deadline.campaign_id ? 'cursor-pointer hover:bg-gray-50 -mx-2 px-2 py-1 rounded-lg transition-colors' : ''}`}>
+                          <h4 className="font-semibold text-gray-900">{deadline.title}</h4>
+                          <p className="text-sm text-gray-500">
+                            Due in {deadline.daysUntilDeadline} {deadline.daysUntilDeadline === 1 ? 'day' : 'days'}
+                          </p>
+                        </div>
+                      );
+                      return deadline.campaign_id ? (
+                        <Link key={deadline.id} to={`/dashboard/creator/campaigns/${deadline.campaign_id}`}>
+                          {inner}
+                        </Link>
+                      ) : (
+                        <div key={deadline.id}>{inner}</div>
+                      );
+                    })}
                   </div>
                 ) : (
                   <div className="text-center py-8 text-gray-500">

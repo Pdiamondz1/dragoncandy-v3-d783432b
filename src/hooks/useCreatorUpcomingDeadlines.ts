@@ -8,6 +8,7 @@ export interface UpcomingDeadline {
   deadline: string;
   daysUntilDeadline: number;
   status: string;
+  campaign_id?: string;
 }
 
 export const useCreatorUpcomingDeadlines = () => {
@@ -57,6 +58,7 @@ export const useCreatorUpcomingDeadlines = () => {
               deadline: collab.campaigns?.deadline!,
               daysUntilDeadline: diffDays,
               status: collab.status,
+              campaign_id: collab.campaign_id,
             };
           })
           .filter(deadline => deadline.daysUntilDeadline > 0) // Only future deadlines

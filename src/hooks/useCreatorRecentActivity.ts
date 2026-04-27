@@ -8,6 +8,7 @@ export interface ActivityItem {
   status: string;
   description: string;
   created_at: string;
+  campaign_id?: string;
 }
 
 export const useCreatorRecentActivity = () => {
@@ -45,6 +46,7 @@ export const useCreatorRecentActivity = () => {
               status: app.status,
               description: `Applied to "${app.campaigns?.title || 'Unknown Campaign'}" campaign`,
               created_at: app.created_at,
+              campaign_id: app.campaign_id,
             });
           });
         }
@@ -86,6 +88,7 @@ export const useCreatorRecentActivity = () => {
               status: collab.status,
               description,
               created_at: collab.updated_at,
+              campaign_id: collab.campaign_id,
             });
           });
         }
