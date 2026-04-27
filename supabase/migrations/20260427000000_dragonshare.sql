@@ -3,7 +3,7 @@
 
 create table dragonshare_posts (
   id uuid primary key default gen_random_uuid(),
-  creator_id uuid not null references profiles(user_id) on delete cascade,
+  creator_id uuid not null references profiles(id) on delete cascade,
   target_org_id uuid not null references organizations(id) on delete cascade,
   target_org_unit_id uuid references org_units(id) on delete set null,
   monetization_type text not null default 'brand_boost'
@@ -64,7 +64,7 @@ alter table dragonshare_boosts enable row level security;
 create table dragonshare_payouts (
   id uuid primary key default gen_random_uuid(),
   boost_id uuid not null references dragonshare_boosts(id) on delete cascade,
-  creator_id uuid not null references profiles(user_id) on delete cascade,
+  creator_id uuid not null references profiles(id) on delete cascade,
   amount_cents int not null,
   stripe_transfer_id text,
   status text not null default 'pending'
@@ -119,12 +119,7 @@ create policy "ds_posts_org_select"
   on dragonshare_posts for select
   using (
     status = 'verified' and
-    exists (
-      select 1 from org_members
-      where org_members.org_id = dragonshare_posts.target_org_id
-        and org_members.user_id = auth.uid()
-        and org_members.invitation_status = 'active'
-    )
+    target_org_id in (select get_user_org_ids())
   );
 
 create policy "ds_posts_creator_insert"
@@ -149,12 +144,7 @@ create policy "ds_boosts_creator_select"
 create policy "ds_boosts_org_select"
   on dragonshare_boosts for select
   using (
-    exists (
-      select 1 from org_members
-      where org_members.org_id = dragonshare_boosts.boosting_org_id
-        and org_members.user_id = auth.uid()
-        and org_members.invitation_status = 'active'
-    )
+    boosting_org_id in (select get_user_org_ids())
   );
 
 create policy "ds_payouts_creator_select"
@@ -176,10 +166,8 @@ create policy "ds_engagement_org_select"
   using (
     exists (
       select 1 from dragonshare_boosts b
-      join org_members om on om.org_id = b.boosting_org_id
       where b.post_id = dragonshare_engagement.post_id
-        and om.user_id = auth.uid()
-        and om.invitation_status = 'active'
+        and b.boosting_org_id in (select get_user_org_ids())
     )
   );
 
