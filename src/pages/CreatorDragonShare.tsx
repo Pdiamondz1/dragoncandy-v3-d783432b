@@ -81,7 +81,7 @@ const CreatorDragonShare: React.FC = () => {
             ))}
           </div>
         ) : filteredPosts.length === 0 ? (
-          <DragonShareExplainer role="creator" />
+          <DragonShareExplainer role="creator" onSubmit={() => setSubmitOpen(true)} />
         ) : (
           <div className="space-y-4">
             <div className="flex justify-end">

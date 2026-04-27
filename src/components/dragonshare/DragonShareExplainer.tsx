@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 interface DragonShareExplainerProps {
   role: "creator" | "brand";
   collapsed?: boolean;
+  onSubmit?: () => void;
 }
 
 const CREATOR_STEPS = [
@@ -43,7 +44,7 @@ const BRAND_STEPS = [
   },
 ];
 
-export function DragonShareExplainer({ role, collapsed }: DragonShareExplainerProps) {
+export function DragonShareExplainer({ role, collapsed, onSubmit }: DragonShareExplainerProps) {
   const steps = role === "creator" ? CREATOR_STEPS : BRAND_STEPS;
 
   if (collapsed) {
@@ -83,10 +84,8 @@ export function DragonShareExplainer({ role, collapsed }: DragonShareExplainerPr
 
       <div className="pt-2 space-y-2">
         {role === "creator" ? (
-          <Button variant="dc-primary" className="w-full" asChild>
-            <Link to="/dashboard/creator/dragonshare/submit">
-              Submit your first post
-            </Link>
+          <Button variant="dc-primary" className="w-full" onClick={onSubmit}>
+            Submit your first post
           </Button>
         ) : (
           <p className="text-center text-sm text-gray-500">
