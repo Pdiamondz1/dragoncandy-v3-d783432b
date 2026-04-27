@@ -16,6 +16,7 @@ import { DCSkeleton, DCSkeletonGrid } from '@/components/ui/dc-skeleton';
 import { DragonShareStatTile } from '@/components/dragonshare/DragonShareStatTile';
 import { useOrgBoostStats } from '@/hooks/useDragonShare';
 import { useOrg } from '@/hooks/useOrgData';
+import { BrandFreeTrioHero } from '@/components/dashboard/BrandFreeTrioHero';
 
 function formatSpend(amount: number): string {
   if (amount === 0) return '$0';
@@ -72,6 +73,8 @@ const BrandDashboard = () => {
           roleLabel="Brand Dashboard"
           userName={profile.business_name || 'Brand Partner'}
         >
+          <BrandFreeTrioHero orgId={org?.id} />
+
           <div data-tour="free-trio">
             <DashboardStatsGrid stats={brandStats} isLoading={statsLoading} />
           </div>
