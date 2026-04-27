@@ -372,6 +372,7 @@ export type Database = {
           final_approval_status: string | null
           id: string
           intro_message: string | null
+          portfolio_url: string | null
           proposed_rate: number | null
           proposed_timeline: string | null
           restaurant_approval_status: string | null
@@ -386,6 +387,7 @@ export type Database = {
           final_approval_status?: string | null
           id?: string
           intro_message?: string | null
+          portfolio_url?: string | null
           proposed_rate?: number | null
           proposed_timeline?: string | null
           restaurant_approval_status?: string | null
@@ -400,6 +402,7 @@ export type Database = {
           final_approval_status?: string | null
           id?: string
           intro_message?: string | null
+          portfolio_url?: string | null
           proposed_rate?: number | null
           proposed_timeline?: string | null
           restaurant_approval_status?: string | null
@@ -1444,6 +1447,7 @@ export type Database = {
           created_at: string
           id: string
           model: string | null
+          quick_actions: Json | null
           rich_card: Json | null
           role: string
           tokens_used: number | null
@@ -1456,6 +1460,7 @@ export type Database = {
           created_at?: string
           id?: string
           model?: string | null
+          quick_actions?: Json | null
           rich_card?: Json | null
           role: string
           tokens_used?: number | null
@@ -1468,6 +1473,7 @@ export type Database = {
           created_at?: string
           id?: string
           model?: string | null
+          quick_actions?: Json | null
           rich_card?: Json | null
           role?: string
           tokens_used?: number | null
