@@ -31,7 +31,7 @@ export const MobileTopNav: React.FC<MobileTopNavProps> = ({
   return (
     <header className={`sticky top-0 z-50 flex items-center justify-between px-4 py-2 ${bgClass} border-b border-border`}>
       <Link to="/" className="flex-shrink-0">
-        <img src={dragonCandyLogo} alt="DragonCandy" className="w-[100px] md:w-[120px] lg:w-[140px] h-auto" />
+        <img src={dragonCandyLogo} alt="DragonCandy" className="w-[64px] md:w-[120px] lg:w-[140px] h-auto" />
       </Link>
 
       {showWelcome && displayName && (
