@@ -405,6 +405,106 @@ serve(async (req) => {
         break;
       }
 
+      // ── Subscription created / updated ──────────────────────────────────
+      case "customer.subscription.created":
+      case "customer.subscription.updated": {
+        const subscription = event.data.object as Stripe.Subscription;
+        const customerId = subscription.customer as string;
+        const subscriptionId = subscription.id;
+        const priceId = subscription.items.data[0]?.price?.id ?? null;
+
+        // Derive tier from price metadata or status; default to 'pro' for active subscriptions
+        const tier = subscription.status === 'active' ? 'pro' : 'free';
+
+        logStep("Subscription upserted", { customerId, subscriptionId, status: subscription.status, tier });
+
+        const { error: subError } = await supabase
+          .from("organizations")
+          .update({
+            stripe_subscription_id: subscriptionId,
+            subscription_tier: tier,
+          })
+          .eq("stripe_customer_id", customerId);
+
+        if (subError) {
+          logStep("ERROR: Failed to update org subscription", { customerId, error: subError.message });
+          return new Response("DB update failed", { status: 500 });
+        }
+        break;
+      }
+
+      // ── Subscription deleted (cancelled) ─────────────────────────────────
+      case "customer.subscription.deleted": {
+        const subscription = event.data.object as Stripe.Subscription;
+        const customerId = subscription.customer as string;
+
+        logStep("Subscription deleted — resetting to free", { customerId, subscriptionId: subscription.id });
+
+        const { error: deleteError } = await supabase
+          .from("organizations")
+          .update({
+            stripe_subscription_id: null,
+            subscription_tier: 'free',
+          })
+          .eq("stripe_customer_id", customerId);
+
+        if (deleteError) {
+          logStep("ERROR: Failed to reset org to free tier", { customerId, error: deleteError.message });
+          return new Response("DB update failed", { status: 500 });
+        }
+        break;
+      }
+
+      // ── Invoice payment succeeded ─────────────────────────────────────────
+      case "invoice.payment_succeeded": {
+        const invoice = event.data.object as Stripe.Invoice;
+        const subscriptionId = invoice.subscription as string | null;
+
+        logStep("Invoice payment succeeded", { invoiceId: invoice.id, subscriptionId, amountPaid: invoice.amount_paid });
+
+        if (subscriptionId) {
+          const { data: org, error: orgError } = await supabase
+            .from("organizations")
+            .select("id, subscription_tier")
+            .eq("stripe_subscription_id", subscriptionId)
+            .maybeSingle();
+
+          if (orgError) {
+            logStep("ERROR: Failed to look up org by subscription", { subscriptionId, error: orgError.message });
+          } else if (org) {
+            logStep("Invoice payment logged for org", { orgId: org.id, tier: org.subscription_tier });
+          } else {
+            logStep("No org found for subscription — invoice ignored", { subscriptionId });
+          }
+        }
+        break;
+      }
+
+      // ── Invoice payment failed ────────────────────────────────────────────
+      case "invoice.payment_failed": {
+        const invoice = event.data.object as Stripe.Invoice;
+        const subscriptionId = invoice.subscription as string | null;
+
+        logStep("Invoice payment failed", { invoiceId: invoice.id, subscriptionId, attemptCount: invoice.attempt_count });
+
+        if (subscriptionId) {
+          const { data: org, error: orgError } = await supabase
+            .from("organizations")
+            .select("id, subscription_tier")
+            .eq("stripe_subscription_id", subscriptionId)
+            .maybeSingle();
+
+          if (orgError) {
+            logStep("ERROR: Failed to look up org by subscription for failed invoice", { subscriptionId, error: orgError.message });
+          } else if (org) {
+            logStep("Invoice payment failure logged for org", { orgId: org.id, tier: org.subscription_tier, attemptCount: invoice.attempt_count });
+          } else {
+            logStep("No org found for subscription — failed invoice ignored", { subscriptionId });
+          }
+        }
+        break;
+      }
+
       default:
         logStep("Unhandled event type — ignored", { type: event.type });
     }
