@@ -79,6 +79,7 @@ import AdminDragonShareLedger from "./pages/AdminDragonShareLedger";
 import HelpBriefPage from "@/pages/help/promotions/HelpBriefPage";
 import HelpCenter from "@/pages/help/HelpCenter";
 import HelpArticlePage from "@/pages/help/HelpArticlePage";
+import PricingPage from "./pages/PricingPage";
 import { HelpBriefDrawer } from "@/features/donny/HelpBriefDrawer";
 import { useAuth } from "@/hooks/useAuth";
 import type { UserRole } from "@/types/user";
@@ -140,6 +141,9 @@ const App = () => {
                   {/* Help Center */}
                   <Route path="/help" element={<HelpCenter />} />
                   <Route path="/help/:slug" element={<HelpArticlePage />} />
+
+                  {/* Public Pricing Page */}
+                  <Route path="/pricing" element={<PricingPage />} />
 
                   {/* Anonymous Campaign Creation */}
                   <Route path="/campaign/create" element={<CampaignCreator />} />
