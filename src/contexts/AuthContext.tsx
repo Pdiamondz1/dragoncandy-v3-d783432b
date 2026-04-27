@@ -4,6 +4,7 @@ import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { cleanupAuthState } from '@/lib/authCleanup';
 import { toast } from 'sonner';
+import type { Organization, OrgUnit } from '@/types/org';
 
 interface Profile {
   id: string;
@@ -14,6 +15,8 @@ interface Profile {
   business_name?: string;
   creator_name?: string;
   email_verified?: boolean;
+  org_id?: string;
+  active_org_unit_id?: string;
 }
 
 interface AuthContextType {
@@ -25,6 +28,9 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   isAuthenticated: boolean;
   migrateCampaignData: () => Promise<void>;
+  activeOrg: Organization | null;
+  activeOrgUnit: OrgUnit | null;
+  switchOrgUnit: (unitId: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -47,6 +53,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeOrg, setActiveOrg] = useState<Organization | null>(null);
+  const [activeOrgUnit, setActiveOrgUnit] = useState<OrgUnit | null>(null);
 
   // Timeout mechanism to prevent infinite loading
   useEffect(() => {
@@ -102,7 +110,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.log('🔍 AuthProvider: Querying basic profile...');
       const { data: basicProfile, error: profileError } = await supabase
         .from('profiles')
-        .select('id, email, role, full_name, avatar_url, email_verified')
+        .select('id, email, role, full_name, avatar_url, email_verified, org_id, active_org_unit_id')
         .eq('id', userId)
         .maybeSingle();
 
@@ -133,6 +141,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         full_name: basicProfile.full_name,
         avatar_url: basicProfile.avatar_url,
         email_verified: basicProfile.email_verified,
+        org_id: basicProfile.org_id,
+        active_org_unit_id: basicProfile.active_org_unit_id,
       };
 
       // Fetch role-specific data with error handling
@@ -179,6 +189,52 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  const fetchOrgData = async (orgId: string | null | undefined, orgUnitId: string | null | undefined) => {
+    if (!orgId) {
+      setActiveOrg(null);
+      setActiveOrgUnit(null);
+      return;
+    }
+    try {
+      const { data: org } = await supabase
+        .from('organizations')
+        .select('*')
+        .eq('id', orgId)
+        .single();
+      setActiveOrg(org as Organization | null);
+
+      if (orgUnitId) {
+        const { data: unit } = await supabase
+          .from('org_units')
+          .select('*')
+          .eq('id', orgUnitId)
+          .single();
+        setActiveOrgUnit(unit as OrgUnit | null);
+      } else {
+        setActiveOrgUnit(null);
+      }
+    } catch {
+      setActiveOrg(null);
+      setActiveOrgUnit(null);
+    }
+  };
+
+  const switchOrgUnit = async (unitId: string) => {
+    if (!user) return;
+    const { error } = await supabase
+      .from('profiles')
+      .update({ active_org_unit_id: unitId })
+      .eq('id', user.id);
+    if (error) throw error;
+
+    const { data: unit } = await supabase
+      .from('org_units')
+      .select('*')
+      .eq('id', unitId)
+      .single();
+    setActiveOrgUnit(unit as OrgUnit | null);
+  };
+
   useEffect(() => {
     console.log('🚀 AuthProvider: Initializing authentication...');
     
@@ -215,6 +271,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                 }
                 
                 setProfile(profileData);
+                if (profileData?.org_id) {
+                  await fetchOrgData(profileData.org_id, profileData.active_org_unit_id);
+                }
               } catch (profileError) {
                 console.error('❌ AuthProvider: Deferred profile fetch failed:', profileError);
                 
@@ -341,16 +400,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       // Clear local state
       setProfile(null);
+      setActiveOrg(null);
+      setActiveOrgUnit(null);
       setError(null);
       setUser(null);
       setSession(null);
-      
+
     } catch (error) {
       console.error('❌ AuthProvider: Sign out failed:', error);
-      
+
       // Clean up auth state even if sign out fails
       cleanupAuthState();
       setProfile(null);
+      setActiveOrg(null);
+      setActiveOrgUnit(null);
       setError(null);
       setUser(null);
       setSession(null);
@@ -365,7 +428,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     error,
     signOut,
     isAuthenticated: !!user,
-    migrateCampaignData
+    migrateCampaignData,
+    activeOrg,
+    activeOrgUnit,
+    switchOrgUnit
   };
 
   console.log('📊 AuthProvider: Current state:', {
