@@ -25,7 +25,11 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ userRole }) =>
             const active = isActive(item.href);
 
             if (item.isDonny) {
-              return <DonnyNavButton key="donny-center" />;
+              return (
+                <div key="donny-center" data-tour="bottom-nav-add">
+                  <DonnyNavButton />
+                </div>
+              );
             }
 
             return (

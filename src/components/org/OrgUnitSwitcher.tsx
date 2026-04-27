@@ -96,6 +96,7 @@ export function OrgUnitSwitcher({ onAddUnit, canManage }: OrgUnitSwitcherProps) 
         <Button
           variant="outline"
           size="sm"
+          data-tour="org-switcher"
           className="rounded-full border border-teal-300 bg-white text-teal-600 hover:bg-teal-50 hover:text-teal-700 flex items-center gap-1.5 px-3 py-1.5 h-auto"
         >
           <OrgIcon className="w-3.5 h-3.5 shrink-0" />

@@ -13,11 +13,14 @@ interface UseTourReturn {
   replayTour: () => void;
 }
 
-export function useTour(): UseTourReturn {
+const SESSION_KEY = "dc_tour_dismissed";
+
+export function useTour(dashboardPath?: string): UseTourReturn {
   const { user, profile } = useAuth();
   const queryClient = useQueryClient();
   const [showTour, setShowTour] = useState(false);
 
+  // DB guard: check onboarding_completed_at
   const { data: onboardingCompleted } = useQuery({
     queryKey: ["tour-state", user?.id],
     queryFn: async () => {
@@ -33,11 +36,22 @@ export function useTour(): UseTourReturn {
   });
 
   useEffect(() => {
-    if (onboardingCompleted === false && profile?.role) {
-      const timer = setTimeout(() => setShowTour(true), 300);
-      return () => clearTimeout(timer);
-    }
-  }, [onboardingCompleted, profile?.role]);
+    // Route guard: only show on exact dashboard home route
+    if (dashboardPath && window.location.pathname !== dashboardPath) return;
+
+    // Session guard: skip if dismissed this session
+    if (sessionStorage.getItem(SESSION_KEY)) return;
+
+    // DB guard: skip if onboarding already completed
+    if (onboardingCompleted !== false) return;
+
+    // Role must be known
+    if (!profile?.role) return;
+
+    // Mount delay: 500ms
+    const timer = setTimeout(() => setShowTour(true), 500);
+    return () => clearTimeout(timer);
+  }, [onboardingCompleted, profile?.role, dashboardPath]);
 
   const completeMutation = useMutation({
     mutationFn: async () => {
@@ -48,13 +62,21 @@ export function useTour(): UseTourReturn {
         .eq("id", user.id);
     },
     onSuccess: () => {
-      setShowTour(false);
       queryClient.invalidateQueries({ queryKey: ["tour-state", user?.id] });
     },
   });
 
-  const completeTour = useCallback(() => completeMutation.mutate(), [completeMutation]);
-  const skipTour = useCallback(() => completeMutation.mutate(), [completeMutation]);
+  const completeTour = useCallback(() => {
+    sessionStorage.setItem(SESSION_KEY, "true");
+    setShowTour(false);
+    completeMutation.mutate();
+  }, [completeMutation]);
+
+  const skipTour = useCallback(() => {
+    sessionStorage.setItem(SESSION_KEY, "true");
+    setShowTour(false);
+    completeMutation.mutate();
+  }, [completeMutation]);
 
   const replayMutation = useMutation({
     mutationFn: async () => {
@@ -65,6 +87,7 @@ export function useTour(): UseTourReturn {
         .eq("id", user.id);
     },
     onSuccess: () => {
+      sessionStorage.removeItem(SESSION_KEY);
       queryClient.invalidateQueries({ queryKey: ["tour-state", user?.id] });
     },
   });
