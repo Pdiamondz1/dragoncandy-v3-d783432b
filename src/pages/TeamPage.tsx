@@ -172,7 +172,11 @@ export default function TeamPage() {
                         </Badge>
                         {isPending && <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-300">Pending</Badge>}
                       </div>
-                      <p className="text-xs text-muted-foreground truncate">{member.email}</p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {member.email}
+                        {member.joined_at && <span className="ml-2">· Joined {new Date(member.joined_at).toLocaleDateString()}</span>}
+                        {member.last_active_at && <span className="ml-2">· Active {new Date(member.last_active_at).toLocaleDateString()}</span>}
+                      </p>
                     </div>
                     {(roles.length > 0 || removable) && (
                       <DropdownMenu>
