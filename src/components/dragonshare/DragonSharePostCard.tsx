@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Sparkles, ExternalLink, SkipForward } from 'lucide-react';
 import { BoostConfirmationSheet } from './BoostConfirmationSheet';
 import { BOOST_TIERS } from '@/types/dragonshare';
+import { WhyExpander } from '@/components/guidance/WhyExpander';
 import type { DragonSharePostWithRelations, BoostTierLabel } from '@/types/dragonshare';
 
 interface Props {
@@ -56,6 +57,7 @@ export function DragonSharePostCard({ post, canBoost, onSkip }: Props) {
               <span className="text-sm font-medium text-teal-700">
                 Donny recommends: ${post.donny_recommended_tier} boost
               </span>
+              <WhyExpander expanderKey="donny_score" title="What is Donny's score?" body="Donny estimates reach and engagement potential. Higher scores get higher boost recommendations." />
             </div>
             {post.donny_reach_estimate && (
               <p className="text-xs text-teal-600">

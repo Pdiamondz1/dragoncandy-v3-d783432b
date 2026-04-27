@@ -24,6 +24,7 @@ import {
 import ApplicationForm from './ApplicationForm';
 import { useCampaign } from '@/hooks/useCampaigns';
 import { CreatorMatch, ScoreBreakdown } from '@/hooks/useCampaignMatches';
+import { WhyExpander } from '@/components/guidance/WhyExpander';
 
 interface CreatorMatchCardProps {
   match: CreatorMatch;
@@ -134,8 +135,11 @@ const CreatorMatchCard: React.FC<CreatorMatchCardProps> = ({ match, isInvited, o
 
           {/* Overall score badge */}
           <div className="flex flex-col items-center gap-1 flex-shrink-0">
-            <div className={`text-2xl font-bold ${getScoreColor(match.match_score)}`}>
-              {match.match_score}
+            <div className="flex items-center">
+              <div className={`text-2xl font-bold ${getScoreColor(match.match_score)}`}>
+                {match.match_score}
+              </div>
+              <WhyExpander expanderKey="match_score" title="What is match score?" body="Donny scores creators 0–100 based on content fit, audience overlap, and past performance." />
             </div>
             <Badge variant={getScoreBadgeVariant(match.match_score)} className="text-[10px] px-1.5">
               {getScoreLabel(match.match_score)}

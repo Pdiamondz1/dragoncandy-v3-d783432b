@@ -18,6 +18,7 @@ import { DeleteOrgSheet } from '@/components/org/DeleteOrgSheet';
 import { LeaveOrgSheet } from '@/components/org/LeaveOrgSheet';
 import { DeleteUserSheet } from '@/components/org/DeleteUserSheet';
 import { Coachmark } from '@/components/guidance/Coachmark';
+import { WhyExpander } from '@/components/guidance/WhyExpander';
 
 const BusinessSettings = () => {
   const { user, activeOrg } = useAuth();
@@ -162,12 +163,15 @@ const BusinessSettings = () => {
                 >
                   Delete my user account
                 </button>
-                <a
-                  href="mailto:support@dragoncandy.io?subject=GDPR%20Data%20Erasure%20Request"
-                  className="block text-sm text-muted-foreground hover:text-foreground underline"
-                >
-                  Request full data erasure (GDPR/CCPA)
-                </a>
+                <div className="flex items-center gap-1">
+                  <a
+                    href="mailto:support@dragoncandy.io?subject=GDPR%20Data%20Erasure%20Request"
+                    className="text-sm text-muted-foreground hover:text-foreground underline"
+                  >
+                    Request full data erasure (GDPR/CCPA)
+                  </a>
+                  <WhyExpander expanderKey="soft_delete_vs_gdpr" title="What's the difference?" body="Soft delete preserves your data for 30 days in case you change your mind. GDPR erasure permanently removes everything." />
+                </div>
               </AccordionContent>
             </AccordionItem>
           </Accordion>

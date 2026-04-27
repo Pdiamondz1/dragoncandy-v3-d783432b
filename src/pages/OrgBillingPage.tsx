@@ -1,5 +1,6 @@
 import { CreditCard, Users, ArrowUpRight, AlertCircle } from 'lucide-react';
 import DashboardLayout from '@/components/DashboardLayout';
+import { WhyExpander } from '@/components/guidance/WhyExpander';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -176,7 +177,10 @@ export default function OrgBillingPage() {
                   <div className="text-right">
                     <p className="font-bold">{TIER_PRICES[t] === 0 ? 'Free' : `$${TIER_PRICES[t]}/mo`}</p>
                     {l.additionalPriceMonthly > 0 && (
-                      <p className="text-xs text-muted-foreground">+${l.additionalPriceMonthly}/seat</p>
+                      <p className="text-xs text-muted-foreground flex items-center">
+                        +${l.additionalPriceMonthly}/seat
+                        <WhyExpander expanderKey="per_seat_pricing" title="What is a seat?" body="Each seat is one team member. Your plan includes some seats free; extras are billed monthly." />
+                      </p>
                     )}
                   </div>
                 </div>

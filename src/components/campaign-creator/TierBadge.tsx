@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { DeliveryTier } from '@/types/campaignMedia';
+import { WhyExpander } from '@/components/guidance/WhyExpander';
 import { TIER_LIMITS } from '@/types/campaignMedia';
 import { mapDeliveryType } from '@/lib/campaignUtils';
 import { cn } from '@/lib/utils';
@@ -35,6 +36,7 @@ export function TierBadge({ deliveryType, tierReasoning, onChange }: TierBadgePr
           {config?.label || 'Standard'} · {config?.timeframe}
           {config && config.fee > 0 ? ` · +$${config.fee}` : ''}
         </span>
+        <WhyExpander expanderKey="delivery_tier" title="What do the tiers mean?" body="DragonDash = same-day. Express = 48 hours. Standard = 5 business days." />
         <button type="button" className="text-xs text-teal-500 hover:text-teal-700"
           onClick={() => setShowDropdown(!showDropdown)}>
           Change

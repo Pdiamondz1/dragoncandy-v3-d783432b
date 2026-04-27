@@ -7,6 +7,7 @@ import { Sparkles, Loader2 } from 'lucide-react';
 import { DRAGONSHARE_FEE_RATE } from '@/types/dragonshare';
 import type { DragonSharePostWithRelations, BoostTierLabel } from '@/types/dragonshare';
 import { Coachmark } from '@/components/guidance/Coachmark';
+import { WhyExpander } from '@/components/guidance/WhyExpander';
 
 interface Props {
   open: boolean;
@@ -73,7 +74,10 @@ export function BoostConfirmationSheet({ open, onOpenChange, post, amountCents, 
                 <span className="font-medium">${(creatorPayoutCents / 100).toFixed(2)} (80%)</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">DragonCandy fee</span>
+                <span className="text-muted-foreground flex items-center">
+                  DragonCandy fee
+                  <WhyExpander expanderKey="take_rate" title="Where does the money go?" body="Creator receives 80%. DragonCandy's 20% covers payment processing, verification, and platform costs." />
+                </span>
                 <span className="font-medium">${(platformFeeCents / 100).toFixed(2)} (20%)</span>
               </div>
               <div className="border-t pt-2 flex justify-between font-semibold">
