@@ -13,6 +13,8 @@ import { useSponsorshipPayment } from '@/hooks/useSponsorshipPayment';
 import SponsorshipRatingPromptManager from '@/components/reviews/SponsorshipRatingPromptManager';
 import ResponsiveRatingModal from '@/components/reviews/ResponsiveRatingModal';
 import { Target, DollarSign, Calendar, ExternalLink, Loader2, MessageSquare, CheckCircle, Clock, Star, CreditCard, RefreshCw } from 'lucide-react';
+import { DCSkeleton } from '@/components/ui/dc-skeleton';
+import { DCEmptyState } from '@/components/ui/dc-empty-state';
 import { format } from 'date-fns';
 
 const BrandSponsorships = () => {
@@ -46,8 +48,15 @@ const BrandSponsorships = () => {
   if (!profile) {
     return (
       <DashboardLayout userRole="brand">
-        <div className="min-h-screen bg-white flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-dc-teal" />
+        <div className="min-h-screen overflow-x-hidden pb-24 md:pb-0 md:max-w-4xl md:mx-auto">
+          <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
+            <div className="flex-1 text-center">
+              <DCSkeleton variant="text-block" className="h-5 w-40 mx-auto" />
+            </div>
+          </div>
+          <div className="p-4 space-y-3">
+            <DCSkeleton variant="list-row" count={4} className="h-32" />
+          </div>
         </div>
       </DashboardLayout>
     );
@@ -237,8 +246,8 @@ const BrandSponsorships = () => {
           <SponsorshipRatingPromptManager />
 
           {isLoading ? (
-            <div className="flex items-center justify-center h-40">
-              <Loader2 className="h-8 w-8 animate-spin text-dc-teal" />
+            <div className="space-y-3">
+              <DCSkeleton variant="list-row" count={4} className="h-32" />
             </div>
           ) : sponsorships && sponsorships.length > 0 ? (
             <div className="space-y-3">
@@ -344,19 +353,12 @@ const BrandSponsorships = () => {
               ))}
             </div>
           ) : (
-            <div className="border-2 border-dc-teal rounded-2xl p-8 text-center">
-              <Target className="h-12 w-12 mx-auto text-dc-teal mb-3" />
-              <h3 className="font-bold text-gray-900 mb-2">No Sponsorships Yet</h3>
-              <p className="text-xs text-gray-500 mb-4">
-                Start by discovering restaurant campaigns that are open for brand sponsorship
-              </p>
-              <Button
-                onClick={() => navigate('/dashboard/brand/discover-campaigns')}
-                className="rounded-full bg-dc-teal text-white font-bold hover:bg-dc-teal/90"
-              >
-                Discover Campaigns
-              </Button>
-            </div>
+            <DCEmptyState
+              icon={Target}
+              title="No Sponsorships Yet"
+              subtitle="Start by discovering restaurant campaigns that are open for brand sponsorship"
+              cta={{ label: "Discover Campaigns", to: "/dashboard/brand/discover-campaigns" }}
+            />
           )}
         </div>
       </div>

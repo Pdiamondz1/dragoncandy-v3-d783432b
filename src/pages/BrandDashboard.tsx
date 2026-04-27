@@ -10,6 +10,7 @@ import { DashboardStatsGrid, type StatItem } from '@/components/dashboard/Dashbo
 import { QuickActionButtons, type QuickAction } from '@/components/dashboard/QuickActionButtons';
 import { ActivityFeedCard } from '@/components/dashboard/ActivityFeedCard';
 import { Rocket, DollarSign, Users, TrendingUp, Loader2, AlertCircle } from 'lucide-react';
+import { DCSkeleton, DCSkeletonGrid } from '@/components/ui/dc-skeleton';
 import { DragonShareStatTile } from '@/components/dragonshare/DragonShareStatTile';
 import { useOrgBoostStats } from '@/hooks/useDragonShare';
 import { useOrg } from '@/hooks/useOrgData';
@@ -30,8 +31,19 @@ const BrandDashboard = () => {
   if (!profile) {
     return (
       <DashboardLayout userRole="brand">
-        <div className="min-h-screen bg-white flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-dc-teal" />
+        <div className="min-h-screen bg-white overflow-x-hidden">
+          <div className="bg-gradient-to-b from-dc-pink-bg to-pink-50 px-4 pt-6 pb-8">
+            <div className="max-w-2xl lg:max-w-4xl mx-auto space-y-4">
+              <DCSkeleton variant="text-block" className="h-4 w-32" />
+              <DCSkeleton variant="text-block" className="h-8 w-48" />
+              <DCSkeletonGrid columns={4} count={4} variant="stat" className="mt-4" />
+            </div>
+          </div>
+          <div className="px-4 py-6 pb-24 md:pb-0">
+            <div className="max-w-2xl lg:max-w-4xl mx-auto space-y-4">
+              <DCSkeleton variant="list-row" count={3} />
+            </div>
+          </div>
         </div>
       </DashboardLayout>
     );

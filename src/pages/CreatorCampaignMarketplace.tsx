@@ -19,8 +19,10 @@ import { DonnyPicksRow } from '@/components/campaigns/DonnyPicksRow';
 import { useCreatorCollaborations } from '@/hooks/useCreatorCollaborations';
 import { ActiveCampaignCard } from '@/components/campaigns/ActiveCampaignCard';
 import { CompletedCampaignCard } from '@/components/campaigns/CompletedCampaignCard';
-import { MapPin, Target } from 'lucide-react';
+import { MapPin, Target, FileText, Briefcase, CheckCircle } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
+import { DCSkeleton } from '@/components/ui/dc-skeleton';
+import { DCEmptyState } from '@/components/ui/dc-empty-state';
 import { formatBudget } from '@/lib/campaignUtils';
 
 
@@ -316,28 +318,15 @@ const CreatorCampaignMarketplace = () => {
           <div className="flex-1 px-4 py-4">
             {appsLoading ? (
               <div className="space-y-3">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="bg-white rounded-2xl p-4 animate-pulse">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-gray-200" />
-                      <div className="flex-1">
-                        <div className="h-4 bg-gray-200 rounded w-3/4 mb-1" />
-                        <div className="h-3 bg-gray-200 rounded w-1/2" />
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                <DCSkeleton variant="list-row" count={3} />
               </div>
             ) : applications.length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-gray-500 text-sm mb-2">No applications yet.</p>
-                <button
-                  onClick={() => setActiveTab('available')}
-                  className="text-dc-teal text-sm font-semibold hover:underline"
-                >
-                  Browse available campaigns to get started.
-                </button>
-              </div>
+              <DCEmptyState
+                icon={FileText}
+                title="No applications yet"
+                subtitle="Browse campaigns and apply with one tap"
+                cta={{ label: "Browse Campaigns", to: "/dashboard/creator/campaigns" }}
+              />
             ) : (
               <div className="space-y-3">
                 {applications.map((app) => (
@@ -356,29 +345,14 @@ const CreatorCampaignMarketplace = () => {
           <div className="flex-1 px-4 py-4">
             {activeLoading ? (
               <div className="space-y-3">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="bg-white rounded-2xl p-4 animate-pulse">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-gray-200" />
-                      <div className="flex-1">
-                        <div className="h-4 bg-gray-200 rounded w-3/4 mb-1" />
-                        <div className="h-3 bg-gray-200 rounded w-1/2" />
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                <DCSkeleton variant="list-row" count={3} />
               </div>
             ) : activeCollabs.length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-gray-900 font-semibold mb-2">No active campaigns yet.</p>
-                <p className="text-gray-500 text-sm mb-4">When a restaurant accepts your application, your campaign will appear here.</p>
-                <button
-                  onClick={() => setActiveTab('available')}
-                  className="text-dc-teal text-sm font-semibold border border-dc-teal rounded-full px-6 py-2 hover:bg-teal-50/10 transition-colors"
-                >
-                  Browse Campaigns
-                </button>
-              </div>
+              <DCEmptyState
+                icon={Briefcase}
+                title="No active projects"
+                subtitle="Apply to campaigns to start working with brands"
+              />
             ) : (
               <div className="space-y-3">
                 {activeCollabs.map((collab) => (
@@ -393,23 +367,14 @@ const CreatorCampaignMarketplace = () => {
           <div className="flex-1 px-4 py-4">
             {completedLoading ? (
               <div className="space-y-3">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="bg-white rounded-2xl p-4 animate-pulse">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-gray-200" />
-                      <div className="flex-1">
-                        <div className="h-4 bg-gray-200 rounded w-3/4 mb-1" />
-                        <div className="h-3 bg-gray-200 rounded w-1/2" />
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                <DCSkeleton variant="list-row" count={3} />
               </div>
             ) : completedCollabs.length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-gray-900 font-semibold mb-2">No completed campaigns yet.</p>
-                <p className="text-gray-500 text-sm">Your finished campaigns and earnings will show up here.</p>
-              </div>
+              <DCEmptyState
+                icon={CheckCircle}
+                title="No completed projects yet"
+                subtitle="Your finished work will appear here"
+              />
             ) : (
               <div className="space-y-3">
                 {completedCollabs.map((collab) => (

@@ -14,7 +14,9 @@ import { useBrandActiveCampaigns } from '@/hooks/useBrandActiveCampaigns';
 import { useInviteCreator } from '@/hooks/useCampaignInvitations';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { AlertCircle, RefreshCw } from 'lucide-react';
+import { AlertCircle, RefreshCw, Users } from 'lucide-react';
+import { DCSkeleton } from '@/components/ui/dc-skeleton';
+import { DCEmptyState } from '@/components/ui/dc-empty-state';
 import { toast } from '@/hooks/use-toast';
 
 /** Local error boundary so Browse Creators never crashes the whole app */
@@ -193,24 +195,15 @@ const BrandCreators: React.FC = () => {
               {/* Creator grid */}
               {isLoading ? (
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                  {Array.from({ length: 8 }).map((_, i) => (
-                    <div key={i} className="h-56 bg-gray-100 rounded-2xl animate-pulse" />
-                  ))}
+                  <DCSkeleton variant="card" count={8} className="h-56" />
                 </div>
               ) : filteredCreators.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-16">
-                  <div className="text-5xl mb-4">🔍</div>
-                  <h3 className="text-lg font-bold text-gray-900 mb-2">No creators found</h3>
-                  <p className="text-gray-500 text-sm text-center mb-5 max-w-xs">
-                    Try expanding your search or adjusting filters to see more creators.
-                  </p>
-                  <button
-                    onClick={resetFilters}
-                    className="px-6 py-2.5 bg-dc-teal text-white rounded-full font-semibold text-sm hover:bg-dc-teal/90 transition-colors"
-                  >
-                    Clear All Filters
-                  </button>
-                </div>
+                <DCEmptyState
+                  icon={Users}
+                  title="No creators found"
+                  subtitle="Try adjusting your filters or check back later"
+                  cta={{ label: "Clear Filters", onClick: resetFilters }}
+                />
               ) : (
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                   {filteredCreators.map((creator) => (

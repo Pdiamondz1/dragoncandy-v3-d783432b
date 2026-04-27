@@ -3,6 +3,7 @@ import DashboardLayout from '@/components/DashboardLayout';
 import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
 import { Skeleton } from '@/components/ui/skeleton';
+import { DCSkeleton, DCSkeletonGrid } from '@/components/ui/dc-skeleton';
 import { useAuth } from '@/hooks/useAuth';
 import { useCreatorDashboardStats } from '@/hooks/useCreatorDashboardStats';
 import { useCreatorRecentActivity } from '@/hooks/useCreatorRecentActivity';
@@ -27,8 +28,19 @@ const CreatorDashboard = () => {
   if (!profile) {
     return (
       <DashboardLayout userRole="content_creator">
-        <div className="min-h-screen bg-white flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-dc-teal" />
+        <div className="min-h-screen bg-white overflow-x-hidden">
+          <div className="bg-gradient-to-b from-dc-pink-bg to-pink-50 px-4 pt-6 pb-8">
+            <div className="max-w-2xl lg:max-w-4xl mx-auto space-y-4">
+              <DCSkeleton variant="text-block" className="h-4 w-32" />
+              <DCSkeleton variant="text-block" className="h-8 w-48" />
+              <DCSkeletonGrid columns={4} count={4} variant="stat" className="mt-4" />
+            </div>
+          </div>
+          <div className="px-4 py-6 pb-24 md:pb-0">
+            <div className="max-w-2xl lg:max-w-4xl mx-auto space-y-4">
+              <DCSkeleton variant="list-row" count={3} />
+            </div>
+          </div>
         </div>
       </DashboardLayout>
     );

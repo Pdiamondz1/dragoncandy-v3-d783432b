@@ -4,6 +4,8 @@ import DashboardLayout from '@/components/DashboardLayout';
 import { ArrowLeft, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useCreatorApplications } from '@/hooks/useFetchApplications';
+import { DCSkeleton } from '@/components/ui/dc-skeleton';
+import { DCErrorState } from '@/components/ui/dc-empty-state';
 import ApplicationsStats from '@/components/applications/ApplicationsStats';
 import ApplicationsSearch from '@/components/applications/ApplicationsSearch';
 import ApplicationsTabsContent from '@/components/applications/ApplicationsTabsContent';
@@ -32,9 +34,7 @@ const CreatorApplications: React.FC = () => {
             <span className="flex-1 h-4 bg-gray-200 rounded-full animate-pulse mx-8" />
           </div>
           <div className="px-4 pt-4 pb-24 md:pb-0 space-y-3">
-            {[1, 2, 3].map(i => (
-              <div key={i} className="border-2 border-gray-100 rounded-2xl p-4 h-24 animate-pulse bg-gray-50" />
-            ))}
+            <DCSkeleton variant="list-row" count={4} />
           </div>
         </div>
       </DashboardLayout>
@@ -45,11 +45,10 @@ const CreatorApplications: React.FC = () => {
     return (
       <DashboardLayout userRole="content_creator">
         <div className="min-h-screen bg-white overflow-x-hidden flex items-center justify-center p-4">
-          <div className="border-2 border-dc-teal rounded-2xl p-6 text-center max-w-sm w-full">
-            <AlertCircle className="h-10 w-10 text-red-400 mx-auto mb-3" />
-            <h3 className="font-bold text-gray-900 mb-2">Failed to load applications</h3>
-            <p className="text-gray-500 text-sm">There was an error loading your applications. Please try again.</p>
-          </div>
+          <DCErrorState
+            message="Failed to load applications. Please try again."
+            onRetry={() => window.location.reload()}
+          />
         </div>
       </DashboardLayout>
     );
