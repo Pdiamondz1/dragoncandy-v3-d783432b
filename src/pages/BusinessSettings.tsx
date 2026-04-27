@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { Trash2, LogOut, ShieldAlert } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import DashboardLayout from '@/components/DashboardLayout';
@@ -10,12 +11,23 @@ import { BusinessSettingsSections } from '@/components/settings/BusinessSettings
 import { useBusinessProfileForm } from '@/hooks/useBusinessProfileForm';
 import { useBusinessProfileSubmit } from '@/hooks/useBusinessProfileSubmit';
 import { calculateBusinessCompletion } from '@/hooks/useProfileCompletion';
+import { Button } from '@/components/ui/button';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { useMyOrgRole } from '@/hooks/useOrgData';
+import { DeleteOrgSheet } from '@/components/org/DeleteOrgSheet';
+import { LeaveOrgSheet } from '@/components/org/LeaveOrgSheet';
+import { DeleteUserSheet } from '@/components/org/DeleteUserSheet';
 
 const BusinessSettings = () => {
-  const { user } = useAuth();
+  const { user, activeOrg } = useAuth();
   const navigate = useNavigate();
   const { submitProfile } = useBusinessProfileSubmit();
   const [activeSection, setActiveSection] = useState<string | undefined>(undefined);
+  const { data: myRole } = useMyOrgRole(activeOrg?.id);
+  const [deleteOrgOpen, setDeleteOrgOpen] = useState(false);
+  const [leaveOrgOpen, setLeaveOrgOpen] = useState(false);
+  const [deleteUserOpen, setDeleteUserOpen] = useState(false);
+  const isOwner = myRole?.role === 'owner';
 
   const isBrand = user?.user_metadata?.role === 'brand';
 
@@ -112,6 +124,54 @@ const BusinessSettings = () => {
             onFieldBlur={handleFieldBlur}
             defaultSection={activeSection}
           />
+
+          <Accordion type="single" collapsible className="mt-6">
+            <AccordionItem value="danger" className="border-red-200">
+              <AccordionTrigger className="text-red-600 hover:text-red-700">
+                <div className="flex items-center gap-2">
+                  <ShieldAlert className="h-4 w-4" />
+                  Danger Zone
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="space-y-4">
+                {isOwner ? (
+                  <Button
+                    variant="outline"
+                    onClick={() => setDeleteOrgOpen(true)}
+                    className="w-full justify-start gap-2 border-red-300 text-red-600 hover:bg-red-50 rounded-full"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Delete this organization
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    onClick={() => setLeaveOrgOpen(true)}
+                    className="w-full justify-start gap-2 rounded-full"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Leave this organization
+                  </Button>
+                )}
+                <button
+                  onClick={() => setDeleteUserOpen(true)}
+                  className="text-sm text-red-500 hover:text-red-700 underline"
+                >
+                  Delete my user account
+                </button>
+                <a
+                  href="mailto:support@dragoncandy.io?subject=GDPR%20Data%20Erasure%20Request"
+                  className="block text-sm text-muted-foreground hover:text-foreground underline"
+                >
+                  Request full data erasure (GDPR/CCPA)
+                </a>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+
+          <DeleteOrgSheet open={deleteOrgOpen} onOpenChange={setDeleteOrgOpen} />
+          <LeaveOrgSheet open={leaveOrgOpen} onOpenChange={setLeaveOrgOpen} />
+          <DeleteUserSheet open={deleteUserOpen} onOpenChange={setDeleteUserOpen} />
         </div>
       </div>
     </DashboardLayout>

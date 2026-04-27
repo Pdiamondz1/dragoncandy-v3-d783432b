@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
+import { ShieldAlert } from 'lucide-react';
 import DashboardLayout from '@/components/DashboardLayout';
 import { ProfileCompletionBar } from '@/components/settings/ProfileCompletionBar';
 import { CreatorSettingsSections } from '@/components/settings/CreatorSettingsSections';
@@ -8,11 +9,14 @@ import { useCreatorProfileForm } from '@/hooks/useCreatorProfileForm';
 import { useCreatorProfileLoad } from '@/hooks/useCreatorProfileLoad';
 import { useCreatorProfileSubmit } from '@/hooks/useCreatorProfileSubmit';
 import { calculateCreatorCompletion } from '@/hooks/useProfileCompletion';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { DeleteUserSheet } from '@/components/org/DeleteUserSheet';
 
 const CreatorSettings = () => {
   const { submitProfile } = useCreatorProfileSubmit();
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeSection, setActiveSection] = useState<string | undefined>(undefined);
+  const [deleteUserOpen, setDeleteUserOpen] = useState(false);
 
   const {
     formData,
@@ -97,6 +101,33 @@ const CreatorSettings = () => {
             onFieldBlur={handleFieldBlur}
             defaultSection={activeSection}
           />
+
+          <Accordion type="single" collapsible className="mt-6">
+            <AccordionItem value="danger" className="border-red-200">
+              <AccordionTrigger className="text-red-600 hover:text-red-700">
+                <div className="flex items-center gap-2">
+                  <ShieldAlert className="h-4 w-4" />
+                  Danger Zone
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="space-y-4">
+                <button
+                  onClick={() => setDeleteUserOpen(true)}
+                  className="text-sm text-red-500 hover:text-red-700 underline"
+                >
+                  Delete my user account
+                </button>
+                <a
+                  href="mailto:support@dragoncandy.io?subject=GDPR%20Data%20Erasure%20Request"
+                  className="block text-sm text-muted-foreground hover:text-foreground underline"
+                >
+                  Request full data erasure (GDPR/CCPA)
+                </a>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+
+          <DeleteUserSheet open={deleteUserOpen} onOpenChange={setDeleteUserOpen} />
         </div>
       </div>
     </DashboardLayout>
