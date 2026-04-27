@@ -189,8 +189,8 @@ export function useCampaignCreator() {
       if (error) throw error;
 
       const parsed = donnyGenerateResponseSchema.parse(data);
-      setBusinessContext(parsed.business_context);
-      setCampaignIdeas(parsed.campaign_ideas);
+      setBusinessContext(parsed.business_context as any);
+      setCampaignIdeas(parsed.campaign_ideas as any);
 
       addMessage(`Found ${parsed.business_context.business_name} — looking good!`);
 
@@ -247,7 +247,7 @@ export function useCampaignCreator() {
 
       if (error) throw error;
       const parsed = donnyGenerateResponseSchema.parse(data);
-      setCampaignIdeas(parsed.campaign_ideas);
+      setCampaignIdeas(parsed.campaign_ideas as any);
       setExtractionMessages(["Here are 3 new ideas!"]);
     } catch (err) {
       toast.error('Failed to regenerate', { description: String(err) });
@@ -315,7 +315,7 @@ export function useCampaignCreator() {
 
       const { data, error } = await supabase
         .from('campaigns')
-        .insert(insertPayload as Parameters<typeof supabase.from<'campaigns'>>[0] extends infer T ? Record<string, unknown> : never)
+        .insert(insertPayload as any)
         .select('id')
         .single();
 

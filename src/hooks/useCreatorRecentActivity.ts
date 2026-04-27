@@ -38,7 +38,7 @@ export const useCreatorRecentActivity = () => {
         if (applicationsError) {
           console.error('Error fetching applications:', applicationsError);
         } else {
-          applications?.forEach(app => {
+          (applications as any[])?.forEach((app: any) => {
             activities.push({
               id: app.id,
               type: 'application',
@@ -67,7 +67,7 @@ export const useCreatorRecentActivity = () => {
         if (collaborationsError) {
           console.error('Error fetching collaborations:', collaborationsError);
         } else {
-          collaborations?.forEach(collab => {
+          (collaborations as any[])?.forEach((collab: any) => {
             let description = '';
             switch (collab.status) {
               case 'active':

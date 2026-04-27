@@ -81,10 +81,11 @@ export const useDragonDashTimer = (collaborationId: string | null) => {
       if (error) throw error;
 
       const now = new Date();
-      const contentStartedAt = data.content_started_at;
-      const contentDeadline = data.content_deadline;
-      const deliveryType = data.campaign?.delivery_type || 'standard';
-      const contentStatus = data.content_status;
+      const d = data as any;
+      const contentStartedAt = d.content_started_at;
+      const contentDeadline = d.content_deadline;
+      const deliveryType = d.campaign?.delivery_type || 'standard';
+      const contentStatus = d.content_status;
 
       let status: TimerData['status'] = 'not_started';
       let timeRemaining: number | null = null;
@@ -139,7 +140,8 @@ export const useDragonDashTimer = (collaborationId: string | null) => {
 
       if (fetchError) throw fetchError;
 
-      const deliveryType = collab.campaign?.delivery_type || 'standard';
+      const collabAny = collab as any;
+      const deliveryType = collabAny.campaign?.delivery_type || 'standard';
       const duration = DELIVERY_DURATIONS[deliveryType] || DELIVERY_DURATIONS.standard;
       
       const now = new Date();
@@ -161,7 +163,7 @@ export const useDragonDashTimer = (collaborationId: string | null) => {
         p_event_type: 'content_started',
         p_entity_type: 'collaboration',
         p_entity_id: collaborationId,
-        p_campaign_id: collab.campaign?.id ?? '',
+        p_campaign_id: collabAny.campaign?.id ?? '',
         p_metadata: {},
       }).then(() => {}, () => {});
 
@@ -178,10 +180,10 @@ export const useDragonDashTimer = (collaborationId: string | null) => {
       };
 
       sendNotification('content_started', undefined, undefined, {
-        campaignTitle: collab.campaign?.title,
-        campaignId: collab.campaign?.id,
-        recipientUserId: collab.campaign?.user_id,
-        creatorName: collab.creator?.full_name || 'A creator',
+        campaignTitle: collabAny.campaign?.title,
+        campaignId: collabAny.campaign?.id,
+        recipientUserId: collabAny.campaign?.user_id,
+        creatorName: collabAny.creator?.full_name || 'A creator',
         deliveryTime: deliveryLabels[deliveryType] || '72 hours',
         projectId: collaborationId,
       });

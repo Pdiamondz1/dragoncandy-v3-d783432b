@@ -37,7 +37,7 @@ export function DeleteUserSheet({ open, onOpenChange }: DeleteUserSheetProps) {
 
     if (!ownedOrgs || ownedOrgs.length === 0) return null;
 
-    for (const membership of ownedOrgs as OrgMembership[]) {
+    for (const membership of ownedOrgs as unknown as OrgMembership[]) {
       const { count } = await supabase
         .from('org_members')
         .select('id', { count: 'exact', head: true })

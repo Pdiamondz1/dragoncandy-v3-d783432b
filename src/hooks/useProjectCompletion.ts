@@ -45,7 +45,7 @@ export const useProjectCompletion = (userId?: string) => {
         }
 
         // Filter collaborations where user is involved
-        const userCollaborations = collaborations.filter(collab => 
+        const userCollaborations = (collaborations as any[]).filter((collab: any) =>
           collab.creator_id === userId || collab.campaigns?.user_id === userId
         );
 
@@ -53,8 +53,8 @@ export const useProjectCompletion = (userId?: string) => {
 
         // Get profile names for all participants
         const allUserIds = [...new Set([
-          ...userCollaborations.map(c => c.creator_id),
-          ...userCollaborations.map(c => c.campaigns?.user_id).filter(Boolean)
+          ...userCollaborations.map((c: any) => c.creator_id),
+          ...userCollaborations.map((c: any) => c.campaigns?.user_id).filter(Boolean)
         ])];
 
         const { data: profiles } = await supabase
@@ -66,16 +66,16 @@ export const useProjectCompletion = (userId?: string) => {
         const { data: existingReviews } = await supabase
           .from('project_reviews')
           .select('collaboration_id, reviewer_id')
-          .in('collaboration_id', userCollaborations.map(c => c.id))
+          .in('collaboration_id', userCollaborations.map((c: any) => c.id))
           .eq('reviewer_id', userId);
 
-        const reviewedCollaborationIds = new Set(existingReviews?.map(r => r.collaboration_id) || []);
+        const reviewedCollaborationIds = new Set((existingReviews as any[])?.map((r: any) => r.collaboration_id) || []);
 
         // Transform to final format
-        const result: CompletedCollaboration[] = userCollaborations.map(collab => {
+        const result: CompletedCollaboration[] = userCollaborations.map((collab: any) => {
           const isCreator = collab.creator_id === userId;
           const otherPartyId = isCreator ? collab.campaigns?.user_id : collab.creator_id;
-          const otherPartyProfile = profiles?.find(p => p.id === otherPartyId);
+          const otherPartyProfile = (profiles as any[])?.find((p: any) => p.id === otherPartyId);
           
           return {
             id: collab.id,
