@@ -1,0 +1,134 @@
+import { serve } from 'https://deno.land/std@0.190.0/http/server.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import Stripe from 'https://esm.sh/stripe@14.21.0?target=deno';
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+// Base price IDs per tier and billing period
+const BASE_PRICES: Record<string, Record<string, string>> = {
+  starter: { monthly: 'price_test_starter_monthly', annual: 'price_test_starter_annual' },
+  growth:  { monthly: 'price_test_growth_monthly',  annual: 'price_test_growth_annual' },
+  pro:     { monthly: 'price_test_pro_monthly',     annual: 'price_test_pro_annual' },
+};
+
+// Per-seat add-on price IDs per tier
+const SEAT_PRICES: Record<string, string> = {
+  starter: 'price_test_seat_starter',
+  growth:  'price_test_seat_growth',
+  pro:     'price_test_seat_pro',
+};
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
+
+  try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const stripeSecretKey = Deno.env.get('STRIPE_SECRET_KEY')!;
+    const siteUrl = Deno.env.get('PUBLIC_SITE_URL') || 'https://dragoncandy.io';
+
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const stripe = new Stripe(stripeSecretKey, { apiVersion: '2023-10-16' });
+
+    // Authenticate user via JWT
+    const authHeader = req.headers.get('Authorization')!;
+    const { data: { user }, error: authError } = await supabase.auth.getUser(
+      authHeader.replace('Bearer ', '')
+    );
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const { tier, billing_period, org_id } = await req.json();
+
+    if (!tier || !billing_period || !org_id) {
+      return new Response(JSON.stringify({ error: 'tier, billing_period, and org_id are required' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (!BASE_PRICES[tier] || !BASE_PRICES[tier][billing_period]) {
+      return new Response(JSON.stringify({ error: 'Invalid tier or billing_period' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Verify user is org owner
+    const { data: membership } = await supabase
+      .from('org_members')
+      .select('role')
+      .eq('org_id', org_id)
+      .eq('user_id', user.id)
+      .eq('invitation_status', 'active')
+      .single();
+
+    if (membership?.role !== 'owner') {
+      return new Response(JSON.stringify({ error: 'Only org owners can manage billing' }), {
+        status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Look up org to find or create Stripe customer
+    const { data: org, error: orgError } = await supabase
+      .from('organizations')
+      .select('id, stripe_customer_id, seat_count')
+      .eq('id', org_id)
+      .single();
+
+    if (orgError || !org) {
+      return new Response(JSON.stringify({ error: 'Organization not found' }), {
+        status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    let customerId = org.stripe_customer_id;
+
+    if (!customerId) {
+      const customer = await stripe.customers.create({
+        email: user.email,
+        metadata: { org_id, user_id: user.id },
+      });
+      customerId = customer.id;
+
+      await supabase
+        .from('organizations')
+        .update({ stripe_customer_id: customerId })
+        .eq('id', org_id);
+    }
+
+    // Build line items: base price + per-seat add-on
+    const additionalSeats = Math.max(0, (org.seat_count ?? 1) - 1);
+
+    const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [
+      { price: BASE_PRICES[tier][billing_period], quantity: 1 },
+    ];
+
+    if (additionalSeats > 0 && SEAT_PRICES[tier]) {
+      lineItems.push({ price: SEAT_PRICES[tier], quantity: additionalSeats });
+    }
+
+    const session = await stripe.checkout.sessions.create({
+      customer: customerId,
+      mode: 'subscription',
+      line_items: lineItems,
+      metadata: { tier, billing_period, org_id },
+      success_url: `${siteUrl}/dashboard/business?checkout=success`,
+      cancel_url: `${siteUrl}/pricing`,
+    });
+
+    return new Response(JSON.stringify({ checkout_url: session.url }), {
+      status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  } catch (err) {
+    return new Response(JSON.stringify({ error: (err as Error).message }), {
+      status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+});

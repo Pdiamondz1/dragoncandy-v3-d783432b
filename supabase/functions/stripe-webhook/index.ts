@@ -454,8 +454,21 @@ serve(async (req) => {
         const subscriptionId = subscription.id;
         const priceId = subscription.items.data[0]?.price?.id ?? null;
 
-        // Derive tier from price metadata or status; default to 'pro' for active subscriptions
-        const tier = subscription.status === 'active' ? 'pro' : 'free';
+        // Map Stripe Price IDs to subscription tiers
+        const PRICE_TO_TIER: Record<string, string> = {
+          'price_test_starter_monthly': 'starter',
+          'price_test_starter_annual': 'starter',
+          'price_test_growth_monthly': 'growth',
+          'price_test_growth_annual': 'growth',
+          'price_test_pro_monthly': 'pro',
+          'price_test_pro_annual': 'pro',
+        };
+
+        let tier = 'free';
+        if (subscription.status === 'active' && subscription.items?.data?.length) {
+          const basePriceId = subscription.items.data[0].price.id;
+          tier = PRICE_TO_TIER[basePriceId] || subscription.metadata?.tier || 'free';
+        }
 
         logStep("Subscription upserted", { customerId, subscriptionId, status: subscription.status, tier });
 
