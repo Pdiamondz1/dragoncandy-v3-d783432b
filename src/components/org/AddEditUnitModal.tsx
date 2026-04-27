@@ -47,6 +47,7 @@ export function AddEditUnitModal({
   const createUnit = useCreateOrgUnit(orgId);
   const updateUnit = useUpdateOrgUnit();
 
+  const isLocation = unitType === 'location';
   const [form, setForm] = useState<FormState>(() => buildInitialForm(editUnit));
 
   useEffect(() => {
@@ -70,18 +71,23 @@ export function AddEditUnitModal({
     const secondary = form.secondaryField.trim() || null;
 
     try {
+      const fieldPayload = isLocation
+        ? { address: secondary }
+        : { website_url: secondary };
+
       if (isEditing) {
         await updateUnit.mutateAsync({
           id: editUnit!.id,
           name,
           is_primary: form.isPrimary,
-          description: secondary,
+          ...fieldPayload,
         });
       } else {
         await createUnit.mutateAsync({
           name,
-          description: secondary,
+          unit_type: unitType,
           is_primary: form.isPrimary,
+          ...fieldPayload,
         });
       }
       toast({
