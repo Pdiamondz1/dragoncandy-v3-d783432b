@@ -75,6 +75,7 @@ import InviteAcceptPage from "@/pages/InviteAcceptPage";
 import CreatorDragonShare from "./pages/CreatorDragonShare";
 import { BusinessDragonShare, BrandDragonShare } from "./pages/BusinessDragonShare";
 import AdminDragonShareQueue from "./pages/AdminDragonShareQueue";
+import AdminDragonShareLedger from "./pages/AdminDragonShareLedger";
 import HelpBriefPage from "@/pages/help/promotions/HelpBriefPage";
 import { HelpBriefDrawer } from "@/features/donny/HelpBriefDrawer";
 import { useAuth } from "@/hooks/useAuth";
@@ -508,6 +509,11 @@ const App = () => {
                   <Route path="/admin/dragonshare-queue" element={
                     <ProtectedRoute>
                       <AdminDragonShareQueue />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/admin/dragonshare-ledger" element={
+                    <ProtectedRoute>
+                      <AdminDragonShareLedger />
                     </ProtectedRoute>
                   } />
 
