@@ -77,6 +77,8 @@ import { BusinessDragonShare, BrandDragonShare } from "./pages/BusinessDragonSha
 import AdminDragonShareQueue from "./pages/AdminDragonShareQueue";
 import AdminDragonShareLedger from "./pages/AdminDragonShareLedger";
 import HelpBriefPage from "@/pages/help/promotions/HelpBriefPage";
+import HelpCenter from "@/pages/help/HelpCenter";
+import HelpArticlePage from "@/pages/help/HelpArticlePage";
 import { HelpBriefDrawer } from "@/features/donny/HelpBriefDrawer";
 import { useAuth } from "@/hooks/useAuth";
 import type { UserRole } from "@/types/user";
@@ -134,6 +136,10 @@ const App = () => {
                   
                   {/* Help Briefs */}
                   <Route path="/help/promotions/:slug" element={<HelpBriefPage />} />
+
+                  {/* Help Center */}
+                  <Route path="/help" element={<HelpCenter />} />
+                  <Route path="/help/:slug" element={<HelpArticlePage />} />
 
                   {/* Anonymous Campaign Creation */}
                   <Route path="/campaign/create" element={<CampaignCreator />} />

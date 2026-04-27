@@ -26,7 +26,7 @@ import {
   SidebarInset,
   useSidebar,
 } from '@/components/ui/sidebar';
-import { Settings, LogOut, PlusCircle } from 'lucide-react';
+import { Settings, LogOut, PlusCircle, HelpCircle } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { useAuth } from '@/hooks/useAuth';
 import { useLogout } from '@/hooks/useLogout';
@@ -250,6 +250,12 @@ const DashboardLayoutInner: React.FC<DashboardLayoutProps> = ({ children, userRo
                         <Link to={getSettingsHref(userRole)} className="cursor-pointer">
                           <Settings className="mr-2 h-4 w-4" />
                           <span>Settings</span>
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to="/help" className="cursor-pointer">
+                          <HelpCircle className="mr-2 h-4 w-4" />
+                          <span>Help</span>
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
