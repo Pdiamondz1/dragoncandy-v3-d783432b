@@ -34,20 +34,20 @@ const CreatorDragonShare: React.FC = () => {
 
   return (
     <DashboardLayout userRole="content_creator">
-      <div className="space-y-6">
-        <div className="space-y-3">
+      <div className="space-y-6 pt-4">
+        <div className="rounded-2xl bg-gradient-to-br from-dc-teal/10 to-pink-50 border border-dc-teal/15 p-5 space-y-4">
           <div>
-            <h1 className="text-2xl font-bold">DragonShare</h1>
-            <p className="text-sm text-muted-foreground">
+            <h1 className="text-2xl font-bold tracking-tight">DragonShare</h1>
+            <p className="text-sm text-muted-foreground mt-1">
               Submit your organic posts and earn when brands boost them
             </p>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-xs text-muted-foreground">
+            <span className="text-xs text-muted-foreground font-medium">
               {monthlyCount ?? 0}/{FREE_LIMIT} this month
             </span>
             <Coachmark coachmarkKey="dragonshare_submit" title="Paste a link, tag a brand, get paid" body="Submit posts you've already made about brands you love.">
-              <Button onClick={() => setSubmitOpen(true)} disabled={!canSubmit} className="rounded-full">
+              <Button onClick={() => setSubmitOpen(true)} disabled={!canSubmit} className="rounded-full bg-dc-teal hover:bg-dc-teal-dark text-white font-semibold px-6">
                 <Sparkles className="mr-2 h-4 w-4" />
                 Submit Post
               </Button>
