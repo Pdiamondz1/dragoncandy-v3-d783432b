@@ -28,37 +28,31 @@ export const useDonnyApplyPitch = () => {
     }): Promise<DonnyPitchResult> => {
       if (!user?.id) throw new Error('Not authenticated');
 
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 5000);
+      const fallback: DonnyPitchResult = {
+        pitch: CLIENT_FALLBACK_PITCH,
+        suggested_rate: budgetMin ?? 100,
+        suggested_portfolio_piece_url: null,
+        pitch_source: 'template',
+      };
 
       try {
-        const { data, error } = await supabase.functions.invoke(
-          'donny-apply-pitch',
-          {
-            body: { creator_id: user.id, campaign_id: campaignId },
-          }
+        const timeoutPromise = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('Donny pitch timeout')), 5000)
         );
 
-        clearTimeout(timeout);
+        const result = await Promise.race([
+          supabase.functions.invoke('donny-apply-pitch', {
+            body: { creator_id: user.id, campaign_id: campaignId },
+          }),
+          timeoutPromise,
+        ]);
 
-        if (error || !data) {
-          return {
-            pitch: CLIENT_FALLBACK_PITCH,
-            suggested_rate: budgetMin ?? 100,
-            suggested_portfolio_piece_url: null,
-            pitch_source: 'template',
-          };
-        }
+        const { data, error } = result as { data: DonnyPitchResult | null; error: Error | null };
 
-        return data as DonnyPitchResult;
+        if (error || !data) return fallback;
+        return data;
       } catch {
-        clearTimeout(timeout);
-        return {
-          pitch: CLIENT_FALLBACK_PITCH,
-          suggested_rate: budgetMin ?? 100,
-          suggested_portfolio_piece_url: null,
-          pitch_source: 'template',
-        };
+        return fallback;
       }
     },
   });

@@ -22,7 +22,7 @@ export function CampaignMetricsBar({ campaign, deliverableCount, matchScore }: C
   const tier = campaign.delivery_type ? TIER_CONFIG[campaign.delivery_type] : null;
 
   return (
-    <div className="flex items-center gap-2 flex-wrap px-5 py-3 bg-white border-b border-gray-100">
+    <div className="flex items-center gap-2 flex-wrap px-5 py-3 bg-white border-b border-gray-100 sticky top-0 z-10">
       <span className="text-sm font-bold text-dc-teal">{formatBudget(campaign)}</span>
       <span className="text-gray-300">·</span>
       <span className="text-sm text-gray-600">

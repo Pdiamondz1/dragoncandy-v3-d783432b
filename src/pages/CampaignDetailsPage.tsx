@@ -102,7 +102,7 @@ const CampaignDetailsPage: React.FC = () => {
           campaign_id: campaign.id,
           payload: { used_edit: false, pitch_source: pitch.pitch_source },
         })
-        .then(() => {});
+        .then(({ error: logErr }) => { if (logErr) console.error('donny_events log failed:', logErr); });
 
       setShowApplySheet(false);
       setShowConfirmation(true);
@@ -121,7 +121,7 @@ const CampaignDetailsPage: React.FC = () => {
         campaign_id: campaign?.id,
         payload: {},
       })
-      .then(() => {});
+      .then(({ error: logErr }) => { if (logErr) console.error('donny_events log failed:', logErr); });
 
     setShowApplySheet(false);
     setShowLegacyForm(true);
