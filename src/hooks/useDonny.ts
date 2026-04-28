@@ -160,19 +160,28 @@ export function useDonny(options?: UseDonnyOptions) {
       if (fnError) throw fnError;
 
       // Orchestrator returns { answer, suggested_actions, agent_used }
-      // Save assistant message to DB (donny-chat used to do this server-side)
+      // Save assistant message to DB
       if (data?.answer) {
-        await supabase
+        const quickActions = (data.suggested_actions ?? []).map(
+          (a: { label: string; route: string }) => ({
+            label: a.label,
+            action: 'navigate' as const,
+            url: a.route,
+          })
+        );
+
+        const { error: insertError } = await supabase
           .from('donny_messages' as any)
           .insert({
             conversation_id: conversation.id,
             role: 'assistant',
             content: data.answer,
-            metadata: {
-              agent_used: data.agent_used,
-              suggested_actions: data.suggested_actions,
-            },
+            quick_actions: quickActions.length > 0 ? quickActions : null,
           });
+
+        if (insertError) throw insertError;
+      } else {
+        throw new Error(data?.error || 'Donny could not generate a response');
       }
 
       return data;

@@ -11,6 +11,7 @@ export function DonnyChatView() {
     messages,
     avatarState,
     isStreaming,
+    error,
     sendMessage,
     quickChips,
     collapse,
@@ -59,6 +60,11 @@ export function DonnyChatView() {
           />
         ))}
         {isStreaming && <DonnyTypingIndicator />}
+        {error && !isStreaming && (
+          <div className="mx-2 px-3 py-2 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-xs text-red-600">Something went wrong. Please try again.</p>
+          </div>
+        )}
       </div>
 
       {/* Quick chips */}

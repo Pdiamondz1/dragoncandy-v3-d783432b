@@ -27,7 +27,9 @@ interface DonnyContextValue {
   conversation: DonnyConversation | null;
   avatarState: DonnyAvatarState;
   isStreaming: boolean;
+  error: string | null;
   sendMessage: (msg: string) => void;
+  clearChat: () => Promise<void>;
 
   // Context
   currentPage: string;
@@ -164,7 +166,9 @@ export function DonnyProvider({ children, userRole }: DonnyProviderProps) {
       conversation: donny.conversation ?? null,
       avatarState: donny.avatarState,
       isStreaming: donny.isStreaming,
+      error: donny.error,
       sendMessage,
+      clearChat: donny.clearChat,
       currentPage: location.pathname,
       userRole,
       quickChips,
@@ -174,7 +178,7 @@ export function DonnyProvider({ children, userRole }: DonnyProviderProps) {
     [
       stage, open, expand, collapse, close,
       nudges, unreadCount, executeAction, dismissNudge,
-      donny.messages, donny.conversation, donny.avatarState, donny.isStreaming,
+      donny.messages, donny.conversation, donny.avatarState, donny.isStreaming, donny.error, donny.clearChat,
       sendMessage, location.pathname, userRole, quickChips, campaignContext,
       openDonnyWithContext,
     ]
