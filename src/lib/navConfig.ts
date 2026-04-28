@@ -30,6 +30,8 @@ import {
   Building2,
   Users2,
   Sparkles,
+  MapPin,
+  Package,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { UserRole } from '@/types/user';
@@ -194,6 +196,8 @@ const businessDrawerMenu: DrawerMenuSection[] = [
   {
     heading: 'Account',
     items: [
+      { icon: MapPin, label: 'Locations', href: '/dashboard/business/locations' },
+      { icon: UserPlus, label: 'Team Members', href: '/dashboard/business/team' },
       { icon: CreditCard, label: 'Billing', href: '/dashboard/business/billing' },
       { icon: Plug, label: 'Integrations', href: '/dashboard/business/integrations' },
       { icon: FolderOpen, label: 'Brand Assets', href: '/dashboard/business/brand-assets' },
@@ -256,10 +260,11 @@ const brandDrawerMenu: DrawerMenuSection[] = [
   {
     heading: 'Account',
     items: [
+      { icon: Package, label: 'Products', href: '/dashboard/brand/products' },
+      { icon: UserPlus, label: 'Team Members', href: '/dashboard/brand/team' },
       { icon: FolderOpen, label: 'Asset Library', href: '/dashboard/brand/assets' },
       { icon: CreditCard, label: 'Billing', href: '/dashboard/brand/billing' },
       { icon: Eye, label: 'Audience Insights', href: '/dashboard/brand/audience-insights' },
-      { icon: UserPlus, label: 'Team Members', href: '/dashboard/brand/team' },
       { icon: Archive, label: 'Campaign Archive', href: '/dashboard/brand/campaign-archive' },
       { icon: Settings, label: 'Settings', href: '/dashboard/brand/settings' },
     ],
