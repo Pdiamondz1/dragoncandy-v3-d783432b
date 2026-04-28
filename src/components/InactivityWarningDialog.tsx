@@ -8,7 +8,7 @@ import {
   AlertDialogFooter,
   AlertDialogAction,
 } from '@/components/ui/alert-dialog';
-import logo from '@/assets/Transparent_DragonCandy_logo.png';
+import logo from '@/assets/Transparent_DragonCandy_logo.webp';
 
 interface InactivityWarningDialogProps {
   open: boolean;

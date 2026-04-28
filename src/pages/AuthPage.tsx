@@ -6,7 +6,7 @@ import { AuthForm } from "@/components/auth/AuthForm";
 import { AuthModeToggle } from "@/components/auth/AuthModeToggle";
 import { RoleSelection } from "@/components/auth/RoleSelection";
 import { toast } from 'sonner';
-import dragonCandyLogo from '@/assets/Transparent_DragonCandy_logo.png';
+import dragonCandyLogo from '@/assets/Transparent_DragonCandy_logo.webp';
 
 type SignupStep = "role-selection" | "signup-form";
 

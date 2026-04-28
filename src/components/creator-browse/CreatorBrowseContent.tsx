@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Search } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
@@ -34,6 +34,32 @@ export const CreatorBrowseContent: React.FC<CreatorBrowseContentProps> = ({
   isMapOpen,
   onMapOpenChange,
 }) => {
+  const PAGE_SIZE = 30;
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [filteredCreators]);
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setVisibleCount(prev => Math.min(prev + PAGE_SIZE, filteredCreators.length));
+        }
+      },
+      { rootMargin: '400px' },
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [filteredCreators.length]);
+
+  const visibleCreators = filteredCreators.slice(0, visibleCount);
+  const hasMore = visibleCount < filteredCreators.length;
+
   if (isLoading) {
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -72,11 +98,19 @@ export const CreatorBrowseContent: React.FC<CreatorBrowseContentProps> = ({
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {filteredCreators.map((creator) => (
-            <CreatorCard key={creator.id} creator={creator} />
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {visibleCreators.map((creator) => (
+              <CreatorCard key={creator.id} creator={creator} />
+            ))}
+          </div>
+          {hasMore && <div ref={sentinelRef} className="h-1" />}
+          {hasMore && (
+            <p className="text-center text-sm text-gray-400 py-4">
+              Showing {visibleCount} of {filteredCreators.length} creators
+            </p>
+          )}
+        </>
       )}
 
       {/* Filters Sheet */}

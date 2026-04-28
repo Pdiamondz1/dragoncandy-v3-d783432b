@@ -3,7 +3,7 @@ import React, { useState, useRef } from 'react';
 import TinderCard from 'react-tinder-card';
 import { PublicCampaign } from '@/hooks/usePublicCampaigns';
 import { MapPin, Users } from 'lucide-react';
-import logo from '@/assets/Transparent_DragonCandy_logo.png';
+import logo from '@/assets/Transparent_DragonCandy_logo.webp';
 import DeliveryBadge from './DeliveryBadge';
 import { mapDeliveryType, getRelativeTime, formatBudget } from '@/lib/campaignUtils';
 

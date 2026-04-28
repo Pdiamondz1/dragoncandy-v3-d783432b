@@ -1,6 +1,6 @@
 import { cn } from '@/lib/utils';
 import type { DonnyAvatarState } from '@/types/donny';
-import donnyEmblem from '@/assets/donny-emblem.png';
+import donnyEmblem from '@/assets/donny-emblem.webp';
 
 interface DonnyAvatarProps {
   size: 'xs' | 'sm' | 'md' | 'lg';

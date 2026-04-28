@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Menu } from "lucide-react";
-import dragonCandyLogo from "@/assets/Transparent_DragonCandy_logo.png";
+import dragonCandyLogo from "@/assets/Transparent_DragonCandy_logo.webp";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 

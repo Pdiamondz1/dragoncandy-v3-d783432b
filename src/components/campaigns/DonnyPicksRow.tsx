@@ -4,7 +4,7 @@ import { DonnyPicksBadge } from './DonnyPicksBadge';
 import { formatBudget } from '@/lib/campaignUtils';
 import type { DonnyPick } from '@/hooks/useDonnyMatches';
 import type { PublicCampaign } from '@/hooks/usePublicCampaigns';
-import logo from '@/assets/Transparent_DragonCandy_logo.png';
+import logo from '@/assets/Transparent_DragonCandy_logo.webp';
 
 interface DonnyPicksRowProps {
   picks: DonnyPick[];

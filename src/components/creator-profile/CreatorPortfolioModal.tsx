@@ -1,5 +1,5 @@
 import React from 'react';
-import logo from '@/assets/Transparent_DragonCandy_logo.png';
+import logo from '@/assets/Transparent_DragonCandy_logo.webp';
 
 interface PortfolioImage {
   url: string;

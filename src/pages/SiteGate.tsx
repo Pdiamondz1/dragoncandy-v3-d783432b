@@ -1,5 +1,5 @@
 import { useState, FormEvent } from 'react';
-import dragonCandyLogo from '@/assets/Transparent_DragonCandy_logo.png';
+import dragonCandyLogo from '@/assets/Transparent_DragonCandy_logo.webp';
 
 const SITE_PASSWORD = 'dragoncandy2026';
 export const SITE_GATE_KEY = 'dc_site_unlocked_until';

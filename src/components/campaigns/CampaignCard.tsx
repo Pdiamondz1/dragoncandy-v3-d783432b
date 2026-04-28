@@ -272,7 +272,7 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
                 {isPayingEscrow ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" aria-hidden="true" />
-                    Processing...
+                    Processing…
                   </>
                 ) : (
                   <>
@@ -454,4 +454,4 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
   );
 };
 
-export default CampaignCard;
+export default React.memo(CampaignCard);

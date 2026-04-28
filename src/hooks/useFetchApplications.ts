@@ -29,59 +29,44 @@ export const useCampaignApplications = (campaignId: string) => {
         return [];
       }
 
-      // Get creator profile data for each application
-      const enrichedApplications = await Promise.all(
-        applications.map(async (app) => {
-          try {
-            const { data: creatorProfile, error: profileError } = await supabase
-              .from('creator_profiles')
-              .select('creator_name, avatar_url, bio, skills')
-              .eq('user_id', app.creator_id)
-              .single();
+      const creatorIds = [...new Set(applications.map(app => app.creator_id).filter(Boolean))] as string[];
 
-            if (profileError) {
-              // Return application without profile data
-              return {
-                ...app,
-                creator_profile: {
-                  creator_name: 'Unknown Creator',
-                  avatar_url: null,
-                  bio: 'Profile not available',
-                  skills: [],
-                }
-              };
-            }
+      const { data: creatorProfiles } = await supabase
+        .from('creator_profiles')
+        .select('user_id, creator_name, avatar_url, bio, skills')
+        .in('user_id', creatorIds);
 
-            return {
-              ...app,
-              creator_profile: {
-                creator_name: creatorProfile.creator_name || 'Unknown Creator',
-                avatar_url: creatorProfile.avatar_url || null,
-                bio: creatorProfile.bio || null,
-                skills: creatorProfile.skills || [],
-              }
-            };
-          } catch (error) {
-            console.error('❌ useCampaignApplications: Error enriching application:', error);
-            // Return basic application data as fallback
-            return {
-              ...app,
-              creator_profile: {
-                creator_name: 'Creator Profile Error',
-                avatar_url: null,
-                bio: 'Unable to load profile',
-                skills: [],
-              }
-            };
-          }
-        })
+      const profileMap = new Map(
+        (creatorProfiles || []).map(p => [p.user_id, p])
       );
+
+      const fallbackProfile = {
+        creator_name: 'Unknown Creator',
+        avatar_url: null,
+        bio: null,
+        skills: [] as string[],
+      };
+
+      const enrichedApplications = applications.map(app => {
+        const profile = profileMap.get(app.creator_id);
+        return {
+          ...app,
+          creator_profile: profile
+            ? {
+                creator_name: profile.creator_name || 'Unknown Creator',
+                avatar_url: profile.avatar_url || null,
+                bio: profile.bio || null,
+                skills: profile.skills || [],
+              }
+            : fallbackProfile,
+        };
+      });
 
       return enrichedApplications as CampaignApplication[];
     },
     enabled: !!campaignId && !!user,
     refetchOnWindowFocus: true,
-    refetchInterval: 30000, // Refetch every 30 seconds to catch new applications
+    refetchInterval: 120_000,
   });
 };
 

@@ -9,7 +9,7 @@ import PublicProfileReviews from '@/components/profiles/PublicProfileReviews';
 import ContactCreatorModal from '@/components/creator-profile/ContactCreatorModal';
 import { PortfolioLightbox } from '@/components/creator-profile/PortfolioLightbox';
 import { InviteToCampaignModal } from '@/components/campaigns/InviteToCampaignModal';
-import logo from '@/assets/Transparent_DragonCandy_logo.png';
+import logo from '@/assets/Transparent_DragonCandy_logo.webp';
 
 interface CreatorProfile {
   id: string;

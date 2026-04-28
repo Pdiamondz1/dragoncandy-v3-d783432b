@@ -53,7 +53,7 @@ const isVideoPath = (url: string): boolean => {
   return !!ext && ['mp4', 'mov', 'webm', 'avi', 'mkv'].includes(ext);
 };
 
-export const CreatorCard: React.FC<CreatorCardProps> = ({ creator }) => {
+export const CreatorCard: React.FC<CreatorCardProps> = React.memo(({ creator }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isPortfolioOpen, setIsPortfolioOpen] = useState(false);
   const [portfolioIndex, setPortfolioIndex] = useState(0);
@@ -224,4 +224,4 @@ export const CreatorCard: React.FC<CreatorCardProps> = ({ creator }) => {
       />
     </>
   );
-};
+});

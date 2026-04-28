@@ -1,5 +1,6 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,6 +18,78 @@ import ApplicationAnalytics from './ApplicationAnalytics';
 import CreatorProfileModal from './CreatorProfileModal';
 import { CampaignApplication } from '@/types/applications';
 import { useManageApplication } from '@/hooks/useManageApplication';
+
+function VirtualizedApplications({
+  applications,
+  selectedApplicationIds,
+  onSelectionChange,
+  onViewProfile,
+  campaignEscrowStatus,
+}: {
+  applications: CampaignApplication[];
+  selectedApplicationIds: string[];
+  onSelectionChange: React.Dispatch<React.SetStateAction<string[]>>;
+  onViewProfile: (app: CampaignApplication) => void;
+  campaignEscrowStatus?: string | null;
+}) {
+  const parentRef = useRef<HTMLDivElement>(null);
+  const virtualizer = useVirtualizer({
+    count: applications.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 200,
+    overscan: 5,
+  });
+
+  return (
+    <div ref={parentRef} className="max-h-[70vh] overflow-y-auto">
+      <div style={{ height: `${virtualizer.getTotalSize()}px`, position: 'relative' }}>
+        {virtualizer.getVirtualItems().map((virtualRow) => {
+          const application = applications[virtualRow.index];
+          return (
+            <div
+              key={application.id}
+              ref={virtualizer.measureElement}
+              data-index={virtualRow.index}
+              className="absolute w-full pb-4"
+              style={{ top: `${virtualRow.start}px` }}
+            >
+              <div className="flex items-start gap-3">
+                <Checkbox
+                  checked={selectedApplicationIds.includes(application.id)}
+                  onCheckedChange={(checked) => {
+                    if (checked) {
+                      onSelectionChange(prev => [...prev, application.id]);
+                    } else {
+                      onSelectionChange(prev => prev.filter(id => id !== application.id));
+                    }
+                  }}
+                  className="mt-6"
+                />
+                <div className="flex-1">
+                  <div className="flex gap-4">
+                    <div className="flex-1">
+                      <ApplicationCard
+                        application={application}
+                        showActions={true}
+                        campaignEscrowStatus={campaignEscrowStatus}
+                      />
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <Button variant="outline" size="sm" onClick={() => onViewProfile(application)}>
+                        <Eye className="h-4 w-4 mr-1" />
+                        View Profile
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 interface ApplicationsListProps {
   campaignId: string;
@@ -197,44 +270,13 @@ const ApplicationsList: React.FC<ApplicationsListProps> = ({ campaignId }) => {
               </CardContent>
             </Card>
           ) : (
-            <div className="space-y-4">
-              {filteredApplications.map((application) => (
-                <div key={application.id} className="flex items-start gap-3">
-                  <Checkbox
-                    checked={selectedApplicationIds.includes(application.id)}
-                    onCheckedChange={(checked) => {
-                      if (checked) {
-                        setSelectedApplicationIds(prev => [...prev, application.id]);
-                      } else {
-                        setSelectedApplicationIds(prev => prev.filter(id => id !== application.id));
-                      }
-                    }}
-                    className="mt-6"
-                  />
-                  <div className="flex-1">
-                    <div className="flex gap-4">
-                      <div className="flex-1">
-                        <ApplicationCard
-                          application={application}
-                          showActions={true}
-                          campaignEscrowStatus={campaignData?.escrow_status}
-                        />
-                      </div>
-                      <div className="flex flex-col gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleViewProfile(application)}
-                        >
-                          <Eye className="h-4 w-4 mr-1" />
-                          View Profile
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <VirtualizedApplications
+              applications={filteredApplications}
+              selectedApplicationIds={selectedApplicationIds}
+              onSelectionChange={setSelectedApplicationIds}
+              onViewProfile={handleViewProfile}
+              campaignEscrowStatus={campaignData?.escrow_status}
+            />
           )}
         </TabsContent>
 

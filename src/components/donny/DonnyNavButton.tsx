@@ -1,5 +1,5 @@
 import { useDonnyContext } from '@/contexts/DonnyProvider';
-import donnyEmblem from '@/assets/donny-emblem.png';
+import donnyEmblem from '@/assets/donny-emblem.webp';
 
 export function DonnyNavButton() {
   const { stage, open, close, unreadCount, avatarState } = useDonnyContext();

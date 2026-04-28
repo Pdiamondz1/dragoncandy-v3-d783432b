@@ -79,4 +79,4 @@ const ReviewCard: React.FC<ReviewCardProps> = ({ review }) => {
   );
 };
 
-export default ReviewCard;
+export default React.memo(ReviewCard);

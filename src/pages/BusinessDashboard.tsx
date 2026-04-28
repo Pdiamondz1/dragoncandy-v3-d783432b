@@ -12,7 +12,7 @@ import { DashboardHero } from '@/components/dashboard/DashboardHero';
 import { DashboardStatsGrid, type StatItem } from '@/components/dashboard/DashboardStatsGrid';
 import { QuickActionButtons, type QuickAction } from '@/components/dashboard/QuickActionButtons';
 import { useBusinessActiveCampaigns } from '@/hooks/useBusinessActiveCampaigns';
-import donnyIcon from '@/assets/donny-emblem.png';
+import donnyIcon from '@/assets/donny-emblem.webp';
 import { DragonShareStatTile } from '@/components/dragonshare/DragonShareStatTile';
 import { useOrgBoostStats } from '@/hooks/useDragonShare';
 import { useOrg } from '@/hooks/useOrgData';
@@ -57,7 +57,7 @@ const BusinessDashboard = () => {
   const hasMore = (campaigns?.length ?? 0) > 3;
 
   const businessStats: StatItem[] = [
-    { label: 'Active', value: campaignsLoading ? '...' : recentCampaigns.length, icon: Megaphone },
+    { label: 'Active', value: campaignsLoading ? '…' : recentCampaigns.length, icon: Megaphone },
     { label: 'Creators', value: '—', subtitle: 'In your network', icon: Users },
     { label: 'Spend', value: '—', icon: DollarSign },
     { label: 'ROI', value: '—', icon: TrendingUp },

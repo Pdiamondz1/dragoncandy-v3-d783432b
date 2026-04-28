@@ -9,7 +9,7 @@ import type {
   BudgetMaxPreset,
   CampaignFilterState,
 } from '@/hooks/useCampaignFilters';
-import logo from '@/assets/Transparent_DragonCandy_logo.png';
+import logo from '@/assets/Transparent_DragonCandy_logo.webp';
 
 interface CampaignSearchFiltersProps {
   filters: CampaignFilterState;
@@ -129,7 +129,7 @@ export const CampaignSearchFilters: React.FC<CampaignSearchFiltersProps> = ({
             <input
               ref={searchInputRef}
               type="text"
-              placeholder="Search campaigns..."
+              placeholder="Search campaigns…"
               value={localSearch}
               onChange={(e) => handleSearchInput(e.target.value)}
               className="w-full pl-9 pr-8 py-2 rounded-full bg-white text-sm text-gray-900 placeholder-gray-400 border border-gray-200 focus:outline-none focus:border-dc-teal"

@@ -208,4 +208,4 @@ const CampaignMarketplaceListItem: React.FC<CampaignMarketplaceListItemProps> = 
   );
 };
 
-export default CampaignMarketplaceListItem;
+export default React.memo(CampaignMarketplaceListItem);

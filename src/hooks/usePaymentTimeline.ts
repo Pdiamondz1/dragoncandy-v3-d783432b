@@ -37,7 +37,7 @@ export function usePaymentTimeline(
     },
     enabled: !!entityId,
     refetchOnWindowFocus: true,
-    refetchInterval: 30000, // 30 seconds
+    refetchInterval: 120_000,
   });
 }
 
@@ -58,6 +58,6 @@ export function usePaymentTimelineByCampaign(campaignId: string | undefined) {
     },
     enabled: !!campaignId,
     refetchOnWindowFocus: true,
-    refetchInterval: 30000,
+    refetchInterval: 120_000,
   });
 }

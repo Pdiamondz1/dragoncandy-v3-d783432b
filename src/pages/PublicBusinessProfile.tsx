@@ -7,7 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Star, MapPin, Building2, MessageSquare } from 'lucide-react';
 import PublicProfileReviews from '@/components/profiles/PublicProfileReviews';
-import logo from '@/assets/Transparent_DragonCandy_logo.png';
+import logo from '@/assets/Transparent_DragonCandy_logo.webp';
 
 interface BusinessProfile {
   id: string;

@@ -293,4 +293,4 @@ const ApplicationCard: React.FC<ApplicationCardProps> = ({
   );
 };
 
-export default ApplicationCard;
+export default React.memo(ApplicationCard);
