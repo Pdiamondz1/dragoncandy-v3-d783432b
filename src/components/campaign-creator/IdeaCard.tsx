@@ -20,12 +20,9 @@ export function IdeaCard({ idea, isSelected, onSelect }: IdeaCardProps) {
           ? 'border-2 border-teal-400 ring-2 ring-teal-400/20'
           : 'border border-teal-300 hover:border-teal-400'
       )}>
-      <div className="flex items-start gap-2">
-        <span className="text-2xl">{idea.emoji}</span>
-        <div className="flex-1 min-w-0">
-          <h3 className="font-bold text-gray-900 truncate">{idea.title}</h3>
-          <p className="text-sm text-gray-600 mt-1 line-clamp-2">{idea.description}</p>
-        </div>
+      <div className="min-w-0">
+        <h3 className="font-bold text-gray-900 truncate">{idea.title}</h3>
+        <p className="text-sm text-gray-600 mt-1 line-clamp-2">{idea.description}</p>
       </div>
       <div className="flex flex-wrap gap-2 mt-3">
         <span className="bg-gray-100 rounded-full px-2 py-1 text-xs font-medium text-gray-700">

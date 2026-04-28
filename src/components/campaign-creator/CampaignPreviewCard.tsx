@@ -19,9 +19,7 @@ export function CampaignPreviewCard({ campaign }: CampaignPreviewCardProps) {
     <div className="sticky top-4">
       <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">What creators will see</p>
       <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
-        <div className="h-32 bg-gradient-to-br from-teal-400 to-emerald-400 flex items-center justify-center">
-          <span className="text-5xl">{campaign.emoji}</span>
-        </div>
+        <div className="h-32 bg-gradient-to-br from-teal-400 to-emerald-400" />
         <div className="p-4 space-y-3">
           <h3 className="font-bold text-lg text-gray-900">{campaign.title || 'Untitled Campaign'}</h3>
           <p className="text-sm text-gray-600 line-clamp-3">{campaign.description || 'No description yet'}</p>

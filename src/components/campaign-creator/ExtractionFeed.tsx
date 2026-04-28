@@ -1,5 +1,3 @@
-import { DonnyAvatar } from '@/components/donny/DonnyAvatar';
-
 interface ExtractionFeedProps {
   messages: string[];
   isExtracting: boolean;
@@ -8,22 +6,20 @@ interface ExtractionFeedProps {
 export function ExtractionFeed({ messages, isExtracting }: ExtractionFeedProps) {
   if (messages.length === 0) return null;
 
+  const latestMessage = messages[messages.length - 1];
+
   return (
-    <div className="space-y-3 mt-6">
-      {messages.map((msg, i) => (
-        <div
-          key={i}
-          className="flex items-start gap-3 animate-in fade-in slide-in-from-bottom-2 duration-300"
-        >
-          <DonnyAvatar
-            size="sm"
-            state={i === messages.length - 1 && isExtracting ? 'thinking' : 'idle'}
-          />
-          <div className="bg-[#F9A8D4] rounded-2xl rounded-tl-sm px-4 py-2.5 max-w-[80%]">
-            <p className="text-sm text-gray-900">{msg}</p>
-          </div>
+    <div className="flex flex-col items-center justify-center py-6 animate-in fade-in duration-300">
+      <p className="text-sm text-gray-500 text-center tracking-wide">
+        {latestMessage}
+      </p>
+      {isExtracting && (
+        <div className="flex gap-1.5 mt-3">
+          <span className="h-1.5 w-1.5 rounded-full bg-teal-400 animate-pulse" />
+          <span className="h-1.5 w-1.5 rounded-full bg-teal-400 animate-pulse [animation-delay:150ms]" />
+          <span className="h-1.5 w-1.5 rounded-full bg-teal-400 animate-pulse [animation-delay:300ms]" />
         </div>
-      ))}
+      )}
     </div>
   );
 }
