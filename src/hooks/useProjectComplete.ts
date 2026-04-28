@@ -40,7 +40,7 @@ export const useProjectComplete = () => {
         .from('creator_profiles')
         .select('user_id, creator_name')
         .eq('user_id', collaboration.creator_id)
-        .single();
+        .maybeSingle();
 
       if (creatorError) throw creatorError;
 

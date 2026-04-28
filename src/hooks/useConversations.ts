@@ -21,7 +21,7 @@ export const useConversations = () => {
   const queryClient = useQueryClient();
 
   const query = useQuery({
-    queryKey: ['conversations'],
+    queryKey: ['conversations', user?.id],
     queryFn: async () => {
       if (!user) return [];
       

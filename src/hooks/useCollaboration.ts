@@ -100,12 +100,12 @@ export function useCollaboration(collaborationId: string) {
           .from('creator_profiles')
           .select('user_id, creator_name, avatar_url, bio')
           .eq('user_id', data.creator_id)
-          .single(),
+          .maybeSingle(),
         supabase
           .from('business_profiles')
           .select('user_id, business_name, logo_url')
           .eq('user_id', campaignData.user_id)
-          .single(),
+          .maybeSingle(),
       ]);
 
       return {

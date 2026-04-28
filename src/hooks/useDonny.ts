@@ -51,7 +51,7 @@ export function useDonny(options?: UseDonnyOptions) {
       // Try to get existing conversation
       const { data: existing, error: fetchError } = await supabase
         .from('donny_conversations' as any)
-        .select('*')
+        .select('id, user_id, created_at, last_message_at, context_snapshot')
         .eq('user_id', user.id)
         .order('last_message_at', { ascending: false })
         .limit(1)
@@ -81,7 +81,7 @@ export function useDonny(options?: UseDonnyOptions) {
 
       const { data, error: fetchError } = await supabase
         .from('donny_messages' as any)
-        .select('*')
+        .select('id, conversation_id, role, content, tool_calls, tool_result, rich_card, quick_actions, created_at')
         .eq('conversation_id', conversation.id)
         .order('created_at', { ascending: true });
 

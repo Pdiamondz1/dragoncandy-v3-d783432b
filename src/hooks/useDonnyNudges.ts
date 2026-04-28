@@ -15,7 +15,7 @@ export function useDonnyNudges() {
       if (!user?.id) return [];
       const { data, error } = await supabase
         .from('donny_nudges')
-        .select('*')
+        .select('id, type, raw_data, summary, priority, actions, created_at, read_at, acted_at, dismissed_at')
         .eq('user_id', user.id)
         .is('acted_at', null)
         .is('dismissed_at', null)

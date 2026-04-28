@@ -61,7 +61,7 @@ export const useCreateCampaign = () => {
             .from('profiles')
             .select('email, full_name')
             .eq('id', user!.id)
-            .single();
+            .maybeSingle();
 
           if (profile) {
             await supabase.functions.invoke('send-notification-email', {
@@ -216,7 +216,7 @@ export const useUpdateCampaign = () => {
             .from('profiles')
             .select('email, full_name')
             .eq('id', user.id)
-            .single();
+            .maybeSingle();
 
           if (profile) {
             const statusMessages: Record<string, string> = {

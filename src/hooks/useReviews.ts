@@ -26,7 +26,7 @@ export const useReviews = (revieweeId?: string, reviewType?: string) => {
         // First get basic reviews
         let query = supabase
           .from('project_reviews')
-          .select('*')
+          .select('id, collaboration_id, sponsorship_id, reviewer_id, reviewee_id, rating, review_text, review_type, communication_rating, quality_rating, timeliness_rating, professionalism_rating, is_public, created_at, updated_at')
           .eq('reviewee_id', revieweeId)
           .eq('is_public', true)
           .order('created_at', { ascending: false });

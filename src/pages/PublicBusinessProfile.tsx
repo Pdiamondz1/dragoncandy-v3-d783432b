@@ -52,7 +52,7 @@ const PublicBusinessProfile = () => {
       try {
         const { data, error } = await supabase
           .from('business_profiles')
-          .select('*')
+          .select('id, user_id, business_name, industry, website_url, location, description, company_size, founded_year, employee_count_range, budget_range, preferred_collaboration_style, timezone, logo_url, instagram_url, facebook_url, linkedin_url, x_url, other_social_url, sample_content_urls, created_at')
           .eq('profile_slug', slug)
           .eq('profile_visibility', 'public')
           .single();

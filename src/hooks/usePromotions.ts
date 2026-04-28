@@ -121,7 +121,7 @@ export const usePromotions = () => {
       if (!user?.id) return [];
       const { data, error } = await supabase
         .from('promotions')
-        .select('*')
+        .select('id, user_id, business_id, title, description, discount_type, discount_value, currency, start_date, end_date, max_redemptions, current_redemptions, video_max_duration, terms_conditions, qr_code_url, status, created_at, updated_at')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
       if (error) throw error;

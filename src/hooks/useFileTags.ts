@@ -12,7 +12,7 @@ export const useFileTags = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('file_tags')
-        .select('*')
+        .select('id, name, color, created_by, created_at')
         .order('name');
 
       if (error) {

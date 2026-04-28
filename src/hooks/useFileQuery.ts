@@ -12,7 +12,7 @@ export const useFileUploads = (campaignId?: string, category?: string) => {
     queryFn: async () => {
       let query = supabase
         .from('file_uploads')
-        .select('*')
+        .select('id, filename, original_filename, file_path, bucket_name, file_size, mime_type, file_hash, upload_status, uploaded_by, campaign_id, file_category, metadata, is_public, is_compressed, compression_ratio, created_at, updated_at')
         .order('created_at', { ascending: false });
 
       if (campaignId) {
@@ -44,7 +44,7 @@ export const useFileUploads = (campaignId?: string, category?: string) => {
       // Fetch versions with creator profiles
       const { data: versionsData } = await supabase
         .from('file_versions')
-        .select('*')
+        .select('id, file_upload_id, version_number, file_path, file_size, changes_description, created_by, created_at')
         .in('file_upload_id', fileIds);
 
       const versionCreatorIds = versionsData?.map(v => v.created_by).filter(Boolean) || [];
@@ -58,7 +58,7 @@ export const useFileUploads = (campaignId?: string, category?: string) => {
       // Fetch comments with user profiles
       const { data: commentsData } = await supabase
         .from('file_comments')
-        .select('*')
+        .select('id, file_upload_id, user_id, comment_text, annotation_data, parent_comment_id, created_at, updated_at')
         .in('file_upload_id', fileIds);
 
       const commentUserIds = commentsData?.map(c => c.user_id).filter(Boolean) || [];
@@ -72,7 +72,7 @@ export const useFileUploads = (campaignId?: string, category?: string) => {
       // Fetch permissions with user profiles
       const { data: permissionsData } = await supabase
         .from('file_permissions')
-        .select('*')
+        .select('id, file_upload_id, user_id, permission_type, granted_by, expires_at, created_at')
         .in('file_upload_id', fileIds);
 
       const permissionUserIds = permissionsData?.map(p => p.user_id).filter(Boolean) || [];
@@ -87,8 +87,8 @@ export const useFileUploads = (campaignId?: string, category?: string) => {
       const { data: tagAssignmentsData } = await supabase
         .from('file_tag_assignments')
         .select(`
-          *,
-          file_tags (*)
+          id, file_upload_id, file_tag_id,
+          file_tags (id, name, color, created_by, created_at)
         `)
         .in('file_upload_id', fileIds);
 

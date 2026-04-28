@@ -12,7 +12,7 @@ export const useMessages = (campaignId?: string, conversationId?: string) => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('messages')
-        .select('*')
+        .select('id, campaign_id, conversation_id, sender_id, recipient_id, content, created_at, read_at, attachment_url, attachment_name, attachment_size, parent_message_id, thread_id, category, is_starred, is_archived, delivery_status, forwarded_from_message_id, edited_at')
         .eq(campaignId ? 'campaign_id' : 'conversation_id', campaignId || conversationId)
         .order('created_at', { ascending: true });
 
@@ -119,7 +119,7 @@ export const useSearchMessages = (campaignId: string, searchQuery: string) => {
       
       const { data, error } = await supabase
         .from('messages')
-        .select('*')
+        .select('id, campaign_id, conversation_id, sender_id, recipient_id, content, created_at, read_at, attachment_url, attachment_name, attachment_size, parent_message_id, thread_id, category, is_starred, is_archived, delivery_status, forwarded_from_message_id, edited_at')
         .eq('campaign_id', campaignId)
         .textSearch('content', searchQuery)
         .order('created_at', { ascending: false });

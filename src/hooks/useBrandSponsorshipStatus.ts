@@ -30,14 +30,14 @@ export const useBrandSponsorshipStatus = (campaignId: string) => {
         .select('id')
         .eq('user_id', user.id)
         .eq('account_type', 'brand')
-        .single();
+        .maybeSingle();
 
       if (!brandProfile) return null;
 
       // Then get the sponsorship proposal
       const { data, error } = await supabase
         .from('campaign_sponsorships')
-        .select('*')
+        .select('id, sponsorship_amount, proposal_message, status, terms, created_at, updated_at, payment_status, payment_intent_id, payment_date, payment_method')
         .eq('campaign_id', campaignId)
         .eq('brand_id', brandProfile.id)
         .maybeSingle();

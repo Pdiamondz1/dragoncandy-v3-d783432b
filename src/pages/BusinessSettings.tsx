@@ -51,7 +51,7 @@ const BusinessSettings = () => {
       try {
         const { data, error } = await supabase
           .from('business_profiles')
-          .select('*')
+          .select('business_name, industry, website_url, location, postal_code, city, country, description, instagram_url, tiktok_url, youtube_url, facebook_url, linkedin_url, x_url, other_social_url, logo_url, company_size, founded_year, employee_count_range, budget_range, preferred_collaboration_style, timezone, profile_visibility')
           .eq('user_id', user.id)
           .maybeSingle();
 

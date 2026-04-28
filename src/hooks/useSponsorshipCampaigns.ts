@@ -34,7 +34,7 @@ export const useSponsorshipCampaigns = (brandUserId?: string) => {
       // Get campaigns open for sponsorship
       const { data: campaigns, error: campaignsError } = await supabase
         .from('campaigns')
-        .select('*')
+        .select('id, user_id, title, description, goals, deliverables, platforms, budget_min, budget_max, deadline, status, created_at, open_for_sponsorship')
         .eq('status', 'published')
         .eq('open_for_sponsorship', true)
         .order('created_at', { ascending: false });

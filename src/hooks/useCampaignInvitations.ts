@@ -21,7 +21,7 @@ export const useCampaignInvitations = (campaignId: string) => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('campaign_invitations')
-        .select('*')
+        .select('id, campaign_id, creator_id, invited_by, status, invitation_message, created_at, updated_at')
         .eq('campaign_id', campaignId)
         .order('created_at', { ascending: false });
 

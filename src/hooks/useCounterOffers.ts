@@ -23,7 +23,7 @@ export const useCounterOffers = (applicationId: string | undefined) => {
       if (!applicationId) return [];
       const { data, error } = await supabase
         .from('application_counter_offers')
-        .select('*')
+        .select('id, application_id, sender_id, sender_role, proposed_rate, proposed_timeline, message, status, created_at')
         .eq('application_id', applicationId)
         .order('created_at', { ascending: true });
 

@@ -181,17 +181,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const { data: org } = await supabase
         .from('organizations')
-        .select('*')
+        .select('id, name, owner_id, slug, logo_url, created_at')
         .eq('id', orgId)
-        .single();
+        .maybeSingle();
       setActiveOrg(org as Organization | null);
 
       if (orgUnitId) {
         const { data: unit } = await supabase
           .from('org_units')
-          .select('*')
+          .select('id, org_id, name, address, phone, created_at')
           .eq('id', orgUnitId)
-          .single();
+          .maybeSingle();
         setActiveOrgUnit(unit as OrgUnit | null);
       } else {
         setActiveOrgUnit(null);
@@ -212,9 +212,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     const { data: unit } = await supabase
       .from('org_units')
-      .select('*')
+      .select('id, org_id, name, address, phone, created_at')
       .eq('id', unitId)
-      .single();
+      .maybeSingle();
     setActiveOrgUnit(unit as OrgUnit | null);
   };
 
