@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
 import DashboardLayout from '@/components/DashboardLayout';
 import { ArrowLeft } from 'lucide-react';
 import { useCampaign } from '@/hooks/useCampaigns';
@@ -85,12 +85,12 @@ const CampaignMessagesPage: React.FC = () => {
               <p className="text-sm text-gray-500 text-center mb-4">
                 The campaign you're looking for doesn't exist or you don't have access to it.
               </p>
-              <button
-                onClick={handleBack}
-                className="rounded-full bg-dc-teal text-white font-bold px-6 py-2 text-sm"
+              <Link
+                to="/messages"
+                className="rounded-full bg-dc-teal text-white font-bold px-6 py-2 text-sm inline-block"
               >
                 Back to Messages
-              </button>
+              </Link>
             </div>
           </div>
         </div>
@@ -123,12 +123,12 @@ const CampaignMessagesPage: React.FC = () => {
                   ? 'No creators have been accepted for this campaign yet.'
                   : 'Unable to find the campaign owner for messaging.'}
               </p>
-              <button
-                onClick={handleBack}
-                className="rounded-full bg-dc-teal text-white font-bold px-6 py-2 text-sm"
+              <Link
+                to="/messages"
+                className="rounded-full bg-dc-teal text-white font-bold px-6 py-2 text-sm inline-block"
               >
                 Back to Messages
-              </button>
+              </Link>
             </div>
           </div>
         </div>

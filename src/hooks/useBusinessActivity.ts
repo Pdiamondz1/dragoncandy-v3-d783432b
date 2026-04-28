@@ -69,42 +69,37 @@ export const useBusinessActivity = () => {
         // Reconstruct media items
         const mediaItems: FeedMediaItem[] = [];
         
-        for (const liked of currentlyLiked) {
+        const itemPromises = currentlyLiked.map(async (liked) => {
           const creator = creators?.find(c => c.user_id === liked.creatorId);
-          if (!creator) continue;
+          if (!creator) return null;
 
-          // Extract URL from content_id (format: "creator-id-url")
           const urlPart = liked.contentId.replace(`${creator.id}-`, '');
           const portfolio = Array.isArray(creator.portfolio_urls) ? creator.portfolio_urls : [];
           const matchedUrl = portfolio.find((url: string) => url === urlPart);
+          if (!matchedUrl) return null;
 
-          if (matchedUrl) {
-            // Generate signed URL if needed
-            let finalUrl = matchedUrl;
-            if (!matchedUrl.startsWith('http')) {
-              const { data: signedData } = await supabase.storage
-                .from('profile-assets')
-                .createSignedUrl(matchedUrl, 3600);
-              
-              if (signedData?.signedUrl) {
-                finalUrl = signedData.signedUrl;
-              }
-            }
-
-            const isVideo = /\.(mp4|webm|mov|avi)$/i.test(matchedUrl);
-            mediaItems.push({
-              id: liked.contentId,
-              url: finalUrl,
-              type: isVideo ? 'video' : 'image',
-              creatorName: creator.creator_name || 'Creator',
-              creatorSlug: creator.profile_slug || '',
-              creatorId: creator.user_id || creator.id,
-              submittedAt: liked.timestamp
-            });
+          let finalUrl = matchedUrl;
+          if (!matchedUrl.startsWith('http')) {
+            const { data: signedData } = await supabase.storage
+              .from('profile-assets')
+              .createSignedUrl(matchedUrl, 3600);
+            if (signedData?.signedUrl) finalUrl = signedData.signedUrl;
           }
-        }
 
-        setLikedItems(mediaItems);
+          const isVideo = /\.(mp4|webm|mov|avi)$/i.test(matchedUrl);
+          return {
+            id: liked.contentId,
+            url: finalUrl,
+            type: isVideo ? 'video' : 'image',
+            creatorName: creator.creator_name || 'Creator',
+            creatorSlug: creator.profile_slug || '',
+            creatorId: creator.user_id || creator.id,
+            submittedAt: liked.timestamp
+          } as FeedMediaItem;
+        });
+
+        const results = await Promise.all(itemPromises);
+        setLikedItems(results.filter((item): item is FeedMediaItem => item !== null));
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load liked content');
       } finally {

@@ -145,7 +145,7 @@ const CampaignDetailsPage: React.FC = () => {
       <DashboardLayout userRole={userRole}>
         <div className="min-h-screen bg-white overflow-x-hidden flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl p-8 text-center space-y-4 w-full max-w-sm">
-            <AlertCircle className="h-12 w-12 text-red-400 mx-auto" />
+            <AlertCircle className="h-12 w-12 text-red-400 mx-auto" aria-hidden="true" />
             <h2 className="text-lg font-bold text-gray-900">Campaign not found</h2>
             <p className="text-gray-500 text-sm">
               This campaign doesn't exist or you don't have access to it.
@@ -249,13 +249,13 @@ const CampaignDetailsPage: React.FC = () => {
           <Tabs defaultValue="overview" className="space-y-4">
             <TabsList className="grid w-full grid-cols-3 rounded-full bg-gray-100">
               <TabsTrigger value="overview" className="rounded-full flex items-center gap-1.5 text-xs">
-                <Target className="h-3.5 w-3.5" /> Overview
+                <Target className="h-3.5 w-3.5" aria-hidden="true" /> Overview
               </TabsTrigger>
               <TabsTrigger value="applications" className="rounded-full flex items-center gap-1.5 text-xs">
-                <Users className="h-3.5 w-3.5" /> Applications
+                <Users className="h-3.5 w-3.5" aria-hidden="true" /> Applications
               </TabsTrigger>
               <TabsTrigger value="matching" className="rounded-full flex items-center gap-1.5 text-xs">
-                <Target className="h-3.5 w-3.5" /> AI Match
+                <Target className="h-3.5 w-3.5" aria-hidden="true" /> AI Match
               </TabsTrigger>
             </TabsList>
 
@@ -275,7 +275,7 @@ const CampaignDetailsPage: React.FC = () => {
               onClick={() => navigate(`/dashboard/business/campaigns/${campaign.id}/edit`)}
               className="w-full rounded-full bg-dc-teal text-white font-bold py-3 mt-6 flex items-center justify-center gap-2"
             >
-              <Edit className="h-4 w-4" /> Edit Campaign
+              <Edit className="h-4 w-4" aria-hidden="true" /> Edit Campaign
             </button>
           )}
         </div>

@@ -96,6 +96,9 @@ const ForgotPassword: React.FC = () => {
                 <Input
                   id="email"
                   type="email"
+                  name="email"
+                  autoComplete="email"
+                  spellCheck={false}
                   placeholder="you@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -109,7 +112,7 @@ const ForgotPassword: React.FC = () => {
                 disabled={loading}
                 className="w-full rounded-full bg-dc-teal text-white font-bold py-3 hover:bg-dc-teal/90 transition-colors disabled:opacity-60"
               >
-                {loading ? "Sending..." : "Send reset link"}
+                {loading ? "Sending…" : "Send reset link"}
               </button>
 
               <div className="text-center text-sm mt-2">

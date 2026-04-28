@@ -31,7 +31,7 @@ const MessageInputEnhanced: React.FC<MessageInputEnhancedProps> = ({
   conversationId,
   onSendMessage,
   disabled = false,
-  placeholder = "Type a message...",
+  placeholder = "Type a message…",
   replyingTo,
   onCancelReply
 }) => {
@@ -125,7 +125,7 @@ const MessageInputEnhanced: React.FC<MessageInputEnhancedProps> = ({
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSubmit(e);
@@ -188,7 +188,7 @@ const MessageInputEnhanced: React.FC<MessageInputEnhancedProps> = ({
               </p>
             </div>
           </div>
-          <Button variant="ghost" size="sm" className="h-6 w-6 p-0 flex-shrink-0" onClick={onCancelReply}>
+          <Button variant="ghost" size="sm" className="h-6 w-6 p-0 flex-shrink-0" onClick={onCancelReply} aria-label="Cancel reply">
             <X className="h-3.5 w-3.5" />
           </Button>
         </div>
@@ -198,13 +198,13 @@ const MessageInputEnhanced: React.FC<MessageInputEnhancedProps> = ({
       {file && (
         <div className="flex items-center justify-between px-4 py-2 bg-gray-50 border-b border-gray-100">
           <div className="flex items-center gap-2 min-w-0">
-            <Paperclip className="h-3.5 w-3.5 text-dc-teal flex-shrink-0" />
+            <Paperclip className="h-3.5 w-3.5 text-dc-teal flex-shrink-0" aria-hidden="true" />
             <span className="text-xs text-gray-700 truncate">{file.name}</span>
             <span className="text-[10px] text-gray-400 flex-shrink-0">
               ({(file.size / 1024 / 1024).toFixed(1)} MB)
             </span>
           </div>
-          <Button variant="ghost" size="sm" className="h-6 w-6 p-0 flex-shrink-0" onClick={removeFile}>
+          <Button variant="ghost" size="sm" className="h-6 w-6 p-0 flex-shrink-0" onClick={removeFile} aria-label="Remove attachment">
             <X className="h-3.5 w-3.5" />
           </Button>
         </div>
@@ -218,6 +218,7 @@ const MessageInputEnhanced: React.FC<MessageInputEnhancedProps> = ({
           onChange={handleFileSelect}
           className="hidden"
           accept="image/*,video/*,.pdf,.doc,.docx,.txt"
+          name="file"
         />
 
         {/* "+" attachment button */}
@@ -235,11 +236,13 @@ const MessageInputEnhanced: React.FC<MessageInputEnhancedProps> = ({
           ref={textareaRef}
           value={message}
           onChange={handleInputChange}
-          onKeyPress={handleKeyPress}
+          onKeyDown={handleKeyDown}
           placeholder={placeholder}
           disabled={disabled || uploading}
           className="flex-1 min-h-[40px] max-h-[120px] resize-none text-base border border-dc-pink rounded-full px-4 py-2 focus:outline-none focus:ring-2 focus:ring-dc-teal focus:border-transparent"
           rows={1}
+          aria-label="Message"
+          name="message"
         />
 
         {/* Send button */}

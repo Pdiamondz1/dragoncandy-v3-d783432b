@@ -58,6 +58,7 @@ const MessageReactions: React.FC<MessageReactionsProps> = ({ messageId }) => {
           size="sm"
           className="h-6 px-2 text-xs"
           onClick={() => handleEmojiClick(group.emoji)}
+          aria-label={`${group.emoji} reaction, ${group.count} reactions`}
         >
           <span className="mr-1">{group.emoji}</span>
           <span>{group.count}</span>
@@ -67,7 +68,7 @@ const MessageReactions: React.FC<MessageReactionsProps> = ({ messageId }) => {
       {/* Add reaction button */}
       <Popover open={showEmojiPicker} onOpenChange={setShowEmojiPicker}>
         <PopoverTrigger asChild>
-          <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+          <Button variant="ghost" size="sm" className="h-6 w-6 p-0" aria-label="Add reaction">
             <Plus className="h-3 w-3" />
           </Button>
         </PopoverTrigger>
@@ -80,6 +81,7 @@ const MessageReactions: React.FC<MessageReactionsProps> = ({ messageId }) => {
                 size="sm"
                 className="h-8 w-8 p-0 text-lg"
                 onClick={() => handleEmojiClick(emoji)}
+                aria-label={`React with ${emoji}`}
               >
                 {emoji}
               </Button>

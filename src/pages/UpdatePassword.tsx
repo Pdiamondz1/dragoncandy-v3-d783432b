@@ -104,6 +104,8 @@ const UpdatePassword: React.FC = () => {
                 <Input
                   id="password"
                   type="password"
+                  name="password"
+                  autoComplete="new-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
@@ -118,6 +120,8 @@ const UpdatePassword: React.FC = () => {
                 <Input
                   id="confirm"
                   type="password"
+                  name="confirm-password"
+                  autoComplete="new-password"
                   value={confirm}
                   onChange={(e) => setConfirm(e.target.value)}
                   required
@@ -130,7 +134,7 @@ const UpdatePassword: React.FC = () => {
                 disabled={loading}
                 className="w-full rounded-full bg-dc-teal text-white font-bold py-3 hover:bg-dc-teal/90 transition-colors disabled:opacity-60"
               >
-                {loading ? "Updating..." : "Update password"}
+                {loading ? "Updating…" : "Update password"}
               </button>
             </form>
           </div>

@@ -58,11 +58,11 @@ const MessageBubbleEnhanced: React.FC<MessageBubbleEnhancedProps> = ({
   const getDeliveryStatusIcon = () => {
     switch (message.delivery_status) {
       case 'sent':
-        return <Check className="h-3 w-3 text-white/60" />;
+        return <Check className="h-3 w-3 text-white/60" aria-hidden="true" />;
       case 'delivered':
-        return <CheckCheck className="h-3 w-3 text-white/60" />;
+        return <CheckCheck className="h-3 w-3 text-white/60" aria-hidden="true" />;
       case 'read':
-        return <CheckCheck className="h-3 w-3 text-white" />;
+        return <CheckCheck className="h-3 w-3 text-white" aria-hidden="true" />;
       default:
         return null;
     }
@@ -128,7 +128,7 @@ const MessageBubbleEnhanced: React.FC<MessageBubbleEnhancedProps> = ({
             </span>
             <p className="truncate mt-0.5 opacity-80">
               {message.parent_message.content.length > 60
-                ? message.parent_message.content.substring(0, 60) + '...'
+                ? message.parent_message.content.substring(0, 60) + '…'
                 : message.parent_message.content}
             </p>
           </div>
@@ -161,7 +161,10 @@ const MessageBubbleEnhanced: React.FC<MessageBubbleEnhancedProps> = ({
                         alt={message.attachment_name || 'Shared image'}
                         className="max-w-full h-auto rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
                         style={{ maxHeight: '240px', maxWidth: '280px' }}
+                        role="button"
+                        tabIndex={0}
                         onClick={() => window.open(message.attachment_url, '_blank')}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); window.open(message.attachment_url, '_blank'); } }}
                         onError={(e) => {
                           const target = e.target as HTMLImageElement;
                           target.style.display = 'none';

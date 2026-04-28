@@ -89,7 +89,7 @@ const DirectMessagesList: React.FC<DirectMessagesListProps> = ({
       <div className="p-4 border-b border-border/50 flex-shrink-0">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
-            <MessageSquare className="h-4 w-4 text-primary" />
+            <MessageSquare className="h-4 w-4 text-primary" aria-hidden="true" />
             Messages
             {conversations.length > 0 && (
               <Badge variant="secondary" className="text-[10px] px-1.5 h-5">
@@ -102,6 +102,7 @@ const DirectMessagesList: React.FC<DirectMessagesListProps> = ({
             size="sm"
             className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
             onClick={() => setShowSearch(!showSearch)}
+            aria-label="Toggle search"
           >
             {showSearch ? <X className="h-3.5 w-3.5" /> : <Search className="h-3.5 w-3.5" />}
           </Button>
@@ -109,11 +110,12 @@ const DirectMessagesList: React.FC<DirectMessagesListProps> = ({
 
         {showSearch && (
           <Input
-            placeholder="Search conversations..."
+            placeholder="Search conversations…"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="h-8 text-sm bg-muted/50 border-border/50"
-            autoFocus
+            aria-label="Search conversations"
+            name="search"
           />
         )}
       </div>
@@ -123,7 +125,7 @@ const DirectMessagesList: React.FC<DirectMessagesListProps> = ({
         {filteredConversations.length === 0 ? (
           <div className="p-6 text-center">
             <div className="p-4 bg-muted/30 rounded-2xl w-fit mx-auto mb-3">
-              <MessageSquare className="h-6 w-6 text-muted-foreground/60" />
+              <MessageSquare className="h-6 w-6 text-muted-foreground/60" aria-hidden="true" />
             </div>
             <p className="text-sm font-medium text-foreground mb-1">
               {searchQuery ? 'No results' : 'No conversations yet'}
@@ -143,12 +145,15 @@ const DirectMessagesList: React.FC<DirectMessagesListProps> = ({
               return (
                 <div
                   key={conversation.conversation_id || conversation.campaign_id}
-                  className={`group flex items-center gap-3 px-3 py-3 rounded-xl cursor-pointer transition-all duration-200 min-w-0 overflow-hidden ${
+                  className={`group flex items-center gap-3 px-3 py-3 rounded-xl cursor-pointer transition-colors duration-200 min-w-0 overflow-hidden ${
                     isActive
                       ? 'bg-primary/10 border border-primary/20'
                       : 'hover:bg-muted/60 border border-transparent'
                   }`}
                   onClick={() => handleConversationClick(conversation)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleConversationClick(conversation); } }}
                 >
                   <div className="flex-shrink-0">
                     <UserPresenceIndicator
@@ -175,7 +180,7 @@ const DirectMessagesList: React.FC<DirectMessagesListProps> = ({
                     </div>
                     <div className="flex items-center gap-1.5 mt-0.5 min-w-0">
                       {isCampaign && (
-                        <Megaphone className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                        <Megaphone className="h-3 w-3 text-muted-foreground flex-shrink-0" aria-hidden="true" />
                       )}
                       <p className="text-xs text-muted-foreground truncate">
                         {isCampaign
@@ -202,6 +207,7 @@ const DirectMessagesList: React.FC<DirectMessagesListProps> = ({
                         size="sm"
                         className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
                         onClick={(e) => handleArchive(e, conversation.conversation_id)}
+                        aria-label="Archive conversation"
                       >
                         <Archive className="h-3 w-3" />
                       </Button>

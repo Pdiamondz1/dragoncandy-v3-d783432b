@@ -52,7 +52,7 @@ const ConversationMessageThread: React.FC<ConversationMessageThreadProps> = ({
   return (
     <div className="flex flex-col h-full">
       {/* Messages area */}
-      <div className="flex-1 min-h-0 bg-teal-50">
+      <div className="flex-1 min-h-0 bg-teal-50" aria-live="polite">
         <MessageList
           conversationId={conversationId}
           messages={messages}
@@ -67,7 +67,7 @@ const ConversationMessageThread: React.FC<ConversationMessageThreadProps> = ({
           conversationId={conversationId}
           onSendMessage={handleSendMessage}
           disabled={sendMessage.isPending}
-          placeholder="Type a message..."
+          placeholder="Type a message…"
           replyingTo={replyingTo}
           onCancelReply={handleCancelReply}
         />

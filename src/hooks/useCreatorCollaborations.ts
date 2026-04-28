@@ -63,43 +63,44 @@ export const useCreatorCollaborations = (statusFilter: 'active' | 'completed') =
       if (collabError) throw collabError;
       if (!collabs || collabs.length === 0) return [];
 
-      // Step 2: Fetch business profiles for campaign owners
+      // Step 2: Fetch business profiles and reviews in parallel
       const campaignUserIds = [...new Set(
         collabs
           .map(c => (c.campaign as unknown as CollaborationCampaign)?.user_id)
           .filter(Boolean)
       )];
 
-      const { data: businessProfiles, error: profileError } = await supabase
-        .from('business_profiles')
-        .select('user_id, business_name, logo_url, profile_slug')
-        .in('user_id', campaignUserIds);
+      const collabIds = collabs.map(c => c.id);
 
-      if (profileError) throw profileError;
+      const [profileResult, reviewResult] = await Promise.all([
+        supabase
+          .from('business_profiles')
+          .select('user_id, business_name, logo_url, profile_slug')
+          .in('user_id', campaignUserIds),
+        statusFilter === 'completed'
+          ? supabase
+              .from('project_reviews')
+              .select('id, collaboration_id, rating')
+              .eq('reviewer_id', user.id)
+              .in('collaboration_id', collabIds)
+          : Promise.resolve({ data: null, error: null }),
+      ]);
+
+      if (profileResult.error) throw profileResult.error;
 
       const profileMap = new Map(
-        (businessProfiles || []).map(p => [p.user_id, p])
+        (profileResult.data || []).map(p => [p.user_id, p])
       );
 
-      // Step 3: For completed collaborations, check for existing reviews
       let reviewMap = new Map<string, string>();
       let reviewRatingMap = new Map<string, number>();
-      if (statusFilter === 'completed') {
-        const collabIds = collabs.map(c => c.id);
-        const { data: reviews } = await supabase
-          .from('project_reviews')
-          .select('id, collaboration_id, rating')
-          .eq('reviewer_id', user.id)
-          .in('collaboration_id', collabIds);
-
-        if (reviews) {
-          reviewMap = new Map(
-            reviews.map(r => [r.collaboration_id!, r.id])
-          );
-          reviewRatingMap = new Map(
-            reviews.map(r => [r.collaboration_id!, r.rating])
-          );
-        }
+      if (reviewResult.data) {
+        reviewMap = new Map(
+          reviewResult.data.map((r: any) => [r.collaboration_id!, r.id])
+        );
+        reviewRatingMap = new Map(
+          reviewResult.data.map((r: any) => [r.collaboration_id!, r.rating])
+        );
       }
 
       // Step 4: Merge

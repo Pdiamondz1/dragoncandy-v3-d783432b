@@ -31,12 +31,12 @@ const MessageSearch: React.FC<MessageSearchProps> = ({ campaignId, isOpen, onClo
   if (!isOpen) return null;
 
   return (
-    <div className="border-l bg-white w-96 flex flex-col">
+    <div className="border-l bg-white w-96 flex flex-col" role="search">
       {/* Header */}
       <div className="flex items-center gap-2 p-4 border-b">
-        <Search className="h-5 w-5 text-gray-500" />
+        <Search className="h-5 w-5 text-gray-500" aria-hidden="true" />
         <h3 className="font-medium flex-1">Search Messages</h3>
-        <Button variant="ghost" size="sm" onClick={onClose}>
+        <Button variant="ghost" size="sm" onClick={onClose} aria-label="Close search">
           <X className="h-4 w-4" />
         </Button>
       </div>
@@ -44,10 +44,12 @@ const MessageSearch: React.FC<MessageSearchProps> = ({ campaignId, isOpen, onClo
       {/* Search input */}
       <div className="p-4 border-b">
         <Input
-          placeholder="Search messages..."
+          placeholder="Search messages…"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="w-full"
+          aria-label="Search messages"
+          name="search"
         />
       </div>
 
@@ -56,7 +58,7 @@ const MessageSearch: React.FC<MessageSearchProps> = ({ campaignId, isOpen, onClo
         <div className="p-4">
           {isLoading && (
             <div className="text-center text-gray-500 py-8">
-              Searching...
+              Searching…
             </div>
           )}
           

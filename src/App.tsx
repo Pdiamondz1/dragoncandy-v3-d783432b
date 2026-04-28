@@ -1,4 +1,5 @@
 
+import { lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -16,73 +17,73 @@ import VerifiedRoute from "@/components/VerifiedRoute";
 import { BusinessRoute } from "@/components/BusinessRoute";
 import { BrandRoute } from "@/components/BrandRoute";
 import Index from "./pages/Index";
-import LandingPage from "./pages/LandingPage";
 import SiteGateGuard from "@/components/SiteGateGuard";
 import { Navigate } from "react-router-dom";
 import NotFound from "./pages/NotFound";
 import AuthPage from "./pages/AuthPage";
-import ProfileSetup from "./pages/ProfileSetup";
-import BusinessDashboard from "./pages/BusinessDashboard";
-import BrandDashboard from "./pages/BrandDashboard";
-import BrandSponsorships from "./pages/BrandSponsorships";
-import BrandCreators from "./pages/BrandCreators";
-import BrandAnalytics from "./pages/BrandAnalytics";
-import ROIDashboard from "./pages/ROIDashboard";
-import BrandMessages from "./pages/BrandMessages";
-import BrandCampaignDetails from "./pages/BrandCampaignDetails";
-import CreatorDashboard from "./pages/CreatorDashboard";
-import BusinessSettings from "./pages/BusinessSettings";
-import CreatorSettings from "./pages/CreatorSettings";
-import CampaignsPage from "./pages/CampaignsPage";
-import CampaignWizard from "./pages/CampaignWizard";
-import AnonymousCampaignWizard from "./pages/AnonymousCampaignWizard";
-import CampaignCreator from "./pages/CampaignCreator";
-import CampaignDetailsPage from "./pages/CampaignDetailsPage";
-import CampaignEditPage from "./pages/CampaignEditPage";
-import DirectMessagesPage from "./pages/DirectMessagesPage";
-import DirectConversationPage from "./pages/DirectConversationPage";
-import CampaignMessagesPage from "./pages/CampaignMessagesPage";
-import ProjectDetailsPage from "./pages/ProjectDetailsPage";
-import CreatorCampaignMarketplace from "./pages/CreatorCampaignMarketplace";
-import BusinessProposals from "./pages/BusinessProposals";
-import BusinessProjects from "./pages/BusinessProjects";
-import BusinessSponsorships from "./pages/BusinessSponsorships";
-import BusinessPromotionalTools from "./pages/BusinessPromotionalTools";
-import CreatorApplications from "./pages/CreatorApplications";
-import CreatorProjects from "./pages/CreatorProjects";
-import CreatorEarnings from "./pages/CreatorEarnings";
-import CreatorBrowse from "./pages/CreatorBrowse";
-import BusinessDragonFeed from "./pages/BusinessDragonFeed";
-import CreatorDragonFeed from "./pages/CreatorDragonFeed";
-import BusinessActivity from "./pages/BusinessActivity";
-import BrandDiscoverCampaigns from "./pages/BrandDiscoverCampaigns";
-import BrandCreateCampaign from "./pages/BrandCreateCampaign";
-import PublicCreatorProfile from "./pages/PublicCreatorProfile";
-import PublicBusinessProfile from "./pages/PublicBusinessProfile";
-import ReviewsManagement from "./pages/ReviewsManagement";
-import ForgotPassword from "./pages/ForgotPassword";
-import UpdatePassword from "./pages/UpdatePassword";
-import VerifyEmail from "./pages/VerifyEmail";
-import PromotionSubmissionPage from "./pages/PromotionSubmissionPage";
-import PromotionDetailPage from "./pages/PromotionDetailPage";
 import PromotionsErrorBoundary from "./components/promotions/PromotionsErrorBoundary";
-import PaymentsPage from "@/pages/PaymentsPage";
-import OrgUnitsPage from "@/pages/OrgUnitsPage";
-import TeamPage from "@/pages/TeamPage";
-import OrgBillingPage from "@/pages/OrgBillingPage";
-import RestoreAccountPage from "@/pages/RestoreAccountPage";
-import InviteAcceptPage from "@/pages/InviteAcceptPage";
-import CreatorDragonShare from "./pages/CreatorDragonShare";
-import { BusinessDragonShare, BrandDragonShare } from "./pages/BusinessDragonShare";
-import AdminDragonShareQueue from "./pages/AdminDragonShareQueue";
-import AdminDragonShareLedger from "./pages/AdminDragonShareLedger";
-import HelpBriefPage from "@/pages/help/promotions/HelpBriefPage";
-import HelpCenter from "@/pages/help/HelpCenter";
-import HelpArticlePage from "@/pages/help/HelpArticlePage";
-import PricingPage from "@/pages/PricingPage";
-import { HelpBriefDrawer } from "@/features/donny/HelpBriefDrawer";
 import { useAuth } from "@/hooks/useAuth";
 import type { UserRole } from "@/types/user";
+
+const LandingPage = lazy(() => import("./pages/LandingPage"));
+const ProfileSetup = lazy(() => import("./pages/ProfileSetup"));
+const BusinessDashboard = lazy(() => import("./pages/BusinessDashboard"));
+const BrandDashboard = lazy(() => import("./pages/BrandDashboard"));
+const BrandSponsorships = lazy(() => import("./pages/BrandSponsorships"));
+const BrandCreators = lazy(() => import("./pages/BrandCreators"));
+const BrandAnalytics = lazy(() => import("./pages/BrandAnalytics"));
+const ROIDashboard = lazy(() => import("./pages/ROIDashboard"));
+const BrandMessages = lazy(() => import("./pages/BrandMessages"));
+const BrandCampaignDetails = lazy(() => import("./pages/BrandCampaignDetails"));
+const CreatorDashboard = lazy(() => import("./pages/CreatorDashboard"));
+const BusinessSettings = lazy(() => import("./pages/BusinessSettings"));
+const CreatorSettings = lazy(() => import("./pages/CreatorSettings"));
+const CampaignsPage = lazy(() => import("./pages/CampaignsPage"));
+const CampaignCreator = lazy(() => import("./pages/CampaignCreator"));
+const CampaignDetailsPage = lazy(() => import("./pages/CampaignDetailsPage"));
+const CampaignEditPage = lazy(() => import("./pages/CampaignEditPage"));
+const DirectMessagesPage = lazy(() => import("./pages/DirectMessagesPage"));
+const DirectConversationPage = lazy(() => import("./pages/DirectConversationPage"));
+const CampaignMessagesPage = lazy(() => import("./pages/CampaignMessagesPage"));
+const ProjectDetailsPage = lazy(() => import("./pages/ProjectDetailsPage"));
+const CreatorCampaignMarketplace = lazy(() => import("./pages/CreatorCampaignMarketplace"));
+const BusinessProposals = lazy(() => import("./pages/BusinessProposals"));
+const BusinessProjects = lazy(() => import("./pages/BusinessProjects"));
+const BusinessSponsorships = lazy(() => import("./pages/BusinessSponsorships"));
+const BusinessPromotionalTools = lazy(() => import("./pages/BusinessPromotionalTools"));
+const CreatorApplications = lazy(() => import("./pages/CreatorApplications"));
+const CreatorProjects = lazy(() => import("./pages/CreatorProjects"));
+const CreatorEarnings = lazy(() => import("./pages/CreatorEarnings"));
+const CreatorBrowse = lazy(() => import("./pages/CreatorBrowse"));
+const BusinessDragonFeed = lazy(() => import("./pages/BusinessDragonFeed"));
+const CreatorDragonFeed = lazy(() => import("./pages/CreatorDragonFeed"));
+const BusinessActivity = lazy(() => import("./pages/BusinessActivity"));
+const BrandDiscoverCampaigns = lazy(() => import("./pages/BrandDiscoverCampaigns"));
+const BrandCreateCampaign = lazy(() => import("./pages/BrandCreateCampaign"));
+const PublicCreatorProfile = lazy(() => import("./pages/PublicCreatorProfile"));
+const PublicBusinessProfile = lazy(() => import("./pages/PublicBusinessProfile"));
+const ReviewsManagement = lazy(() => import("./pages/ReviewsManagement"));
+const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
+const UpdatePassword = lazy(() => import("./pages/UpdatePassword"));
+const VerifyEmail = lazy(() => import("./pages/VerifyEmail"));
+const PromotionSubmissionPage = lazy(() => import("./pages/PromotionSubmissionPage"));
+const PromotionDetailPage = lazy(() => import("./pages/PromotionDetailPage"));
+const PaymentsPage = lazy(() => import("./pages/PaymentsPage"));
+const OrgUnitsPage = lazy(() => import("./pages/OrgUnitsPage"));
+const TeamPage = lazy(() => import("./pages/TeamPage"));
+const OrgBillingPage = lazy(() => import("./pages/OrgBillingPage"));
+const RestoreAccountPage = lazy(() => import("./pages/RestoreAccountPage"));
+const InviteAcceptPage = lazy(() => import("./pages/InviteAcceptPage"));
+const CreatorDragonShare = lazy(() => import("./pages/CreatorDragonShare"));
+const BusinessDragonShare = lazy(() => import("./pages/BusinessDragonShare").then(m => ({ default: m.BusinessDragonShare })));
+const BrandDragonShare = lazy(() => import("./pages/BusinessDragonShare").then(m => ({ default: m.BrandDragonShare })));
+const AdminDragonShareQueue = lazy(() => import("./pages/AdminDragonShareQueue"));
+const AdminDragonShareLedger = lazy(() => import("./pages/AdminDragonShareLedger"));
+const HelpBriefPage = lazy(() => import("./pages/help/promotions/HelpBriefPage"));
+const HelpCenter = lazy(() => import("./pages/help/HelpCenter"));
+const HelpArticlePage = lazy(() => import("./pages/help/HelpArticlePage"));
+const PricingPage = lazy(() => import("./pages/PricingPage"));
+const HelpBriefDrawer = lazy(() => import("./features/donny/HelpBriefDrawer").then(m => ({ default: m.HelpBriefDrawer })));
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -117,8 +118,10 @@ const App = () => {
                 <BrowserRouter>
                 <DonnyProviderWithAuth>
                 <div className="flex h-screen">
-                <div className="flex-1 overflow-auto">
+                <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:p-4 focus:bg-white focus:text-black focus:underline">Skip to main content</a>
+                <main id="main-content" className="flex-1 overflow-auto">
                   <SiteGateGuard>
+                  <Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-dc-teal" /></div>}>
                   <Routes>
                   <Route path="/" element={<Index />} />
                   <Route path="/home" element={<Index />} />
@@ -528,9 +531,10 @@ const App = () => {
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />
                   </Routes>
+                  </Suspense>
                   </SiteGateGuard>
-                  <HelpBriefDrawer />
-                </div>
+                  <Suspense fallback={null}><HelpBriefDrawer /></Suspense>
+                </main>
                 <DonnyDesktopPanel />
                 </div>
                 </DonnyProviderWithAuth>

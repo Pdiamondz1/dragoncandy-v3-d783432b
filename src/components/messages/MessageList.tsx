@@ -58,7 +58,7 @@ const MessageList: React.FC<MessageListProps> = ({
       <div className="flex-1 flex items-center justify-center p-8 bg-teal-50 min-h-[200px]">
         <div className="text-center">
           <div className="p-4 bg-teal-100 rounded-2xl w-fit mx-auto mb-3">
-            <MessageSquare className="h-8 w-8 text-teal-400" />
+            <MessageSquare className="h-8 w-8 text-teal-400" aria-hidden="true" />
           </div>
           <p className="text-sm font-medium text-gray-600 mb-1">No messages yet</p>
           <p className="text-xs text-gray-400">Start the conversation by sending a message below</p>
@@ -69,7 +69,7 @@ const MessageList: React.FC<MessageListProps> = ({
 
   return (
     <ScrollArea className="flex-1 bg-teal-50" ref={scrollAreaRef}>
-      <div className="space-y-2 p-4">
+      <div className="space-y-2 p-4" aria-live="polite" role="list">
         {messages.map((message, index) => {
           const prevMessage = index > 0 ? messages[index - 1] : null;
           const showAvatar = !prevMessage || prevMessage.sender_id !== message.sender_id;

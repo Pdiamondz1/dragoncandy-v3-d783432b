@@ -60,7 +60,7 @@ const CounterOfferModal: React.FC<CounterOfferModalProps> = ({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <MessageSquare className="h-5 w-5 text-primary" />
+            <MessageSquare className="h-5 w-5 text-primary" aria-hidden="true" />
             Counter Offer
           </DialogTitle>
           <DialogDescription>
@@ -71,11 +71,12 @@ const CounterOfferModal: React.FC<CounterOfferModalProps> = ({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="rate" className="flex items-center gap-1">
-              <DollarSign className="h-3.5 w-3.5" />
+              <DollarSign className="h-3.5 w-3.5" aria-hidden="true" />
               Proposed Rate *
             </Label>
             <Input
               id="rate"
+              name="rate"
               type="number"
               placeholder={currentRate ? `Current: $${currentRate}` : 'Enter proposed rate'}
               value={proposedRate}
@@ -87,11 +88,12 @@ const CounterOfferModal: React.FC<CounterOfferModalProps> = ({
 
           <div className="space-y-2">
             <Label htmlFor="timeline" className="flex items-center gap-1">
-              <Calendar className="h-3.5 w-3.5" />
+              <Calendar className="h-3.5 w-3.5" aria-hidden="true" />
               Proposed Timeline
             </Label>
             <Input
               id="timeline"
+              name="timeline"
               placeholder={currentTimeline ? `Current: ${currentTimeline}` : 'e.g., 2 weeks'}
               value={proposedTimeline}
               onChange={(e) => setProposedTimeline(e.target.value)}
@@ -102,7 +104,8 @@ const CounterOfferModal: React.FC<CounterOfferModalProps> = ({
             <Label htmlFor="message">Message *</Label>
             <Textarea
               id="message"
-              placeholder="Explain your counter offer..."
+              name="message"
+              placeholder="Explain your counter offer…"
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               rows={3}
@@ -115,7 +118,7 @@ const CounterOfferModal: React.FC<CounterOfferModalProps> = ({
               Cancel
             </Button>
             <Button type="submit" disabled={!message.trim() || !proposedRate || createCounterOffer.isPending}>
-              {createCounterOffer.isPending ? 'Sending...' : 'Send Counter Offer'}
+              {createCounterOffer.isPending ? 'Sending…' : 'Send Counter Offer'}
             </Button>
           </DialogFooter>
         </form>

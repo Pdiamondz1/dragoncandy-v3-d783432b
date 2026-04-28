@@ -121,9 +121,9 @@ const ApplicationCard: React.FC<ApplicationCardProps> = ({
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
             <Avatar>
-              <AvatarImage src={application.creator_profile?.avatar_url} />
+              <AvatarImage src={application.creator_profile?.avatar_url} alt={application.creator_profile?.creator_name || 'Creator avatar'} />
               <AvatarFallback>
-                <User className="h-4 w-4" />
+                <User className="h-4 w-4" aria-hidden="true" />
               </AvatarFallback>
             </Avatar>
             <div>
@@ -170,7 +170,7 @@ const ApplicationCard: React.FC<ApplicationCardProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {application.proposed_timeline && (
             <div className="flex items-center gap-2">
-              <Clock className="h-4 w-4 text-blue-600" />
+              <Clock className="h-4 w-4 text-blue-600" aria-hidden="true" />
               <div>
                 <p className="text-xs text-muted-foreground">Proposed Timeline</p>
                 <p className="text-sm font-medium">{application.proposed_timeline}</p>
@@ -180,7 +180,7 @@ const ApplicationCard: React.FC<ApplicationCardProps> = ({
 
           {application.proposed_rate && (
             <div className="flex items-center gap-2">
-              <DollarSign className="h-4 w-4 text-green-600" />
+              <DollarSign className="h-4 w-4 text-green-600" aria-hidden="true" />
               <div>
                 <p className="text-xs text-muted-foreground">Proposed Rate</p>
                 <p className="text-sm font-medium">{formatCurrency(application.proposed_rate)}</p>
@@ -212,12 +212,12 @@ const ApplicationCard: React.FC<ApplicationCardProps> = ({
             >
               {isPayingEscrow ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" aria-hidden="true" />
                   Opening Checkout...
                 </>
               ) : (
                 <>
-                  <CreditCard className="h-4 w-4 mr-2" />
+                  <CreditCard className="h-4 w-4 mr-2" aria-hidden="true" />
                   Pay Escrow {agreedAmount ? `- ${formatCurrency(agreedAmount)}` : ''}
                 </>
               )}
@@ -229,7 +229,7 @@ const ApplicationCard: React.FC<ApplicationCardProps> = ({
         {application.status === 'accepted' && (campaignEscrowStatus === 'held' || campaignEscrowStatus === 'released') && (
           <div className="pt-4 border-t">
             <Badge variant="default" className="bg-green-600 text-white">
-              <Check className="h-3 w-3 mr-1" />
+              <Check className="h-3 w-3 mr-1" aria-hidden="true" />
               Escrow Paid — Project Active
             </Badge>
           </div>
@@ -252,7 +252,7 @@ const ApplicationCard: React.FC<ApplicationCardProps> = ({
                   className="flex-1"
                   size="sm"
                 >
-                  <Check className="h-4 w-4 mr-2" />
+                  <Check className="h-4 w-4 mr-2" aria-hidden="true" />
                   Accept
                 </Button>
                 <Button
@@ -262,7 +262,7 @@ const ApplicationCard: React.FC<ApplicationCardProps> = ({
                   className="flex-1"
                   size="sm"
                 >
-                  <ArrowRightLeft className="h-4 w-4 mr-2" />
+                  <ArrowRightLeft className="h-4 w-4 mr-2" aria-hidden="true" />
                   Counter
                 </Button>
                 <Button
@@ -272,7 +272,7 @@ const ApplicationCard: React.FC<ApplicationCardProps> = ({
                   className="flex-1"
                   size="sm"
                 >
-                  <X className="h-4 w-4 mr-2" />
+                  <X className="h-4 w-4 mr-2" aria-hidden="true" />
                   Reject
                 </Button>
               </div>

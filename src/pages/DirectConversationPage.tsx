@@ -1,5 +1,5 @@
 import React from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
@@ -88,21 +88,21 @@ const DirectConversationPage: React.FC = () => {
 
           {/* Center: name + status */}
           <div className="flex-1 text-center mx-3">
-            <p className="text-lg font-bold text-dc-teal leading-tight">
+            <h1 className="text-lg font-bold text-dc-teal leading-tight">
               {conversation?.other_participant_name || 'Direct Conversation'}
-            </p>
+            </h1>
             <p className="text-xs text-gray-500">Recently Active</p>
           </div>
 
           {/* Right: View Profile link */}
           <div className="flex-shrink-0">
             {otherParticipantId && (
-              <button
-                onClick={() => navigate(`/profile/${otherParticipantId}`)}
+              <Link
+                to={`/profile/${otherParticipantId}`}
                 className="text-xs font-medium text-dc-teal hover:underline"
               >
                 View Profile
-              </button>
+              </Link>
             )}
           </div>
         </div>

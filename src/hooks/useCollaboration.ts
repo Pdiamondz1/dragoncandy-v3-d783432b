@@ -93,20 +93,20 @@ export function useCollaboration(collaborationId: string) {
       if (error) throw error;
       if (!data) return null;
 
-      // Fetch creator profile
-      const { data: creatorProfile } = await supabase
-        .from('creator_profiles')
-        .select('user_id, creator_name, avatar_url, bio')
-        .eq('user_id', data.creator_id)
-        .single();
-
-      // Fetch business profile
       const campaignData = data.campaigns as any;
-      const { data: businessProfile } = await supabase
-        .from('business_profiles')
-        .select('user_id, business_name, logo_url')
-        .eq('user_id', campaignData.user_id)
-        .single();
+
+      const [{ data: creatorProfile }, { data: businessProfile }] = await Promise.all([
+        supabase
+          .from('creator_profiles')
+          .select('user_id, creator_name, avatar_url, bio')
+          .eq('user_id', data.creator_id)
+          .single(),
+        supabase
+          .from('business_profiles')
+          .select('user_id, business_name, logo_url')
+          .eq('user_id', campaignData.user_id)
+          .single(),
+      ]);
 
       return {
         id: data.id,

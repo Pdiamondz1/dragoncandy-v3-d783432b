@@ -64,7 +64,7 @@ export const SponsorshipProposalModal = ({
           <div className="space-y-2">
             <Label htmlFor="amount">Sponsorship Amount ($)</Label>
             <div className="relative">
-              <DollarSign className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <DollarSign className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" aria-hidden="true" />
               <Input
                 id="amount"
                 type="number"
@@ -83,7 +83,7 @@ export const SponsorshipProposalModal = ({
             <Label htmlFor="message">Proposal Message</Label>
             <Textarea
               id="message"
-              placeholder="Explain why you'd like to sponsor this campaign and what value you can bring..."
+              placeholder="Explain why you'd like to sponsor this campaign and what value you can bring…"
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               rows={6}
@@ -109,7 +109,7 @@ export const SponsorshipProposalModal = ({
               disabled={submitProposal.isPending || !amount || message.length < 50}
             >
               {submitProposal.isPending && (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
               )}
               Submit Proposal
             </Button>

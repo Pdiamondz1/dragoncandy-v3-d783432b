@@ -54,7 +54,7 @@ const CampaignMapView: React.FC<CampaignMapViewProps> = ({ campaigns, onViewDeta
     return (
       <div className="flex items-center justify-center h-[600px] bg-muted rounded-lg">
         <div className="text-center space-y-2">
-          <MapPin className="h-12 w-12 mx-auto text-muted-foreground" />
+          <MapPin className="h-12 w-12 mx-auto text-muted-foreground" aria-hidden="true" />
           <p className="text-muted-foreground">Error loading maps</p>
         </div>
       </div>
@@ -65,8 +65,8 @@ const CampaignMapView: React.FC<CampaignMapViewProps> = ({ campaigns, onViewDeta
     return (
       <div className="flex items-center justify-center h-[600px] bg-muted rounded-lg">
         <div className="text-center space-y-2">
-          <MapPin className="h-12 w-12 mx-auto text-muted-foreground animate-pulse" />
-          <p className="text-muted-foreground">Loading map...</p>
+          <MapPin className="h-12 w-12 mx-auto text-muted-foreground animate-pulse" aria-hidden="true" />
+          <p className="text-muted-foreground">Loading map…</p>
         </div>
       </div>
     );
@@ -78,7 +78,7 @@ const CampaignMapView: React.FC<CampaignMapViewProps> = ({ campaigns, onViewDeta
     <div className="space-y-4">
       {isGeocoding && (
         <div className="text-sm text-muted-foreground">
-          Geocoding campaign locations...
+          Geocoding campaign locations…
         </div>
       )}
       
@@ -135,7 +135,7 @@ const CampaignMapView: React.FC<CampaignMapViewProps> = ({ campaigns, onViewDeta
               <div className="space-y-3">
                 <div className="flex items-start gap-3">
                   <Avatar className="h-12 w-12">
-                    <AvatarImage src={selectedCampaign.business_profile?.logo_url} />
+                    <AvatarImage src={selectedCampaign.business_profile?.logo_url} alt={selectedCampaign.business_profile?.business_name || 'Business logo'} />
                     <AvatarFallback>
                       {selectedCampaign.business_profile?.business_name?.charAt(0) || 'B'}
                     </AvatarFallback>
@@ -152,7 +152,7 @@ const CampaignMapView: React.FC<CampaignMapViewProps> = ({ campaigns, onViewDeta
 
                 {(selectedCampaign.budget_min || selectedCampaign.budget_max) && (
                   <div className="flex items-center gap-2 text-sm">
-                    <DollarSign className="h-4 w-4 text-muted-foreground" />
+                    <DollarSign className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                     <span>
                       {selectedCampaign.budget_min && selectedCampaign.budget_max
                         ? `$${selectedCampaign.budget_min.toLocaleString()} - $${selectedCampaign.budget_max.toLocaleString()}`

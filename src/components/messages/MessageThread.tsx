@@ -65,6 +65,7 @@ const MessageThread: React.FC<MessageThreadProps> = ({
               variant="outline"
               size="sm"
               onClick={() => setShowSearch(!showSearch)}
+              aria-label="Toggle search"
             >
               <Search className="h-4 w-4" />
             </Button>
@@ -82,7 +83,7 @@ const MessageThread: React.FC<MessageThreadProps> = ({
           campaignId={campaignId}
           onSendMessage={handleSendMessage}
           disabled={sendMessage.isPending}
-          placeholder="Type your message..."
+          placeholder="Type your message…"
           replyingTo={replyingTo}
           onCancelReply={handleCancelReply}
         />

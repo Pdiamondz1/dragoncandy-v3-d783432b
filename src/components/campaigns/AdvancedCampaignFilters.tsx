@@ -107,7 +107,7 @@ const AdvancedCampaignFilters: React.FC<AdvancedCampaignFiltersProps> = ({
       {/* Location Section - Always Visible */}
       <div className="space-y-4">
         <div className="flex items-center gap-2 text-sm font-medium">
-          <MapPin className="h-4 w-4" />
+          <MapPin className="h-4 w-4" aria-hidden="true" />
           Location
         </div>
 
@@ -174,10 +174,10 @@ const AdvancedCampaignFilters: React.FC<AdvancedCampaignFiltersProps> = ({
           <div className="space-y-2">
             <Label htmlFor="search">Search</Label>
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" aria-hidden="true" />
               <Input
                 id="search"
-                placeholder="Search campaigns..."
+                placeholder="Search campaigns…"
                 value={filters.searchTerm}
                 onChange={(e) => onFilterChange('searchTerm', e.target.value)}
                 className="pl-9"

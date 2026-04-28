@@ -16,7 +16,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
   campaignId,
   onSendMessage, 
   disabled = false,
-  placeholder = "Type your message..." 
+  placeholder = "Type your message…"
 }) => {
   const [message, setMessage] = useState('');
   const { sendTypingIndicator } = useTypingIndicator(campaignId);
@@ -31,7 +31,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSubmit(e);
@@ -75,17 +75,20 @@ const MessageInput: React.FC<MessageInputProps> = ({
       <Textarea
         value={message}
         onChange={handleInputChange}
-        onKeyPress={handleKeyPress}
+        onKeyDown={handleKeyDown}
         placeholder={placeholder}
         disabled={disabled}
         className="min-h-[40px] max-h-[120px] resize-none"
         rows={1}
+        aria-label="Message"
+        name="message"
       />
-      <Button 
-        type="submit" 
+      <Button
+        type="submit"
         disabled={!message.trim() || disabled}
         size="sm"
         className="self-end"
+        aria-label="Send message"
       >
         <Send className="h-4 w-4" />
       </Button>

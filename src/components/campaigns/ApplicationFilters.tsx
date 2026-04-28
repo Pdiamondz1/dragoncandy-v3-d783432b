@@ -26,7 +26,7 @@ const ApplicationFiltersComponent: React.FC<ApplicationFiltersProps> = ({
     <div className="space-y-4 p-4 bg-muted rounded-lg">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Filter className="h-4 w-4" />
+          <Filter className="h-4 w-4" aria-hidden="true" />
           <span className="font-medium">Filters</span>
         </div>
         <div className="flex items-center gap-2">
@@ -44,10 +44,10 @@ const ApplicationFiltersComponent: React.FC<ApplicationFiltersProps> = ({
         <div>
           <Label htmlFor="search">Search</Label>
           <div className="relative">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" aria-hidden="true" />
             <Input
               id="search"
-              placeholder="Search creators..."
+              placeholder="Search creators…"
               value={filters.searchTerm}
               onChange={(e) => onFilterChange('searchTerm', e.target.value)}
               className="pl-10"

@@ -29,8 +29,8 @@ const BrandMessages = () => {
             <div className="w-7" />
           </div>
           <div className="px-4 pt-4 pb-24 md:pb-0">
-            <div className="flex items-center justify-center h-40">
-              <Loader2 className="h-8 w-8 animate-spin text-dc-teal" />
+            <div className="flex items-center justify-center h-40" aria-live="polite">
+              <Loader2 className="h-8 w-8 animate-spin text-dc-teal" aria-hidden="true" />
             </div>
           </div>
         </div>

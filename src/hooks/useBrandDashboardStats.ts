@@ -34,22 +34,27 @@ export const useBrandDashboardStats = () => {
       if (profileError) throw profileError;
       if (!brandProfile) throw new Error('Brand profile not found');
 
-      // Count brand's own campaigns
-      const { count: ownCampaignsCount, error: ownCampaignsError } = await supabase
-        .from('campaigns')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id)
-        .in('status', ['active', 'published']);
+      const [campaignsResult, sponsorshipsResult, conversationsResult] = await Promise.all([
+        supabase
+          .from('campaigns')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .in('status', ['active', 'published']),
+        supabase
+          .from('campaign_sponsorships')
+          .select('sponsorship_amount, status, payment_status')
+          .eq('brand_id', brandProfile.id),
+        supabase
+          .rpc('get_user_conversations', { user_uuid: user.id }),
+      ]);
 
-      if (ownCampaignsError) throw ownCampaignsError;
+      if (campaignsResult.error) throw campaignsResult.error;
+      if (sponsorshipsResult.error) throw sponsorshipsResult.error;
+      if (conversationsResult.error) throw conversationsResult.error;
 
-      // Get sponsorships for this brand
-      const { data: sponsorships, error: sponsorshipsError } = await supabase
-        .from('campaign_sponsorships')
-        .select('sponsorship_amount, status, payment_status')
-        .eq('brand_id', brandProfile.id);
-
-      if (sponsorshipsError) throw sponsorshipsError;
+      const ownCampaignsCount = campaignsResult.count;
+      const sponsorships = sponsorshipsResult.data;
+      const conversations = conversationsResult.data;
 
       const activeSponsorships = sponsorships?.filter(
         s => s.status === 'accepted' && s.payment_status === 'paid'
@@ -64,12 +69,6 @@ export const useBrandDashboardStats = () => {
       const allocatedBudget = sponsorships?.filter(
         s => s.status === 'accepted' || s.status === 'pending'
       ).reduce((sum, s) => sum + (Number(s.sponsorship_amount) || 0), 0) || 0;
-
-      // Count direct conversations with creators
-      const { data: conversations, error: conversationsError } = await supabase
-        .rpc('get_user_conversations', { user_uuid: user.id });
-
-      if (conversationsError) throw conversationsError;
 
       const creatorsConnected = conversations?.filter(
         c => c.conversation_type === 'direct'

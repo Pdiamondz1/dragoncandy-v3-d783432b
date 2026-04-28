@@ -69,7 +69,7 @@ export const AuthenticationModal: React.FC<AuthenticationModalProps> = ({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl">
-            <Rocket className="h-5 w-5 text-primary" />
+            <Rocket className="h-5 w-5 text-primary" aria-hidden="true" />
             {title}
           </DialogTitle>
           <p className="text-muted-foreground text-sm mt-2">
@@ -81,15 +81,15 @@ export const AuthenticationModal: React.FC<AuthenticationModalProps> = ({
           {/* Benefits */}
           <div className="bg-muted/30 p-4 rounded-lg space-y-3">
             <div className="flex items-center gap-3 text-sm">
-              <Save className="h-4 w-4 text-green-600" />
+              <Save className="h-4 w-4 text-green-600" aria-hidden="true" />
               <span>Your campaign progress will be saved</span>
             </div>
             <div className="flex items-center gap-3 text-sm">
-              <Rocket className="h-4 w-4 text-blue-600" />
+              <Rocket className="h-4 w-4 text-blue-600" aria-hidden="true" />
               <span>Publish to our creator marketplace</span>
             </div>
             <div className="flex items-center gap-3 text-sm">
-              <Shield className="h-4 w-4 text-purple-600" />
+              <Shield className="h-4 w-4 text-purple-600" aria-hidden="true" />
               <span>Manage all your campaigns in one place</span>
             </div>
           </div>
@@ -107,9 +107,12 @@ export const AuthenticationModal: React.FC<AuthenticationModalProps> = ({
                   <Input
                     id="email"
                     type="email"
+                    name="email"
+                    autoComplete="email"
+                    spellCheck={false}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="Enter your email"
+                    placeholder="Enter your email…"
                     required
                   />
                 </div>
@@ -118,14 +121,16 @@ export const AuthenticationModal: React.FC<AuthenticationModalProps> = ({
                   <Input
                     id="password"
                     type="password"
+                    name="password"
+                    autoComplete="new-password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Create a password"
+                    placeholder="Create a password…"
                     required
                   />
                 </div>
                 <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? 'Creating account...' : 'Create account & continue'}
+                  {isLoading ? 'Creating account…' : 'Create account & continue'}
                 </Button>
               </form>
             </TabsContent>
@@ -137,9 +142,12 @@ export const AuthenticationModal: React.FC<AuthenticationModalProps> = ({
                   <Input
                     id="signin-email"
                     type="email"
+                    name="email"
+                    autoComplete="email"
+                    spellCheck={false}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="Enter your email"
+                    placeholder="Enter your email…"
                     required
                   />
                 </div>
@@ -148,14 +156,16 @@ export const AuthenticationModal: React.FC<AuthenticationModalProps> = ({
                   <Input
                     id="signin-password"
                     type="password"
+                    name="password"
+                    autoComplete="current-password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Enter your password"
+                    placeholder="Enter your password…"
                     required
                   />
                 </div>
                 <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? 'Signing in...' : 'Sign in & continue'}
+                  {isLoading ? 'Signing in…' : 'Sign in & continue'}
                 </Button>
               </form>
             </TabsContent>

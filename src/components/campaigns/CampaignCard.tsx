@@ -61,21 +61,21 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
       case 'pending':
         return (
           <Badge className="bg-amber-100 text-amber-800 border-amber-200 text-xs flex items-center gap-1">
-            <AlertCircle className="h-3 w-3" />
+            <AlertCircle className="h-3 w-3" aria-hidden="true" />
             Payment Pending
           </Badge>
         );
       case 'held':
         return (
           <Badge className="bg-green-100 text-green-800 border-green-200 text-xs flex items-center gap-1">
-            <CreditCard className="h-3 w-3" />
+            <CreditCard className="h-3 w-3" aria-hidden="true" />
             Escrow Held
           </Badge>
         );
       case 'released':
         return (
           <Badge className="bg-purple-100 text-purple-800 border-purple-200 text-xs flex items-center gap-1">
-            <CreditCard className="h-3 w-3" />
+            <CreditCard className="h-3 w-3" aria-hidden="true" />
             Paid Out
           </Badge>
         );
@@ -209,9 +209,9 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'active':
-        return <MessageSquare className="h-3 w-3" />;
+        return <MessageSquare className="h-3 w-3" aria-hidden="true" />;
       case 'completed':
-        return <FileText className="h-3 w-3" />;
+        return <FileText className="h-3 w-3" aria-hidden="true" />;
       default:
         return null;
     }
@@ -221,7 +221,7 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
   const needsEscrowPayment = campaign.escrow_status === 'pending';
 
   return (
-    <Card className={`relative overflow-hidden hover:shadow-lg transition-all duration-200 border-l-4 max-w-full ${needsEscrowPayment ? 'border-l-amber-500 bg-amber-50/30' : 'border-l-transparent hover:border-l-primary/50'}`}>
+    <Card className={`relative overflow-hidden hover:shadow-lg transition-[transform,box-shadow] duration-200 border-l-4 max-w-full ${needsEscrowPayment ? 'border-l-amber-500 bg-amber-50/30' : 'border-l-transparent hover:border-l-primary/50'}`}>
       {/* Application Counter Badge - Top Right Corner */}
       {applicationCounts && applicationCounts.pending > 0 && (
         <div className="absolute top-2 right-2 z-10">
@@ -256,7 +256,7 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
         {needsEscrowPayment && (
           <div className="p-3 rounded-lg bg-amber-100 border border-amber-300">
             <div className="flex items-center gap-2 text-amber-800 text-sm font-medium mb-2">
-              <AlertCircle className="h-4 w-4" />
+              <AlertCircle className="h-4 w-4" aria-hidden="true" />
               Payment Required to Publish
             </div>
             <p className="text-xs text-amber-700 mb-2">
@@ -271,12 +271,12 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
               >
                 {isPayingEscrow ? (
                   <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" aria-hidden="true" />
                     Processing...
                   </>
                 ) : (
                   <>
-                    <CreditCard className="h-4 w-4 mr-2" />
+                    <CreditCard className="h-4 w-4 mr-2" aria-hidden="true" />
                     Pay (${(campaign.fixed_price || 0) + (campaign.delivery_fee || 0)})
                   </>
                 )}
@@ -289,9 +289,9 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
                 className="border-amber-300 text-amber-700 hover:bg-amber-50"
               >
                 {isVerifying ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
                 ) : (
-                  <RefreshCw className="h-4 w-4" />
+                  <RefreshCw className="h-4 w-4" aria-hidden="true" />
                 )}
               </Button>
             </div>
@@ -305,12 +305,12 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
         {/* Key Metrics */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
           <div className="flex items-center gap-2 text-sm">
-            <DollarSign className="h-4 w-4 text-emerald-600" />
+            <DollarSign className="h-4 w-4 text-emerald-600" aria-hidden="true" />
             <span className="text-muted-foreground truncate">{formatBudget()}</span>
           </div>
           
           <div className="flex items-center gap-2 text-sm">
-            <FileText className="h-4 w-4 text-blue-600" />
+            <FileText className="h-4 w-4 text-blue-600" aria-hidden="true" />
             <span className="text-muted-foreground">
               {getContentItemsCount()} item{getContentItemsCount() !== 1 ? 's' : ''}
             </span>
@@ -318,7 +318,7 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
 
           {/* Total Applications Count (subtle) */}
           <div className="flex items-center gap-2 text-sm">
-            <UserCheck className="h-4 w-4 text-purple-600" />
+            <UserCheck className="h-4 w-4 text-purple-600" aria-hidden="true" />
             <span className="text-muted-foreground">
               {applicationCounts?.total || 0} application{(applicationCounts?.total || 0) !== 1 ? 's' : ''}
             </span>
@@ -326,7 +326,7 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
 
           {campaign.deadline && (
             <div className="flex items-center gap-2 text-sm">
-              <Calendar className="h-4 w-4 text-orange-600" />
+              <Calendar className="h-4 w-4 text-orange-600" aria-hidden="true" />
               <span className="text-muted-foreground">
                 Due {format(new Date(campaign.deadline), 'MMM dd, yyyy')}
               </span>
@@ -337,7 +337,7 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
         {/* Platforms */}
         {campaign.platforms && campaign.platforms.length > 0 && (
           <div className="flex items-start gap-2">
-            <Users className="h-4 w-4 text-muted-foreground mt-0.5" />
+            <Users className="h-4 w-4 text-muted-foreground mt-0.5" aria-hidden="true" />
             <div className="flex flex-wrap gap-1">
               {campaign.platforms.slice(0, 2).map((platform) => (
                 <Badge key={platform} variant="outline" className="text-xs">
@@ -381,12 +381,12 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
         >
           {applicationCounts && applicationCounts.pending > 0 ? (
             <>
-              <UserCheck className="h-3 w-3 mr-1" />
+              <UserCheck className="h-3 w-3 mr-1" aria-hidden="true" />
               Review Applications
             </>
           ) : (
             <>
-              <Eye className="h-3 w-3 mr-1" />
+              <Eye className="h-3 w-3 mr-1" aria-hidden="true" />
               View Details
             </>
           )}
@@ -398,7 +398,7 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
             className="text-xs"
             onClick={() => navigate('/dashboard/business/projects')}
           >
-            <FolderOpen className="h-3 w-3 mr-1" />
+            <FolderOpen className="h-3 w-3 mr-1" aria-hidden="true" />
             Project Status
           </Button>
         )}
@@ -411,9 +411,9 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
             disabled={deleteCampaign.isPending}
           >
             {deleteCampaign.isPending ? (
-              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+              <Loader2 className="h-3 w-3 mr-1 animate-spin" aria-hidden="true" />
             ) : (
-              <Trash2 className="h-3 w-3 mr-1" />
+              <Trash2 className="h-3 w-3 mr-1" aria-hidden="true" />
             )}
             Delete
           </Button>
@@ -425,7 +425,7 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
             className="text-xs"
             onClick={() => onEdit(campaign)}
           >
-            <Edit className="h-3 w-3 mr-1" />
+            <Edit className="h-3 w-3 mr-1" aria-hidden="true" />
             Edit
           </Button>
         )}

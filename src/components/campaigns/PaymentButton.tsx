@@ -28,7 +28,7 @@ export const PaymentButton = ({ sponsorship, campaignTitle }: PaymentButtonProps
   if (sponsorship.payment_status === 'paid') {
     return (
       <Badge variant="default" className="bg-green-600 text-white">
-        <CheckCircle className="h-3 w-3 mr-1" />
+        <CheckCircle className="h-3 w-3 mr-1" aria-hidden="true" />
         Payment Complete
       </Badge>
     );
@@ -46,12 +46,12 @@ export const PaymentButton = ({ sponsorship, campaignTitle }: PaymentButtonProps
         >
           {verifyPayment.isPending ? (
             <>
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" aria-hidden="true" />
               Verifying...
             </>
           ) : (
             <>
-              <RefreshCw className="h-4 w-4 mr-2" />
+              <RefreshCw className="h-4 w-4 mr-2" aria-hidden="true" />
               Verify Payment
             </>
           )}
@@ -61,7 +61,7 @@ export const PaymentButton = ({ sponsorship, campaignTitle }: PaymentButtonProps
           disabled={initiatePayment.isPending}
           size="sm"
         >
-          <CreditCard className="h-4 w-4 mr-2" />
+          <CreditCard className="h-4 w-4 mr-2" aria-hidden="true" />
           Retry Payment
         </Button>
       </div>
@@ -77,12 +77,12 @@ export const PaymentButton = ({ sponsorship, campaignTitle }: PaymentButtonProps
     >
       {initiatePayment.isPending ? (
         <>
-          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+          <Loader2 className="h-4 w-4 mr-2 animate-spin" aria-hidden="true" />
           Opening Checkout...
         </>
       ) : (
         <>
-          <CreditCard className="h-4 w-4 mr-2" />
+          <CreditCard className="h-4 w-4 mr-2" aria-hidden="true" />
           Pay ${sponsorship.sponsorship_amount.toLocaleString()} (5% fee included)
         </>
       )}

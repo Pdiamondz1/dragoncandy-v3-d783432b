@@ -60,29 +60,29 @@ const VerifyEmail = () => {
       </div>
 
       <div className="flex-1 flex items-center justify-center p-4">
-        <div className="w-full max-w-md border-2 border-dc-teal rounded-2xl p-6 text-center space-y-4">
+        <div className="w-full max-w-md border-2 border-dc-teal rounded-2xl p-6 text-center space-y-4" aria-live="polite">
           <p className="font-sans text-xs font-semibold uppercase tracking-wider text-gray-500">
-            {status === 'verifying' && 'Verifying your email address...'}
+            {status === 'verifying' && 'Verifying your email address…'}
             {status === 'success' && 'Your email has been verified!'}
             {status === 'error' && 'Verification failed'}
           </p>
 
           {status === 'verifying' && (
-            <Loader2 className="h-16 w-16 text-dc-teal animate-spin mx-auto" />
+            <Loader2 className="h-16 w-16 text-dc-teal animate-spin mx-auto" aria-hidden="true" />
           )}
 
           {status === 'success' && (
             <>
-              <CheckCircle2 className="h-16 w-16 text-dc-teal mx-auto" />
+              <CheckCircle2 className="h-16 w-16 text-dc-teal mx-auto" aria-hidden="true" />
               <p className="text-sm text-gray-500">
-                Your email has been verified successfully. Redirecting you to login...
+                Your email has been verified successfully. Redirecting you to login…
               </p>
             </>
           )}
 
           {status === 'error' && (
             <>
-              <XCircle className="h-16 w-16 text-dc-pink-accent mx-auto" />
+              <XCircle className="h-16 w-16 text-dc-pink-accent mx-auto" aria-hidden="true" />
               <p className="text-sm text-gray-500">{errorMessage}</p>
               <button
                 onClick={() => navigate('/auth')}

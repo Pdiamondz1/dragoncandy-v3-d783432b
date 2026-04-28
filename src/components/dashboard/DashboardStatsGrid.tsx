@@ -36,9 +36,9 @@ export function DashboardStatsGrid({ stats, isLoading }: DashboardStatsGridProps
             <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold">
               {stat.label}
             </p>
-            <stat.icon className="h-4 w-4 text-dc-teal" />
+            <stat.icon className="h-4 w-4 text-dc-teal" aria-hidden="true" />
           </div>
-          <div className="text-3xl font-extrabold text-gray-900">
+          <div className="text-3xl font-extrabold text-gray-900 tabular-nums">
             {stat.value}
           </div>
           {stat.subtitle && (

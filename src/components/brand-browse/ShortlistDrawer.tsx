@@ -68,30 +68,30 @@ export const ShortlistDrawer: React.FC<ShortlistDrawerProps> = ({
   // Match shortlisted creator_ids to creator profiles
   useEffect(() => {
     const resolve = async () => {
-      const matched: ResolvedCreator[] = [];
+      const entries = shortlist
+        .map((item) => ({ item, creator: creators.find((c) => c.user_id === item.creator_id) }))
+        .filter((e): e is { item: typeof shortlist[number]; creator: CreatorProfile } => !!e.creator);
 
-      for (const item of shortlist) {
-        const creator = creators.find((c) => c.user_id === item.creator_id);
-        if (!creator) continue;
-
-        let avatarUrl: string | null = null;
-        if (creator.avatar_url) {
-          if (creator.avatar_url.startsWith('http')) {
-            avatarUrl = creator.avatar_url;
-          } else {
-            try {
-              const { data } = await supabase.storage
-                .from('profile-assets')
-                .createSignedUrl(creator.avatar_url, 3600);
-              avatarUrl = data?.signedUrl ?? null;
-            } catch {
-              // ignore
+      const matched = await Promise.all(
+        entries.map(async ({ creator }) => {
+          let avatarUrl: string | null = null;
+          if (creator.avatar_url) {
+            if (creator.avatar_url.startsWith('http')) {
+              avatarUrl = creator.avatar_url;
+            } else {
+              try {
+                const { data } = await supabase.storage
+                  .from('profile-assets')
+                  .createSignedUrl(creator.avatar_url, 3600);
+                avatarUrl = data?.signedUrl ?? null;
+              } catch {
+                // ignore
+              }
             }
           }
-        }
-
-        matched.push({ creator, avatarUrl });
-      }
+          return { creator, avatarUrl } as ResolvedCreator;
+        })
+      );
 
       setResolvedCreators(matched);
     };

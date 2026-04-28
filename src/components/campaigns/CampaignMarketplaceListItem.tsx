@@ -68,7 +68,7 @@ const CampaignMarketplaceListItem: React.FC<CampaignMarketplaceListItemProps> = 
   const remainingPlatforms = (campaign.platforms?.length || 0) - 3;
 
   return (
-    <Card className="group overflow-hidden hover:shadow-lg transition-all duration-300 hover:border-primary/50 h-full flex flex-col w-full max-w-full">
+    <Card className="group overflow-hidden hover:shadow-lg transition-[transform,box-shadow] duration-300 hover:border-primary/50 h-full flex flex-col w-full max-w-full">
       {/* Hero Section with Business Branding */}
       <div className="relative h-32 bg-gradient-to-br from-primary/10 via-primary/5 to-background overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-background/90" />
@@ -77,14 +77,14 @@ const CampaignMarketplaceListItem: React.FC<CampaignMarketplaceListItemProps> = 
         <div className="relative p-4 flex items-start justify-between">
           <div className="flex-1">
             <div className="flex items-center gap-2 text-sm text-foreground/80 mb-1">
-              <Building className="h-3.5 w-3.5" />
+              <Building className="h-3.5 w-3.5" aria-hidden="true" />
               <span className="font-medium truncate">
                 {campaign.business_profile?.business_name || 'Business'}
               </span>
             </div>
             {(campaign.business_profile?.city || campaign.business_profile?.country) && (
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <MapPin className="h-3 w-3" />
+                <MapPin className="h-3 w-3" aria-hidden="true" />
                 <span className="truncate">
                   {[campaign.business_profile.city, campaign.business_profile.country].filter(Boolean).join(', ')}
                 </span>
@@ -97,19 +97,19 @@ const CampaignMarketplaceListItem: React.FC<CampaignMarketplaceListItemProps> = 
             <div className="ml-2">
               {campaign.application_status === 'pending' && (
                 <Badge variant="secondary" className="bg-yellow-100 text-yellow-700 shadow-sm">
-                  <Clock className="h-3 w-3 mr-1" />
+                  <Clock className="h-3 w-3 mr-1" aria-hidden="true" />
                   Applied
                 </Badge>
               )}
               {campaign.application_status === 'accepted' && (
                 <Badge className="bg-gradient-to-r from-pink-500 to-purple-600 text-white border-0 shadow-sm">
-                  <CheckCircle className="h-3 w-3 mr-1" />
+                  <CheckCircle className="h-3 w-3 mr-1" aria-hidden="true" />
                   Accepted
                 </Badge>
               )}
               {campaign.application_status === 'rejected' && (
                 <Badge variant="secondary" className="bg-red-100 text-red-700 shadow-sm">
-                  <XCircle className="h-3 w-3 mr-1" />
+                  <XCircle className="h-3 w-3 mr-1" aria-hidden="true" />
                   Rejected
                 </Badge>
               )}
@@ -120,9 +120,9 @@ const CampaignMarketplaceListItem: React.FC<CampaignMarketplaceListItemProps> = 
         {/* Business Avatar - Centered at Bottom */}
         <div className="absolute -bottom-8 left-1/2 -translate-x-1/2">
           <Avatar className="h-16 w-16 border-4 border-background shadow-lg">
-            <AvatarImage src={campaign.business_profile?.logo_url} />
+            <AvatarImage src={campaign.business_profile?.logo_url} alt={campaign.business_profile?.business_name || 'Business logo'} />
             <AvatarFallback className="bg-gradient-to-br from-pink-100 to-purple-100">
-              <Building className="h-8 w-8 text-primary" />
+              <Building className="h-8 w-8 text-primary" aria-hidden="true" />
             </AvatarFallback>
           </Avatar>
         </div>
@@ -159,19 +159,19 @@ const CampaignMarketplaceListItem: React.FC<CampaignMarketplaceListItemProps> = 
         {/* Stats Grid */}
         <div className="grid grid-cols-2 gap-3 mb-4 mt-auto">
           <div className="flex items-center gap-2 text-sm">
-            <DollarSign className="h-4 w-4 text-primary flex-shrink-0" />
+            <DollarSign className="h-4 w-4 text-primary flex-shrink-0" aria-hidden="true" />
             <span className="font-medium text-foreground truncate text-xs">
               {getBudgetRange()}
             </span>
           </div>
           <div className="flex items-center gap-2 text-sm">
-            <Calendar className="h-4 w-4 text-primary flex-shrink-0" />
+            <Calendar className="h-4 w-4 text-primary flex-shrink-0" aria-hidden="true" />
             <span className="text-muted-foreground truncate text-xs">
               {formatDate(campaign.deadline)}
             </span>
           </div>
           <div className="flex items-center gap-2 text-sm col-span-2">
-            <Users className="h-4 w-4 text-primary flex-shrink-0" />
+            <Users className="h-4 w-4 text-primary flex-shrink-0" aria-hidden="true" />
             <span className="text-muted-foreground text-xs">
               {campaign.application_count || 0} applications
             </span>

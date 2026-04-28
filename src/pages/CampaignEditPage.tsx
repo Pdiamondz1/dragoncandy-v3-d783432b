@@ -142,7 +142,7 @@ const CampaignEditPage: React.FC = () => {
               disabled={isSaving || !formData.title.trim()}
               className="w-full rounded-full bg-dc-teal text-white font-bold py-3 flex items-center justify-center gap-2 disabled:opacity-60"
             >
-              <Save className="h-4 w-4" />
+              <Save className="h-4 w-4" aria-hidden="true" />
               {isSaving ? 'Publishing...' : 'Publish Campaign'}
             </button>
             <button
@@ -150,7 +150,7 @@ const CampaignEditPage: React.FC = () => {
               disabled={isSaving || !formData.title.trim()}
               className="w-full rounded-full border-2 border-gray-300 text-gray-700 font-bold py-3 flex items-center justify-center gap-2 disabled:opacity-60"
             >
-              <Save className="h-4 w-4" />
+              <Save className="h-4 w-4" aria-hidden="true" />
               Save as Draft
             </button>
             <button

@@ -25,58 +25,42 @@ export const useCreatorDashboardStats = () => {
       }
 
       try {
-        // Get total campaigns applied
-        const { count: campaignsApplied, error: applicationsError } = await supabase
-          .from('campaign_applications')
-          .select('*', { count: 'exact', head: true })
-          .eq('creator_id', user.id);
+        const [applicationsResult, projectsResult, revenueResult, profileResult] = await Promise.all([
+          supabase
+            .from('campaign_applications')
+            .select('*', { count: 'exact', head: true })
+            .eq('creator_id', user.id),
+          supabase
+            .from('campaign_collaborations')
+            .select('*', { count: 'exact', head: true })
+            .eq('creator_id', user.id)
+            .eq('status', 'completed'),
+          supabase
+            .from('campaign_applications')
+            .select('proposed_rate')
+            .eq('creator_id', user.id)
+            .in('status', ['accepted']),
+          supabase
+            .from('creator_profiles')
+            .select('average_rating')
+            .eq('user_id', user.id)
+            .maybeSingle(),
+        ]);
 
-        if (applicationsError) {
-          console.error('Error fetching campaigns applied:', applicationsError);
-        }
+        if (applicationsResult.error) console.error('Error fetching campaigns applied:', applicationsResult.error);
+        if (projectsResult.error) console.error('Error fetching completed projects:', projectsResult.error);
+        if (revenueResult.error) console.error('Error fetching revenue data:', revenueResult.error);
+        if (profileResult.error) console.error('Error fetching profile rating:', profileResult.error);
 
-        // Get completed projects count
-        const { count: projectsCompleted, error: projectsError } = await supabase
-          .from('campaign_collaborations')
-          .select('*', { count: 'exact', head: true })
-          .eq('creator_id', user.id)
-          .eq('status', 'completed');
-
-        if (projectsError) {
-          console.error('Error fetching completed projects:', projectsError);
-        }
-
-        // Get total revenue - simplified approach
-        const { data: applications, error: revenueError } = await supabase
-          .from('campaign_applications')
-          .select('proposed_rate')
-          .eq('creator_id', user.id)
-          .in('status', ['accepted']);
-
-        if (revenueError) {
-          console.error('Error fetching revenue data:', revenueError);
-        }
-
-        const totalRevenue = applications?.reduce((sum, app) => {
+        const totalRevenue = revenueResult.data?.reduce((sum, app) => {
           return sum + (app.proposed_rate || 0);
         }, 0) || 0;
 
-        // Get average rating from creator profile
-        const { data: profile, error: profileError } = await supabase
-          .from('creator_profiles')
-          .select('average_rating')
-          .eq('user_id', user.id)
-          .maybeSingle();
-
-        if (profileError) {
-          console.error('Error fetching profile rating:', profileError);
-        }
-
         return {
           totalRevenue,
-          campaignsApplied: campaignsApplied || 0,
-          projectsCompleted: projectsCompleted || 0,
-          averageRating: Number(profile?.average_rating || 0),
+          campaignsApplied: applicationsResult.count || 0,
+          projectsCompleted: projectsResult.count || 0,
+          averageRating: Number(profileResult.data?.average_rating || 0),
         };
       } catch (error) {
         console.error('Error in useCreatorDashboardStats:', error);

@@ -60,7 +60,7 @@ const CampaignsList: React.FC<CampaignsListProps> = ({
             onClick={() => navigate('/dashboard/business/campaigns/create')}
             className="inline-flex items-center"
           >
-            <Plus className="h-5 w-5 mr-2" />
+            <Plus className="h-5 w-5 mr-2" aria-hidden="true" />
             Create Campaign
           </Button>
         </div>

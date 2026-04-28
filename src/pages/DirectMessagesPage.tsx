@@ -6,7 +6,7 @@ import { useAuth } from '@/hooks/useAuth';
 import DirectMessagesList from '@/components/messages/DirectMessagesList';
 import ConversationMessageThread from '@/components/messages/ConversationMessageThread';
 import { useConversations, type Conversation } from '@/hooks/useConversations';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 
 const DirectMessagesPage: React.FC = () => {
@@ -75,12 +75,12 @@ const DirectMessagesPage: React.FC = () => {
             )}
           </div>
           {selectedConversationId && recipientId ? (
-            <button
-              onClick={() => navigate(`/profile/${recipientId}`)}
+            <Link
+              to={`/profile/${recipientId}`}
               className="text-xs font-medium text-dc-teal hover:underline"
             >
               View Profile
-            </button>
+            </Link>
           ) : (
             <div className="w-7" />
           )}
@@ -108,7 +108,7 @@ const DirectMessagesPage: React.FC = () => {
             {/* Desktop empty state hint */}
             <div className="hidden md:flex items-center justify-center py-16">
               <div className="text-center">
-                <MessageCircle className="h-10 w-10 text-gray-300 mx-auto mb-3" />
+                <MessageCircle className="h-10 w-10 text-gray-300 mx-auto mb-3" aria-hidden="true" />
                 <p className="text-sm text-gray-400">
                   Select a conversation or start a new one from a creator's profile
                 </p>

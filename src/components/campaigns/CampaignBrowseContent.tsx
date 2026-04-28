@@ -35,15 +35,15 @@ const CampaignBrowseContent: React.FC<CampaignBrowseContentProps> = ({
     <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as 'grid' | 'map' | 'split')}>
       <TabsList className="grid w-full max-w-full grid-cols-3 mb-4 sm:mb-6">
         <TabsTrigger value="grid" className="flex items-center gap-2">
-          <Grid className="h-4 w-4" />
+          <Grid className="h-4 w-4" aria-hidden="true" />
           Grid
         </TabsTrigger>
         <TabsTrigger value="map" className="flex items-center gap-2">
-          <Map className="h-4 w-4" />
+          <Map className="h-4 w-4" aria-hidden="true" />
           Map
         </TabsTrigger>
         <TabsTrigger value="split" className="flex items-center gap-2">
-          <Columns className="h-4 w-4" />
+          <Columns className="h-4 w-4" aria-hidden="true" />
           Split
         </TabsTrigger>
       </TabsList>
