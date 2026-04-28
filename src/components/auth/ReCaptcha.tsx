@@ -36,7 +36,24 @@ const ReCaptcha = forwardRef<ReCaptchaHandle, ReCaptchaProps>(
     const siteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
 
     useEffect(() => {
-      // Wait for grecaptcha to be available
+      if (!siteKey) {
+        console.warn(
+          '[ReCaptcha] VITE_RECAPTCHA_SITE_KEY is not set — the CAPTCHA widget will not render.'
+        );
+      }
+
+      // Inject Google's reCAPTCHA script once if it isn't already on the page.
+      const SCRIPT_ID = 'google-recaptcha-script';
+      if (typeof document !== 'undefined' && !document.getElementById(SCRIPT_ID)) {
+        const script = document.createElement('script');
+        script.id = SCRIPT_ID;
+        script.src = 'https://www.google.com/recaptcha/api.js';
+        script.async = true;
+        script.defer = true;
+        document.head.appendChild(script);
+      }
+
+      // Wait for grecaptcha to be available (it appears once the script above loads).
       const checkGrecaptcha = setInterval(() => {
         if (window.grecaptcha && containerRef.current && widgetIdRef.current === null) {
           clearInterval(checkGrecaptcha);

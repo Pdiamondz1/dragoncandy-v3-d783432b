@@ -1,23 +1,33 @@
+## Fix Missing CAPTCHA Widget on Login
 
+### Problem
 
-## Fix Creator Card Thumbnail Cropping
+On `/auth`, the login form expects a Google reCAPTCHA v2 "I'm not a robot" checkbox to appear above the Login button. Instead, nothing renders, and submitting shows the toast "Please complete the CAPTCHA verification."
 
-**Problem:** Creator card thumbnails use `object-cover` in a small fixed 144x144px area, which crops faces and images so you can't see the full picture.
+### Root Cause
 
-**Solution:** Change the thumbnail image fitting from `object-cover` to `object-contain` with a neutral background, so the entire image is visible without cropping. This preserves the card layout while showing the full creator photo.
+`src/components/auth/ReCaptcha.tsx` waits for `window.grecaptcha` to become available, then calls `window.grecaptcha.render(...)` to mount the checkbox widget. That global is provided by Google's script at `https://www.google.com/recaptcha/api.js`, but that script is **never loaded** — it isn't in `index.html` and nothing injects it dynamically. So the polling `setInterval` runs forever and the widget never appears.
 
-### Changes
+The site key (`VITE_RECAPTCHA_SITE_KEY`) is correctly set in `.env`, and the `verify-recaptcha` Supabase Edge Function is wired up — only the script tag is missing.
 
-**File: `src/components/creator-browse/CreatorCard.tsx`**
+### Fix
 
-1. On the `<img>` element (line 129), change `object-cover` to `object-contain` and add a light gray background (`bg-gray-100`) so letterboxed areas look clean instead of white.
+Inject Google's reCAPTCHA script on demand from inside the `ReCaptcha` component (rather than `index.html`) so it only loads on auth pages and stays self-contained.
 
-2. Apply the same `bg-gray-100` to the thumbnail container div (line 124) for consistency.
+In `src/components/auth/ReCaptcha.tsx`:
 
-### Technical Detail
+1. Before starting the existing `setInterval` poll, check if the script has been added. If not, append a `<script src="https://www.google.com/recaptcha/api.js" async defer>` to `document.head`. Guard with an `id` so it only loads once even if the component remounts.
+2. Keep the existing `grecaptcha` polling logic — once the script finishes loading, the global appears and `render(...)` runs as it does today.
+3. Add a small console warning if `VITE_RECAPTCHA_SITE_KEY` is missing, to make future misconfigurations obvious.
 
-- Line 124: Add `bg-gray-100` to the thumbnail wrapper div
-- Line 129: Change `className` from `"w-full h-full object-cover"` to `"w-full h-full object-contain"`
+No other files need to change. The site key is already set, the form already wires `captchaRef`, and the Edge Function already verifies tokens — they all start working as soon as the widget mounts.
 
-No other files affected. The card dimensions and layout remain identical.
+### Verification
 
+- Visit `/auth` → reCAPTCHA "I'm not a robot" checkbox is visible between password and Login button.
+- Complete the checkbox, submit → login proceeds (no "Please complete the CAPTCHA verification" toast).
+- Refresh, switch between login/signup tabs → widget still renders (script only loads once).
+
+### Files Changed
+
+- `src/components/auth/ReCaptcha.tsx` — add one-time script injection in the existing `useEffect`.
