@@ -109,7 +109,7 @@ export const useFileUploads = (campaignId?: string, category?: string) => {
           user_profile: permissionUserProfiles?.find(p => p.id === permission.user_id)
         })) || [],
         tags: tagAssignmentsData?.filter(ta => ta.file_upload_id === file.id).map(ta => ta.file_tags).filter(Boolean) || []
-      })) as FileUpload[];
+      })) as unknown as FileUpload[];
     },
     enabled: !!user,
   });
