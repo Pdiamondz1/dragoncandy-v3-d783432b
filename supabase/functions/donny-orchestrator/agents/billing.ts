@@ -11,56 +11,58 @@ const TIER_FEATURES: Record<
     monthly_price: 0,
     features: [
       "1 active campaign",
-      "Up to 3 creator invitations/month",
-      "Basic analytics",
-      "Community support",
+      "Campaign brief generation (1/week)",
+      "Creator match report (1/month)",
+      "Campaign templates",
     ],
   },
   starter: {
     name: "Starter",
-    monthly_price: 49,
+    monthly_price: 199,
     features: [
-      "5 active campaigns",
-      "Up to 25 creator invitations/month",
-      "Standard analytics",
-      "Email support",
-      "Campaign templates",
+      "Creator delivery",
+      "Basic analytics",
+      "1 seat included, up to 3 additional (+$29/seat)",
     ],
   },
   growth: {
     name: "Growth",
-    monthly_price: 149,
+    monthly_price: 499,
     features: [
-      "20 active campaigns",
-      "Unlimited creator invitations",
-      "Advanced analytics & reports",
+      "DragonDash (same-day delivery)",
+      "Advanced analytics & audience insights",
+      "Multi-unit management",
+      "5 seats included, up to 15 additional (+$39/seat)",
+    ],
+  },
+  pro: {
+    name: "Pro",
+    monthly_price: 999,
+    features: [
+      "API access",
+      "Custom branding / white-label",
       "Priority support",
-      "DragonShare boosts",
-      "Campaign AI generation",
-      "Team seats (up to 5)",
+      "15 seats included, unlimited additional (+$49/seat)",
     ],
   },
   enterprise: {
     name: "Enterprise",
-    monthly_price: 499,
+    monthly_price: 0,
     features: [
-      "Unlimited campaigns",
-      "Unlimited invitations",
-      "Custom analytics",
+      "Custom pricing",
       "Dedicated account manager",
-      "DragonShare boosts (unlimited)",
-      "API access",
-      "Unlimited team seats",
-      "White-label options",
+      "All Pro features",
+      "Custom integrations",
     ],
   },
 };
 
 const SEAT_LIMITS: Record<string, number> = {
   free: 1,
-  starter: 2,
-  growth: 5,
-  enterprise: -1, // unlimited
+  starter: 4,
+  growth: 15,
+  pro: 999,
+  enterprise: -1,
 };
 
 export async function execute(
