@@ -38,6 +38,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { MobileBottomNav } from '@/components/MobileBottomNav';
 import { MobileTopNav } from '@/components/MobileTopNav';
 import { DonnyAvatar } from '@/components/donny/DonnyAvatar';
+import { DonnyHelpButton } from '@/components/donny/DonnyHelpButton';
 import { useDonnyContext } from '@/contexts/DonnyProvider';
 import { OrgUnitSwitcher } from '@/components/org/OrgUnitSwitcher';
 import { useMyOrgRole } from '@/hooks/useOrgData';
@@ -275,6 +276,8 @@ const DashboardLayoutInner: React.FC<DashboardLayoutProps> = ({ children, userRo
             </ErrorBoundary>
           </main>
         </SidebarInset>
+
+        <DonnyHelpButton />
 
         {/* Mobile bottom nav */}
         {isMobile && <MobileBottomNav userRole={userRole} />}
