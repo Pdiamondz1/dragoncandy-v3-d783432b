@@ -203,7 +203,7 @@ const businessDrawerMenu: DrawerMenuSection[] = [
   {
     heading: 'Support',
     items: [
-      { icon: HelpCircle, label: 'Help', href: '/dashboard/business/help' },
+      { icon: HelpCircle, label: 'Help', href: '/help' },
     ],
   },
 ];
@@ -235,7 +235,7 @@ const creatorDrawerMenu: DrawerMenuSection[] = [
   {
     heading: 'Support',
     items: [
-      { icon: HelpCircle, label: 'Help', href: '/dashboard/creator/help' },
+      { icon: HelpCircle, label: 'Help', href: '/help' },
     ],
   },
 ];
@@ -267,7 +267,7 @@ const brandDrawerMenu: DrawerMenuSection[] = [
   {
     heading: 'Support',
     items: [
-      { icon: HelpCircle, label: 'Help', href: '/dashboard/brand/help' },
+      { icon: HelpCircle, label: 'Help', href: '/help' },
     ],
   },
 ];
