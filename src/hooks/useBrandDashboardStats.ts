@@ -23,37 +23,37 @@ export const useBrandDashboardStats = () => {
     queryFn: async () => {
       if (!user) throw new Error('User not authenticated');
 
-      // Get the brand's business profile
-      const { data: brandProfile, error: profileError } = await supabase
-        .from('business_profiles')
-        .select('id, sponsorship_budget')
-        .eq('user_id', user.id)
-        .eq('account_type', 'brand')
-        .maybeSingle();
-
-      if (profileError) throw profileError;
-      if (!brandProfile) throw new Error('Brand profile not found');
-
-      const [campaignsResult, sponsorshipsResult, conversationsResult] = await Promise.all([
+      const [profileResult, campaignsResult, conversationsResult] = await Promise.all([
+        supabase
+          .from('business_profiles')
+          .select('id, sponsorship_budget')
+          .eq('user_id', user.id)
+          .eq('account_type', 'brand')
+          .maybeSingle(),
         supabase
           .from('campaigns')
           .select('*', { count: 'exact', head: true })
           .eq('user_id', user.id)
           .in('status', ['active', 'published']),
         supabase
-          .from('campaign_sponsorships')
-          .select('sponsorship_amount, status, payment_status')
-          .eq('brand_id', brandProfile.id),
-        supabase
           .rpc('get_user_conversations', { user_uuid: user.id }),
       ]);
 
+      if (profileResult.error) throw profileResult.error;
+      if (!profileResult.data) throw new Error('Brand profile not found');
       if (campaignsResult.error) throw campaignsResult.error;
-      if (sponsorshipsResult.error) throw sponsorshipsResult.error;
       if (conversationsResult.error) throw conversationsResult.error;
 
+      const brandProfile = profileResult.data;
+
+      const { data: sponsorships, error: sponsorshipsError } = await supabase
+        .from('campaign_sponsorships')
+        .select('sponsorship_amount, status, payment_status')
+        .eq('brand_id', brandProfile.id);
+
+      if (sponsorshipsError) throw sponsorshipsError;
+
       const ownCampaignsCount = campaignsResult.count;
-      const sponsorships = sponsorshipsResult.data;
       const conversations = conversationsResult.data;
 
       const activeSponsorships = sponsorships?.filter(

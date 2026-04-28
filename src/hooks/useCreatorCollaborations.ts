@@ -92,18 +92,13 @@ export const useCreatorCollaborations = (statusFilter: 'active' | 'completed') =
         (profileResult.data || []).map(p => [p.user_id, p])
       );
 
-      let reviewMap = new Map<string, string>();
-      let reviewRatingMap = new Map<string, number>();
+      const reviewMap = new Map<string, { id: string; rating: number }>();
       if (reviewResult.data) {
-        reviewMap = new Map(
-          reviewResult.data.map((r: any) => [r.collaboration_id!, r.id])
-        );
-        reviewRatingMap = new Map(
-          reviewResult.data.map((r: any) => [r.collaboration_id!, r.rating])
-        );
+        for (const r of reviewResult.data as { id: string; collaboration_id: string; rating: number }[]) {
+          reviewMap.set(r.collaboration_id, { id: r.id, rating: r.rating });
+        }
       }
 
-      // Step 4: Merge
       return collabs.map(collab => {
         const campaign = collab.campaign as unknown as CollaborationCampaign;
         const businessProfile = campaign ? profileMap.get(campaign.user_id) : undefined;
@@ -125,8 +120,8 @@ export const useCreatorCollaborations = (statusFilter: 'active' | 'completed') =
             logo_url: businessProfile.logo_url,
             profile_slug: businessProfile.profile_slug,
           } : undefined,
-          existing_review_id: reviewMap.get(collab.id),
-          existing_review_rating: reviewRatingMap.get(collab.id),
+          existing_review_id: reviewMap.get(collab.id)?.id,
+          existing_review_rating: reviewMap.get(collab.id)?.rating,
         };
       });
     },

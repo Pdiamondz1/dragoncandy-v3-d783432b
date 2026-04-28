@@ -121,7 +121,7 @@ const App = () => {
                 <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:p-4 focus:bg-white focus:text-black focus:underline">Skip to main content</a>
                 <main id="main-content" className="flex-1 overflow-auto">
                   <SiteGateGuard>
-                  <Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-dc-teal" /></div>}>
+                  <Suspense fallback={<div className="flex items-center justify-center h-full"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-dc-teal" /></div>}>
                   <Routes>
                   <Route path="/" element={<Index />} />
                   <Route path="/home" element={<Index />} />

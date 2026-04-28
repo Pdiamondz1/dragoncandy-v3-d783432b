@@ -66,11 +66,10 @@ export const useBusinessActivity = () => {
 
         if (creatorsError) throw creatorsError;
 
-        // Reconstruct media items
-        const mediaItems: FeedMediaItem[] = [];
-        
+        const creatorMap = new Map((creators ?? []).map(c => [c.user_id, c]));
+
         const itemPromises = currentlyLiked.map(async (liked) => {
-          const creator = creators?.find(c => c.user_id === liked.creatorId);
+          const creator = creatorMap.get(liked.creatorId);
           if (!creator) return null;
 
           const urlPart = liked.contentId.replace(`${creator.id}-`, '');
