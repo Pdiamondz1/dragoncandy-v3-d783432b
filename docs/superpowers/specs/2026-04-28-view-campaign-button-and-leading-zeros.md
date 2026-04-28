@@ -22,7 +22,7 @@ Replace the button's mouse/touch event handlers with pointer event equivalents:
 - **`onPointerUp`**: `stopPropagation()`, `preventDefault()`, then call `onViewDetail(campaign)`
 - Remove: `onMouseDown`, `onTouchStart`, `onTouchEnd`, `onClick`
 
-This targets the same event model that `react-tinder-card` uses, blocking the library from seeing the gesture at the pointer level.
+**Why pointer events solve this:** `react-tinder-card` v2+ registers `onPointerDown` on its wrapper to begin drag tracking. The current button handlers (`onMouseDown`, `onTouchStart`, `onTouchEnd`, `onClick`) operate on mouse/touch events, which fire *after* pointer events in the DOM event dispatch order. By the time the button's touch handler calls `stopPropagation()`, TinderCard has already captured the pointer and is tracking it as a drag gesture. Switching the button to `onPointerDown`/`onPointerUp` with `stopPropagation()` prevents the event from ever reaching TinderCard's pointer listener — the gesture is never registered as a drag.
 
 ---
 
@@ -52,14 +52,26 @@ For every affected numeric input:
 | `src/components/campaign-creator/BudgetSlider.tsx` | min, max |
 | `src/components/campaigns/CampaignBudgetTimelineForm.tsx` | budget_min, budget_max |
 
-### Not Affected
+### Note: CampaignBudgetTimelineForm Data Flow
 
-- `CampaignBudgetTimelineForm` stores values as strings and passes raw `e.target.value` to its parent. The sanitization still applies (strip leading zeros from the string), but the conversion to `Number()` happens upstream.
+`CampaignBudgetTimelineForm` stores values as strings and passes raw `e.target.value` to its parent via `onInputChange(field, value)`. For this component, the sanitization strips leading zeros from the string *before* passing to the parent — so the parent receives a clean string like `"500"`, not `"0500"`. The parent is responsible for any `Number()` conversion. The sanitized string is also used as the displayed `value`.
 
 ---
 
 ## Testing
 
-- **View Campaign button:** Tap the button on mobile — should open the campaign detail modal. Swiping right should still work.
-- **Leading zeros:** Clear any dollar field, type a new number — no leading zeros should appear. Typing "0" alone should work. Backspacing to empty should show placeholder.
-- **Desktop:** Both fixes should work identically on desktop browsers.
+### View Campaign Button
+- Tap the button on mobile — should open the campaign detail modal
+- Swiping right should still work as before
+- Tapping the card body (outside the button) should also still open detail view
+
+### Leading Zeros
+- Clear any dollar field, type a new number — no leading zeros should appear
+- Typing "0" alone should be accepted (field shows empty via placeholder, state is 0)
+- Entering "00500" should display as "500"
+- Pasting "0250" should display as "250"
+- Backspacing to empty should show placeholder
+- Non-numeric characters should be silently stripped
+
+### Cross-Platform
+- Both fixes should work identically on desktop and mobile browsers
