@@ -3,6 +3,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { sanitizeNumericInput } from '@/lib/inputUtils';
 
 interface CampaignBudgetTimelineFormProps {
   formData: {
@@ -29,9 +30,11 @@ const CampaignBudgetTimelineForm: React.FC<CampaignBudgetTimelineFormProps> = ({
             <Input
               id="budget_min"
               name="budget_min"
-              type="number"
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
               value={formData.budget_min}
-              onChange={(e) => onInputChange('budget_min', e.target.value)}
+              onChange={(e) => onInputChange('budget_min', sanitizeNumericInput(e.target.value))}
               placeholder="0"
             />
           </div>
@@ -40,9 +43,11 @@ const CampaignBudgetTimelineForm: React.FC<CampaignBudgetTimelineFormProps> = ({
             <Input
               id="budget_max"
               name="budget_max"
-              type="number"
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
               value={formData.budget_max}
-              onChange={(e) => onInputChange('budget_max', e.target.value)}
+              onChange={(e) => onInputChange('budget_max', sanitizeNumericInput(e.target.value))}
               placeholder="0"
             />
           </div>
