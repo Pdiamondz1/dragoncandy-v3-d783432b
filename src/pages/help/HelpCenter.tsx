@@ -70,7 +70,7 @@ export default function HelpCenter() {
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => window.history.length > 1 ? navigate(-1) : navigate('/')}
+          onClick={() => navigate('/')}
           className="mb-4 -ml-2 text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="mr-1 h-4 w-4" />
