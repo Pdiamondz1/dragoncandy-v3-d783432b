@@ -292,15 +292,10 @@ const CardContent: React.FC<CardContentProps> = ({ campaign, onViewDetail, match
         <div className="relative flex-shrink-0 px-4 pb-3 pt-1">
           <div className="absolute inset-x-0 -top-6 h-6 bg-gradient-to-t from-white to-transparent pointer-events-none" />
           <button
-            onMouseDown={(e) => e.stopPropagation()}
-            onTouchStart={(e) => e.stopPropagation()}
-            onTouchEnd={(e) => {
+            onPointerDown={(e) => e.stopPropagation()}
+            onPointerUp={(e) => {
               e.stopPropagation();
               e.preventDefault();
-              onViewDetail(campaign);
-            }}
-            onClick={(e) => {
-              e.stopPropagation();
               onViewDetail(campaign);
             }}
             className="w-full bg-dc-teal text-white rounded-full h-11 font-bold hover:bg-dc-teal-dark transition-colors duration-150 active:scale-95 text-sm relative z-10"
