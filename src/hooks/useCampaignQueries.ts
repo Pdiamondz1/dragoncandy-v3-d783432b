@@ -4,6 +4,27 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import type { CampaignAnalysis } from '@/types/campaign';
 
+export function hydrateCampaignFromAnalysis<T extends Campaign>(campaign: T): T {
+  const ai = campaign.ai_analysis as Record<string, unknown> | null;
+  if (!ai) return campaign;
+  return {
+    ...campaign,
+    tagline: campaign.tagline || (ai.tagline as string) || undefined,
+    campaign_type: campaign.campaign_type || (ai.campaign_type as string) || undefined,
+    per_creator_cap: campaign.per_creator_cap ?? (ai.per_creator_cap as number) ?? undefined,
+    usage_rights_days: campaign.usage_rights_days ?? (ai.usage_rights_days as number) ?? undefined,
+    exclusivity_days: campaign.exclusivity_days ?? (ai.exclusivity_days as number) ?? undefined,
+    geographic_scope: campaign.geographic_scope || (ai.geographic_scope as Campaign['geographic_scope']) || undefined,
+    creator_count: campaign.creator_count ?? (ai.creator_count as number) ?? undefined,
+    target_creator_personas: campaign.target_creator_personas?.length
+      ? campaign.target_creator_personas
+      : (ai.target_creator_personas as string[]) || (ai.target_creator_persona as string[]) || undefined,
+    hashtag_requirements: campaign.hashtag_requirements
+      || (Array.isArray(ai.hashtags) ? (ai.hashtags as string[]).join(' ') : (ai.hashtag_requirements as string))
+      || undefined,
+  };
+}
+
 export interface Campaign {
   id: string;
   user_id: string;
@@ -65,7 +86,7 @@ export const useCampaignsList = (filterByOwnership: boolean = true) => {
         throw error;
       }
 
-      return data as unknown as Campaign[];
+      return (data as unknown as Campaign[]).map(hydrateCampaignFromAnalysis);
     },
     enabled: !!user,
   });
@@ -86,7 +107,7 @@ export const useCampaignById = (id: string) => {
         throw error;
       }
 
-      return data as unknown as Campaign;
+      return hydrateCampaignFromAnalysis(data as unknown as Campaign);
     },
     enabled: !!id,
   });

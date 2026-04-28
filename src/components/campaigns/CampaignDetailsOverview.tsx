@@ -2,7 +2,7 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, DollarSign, Target, Palette, Volume2, Package } from 'lucide-react';
+import { Calendar, DollarSign, Target, Palette, Volume2, Package, Hash, Globe, Users, Shield, Lock, UserCheck } from 'lucide-react';
 import { Campaign } from '@/hooks/useCampaignQueries';
 import CampaignAnalysisDisplay from './CampaignAnalysisDisplay';
 
@@ -119,6 +119,94 @@ const CampaignDetailsOverview: React.FC<CampaignDetailsOverviewProps> = ({ campa
                 <p className="font-medium">Tone</p>
                 <p className="text-sm text-muted-foreground capitalize">{campaign.tone}</p>
               </div>
+            </div>
+          )}
+
+          {campaign.campaign_type && (
+            <div className="flex items-center gap-3">
+              <Target className="h-5 w-5 text-dc-teal" />
+              <div>
+                <p className="font-medium">Campaign Type</p>
+                <p className="text-sm text-muted-foreground capitalize">{campaign.campaign_type.replace(/_/g, ' ')}</p>
+              </div>
+            </div>
+          )}
+
+          {campaign.per_creator_cap != null && (
+            <div className="flex items-center gap-3">
+              <UserCheck className="h-5 w-5 text-dc-teal" />
+              <div>
+                <p className="font-medium">Per-Creator Cap</p>
+                <p className="text-sm text-muted-foreground">${campaign.per_creator_cap}</p>
+              </div>
+            </div>
+          )}
+
+          {campaign.usage_rights_days != null && (
+            <div className="flex items-center gap-3">
+              <Shield className="h-5 w-5 text-dc-teal" />
+              <div>
+                <p className="font-medium">Usage Rights</p>
+                <p className="text-sm text-muted-foreground">{campaign.usage_rights_days} days</p>
+              </div>
+            </div>
+          )}
+
+          {campaign.exclusivity_days != null && (
+            <div className="flex items-center gap-3">
+              <Lock className="h-5 w-5 text-dc-teal" />
+              <div>
+                <p className="font-medium">Exclusivity</p>
+                <p className="text-sm text-muted-foreground">{campaign.exclusivity_days} days</p>
+              </div>
+            </div>
+          )}
+
+          {campaign.geographic_scope && (
+            <div className="flex items-center gap-3">
+              <Globe className="h-5 w-5 text-dc-teal" />
+              <div>
+                <p className="font-medium">Geographic Scope</p>
+                <p className="text-sm text-muted-foreground capitalize">{campaign.geographic_scope}</p>
+              </div>
+            </div>
+          )}
+
+          {campaign.creator_count != null && (
+            <div className="flex items-center gap-3">
+              <Users className="h-5 w-5 text-dc-teal" />
+              <div>
+                <p className="font-medium">Target Creators</p>
+                <p className="text-sm text-muted-foreground">{campaign.creator_count}</p>
+              </div>
+            </div>
+          )}
+
+          {campaign.target_creator_personas && campaign.target_creator_personas.length > 0 && (
+            <div>
+              <h4 className="font-medium mb-2">Target Audience</h4>
+              <div className="flex flex-wrap gap-2">
+                {campaign.target_creator_personas.map((persona, index) => (
+                  <Badge key={index} variant="outline" className="capitalize">{persona}</Badge>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {campaign.hashtag_requirements && (
+            <div className="flex items-center gap-3">
+              <Hash className="h-5 w-5 text-dc-teal" />
+              <div>
+                <p className="font-medium">Hashtags</p>
+                <p className="text-sm text-teal-600">{campaign.hashtag_requirements}</p>
+              </div>
+            </div>
+          )}
+
+          {campaign.tagline && (
+            <div>
+              <h4 className="font-medium mb-1">Tagline</h4>
+              <p className="text-sm text-muted-foreground italic">{campaign.tagline}</p>
             </div>
           )}
         </CardContent>

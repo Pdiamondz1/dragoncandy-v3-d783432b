@@ -1,7 +1,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Campaign } from '@/hooks/useCampaignQueries';
+import { Campaign, hydrateCampaignFromAnalysis } from '@/hooks/useCampaignQueries';
 import { getCoverImageUrl } from '@/lib/campaignUtils';
 
 export interface PublicCampaign extends Campaign {
@@ -206,7 +206,7 @@ export const usePublicCampaigns = (userId?: string) => {
         })
       );
 
-      return enrichedCampaigns as unknown as PublicCampaign[];
+      return enrichedCampaigns.map(hydrateCampaignFromAnalysis) as unknown as PublicCampaign[];
     },
     enabled: true,
   });

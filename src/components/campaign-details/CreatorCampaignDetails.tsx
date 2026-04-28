@@ -1,5 +1,6 @@
 // src/components/campaign-details/CreatorCampaignDetails.tsx
 
+import { Globe, Users } from 'lucide-react';
 import type { Campaign } from '@/hooks/useCampaignQueries';
 import type { EnrichedCampaignDetail } from '@/hooks/useCampaignDetailEnriched';
 import { CampaignHero } from './CampaignHero';
@@ -10,6 +11,7 @@ import { CampaignFootageSection } from './CampaignFootageSection';
 import { CampaignDeliverablesBreakdown } from './CampaignDeliverablesBreakdown';
 import { CampaignTimeline } from './CampaignTimeline';
 import { CampaignBudgetDetail } from './CampaignBudgetDetail';
+import { CampaignDetailSection } from './CampaignDetailSection';
 import { BusinessProfileStrip } from './BusinessProfileStrip';
 import { InvitationBanner } from './InvitationBanner';
 
@@ -56,6 +58,9 @@ export function CreatorCampaignDetails({
           style={campaign.style}
           tone={campaign.tone}
           targetPersonas={campaign.target_creator_personas}
+          tagline={campaign.tagline}
+          campaignType={campaign.campaign_type}
+          hashtags={campaign.hashtag_requirements}
         />
 
         {enrichedDetail && (
@@ -80,6 +85,31 @@ export function CreatorCampaignDetails({
         />
 
         <CampaignBudgetDetail campaign={campaign} />
+
+        {(campaign.geographic_scope || campaign.creator_count) && (
+          <CampaignDetailSection title="Scope">
+            <div className="flex flex-wrap gap-4">
+              {campaign.geographic_scope && (
+                <div className="flex items-center gap-2">
+                  <Globe className="w-4 h-4 text-dc-teal" />
+                  <div>
+                    <span className="text-[11px] text-gray-500 uppercase">Geographic Scope</span>
+                    <p className="text-sm font-medium text-gray-900 capitalize">{campaign.geographic_scope}</p>
+                  </div>
+                </div>
+              )}
+              {campaign.creator_count != null && (
+                <div className="flex items-center gap-2">
+                  <Users className="w-4 h-4 text-dc-teal" />
+                  <div>
+                    <span className="text-[11px] text-gray-500 uppercase">Target Creators</span>
+                    <p className="text-sm font-medium text-gray-900">{campaign.creator_count}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </CampaignDetailSection>
+        )}
 
         {enrichedDetail?.businessProfile && (
           <div className="mt-3">

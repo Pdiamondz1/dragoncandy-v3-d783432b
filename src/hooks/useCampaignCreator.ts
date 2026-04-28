@@ -295,6 +295,13 @@ export function useCampaignCreator() {
         delivery_fee: resolveTierFee(editedCampaign.delivery_type),
         style: editedCampaign.style_direction,
         status: 'published' as const,
+        campaign_deliverables: editedCampaign.deliverables.map((d) => ({
+          content_type: d.content_type,
+          platform: d.platform,
+          aspect_ratio: d.aspect_ratio,
+          max_duration_seconds: d.max_duration_seconds ?? null,
+          description: d.description ?? null,
+        })),
         ai_analysis: {
           ...businessContext,
           brand_fields: userRole === 'brand' ? brandFields : undefined,

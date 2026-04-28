@@ -19,6 +19,12 @@ import {
   FileText,
   Loader2,
   MessageSquare,
+  Hash,
+  Globe,
+  Users,
+  Shield,
+  Lock,
+  UserCheck,
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -187,6 +193,102 @@ const BrandCampaignDetails = () => {
                   <li key={index}>{deliverable}</li>
                 ))}
               </ul>
+            </div>
+          )}
+
+          {/* Tagline & Campaign Type */}
+          {(campaign.tagline || campaign.campaign_type) && (
+            <div className="border-2 border-dc-teal rounded-2xl p-4">
+              <span className="font-sans text-xs font-semibold uppercase tracking-wider text-gray-500 block mb-2">
+                Campaign Details
+              </span>
+              {campaign.campaign_type && (
+                <Badge variant="outline" className="rounded-full border-dc-teal text-dc-teal text-xs mb-2 capitalize">
+                  {campaign.campaign_type.replace(/_/g, ' ')}
+                </Badge>
+              )}
+              {campaign.tagline && (
+                <p className="text-gray-700 text-sm italic">{campaign.tagline}</p>
+              )}
+            </div>
+          )}
+
+          {/* Budget Terms */}
+          {(campaign.per_creator_cap || campaign.usage_rights_days || campaign.exclusivity_days) && (
+            <div className="flex items-stretch rounded-2xl overflow-hidden border border-gray-100">
+              {campaign.per_creator_cap != null && (
+                <div className="flex-1 flex flex-col items-center py-4 px-2 border-r border-dc-pink">
+                  <UserCheck className="h-4 w-4 text-dc-teal mb-1" />
+                  <span className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-0.5">Per-Creator Cap</span>
+                  <span className="text-sm font-bold text-gray-900">${campaign.per_creator_cap}</span>
+                </div>
+              )}
+              {campaign.usage_rights_days != null && (
+                <div className="flex-1 flex flex-col items-center py-4 px-2 border-r border-dc-pink">
+                  <Shield className="h-4 w-4 text-dc-teal mb-1" />
+                  <span className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-0.5">Usage Rights</span>
+                  <span className="text-sm font-bold text-gray-900">{campaign.usage_rights_days} days</span>
+                </div>
+              )}
+              {campaign.exclusivity_days != null && (
+                <div className="flex-1 flex flex-col items-center py-4 px-2">
+                  <Lock className="h-4 w-4 text-dc-teal mb-1" />
+                  <span className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-0.5">Exclusivity</span>
+                  <span className="text-sm font-bold text-gray-900">{campaign.exclusivity_days} days</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Scope: Geographic + Creator Count */}
+          {(campaign.geographic_scope || campaign.creator_count) && (
+            <div className="flex items-stretch rounded-2xl overflow-hidden border border-gray-100">
+              {campaign.geographic_scope && (
+                <div className="flex-1 flex flex-col items-center py-4 px-2 border-r border-dc-pink">
+                  <Globe className="h-4 w-4 text-dc-teal mb-1" />
+                  <span className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-0.5">Geographic Scope</span>
+                  <span className="text-sm font-bold text-gray-900 capitalize">{campaign.geographic_scope}</span>
+                </div>
+              )}
+              {campaign.creator_count != null && (
+                <div className="flex-1 flex flex-col items-center py-4 px-2">
+                  <Users className="h-4 w-4 text-dc-teal mb-1" />
+                  <span className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-0.5">Target Creators</span>
+                  <span className="text-sm font-bold text-gray-900">{campaign.creator_count}</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Target Audience */}
+          {campaign.target_creator_personas && campaign.target_creator_personas.length > 0 && (
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <Target className="h-4 w-4 text-dc-teal" />
+                <span className="font-sans text-xs font-semibold uppercase tracking-wider text-gray-500">
+                  Target Audience
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {campaign.target_creator_personas.map((persona, index) => (
+                  <Badge key={index} variant="outline" className="rounded-full border-dc-pink text-dc-pink text-xs capitalize">
+                    {persona}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Hashtags */}
+          {campaign.hashtag_requirements && (
+            <div className="border-2 border-dc-teal rounded-2xl p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Hash className="h-4 w-4 text-dc-teal" />
+                <span className="font-sans text-xs font-semibold uppercase tracking-wider text-gray-500">
+                  Hashtags
+                </span>
+              </div>
+              <p className="text-teal-600 text-sm">{campaign.hashtag_requirements}</p>
             </div>
           )}
 

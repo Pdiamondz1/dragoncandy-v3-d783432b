@@ -6,6 +6,9 @@ interface CampaignBriefSectionProps {
   style?: string | null;
   tone?: string | null;
   targetPersonas?: string[] | null;
+  tagline?: string | null;
+  campaignType?: string | null;
+  hashtags?: string | null;
 }
 
 export function CampaignBriefSection({
@@ -14,6 +17,9 @@ export function CampaignBriefSection({
   style,
   tone,
   targetPersonas,
+  tagline,
+  campaignType,
+  hashtags,
 }: CampaignBriefSectionProps) {
   if (!description && !goals && !style && !tone) return null;
 
@@ -24,6 +30,19 @@ export function CampaignBriefSection({
 
   return (
     <CampaignDetailSection title="Campaign Brief">
+      {(tagline || campaignType) && (
+        <div className="flex flex-wrap items-center gap-2">
+          {campaignType && (
+            <span className="bg-teal-50 text-teal-700 text-xs font-medium px-2.5 py-1 rounded-full capitalize">
+              {campaignType.replace(/_/g, ' ')}
+            </span>
+          )}
+          {tagline && (
+            <p className="text-sm text-gray-700 italic">{tagline}</p>
+          )}
+        </div>
+      )}
+
       {description && (
         <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">
           {description}
@@ -71,6 +90,13 @@ export function CampaignBriefSection({
               </span>
             ))}
           </div>
+        </div>
+      )}
+
+      {hashtags && (
+        <div>
+          <span className="text-[11px] text-gray-500 uppercase">Hashtags</span>
+          <p className="text-sm text-teal-600 mt-0.5">{hashtags}</p>
         </div>
       )}
     </CampaignDetailSection>
