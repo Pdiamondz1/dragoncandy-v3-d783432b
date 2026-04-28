@@ -70,11 +70,11 @@ export default function HelpCenter() {
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => navigate(-1)}
+          onClick={() => window.history.length > 1 ? navigate(-1) : navigate('/dashboard')}
           className="mb-4 -ml-2 text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="mr-1 h-4 w-4" />
-          Back
+          Back to Dashboard
         </Button>
 
         <h1 className="text-2xl lg:text-3xl font-bold text-dc-dark mb-2">
@@ -177,9 +177,9 @@ export default function HelpCenter() {
             <Button
               variant="outline"
               className="rounded-full mt-2"
-              onClick={() => navigate(-1)}
+              onClick={() => navigate('/dashboard')}
             >
-              Go back
+              Return to Dashboard
             </Button>
           </div>
         )}
