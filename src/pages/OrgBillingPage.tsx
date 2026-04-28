@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import { CreditCard, Users, ArrowUpRight, AlertCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '@/components/DashboardLayout';
 import { WhyExpander } from '@/components/guidance/WhyExpander';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -33,6 +35,8 @@ export default function OrgBillingPage() {
   const { data: myRole } = useMyOrgRole(activeOrg?.id);
   const { data: members = [] } = useOrgMembers(activeOrg?.id);
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const [upgrading, setUpgrading] = useState(false);
 
   const userRole = profile?.role ?? 'business_client';
   const tier = activeOrg?.subscription_tier ?? 'free';
@@ -116,8 +120,27 @@ export default function OrgBillingPage() {
                   <p className="text-xs text-teal-700 mt-1">
                     The free plan includes 1 seat. Upgrade to Starter ($199/mo) to invite up to 3 additional team members.
                   </p>
-                  <Button size="sm" className="mt-3 rounded-full bg-teal-500 hover:bg-teal-600 text-white">
-                    Upgrade plan
+                  <Button
+                    size="sm"
+                    disabled={upgrading}
+                    onClick={async () => {
+                      setUpgrading(true);
+                      try {
+                        const { data, error } = await supabase.functions.invoke('create-checkout-session', {
+                          body: { tier: 'starter', billing_period: 'monthly', org_id: activeOrg!.id },
+                        });
+                        if (error) throw error;
+                        if (data?.checkout_url) window.location.href = data.checkout_url;
+                      } catch (err: unknown) {
+                        const message = err instanceof Error ? err.message : String(err);
+                        toast({ title: 'Checkout failed', description: message, variant: 'destructive' });
+                      } finally {
+                        setUpgrading(false);
+                      }
+                    }}
+                    className="mt-3 rounded-full bg-teal-500 hover:bg-teal-600 text-white"
+                  >
+                    {upgrading ? 'Redirecting…' : 'Upgrade plan'}
                   </Button>
                 </div>
               </div>

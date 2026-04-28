@@ -101,9 +101,12 @@ export function useSubmitDragonSharePost() {
       if (error) throw error;
       return data as DragonSharePost;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: KEYS.creatorPosts(user?.id) });
       queryClient.invalidateQueries({ queryKey: KEYS.creatorMonthlyCount(user?.id) });
+      supabase.functions.invoke('donny-dragonshare-score', {
+        body: { post_id: data.id },
+      }).catch(() => {});
     },
   });
 }

@@ -1,16 +1,43 @@
+import { useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { TierComparisonGrid } from '@/components/pricing/TierComparisonGrid';
 import { TIER_ORDER, type TierName } from '@/lib/pricing/tier-features';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 const PricingPage = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { user, activeOrg } = useAuth();
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(false);
   const raw = searchParams.get('highlight');
   const highlightTier: TierName | null =
     raw && (TIER_ORDER as string[]).includes(raw) ? (raw as TierName) : null;
 
-  const handleSelectTier = (_tier: TierName) => {
-    navigate('/auth');
+  const handleSelectTier = async (tier: TierName) => {
+    if (!user || !activeOrg) {
+      navigate('/auth');
+      return;
+    }
+    if (tier === 'free' || tier === 'enterprise') return;
+
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('create-checkout-session', {
+        body: { tier, billing_period: 'monthly', org_id: activeOrg.id },
+      });
+      if (error) throw error;
+      if (data?.checkout_url) {
+        window.location.href = data.checkout_url;
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      toast({ title: 'Checkout failed', description: message, variant: 'destructive' });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
