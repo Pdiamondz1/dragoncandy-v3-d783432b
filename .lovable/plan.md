@@ -1,23 +1,28 @@
+## Fix: Missing reCAPTCHA widget on Login
 
+### What's actually missing
+You're seeing the page render with email, password, and the teal "Login" button — but the Google reCAPTCHA "I'm not a robot" checkbox widget (which normally sits between the password field and the Login button) is gone. Because `AuthForm` requires a CAPTCHA token to submit, this also makes login effectively impossible.
 
-## Fix Creator Card Thumbnail Cropping
+### Root cause
+The `VITE_RECAPTCHA_SITE_KEY` env var IS set, so that's not the issue. The bug is in `src/components/auth/ReCaptcha.tsx`:
 
-**Problem:** Creator card thumbnails use `object-cover` in a small fixed 144x144px area, which crops faces and images so you can't see the full picture.
+1. Its `useEffect` lists `onVerify`, `onExpired`, `onError` in the dependency array.
+2. In `AuthForm.tsx` (lines 315–328) those callbacks are passed as inline arrow functions, so they get a new function identity on every parent render.
+3. The effect therefore re-runs on every render, repeatedly trying to call `window.grecaptcha.render(...)` on the same DOM node.
+4. On the second call, Google throws `reCAPTCHA has already been rendered in this element`, which is swallowed by the try/catch — and the widget never appears.
 
-**Solution:** Change the thumbnail image fitting from `object-cover` to `object-contain` with a neutral background, so the entire image is visible without cropping. This preserves the card layout while showing the full creator photo.
+### The fix (two small changes)
 
-### Changes
+**1. `src/components/auth/ReCaptcha.tsx`** — make the effect stable and self-cleaning:
+- Remove `onVerify`, `onExpired`, `onError` from the `useEffect` dependency array (depend only on `siteKey`).
+- Store the latest callbacks in refs so the rendered widget always calls the current versions without re-rendering the widget.
+- In the cleanup function, also clear the container's contents (`containerRef.current.innerHTML = ''`) and reset `widgetIdRef.current = null` so re-mounts can render cleanly.
 
-**File: `src/components/creator-browse/CreatorCard.tsx`**
+**2. `src/components/auth/AuthForm.tsx`** — defensive: wrap the `onExpired` and `onError` props passed to `<ReCaptcha />` in `useCallback` so they have a stable identity. (Belt-and-suspenders; the Recaptcha fix alone is sufficient, but this avoids the same class of bug if we add deps back later.)
 
-1. On the `<img>` element (line 129), change `object-cover` to `object-contain` and add a light gray background (`bg-gray-100`) so letterboxed areas look clean instead of white.
+### Verification after the fix
+- Reload `/auth/login` and confirm the Google reCAPTCHA checkbox renders between the password field and the Login button.
+- Confirm the checkbox can be ticked, and that submitting without ticking still shows "Please complete the CAPTCHA verification."
+- Confirm normal login still works end-to-end.
 
-2. Apply the same `bg-gray-100` to the thumbnail container div (line 124) for consistency.
-
-### Technical Detail
-
-- Line 124: Add `bg-gray-100` to the thumbnail wrapper div
-- Line 129: Change `className` from `"w-full h-full object-cover"` to `"w-full h-full object-contain"`
-
-No other files affected. The card dimensions and layout remain identical.
-
+No other files need to change. The Site Gate password page is unrelated and is not affected.
