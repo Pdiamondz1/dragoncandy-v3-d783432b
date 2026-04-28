@@ -182,7 +182,7 @@ export const useSponsorshipComplete = () => {
             if (response.error) {
               console.error('Payout error:', response.error);
             } else {
-              console.log('Sponsorship payout triggered:', response.data);
+              // Sponsorship payout triggered successfully
             }
           }
         } catch (payoutError) {

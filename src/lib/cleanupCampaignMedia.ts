@@ -37,7 +37,6 @@ export async function cleanupCampaignMedia(campaignId: string): Promise<void> {
   }
 
   if (!media || media.length === 0) {
-    console.log(`[cleanupCampaignMedia] No reference media to clean up for campaign ${campaignId}`);
     return;
   }
 
@@ -73,7 +72,4 @@ export async function cleanupCampaignMedia(campaignId: string): Promise<void> {
     return;
   }
 
-  console.log(
-    `[cleanupCampaignMedia] Cleaned up ${media.length} reference file(s) for campaign ${campaignId}`
-  );
 }

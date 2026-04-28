@@ -25,7 +25,6 @@ export const useConversations = () => {
     queryFn: async () => {
       if (!user) return [];
       
-      console.log('Fetching conversations for user:', user.id);
       const { data, error } = await supabase.rpc('get_user_conversations', {
         user_uuid: user.id
       });
@@ -51,7 +50,6 @@ export const useCreateDirectConversation = () => {
     mutationFn: async (otherUserId: string) => {
       if (!user) throw new Error('User not authenticated');
       
-      console.log('Creating direct conversation between:', user.id, 'and', otherUserId);
       const { data, error } = await supabase.rpc('create_or_get_direct_conversation', {
         user1_uuid: user.id,
         user2_uuid: otherUserId
@@ -87,7 +85,6 @@ export const useArchiveConversation = () => {
 
   return useMutation({
     mutationFn: async (conversationId: string) => {
-      console.log('Archiving conversation:', conversationId);
       const { error } = await supabase
         .from('conversations')
         .update({ is_archived: true })
@@ -123,8 +120,6 @@ export const useCreateCampaignConversation = () => {
       participantType?: string;
     }) => {
       if (!user) throw new Error('User not authenticated');
-
-      console.log('Creating campaign conversation for:', campaignId);
 
       // Create conversation
       const { data: conversation, error: conversationError } = await supabase

@@ -262,6 +262,7 @@ export function MediaUploader({
                   src={staged.preview}
                   alt={staged.name}
                   className="w-full h-full object-cover"
+                  loading="lazy"
                 />
               )}
 

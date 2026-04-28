@@ -77,13 +77,9 @@ export const useCampaignWizard = () => {
     setIsGenerating(true);
 
     try {
-      console.log('Calling generate-campaign-analysis with goal:', campaignGoal);
-
       const { data, error } = await supabase.functions.invoke('generate-campaign-analysis', {
         body: { campaignGoal }
       });
-
-      console.log('Supabase function response:', { data, error });
 
       if (error) {
         console.error('Supabase function error:', error);
@@ -102,7 +98,6 @@ export const useCampaignWizard = () => {
         throw new Error('No analysis data in response');
       }
 
-      console.log('Campaign analysis generated successfully:', data.analysis);
       setCampaignAnalysis(data.analysis);
       setCurrentStep(3); // Step 3: Details (Brief is Step 2, so after AI generation go to Step 3)
       toast.success('Campaign analysis generated successfully!');
@@ -176,7 +171,6 @@ export const useCampaignWizard = () => {
   };
 
   const handleContinueFromTimelineBudget = (data: TimelineBudgetData) => {
-    console.log('Timeline & Budget data received:', data);
     setTimelineBudgetData(data);
     setCurrentStep(4); // Go to Visuals step (Step 4)
   };

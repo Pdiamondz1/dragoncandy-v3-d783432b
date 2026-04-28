@@ -75,6 +75,7 @@ export function OneTapApplySheet({
                       src={pitch.suggested_portfolio_piece_url}
                       alt="Portfolio sample"
                       className="w-full h-full object-cover"
+                      loading="lazy"
                     />
                   </div>
                 </div>

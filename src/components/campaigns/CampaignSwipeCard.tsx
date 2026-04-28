@@ -137,6 +137,7 @@ const CardContent: React.FC<CardContentProps> = ({ campaign, onViewDetail, match
           src={campaign.cover_image_url}
           alt={campaign.title}
           className="w-full h-full object-cover"
+          loading="lazy"
           draggable={false}
           onError={() => setImgError(true)}
         />
@@ -149,6 +150,7 @@ const CardContent: React.FC<CardContentProps> = ({ campaign, onViewDetail, match
             src={campaign.cover_image_url}
             alt="Campaign logo"
             className="w-full h-full object-cover scale-150 blur-2xl opacity-60"
+            loading="lazy"
             draggable={false}
             onError={() => setImgError(true)}
           />
@@ -156,6 +158,7 @@ const CardContent: React.FC<CardContentProps> = ({ campaign, onViewDetail, match
             src={campaign.cover_image_url}
             alt={businessName}
             className="absolute inset-0 m-auto w-20 h-20 object-contain rounded-full"
+            loading="lazy"
             draggable={false}
           />
         </div>

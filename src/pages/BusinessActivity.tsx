@@ -167,6 +167,7 @@ const BusinessActivity = () => {
                         src={item.url}
                         alt={`Content by ${item.creatorName}`}
                         className="w-full h-full object-cover"
+                        loading="lazy"
                       />
                     )}
 

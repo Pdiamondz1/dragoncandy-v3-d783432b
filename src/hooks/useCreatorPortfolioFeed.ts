@@ -91,8 +91,6 @@ export const useCreatorPortfolioFeed = () => {
     const fetchPortfolioMedia = async () => {
       try {
         setLoading(true);
-        console.log('🎥 DragonFeed: Starting portfolio media fetch...');
-        
         // Fetch creator profiles with portfolio URLs who allow DragonFeed display
         const { data: creators, error: fetchError } = await supabase
           .from('creator_profiles')
@@ -107,10 +105,7 @@ export const useCreatorPortfolioFeed = () => {
           throw fetchError;
         }
 
-        console.log('📊 DragonFeed: Found creators:', creators?.length || 0, creators);
-
         if (!creators || creators.length === 0) {
-          console.log('⚠️ DragonFeed: No eligible creators found');
           setPortfolioMedia([]);
           return;
         }
@@ -139,9 +134,6 @@ export const useCreatorPortfolioFeed = () => {
           .filter((r): r is PromiseFulfilledResult<PortfolioMedia | null> => r.status === 'fulfilled')
           .map(r => r.value)
           .filter((v): v is PortfolioMedia => !!v);
-
-
-        console.log('🎬 DragonFeed: Total media items before processing:', mediaItems.length);
 
         // Smart content distribution algorithm
         const processedMedia = createSmartFeed(mediaItems);

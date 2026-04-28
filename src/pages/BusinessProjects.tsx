@@ -143,8 +143,6 @@ const BusinessProjects: React.FC = () => {
     queryFn: async () => {
       if (!user) return [];
 
-      console.log('Fetching business projects for user:', user.id);
-
       const { data, error } = await supabase
         .from('campaign_collaborations')
         .select(`
@@ -177,8 +175,6 @@ const BusinessProjects: React.FC = () => {
         console.error('Error fetching business projects:', error);
         throw error;
       }
-
-      console.log('Raw business projects data:', data);
 
       if (!data || data.length === 0) {
         return [];

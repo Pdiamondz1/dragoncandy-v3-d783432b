@@ -9,6 +9,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card } from '@/components/ui/card';
 import { Share2, UserPlus, Trash2, Eye, Download, Edit, Calendar } from 'lucide-react';
 import { useFilePermissions } from '@/hooks/useFileOperations';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
 import type { FileUpload, FilePermission } from '@/types/files';
 
 interface FilePermissionsDialogProps {
@@ -31,13 +33,24 @@ const FilePermissionsDialog: React.FC<FilePermissionsDialogProps> = ({
   const handleGrantPermission = async () => {
     if (!newUserEmail.trim()) return;
 
-    // In a real app, you'd lookup the user by email first
-    // For now, we'll use a placeholder user ID
-    const userId = 'placeholder-user-id';
+    const { data: profile, error } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('email', newUserEmail.trim().toLowerCase())
+      .maybeSingle();
+
+    if (error || !profile) {
+      toast({
+        title: 'User not found',
+        description: 'No account found with that email address.',
+        variant: 'destructive',
+      });
+      return;
+    }
 
     await grantPermission.mutateAsync({
       file_upload_id: file.id,
-      user_id: userId,
+      user_id: profile.id,
       permission_type: newPermissionType,
       expires_at: expiryDate || undefined
     });

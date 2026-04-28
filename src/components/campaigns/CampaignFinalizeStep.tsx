@@ -219,8 +219,6 @@ const CampaignFinalizeStep: React.FC<CampaignFinalizeStepProps> = ({
 
       // If fixed price and user wants to publish, trigger Stripe escrow checkout
       if (wantToPublish && isFixedPrice) {
-        console.log('Initiating escrow payment for campaign:', campaign.id);
-        
         const { data: checkoutData, error: checkoutError } = await supabase.functions.invoke(
           'create-campaign-escrow',
           {

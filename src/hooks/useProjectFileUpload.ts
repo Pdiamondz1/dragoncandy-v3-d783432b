@@ -32,14 +32,6 @@ export const useProjectFileUpload = ({
       return;
     }
     
-    console.log('=== STARTING UPLOAD PROCESS ===');
-    console.log('Upload context:', { 
-      fileCount: acceptedFiles.length, 
-      userId: user.id, 
-      campaignId,
-      userRole: user.user_metadata?.role || 'unknown'
-    });
-    
     setIsUploading(true);
     
     try {
@@ -48,17 +40,9 @@ export const useProjectFileUpload = ({
       if (!session?.session) {
         throw new Error('Authentication required. Please sign in again.');
       }
-      console.log('User authenticated successfully');
-
       const uploadedFiles = [];
-      
+
       for (const file of acceptedFiles) {
-        console.log('Processing file:', { 
-          name: file.name, 
-          size: file.size, 
-          type: file.type 
-        });
-        
         // Set initial progress
         setUploadProgress(prev => ({ ...prev, [file.name]: 10 }));
         
@@ -68,13 +52,6 @@ export const useProjectFileUpload = ({
         const extension = file.name.split('.').pop();
         const filename = `${timestamp}-${randomString}.${extension}`;
         const filePath = `${user.id}/${filename}`;
-        
-        console.log('Uploading to storage:', {
-          filePath,
-          bucketName: 'campaign-deliverables',
-          fileSize: file.size,
-          mimeType: file.type
-        });
         
         // Update progress
         setUploadProgress(prev => ({ ...prev, [file.name]: 30 }));
@@ -92,11 +69,9 @@ export const useProjectFileUpload = ({
           throw new Error(`Storage upload failed: ${uploadError.message}`);
         }
 
-        console.log('Storage upload successful:', uploadData);
         setUploadProgress(prev => ({ ...prev, [file.name]: 70 }));
 
         // Create database record with enhanced error handling
-        console.log('Creating database record...');
         try {
           const fileRecord = await createFileUpload.mutateAsync({
             filename,
@@ -115,7 +90,6 @@ export const useProjectFileUpload = ({
             }
           });
 
-          console.log('Database record created successfully:', fileRecord);
           uploadedFiles.push(fileRecord);
           setUploadProgress(prev => ({ ...prev, [file.name]: 100 }));
         } catch (dbError) {
@@ -126,7 +100,6 @@ export const useProjectFileUpload = ({
             await supabase.storage
               .from('campaign-deliverables')
               .remove([uploadData.path]);
-            console.log('Cleaned up storage file after database error');
           } catch (cleanupError) {
             console.error('Failed to cleanup storage file:', cleanupError);
           }
@@ -160,7 +133,6 @@ export const useProjectFileUpload = ({
         console.error('Failed to send file upload notification:', error);
       }
 
-      console.log('=== UPLOAD PROCESS COMPLETED SUCCESSFULLY ===');
       if (onUploadComplete) onUploadComplete();
       
     } catch (error) {

@@ -87,7 +87,7 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: (failureCount, error) => {
-        console.error('🔄 Query failed:', error);
+        console.error('Query failed:', error);
         return failureCount < 2; // Retry up to 2 times
       },
       staleTime: 5 * 60 * 1000, // 5 minutes
@@ -102,8 +102,6 @@ function DonnyProviderWithAuth({ children }: { children: React.ReactNode }) {
 }
 
 const App = () => {
-  console.log('🚀 App: Starting DragonCandy application');
-  
   return (
     <ErrorBoundary>
       <ThemeProvider>

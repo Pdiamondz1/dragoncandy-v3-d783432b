@@ -50,6 +50,7 @@ export const CreatorPortfolioModal: React.FC<CreatorPortfolioModalProps> = ({
           src={logo}
           alt="Dragon Candy"
           className="h-10 w-10 object-contain"
+          loading="lazy"
         />
 
         {/* Title */}
@@ -74,6 +75,7 @@ export const CreatorPortfolioModal: React.FC<CreatorPortfolioModalProps> = ({
             src={currentImage.url}
             alt={currentImage.artistName || creatorName}
             className="w-full h-full object-cover"
+            loading="lazy"
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
@@ -108,6 +110,7 @@ export const CreatorPortfolioModal: React.FC<CreatorPortfolioModalProps> = ({
                 src={image.url}
                 alt={image.artistName || `Portfolio image ${index + 1}`}
                 className="w-full h-full object-cover"
+                loading="lazy"
               />
               {image.artistName && (
                 <span className="absolute bottom-1 left-2 text-white text-xs drop-shadow leading-tight">

@@ -63,6 +63,7 @@ const MediaItemCard: React.FC<MediaItemCardProps> = ({ item, editable, onRemove,
             src={item.file_url}
             alt={item.file_name}
             className="w-full h-full object-cover"
+            loading="lazy"
           />
         )}
 

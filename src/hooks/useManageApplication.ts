@@ -18,8 +18,6 @@ export const useManageApplication = () => {
       status: 'accepted' | 'rejected' | 'counter_offered';
       approvalRole?: 'brand' | 'restaurant';
     }) => {
-      console.log('Updating application status:', { applicationId, status, approvalRole });
-
       if (approvalRole) {
         // Joint approval: set role-specific column, trigger handles final_approval_status
         const column = approvalRole === 'brand'

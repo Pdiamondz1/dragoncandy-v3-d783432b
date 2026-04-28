@@ -37,6 +37,7 @@ function MediaPreviewButton({ submission }: { submission: PromotionSubmission })
             src={resolvedUrl || submission.video_url}
             alt="Submission"
             className="w-full h-full object-cover"
+            loading="lazy"
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-gray-900/5">

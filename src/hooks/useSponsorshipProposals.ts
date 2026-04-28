@@ -94,16 +94,12 @@ export const useSponsorshipProposals = () => {
       if (error) throw error;
     },
     onSuccess: async (_, { proposalId, status }) => {
-      console.log('🎯 Sponsorship status updated:', { proposalId, status });
-      
       queryClient.invalidateQueries({ queryKey: ['sponsorship-proposals'] });
       
       // Get the proposal data to send notification
       const proposal = proposals?.find(p => p.id === proposalId);
       
       if (proposal?.brand_profile?.user_id && proposal?.campaigns) {
-        console.log('📧 Sending sponsorship status email to brand:', proposal.brand_profile.user_id);
-        
         const result = await sendNotification(
           'sponsorship_status',
           undefined, // Let edge function resolve email
@@ -115,9 +111,6 @@ export const useSponsorshipProposals = () => {
           }
         );
         
-        console.log('✅ Email notification result:', result);
-      } else {
-        console.warn('⚠️ Missing brand user_id or campaign data, email not sent');
       }
       
       toast({

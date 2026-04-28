@@ -24,14 +24,6 @@ export const useCreateApplication = () => {
       proposedRate?: number;
       portfolioUrl?: string;
     }) => {
-      console.log('Creating application:', {
-        campaignId,
-        introMessage,
-        proposedTimeline,
-        proposedRate,
-        portfolioUrl,
-      });
-
       const { data, error } = await supabase
         .from('campaign_applications')
         .insert({
@@ -50,7 +42,6 @@ export const useCreateApplication = () => {
         throw error;
       }
 
-      console.log('Created application:', data);
       return data;
     },
     onSuccess: async (data) => {

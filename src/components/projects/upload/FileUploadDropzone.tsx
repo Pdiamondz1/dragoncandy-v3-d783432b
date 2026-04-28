@@ -15,13 +15,6 @@ const FileUploadDropzone: React.FC<FileUploadDropzoneProps> = ({
 }) => {
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop: (acceptedFiles, fileRejections) => {
-      console.log('Files dropped:', {
-        acceptedCount: acceptedFiles.length,
-        rejectedCount: fileRejections.length,
-        acceptedFiles: acceptedFiles.map(f => ({ name: f.name, size: f.size, type: f.type })),
-        rejections: fileRejections.map(r => ({ name: r.file.name, errors: r.errors.map(e => e.message) }))
-      });
-      
       // Convert FileWithPath[] to File[] by spreading into new array
       const files = [...acceptedFiles] as File[];
       onDrop(files, fileRejections);

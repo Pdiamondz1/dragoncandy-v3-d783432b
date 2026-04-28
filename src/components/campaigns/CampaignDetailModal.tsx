@@ -90,6 +90,7 @@ export const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
                   src={campaign.cover_image_url}
                   alt={campaign.title}
                   className={`w-full h-full object-cover ${campaign.cover_image_type === 'logo' ? 'scale-150 blur-2xl opacity-60' : ''}`}
+                  loading="lazy"
                   onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                 />
               )}

@@ -31,7 +31,7 @@ export const useNotifications = () => {
         setUnreadCount(stored.filter(n => !n.read).length);
       }
     } catch (e) {
-      console.log('Failed to load stored notifications', e);
+      console.error('Failed to load stored notifications', e);
     }
   }, [user]);
 
@@ -42,7 +42,7 @@ export const useNotifications = () => {
       localStorage.setItem(`dc_notifications_${user.id}`, JSON.stringify(notifications));
       setUnreadCount(notifications.filter(n => !n.read).length);
     } catch (e) {
-      console.log('Failed to save notifications', e);
+      console.error('Failed to save notifications', e);
     }
   }, [notifications, user]);
 
@@ -164,7 +164,7 @@ export const useNotifications = () => {
 
         initializedRef.current = true;
       } catch (e) {
-        console.log('Initial notifications load failed', e);
+        console.error('Initial notifications load failed', e);
       }
     };
 
@@ -181,8 +181,6 @@ export const useNotifications = () => {
           table: 'campaign_applications',
         },
         (payload) => {
-          console.log('Application status updated:', payload);
-          
           // Show toast notification
           const newStatus = payload.new.status;
           if (newStatus === 'accepted') {
@@ -221,8 +219,6 @@ export const useNotifications = () => {
           table: 'campaign_applications',
         },
         (payload) => {
-          console.log('New application received:', payload);
-          
           // For business users - show toast when they receive new applications
           toast({
             title: 'New Application Received',
@@ -256,8 +252,6 @@ export const useNotifications = () => {
           table: 'campaign_sponsorships',
         },
         async (payload) => {
-          console.log('New sponsorship proposal received (realtime):', payload);
-          
           // Fetch campaign and brand details for context
           const { data: campaign } = await supabase
             .from('campaigns')
@@ -266,11 +260,8 @@ export const useNotifications = () => {
             .single();
 
           if (!campaign) {
-            console.log('Campaign not found');
             return;
           }
-
-          console.log('Campaign user_id:', campaign.user_id, 'Current user:', user.id);
 
           const { data: brandProfile } = await supabase
             .from('business_profiles')
@@ -280,8 +271,6 @@ export const useNotifications = () => {
 
           // Only notify the restaurant owner (campaign creator)
           if (campaign.user_id === user.id) {
-            console.log('Creating notification for restaurant owner');
-            
             toast({
               title: 'New Sponsorship Proposal! 🎉',
               description: `${brandProfile?.business_name || 'A brand'} wants to sponsor your campaign "${campaign.title}"`,
@@ -303,8 +292,6 @@ export const useNotifications = () => {
 
             setNotifications(prev => [notification, ...prev]);
             setUnreadCount(prev => prev + 1);
-          } else {
-            console.log('User is not the campaign owner, skipping notification');
           }
         }
       )
@@ -316,8 +303,6 @@ export const useNotifications = () => {
           table: 'campaign_sponsorships',
         },
         async (payload) => {
-          console.log('Sponsorship status updated:', payload);
-          
           // Check if status changed
           if (payload.old.status !== payload.new.status) {
             // Fetch campaign and brand details
@@ -448,8 +433,6 @@ export const useNotifications = () => {
           filter: `creator_id=eq.${user.id}`,
         },
         async (payload) => {
-          console.log('New campaign invitation received:', payload);
-
           let campaignTitle = 'a campaign';
           try {
             const { data: campaign } = await supabase

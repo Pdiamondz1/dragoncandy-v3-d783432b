@@ -120,7 +120,6 @@ const CampaignTimelineBudgetStep: React.FC<CampaignTimelineBudgetStepProps> = ({
   }, [deliveryTier, deliveryFee, pricingType, fixedPrice, budgetMin, budgetMax, form]);
 
   const handleSubmit = (data: TimelineBudgetFormData) => {
-    console.log('DragonDash Timeline & Budget form data:', data);
     onContinue(data);
   };
 

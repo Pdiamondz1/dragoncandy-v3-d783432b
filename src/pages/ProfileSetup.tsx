@@ -161,6 +161,7 @@ export default function ProfileSetup() {
                   src={avatarPreview}
                   alt="Preview"
                   className={`w-20 h-20 object-cover ${isCreator ? 'rounded-full ring-2 ring-teal-400' : 'rounded-xl ring-2 ring-pink-400'}`}
+                  loading="lazy"
                 />
               ) : (
                 <div

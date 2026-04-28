@@ -21,7 +21,6 @@ const VerifyEmail = () => {
       }
 
       try {
-        console.log('VerifyEmail: invoking edge function via supabase.functions.invoke');
         const { data, error } = await supabase.functions.invoke('verify-email', {
           body: { token },
         });

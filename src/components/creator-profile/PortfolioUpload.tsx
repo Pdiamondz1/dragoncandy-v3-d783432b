@@ -181,6 +181,7 @@ export const PortfolioUpload = ({
                   src={item.url}
                   alt={item.name}
                   className="w-full h-full object-cover"
+                  loading="lazy"
                 />
                 <span
                   className="absolute top-1 right-1"

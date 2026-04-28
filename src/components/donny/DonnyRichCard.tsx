@@ -18,7 +18,7 @@ export function DonnyRichCard({ card }: DonnyRichCardProps) {
           <div className="flex gap-2 items-center">
             <div className="w-10 h-10 rounded-full bg-gray-200 ring-2 ring-teal-400 overflow-hidden flex-shrink-0">
               {card.data.avatar_url ? (
-                <img src={card.data.avatar_url} alt={card.data.name} className="w-full h-full object-cover" />
+                <img src={card.data.avatar_url} alt={card.data.name} className="w-full h-full object-cover" loading="lazy" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm">
                   {card.data.name.charAt(0)}

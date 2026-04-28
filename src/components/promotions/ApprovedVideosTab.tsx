@@ -164,7 +164,7 @@ const VideoCard: React.FC<VideoCardProps> = ({ submission }) => {
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             ) : resolvedUrl ? (
               isImageUrl(submission.video_url) ? (
-                <img src={resolvedUrl} alt={`Submission by ${submission.customer_name}`} className="w-full h-full object-contain" />
+                <img src={resolvedUrl} alt={`Submission by ${submission.customer_name}`} className="w-full h-full object-contain" loading="lazy" />
               ) : (
                 <video src={resolvedUrl} controls playsInline preload="metadata" className="w-full h-full object-contain" />
               )

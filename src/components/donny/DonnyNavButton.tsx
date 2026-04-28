@@ -24,6 +24,7 @@ export function DonnyNavButton() {
           src={donnyEmblem}
           alt="Donny"
           className="w-full h-full object-cover scale-[1.35]"
+          loading="lazy"
         />
       </span>
     </button>

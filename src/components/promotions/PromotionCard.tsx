@@ -238,10 +238,11 @@ export const PromotionCard: React.FC<PromotionCardProps> = ({
           </DialogHeader>
           <div className="flex flex-col items-center space-y-4">
             <div className="bg-white p-4 rounded-lg">
-              <img 
-                src={qrCodeUrl} 
-                alt="Promotion QR Code" 
+              <img
+                src={qrCodeUrl}
+                alt="Promotion QR Code"
                 className="w-64 h-64"
+                loading="lazy"
               />
             </div>
             <p className="text-sm text-muted-foreground text-center">

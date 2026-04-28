@@ -36,16 +36,8 @@ export const BusinessDashboardSideFeed: React.FC<BusinessDashboardSideFeedProps>
 
     const container = containerRef.current;
     if (!container) {
-      console.log('📭 Dragon Feed: No container ref');
       return;
     }
-
-    console.log('🎬 Dragon Feed: Starting auto-scroll', {
-      feedItemsCount: feedItems.length,
-      scrollHeight: container.scrollHeight,
-      clientHeight: container.clientHeight,
-      isPaused
-    });
 
     const scrollSpeed = 0.8; // pixels per frame
     let animationId: number;
@@ -349,6 +341,7 @@ const FeedCard: React.FC<FeedCardProps> = ({ item, onItemClick }) => {
                 src={item.url}
                 alt={`Content by ${item.creatorName}`}
                 className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                loading="lazy"
                 onLoad={handleLoad}
                 onError={handleError}
               />

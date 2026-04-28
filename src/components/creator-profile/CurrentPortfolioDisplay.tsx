@@ -141,10 +141,11 @@ export const CurrentPortfolioDisplay = ({ portfolioPaths, onRemoveItem }: Curren
                 </div>
               </div>
             ) : item.type === 'image' ? (
-              <img 
-                src={item.url} 
+              <img
+                src={item.url}
                 alt="Portfolio item"
                 className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                loading="lazy"
                 onLoad={() => handleMediaLoad(item.path)}
                 onError={() => handleMediaError(item.path)}
               />

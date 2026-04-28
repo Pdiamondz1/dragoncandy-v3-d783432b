@@ -99,7 +99,7 @@ export const useProjectComplete = () => {
             payoutSuccess = true;
             payoutAmount = payoutResult.amount || 0;
             payoutMethod = payoutResult.method || 'pending_balance';
-            console.log('Payout released successfully:', payoutResult);
+            // Payout released successfully
           }
         } catch (payoutErr) {
           console.error('Payout error:', payoutErr);

@@ -45,6 +45,7 @@ const FilePreviewContent: React.FC<FilePreviewContentProps> = ({
           src={fileUrl}
           alt={file.original_filename}
           className={`max-w-full max-h-96 object-contain rounded-lg ${className}`}
+          loading="lazy"
         />
       );
     

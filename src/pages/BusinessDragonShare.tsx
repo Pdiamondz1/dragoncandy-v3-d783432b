@@ -36,8 +36,8 @@ export function BusinessDragonSharePage({ userRole }: { userRole: UserRole }) {
     { key: 'all', label: 'All Time' },
   ];
 
-  function handleSkip(postId: string) {
-    console.log('Skipped post', postId);
+  function handleSkip(_postId: string) {
+    // no-op: skip action acknowledged
   }
 
   return (

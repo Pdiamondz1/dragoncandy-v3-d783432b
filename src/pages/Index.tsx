@@ -10,22 +10,17 @@ export default function Index() {
   const [debugInfo, setDebugInfo] = useState<string>('');
 
   useEffect(() => {
-    console.log('🏠 Index: Component mounted', { user: !!user, loading, error });
-    
     // Add debug information
     const info = `User: ${user ? 'authenticated' : 'none'}, Loading: ${loading}, Error: ${error || 'none'}`;
     setDebugInfo(info);
 
     // If user is authenticated, redirect to appropriate dashboard
     if (user && !loading) {
-      console.log('🏠 Index: User authenticated, checking role...');
       const redirectToDashboard = async () => {
         try {
           // First, check user metadata for role (set during signup)
           const userRole = user.user_metadata?.role;
-          console.log('📋 Index: User metadata role:', userRole);
 
-          console.log('🔍 Index: Fetching user profile for dashboard redirect...');
           const { data: profile, error: profileError } = await supabase
             .from('profiles')
             .select('role')
@@ -33,9 +28,7 @@ export default function Index() {
             .maybeSingle();
 
           if (profileError) {
-            console.error('❌ Index: Error checking user role:', profileError);
-            // For newly verified users, always redirect to profile setup
-            console.log('🔧 Index: Profile check failed for authenticated user, redirecting to profile setup...');
+            console.error('Error checking user role:', profileError);
             navigate('/profile/onboarding');
             return;
           }
@@ -57,7 +50,6 @@ export default function Index() {
 
           // If profile exists, check role-specific profile completion before redirect
           if (profile?.role === 'business_client') {
-            console.log('🏢 Index: Checking business profile completion');
             const { data: businessProfile, error: bpError } = await supabase
               .from('business_profiles')
               .select('is_completed')
@@ -65,20 +57,17 @@ export default function Index() {
               .maybeSingle();
 
             if (bpError) {
-              console.error('❌ Index: Error fetching business profile:', bpError);
+              console.error('Error fetching business profile:', bpError);
               navigate('/profile/onboarding');
               return;
             }
 
             if (businessProfile?.is_completed) {
-              console.log('🏢 Index: Business profile completed, redirecting to dashboard');
               navigate('/dashboard/business');
             } else {
-              console.log('🔧 Index: Business profile incomplete, redirecting to onboarding');
               navigate('/profile/onboarding');
             }
           } else if (profile?.role === 'content_creator') {
-            console.log('🎨 Index: Checking creator profile completion');
             const { data: creatorProfile, error: cpError } = await supabase
               .from('creator_profiles')
               .select('is_completed')
@@ -86,20 +75,17 @@ export default function Index() {
               .maybeSingle();
 
             if (cpError) {
-              console.error('❌ Index: Error fetching creator profile:', cpError);
+              console.error('Error fetching creator profile:', cpError);
               navigate('/profile/onboarding');
               return;
             }
 
             if (creatorProfile?.is_completed) {
-              console.log('🎨 Index: Creator profile completed, redirecting to dashboard');
               navigate('/dashboard/creator');
             } else {
-              console.log('🔧 Index: Creator profile incomplete, redirecting to onboarding');
               navigate('/profile/onboarding');
             }
           } else if (profile?.role === 'brand') {
-            console.log('🎯 Index: Checking brand profile completion');
             const { data: brandProfile, error: brandError } = await supabase
               .from('business_profiles')
               .select('is_completed')
@@ -108,43 +94,32 @@ export default function Index() {
               .maybeSingle();
 
             if (brandError) {
-              console.error('❌ Index: Error fetching brand profile:', brandError);
+              console.error('Error fetching brand profile:', brandError);
               navigate('/profile/onboarding');
               return;
             }
 
             if (brandProfile?.is_completed) {
-              console.log('🎯 Index: Brand profile completed, redirecting to dashboard');
               navigate('/dashboard/brand');
             } else {
-              console.log('🔧 Index: Brand profile incomplete, redirecting to onboarding');
               navigate('/profile/onboarding');
             }
           } else if (userRole) {
-            // User is authenticated and has metadata role but no profile - redirect to profile setup
-            console.log('👤 Index: User has metadata role but no profile, redirecting to profile setup');
             navigate('/profile/onboarding');
           } else {
-            // No profile found - redirect to profile setup for authenticated users
-            console.log('❓ Index: No profile found for authenticated user, redirecting to profile setup');
             navigate('/profile/onboarding');
           }
         } catch (error) {
-          console.error('❌ Index: Dashboard redirect failed:', error);
-          // For any authenticated user with errors, redirect to profile setup
-          console.log('🔧 Index: Error occurred for authenticated user, redirecting to profile setup');
+          console.error('Dashboard redirect failed:', error);
           navigate('/profile/onboarding');
         }
       };
       
       redirectToDashboard();
     } else if (!loading && !user) {
-      // Redirect unauthenticated users to landing page (with a small delay to avoid race condition)
-      console.log('🚫 Index: No user, redirecting to landing page');
       setTimeout(() => navigate('/landing'), 100);
     } else if (error && !loading) {
-      // If there's an authentication error, still redirect to landing
-      console.error('❌ Index: Authentication error, redirecting to landing:', error);
+      console.error('Authentication error, redirecting to landing:', error);
       setTimeout(() => navigate('/landing'), 100);
     }
   }, [user, loading, error, navigate]);

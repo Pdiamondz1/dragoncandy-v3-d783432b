@@ -103,13 +103,17 @@ export const DragonFeedGrid: React.FC = () => {
             {searchTerm && (
               <Badge variant="secondary" className="flex items-center gap-1">
                 Search: {searchTerm}
-                <X className="h-3 w-3 cursor-pointer" onClick={() => setSearchTerm('')} />
+                <button onClick={() => setSearchTerm('')} aria-label="Clear search" className="hover:opacity-70">
+                  <X className="h-3 w-3" />
+                </button>
               </Badge>
             )}
             {typeFilter !== 'all' && (
               <Badge variant="secondary" className="flex items-center gap-1">
                 Type: {typeFilter}
-                <X className="h-3 w-3 cursor-pointer" onClick={() => setTypeFilter('all')} />
+                <button onClick={() => setTypeFilter('all')} aria-label="Clear type filter" className="hover:opacity-70">
+                  <X className="h-3 w-3" />
+                </button>
               </Badge>
             )}
           </div>

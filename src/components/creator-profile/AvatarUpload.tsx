@@ -75,6 +75,7 @@ export const AvatarUpload = ({
               src={previewSrc}
               alt="Avatar preview"
               className="w-full h-full object-cover"
+              loading="lazy"
             />
             <span
               className="absolute top-0 right-0"

@@ -35,7 +35,6 @@ export const useCreateCampaign = () => {
 
   return useMutation({
     mutationFn: async (campaignData: CreateCampaignData) => {
-      console.log('Creating campaign:', campaignData);
       const { data, error } = await supabase
         .from('campaigns')
         .insert({
@@ -50,7 +49,6 @@ export const useCreateCampaign = () => {
         throw error;
       }
 
-      console.log('Created campaign:', data);
       return data as unknown as Campaign;
     },
     onSuccess: async (data) => {
@@ -88,8 +86,6 @@ export const useCreateCampaign = () => {
               .eq('is_completed', true);
 
             if (!brandsError && brands && brands.length > 0) {
-              console.log(`Notifying ${brands.length} brands about new sponsorship campaign`);
-              
               const brandUserIds = brands.map(b => b.user_id);
               const { data: brandProfiles } = await supabase
                 .from('profiles')
@@ -129,8 +125,6 @@ export const useCreateCampaign = () => {
             .eq('is_completed', true);
 
           if (!creatorsError && creators && creators.length > 0) {
-            console.log(`Notifying ${creators.length} creators about new campaign`);
-            
             const creatorUserIds = creators.map(c => c.user_id);
             const { data: creatorProfiles } = await supabase
               .from('profiles')
@@ -194,7 +188,6 @@ export const useUpdateCampaign = () => {
 
   return useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: Partial<CreateCampaignData> }) => {
-      console.log('Updating campaign:', id, updates);
       const { data, error } = await supabase
         .from('campaigns')
         .update(updates as any)
@@ -208,7 +201,6 @@ export const useUpdateCampaign = () => {
         throw error;
       }
 
-      console.log('Updated campaign:', data);
       return data as unknown as Campaign;
     },
     onSuccess: async (data, variables) => {
@@ -257,8 +249,6 @@ export const useUpdateCampaign = () => {
                 .eq('is_completed', true);
 
               if (!brandsError && brands && brands.length > 0) {
-                console.log(`Notifying ${brands.length} brands about updated sponsorship campaign`);
-                
                 const brandUserIds = brands.map(b => b.user_id);
                 const { data: brandProfiles } = await supabase
                   .from('profiles')
@@ -299,8 +289,6 @@ export const useUpdateCampaign = () => {
                 .eq('is_completed', true);
 
               if (!creatorsError && creators && creators.length > 0) {
-                console.log(`Notifying ${creators.length} creators about newly published campaign`);
-                
                 const creatorUserIds = creators.map(c => c.user_id);
                 const { data: creatorProfiles } = await supabase
                   .from('profiles')
@@ -373,7 +361,6 @@ export const useDeleteCampaign = () => {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      console.log('Deleting campaign:', id);
       const { error } = await supabase
         .from('campaigns')
         .delete()
@@ -385,7 +372,6 @@ export const useDeleteCampaign = () => {
         throw error;
       }
 
-      console.log('Deleted campaign:', id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['campaigns'] });

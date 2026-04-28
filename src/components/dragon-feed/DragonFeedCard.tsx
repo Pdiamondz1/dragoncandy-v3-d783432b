@@ -200,6 +200,7 @@ export const DragonFeedCard: React.FC<DragonFeedCardProps> = ({ media }) => {
                 src={media.url}
                 alt={`Content by ${media.creatorName}`}
                 className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                loading="lazy"
                 onLoad={handleLoad}
                 onError={handleError}
               />

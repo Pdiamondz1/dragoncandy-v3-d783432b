@@ -35,8 +35,6 @@ export const AuthForm = ({ mode, onError, preSelectedRole, onChangeRole }: AuthF
     onError(null);
     setLoading(true);
 
-    console.log(`🔐 AuthForm: Starting ${mode} process for:`, email);
-
     try {
       // Get reCAPTCHA token with timestamp
       const tokenData = captchaRef.current?.getTokenWithAge();
@@ -52,7 +50,6 @@ export const AuthForm = ({ mode, onError, preSelectedRole, onChangeRole }: AuthF
       const MAX_TOKEN_AGE = 100; // 100 seconds to be safe
 
       if (tokenAgeSeconds > MAX_TOKEN_AGE) {
-        console.warn(`⏰ Token too old: ${tokenAgeSeconds.toFixed(1)}s`);
         onError("CAPTCHA expired. Please verify again.");
         toast({
           title: "CAPTCHA Expired",
@@ -63,8 +60,6 @@ export const AuthForm = ({ mode, onError, preSelectedRole, onChangeRole }: AuthF
         setLoading(false);
         return;
       }
-
-      console.log(`🔒 Verifying reCAPTCHA token (age: ${tokenAgeSeconds.toFixed(1)}s)...`);
 
       // Verify reCAPTCHA token with backend
       const { data: verificationData, error: verificationError } = await supabase.functions.invoke(
@@ -99,8 +94,6 @@ export const AuthForm = ({ mode, onError, preSelectedRole, onChangeRole }: AuthF
         return;
       }
 
-      console.log('✅ reCAPTCHA verification successful for:', verificationData.hostname);
-
       if (mode === "signup") {
         if (!role) {
           onError("Please select a role.");
@@ -108,8 +101,6 @@ export const AuthForm = ({ mode, onError, preSelectedRole, onChangeRole }: AuthF
           setLoading(false);
           return;
         }
-
-        console.log('📝 AuthForm: Signing up user with role:', role);
 
         const { data, error: signupError } = await supabase.auth.signUp({
           email,
@@ -132,8 +123,6 @@ export const AuthForm = ({ mode, onError, preSelectedRole, onChangeRole }: AuthF
           return;
         }
 
-        console.log('✅ AuthForm: Signup successful:', data);
-
         // Send verification email
         if (data.user) {
           const userName = fullName || email.split('@')[0];
@@ -154,7 +143,6 @@ export const AuthForm = ({ mode, onError, preSelectedRole, onChangeRole }: AuthF
                 description: "But there was an issue sending the verification email. Please contact support.",
               });
             } else {
-              console.log('✅ Verification email sent successfully');
               toast({
                 title: "Check your email",
                 description: "We've sent you a verification link. Please verify your email before logging in.",
@@ -172,8 +160,6 @@ export const AuthForm = ({ mode, onError, preSelectedRole, onChangeRole }: AuthF
         setLoading(false);
       } else {
         // Login mode
-        console.log('🔑 AuthForm: Logging in user');
-
         const { data, error: loginError } = await supabase.auth.signInWithPassword({
           email,
           password
@@ -186,8 +172,6 @@ export const AuthForm = ({ mode, onError, preSelectedRole, onChangeRole }: AuthF
           setLoading(false);
           return;
         }
-
-        console.log('✅ AuthForm: Login successful:', data);
 
         // Check if email is verified
         if (data.user) {

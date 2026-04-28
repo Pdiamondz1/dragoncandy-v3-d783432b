@@ -65,6 +65,7 @@ function UnitCard({ unit, canManage, isLastUnit, onEdit, onDelete }: UnitCardPro
             src={unit.logo_url}
             alt={unit.name}
             className="h-12 w-12 rounded-full object-cover ring-2 ring-teal-400 flex-shrink-0"
+            loading="lazy"
           />
         ) : (
           <div className="h-12 w-12 rounded-full bg-teal-100 ring-2 ring-teal-400 flex items-center justify-center flex-shrink-0">

@@ -78,7 +78,6 @@ export const useCreatorBrowse = () => {
   const { data: creators = [], isLoading, error } = useQuery({
     queryKey: ['available-creators'],
     queryFn: async () => {
-      console.log('Fetching available creators');
       const { data, error } = await supabase
         .from('creator_profiles')
         .select('id, user_id, creator_name, avatar_url, bio, skills, portfolio_urls, location, city, country, postal_code, availability, base_rate_per_hour, instagram_url, tiktok_url, youtube_url, facebook_url, linkedin_url, x_url, other_social_url, website_url, average_rating, profile_slug, total_reviews')
@@ -90,7 +89,6 @@ export const useCreatorBrowse = () => {
         throw error;
       }
 
-      console.log('Fetched creators:', data);
       return data as CreatorProfile[];
     },
     enabled: !!user,
