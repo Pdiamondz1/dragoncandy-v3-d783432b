@@ -41,7 +41,6 @@ import { DonnyAvatar } from '@/components/donny/DonnyAvatar';
 import { useDonnyContext } from '@/contexts/DonnyProvider';
 import { OrgUnitSwitcher } from '@/components/org/OrgUnitSwitcher';
 import { useMyOrgRole } from '@/hooks/useOrgData';
-import { DesktopGate } from '@/components/DesktopGate';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import type { UserRole } from '@/types/user';
 import { getSidebarNav, getSettingsHref, getDashboardLabel } from '@/lib/navConfig';

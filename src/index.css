@@ -193,6 +193,11 @@
     @apply bg-white/80 dark:bg-card/80 backdrop-blur-xl;
   }
 
+  /* CSS fallback: guarantees page content becomes visible even if JS animation fails */
+  .page-transition-fallback {
+    animation: ensureVisible 0s 1s forwards;
+  }
+
   /* Smooth page enter animation */
   .animate-fade-in {
     animation: fadeIn 0.4s ease-out;
@@ -228,6 +233,10 @@
 }
 
 /* ── Keyframes ─────────────────────────────────────────────────────────────── */
+
+@keyframes ensureVisible {
+  to { opacity: 1; transform: none; }
+}
 
 @keyframes fadeIn {
   from { opacity: 0; }

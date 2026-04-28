@@ -100,13 +100,17 @@ const queryClient = new QueryClient({
 function DonnyProviderWithAuth({ children }: { children: React.ReactNode }) {
   const { profile } = useAuth();
   const userRole = (profile?.role as UserRole) ?? 'content_creator';
-  return <DonnyProvider userRole={userRole}>{children}</DonnyProvider>;
+  return (
+    <ErrorBoundary level="widget" fallback={<>{children}</>}>
+      <DonnyProvider userRole={userRole}>{children}</DonnyProvider>
+    </ErrorBoundary>
+  );
 }
 
 function DashboardRedirect() {
   const { profile } = useAuth();
   const role = profile?.role as UserRole | undefined;
-  if (role === 'restaurant_owner') return <Navigate to="/dashboard/business" replace />;
+  if (role === 'business_client') return <Navigate to="/dashboard/business" replace />;
   if (role === 'brand') return <Navigate to="/dashboard/brand" replace />;
   if (role === 'content_creator') return <Navigate to="/dashboard/creator" replace />;
   return <Navigate to="/auth" replace />;
@@ -115,7 +119,7 @@ function DashboardRedirect() {
 function AnimatedRoutes() {
   const location = useLocation();
   return (
-    <Suspense fallback={<div className="flex items-center justify-center h-full"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-dc-teal" /></div>}>
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-dc-teal" /></div>}>
       <PageTransition locationKey={location.pathname}>
         <Routes location={location}>
           <Route path="/" element={<Index />} />
@@ -284,9 +288,9 @@ const App = () => {
                   <SiteGateGuard>
                   <AnimatedRoutes />
                   </SiteGateGuard>
-                  <Suspense fallback={null}><HelpBriefDrawer /></Suspense>
+                  <ErrorBoundary level="widget" fallback={null}><Suspense fallback={null}><HelpBriefDrawer /></Suspense></ErrorBoundary>
                 </main>
-                <DonnyDesktopPanel />
+                <ErrorBoundary level="widget" fallback={null}><DonnyDesktopPanel /></ErrorBoundary>
                 </div>
                 </DonnyProviderWithAuth>
                 </BrowserRouter>

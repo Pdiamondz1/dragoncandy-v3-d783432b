@@ -12,4 +12,16 @@ window.addEventListener('error', (event) => {
   console.error('[Global] Uncaught error:', event.error);
 });
 
-createRoot(document.getElementById("root")!).render(<App />);
+const root = document.getElementById("root")!;
+
+try {
+  createRoot(root).render(<App />);
+} catch (err) {
+  console.error('[Fatal] React failed to mount:', err);
+  root.innerHTML =
+    '<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;font-family:sans-serif;text-align:center;padding:2rem">' +
+    '<div><h1 style="font-size:1.5rem;margin-bottom:0.5rem">DragonCandy failed to load</h1>' +
+    '<p style="color:#666">Please refresh or try again later.</p>' +
+    '<button onclick="location.reload()" style="margin-top:1rem;padding:0.5rem 1.5rem;border-radius:9999px;background:#4DD9C0;color:#fff;border:none;font-weight:bold;cursor:pointer">Refresh</button>' +
+    '</div></div>';
+}
