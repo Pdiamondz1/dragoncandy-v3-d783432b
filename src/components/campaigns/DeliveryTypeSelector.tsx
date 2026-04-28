@@ -1,7 +1,7 @@
 import React from 'react';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
-import { Turtle, Zap, Flame } from 'lucide-react';
+import { Package, Rocket, Sparkles } from 'lucide-react';
 
 // Re-export from canonical location for backward compatibility
 export type { DeliveryTier as DeliveryType } from '@/types/campaignMedia';
@@ -21,7 +21,7 @@ interface DeliveryOption {
 const deliveryOptions: DeliveryOption[] = [
   {
     type: 'standard',
-    icon: <Turtle className="h-6 w-6" />,
+    icon: <Package className="h-6 w-6" />,
     label: 'Standard Delivery',
     timeframe: '5–7 days',
     description: 'Best for full production campaigns with flexible timelines',
@@ -31,7 +31,7 @@ const deliveryOptions: DeliveryOption[] = [
   },
   {
     type: 'express',
-    icon: <Zap className="h-6 w-6" />,
+    icon: <Rocket className="h-6 w-6" />,
     label: 'Express Delivery',
     timeframe: '24–48 hours',
     description: 'Quick turnaround for time-sensitive content',
@@ -41,7 +41,7 @@ const deliveryOptions: DeliveryOption[] = [
   },
   {
     type: 'dragondash',
-    icon: <Flame className="h-6 w-6" />,
+    icon: <Sparkles className="h-6 w-6" />,
     label: 'DragonDash Delivery',
     timeframe: '1–3 hours',
     description: 'Ultra-fast delivery for urgent needs. Fixed price only.',

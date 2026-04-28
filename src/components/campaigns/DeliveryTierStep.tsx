@@ -1,6 +1,6 @@
 import type { DeliveryTier } from '@/types/campaignMedia';
 import { TIER_LIMITS } from '@/types/campaignMedia';
-import { CheckCircle2 } from 'lucide-react';
+import { CheckCircle2, Sparkles, Rocket, Package } from 'lucide-react';
 
 interface DeliveryTierStepProps {
   selectedTier: DeliveryTier | null;
@@ -11,7 +11,7 @@ interface DeliveryTierStepProps {
 const TIER_META: Record<
   DeliveryTier,
   {
-    icon: string;
+    icon: typeof Sparkles;
     timeColor: string;
     iconBg: string;
     iconShadow?: string;
@@ -20,7 +20,7 @@ const TIER_META: Record<
   }
 > = {
   dragondash: {
-    icon: '⚡',
+    icon: Sparkles,
     timeColor: 'text-dc-teal',
     iconBg: 'bg-gradient-to-br from-dc-teal to-dc-teal-dark',
     iconShadow: 'shadow-[0_0_16px_rgba(77,217,192,0.35)]',
@@ -28,14 +28,14 @@ const TIER_META: Record<
     description: 'Best for: 1–2 simple posts, quick photo/reel',
   },
   express: {
-    icon: '🚀',
+    icon: Rocket,
     timeColor: 'text-amber-500',
     iconBg: 'bg-gradient-to-br from-amber-200 to-amber-500',
     priceBadge: { bg: 'bg-sky-100', text: 'text-sky-700', label: '$$ Standard' },
     description: 'Best for: 2–4 deliverables, edited reels',
   },
   standard: {
-    icon: '📅',
+    icon: Package,
     timeColor: 'text-emerald-500',
     iconBg: 'bg-gradient-to-br from-emerald-200 to-emerald-400',
     priceBadge: { bg: 'bg-emerald-100', text: 'text-emerald-700', label: '$ Value' },
@@ -95,7 +95,7 @@ const DeliveryTierStep = ({ selectedTier, onSelect, onContinue }: DeliveryTierSt
                     meta.iconShadow ?? '',
                   ].join(' ')}
                 >
-                  <span className="text-[26px] leading-none">{meta.icon}</span>
+                  <meta.icon className="w-6 h-6 text-white" />
                 </div>
 
                 {/* Text content */}

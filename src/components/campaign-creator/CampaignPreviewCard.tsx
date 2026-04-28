@@ -1,6 +1,7 @@
 import type { EditableCampaign } from '@/types/campaignCreator';
 import { mapDeliveryType } from '@/lib/campaignUtils';
 import { TIER_LIMITS } from '@/types/campaignMedia';
+import { Sparkles, Rocket, Package } from 'lucide-react';
 
 interface CampaignPreviewCardProps {
   campaign: EditableCampaign;
@@ -11,9 +12,16 @@ const PLATFORM_LABELS: Record<string, string> = {
   google_business: 'Google Business', multi_platform: 'Multi-Platform',
 };
 
+const TIER_ICON: Record<string, typeof Sparkles> = {
+  dragondash: Sparkles,
+  express: Rocket,
+  standard: Package,
+};
+
 export function CampaignPreviewCard({ campaign }: CampaignPreviewCardProps) {
   const tier = mapDeliveryType(campaign.delivery_type);
   const tierConfig = tier ? TIER_LIMITS[tier] : null;
+  const TierIcon = tier ? TIER_ICON[tier] ?? null : null;
 
   return (
     <div className="sticky top-4">
@@ -28,7 +36,8 @@ export function CampaignPreviewCard({ campaign }: CampaignPreviewCardProps) {
               ${campaign.budget_min}–${campaign.budget_max}
             </span>
             {tierConfig && (
-              <span className="bg-gray-100 rounded-full px-2 py-1 text-xs font-medium text-gray-700">
+              <span className="bg-gray-100 rounded-full px-2 py-1 text-xs font-medium text-gray-700 inline-flex items-center gap-1">
+                {TierIcon && <TierIcon className="w-3 h-3" />}
                 {tierConfig.label} · {tierConfig.timeframe}
               </span>
             )}

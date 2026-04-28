@@ -4,6 +4,7 @@ import { WhyExpander } from '@/components/guidance/WhyExpander';
 import { TIER_LIMITS } from '@/types/campaignMedia';
 import { mapDeliveryType } from '@/lib/campaignUtils';
 import { cn } from '@/lib/utils';
+import { Sparkles, Rocket, Package } from 'lucide-react';
 
 interface TierBadgeProps {
   deliveryType: 'standard' | 'expedited' | 'dragonrush';
@@ -32,7 +33,9 @@ export function TierBadge({ deliveryType, tierReasoning, onChange }: TierBadgePr
           deliveryType === 'expedited' ? 'bg-yellow-100 text-yellow-800' :
           'bg-gray-100 text-gray-800'
         )}>
-          {deliveryType === 'dragonrush' && '⚡'}
+          {deliveryType === 'dragonrush' && <Sparkles className="w-3.5 h-3.5 inline" />}
+          {deliveryType === 'expedited' && <Rocket className="w-3.5 h-3.5 inline" />}
+          {deliveryType === 'standard' && <Package className="w-3.5 h-3.5 inline" />}
           {config?.label || 'Standard'} · {config?.timeframe}
           {config && config.fee > 0 ? ` · +$${config.fee}` : ''}
         </span>
@@ -52,6 +55,7 @@ export function TierBadge({ deliveryType, tierReasoning, onChange }: TierBadgePr
                 'w-full text-left rounded-lg px-3 py-2 text-sm',
                 deliveryType === dbValue ? 'bg-teal-50 text-teal-800' : 'hover:bg-gray-50'
               )}>
+              {tier === 'dragondash' ? <Sparkles className="w-3.5 h-3.5 inline mr-1" /> : tier === 'express' ? <Rocket className="w-3.5 h-3.5 inline mr-1" /> : <Package className="w-3.5 h-3.5 inline mr-1" />}
               {TIER_LIMITS[tier].label} — {TIER_LIMITS[tier].timeframe}
               {TIER_LIMITS[tier].fee > 0 && ` (+$${TIER_LIMITS[tier].fee})`}
             </button>

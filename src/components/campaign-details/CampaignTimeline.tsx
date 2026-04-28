@@ -1,4 +1,4 @@
-import { Calendar, Clock } from 'lucide-react';
+import { Calendar, Clock, Sparkles, Rocket, Package } from 'lucide-react';
 import { CampaignDetailSection } from './CampaignDetailSection';
 
 interface CampaignTimelineProps {
@@ -6,24 +6,25 @@ interface CampaignTimelineProps {
   deadline?: string | null;
 }
 
-const TIER_TIMEFRAMES: Record<string, string> = {
-  dragonrush: 'Due 1–3 hours after acceptance',
-  expedited: 'Due 48 hours after acceptance',
-  standard: 'Due in 5–7 days',
+const TIER_TIMEFRAMES: Record<string, { icon: typeof Sparkles; text: string }> = {
+  dragonrush: { icon: Sparkles, text: 'Due 1–3 hours after acceptance' },
+  expedited: { icon: Rocket, text: 'Due 48 hours after acceptance' },
+  standard: { icon: Package, text: 'Due in 5–7 days' },
 };
 
 export function CampaignTimeline({ deliveryType, deadline }: CampaignTimelineProps) {
   if (!deliveryType && !deadline) return null;
 
-  const timeframe = deliveryType ? TIER_TIMEFRAMES[deliveryType] : null;
+  const tier = deliveryType ? TIER_TIMEFRAMES[deliveryType] : null;
 
   return (
     <CampaignDetailSection title="Timeline & Deadline">
       <div className="space-y-2">
-        {timeframe && (
+        {tier && (
           <div className="flex items-center gap-2">
+            <tier.icon className="w-4 h-4 text-dc-teal" />
             <Clock className="w-4 h-4 text-dc-teal" />
-            <span className="text-sm text-gray-700">{timeframe}</span>
+            <span className="text-sm text-gray-700">{tier.text}</span>
           </div>
         )}
         {deadline && (

@@ -1,7 +1,7 @@
 // src/components/campaign-details/CampaignHero.tsx
 
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, MapPin, Clock, Users } from 'lucide-react';
+import { ArrowLeft, MapPin, Clock, Users, Sparkles, Rocket, Package } from 'lucide-react';
 import type { Campaign } from '@/hooks/useCampaignQueries';
 import type { CampaignMediaItem } from '@/types/campaignMedia';
 import { getCoverImageUrl, getRelativeTime } from '@/lib/campaignUtils';
@@ -31,12 +31,12 @@ export function CampaignHero({
   const tierLabel = campaign.delivery_type
     ? TIER_LABELS[campaign.delivery_type] ?? 'Standard'
     : 'Standard';
-  const tierEmoji =
+  const TierIcon =
     campaign.delivery_type === 'dragonrush'
-      ? '🐉'
+      ? Sparkles
       : campaign.delivery_type === 'expedited'
-        ? '⚡'
-        : '📦';
+        ? Rocket
+        : Package;
   const businessName =
     (campaign.ai_analysis as Record<string, unknown>)?.business_name as
       | string
@@ -82,9 +82,10 @@ export function CampaignHero({
       </div>
 
       {/* Delivery tier badge */}
-      <div className="absolute top-4 right-4 bg-black/30 backdrop-blur-sm px-3 py-1 rounded-full">
+      <div className="absolute top-4 right-4 bg-black/30 backdrop-blur-sm px-3 py-1 rounded-full flex items-center gap-1.5">
+        <TierIcon className="w-3.5 h-3.5 text-white" />
         <span className="text-white text-xs font-semibold">
-          {tierEmoji} {tierLabel}
+          {tierLabel}
         </span>
       </div>
 
