@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -23,6 +23,22 @@ export const AuthForm = ({ mode, onError, preSelectedRole, onChangeRole }: AuthF
   const captchaRef = useRef<ReCaptchaHandle>(null);
 
   const role: Role | undefined = preSelectedRole;
+
+  const handleCaptchaExpired = useCallback(() => {
+    toast({
+      title: "CAPTCHA expired",
+      description: "Please verify again.",
+      variant: "destructive",
+    });
+  }, []);
+
+  const handleCaptchaError = useCallback(() => {
+    toast({
+      title: "CAPTCHA error",
+      description: "There was an error loading the CAPTCHA. Please refresh the page.",
+      variant: "destructive",
+    });
+  }, []);
 
   const handleSocialClick = () => {
     sonnerToast("Coming soon", {
@@ -312,20 +328,8 @@ export const AuthForm = ({ mode, onError, preSelectedRole, onChangeRole }: AuthF
           {/* reCAPTCHA Widget */}
           <ReCaptcha
             ref={captchaRef}
-            onExpired={() => {
-              toast({
-                title: "CAPTCHA expired",
-                description: "Please verify again.",
-                variant: "destructive",
-              });
-            }}
-            onError={() => {
-              toast({
-                title: "CAPTCHA error",
-                description: "There was an error loading the CAPTCHA. Please refresh the page.",
-                variant: "destructive",
-              });
-            }}
+            onExpired={handleCaptchaExpired}
+            onError={handleCaptchaError}
           />
 
           {/* Submit button */}
