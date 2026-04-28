@@ -88,7 +88,7 @@ export function useOrgUnits(orgId?: string | null) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('org_units')
-        .select('id, org_id, name, description, is_primary, deleted_at, created_at, updated_at')
+        .select('id, org_id, unit_type, name, address, website_url, logo_url, is_primary, deleted_at, created_at, updated_at')
         .eq('org_id', orgId!)
         .is('deleted_at', null)
         .order('is_primary', { ascending: false })
@@ -110,7 +110,7 @@ export function useActiveOrgUnit(orgUnitId?: string | null) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('org_units')
-        .select('id, org_id, name, description, is_primary, deleted_at, created_at, updated_at')
+        .select('id, org_id, unit_type, name, address, website_url, logo_url, is_primary, deleted_at, created_at, updated_at')
         .eq('id', orgUnitId!)
         .maybeSingle();
 
@@ -153,8 +153,10 @@ export function useUpdateActiveUnit() {
 
 interface CreateOrgUnitInput {
   name: string;
-  description?: string | null;
+  unit_type: 'location' | 'product';
   is_primary?: boolean;
+  address?: string | null;
+  website_url?: string | null;
 }
 
 /** Mutation to insert a new org_unit */
@@ -169,11 +171,13 @@ export function useCreateOrgUnit(orgId?: string | null) {
         .from('org_units')
         .insert({
           org_id: orgId,
+          unit_type: input.unit_type,
           name: input.name,
-          description: input.description ?? null,
           is_primary: input.is_primary ?? false,
+          address: input.address ?? null,
+          website_url: input.website_url ?? null,
         })
-        .select('id, org_id, name, description, is_primary, deleted_at, created_at, updated_at')
+        .select('id, org_id, unit_type, name, address, website_url, logo_url, is_primary, deleted_at, created_at, updated_at')
         .single();
 
       if (error) throw error;
@@ -190,8 +194,9 @@ export function useCreateOrgUnit(orgId?: string | null) {
 interface UpdateOrgUnitInput {
   id: string;
   name?: string;
-  description?: string | null;
   is_primary?: boolean;
+  address?: string | null;
+  website_url?: string | null;
 }
 
 /** Mutation to update an org_unit by id */
@@ -204,7 +209,7 @@ export function useUpdateOrgUnit() {
         .from('org_units')
         .update({ ...updates, updated_at: new Date().toISOString() })
         .eq('id', id)
-        .select('id, org_id, name, description, is_primary, deleted_at, created_at, updated_at')
+        .select('id, org_id, unit_type, name, address, website_url, logo_url, is_primary, deleted_at, created_at, updated_at')
         .single();
 
       if (error) throw error;
@@ -251,7 +256,7 @@ export function useMyOrgRole(orgId?: string | null) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('org_members')
-        .select('id, org_id, user_id, role, invitation_status, created_at, updated_at')
+        .select('id, org_id, user_id, role, invitation_status')
         .eq('org_id', orgId!)
         .eq('user_id', user!.id)
         .maybeSingle();

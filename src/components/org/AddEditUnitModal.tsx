@@ -88,7 +88,7 @@ export function AddEditUnitModal({
           unit_type: unitType,
           is_primary: form.isPrimary,
           ...fieldPayload,
-        } as any);
+        });
       }
       toast({
         title: isEditing ? 'Unit updated' : 'Unit created',
