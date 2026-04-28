@@ -103,6 +103,15 @@ function DonnyProviderWithAuth({ children }: { children: React.ReactNode }) {
   return <DonnyProvider userRole={userRole}>{children}</DonnyProvider>;
 }
 
+function DashboardRedirect() {
+  const { profile } = useAuth();
+  const role = profile?.role as UserRole | undefined;
+  if (role === 'restaurant_owner') return <Navigate to="/dashboard/business" replace />;
+  if (role === 'brand') return <Navigate to="/dashboard/brand" replace />;
+  if (role === 'content_creator') return <Navigate to="/dashboard/creator" replace />;
+  return <Navigate to="/auth" replace />;
+}
+
 function AnimatedRoutes() {
   const location = useLocation();
   return (
@@ -138,6 +147,9 @@ function AnimatedRoutes() {
           <Route path="/brand-profile-setup" element={<Navigate to="/profile/setup" replace />} />
           <Route path="/profile/creator" element={<Navigate to="/profile/setup" replace />} />
           <Route path="/creator-profile-setup" element={<Navigate to="/profile/setup" replace />} />
+
+          {/* Dashboard redirect — routes /dashboard to role-specific dashboard */}
+          <Route path="/dashboard" element={<ProtectedRoute><DashboardRedirect /></ProtectedRoute>} />
 
           {/* Protected Dashboard Routes */}
           <Route path="/dashboard/business" element={<ProtectedRoute><BusinessRoute><BusinessDashboard /></BusinessRoute></ProtectedRoute>} />
