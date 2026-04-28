@@ -85,7 +85,7 @@ export function CampaignEditor({
             <label className="text-xs font-medium text-gray-500">Per-Creator Cap</label>
             <div className="flex items-center gap-1 mt-1">
               <span className="text-sm text-gray-500">$</span>
-              <Input type="number" value={campaign.per_creator_cap}
+              <Input type="number" value={campaign.per_creator_cap || ''}
                 onChange={(e) => updateField('per_creator_cap', Number(e.target.value))} className="text-sm" />
             </div>
           </div>
@@ -94,12 +94,12 @@ export function CampaignEditor({
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="text-xs font-medium text-gray-500">Usage Rights (days)</label>
-            <Input type="number" value={campaign.usage_rights_days}
+            <Input type="number" value={campaign.usage_rights_days || ''}
               onChange={(e) => updateField('usage_rights_days', Number(e.target.value))} className="mt-1 text-sm" />
           </div>
           <div>
             <label className="text-xs font-medium text-gray-500">Exclusivity (days)</label>
-            <Input type="number" value={campaign.exclusivity_days}
+            <Input type="number" value={campaign.exclusivity_days || ''}
               onChange={(e) => updateField('exclusivity_days', Number(e.target.value))} className="mt-1 text-sm" />
           </div>
         </div>
@@ -131,7 +131,7 @@ export function CampaignEditor({
         </div>
         <div>
           <label className="text-xs font-medium text-gray-500">Target Creator Count</label>
-          <Input type="number" min={1} value={campaign.target_creator_count}
+          <Input type="number" min={1} value={campaign.target_creator_count || ''}
             onChange={(e) => updateField('target_creator_count', Number(e.target.value))} className="mt-1 text-sm w-24" />
         </div>
         <div>
@@ -166,7 +166,7 @@ export function CampaignEditor({
               <label className="text-xs font-medium text-gray-500">Budget Pool</label>
               <div className="flex items-center gap-1 mt-1">
                 <span className="text-sm text-gray-500">$</span>
-                <Input type="number" value={brandFields.budget_pool}
+                <Input type="number" value={brandFields.budget_pool || ''}
                   onChange={(e) => updateBrandField('budget_pool', Number(e.target.value))} className="text-sm" />
               </div>
             </div>

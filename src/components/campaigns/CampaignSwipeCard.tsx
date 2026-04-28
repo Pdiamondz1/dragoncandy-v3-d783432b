@@ -294,6 +294,11 @@ const CardContent: React.FC<CardContentProps> = ({ campaign, onViewDetail, match
           <button
             onMouseDown={(e) => e.stopPropagation()}
             onTouchStart={(e) => e.stopPropagation()}
+            onTouchEnd={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              onViewDetail(campaign);
+            }}
             onClick={(e) => {
               e.stopPropagation();
               onViewDetail(campaign);

@@ -14,12 +14,12 @@ export function BudgetSlider({ min, max, onChangeMin, onChangeMax }: BudgetSlide
       <div className="flex items-center gap-3 mt-2">
         <div className="flex items-center gap-1">
           <span className="text-sm text-gray-500">$</span>
-          <Input type="number" value={min} onChange={(e) => onChangeMin(Number(e.target.value))} className="w-24 text-sm" />
+          <Input type="number" value={min || ''} onChange={(e) => onChangeMin(Number(e.target.value))} className="w-24 text-sm" />
         </div>
         <span className="text-gray-400">—</span>
         <div className="flex items-center gap-1">
           <span className="text-sm text-gray-500">$</span>
-          <Input type="number" value={max} onChange={(e) => onChangeMax(Number(e.target.value))} className="w-24 text-sm" />
+          <Input type="number" value={max || ''} onChange={(e) => onChangeMax(Number(e.target.value))} className="w-24 text-sm" />
         </div>
       </div>
     </div>
