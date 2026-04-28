@@ -128,7 +128,7 @@ export const FileUploadSection = ({
   };
 
   const truncateName = (name: string) =>
-    name.length > 24 ? name.slice(0, 21) + '...' : name;
+    name.length > 24 ? name.slice(0, 21) + '…' : name;
 
   const logoPreviewSrc = localLogoPreview || logoUrl;
 
@@ -176,7 +176,7 @@ export const FileUploadSection = ({
           >
             <Upload className="mx-auto h-10 w-10 text-dc-teal mb-2" />
             <p className="text-sm font-medium text-gray-700">
-              {logoUploading ? 'Uploading...' : 'Upload your restaurant logo'}
+              {logoUploading ? 'Uploading…' : 'Upload your restaurant logo'}
             </p>
             <p className="text-xs text-gray-400 mt-1">
               JPG, PNG, WebP up to 10MB
@@ -215,7 +215,7 @@ export const FileUploadSection = ({
           <Upload className="mx-auto h-10 w-10 text-dc-teal mb-2" />
           <p className="text-sm font-medium text-gray-700">
             {sampleUploading
-              ? `Uploading ${sampleProgress.done} of ${sampleProgress.total}...`
+              ? `Uploading ${sampleProgress.done} of ${sampleProgress.total}…`
               : 'Upload sample or preferred content'}
           </p>
           <p className="text-xs text-gray-400 mt-1">

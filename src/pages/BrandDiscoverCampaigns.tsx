@@ -231,7 +231,7 @@ const BrandDiscoverCampaigns = () => {
                 disabled={isSubmitting || !sponsorshipAmount || !proposalMessage}
                 className="w-full rounded-full bg-dc-teal text-white font-bold py-3"
               >
-                {isSubmitting ? 'Submitting...' : 'Submit Proposal'}
+                {isSubmitting ? 'Submitting…' : 'Submit Proposal'}
               </Button>
               <Button
                 variant="outline"

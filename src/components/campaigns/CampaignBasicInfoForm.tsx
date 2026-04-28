@@ -28,6 +28,7 @@ const CampaignBasicInfoForm: React.FC<CampaignBasicInfoFormProps> = ({
           <Label htmlFor="title">Campaign Title *</Label>
           <Input
             id="title"
+            name="title"
             value={formData.title}
             onChange={(e) => onInputChange('title', e.target.value)}
             placeholder="Enter campaign title"
@@ -38,6 +39,7 @@ const CampaignBasicInfoForm: React.FC<CampaignBasicInfoFormProps> = ({
           <Label htmlFor="description">Description</Label>
           <Textarea
             id="description"
+            name="description"
             value={formData.description}
             onChange={(e) => onInputChange('description', e.target.value)}
             placeholder="Describe your campaign"
@@ -49,6 +51,7 @@ const CampaignBasicInfoForm: React.FC<CampaignBasicInfoFormProps> = ({
           <Label htmlFor="goals">Campaign Goals</Label>
           <Textarea
             id="goals"
+            name="goals"
             value={formData.goals}
             onChange={(e) => onInputChange('goals', e.target.value)}
             placeholder="What do you want to achieve with this campaign?"

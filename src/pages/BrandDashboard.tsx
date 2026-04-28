@@ -54,10 +54,10 @@ const BrandDashboard = () => {
   }
 
   const brandStats: StatItem[] = [
-    { label: 'Active Campaigns', value: statsLoading ? '...' : stats?.activeCampaigns ?? 0, icon: Rocket },
-    { label: 'Total Spend', value: statsLoading ? '...' : formatSpend(stats?.totalSpend ?? 0), icon: DollarSign },
-    { label: 'Creators', value: statsLoading ? '...' : stats?.creatorsConnected ?? 0, subtitle: 'In your network', icon: Users },
-    { label: 'Avg. ROI', value: statsLoading ? '...' : `${stats?.avgROI ?? 0}%`, icon: TrendingUp },
+    { label: 'Active Campaigns', value: statsLoading ? '…' : stats?.activeCampaigns ?? 0, icon: Rocket },
+    { label: 'Total Spend', value: statsLoading ? '…' : formatSpend(stats?.totalSpend ?? 0), icon: DollarSign },
+    { label: 'Creators', value: statsLoading ? '…' : stats?.creatorsConnected ?? 0, subtitle: 'In your network', icon: Users },
+    { label: 'Avg. ROI', value: statsLoading ? '…' : `${stats?.avgROI ?? 0}%`, icon: TrendingUp },
   ];
 
   const brandActions: [QuickAction, QuickAction] = [

@@ -43,7 +43,7 @@ const config: Record<
   },
   pending: {
     label: 'Syncing',
-    tooltip: 'Pushing discount to Toast...',
+    tooltip: 'Pushing discount to Toast…',
     dot: 'bg-amber-400',
     ring: 'ring-2 ring-amber-200 ring-offset-1',
     text: 'text-amber-700',

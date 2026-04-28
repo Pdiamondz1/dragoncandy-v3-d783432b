@@ -94,7 +94,7 @@ const CampaignEditPage: React.FC = () => {
             className="text-dc-pink-accent mr-2"
             aria-label="Back"
           >
-            <ArrowLeft className="h-5 w-5" />
+            <ArrowLeft className="h-5 w-5" aria-hidden="true" />
           </button>
           <h1 className="flex-1 text-center font-sans text-base font-bold text-gray-900 uppercase tracking-wide">
             Edit Campaign
@@ -104,7 +104,7 @@ const CampaignEditPage: React.FC = () => {
             className="text-dc-teal"
             aria-label="Preview"
           >
-            <Eye className="h-5 w-5" />
+            <Eye className="h-5 w-5" aria-hidden="true" />
           </button>
         </div>
 
@@ -143,7 +143,7 @@ const CampaignEditPage: React.FC = () => {
               className="w-full rounded-full bg-dc-teal text-white font-bold py-3 flex items-center justify-center gap-2 disabled:opacity-60"
             >
               <Save className="h-4 w-4" aria-hidden="true" />
-              {isSaving ? 'Publishing...' : 'Publish Campaign'}
+              {isSaving ? 'Publishing…' : 'Publish Campaign'}
             </button>
             <button
               onClick={() => handleSaveWithNavigation('draft')}

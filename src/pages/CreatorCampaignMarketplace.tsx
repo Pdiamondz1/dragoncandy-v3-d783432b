@@ -157,7 +157,7 @@ const CreatorCampaignMarketplace = () => {
           <div className="flex-1">
             <h1 className="text-xl font-bold text-gray-900 leading-tight">Campaigns</h1>
             <div className="flex items-center gap-1 mt-0.5">
-              <MapPin className="w-3.5 h-3.5 text-dc-pink-accent flex-shrink-0" />
+              <MapPin className="w-3.5 h-3.5 text-dc-pink-accent flex-shrink-0" aria-hidden="true" />
               <span className="text-xs text-gray-600">
                 {availableFilteredCount} campaign{availableFilteredCount !== 1 ? 's' : ''} available
               </span>
@@ -271,7 +271,7 @@ const CreatorCampaignMarketplace = () => {
 
               {availableCampaigns.length === 0 && donnyPicks.length === 0 ? (
                 <div className="border-2 border-dc-teal rounded-2xl p-10 text-center max-w-md mx-auto">
-                  <Target className="h-10 w-10 text-dc-teal mx-auto mb-3" />
+                  <Target className="h-10 w-10 text-dc-teal mx-auto mb-3" aria-hidden="true" />
                   <h3 className="font-bold text-gray-900 mb-1">No campaigns available</h3>
                   <p className="text-sm text-gray-500">You've reviewed all available campaigns. Check back soon for new opportunities!</p>
                 </div>

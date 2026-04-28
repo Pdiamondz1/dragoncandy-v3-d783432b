@@ -72,7 +72,7 @@ export function InviteToCampaignModal({
             </label>
             <Select value={selectedCampaignId} onValueChange={setSelectedCampaignId}>
               <SelectTrigger className="mt-1">
-                <SelectValue placeholder="Choose a campaign..." />
+                <SelectValue placeholder="Choose a campaign…" />
               </SelectTrigger>
               <SelectContent>
                 {(campaigns || []).map((c) => {
@@ -94,7 +94,7 @@ export function InviteToCampaignModal({
             <Textarea
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              placeholder="Tell them why you think they'd be a great fit..."
+              placeholder="Tell them why you think they'd be a great fit…"
               className="mt-1 resize-none"
               rows={3}
             />
@@ -106,7 +106,7 @@ export function InviteToCampaignModal({
             className="w-full rounded-full bg-dc-teal text-white font-bold"
           >
             <Send className="h-4 w-4 mr-2" />
-            {inviteCreator.isPending ? 'Sending...' : 'Send Invitation'}
+            {inviteCreator.isPending ? 'Sending…' : 'Send Invitation'}
           </Button>
         </div>
       </DialogContent>

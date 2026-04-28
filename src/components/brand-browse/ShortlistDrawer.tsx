@@ -206,7 +206,7 @@ export const ShortlistDrawer: React.FC<ShortlistDrawerProps> = ({
                 >
                   <Send className="h-4 w-4" />
                   {isBulkInviting
-                    ? 'Sending invitations...'
+                    ? 'Sending invitations…'
                     : selectedCampaignId
                       ? `Invite all ${count} to campaign`
                       : 'Select a campaign first'}

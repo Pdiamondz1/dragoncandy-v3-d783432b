@@ -139,7 +139,7 @@ export function DeleteUserSheet({ open, onOpenChange }: DeleteUserSheetProps) {
             disabled={!confirmed || deleting || !!blocked}
             className="flex-1 rounded-full"
           >
-            {deleting ? 'Deleting...' : 'Delete my account'}
+            {deleting ? 'Deleting…' : 'Delete my account'}
           </Button>
         </SheetFooter>
       </SheetContent>

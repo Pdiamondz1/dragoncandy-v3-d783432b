@@ -91,7 +91,7 @@ const ProjectFileUpload: React.FC<ProjectFileUploadProps> = ({
               onClick={onUpload}
               disabled={selectedFiles.length === 0 || isUploading || !user}
             >
-              {isUploading ? 'Uploading...' : `Upload ${selectedFiles.length} file(s)`}
+              {isUploading ? 'Uploading…' : `Upload ${selectedFiles.length} file(s)`}
             </Button>
           </div>
         </div>

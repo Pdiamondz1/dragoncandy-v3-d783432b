@@ -5,8 +5,20 @@
 DragonCandy (dragoncandy.io) is a marketplace platform for social media content delivery,
 connecting brands/businesses with content creators. Buyers (brands) post campaigns,
 creators apply and deliver content, with payments and real-time communication in between.
+Donny AI, aka "Donny", is the super AI agent that will trascend the platform into plugins, extensions,
+and APIs into an assortment of devices and wearables. We want to optimize the DragonCandy experience by
+doing more with users typing LESS. The LESS typing for content delivery the better.
 
 \---
+
+## Elon Musk Algorithm
+
+What exactly is the Algorithm? A series of deceptively simple steps DragonCandy development abides by:
+Question every requirement.
+Delete every possible step in a process (or part).
+Simplify and optimize.
+Accelerate cycle time.
+Automate.
 
 ## Tech Stack
 
@@ -30,6 +42,16 @@ creators apply and deliver content, with payments and real-time communication in
 * Always add **error handling** for Supabase queries and mutations
 * Always handle **loading and error states** in UI components
 * Use **named exports** for components, **default exports** only for pages
+
+## Code Review Standards
+After completing any implementation, review the code for:
+- Functions longer than 30 lines (likely doing too much)
+- Logic duplicated more than twice (extract to utility)
+- Any `any` type usage in TypeScript (replace with real types)
+- Components with more than 3 props that could be grouped into an object
+- Missing error handling on async operations
+
+Run /simplify before presenting code to the user.
 
 \---
 

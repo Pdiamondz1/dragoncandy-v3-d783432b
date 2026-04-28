@@ -108,7 +108,7 @@ const AnonymousCampaignWizard: React.FC = () => {
                 </div>
                 <div>
                   <span className="font-bold text-gray-900 text-sm">Step 2: AI Campaign Analysis</span>
-                  <Brain className="h-4 w-4 text-dc-teal inline ml-2" />
+                  <Brain className="h-4 w-4 text-dc-teal inline ml-2" aria-hidden="true" />
                 </div>
               </div>
               <p className="text-gray-500 text-xs mt-2">

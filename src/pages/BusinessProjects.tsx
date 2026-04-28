@@ -84,7 +84,7 @@ const BusinessProjects: React.FC = () => {
       if (paymentStatus === 'success') {
         setVerifyingPayment(true);
         toast({
-          title: 'Verifying payment...',
+          title: 'Verifying payment…',
           description: 'Please wait while we confirm your escrow payment.',
         });
 
@@ -480,7 +480,7 @@ const BusinessProjects: React.FC = () => {
                               className="rounded-full bg-amber-600 hover:bg-amber-700 text-white font-bold"
                             >
                               {requestingId === project.id ? (
-                                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Processing...</>
+                                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Processing…</>
                               ) : (
                                 <><DollarSign className="h-4 w-4 mr-2" />Approve & Release Payment</>
                               )}

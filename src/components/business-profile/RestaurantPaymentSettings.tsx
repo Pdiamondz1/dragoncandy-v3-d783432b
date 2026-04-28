@@ -39,7 +39,7 @@ const ViewStripeDashboardButton = () => {
   return (
     <Button onClick={handleClick} disabled={loading} variant="outline" size="sm">
       {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <LayoutDashboard className="w-4 h-4 mr-2" />}
-      {loading ? 'Opening...' : 'View Stripe Dashboard'}
+      {loading ? 'Opening…' : 'View Stripe Dashboard'}
     </Button>
   );
 };
@@ -73,7 +73,7 @@ export const RestaurantPaymentSettings = () => {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('stripe_onboarding') === 'complete') {
-      toast({ title: 'Stripe setup updated', description: 'Checking your account status...' });
+      toast({ title: 'Stripe setup updated', description: 'Checking your account status…' });
       checkPayoutStatus();
       window.history.replaceState({}, '', window.location.pathname);
     } else if (params.get('stripe_refresh') === 'true') {
@@ -153,7 +153,7 @@ export const RestaurantPaymentSettings = () => {
             </p>
             <Button onClick={handleConnectStripe} disabled={connecting} className="bg-pink-600 hover:bg-pink-700">
               <ExternalLink className="w-4 h-4 mr-2" />
-              {connecting ? 'Connecting...' : 'Connect Stripe Account'}
+              {connecting ? 'Connecting…' : 'Connect Stripe Account'}
             </Button>
           </div>
         )}
@@ -165,7 +165,7 @@ export const RestaurantPaymentSettings = () => {
             </p>
             <Button onClick={handleConnectStripe} disabled={connecting} variant="outline">
               <ExternalLink className="w-4 h-4 mr-2" />
-              {connecting ? 'Loading...' : 'Complete Setup'}
+              {connecting ? 'Loading…' : 'Complete Setup'}
             </Button>
           </div>
         )}
@@ -194,7 +194,7 @@ export const RestaurantPaymentSettings = () => {
             </p>
             {payoutStatus?.onboardingComplete ? (
               <Button onClick={handleWithdraw} disabled={withdrawing} size="sm" className="bg-pink-600 hover:bg-pink-700">
-                {withdrawing ? 'Withdrawing...' : 'Withdraw to Stripe'}
+                {withdrawing ? 'Withdrawing…' : 'Withdraw to Stripe'}
               </Button>
             ) : (
               <p className="text-xs text-yellow-700">Connect Stripe above to withdraw these funds.</p>

@@ -293,7 +293,7 @@ export default function ProfileSetup() {
             }`}
           >
             {loading
-              ? 'Setting up...'
+              ? 'Setting up…'
               : isCreator
                 ? 'Go Live'
                 : 'Start Finding Creators'}

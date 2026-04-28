@@ -135,7 +135,7 @@ export const CompletedCampaignCard: React.FC<CompletedCampaignCardProps> = ({ co
                 className="flex-1 bg-dc-teal text-white rounded-full py-2 text-xs font-bold hover:bg-dc-teal-dark transition-colors disabled:opacity-50 flex items-center justify-center gap-1"
               >
                 {createReview.isPending ? (
-                  <><Loader2 className="w-3 h-3 animate-spin" /> Submitting...</>
+                  <><Loader2 className="w-3 h-3 animate-spin" /> Submitting…</>
                 ) : (
                   'Submit Review'
                 )}

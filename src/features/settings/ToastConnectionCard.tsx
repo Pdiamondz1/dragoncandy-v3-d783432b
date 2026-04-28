@@ -333,7 +333,7 @@ export const ToastConnectionCard = () => {
                     ) : (
                       <Wifi className="w-4 h-4 mr-2" />
                     )}
-                    {connecting ? 'Connecting...' : 'Connect Toast'}
+                    {connecting ? 'Connecting…' : 'Connect Toast'}
                   </Button>
                 </div>
               </div>
@@ -397,7 +397,7 @@ export const ToastConnectionCard = () => {
                   ) : (
                     <RefreshCw className="w-4 h-4 mr-2" />
                   )}
-                  {testing ? 'Testing...' : 'Test Connection'}
+                  {testing ? 'Testing…' : 'Test Connection'}
                 </Button>
                 <Button
                   onClick={() => setDisconnectOpen(true)}
@@ -441,7 +441,7 @@ export const ToastConnectionCard = () => {
               ) : (
                 <Unplug className="w-4 h-4 mr-2" />
               )}
-              {disconnecting ? 'Disconnecting...' : 'Yes, Disconnect'}
+              {disconnecting ? 'Disconnecting…' : 'Yes, Disconnect'}
             </Button>
           </DialogFooter>
         </DialogContent>

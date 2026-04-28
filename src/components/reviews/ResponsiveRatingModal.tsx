@@ -88,7 +88,7 @@ const ResponsiveRatingModal: React.FC<ResponsiveRatingModalProps> = ({
               </Label>
               <Textarea
                 id="review-text"
-                placeholder="Share your experience working together..."
+                placeholder="Share your experience working together…"
                 value={reviewText}
                 onChange={(e) => setReviewText(e.target.value)}
                 rows={4}
@@ -107,7 +107,7 @@ const ResponsiveRatingModal: React.FC<ResponsiveRatingModalProps> = ({
             disabled={rating === 0 || submitRating.isPending}
             className="flex-1"
           >
-            {submitRating.isPending ? 'Submitting...' : 'Submit Review'}
+            {submitRating.isPending ? 'Submitting…' : 'Submit Review'}
           </Button>
         </div>
       </DialogContent>

@@ -98,7 +98,7 @@ const AdvancedCampaignFilters: React.FC<AdvancedCampaignFiltersProps> = ({
         </div>
         {hasActiveFilters && (
           <Button variant="ghost" size="sm" onClick={onReset}>
-            <X className="h-4 w-4 mr-1" />
+            <X className="h-4 w-4 mr-1" aria-hidden="true" />
             Clear
           </Button>
         )}
@@ -165,7 +165,7 @@ const AdvancedCampaignFilters: React.FC<AdvancedCampaignFiltersProps> = ({
         <CollapsibleTrigger asChild>
           <Button variant="outline" className="w-full justify-between">
             Advanced Filters
-            <ChevronDown className={`h-4 w-4 transition-transform ${isAdvancedOpen ? 'rotate-180' : ''}`} />
+            <ChevronDown className={`h-4 w-4 transition-transform ${isAdvancedOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
           </Button>
         </CollapsibleTrigger>
 

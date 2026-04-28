@@ -174,7 +174,7 @@ function SubmissionRow({
             <DialogDescription>Provide a reason for rejecting this submission.</DialogDescription>
           </DialogHeader>
           <Textarea
-            placeholder="Reason for rejection..."
+            placeholder="Reason for rejection…"
             value={reason}
             onChange={(e) => setReason(e.target.value)}
           />

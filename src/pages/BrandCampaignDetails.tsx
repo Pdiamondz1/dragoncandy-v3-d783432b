@@ -43,7 +43,7 @@ const BrandCampaignDetails = () => {
     return (
       <DashboardLayout userRole="brand">
         <div className="min-h-screen bg-white flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-dc-teal" />
+          <Loader2 className="h-8 w-8 animate-spin text-dc-teal" aria-hidden="true" />
         </div>
       </DashboardLayout>
     );
@@ -53,7 +53,7 @@ const BrandCampaignDetails = () => {
     return (
       <DashboardLayout userRole="brand">
         <div className="min-h-screen bg-white flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-dc-teal" />
+          <Loader2 className="h-8 w-8 animate-spin text-dc-teal" aria-hidden="true" />
         </div>
       </DashboardLayout>
     );
@@ -95,7 +95,7 @@ const BrandCampaignDetails = () => {
               className="text-white mr-2"
               aria-label="Back to Discovery"
             >
-              <ArrowLeft className="h-5 w-5" />
+              <ArrowLeft className="h-5 w-5" aria-hidden="true" />
             </button>
             <h1 className="flex-1 text-center font-sans text-base font-bold text-white uppercase tracking-wide truncate px-2">
               {campaign.title}
@@ -120,7 +120,7 @@ const BrandCampaignDetails = () => {
           {campaign.description && (
             <div className="border-2 border-dc-teal rounded-2xl p-4">
               <div className="flex items-center gap-2 mb-2">
-                <FileText className="h-4 w-4 text-dc-teal" />
+                <FileText className="h-4 w-4 text-dc-teal" aria-hidden="true" />
                 <span className="font-sans text-xs font-semibold uppercase tracking-wider text-gray-500">
                   Description
                 </span>
@@ -134,7 +134,7 @@ const BrandCampaignDetails = () => {
             <div className="flex items-stretch rounded-2xl overflow-hidden border border-gray-100">
               {campaign.budget_min && campaign.budget_max && (
                 <div className="flex-1 flex flex-col items-center py-4 px-2 border-r border-dc-pink">
-                  <DollarSign className="h-4 w-4 text-dc-teal mb-1" />
+                  <DollarSign className="h-4 w-4 text-dc-teal mb-1" aria-hidden="true" />
                   <span className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-0.5">Budget</span>
                   <span className="text-sm font-bold text-gray-900 text-center leading-tight">
                     ${campaign.budget_min.toLocaleString()}–${campaign.budget_max.toLocaleString()}
@@ -143,7 +143,7 @@ const BrandCampaignDetails = () => {
               )}
               {campaign.deadline && (
                 <div className="flex-1 flex flex-col items-center py-4 px-2">
-                  <Calendar className="h-4 w-4 text-dc-teal mb-1" />
+                  <Calendar className="h-4 w-4 text-dc-teal mb-1" aria-hidden="true" />
                   <span className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-0.5">Deadline</span>
                   <span className="text-sm font-bold text-gray-900 text-center leading-tight">
                     {format(new Date(campaign.deadline), 'MMM dd, yyyy')}
@@ -157,7 +157,7 @@ const BrandCampaignDetails = () => {
           {campaign.platforms && campaign.platforms.length > 0 && (
             <div>
               <div className="flex items-center gap-2 mb-2">
-                <Target className="h-4 w-4 text-dc-teal" />
+                <Target className="h-4 w-4 text-dc-teal" aria-hidden="true" />
                 <span className="font-sans text-xs font-semibold uppercase tracking-wider text-gray-500">
                   Target Platforms
                 </span>
@@ -218,21 +218,21 @@ const BrandCampaignDetails = () => {
             <div className="flex items-stretch rounded-2xl overflow-hidden border border-gray-100">
               {campaign.per_creator_cap != null && (
                 <div className="flex-1 flex flex-col items-center py-4 px-2 border-r border-dc-pink">
-                  <UserCheck className="h-4 w-4 text-dc-teal mb-1" />
+                  <UserCheck className="h-4 w-4 text-dc-teal mb-1" aria-hidden="true" />
                   <span className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-0.5">Per-Creator Cap</span>
                   <span className="text-sm font-bold text-gray-900">${campaign.per_creator_cap}</span>
                 </div>
               )}
               {campaign.usage_rights_days != null && (
                 <div className="flex-1 flex flex-col items-center py-4 px-2 border-r border-dc-pink">
-                  <Shield className="h-4 w-4 text-dc-teal mb-1" />
+                  <Shield className="h-4 w-4 text-dc-teal mb-1" aria-hidden="true" />
                   <span className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-0.5">Usage Rights</span>
                   <span className="text-sm font-bold text-gray-900">{campaign.usage_rights_days} days</span>
                 </div>
               )}
               {campaign.exclusivity_days != null && (
                 <div className="flex-1 flex flex-col items-center py-4 px-2">
-                  <Lock className="h-4 w-4 text-dc-teal mb-1" />
+                  <Lock className="h-4 w-4 text-dc-teal mb-1" aria-hidden="true" />
                   <span className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-0.5">Exclusivity</span>
                   <span className="text-sm font-bold text-gray-900">{campaign.exclusivity_days} days</span>
                 </div>
@@ -245,14 +245,14 @@ const BrandCampaignDetails = () => {
             <div className="flex items-stretch rounded-2xl overflow-hidden border border-gray-100">
               {campaign.geographic_scope && (
                 <div className="flex-1 flex flex-col items-center py-4 px-2 border-r border-dc-pink">
-                  <Globe className="h-4 w-4 text-dc-teal mb-1" />
+                  <Globe className="h-4 w-4 text-dc-teal mb-1" aria-hidden="true" />
                   <span className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-0.5">Geographic Scope</span>
                   <span className="text-sm font-bold text-gray-900 capitalize">{campaign.geographic_scope}</span>
                 </div>
               )}
               {campaign.creator_count != null && (
                 <div className="flex-1 flex flex-col items-center py-4 px-2">
-                  <Users className="h-4 w-4 text-dc-teal mb-1" />
+                  <Users className="h-4 w-4 text-dc-teal mb-1" aria-hidden="true" />
                   <span className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-0.5">Target Creators</span>
                   <span className="text-sm font-bold text-gray-900">{campaign.creator_count}</span>
                 </div>
@@ -264,7 +264,7 @@ const BrandCampaignDetails = () => {
           {campaign.target_creator_personas && campaign.target_creator_personas.length > 0 && (
             <div>
               <div className="flex items-center gap-2 mb-2">
-                <Target className="h-4 w-4 text-dc-teal" />
+                <Target className="h-4 w-4 text-dc-teal" aria-hidden="true" />
                 <span className="font-sans text-xs font-semibold uppercase tracking-wider text-gray-500">
                   Target Audience
                 </span>
@@ -283,7 +283,7 @@ const BrandCampaignDetails = () => {
           {campaign.hashtag_requirements && (
             <div className="border-2 border-dc-teal rounded-2xl p-4">
               <div className="flex items-center gap-2 mb-2">
-                <Hash className="h-4 w-4 text-dc-teal" />
+                <Hash className="h-4 w-4 text-dc-teal" aria-hidden="true" />
                 <span className="font-sans text-xs font-semibold uppercase tracking-wider text-gray-500">
                   Hashtags
                 </span>
@@ -315,9 +315,9 @@ const BrandCampaignDetails = () => {
             className="w-full rounded-full bg-dc-teal text-white font-bold py-3 flex items-center justify-center gap-2 disabled:opacity-60"
           >
             {createConversation.isPending ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
             ) : (
-              <MessageSquare className="h-4 w-4" />
+              <MessageSquare className="h-4 w-4" aria-hidden="true" />
             )}
             Contact Restaurant
           </button>

@@ -226,14 +226,14 @@ const CampaignDetailsPage: React.FC = () => {
         <div className="relative h-40 bg-gradient-to-br from-dc-teal to-dc-teal-dark">
           <div className="absolute top-0 left-0 right-0 px-4 py-3 flex items-center">
             <button onClick={() => navigate(backHref)} className="text-white mr-2" aria-label="Back">
-              <ArrowLeft className="h-5 w-5" />
+              <ArrowLeft className="h-5 w-5" aria-hidden="true" />
             </button>
             <h1 className="flex-1 text-center font-sans text-base font-bold text-white uppercase tracking-wide truncate px-2">
               {campaign.title}
             </h1>
             {isOwnCampaign && (
               <button onClick={() => navigate(`/dashboard/business/campaigns/${campaign.id}/edit`)} className="text-white" aria-label="Edit campaign">
-                <Edit className="h-5 w-5" />
+                <Edit className="h-5 w-5" aria-hidden="true" />
               </button>
             )}
             {!isOwnCampaign && <span className="w-5" />}

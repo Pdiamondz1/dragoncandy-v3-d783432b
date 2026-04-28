@@ -276,7 +276,7 @@ export const EnhancedBusinessProfileForm = ({ formData, onInputChange }: Enhance
           id="description"
           value={formData.description}
           onChange={(e) => onInputChange('description', e.target.value)}
-          placeholder="Tell us about your restaurant..."
+          placeholder="Tell us about your restaurant…"
           rows={4}
         />
       </div>

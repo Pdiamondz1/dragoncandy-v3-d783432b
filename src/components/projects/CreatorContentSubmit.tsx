@@ -250,7 +250,7 @@ const CreatorContentSubmit: React.FC<CreatorContentSubmitProps> = ({
             {submitContent.isPending ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Submitting...
+                Submitting…
               </>
             ) : (
               <>

@@ -17,10 +17,10 @@ interface GeneratedBrief {
 }
 
 const PROGRESS_STEPS = [
-  'Scanning website...',
-  'Analyzing brand...',
-  'Generating brief...',
-  'Polishing results...',
+  'Scanning website…',
+  'Analyzing brand…',
+  'Generating brief…',
+  'Polishing results…',
 ] as const;
 
 export function BriefGeneratorPreview() {

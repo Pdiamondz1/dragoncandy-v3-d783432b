@@ -90,7 +90,7 @@ export default function HelpCenter() {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search help..."
+            placeholder="Search help…"
             className="w-full pl-10 pr-4 py-3 rounded-full border border-gray-200 text-sm focus:outline-none focus:border-dc-teal"
           />
         </div>

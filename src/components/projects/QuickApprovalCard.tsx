@@ -217,7 +217,7 @@ export const QuickApprovalCard: React.FC<QuickApprovalCardProps> = ({
               {requestRevision.isPending ? (
                 <>
                   <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                  Sending...
+                  Sending…
                 </>
               ) : (
                 <>

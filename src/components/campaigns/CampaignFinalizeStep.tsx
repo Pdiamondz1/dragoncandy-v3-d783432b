@@ -422,7 +422,7 @@ const CampaignFinalizeStep: React.FC<CampaignFinalizeStepProps> = ({
                     {deliverable.description && (
                       <p className="text-xs text-gray-400 truncate">
                         {deliverable.description.length > 80
-                          ? `${deliverable.description.slice(0, 80)}...`
+                          ? `${deliverable.description.slice(0, 80)}…`
                           : deliverable.description}
                       </p>
                     )}
@@ -517,7 +517,7 @@ const CampaignFinalizeStep: React.FC<CampaignFinalizeStepProps> = ({
                       <Textarea
                         {...field}
                         className="min-h-[100px] resize-none"
-                        placeholder="Describe your campaign..."
+                        placeholder="Describe your campaign…"
                       />
                     </FormControl>
                     <FormMessage />
@@ -652,7 +652,7 @@ const CampaignFinalizeStep: React.FC<CampaignFinalizeStepProps> = ({
                 }`}
               >
                 {isCreating ? (
-                  'Creating...'
+                  'Creating…'
                 ) : form.watch('publishImmediately') ? (
                   <>
                     <Rocket className="h-4 w-4 shrink-0" />

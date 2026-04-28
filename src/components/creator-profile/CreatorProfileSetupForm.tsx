@@ -76,7 +76,7 @@ export const CreatorProfileSetupForm = ({
         className="w-full bg-pink-600 hover:bg-pink-700"
         disabled={loading || !isFormValid}
       >
-        {loading ? 'Creating Profile...' : 'Complete Profile Setup'}
+        {loading ? 'Creating Profile…' : 'Complete Profile Setup'}
       </Button>
     </form>
   );

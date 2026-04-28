@@ -66,7 +66,7 @@ const DeliveryTierStep = ({ selectedTier, onSelect, onContinue }: DeliveryTierSt
               key={tier}
               onClick={() => onSelect(tier)}
               className={[
-                'relative rounded-2xl border-2 p-5 cursor-pointer transition-all',
+                'relative rounded-2xl border-2 p-5 cursor-pointer transition-colors',
                 isSelected
                   ? 'border-dc-teal bg-dc-teal/5'
                   : 'border-gray-200 bg-white hover:border-dc-teal/50',
@@ -82,7 +82,7 @@ const DeliveryTierStep = ({ selectedTier, onSelect, onContinue }: DeliveryTierSt
               {/* Selected checkmark */}
               {isSelected && (
                 <span className="absolute top-3 right-3">
-                  <CheckCircle2 className="w-5 h-5 text-dc-teal" />
+                  <CheckCircle2 className="w-5 h-5 text-dc-teal" aria-hidden="true" />
                 </span>
               )}
 

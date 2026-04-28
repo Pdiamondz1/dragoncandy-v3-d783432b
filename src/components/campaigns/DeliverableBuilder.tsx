@@ -220,7 +220,7 @@ export default function DeliverableBuilder({
                   Description <span className="text-gray-400">(optional)</span>
                 </label>
                 <Textarea
-                  placeholder="Specific instructions for this piece..."
+                  placeholder="Specific instructions for this piece…"
                   className="rounded-xl text-sm resize-none min-h-[72px]"
                   value={deliverable.description ?? ''}
                   onChange={(e) =>

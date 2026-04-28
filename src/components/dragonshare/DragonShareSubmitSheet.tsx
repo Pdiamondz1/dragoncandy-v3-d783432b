@@ -240,7 +240,7 @@ export function DragonShareSubmitSheet({ open, onOpenChange }: Props) {
                 disabled={submitMutation.isPending}
               >
                 {submitMutation.isPending ? (
-                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Submitting...</>
+                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Submitting…</>
                 ) : (
                   <>Send to {selectedOrg?.name}</>
                 )}

@@ -15,9 +15,9 @@ interface Attachment {
 }
 
 const PLACEHOLDERS = [
-  'Paste your Google Business link...',
-  'Paste your Instagram profile...',
-  'Or just describe your restaurant...',
+  'Paste your Google Business link…',
+  'Paste your Instagram profile…',
+  'Or just describe your restaurant…',
 ];
 
 export function SmartInput({ onSubmit, isExtracting, externalValue }: SmartInputProps) {
@@ -141,7 +141,7 @@ export function SmartInput({ onSubmit, isExtracting, externalValue }: SmartInput
           onClick={handleSubmit}
         >
           <Sparkles className="w-4 h-4 mr-2" />
-          {isExtracting ? 'Generating...' : 'Generate Campaign'}
+          {isExtracting ? 'Generating…' : 'Generate Campaign'}
         </Button>
       )}
       <div className="flex justify-center gap-3">

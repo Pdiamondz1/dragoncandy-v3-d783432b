@@ -137,7 +137,7 @@ const ApplicationForm: React.FC<ApplicationFormProps> = ({
               </Label>
               <Textarea
                 id="intro-message"
-                placeholder="Introduce yourself and explain why you're interested in this campaign..."
+                placeholder="Introduce yourself and explain why you're interested in this campaign…"
                 value={introMessage}
                 onChange={(e) => setIntroMessage(e.target.value)}
                 rows={4}
@@ -194,7 +194,7 @@ const ApplicationForm: React.FC<ApplicationFormProps> = ({
                 disabled={createApplication.isPending || !introMessage.trim()}
                 className="flex-1"
               >
-                {createApplication.isPending ? 'Submitting...' : 'Submit Application'}
+                {createApplication.isPending ? 'Submitting…' : 'Submit Application'}
               </Button>
               {onCancel && (
                 <Button 

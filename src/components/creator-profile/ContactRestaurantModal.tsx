@@ -109,7 +109,7 @@ const ContactRestaurantModal: React.FC<ContactRestaurantModalProps> = ({
           <div className="space-y-2">
             <label className="text-sm font-medium">Your Message</label>
             <Textarea
-              placeholder="Write your message here..."
+              placeholder="Write your message here…"
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               rows={4}
@@ -130,7 +130,7 @@ const ContactRestaurantModal: React.FC<ContactRestaurantModalProps> = ({
               disabled={!message.trim() || createConversation.isPending || sendMessage.isPending}
             >
               <Send className="h-4 w-4 mr-2" />
-              {createConversation.isPending || sendMessage.isPending ? 'Sending...' : 'Send Message'}
+              {createConversation.isPending || sendMessage.isPending ? 'Sending…' : 'Send Message'}
             </Button>
           </div>
 

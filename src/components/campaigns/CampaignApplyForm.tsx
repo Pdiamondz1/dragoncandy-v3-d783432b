@@ -214,7 +214,7 @@ const CampaignApplyForm: React.FC<CampaignApplyFormProps> = ({
         <textarea
           value={pitch}
           onChange={(e) => setPitch(e.target.value.slice(0, 280))}
-          placeholder="Why you're a great fit for this campaign..."
+          placeholder="Why you're a great fit for this campaign…"
           className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-800 outline-none focus:border-dc-teal focus:ring-1 focus:ring-dc-teal resize-none h-[72px]"
           maxLength={280}
         />
@@ -292,7 +292,7 @@ const CampaignApplyForm: React.FC<CampaignApplyFormProps> = ({
         {createApplication.isPending ? (
           <>
             <Loader2 className="w-4 h-4 animate-spin" />
-            Submitting...
+            Submitting…
           </>
         ) : (
           'Submit Application'

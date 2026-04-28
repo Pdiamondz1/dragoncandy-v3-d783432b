@@ -98,7 +98,7 @@ export const PortfolioUpload = ({
   };
 
   const truncateName = (name: string) =>
-    name.length > 24 ? name.slice(0, 21) + '...' : name;
+    name.length > 24 ? name.slice(0, 21) + '…' : name;
 
   return (
     <div>

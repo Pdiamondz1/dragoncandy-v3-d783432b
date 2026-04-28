@@ -34,7 +34,7 @@ const ApplicationFiltersComponent: React.FC<ApplicationFiltersProps> = ({
             {filteredCount} of {totalCount} applications
           </span>
           <Button variant="ghost" size="sm" onClick={onReset}>
-            <X className="h-4 w-4 mr-1" />
+            <X className="h-4 w-4 mr-1" aria-hidden="true" />
             Reset
           </Button>
         </div>

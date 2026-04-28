@@ -152,7 +152,7 @@ const ContactCreatorModal: React.FC<ContactCreatorModalProps> = ({
             <Label htmlFor="message">Your Message</Label>
             <Textarea
               id="message"
-              placeholder={`Hi ${creator.creator_name}, I'd like to discuss a potential project with you...`}
+              placeholder={`Hi ${creator.creator_name}, I'd like to discuss a potential project with you…`}
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               rows={4}
@@ -178,7 +178,7 @@ const ContactCreatorModal: React.FC<ContactCreatorModalProps> = ({
               {isLoading ? (
                 <>
                   <LoaderIcon className="h-4 w-4 mr-2 animate-spin" />
-                  Sending...
+                  Sending…
                 </>
               ) : (
                 <>

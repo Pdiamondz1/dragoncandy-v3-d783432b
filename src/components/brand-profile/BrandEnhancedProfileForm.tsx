@@ -238,7 +238,7 @@ export const BrandEnhancedProfileForm = ({ formData, onInputChange }: BrandEnhan
           id="description"
           value={formData.description}
           onChange={(e) => onInputChange('description', e.target.value)}
-          placeholder="Tell us about your brand..."
+          placeholder="Tell us about your brand…"
           rows={4}
         />
       </div>

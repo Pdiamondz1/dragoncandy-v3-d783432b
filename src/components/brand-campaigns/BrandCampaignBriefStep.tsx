@@ -222,7 +222,7 @@ export const BrandCampaignBriefStep = ({
             Campaign Vision
           </label>
           <Textarea
-            placeholder="Describe what you want creators to produce..."
+            placeholder="Describe what you want creators to produce…"
             value={briefData.campaignVision}
             onChange={(e) => updateField('campaignVision', e.target.value)}
             rows={4}

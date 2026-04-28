@@ -82,7 +82,7 @@ const DeliveryTypeSelector: React.FC<DeliveryTypeSelectorProps> = ({
             key={option.type}
             onClick={() => handleSelect(option)}
             className={cn(
-              "relative cursor-pointer p-4 transition-all hover:shadow-md",
+              "relative cursor-pointer p-4 transition-colors hover:shadow-md",
               value === option.type
                 ? "ring-2 ring-primary border-primary bg-primary/5"
                 : "hover:border-primary/50"

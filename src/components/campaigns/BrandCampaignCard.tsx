@@ -77,12 +77,12 @@ const BrandCampaignCard: React.FC<BrandCampaignCardProps> = ({
 
   const getSponsorButtonContent = () => {
     if (isLoadingProposal) {
-      return { text: 'Loading...', disabled: true, tooltip: null };
+      return { text: 'Loading…', disabled: true, tooltip: null };
     }
 
     // Show submitting state if this card is being submitted right now
     if (submittingCampaignId === campaign.id && !existingProposal) {
-      return { text: 'Submitting...', disabled: true, tooltip: null };
+      return { text: 'Submitting…', disabled: true, tooltip: null };
     }
 
     if (existingProposal) {

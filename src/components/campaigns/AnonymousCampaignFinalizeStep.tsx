@@ -167,7 +167,7 @@ export const AnonymousCampaignFinalizeStep: React.FC<AnonymousCampaignFinalizeSt
                       <Textarea
                         {...field}
                         className="min-h-[100px] resize-none"
-                        placeholder="Describe your campaign..."
+                        placeholder="Describe your campaign…"
                       />
                     </FormControl>
                     <FormMessage />

@@ -102,7 +102,7 @@ const AdminDragonShareQueue: React.FC = () => {
                 {rejectingId === post.id ? (
                   <div className="space-y-2">
                     <Input
-                      placeholder="Rejection reason..."
+                      placeholder="Rejection reason…"
                       value={rejectionReason}
                       onChange={(e) => setRejectionReason(e.target.value)}
                     />

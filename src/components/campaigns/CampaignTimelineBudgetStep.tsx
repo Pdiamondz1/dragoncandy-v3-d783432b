@@ -169,7 +169,7 @@ const CampaignTimelineBudgetStep: React.FC<CampaignTimelineBudgetStepProps> = ({
                     </FormLabel>
                     <FormControl>
                       <Textarea
-                        placeholder="Describe the specific goals and success metrics for this campaign..."
+                        placeholder="Describe the specific goals and success metrics for this campaign…"
                         className="min-h-[100px] resize-none"
                         {...field}
                       />

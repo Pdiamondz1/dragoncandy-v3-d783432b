@@ -28,6 +28,7 @@ const CampaignBudgetTimelineForm: React.FC<CampaignBudgetTimelineFormProps> = ({
             <Label htmlFor="budget_min">Minimum Budget ($)</Label>
             <Input
               id="budget_min"
+              name="budget_min"
               type="number"
               value={formData.budget_min}
               onChange={(e) => onInputChange('budget_min', e.target.value)}
@@ -38,6 +39,7 @@ const CampaignBudgetTimelineForm: React.FC<CampaignBudgetTimelineFormProps> = ({
             <Label htmlFor="budget_max">Maximum Budget ($)</Label>
             <Input
               id="budget_max"
+              name="budget_max"
               type="number"
               value={formData.budget_max}
               onChange={(e) => onInputChange('budget_max', e.target.value)}
@@ -50,6 +52,7 @@ const CampaignBudgetTimelineForm: React.FC<CampaignBudgetTimelineFormProps> = ({
           <Label htmlFor="deadline">Project Deadline</Label>
           <Input
             id="deadline"
+            name="deadline"
             type="date"
             value={formData.deadline}
             onChange={(e) => onInputChange('deadline', e.target.value)}

@@ -47,7 +47,7 @@ export const PaymentButton = ({ sponsorship, campaignTitle }: PaymentButtonProps
           {verifyPayment.isPending ? (
             <>
               <Loader2 className="h-4 w-4 mr-2 animate-spin" aria-hidden="true" />
-              Verifying...
+              Verifying…
             </>
           ) : (
             <>
@@ -78,7 +78,7 @@ export const PaymentButton = ({ sponsorship, campaignTitle }: PaymentButtonProps
       {initiatePayment.isPending ? (
         <>
           <Loader2 className="h-4 w-4 mr-2 animate-spin" aria-hidden="true" />
-          Opening Checkout...
+          Opening Checkout…
         </>
       ) : (
         <>

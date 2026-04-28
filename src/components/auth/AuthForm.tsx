@@ -335,8 +335,8 @@ export const AuthForm = ({ mode, onError, preSelectedRole, onChangeRole }: AuthF
             disabled={loading}
           >
             {mode === "login"
-              ? (loading ? "Logging in..." : "Login")
-              : (loading ? "Creating account..." : "Create Account")}
+              ? (loading ? "Logging in…" : "Login")
+              : (loading ? "Creating account…" : "Create Account")}
           </button>
         </form>
 

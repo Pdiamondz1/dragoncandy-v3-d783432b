@@ -11,7 +11,7 @@ export function RegenerateButton({ onRegenerate, isLoading }: RegenerateButtonPr
     <Button variant="ghost" size="sm" onClick={onRegenerate} disabled={isLoading}
       className="text-teal-600 hover:text-teal-700 hover:bg-teal-50">
       <RefreshCw className={`w-4 h-4 mr-1.5 ${isLoading ? 'animate-spin' : ''}`} />
-      {isLoading ? 'Regenerating...' : 'Show different ideas'}
+      {isLoading ? 'Regenerating…' : 'Show different ideas'}
     </Button>
   );
 }

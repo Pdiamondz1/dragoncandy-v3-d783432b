@@ -71,7 +71,7 @@ export function DeleteOrgSheet({ open, onOpenChange }: DeleteOrgSheetProps) {
             disabled={!confirmed || deleting}
             className="flex-1 rounded-full"
           >
-            {deleting ? 'Deleting...' : 'Delete organization'}
+            {deleting ? 'Deleting…' : 'Delete organization'}
           </Button>
         </SheetFooter>
       </SheetContent>

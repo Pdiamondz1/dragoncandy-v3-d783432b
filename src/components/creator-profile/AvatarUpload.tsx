@@ -88,7 +88,7 @@ export const AvatarUpload = ({
             <p className="text-sm text-gray-700 truncate">
               {avatarFile
                 ? avatarFile.name.length > 24
-                  ? avatarFile.name.slice(0, 21) + '...'
+                  ? avatarFile.name.slice(0, 21) + '…'
                   : avatarFile.name
                 : 'Profile photo'}
             </p>
@@ -111,7 +111,7 @@ export const AvatarUpload = ({
         >
           <Upload className="mx-auto h-10 w-10 text-dc-teal mb-2" />
           <p className="text-sm font-medium text-gray-700">
-            {uploading ? 'Uploading...' : 'Upload your profile picture'}
+            {uploading ? 'Uploading…' : 'Upload your profile picture'}
           </p>
           <p className="text-xs text-gray-400 mt-1">
             JPG, PNG, WebP up to 10MB

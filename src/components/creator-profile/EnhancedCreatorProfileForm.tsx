@@ -51,7 +51,7 @@ export const EnhancedCreatorProfileForm = ({ formData, onInputChange }: Enhanced
           id="bio"
           value={formData.bio}
           onChange={(e) => onInputChange('bio', e.target.value)}
-          placeholder="Tell brands about yourself, your experience, and what makes you unique..."
+          placeholder="Tell brands about yourself, your experience, and what makes you unique…"
           rows={4}
           required
         />

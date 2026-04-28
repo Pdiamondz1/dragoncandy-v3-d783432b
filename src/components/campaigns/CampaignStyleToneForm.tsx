@@ -26,7 +26,7 @@ const CampaignStyleToneForm: React.FC<CampaignStyleToneFormProps> = ({
           <div>
             <Label htmlFor="style">Content Style</Label>
             <Select value={formData.style} onValueChange={(value) => onInputChange('style', value)}>
-              <SelectTrigger>
+              <SelectTrigger id="style">
                 <SelectValue placeholder="Select style" />
               </SelectTrigger>
               <SelectContent>
@@ -42,7 +42,7 @@ const CampaignStyleToneForm: React.FC<CampaignStyleToneFormProps> = ({
           <div>
             <Label htmlFor="tone">Content Tone</Label>
             <Select value={formData.tone} onValueChange={(value) => onInputChange('tone', value)}>
-              <SelectTrigger>
+              <SelectTrigger id="tone">
                 <SelectValue placeholder="Select tone" />
               </SelectTrigger>
               <SelectContent>

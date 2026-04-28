@@ -147,7 +147,7 @@ export const CustomerInfoForm: React.FC<CustomerInfoFormProps> = ({
           size="lg"
           disabled={isSubmitting}
         >
-          {isSubmitting ? 'Submitting...' : 'Submit & Get My Discount'}
+          {isSubmitting ? 'Submitting…' : 'Submit & Get My Discount'}
         </Button>
       </form>
     </Form>

@@ -49,7 +49,7 @@ const ReviewsManagement = () => {
               <div className="flex-1 relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
-                  placeholder="Search reviews..."
+                  placeholder="Search reviews…"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-9 rounded-full h-10 border-gray-200"

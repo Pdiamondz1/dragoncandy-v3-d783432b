@@ -104,7 +104,7 @@ const CampaignGoalStep: React.FC<CampaignGoalStepProps> = ({
           ) : (
             <Sparkles className="h-4 w-4 mr-2" />
           )}
-          {isGenerating ? 'Generating Campaign with DragonCandy AI...' : 'Generate Campaign with DragonCandy AI'}
+          {isGenerating ? 'Generating Campaign with DragonCandy AI…' : 'Generate Campaign with DragonCandy AI'}
         </Button>
       </CardContent>
     </Card>

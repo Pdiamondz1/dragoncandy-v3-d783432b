@@ -36,9 +36,9 @@ const CampaignAIPreviewStep: React.FC<CampaignAIPreviewStepProps> = ({
     return (
       <Card className="rounded-xl">
         <CardContent className="flex flex-col items-center justify-center py-16 gap-4">
-          <Loader2 className="h-10 w-10 animate-spin text-teal-400" />
+          <Loader2 className="h-10 w-10 animate-spin text-teal-400" aria-hidden="true" />
           <p className="text-base font-semibold text-gray-800">
-            Donny is creating a visual preview of your campaign...
+            Donny is creating a visual preview of your campaign…
           </p>
           <p className="text-sm text-gray-500">This may take a moment</p>
         </CardContent>
@@ -51,7 +51,7 @@ const CampaignAIPreviewStep: React.FC<CampaignAIPreviewStepProps> = ({
     return (
       <Card className="rounded-xl">
         <CardContent className="flex flex-col items-center justify-center py-16 gap-4">
-          <Sparkles className="h-10 w-10 text-red-400" />
+          <Sparkles className="h-10 w-10 text-red-400" aria-hidden="true" />
           <p className="text-base font-semibold text-gray-800">
             Something went wrong generating your preview.
           </p>
@@ -65,7 +65,7 @@ const CampaignAIPreviewStep: React.FC<CampaignAIPreviewStepProps> = ({
             onClick={handleRegenerate}
             className="rounded-full flex items-center gap-2"
           >
-            <RefreshCw className="h-4 w-4" />
+            <RefreshCw className="h-4 w-4" aria-hidden="true" />
             Try Again
           </Button>
         </CardContent>
@@ -84,7 +84,7 @@ const CampaignAIPreviewStep: React.FC<CampaignAIPreviewStepProps> = ({
         <Card className="rounded-xl">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-teal-400" />
+              <Sparkles className="h-5 w-5 text-teal-400" aria-hidden="true" />
               AI Visual Preview
             </CardTitle>
           </CardHeader>
@@ -111,7 +111,7 @@ const CampaignAIPreviewStep: React.FC<CampaignAIPreviewStepProps> = ({
             onClick={handleRegenerate}
             className="rounded-full flex items-center gap-2"
           >
-            <RefreshCw className="h-4 w-4" />
+            <RefreshCw className="h-4 w-4" aria-hidden="true" />
             Regenerate Preview
           </Button>
         </div>
@@ -123,7 +123,7 @@ const CampaignAIPreviewStep: React.FC<CampaignAIPreviewStepProps> = ({
             onClick={onBack}
             className="rounded-full flex items-center gap-2"
           >
-            <ArrowLeft className="h-4 w-4" />
+            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
             Back
           </Button>
 
@@ -133,7 +133,7 @@ const CampaignAIPreviewStep: React.FC<CampaignAIPreviewStepProps> = ({
             onClick={onSkip}
             className="rounded-full flex items-center gap-2 text-gray-500"
           >
-            <SkipForward className="h-4 w-4" />
+            <SkipForward className="h-4 w-4" aria-hidden="true" />
             Skip Preview
           </Button>
 
@@ -142,7 +142,7 @@ const CampaignAIPreviewStep: React.FC<CampaignAIPreviewStepProps> = ({
             className="bg-dc-teal hover:bg-dc-teal/90 text-white rounded-full flex items-center gap-2"
           >
             Approve &amp; Continue
-            <ArrowRight className="h-4 w-4" />
+            <ArrowRight className="h-4 w-4" aria-hidden="true" />
           </Button>
         </div>
       </div>
