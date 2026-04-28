@@ -35,11 +35,20 @@ const ReCaptcha = forwardRef<ReCaptchaHandle, ReCaptchaProps>(
     const tokenDataRef = useRef<{ token: string; issuedAt: number } | null>(null);
     const siteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
 
+    // Hold latest callbacks in refs so the widget effect doesn't re-run on every parent render
+    const onVerifyRef = useRef(onVerify);
+    const onExpiredRef = useRef(onExpired);
+    const onErrorRef = useRef(onError);
+    useEffect(() => { onVerifyRef.current = onVerify; }, [onVerify]);
+    useEffect(() => { onExpiredRef.current = onExpired; }, [onExpired]);
+    useEffect(() => { onErrorRef.current = onError; }, [onError]);
+
     useEffect(() => {
       if (!siteKey) {
         console.warn(
           '[ReCaptcha] VITE_RECAPTCHA_SITE_KEY is not set — the CAPTCHA widget will not render.'
         );
+        return;
       }
 
       // Inject Google's reCAPTCHA script once if it isn't already on the page.
@@ -53,11 +62,14 @@ const ReCaptcha = forwardRef<ReCaptchaHandle, ReCaptchaProps>(
         document.head.appendChild(script);
       }
 
+      let cancelled = false;
+
       // Wait for grecaptcha to be available (it appears once the script above loads).
       const checkGrecaptcha = setInterval(() => {
+        if (cancelled) return;
         if (window.grecaptcha && containerRef.current && widgetIdRef.current === null) {
           clearInterval(checkGrecaptcha);
-          
+
           try {
             widgetIdRef.current = window.grecaptcha.render(containerRef.current, {
               sitekey: siteKey,
@@ -66,15 +78,15 @@ const ReCaptcha = forwardRef<ReCaptchaHandle, ReCaptchaProps>(
                   token,
                   issuedAt: Date.now()
                 };
-                if (onVerify) onVerify(token);
+                onVerifyRef.current?.(token);
               },
               'expired-callback': () => {
                 tokenDataRef.current = null;
-                if (onExpired) onExpired();
+                onExpiredRef.current?.();
               },
               'error-callback': () => {
                 tokenDataRef.current = null;
-                if (onError) onError();
+                onErrorRef.current?.();
               },
             });
           } catch (error) {
@@ -84,9 +96,16 @@ const ReCaptcha = forwardRef<ReCaptchaHandle, ReCaptchaProps>(
       }, 100);
 
       return () => {
+        cancelled = true;
         clearInterval(checkGrecaptcha);
+        // Clear container so a remount can render fresh without "already rendered" errors.
+        if (containerRef.current) {
+          containerRef.current.innerHTML = '';
+        }
+        widgetIdRef.current = null;
+        tokenDataRef.current = null;
       };
-    }, [siteKey, onVerify, onExpired, onError]);
+    }, [siteKey]);
 
     useImperativeHandle(ref, () => ({
       getToken: () => {
