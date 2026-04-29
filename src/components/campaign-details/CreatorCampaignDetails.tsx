@@ -1,19 +1,15 @@
-// src/components/campaign-details/CreatorCampaignDetails.tsx
-
-import { Globe, Users } from 'lucide-react';
 import type { Campaign } from '@/hooks/useCampaignQueries';
 import type { EnrichedCampaignDetail } from '@/hooks/useCampaignDetailEnriched';
 import { CampaignHero } from './CampaignHero';
 import { CampaignMetricsBar } from './CampaignMetricsBar';
-import { CampaignBriefSection } from './CampaignBriefSection';
 import { CampaignReferencesGallery } from './CampaignReferencesGallery';
 import { CampaignFootageSection } from './CampaignFootageSection';
-import { CampaignDeliverablesBreakdown } from './CampaignDeliverablesBreakdown';
-import { CampaignTimeline } from './CampaignTimeline';
-import { CampaignBudgetDetail } from './CampaignBudgetDetail';
-import { CampaignDetailSection } from './CampaignDetailSection';
 import { BusinessProfileStrip } from './BusinessProfileStrip';
 import { InvitationBanner } from './InvitationBanner';
+import { CampaignOverviewSection } from './sections/CampaignOverviewSection';
+import { ContentRequirementsSection } from './sections/ContentRequirementsSection';
+import { CompensationSection } from './sections/CompensationSection';
+import { LogisticsSection } from './sections/LogisticsSection';
 
 interface CreatorCampaignDetailsProps {
   campaign: Campaign;
@@ -51,17 +47,8 @@ export function CreatorCampaignDetails({
         matchScore={enrichedDetail?.matchScore ?? null}
       />
 
-      <div className="px-5 pt-4 pb-6 space-y-0">
-        <CampaignBriefSection
-          description={campaign.description}
-          goals={campaign.goals}
-          style={campaign.style}
-          tone={campaign.tone}
-          targetPersonas={campaign.target_creator_personas}
-          tagline={campaign.tagline}
-          campaignType={campaign.campaign_type}
-          hashtags={campaign.hashtag_requirements}
-        />
+      <div className="px-5 pt-4 pb-6 space-y-5">
+        <CampaignOverviewSection campaign={campaign} />
 
         {enrichedDetail && (
           <CampaignReferencesGallery referenceMedia={enrichedDetail.referenceMedia} />
@@ -74,42 +61,9 @@ export function CreatorCampaignDetails({
           />
         )}
 
-        <CampaignDeliverablesBreakdown
-          deliverables={enrichedDetail?.deliverables ?? []}
-          fallbackDeliverables={campaign.deliverables}
-        />
-
-        <CampaignTimeline
-          deliveryType={campaign.delivery_type}
-          deadline={campaign.deadline}
-        />
-
-        <CampaignBudgetDetail campaign={campaign} />
-
-        {(campaign.geographic_scope || campaign.creator_count) && (
-          <CampaignDetailSection title="Scope">
-            <div className="flex flex-wrap gap-4">
-              {campaign.geographic_scope && (
-                <div className="flex items-center gap-2">
-                  <Globe className="w-4 h-4 text-dc-teal" />
-                  <div>
-                    <span className="text-[11px] text-gray-500 uppercase">Geographic Scope</span>
-                    <p className="text-sm font-medium text-gray-900 capitalize">{campaign.geographic_scope}</p>
-                  </div>
-                </div>
-              )}
-              {campaign.creator_count != null && (
-                <div className="flex items-center gap-2">
-                  <Users className="w-4 h-4 text-dc-teal" />
-                  <div>
-                    <span className="text-[11px] text-gray-500 uppercase">Target Creators</span>
-                    <p className="text-sm font-medium text-gray-900">{campaign.creator_count}</p>
-                  </div>
-                </div>
-              )}
-            </div>
-          </CampaignDetailSection>
-        )}
+        <ContentRequirementsSection campaign={campaign} campaignId={campaign.id} />
+        <CompensationSection campaign={campaign} campaignId={campaign.id} role="creator" />
+        <LogisticsSection campaign={campaign} />
 
         {enrichedDetail?.businessProfile && (
           <div className="mt-3">
