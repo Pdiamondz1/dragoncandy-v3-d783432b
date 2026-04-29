@@ -16,14 +16,14 @@ export function useBudgetStatus(campaignId: string | undefined) {
     queryFn: async (): Promise<BudgetStatus> => {
       const { data: campaign, error } = await supabase
         .from("campaigns")
-        .select("budget_max, fixed_price, pricing_type, budget_spent, creator_count, per_creator_cap")
+        .select("budget_max, fixed_price, pricing_type, ai_analysis")
         .eq("id", campaignId!)
         .single();
 
       if (error || !campaign) throw error || new Error("Campaign not found");
 
+      const ai = campaign.ai_analysis as Record<string, unknown> | null;
       const budgetMax = campaign.budget_max || campaign.fixed_price || 0;
-      const budgetSpent = campaign.budget_spent || 0;
 
       const { count } = await supabase
         .from("campaign_collaborations")
@@ -33,11 +33,11 @@ export function useBudgetStatus(campaignId: string | undefined) {
 
       return {
         budgetMax,
-        budgetSpent,
-        budgetRemaining: budgetMax - budgetSpent,
-        creatorCount: campaign.creator_count,
+        budgetSpent: 0,
+        budgetRemaining: budgetMax,
+        creatorCount: (ai?.creator_count as number) ?? null,
         activeCreators: count || 0,
-        perCreatorCap: campaign.per_creator_cap,
+        perCreatorCap: (ai?.per_creator_cap as number) ?? null,
       };
     },
     enabled: !!campaignId,

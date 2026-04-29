@@ -46,7 +46,7 @@ serve(async (req) => {
 
     const { data: campaign, error: campaignError } = await supabaseClient
       .from('campaigns')
-      .select('id, user_id, escrow_payment_intent_id, escrow_status, status, title, fixed_price, budget_max, pricing_type, delivery_fee, delivery_type, per_creator_cap, creator_count, budget_spent')
+      .select('id, user_id, escrow_payment_intent_id, escrow_status, status, title, fixed_price, budget_max, pricing_type, delivery_fee, delivery_type, ai_analysis')
       .eq('id', campaignId)
       .single();
 
@@ -150,22 +150,25 @@ serve(async (req) => {
       .limit(1)
       .single();
 
-    if (application && campaign.per_creator_cap && application.proposed_rate > campaign.per_creator_cap) {
+    const ai = campaign.ai_analysis as Record<string, unknown> | null;
+    const perCreatorCap = (ai?.per_creator_cap as number) ?? null;
+
+    if (application && perCreatorCap && application.proposed_rate > perCreatorCap) {
       logStep("Per-creator cap exceeded", {
         proposed: application.proposed_rate,
-        cap: campaign.per_creator_cap,
+        cap: perCreatorCap,
       });
       if (actualPaymentIntentId) {
         await stripe.refunds.create({ payment_intent: actualPaymentIntentId });
       }
       return new Response(
-        JSON.stringify({ error: `Creator's rate ($${application.proposed_rate}) exceeds per-creator cap ($${campaign.per_creator_cap})` }),
+        JSON.stringify({ error: `Creator's rate ($${application.proposed_rate}) exceeds per-creator cap ($${perCreatorCap})` }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
       );
     }
 
     const budgetMax = campaign.budget_max || campaign.fixed_price || 0;
-    const budgetSpent = campaign.budget_spent || 0;
+    const budgetSpent = 0;
     const proposedRate = application?.proposed_rate || 0;
 
     if (budgetMax > 0 && budgetSpent + proposedRate > budgetMax) {

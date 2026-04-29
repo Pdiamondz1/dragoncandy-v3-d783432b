@@ -32,7 +32,7 @@ export function InviteToCampaignModal({
     queryFn: async () => {
       const { data, error } = await supabase
         .from('campaigns')
-        .select('id, title, status, creator_count, ai_analysis')
+        .select('id, title, status, ai_analysis')
         .eq('user_id', user!.id)
         .eq('status', 'published')
         .order('created_at', { ascending: false });
@@ -76,10 +76,12 @@ export function InviteToCampaignModal({
               </SelectTrigger>
               <SelectContent>
                 {(campaigns || []).map((c) => {
-                  const emoji = (c.ai_analysis as { emoji?: string } | null)?.emoji || '📣';
+                  const ai = c.ai_analysis as Record<string, unknown> | null;
+                  const emoji = (ai?.emoji as string) || '📣';
+                  const spots = (ai?.creator_count as number) || '?';
                   return (
                     <SelectItem key={c.id} value={c.id}>
-                      {emoji} {c.title} — {c.creator_count || '?'} spots
+                      {emoji} {c.title} — {spots} spots
                     </SelectItem>
                   );
                 })}

@@ -44,7 +44,7 @@ serve(async (req) => {
     // Check campaign exists and is published
     const { data: campaign, error: campaignError } = await supabase
       .from("campaigns")
-      .select("id, title, user_id, status, budget_min, budget_max, deadline, creator_count, description, delivery_type, ai_analysis")
+      .select("id, title, user_id, status, budget_min, budget_max, deadline, description, delivery_type, ai_analysis")
       .eq("id", campaign_id)
       .single();
 
