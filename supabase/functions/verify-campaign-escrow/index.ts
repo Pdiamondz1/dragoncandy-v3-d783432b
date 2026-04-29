@@ -186,20 +186,21 @@ serve(async (req) => {
       );
     }
 
-    if (campaign.creator_count) {
+    const creatorCount = (ai?.creator_count as number) ?? null;
+    if (creatorCount) {
       const { count } = await supabaseClient
         .from('campaign_collaborations')
         .select('id', { count: 'exact', head: true })
         .eq('campaign_id', campaignId)
         .eq('status', 'active');
 
-      if ((count || 0) >= campaign.creator_count) {
-        logStep("Creator count full", { current: count, max: campaign.creator_count });
+      if ((count || 0) >= creatorCount) {
+        logStep("Creator count full", { current: count, max: creatorCount });
         if (actualPaymentIntentId) {
           await stripe.refunds.create({ payment_intent: actualPaymentIntentId });
         }
         return new Response(
-          JSON.stringify({ error: `Campaign already has ${campaign.creator_count} active creators` }),
+          JSON.stringify({ error: `Campaign already has ${creatorCount} active creators` }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
         );
       }
