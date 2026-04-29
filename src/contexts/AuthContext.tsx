@@ -179,20 +179,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       return;
     }
     try {
-      const { data: org } = await supabase
+      const { data: org, error: orgError } = await supabase
         .from('organizations')
-        .select('id, name, owner_id, slug, logo_url, created_at')
+        .select('id, name, org_type, slug, logo_url, billing_email, stripe_customer_id, stripe_subscription_id, subscription_tier, seat_count, created_at, updated_at, deleted_at, hard_purge_at')
         .eq('id', orgId)
         .maybeSingle();
-      setActiveOrg(org as unknown as Organization | null);
+      if (orgError) {
+        console.error('❌ AuthProvider: Org fetch failed:', orgError);
+      }
+      setActiveOrg(org as Organization | null);
 
       if (orgUnitId) {
-        const { data: unit } = await supabase
+        const { data: unit, error: unitError } = await supabase
           .from('org_units')
-          .select('id, org_id, name, address, phone, created_at')
+          .select('id, org_id, unit_type, name, address, lat, lng, website_url, logo_url, is_primary, deleted_at, created_at, updated_at')
           .eq('id', orgUnitId)
           .maybeSingle();
-        setActiveOrgUnit(unit as unknown as OrgUnit | null);
+        if (unitError) {
+          console.error('❌ AuthProvider: OrgUnit fetch failed:', unitError);
+        }
+        setActiveOrgUnit(unit as OrgUnit | null);
       } else {
         setActiveOrgUnit(null);
       }
@@ -212,10 +218,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     const { data: unit } = await supabase
       .from('org_units')
-      .select('id, org_id, name, address, phone, created_at')
+      .select('id, org_id, unit_type, name, address, lat, lng, website_url, logo_url, is_primary, deleted_at, created_at, updated_at')
       .eq('id', unitId)
       .maybeSingle();
-    setActiveOrgUnit(unit as unknown as OrgUnit | null);
+    setActiveOrgUnit(unit as OrgUnit | null);
   };
 
   useEffect(() => {
