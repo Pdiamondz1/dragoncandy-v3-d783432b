@@ -8,6 +8,7 @@ import { useCampaignDetail } from '@/hooks/useCampaignDetail';
 import DeliveryBadge from './DeliveryBadge';
 import CampaignApplyForm from './CampaignApplyForm';
 import { mapDeliveryType, getRelativeTime, formatBudget, getTierConfig } from '@/lib/campaignUtils';
+import { Badge } from '@/components/ui/badge';
 
 interface CampaignDetailModalProps {
   campaign: PublicCampaign;
@@ -154,6 +155,123 @@ export const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
                 )}
               </div>
             )}
+
+            {/* Campaign Details Summary */}
+            <div className="px-4 py-4 border-b border-gray-100 space-y-3">
+              <h3 className="text-sm font-bold text-gray-900 mb-2">Campaign Details</h3>
+
+              {/* Campaign type + tagline */}
+              <div className="flex flex-wrap gap-2 items-center">
+                {campaign.campaign_type && (
+                  <Badge variant="outline" className="capitalize text-xs">
+                    {campaign.campaign_type.replace(/_/g, ' ')}
+                  </Badge>
+                )}
+                {campaign.tagline && (
+                  <span className="text-xs text-gray-500 italic">{campaign.tagline}</span>
+                )}
+              </div>
+
+              {/* Platforms */}
+              {campaign.platforms && campaign.platforms.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {campaign.platforms.map((p) => (
+                    <span key={p} className="bg-gray-100 text-gray-600 text-[11px] px-2 py-0.5 rounded-full capitalize">
+                      {p.replace(/_/g, ' ')}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {/* Budget + per-creator */}
+              {campaign.per_creator_cap != null && (
+                <div className="text-sm text-gray-600">
+                  Per creator: up to <strong className="text-gray-800">${campaign.per_creator_cap}</strong>
+                </div>
+              )}
+
+              {/* Delivery tier + deadline */}
+              <div className="flex flex-wrap gap-2 items-center">
+                {tierConfig && deliveryTier && (
+                  <DeliveryBadge deliveryType={deliveryTier} size="sm" showTimeframe />
+                )}
+                {campaign.deadline && (
+                  <span className="text-xs text-gray-500">
+                    Due {new Date(campaign.deadline).toLocaleDateString()}
+                  </span>
+                )}
+              </div>
+
+              {/* Geographic scope + creator count */}
+              <div className="flex flex-wrap gap-3 text-xs text-gray-600">
+                {campaign.geographic_scope && (
+                  <span className="capitalize">{campaign.geographic_scope} scope</span>
+                )}
+                {campaign.creator_count != null && (
+                  <span>{campaign.creator_count} creator{campaign.creator_count !== 1 ? 's' : ''} wanted</span>
+                )}
+              </div>
+
+              {/* Target personas */}
+              {campaign.target_creator_personas && campaign.target_creator_personas.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {campaign.target_creator_personas.map((p, i) => (
+                    <span key={i} className="bg-gray-100 text-gray-600 text-[11px] px-2 py-0.5 rounded-full capitalize">
+                      {p}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {/* Hashtags */}
+              {campaign.hashtag_requirements && (
+                <div className="flex flex-wrap gap-2">
+                  {campaign.hashtag_requirements.split(' ').filter(Boolean).map((tag, i) => (
+                    <span key={i} className="text-teal-600 text-xs font-medium">
+                      {tag.startsWith('#') ? tag : `#${tag}`}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {/* Key messages */}
+              {campaign.key_messages && campaign.key_messages.length > 0 && (
+                <div>
+                  <span className="text-[11px] text-gray-500 uppercase tracking-wider">Key Messages</span>
+                  <ul className="mt-1 space-y-0.5">
+                    {campaign.key_messages.map((msg, i) => (
+                      <li key={i} className="text-xs text-gray-600">• {msg}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Style direction */}
+              {campaign.style_direction && (
+                <p className="text-xs text-gray-500 italic">{campaign.style_direction}</p>
+              )}
+
+              {/* Usage rights + exclusivity */}
+              <div className="flex flex-wrap gap-3 text-xs text-gray-600">
+                {campaign.usage_rights_days != null && (
+                  <span>Usage: {campaign.usage_rights_days} days</span>
+                )}
+                {campaign.exclusivity_days != null && (
+                  <span>Exclusivity: {campaign.exclusivity_days} days</span>
+                )}
+              </div>
+            </div>
+
+            {/* View Full Details link */}
+            <div className="px-4 py-3 border-b border-gray-100">
+              <Link
+                to={`/campaigns/${campaign.id}`}
+                className="w-full flex items-center justify-center rounded-full border-2 border-dc-teal text-dc-teal font-bold py-2.5 text-sm hover:bg-teal-50 transition-colors"
+                onClick={(e) => e.stopPropagation()}
+              >
+                View Full Details
+              </Link>
+            </div>
 
             {/* Visual References */}
             {referenceMedia.length > 0 && (

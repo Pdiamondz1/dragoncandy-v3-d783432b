@@ -109,7 +109,7 @@ export const useCreatorApplications = () => {
       // Collect unique campaign owner IDs
       const campaignOwnerIds = [...new Set(
         data
-          .map(app => app.campaign?.user_id)
+          .map(app => (app.campaign as any)?.user_id)
           .filter(Boolean)
       )] as string[];
 
@@ -137,28 +137,31 @@ export const useCreatorApplications = () => {
         .single();
 
       // Add creator profile AND business profile to all applications
-      const enrichedApplications = data.map(app => ({
-        ...app,
-        creator_profile: creatorProfile ? {
-          creator_name: creatorProfile.creator_name || 'Creator',
-          avatar_url: creatorProfile.avatar_url || null,
-          bio: creatorProfile.bio || null,
-          skills: creatorProfile.skills || [],
-        } : {
-          creator_name: 'Creator',
-          avatar_url: null,
-          bio: null,
-          skills: [],
-        },
-        campaign: app.campaign ? {
-          ...app.campaign,
-          business_profile: app.campaign.user_id 
-            ? businessProfileMap.get(app.campaign.user_id) || undefined
-            : undefined
-        } : undefined
-      }));
+      const enrichedApplications = data.map(app => {
+        const campaign = app.campaign as any;
+        return {
+          ...app,
+          creator_profile: creatorProfile ? {
+            creator_name: creatorProfile.creator_name || 'Creator',
+            avatar_url: creatorProfile.avatar_url || null,
+            bio: creatorProfile.bio || null,
+            skills: creatorProfile.skills || [],
+          } : {
+            creator_name: 'Creator',
+            avatar_url: null,
+            bio: null,
+            skills: [],
+          },
+          campaign: campaign ? {
+            ...campaign,
+            business_profile: campaign.user_id
+              ? businessProfileMap.get(campaign.user_id) || undefined
+              : undefined
+          } : undefined
+        };
+      });
 
-      return enrichedApplications as CampaignApplication[];
+      return enrichedApplications as unknown as CampaignApplication[];
     },
     enabled: !!user,
     refetchOnWindowFocus: true,

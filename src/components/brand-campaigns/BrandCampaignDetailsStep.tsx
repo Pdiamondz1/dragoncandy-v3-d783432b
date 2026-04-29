@@ -1,6 +1,7 @@
 import { X, Upload } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { sanitizeNumericInput } from '@/lib/inputUtils';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import {
@@ -80,24 +81,28 @@ export const BrandCampaignDetailsStep = ({
             <div className="flex gap-3">
               <div className="flex-1">
                 <Input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   placeholder="Min"
-                  min={0}
                   value={detailsData.budgetMin || ''}
-                  onChange={(e) =>
-                    updateField('budgetMin', Number(e.target.value))
-                  }
+                  onChange={(e) => {
+                    const clean = sanitizeNumericInput(e.target.value);
+                    updateField('budgetMin', Number(clean) || 0);
+                  }}
                 />
               </div>
               <div className="flex-1">
                 <Input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   placeholder="Max"
-                  min={0}
                   value={detailsData.budgetMax || ''}
-                  onChange={(e) =>
-                    updateField('budgetMax', Number(e.target.value))
-                  }
+                  onChange={(e) => {
+                    const clean = sanitizeNumericInput(e.target.value);
+                    updateField('budgetMax', Number(clean) || 0);
+                  }}
                 />
               </div>
             </div>
@@ -111,14 +116,16 @@ export const BrandCampaignDetailsStep = ({
                 $
               </span>
               <Input
-                type="number"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 className="pl-7"
                 placeholder="0"
-                min={0}
                 value={detailsData.perCreatorCap || ''}
-                onChange={(e) =>
-                  updateField('perCreatorCap', Number(e.target.value))
-                }
+                onChange={(e) => {
+                  const clean = sanitizeNumericInput(e.target.value);
+                  updateField('perCreatorCap', Number(clean) || 0);
+                }}
               />
             </div>
           </div>
@@ -129,13 +136,15 @@ export const BrandCampaignDetailsStep = ({
               Number of Creators <span className="text-red-500">*</span>
             </label>
             <Input
-              type="number"
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
               placeholder="1"
-              min={1}
               value={detailsData.creatorCount || ''}
-              onChange={(e) =>
-                updateField('creatorCount', Number(e.target.value))
-              }
+              onChange={(e) => {
+                const clean = sanitizeNumericInput(e.target.value);
+                updateField('creatorCount', Number(clean) || 0);
+              }}
             />
           </div>
         </CardContent>
@@ -246,13 +255,15 @@ export const BrandCampaignDetailsStep = ({
               Exclusivity Period
             </label>
             <Input
-              type="number"
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
               placeholder="e.g. 30"
-              min={0}
               value={detailsData.exclusivityDays || ''}
-              onChange={(e) =>
-                updateField('exclusivityDays', Number(e.target.value))
-              }
+              onChange={(e) => {
+                const clean = sanitizeNumericInput(e.target.value);
+                updateField('exclusivityDays', Number(clean) || 0);
+              }}
             />
             <p className="text-xs text-gray-400">
               No competitor brands for this many days

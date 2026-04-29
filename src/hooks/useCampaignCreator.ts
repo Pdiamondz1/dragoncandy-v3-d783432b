@@ -317,6 +317,9 @@ export function useCampaignCreator() {
           hashtags: editedCampaign.hashtags,
           hashtag_requirements: editedCampaign.hashtags.join(' '),
           tier_reasoning: editedCampaign.tier_reasoning,
+          key_messages: editedCampaign.key_messages,
+          style_direction: editedCampaign.style_direction,
+          delivery_fee: resolveTierFee(editedCampaign.delivery_type),
         },
       };
 
@@ -356,12 +359,34 @@ export function useCampaignCreator() {
         user_id: user.id,
         title: editedCampaign.title,
         description: editedCampaign.description,
+        goals: editedCampaign.key_messages.join(', '),
+        platforms: editedCampaign.platforms,
         budget_min: editedCampaign.budget_min,
         budget_max: editedCampaign.budget_max,
         deadline: editedCampaign.deadline,
         delivery_type: editedCampaign.delivery_type,
+        delivery_fee: resolveTierFee(editedCampaign.delivery_type),
+        style: editedCampaign.style_direction,
         status: 'draft' as const,
-        ai_analysis: businessContext as unknown as Record<string, unknown>,
+        ai_analysis: {
+          ...businessContext,
+          brand_fields: userRole === 'brand' ? brandFields : undefined,
+          tagline: editedCampaign.tagline || null,
+          campaign_type: editedCampaign.campaign_type,
+          per_creator_cap: editedCampaign.per_creator_cap || null,
+          usage_rights_days: editedCampaign.usage_rights_days,
+          exclusivity_days: editedCampaign.exclusivity_days,
+          geographic_scope: editedCampaign.geographic_scope,
+          creator_count: editedCampaign.target_creator_count,
+          target_creator_persona: editedCampaign.target_creator_persona,
+          target_creator_personas: editedCampaign.target_creator_persona,
+          hashtags: editedCampaign.hashtags,
+          hashtag_requirements: editedCampaign.hashtags.join(' '),
+          key_messages: editedCampaign.key_messages,
+          style_direction: editedCampaign.style_direction,
+          tier_reasoning: editedCampaign.tier_reasoning,
+          delivery_fee: resolveTierFee(editedCampaign.delivery_type),
+        },
       });
       if (error) throw error;
       toast.success('Draft saved');
@@ -379,7 +404,7 @@ export function useCampaignCreator() {
       });
       toast.success('Draft saved locally');
     }
-  }, [editedCampaign, user, businessContext, draftId, selectedIdeaId, campaignIdeas, brandFields]);
+  }, [editedCampaign, user, businessContext, draftId, selectedIdeaId, campaignIdeas, brandFields, userRole]);
 
   return {
     screen,

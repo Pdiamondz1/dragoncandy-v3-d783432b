@@ -58,7 +58,7 @@ export const usePublicCampaigns = (userId?: string) => {
       // Get published campaigns excluding assigned ones
       let query = supabase
         .from('campaigns')
-        .select('id, user_id, title, description, goals, deliverables, platforms, budget_min, budget_max, deadline, status, style, tone, open_for_sponsorship, delivery_type, delivery_fee, pricing_type, fixed_price, escrow_status, escrow_payment_intent_id, tagline, campaign_type, per_creator_cap, usage_rights_days, exclusivity_days, geographic_scope, creator_count, target_creator_personas, hashtag_requirements, ai_analysis, ai_preview_status, created_at, updated_at')
+        .select('id, user_id, title, description, goals, deliverables, platforms, budget_min, budget_max, deadline, status, style, tone, open_for_sponsorship, delivery_type, delivery_fee, pricing_type, fixed_price, escrow_status, escrow_payment_intent_id, ai_analysis, ai_preview_status, created_at, updated_at')
         .eq('status', 'published');
 
       // Only add the not.in filter if there are campaigns to exclude

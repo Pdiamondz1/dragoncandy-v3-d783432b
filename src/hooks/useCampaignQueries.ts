@@ -22,6 +22,12 @@ export function hydrateCampaignFromAnalysis<T extends Campaign>(campaign: T): T 
     hashtag_requirements: campaign.hashtag_requirements
       || (Array.isArray(ai.hashtags) ? (ai.hashtags as string[]).join(' ') : (ai.hashtag_requirements as string))
       || undefined,
+    key_messages: campaign.key_messages?.length
+      ? campaign.key_messages
+      : (ai.key_messages as string[]) || undefined,
+    style_direction: campaign.style_direction || (ai.style_direction as string) || undefined,
+    tier_reasoning: campaign.tier_reasoning || (ai.tier_reasoning as string) || undefined,
+    delivery_fee: campaign.delivery_fee ?? (ai.delivery_fee as number) ?? undefined,
   };
 }
 
@@ -60,6 +66,10 @@ export interface Campaign {
   // AI-generated campaign analysis
   ai_analysis?: CampaignAnalysis | null;
   ai_preview_status?: string | null;
+  // Hydrated from ai_analysis (not DB columns)
+  key_messages?: string[];
+  style_direction?: string;
+  tier_reasoning?: string;
   created_at: string;
   updated_at: string;
 }
@@ -72,8 +82,8 @@ export const useCampaignsList = (filterByOwnership: boolean = true) => {
     queryFn: async () => {
       let query = supabase
         .from('campaigns')
-        .select('id, user_id, title, description, goals, deliverables, platforms, budget_min, budget_max, deadline, status, style, tone, open_for_sponsorship, delivery_type, delivery_fee, pricing_type, fixed_price, escrow_status, escrow_payment_intent_id, tagline, campaign_type, per_creator_cap, usage_rights_days, exclusivity_days, geographic_scope, creator_count, target_creator_personas, hashtag_requirements, ai_analysis, ai_preview_status, created_at, updated_at');
-      
+        .select('id, user_id, title, description, goals, deliverables, platforms, budget_min, budget_max, deadline, status, style, tone, open_for_sponsorship, delivery_type, delivery_fee, pricing_type, fixed_price, escrow_status, escrow_payment_intent_id, ai_analysis, ai_preview_status, created_at, updated_at');
+
       // If filtering by ownership, only return user's own campaigns
       if (filterByOwnership && user?.id) {
         query = query.eq('user_id', user.id);
@@ -98,7 +108,7 @@ export const useCampaignById = (id: string) => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('campaigns')
-        .select('id, user_id, title, description, goals, deliverables, platforms, budget_min, budget_max, deadline, status, style, tone, open_for_sponsorship, delivery_type, delivery_fee, pricing_type, fixed_price, escrow_status, escrow_payment_intent_id, tagline, campaign_type, per_creator_cap, usage_rights_days, exclusivity_days, geographic_scope, creator_count, target_creator_personas, hashtag_requirements, ai_analysis, ai_preview_status, created_at, updated_at')
+        .select('id, user_id, title, description, goals, deliverables, platforms, budget_min, budget_max, deadline, status, style, tone, open_for_sponsorship, delivery_type, delivery_fee, pricing_type, fixed_price, escrow_status, escrow_payment_intent_id, ai_analysis, ai_preview_status, created_at, updated_at')
         .eq('id', id)
         .single();
 
