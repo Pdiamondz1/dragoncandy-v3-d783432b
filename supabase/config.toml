@@ -12,9 +12,6 @@ verify_jwt = false
 [functions.verify-email]
 verify_jwt = false
 
-[functions.verify-recaptcha]
-verify_jwt = false
-
 [functions.send-promotion-notification]
 verify_jwt = false
 
