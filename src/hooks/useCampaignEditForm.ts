@@ -94,7 +94,13 @@ export const useCampaignEditForm = (campaign: Campaign | undefined) => {
         target_creator_count: campaign.creator_count?.toString() || '',
         target_creator_personas: campaign.target_creator_personas || [],
         delivery_type: campaign.delivery_type || 'standard',
-        style_direction: campaign.style_direction || '',
+        style_direction: typeof campaign.style_direction === 'string'
+          ? campaign.style_direction
+          : campaign.style_direction
+            ? [campaign.style_direction.mood, campaign.style_direction.visual_style,
+               campaign.style_direction.color_palette, campaign.style_direction.references]
+              .filter(Boolean).join('. ')
+            : '',
         key_messages: campaign.key_messages || [],
         hashtags,
         tier_reasoning: campaign.tier_reasoning || '',

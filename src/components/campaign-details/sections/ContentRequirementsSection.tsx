@@ -84,7 +84,36 @@ export function ContentRequirementsSection({ campaign, campaignId }: ContentRequ
         {campaign.style_direction && (
           <div>
             <span className="text-[11px] text-gray-500 uppercase tracking-wider">Style Direction</span>
-            <p className="text-sm text-gray-600 leading-relaxed mt-1">{campaign.style_direction}</p>
+            {typeof campaign.style_direction === 'string' ? (
+              <p className="text-sm text-gray-600 leading-relaxed mt-1">{campaign.style_direction}</p>
+            ) : (
+              <div className="mt-1 space-y-2">
+                {campaign.style_direction.mood && (
+                  <div>
+                    <span className="text-xs font-medium text-gray-700">Mood</span>
+                    <p className="text-sm text-gray-600">{campaign.style_direction.mood}</p>
+                  </div>
+                )}
+                {campaign.style_direction.visual_style && (
+                  <div>
+                    <span className="text-xs font-medium text-gray-700">Visual Style</span>
+                    <p className="text-sm text-gray-600">{campaign.style_direction.visual_style}</p>
+                  </div>
+                )}
+                {campaign.style_direction.color_palette && (
+                  <div>
+                    <span className="text-xs font-medium text-gray-700">Color Palette</span>
+                    <p className="text-sm text-gray-600">{campaign.style_direction.color_palette}</p>
+                  </div>
+                )}
+                {campaign.style_direction.references && (
+                  <div>
+                    <span className="text-xs font-medium text-gray-700">References</span>
+                    <p className="text-sm text-gray-600">{campaign.style_direction.references}</p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 

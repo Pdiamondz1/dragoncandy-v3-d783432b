@@ -13,6 +13,13 @@ export interface PostingScheduleEntry {
   content_mix: string;
 }
 
+export interface StyleDirection {
+  mood?: string;
+  visual_style?: string;
+  color_palette?: string;
+  references?: string;
+}
+
 export interface CampaignAnalysis {
   title?: string;
   description?: string;
@@ -37,12 +44,7 @@ export interface CampaignAnalysis {
   hashtags?: string[];
   captions?: string[];
   posting_schedule?: PostingScheduleEntry[];
-  style_direction?: {
-    visual_style: string;
-    mood: string;
-    color_palette: string;
-    references: string;
-  };
+  style_direction?: StyleDirection;
 }
 
 export interface CampaignData {
