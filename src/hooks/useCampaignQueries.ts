@@ -2,7 +2,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import type { CampaignAnalysis } from '@/types/campaign';
+import type { CampaignAnalysis, StyleDirection } from '@/types/campaign';
 
 export function hydrateCampaignFromAnalysis<T extends Campaign>(campaign: T): T {
   const ai = campaign.ai_analysis as Record<string, unknown> | null;
@@ -25,7 +25,7 @@ export function hydrateCampaignFromAnalysis<T extends Campaign>(campaign: T): T 
     key_messages: campaign.key_messages?.length
       ? campaign.key_messages
       : (ai.key_messages as string[]) || undefined,
-    style_direction: campaign.style_direction || (ai.style_direction as string) || undefined,
+    style_direction: campaign.style_direction || (ai.style_direction as StyleDirection) || undefined,
     tier_reasoning: campaign.tier_reasoning || (ai.tier_reasoning as string) || undefined,
     delivery_fee: campaign.delivery_fee ?? (ai.delivery_fee as number) ?? undefined,
   };
@@ -68,7 +68,7 @@ export interface Campaign {
   ai_preview_status?: string | null;
   // Hydrated from ai_analysis (not DB columns)
   key_messages?: string[];
-  style_direction?: string;
+  style_direction?: string | StyleDirection;
   tier_reasoning?: string;
   created_at: string;
   updated_at: string;
