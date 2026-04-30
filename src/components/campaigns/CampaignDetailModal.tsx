@@ -248,7 +248,13 @@ export const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
 
               {/* Style direction */}
               {campaign.style_direction && (
-                <p className="text-xs text-gray-500 italic">{campaign.style_direction}</p>
+                <p className="text-xs text-gray-500 italic">
+                  {typeof campaign.style_direction === 'string'
+                    ? campaign.style_direction
+                    : [campaign.style_direction.mood, campaign.style_direction.visual_style,
+                       campaign.style_direction.color_palette, campaign.style_direction.references]
+                      .filter(Boolean).join('. ')}
+                </p>
               )}
 
               {/* Usage rights + exclusivity */}
