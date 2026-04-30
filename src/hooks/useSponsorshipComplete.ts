@@ -169,6 +169,7 @@ export const useSponsorshipComplete = () => {
       queryClient.invalidateQueries({ queryKey: ['brand-sponsorships'] });
       queryClient.invalidateQueries({ queryKey: ['business-sponsorships'] });
       queryClient.invalidateQueries({ queryKey: ['sponsorship-completion'] });
+      queryClient.invalidateQueries({ queryKey: ['sponsorship-proposals'] });
 
       if (data.status === 'completed') {
         // Trigger payout to restaurant
