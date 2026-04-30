@@ -324,7 +324,13 @@ const BrandSponsorships = () => {
                       variant="outline"
                       size="sm"
                       className="rounded-full border-dc-teal text-dc-teal hover:bg-dc-teal/10"
-                      onClick={() => navigate(`/dashboard/brand/campaigns/${sponsorship.campaigns?.id}`)}
+                      onClick={() => {
+                        if (sponsorship.campaigns?.id) {
+                          navigate(`/dashboard/brand/campaigns/${sponsorship.campaigns.id}`);
+                        } else {
+                          toast({ title: "Campaign unavailable", description: "This campaign may have been removed.", variant: "destructive" });
+                        }
+                      }}
                     >
                       <ExternalLink className="h-3 w-3 mr-1" />
                       View Campaign
