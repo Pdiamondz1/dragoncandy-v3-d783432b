@@ -9,22 +9,26 @@ import SiteGate, { isSiteUnlocked, isPublicPath } from '@/pages/SiteGate';
  * the gate so QR-based public flows continue to work.
  */
 export default function SiteGateGuard({ children }: { children: ReactNode }) {
-  const { pathname } = useLocation();
-
-  if (isSiteUnlocked() || isPublicPath(pathname)) {
-    return <>{children}</>;
-  }
-
-  // Remember the originally requested path (including query/hash) so we can
-  // restore it after a successful unlock.
-  try {
-    const full = pathname + window.location.search + window.location.hash;
-    if (full && full !== '/') {
-      sessionStorage.setItem('dc_gate_redirect', full);
-    }
-  } catch {
-    /* ignore */
-  }
-
-  return <SiteGate />;
+  // Site password gate disabled — app is now publicly accessible.
+  // To re-enable, restore the original logic below.
+  // const { pathname } = useLocation();
+  // if (isSiteUnlocked() || isPublicPath(pathname)) {
+  //   return <>{children}</>;
+  // }
+  // try {
+  //   const full = pathname + window.location.search + window.location.hash;
+  //   if (full && full !== '/') {
+  //     sessionStorage.setItem('dc_gate_redirect', full);
+  //   }
+  // } catch {
+  //   /* ignore */
+  // }
+  // return <SiteGate />;
+  return <>{children}</>;
 }
+
+// Suppress unused import warnings while gate is disabled.
+void useLocation;
+void SiteGate;
+void isSiteUnlocked;
+void isPublicPath;
