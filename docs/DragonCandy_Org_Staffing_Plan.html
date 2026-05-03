@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DragonCandy — Organization, Staffing & Compensation Plan</title>
+<style>
+  @page {
+    size: letter;
+    margin: 1in 1in 1.2in 1in;
+    @bottom-center {
+      content: "Confidential  •  Page " counter(page) " of " counter(pages);
+      font-size: 9pt;
+      color: #999;
+    }
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+    font-size: 11pt;
+    line-height: 1.6;
+    color: #333;
+    max-width: 7.5in;
+    margin: 0 auto;
+    padding: 0.5in;
+  }
+  h1 {
+    font-size: 28pt;
+    color: #2d6a6a;
+    margin-bottom: 4px;
+    letter-spacing: -0.5px;
+  }
+  h2 {
+    font-size: 18pt;
+    color: #2d6a6a;
+    margin-top: 36px;
+    margin-bottom: 12px;
+    padding-bottom: 6px;
+    border-bottom: 2px solid #2d6a6a;
+    page-break-after: avoid;
+  }
+  h3 {
+    font-size: 13pt;
+    color: #444;
+    margin-top: 20px;
+    margin-bottom: 8px;
+    page-break-after: avoid;
+  }
+  p { margin-bottom: 10px; }
+  .subtitle {
+    font-size: 13pt;
+    font-style: italic;
+    color: #666;
+    margin-bottom: 8px;
+  }
+  .tagline {
+    font-size: 11pt;
+    color: #555;
+    margin-bottom: 32px;
+  }
+  .callout {
+    background: #e8f4f4;
+    border-left: 4px solid #2d6a6a;
+    padding: 14px 18px;
+    margin: 16px 0;
+    border-radius: 0 6px 6px 0;
+  }
+  .callout p { margin-bottom: 0; }
+  .callout strong { color: #2d6a6a; }
+  .highlight-box {
+    background: #e8f4f4;
+    border: 2px solid #2d6a6a;
+    padding: 16px 20px;
+    margin: 20px 0;
+    border-radius: 6px;
+    text-align: center;
+  }
+  .highlight-box p { margin-bottom: 4px; font-size: 11pt; }
+  .highlight-box strong { color: #2d6a6a; }
+  .snapshot-header {
+    background: #f0f0f0;
+    padding: 10px 16px;
+    border-radius: 6px;
+    margin-bottom: 16px;
+    font-size: 10.5pt;
+    color: #555;
+  }
+  .snapshot-header strong { color: #333; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 14px 0 18px;
+    font-size: 10.5pt;
+  }
+  th {
+    background: #2d6a6a;
+    color: white;
+    padding: 8px 12px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 10pt;
+  }
+  td {
+    padding: 7px 12px;
+    border-bottom: 1px solid #ddd;
+  }
+  tr:nth-child(even) td { background: #f8f8f8; }
+  tr.total-row td {
+    font-weight: 700;
+    border-top: 2px solid #2d6a6a;
+    background: #e8f4f4;
+  }
+  .ai-table th:first-child { background: #3a7d7d; }
+  .ai-table th:last-child { background: #c47a28; }
+  .ai-summary {
+    font-size: 10.5pt;
+    color: #2d6a6a;
+    font-weight: 600;
+    margin: 6px 0 20px;
+  }
+  ul {
+    margin: 8px 0 12px 20px;
+  }
+  li { margin-bottom: 4px; }
+  .rule-box {
+    background: #fff5f5;
+    border-left: 4px solid #c0392b;
+    padding: 10px 16px;
+    margin: 8px 0;
+    border-radius: 0 6px 6px 0;
+  }
+  .rule-box strong { color: #c0392b; }
+  .rule-box p { margin-bottom: 0; font-size: 10.5pt; color: #555; }
+  .page-break { page-break-before: always; }
+  .footer-note {
+    margin-top: 40px;
+    padding-top: 12px;
+    border-top: 1px solid #ccc;
+    font-size: 9pt;
+    color: #999;
+    text-align: center;
+    font-style: italic;
+  }
+  .org-chart {
+    margin: 20px 0;
+    text-align: center;
+  }
+  .org-row {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 6px;
+  }
+  .org-card {
+    border: 2px solid #2d6a6a;
+    border-radius: 8px;
+    padding: 10px 14px;
+    min-width: 160px;
+    max-width: 200px;
+    text-align: center;
+    font-size: 10pt;
+  }
+  .org-card.founder { background: #e8f4f4; }
+  .org-card.hire { background: #eef2ff; border-color: #4a6fa5; }
+  .org-card.new-hire { background: #f3e8ff; border-color: #7c3aed; }
+  .org-card.optional { border-style: dashed; background: #f3e8ff; border-color: #7c3aed; }
+  .org-card .name { font-weight: 700; font-size: 10.5pt; }
+  .org-card .role { color: #666; font-size: 9pt; margin-top: 2px; }
+  .org-connector { text-align: center; color: #999; font-size: 14pt; margin: 2px 0; }
+  .org-label {
+    text-align: center;
+    font-size: 9pt;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: #888;
+    margin: 12px 0 6px;
+  }
+</style>
+</head>
+<body>
+
+<!-- COVER PAGE -->
+<div style="text-align: center; padding-top: 2in;">
+  <h1>DRAGONCANDY</h1>
+  <p class="subtitle">Organization, Staffing & Compensation Plan</p>
+  <br>
+  <p class="tagline"><em>A Plain-English Guide for Business Partners & Investors</em></p>
+  <p style="color: #555; margin-top: 24px;">How DragonCandy runs a $7–12M business with 10–11 people instead of 30<br>— because AI agents do the heavy lifting.</p>
+
+  <div class="highlight-box" style="margin-top: 48px; max-width: 450px; margin-left: auto; margin-right: auto;">
+    <p><strong>THE THREE NUMBERS THAT MATTER</strong></p>
+    <p><strong>10–11 people</strong> doing the work of <strong>25–35</strong> &bull; AI agents replace <strong>15–25 workers</strong> &bull; <strong>$2–5M profit</strong> by Year 3</p>
+  </div>
+
+  <p style="margin-top: 80px; color: #888;">Prepared by the DragonCandy Team<br><em>Confidential — For Internal Use</em></p>
+</div>
+
+<!-- PAGE BREAK -->
+<div class="page-break"></div>
+
+<!-- EXECUTIVE SUMMARY -->
+<h2>Executive Summary</h2>
+
+<div class="callout">
+  <p>DragonCandy is built to be lean. While a typical software company at $7–12M in revenue would need 25–35 employees, DragonCandy does it with 10–11 people: 3 co-founders and 5–8 hires. The secret is AI agents — digital assistants embedded in every department that handle the repetitive, time-consuming work so the humans can focus on decisions, relationships, and strategy.</p>
+</div>
+
+<p>This document explains:</p>
+<ul>
+  <li>Who the three co-founders are and what each one owns</li>
+  <li>The 5–8 people we need to hire, in what order, and why</li>
+  <li>What the AI agents handle in each department</li>
+  <li>How much we pay people at each stage, and what benefits they get</li>
+  <li>The discipline rules that keep us profitable while we grow</li>
+</ul>
+
+<p><strong>The bottom line:</strong> Total hire costs grow from $145K/year (Year 1) to $900K–$1.1M/year (Year 3), while revenue grows from $300K to $7–12M. That math produces $2–5M in annual profit by Year 3.</p>
+
+<!-- CO-FOUNDERS -->
+<h2>The Co-Founders</h2>
+
+<p>DragonCandy has three co-founders. Two of them run the company day-to-day. The third is a shareholder and flexible contributor.</p>
+
+<h3>Damon Williams — Product & Technology</h3>
+<p>Damon is responsible for everything the customer sees and touches — the app, the website, the AI assistant (Donny), and the technology that powers it all. He decides what to build, how it should work, and makes sure it stays fast and reliable as more users join. In Year 1, he writes code alongside the first developer hire. By Year 3, he shifts to product strategy — deciding what to build next and managing the AI agents that handle routine development work.</p>
+
+<h3>Joe Castelo — Sales & Partnerships</h3>
+<p>Joe is responsible for bringing in customers and building relationships with partners. He signs up restaurants, closes brand sponsor deals, and builds partnerships with companies like Toast, Square, and Google. In Year 1, he's knocking on restaurant doors and messaging creators on Instagram. By Year 3, he focuses on the biggest deals — enterprise brands and strategic partnerships — while the Brand Partnerships Manager handles the day-to-day sales pipeline.</p>
+
+<h3>Juwan Robinson — Shareholder & Support</h3>
+<p>Juwan is a co-founder and shareholder who contributes on a flexible basis. He has skills in website building and AI tools, and helps with light tasks and special projects as needed. He is not responsible for a specific department and does not manage any hires. His primary role is as an owner and advisor to the business.</p>
+
+<!-- PAGE BREAK -->
+<div class="page-break"></div>
+
+<!-- SNAPSHOT 1 -->
+<h2>Snapshot 1: Launch Team (Year 1)</h2>
+
+<div class="snapshot-header">
+  <strong>Revenue:</strong> $0 → $300K–$600K/year &nbsp;&nbsp;|&nbsp;&nbsp; <strong>Total team:</strong> 5–6 people &nbsp;&nbsp;|&nbsp;&nbsp; <strong>Markets:</strong> 2–3 metros
+</div>
+
+<p>At this stage, the co-founders are doing most of the work themselves. The first 2–3 hires fill the most critical gaps: someone to handle daily operations, someone to help build the product, and someone to keep the books.</p>
+
+<!-- Org Chart -->
+<div class="org-chart">
+  <div class="org-label">Co-Founders</div>
+  <div class="org-row">
+    <div class="org-card founder"><div class="name">Damon Williams</div><div class="role">Product & Technology</div></div>
+    <div class="org-card founder"><div class="name">Joe Castelo</div><div class="role">Sales & Partnerships</div></div>
+    <div class="org-card founder" style="border-style: dashed;"><div class="name">Juwan Robinson</div><div class="role">Shareholder & Support</div></div>
+  </div>
+  <div class="org-connector">│</div>
+  <div class="org-label">Year 1 Hires</div>
+  <div class="org-row">
+    <div class="org-card hire"><div class="name">Operations Manager</div><div class="role">Hire #1 • Contractor</div></div>
+    <div class="org-card hire"><div class="name">Developer</div><div class="role">Hire #2 • Contractor</div></div>
+    <div class="org-card hire" style="border-style: dashed;"><div class="name">Bookkeeper</div><div class="role">Hire #3 • Part-Time</div></div>
+  </div>
+</div>
+
+<h3>Hire #1: Operations Manager</h3>
+<p><strong>What they do:</strong> This person is the "front desk" of DragonCandy. They welcome new creators onto the platform, help restaurants get started, and handle any problems that come up during the day. When a customer has an issue — a payment didn't go through, a creator didn't deliver on time, a campaign needs adjusting — this person steps in and fixes it.</p>
+<p><strong>What the AI handles:</strong> The AI answers simple questions automatically ("How do I upload a photo?"), sorts incoming messages by priority, and sends routine onboarding emails to new users. The Operations Manager only deals with things that need a human touch — an unhappy customer, a tricky situation, or a judgment call the AI can't make.</p>
+<p><strong>Pay:</strong> $60K–$80K/year as a contractor</p>
+
+<h3>Hire #2: Developer</h3>
+<p><strong>What they do:</strong> Works alongside Damon to build and improve the DragonCandy app. When Damon decides what to build next, the developer helps make it happen — writing code, fixing bugs, and making sure everything works properly before it goes live to customers.</p>
+<p><strong>What the AI handles:</strong> AI coding agents handle the repetitive parts of building software — writing routine code, running tests to make sure nothing is broken, scanning for security problems around the clock, and fixing simple bugs automatically. The developer focuses on the bigger, more complex work that requires human creativity and judgment.</p>
+<p><strong>Pay:</strong> $70K–$90K/year as a contractor</p>
+
+<h3>Hire #3: Bookkeeper (Part-Time)</h3>
+<p><strong>What they do:</strong> Handles the money side of the business — sending invoices, processing payments, preparing tax documents, and making sure the financial records are accurate. At this stage, it's roughly 10–15 hours per week of work.</p>
+<p><strong>What the AI handles:</strong> The AI automatically sorts expenses into categories, generates financial reports, and scans receipts. The bookkeeper reviews everything the AI produces, catches mistakes, and makes sure we're following all tax and accounting rules.</p>
+<p><strong>Pay:</strong> $15K–$25K/year as a part-time contractor</p>
+
+<h3>Year 1 Cost Summary</h3>
+<table>
+  <tr><th>Role</th><th>Type</th><th style="text-align:right">Annual Pay</th></tr>
+  <tr><td>Operations Manager</td><td>Full-time contractor</td><td style="text-align:right">$60K–$80K</td></tr>
+  <tr><td>Developer</td><td>Full-time contractor</td><td style="text-align:right">$70K–$90K</td></tr>
+  <tr><td>Bookkeeper</td><td>Part-time contractor</td><td style="text-align:right">$15K–$25K</td></tr>
+  <tr class="total-row"><td><strong>Total Year 1 Hires</strong></td><td></td><td style="text-align:right"><strong>$145K–$195K/year</strong></td></tr>
+</table>
+
+<!-- PAGE BREAK -->
+<div class="page-break"></div>
+
+<!-- SNAPSHOT 2 -->
+<h2>Snapshot 2: Growth Team (Year 2)</h2>
+
+<div class="snapshot-header">
+  <strong>Revenue:</strong> $2M–$4.5M/year &nbsp;&nbsp;|&nbsp;&nbsp; <strong>Total team:</strong> 7–8 people &nbsp;&nbsp;|&nbsp;&nbsp; <strong>Markets:</strong> 8–12 metros
+</div>
+
+<p>The business is growing. We have hundreds of paying restaurants across multiple cities. Two things change: the Year 1 hires get promoted to full-time employees with ownership stakes, and we add two new roles to handle marketing and customer retention.</p>
+
+<!-- Org Chart -->
+<div class="org-chart">
+  <div class="org-label">Co-Founders</div>
+  <div class="org-row">
+    <div class="org-card founder"><div class="name">Damon Williams</div><div class="role">Product & Technology</div></div>
+    <div class="org-card founder"><div class="name">Joe Castelo</div><div class="role">Sales & Partnerships</div></div>
+    <div class="org-card founder" style="border-style: dashed;"><div class="name">Juwan Robinson</div><div class="role">Shareholder & Support</div></div>
+  </div>
+  <div class="org-connector">│</div>
+  <div class="org-label">Year 1 Hires — Now Full-Time with Equity</div>
+  <div class="org-row">
+    <div class="org-card hire"><div class="name">Operations Manager</div><div class="role">Hire #1 • FTE + Equity</div></div>
+    <div class="org-card hire"><div class="name">Developer</div><div class="role">Hire #2 • FTE + Equity</div></div>
+    <div class="org-card hire" style="border-style: dashed;"><div class="name">Bookkeeper</div><div class="role">Hire #3 • Part-Time</div></div>
+  </div>
+  <div class="org-connector">│</div>
+  <div class="org-label">New Year 2 Hires</div>
+  <div class="org-row">
+    <div class="org-card new-hire"><div class="name">Marketing & Content Lead</div><div class="role">Hire #4 • Contractor</div></div>
+    <div class="org-card new-hire"><div class="name">Customer Success Mgr</div><div class="role">Hire #5 • Contractor</div></div>
+  </div>
+</div>
+
+<h3>What changes for existing hires</h3>
+<p><strong>Operations Manager</strong> gets promoted to full-time employee with a salary of $110K–$130K plus a 0.5%–2% equity stake in DragonCandy. They now manage the new Customer Success hire, so the co-founders don't have to supervise every person directly.</p>
+<p><strong>Developer</strong> gets promoted to full-time employee with a salary of $120K–$140K plus a 0.5%–2% equity stake. Damon shifts from writing code every day to focusing on product strategy — what to build next, how to stay ahead of competitors, and managing the AI agents.</p>
+<p><strong>Bookkeeper</strong> stays part-time but takes on more hours as transactions grow. Pay increases to $20K–$30K/year.</p>
+
+<h3>Hire #4: Marketing & Content Lead</h3>
+<p><strong>When to hire:</strong> Once you have at least 10 case studies from successful restaurant campaigns AND you're ready to start spending money on advertising. No point hiring a marketer with nothing to market.</p>
+<p><strong>What they do:</strong> This person owns everything that brings new customers to DragonCandy without the co-founders doing it personally — blog posts, case studies, social media, landing pages for search traffic (so when someone searches "food creators in Austin," they find us), and paid advertising on platforms like Instagram and TikTok.</p>
+<p><strong>What the AI handles:</strong> The AI writes first drafts of everything — blog posts, ad copy, landing pages, social media posts. It designs multiple versions of ads to test which ones work best. It tracks which content brings the most signups and generates reports. The Marketing Lead edits, polishes, sets the strategy, and decides where to spend the advertising budget.</p>
+<p><strong>Pay:</strong> $70K–$90K/year as a contractor</p>
+
+<h3>Hire #5: Customer Success Manager</h3>
+<p><strong>When to hire:</strong> Once you hit 100 paying restaurants. Below that number, the Operations Manager and co-founders can handle check-ins personally. Above it, customers start slipping away without a dedicated person.</p>
+<p><strong>What they do:</strong> Keeps restaurants happy so they keep paying. Calls customers to check in, helps them get more value from the platform, and nudges them to upgrade from a cheaper plan to a more expensive one when the math makes sense for them. When a restaurant is thinking about canceling, this person calls them, finds out why, and tries to fix the problem.</p>
+<p><strong>What the AI handles:</strong> The AI monitors every customer's usage and flags when someone might be about to cancel — for example, if a restaurant hasn't logged in for two weeks or hasn't run a campaign in a month. It sends automated check-in emails, suggests upgrade opportunities based on the customer's spending patterns, and generates weekly reports on which customers need attention.</p>
+<p><strong>Pay:</strong> $60K–$80K/year as a contractor (reports to Operations Manager)</p>
+
+<h3>Year 2 Cost Summary</h3>
+<table>
+  <tr><th>Role</th><th>Type</th><th style="text-align:right">Annual Pay</th><th style="text-align:right">Equity</th></tr>
+  <tr><td>Operations Manager</td><td>Full-time employee</td><td style="text-align:right">$110K–$130K</td><td style="text-align:right">0.5%–2%</td></tr>
+  <tr><td>Developer</td><td>Full-time employee</td><td style="text-align:right">$120K–$140K</td><td style="text-align:right">0.5%–2%</td></tr>
+  <tr><td>Marketing Lead</td><td>New contractor</td><td style="text-align:right">$70K–$90K</td><td style="text-align:right">—</td></tr>
+  <tr><td>Customer Success Mgr</td><td>New contractor</td><td style="text-align:right">$60K–$80K</td><td style="text-align:right">—</td></tr>
+  <tr><td>Bookkeeper</td><td>Part-time contractor</td><td style="text-align:right">$20K–$30K</td><td style="text-align:right">—</td></tr>
+  <tr class="total-row"><td><strong>Total Year 2 Hires</strong></td><td></td><td style="text-align:right"><strong>$380K–$470K/yr</strong></td><td style="text-align:right"><strong>1%–4% total</strong></td></tr>
+</table>
+
+<!-- PAGE BREAK -->
+<div class="page-break"></div>
+
+<!-- SNAPSHOT 3 -->
+<h2>Snapshot 3: Scale Team (Year 3+)</h2>
+
+<div class="snapshot-header">
+  <strong>Revenue:</strong> $7M–$12M/year &nbsp;&nbsp;|&nbsp;&nbsp; <strong>Profit:</strong> $2M–$5M/year &nbsp;&nbsp;|&nbsp;&nbsp; <strong>Total team:</strong> 10–11 people &nbsp;&nbsp;|&nbsp;&nbsp; <strong>Markets:</strong> 20+
+</div>
+
+<p>The company is profitable and growing across 20+ cities. The Year 2 hires get promoted to full-time employees with equity. Three new roles are added to handle brand sales, financial planning, and (if needed) additional development.</p>
+
+<!-- Org Chart -->
+<div class="org-chart">
+  <div class="org-label">Co-Founders</div>
+  <div class="org-row">
+    <div class="org-card founder"><div class="name">Damon Williams</div><div class="role">Chief Product Officer</div></div>
+    <div class="org-card founder"><div class="name">Joe Castelo</div><div class="role">Chief Revenue Officer</div></div>
+    <div class="org-card founder" style="border-style: dashed;"><div class="name">Juwan Robinson</div><div class="role">Shareholder & Advisor</div></div>
+  </div>
+  <div class="org-connector">│</div>
+  <div class="org-label">Full-Time Team with Equity</div>
+  <div class="org-row">
+    <div class="org-card hire"><div class="name">Operations Mgr</div><div class="role">Hire #1 • FTE</div></div>
+    <div class="org-card hire"><div class="name">Developer</div><div class="role">Hire #2 • FTE</div></div>
+    <div class="org-card hire"><div class="name">Marketing Lead</div><div class="role">Hire #4 • FTE</div></div>
+    <div class="org-card hire"><div class="name">Customer Success</div><div class="role">Hire #5 • FTE</div></div>
+  </div>
+  <div class="org-connector">│</div>
+  <div class="org-label">New Year 3 Hires</div>
+  <div class="org-row">
+    <div class="org-card new-hire"><div class="name">Brand Partnerships Mgr</div><div class="role">Hire #6 • Contractor → FTE</div></div>
+    <div class="org-card new-hire"><div class="name">Head of Finance</div><div class="role">Hire #7 • Replaces Bookkeeper</div></div>
+    <div class="org-card optional"><div class="name">2nd Developer</div><div class="role">Hire #8 • Only If Needed</div></div>
+  </div>
+</div>
+
+<h3>What changes for existing hires</h3>
+<p>All Year 2 contractors who've proven themselves get promoted to full-time employees with equity and market-rate salaries. The full benefits package kicks in for all employees — health, dental, vision, retirement match, and paid time off.</p>
+
+<h3>Hire #6: Brand Partnerships Manager</h3>
+<p><strong>When to hire:</strong> When brand sponsor revenue becomes a real line of business — meaning you have multiple brands paying $1K–$3K/month and a pipeline of more waiting to sign.</p>
+<p><strong>What they do:</strong> Takes over the day-to-day work of finding and closing brand sponsor deals from Joe. Brand sponsors are companies like beverage brands, restaurant chains, and consumer product companies that run big campaigns across multiple cities. These deals have longer sales cycles — it might take 2–3 months from first conversation to signed contract. This person manages that whole process: researching potential brands, reaching out, pitching them, negotiating contracts, and making sure their campaigns run smoothly.</p>
+<p><strong>What the AI handles:</strong> The AI researches potential brand partners (who's spending money on creator marketing? who's expanding into our cities?), drafts outreach emails and proposals, tracks where every deal stands in the pipeline, and prepares briefing documents before meetings.</p>
+<p><strong>Pay:</strong> $90K–$120K/year as a contractor, promotes to full-time with equity once proven</p>
+
+<h3>Hire #7: Head of Finance (Replaces Bookkeeper)</h3>
+<p><strong>When to hire:</strong> When annual revenue passes $3M and the business needs real financial planning, not just bookkeeping.</p>
+<p><strong>What they do:</strong> At $7M–$12M in revenue with $2M–$5M in profit, you need more than someone sending invoices. The Head of Finance builds budgets, forecasts where the money is going, manages contracts with vendors (the companies we pay for services), handles tax planning, and advises the co-founders on financial decisions — where to spend more, where to cut back, and when the math supports the next hire.</p>
+<p><strong>What the AI handles:</strong> The AI generates financial reports on demand, categorizes every expense automatically, tracks cash flow and alerts the team if spending is off-plan, prepares tax documents, and produces the 1099 tax forms that creators need at the end of each year. The Head of Finance reviews everything the AI produces, catches problems early, and provides the strategic thinking that software can't do.</p>
+<p><strong>Pay:</strong> $120K–$150K/year, replacing the part-time bookkeeper role</p>
+
+<h3>Hire #8: Second Developer (Only If Needed)</h3>
+<p><strong>When to hire:</strong> Only if the AI coding agents plus the first developer plus Damon genuinely cannot keep pace with the work that needs to be done. If the AI is handling 70–80% of routine development and the humans can manage the rest, skip this hire entirely and save $80K–$100K per year.</p>
+<p><strong>Pay:</strong> $80K–$100K/year as a contractor</p>
+
+<h3>Year 3 Cost Summary</h3>
+<table>
+  <tr><th>Role</th><th>Type</th><th style="text-align:right">Annual Pay</th><th style="text-align:right">Equity</th></tr>
+  <tr><td>Operations Manager</td><td>FTE + benefits</td><td style="text-align:right">$140K–$160K</td><td style="text-align:right">0.5%–2%</td></tr>
+  <tr><td>Developer</td><td>FTE + benefits</td><td style="text-align:right">$150K–$180K</td><td style="text-align:right">0.5%–2%</td></tr>
+  <tr><td>Marketing Lead</td><td>FTE + benefits</td><td style="text-align:right">$130K–$150K</td><td style="text-align:right">0.5%–1%</td></tr>
+  <tr><td>Customer Success Mgr</td><td>FTE + benefits</td><td style="text-align:right">$110K–$130K</td><td style="text-align:right">0.5%–1%</td></tr>
+  <tr><td>Brand Partnerships Mgr</td><td>Contractor → FTE</td><td style="text-align:right">$90K–$120K</td><td style="text-align:right">Earns in</td></tr>
+  <tr><td>Head of Finance</td><td>Contractor → FTE</td><td style="text-align:right">$120K–$150K</td><td style="text-align:right">Earns in</td></tr>
+  <tr><td>Second Developer (if needed)</td><td>Contractor</td><td style="text-align:right">$80K–$100K</td><td style="text-align:right">—</td></tr>
+  <tr class="total-row"><td><strong>Total Year 3 (7–8 people)</strong></td><td></td><td style="text-align:right"><strong>$820K–$990K/yr</strong></td><td style="text-align:right"><strong>3%–8%</strong></td></tr>
+  <tr><td>Benefits ($8K–$15K/person)</td><td></td><td style="text-align:right">+$56K–$120K/yr</td><td></td></tr>
+  <tr class="total-row"><td><strong>Grand Total</strong></td><td></td><td style="text-align:right"><strong>$876K–$1.11M/yr</strong></td><td></td></tr>
+</table>
+
+<!-- PAGE BREAK -->
+<div class="page-break"></div>
+
+<!-- AI AGENTS -->
+<h2>The AI Agents — Your Invisible Workforce</h2>
+
+<p>Every person on the DragonCandy team has AI assistants that handle the boring, repetitive parts of their job — the same way a busy executive has an assistant who handles scheduling, filing, and drafting emails. The human makes the decisions and builds the relationships. The AI does the paperwork.</p>
+
+<h3>Product & Technology (Damon's Team)</h3>
+<table class="ai-table">
+  <tr><th>The humans decide and do</th><th>The AI handles</th></tr>
+  <tr><td>What to build next</td><td>Writing routine code</td></tr>
+  <tr><td>How features should work</td><td>Testing everything before it goes live</td></tr>
+  <tr><td>Reviewing code before it goes live</td><td>Scanning for security problems 24/7</td></tr>
+  <tr><td>Solving tricky problems</td><td>Monitoring the app and alerting if something breaks</td></tr>
+  <tr><td>Keeping the app fast and reliable</td><td>Fixing simple bugs without human help</td></tr>
+  <tr><td></td><td>Handling software updates and patches</td></tr>
+</table>
+<p class="ai-summary">Without AI: you'd need 4–6 developers. With AI: 2 developers + Damon.</p>
+
+<h3>Sales & Partnerships (Joe's Team)</h3>
+<table class="ai-table">
+  <tr><th>The humans decide and do</th><th>The AI handles</th></tr>
+  <tr><td>Build relationships with restaurant owners</td><td>Research potential customers and partners</td></tr>
+  <tr><td>Close brand sponsor deals</td><td>Draft outreach emails and proposals</td></tr>
+  <tr><td>Negotiate contracts and partnerships</td><td>Track every deal in the pipeline</td></tr>
+  <tr><td>Attend industry events</td><td>Score leads (who's most likely to sign up?)</td></tr>
+  <tr><td>Make final calls on pricing and terms</td><td>Scan what competitors are doing and report back</td></tr>
+  <tr><td></td><td>Prepare meeting briefings automatically</td></tr>
+</table>
+<p class="ai-summary">Without AI: you'd need 3–4 salespeople + a research analyst. With AI: Joe + 1 Brand Partnerships Manager.</p>
+
+<h3>Marketing & Content</h3>
+<table class="ai-table">
+  <tr><th>The human decides and does</th><th>The AI handles</th></tr>
+  <tr><td>Set the marketing strategy</td><td>Write first drafts of blog posts, case studies, and ads</td></tr>
+  <tr><td>Decide which cities to target and when</td><td>Create city-specific landing pages for search traffic</td></tr>
+  <tr><td>Edit and polish content before publishing</td><td>Design multiple versions of ads to test</td></tr>
+  <tr><td>Manage the advertising budget</td><td>Track which content drives the most signups</td></tr>
+  <tr><td>Build relationships with press and influencers</td><td>Monitor social media and suggest posts</td></tr>
+</table>
+<p class="ai-summary">Without AI: you'd need 3–5 marketers. With AI: 1 Marketing Lead.</p>
+
+<h3>Operations & Customer Success</h3>
+<table class="ai-table">
+  <tr><th>The humans decide and do</th><th>The AI handles</th></tr>
+  <tr><td>Handle difficult customer situations personally</td><td>Answer common questions instantly (24/7)</td></tr>
+  <tr><td>Call restaurants to check in and build loyalty</td><td>Route complex issues to the right person</td></tr>
+  <tr><td>Spot problems before customers complain</td><td>Monitor every customer's usage and flag cancellation risk</td></tr>
+  <tr><td>Coach restaurants on getting more value</td><td>Send automated onboarding guides to new users</td></tr>
+  <tr><td>Manage the creator community</td><td>Suggest tier upgrades when the math makes sense</td></tr>
+  <tr><td></td><td>Generate weekly reports on customer health</td></tr>
+</table>
+<p class="ai-summary">Without AI: you'd need 5–8 support reps + 2–3 account managers. With AI: 1 Ops Manager + 1 Customer Success Manager.</p>
+
+<h3>Finance & Compliance</h3>
+<table class="ai-table">
+  <tr><th>The human decides and does</th><th>The AI handles</th></tr>
+  <tr><td>Build budgets and financial forecasts</td><td>Categorize every expense automatically</td></tr>
+  <tr><td>Advise co-founders on spending decisions</td><td>Generate profit & loss reports on demand</td></tr>
+  <tr><td>Manage vendor contracts and negotiations</td><td>Track cash flow and alert if spending is off-plan</td></tr>
+  <tr><td>Oversee tax planning and compliance</td><td>Prepare tax documents and 1099s for creators</td></tr>
+  <tr><td>Prepare investor/partner financial reports</td><td>Scan invoices and receipts</td></tr>
+</table>
+<p class="ai-summary">Without AI: you'd need 2–3 finance staff. With AI: 1 Head of Finance.</p>
+
+<div class="highlight-box">
+  <p>A company at $7M–$12M revenue would normally need <strong>25–35 employees</strong>.</p>
+  <p>DragonCandy does it with <strong>10–11 people</strong> because AI agents handle the work of <strong>15–25 additional workers</strong>.</p>
+  <p>That's not a cost savings — it's a <strong>structural advantage</strong>. Every competitor who hires 30 people has to charge higher prices or raise outside money to cover payroll. We don't.</p>
+</div>
+
+<!-- PAGE BREAK -->
+<div class="page-break"></div>
+
+<!-- COMPENSATION -->
+<h2>Compensation & Benefits — The Three-Stage Plan</h2>
+
+<p>The philosophy: Pay fairly, but don't overspend before the revenue is there. People who join early take more risk — so they get ownership (equity) in the company as a reward. As DragonCandy grows and the risk goes down, salaries go up and benefits get added.</p>
+
+<h3>Stage 1: Contractor Phase (Year 1 — Revenue $0–$600K)</h3>
+<p>New hires start as independent contractors. They send us an invoice each month, and we pay them. No benefits, no payroll taxes on our side. They handle their own taxes and insurance. This is standard for early-stage companies — it keeps costs low and gives both sides flexibility.</p>
+<p><strong>Benefits:</strong> None. Contractors handle their own insurance and taxes.</p>
+<p><strong>Total cost:</strong> $145K–$195K/year for all hires.</p>
+
+<h3>Stage 2: Promotion + Equity Phase (Year 2 — Revenue $2M–$4.5M)</h3>
+<p>The best Year 1 contractors get promoted to full-time employees with a real salary and an ownership stake in DragonCandy. The salary is below what a big company would pay (roughly $100K–$140K instead of $150K–$180K), but the equity makes up for it. If DragonCandy succeeds, that equity could be worth far more than the salary gap.</p>
+
+<div class="callout">
+  <p><strong>What is equity?</strong> Equity means owning a small piece of the company — typically 0.5% to 2% per person. If DragonCandy is eventually worth $20 million, a 1% stake is worth $200,000. It's a reward for joining early and taking the risk.</p>
+  <p style="margin-top: 8px;"><strong>How does equity work?</strong> Equity doesn't all vest (become theirs) at once. The standard setup is a 4-year vesting schedule with a 1-year cliff. That means: the employee earns nothing for the first year. After 12 months, they get 25% of their equity. After that, they earn a little more each month for the next 3 years until they own the full amount. If they leave before the first year, they get nothing. This protects the company from giving ownership to someone who doesn't stay.</p>
+</div>
+
+<p><strong>Benefits (full-time employees only):</strong></p>
+<ul>
+  <li>Health insurance — company pays 50%–75% of the premium (~$4K–$8K/year per person)</li>
+  <li>3 weeks paid time off</li>
+  <li>Remote work flexibility (Hoboken, NJ office available)</li>
+</ul>
+<p><strong>Total cost:</strong> $380K–$470K/year for all hires.</p>
+
+<h3>Stage 3: Market Rate + Full Benefits (Year 3+ — Revenue $7M–$12M)</h3>
+<p>The company is profitable. Everyone who's proven themselves is now a full-time employee earning close to what they'd make at a bigger company — plus they still have their equity. Full benefits package for all employees.</p>
+<p><strong>Full benefits package:</strong></p>
+<ul>
+  <li>Health insurance — company pays 50%–75% of premium</li>
+  <li>Dental and vision insurance</li>
+  <li>3 weeks paid time off</li>
+  <li>401(k) retirement plan with 3% company match (~$3,600–$5,400/year per person)</li>
+  <li>Remote work flexibility (Hoboken, NJ office available)</li>
+</ul>
+<p><strong>Total benefits cost:</strong> $8K–$15K per employee per year | $56K–$120K total for 7–8 employees</p>
+<p><strong>Total cost:</strong> $876K–$1.11M/year for all hires including benefits.</p>
+
+<!-- HIRING RULES -->
+<h2>Hiring Rules — The Discipline That Keeps Us Profitable</h2>
+
+<p>These rules are non-negotiable. Breaking them is how bootstrapped companies go broke.</p>
+
+<div class="rule-box">
+  <strong>1. Every hire must generate $500K+ in revenue per head.</strong>
+  <p>If the company has $3M in revenue and 6 people, that's $500K per person. Adding a 7th person means we need to be confident revenue will grow to $3.5M to keep the ratio healthy. If it won't, don't hire.</p>
+</div>
+<div class="rule-box">
+  <strong>2. No salesperson until paid ads are profitable.</strong>
+  <p>If we don't know which message converts strangers into customers, a salesperson has nothing to sell. Founders do the selling first. Hire sales help only after we've proven what works.</p>
+</div>
+<div class="rule-box">
+  <strong>3. No customer success manager until 100+ paying restaurants.</strong>
+  <p>Below 100 customers, the founders and operations manager can personally check in with every restaurant. Above it, it becomes impossible without a dedicated person.</p>
+</div>
+<div class="rule-box">
+  <strong>4. No second developer until the AI agents can't keep up.</strong>
+  <p>Our AI coding agents handle 70–80% of routine development work. If one developer plus Damon plus AI can manage the workload, skip this hire and save $80K–$100K per year.</p>
+</div>
+<div class="rule-box">
+  <strong>5. Every new hire starts as a contractor.</strong>
+  <p>No exceptions. Contractors cost less, give us flexibility, and let us test the fit before making a long-term commitment. Promotion to full-time is earned, not given.</p>
+</div>
+
+<!-- PAGE BREAK -->
+<div class="page-break"></div>
+
+<!-- CO-FOUNDER COMP -->
+<h2>A Note on Co-Founder Compensation</h2>
+
+<p>The cost tables in this document show hire costs only — they do not include compensation for the three co-founders. Co-founder compensation is a separate decision for the founding team and depends on how much cash the business has, how much the founders need to live on, and what each founder's role demands.</p>
+
+<p>A common approach at this stage:</p>
+<ul>
+  <li><strong>Year 1:</strong> Founders take little or no salary. The business can't afford it, and the founders' compensation is their equity — they own the company.</li>
+  <li><strong>Year 2:</strong> Once the company is cash-flow positive, founders start drawing a modest salary ($80K–$120K each) — enough to live on, but not market rate.</li>
+  <li><strong>Year 3:</strong> As profits grow, founder salaries can rise toward market rate ($150K–$200K each), though many bootstrapped founders deliberately stay below market to keep costs low and profits high.</li>
+</ul>
+
+<p>The all-in company cost numbers in the summary table ($480K–$600K in Year 1, $1.5M–$2M in Year 2, $2.5M–$3.5M in Year 3) include founder compensation along with all other costs.</p>
+
+<!-- LOCATION -->
+<h2>Location & Work Setup</h2>
+
+<p>DragonCandy is headquartered in <strong>Hoboken, NJ 07030</strong> with existing office space. The team operates on a flexible model:</p>
+<ul>
+  <li><strong>Most roles are remote</strong> — we hire the best people wherever they are. Remote workers cost less if they live outside expensive cities like New York, and we get access to a much larger talent pool.</li>
+  <li><strong>Some roles benefit from being local</strong> — anyone involved in the NYC metro restaurant/creator launch (the first market) may be based in or near Hoboken for in-person meetings and events.</li>
+  <li><strong>The office is available</strong> — any team member can use the Hoboken office when they want or need to. It's not required, but it's there.</li>
+</ul>
+
+<!-- SUMMARY TABLE -->
+<h2>The Math That Makes This Work</h2>
+
+<table>
+  <tr><th></th><th style="text-align:center">Year 1</th><th style="text-align:center">Year 2</th><th style="text-align:center">Year 3</th></tr>
+  <tr><td><strong>Revenue</strong></td><td style="text-align:center">$300K–$600K</td><td style="text-align:center">$2M–$4.5M</td><td style="text-align:center">$7M–$12M</td></tr>
+  <tr><td><strong>Total people</strong></td><td style="text-align:center">5–6</td><td style="text-align:center">7–8</td><td style="text-align:center">10–11</td></tr>
+  <tr><td><strong>Hire costs</strong></td><td style="text-align:center">$145K–$195K</td><td style="text-align:center">$380K–$470K</td><td style="text-align:center">$876K–$1.11M</td></tr>
+  <tr><td><strong>All-in company costs</strong></td><td style="text-align:center">$480K–$600K</td><td style="text-align:center">$1.5M–$2M</td><td style="text-align:center">$2.5M–$3.5M</td></tr>
+  <tr><td><strong>Profit</strong></td><td style="text-align:center">Breakeven</td><td style="text-align:center">$500K–$2M</td><td style="text-align:center">$2M–$5M</td></tr>
+  <tr class="total-row"><td><strong>Revenue per person</strong></td><td style="text-align:center"><strong>$50K–$120K</strong></td><td style="text-align:center"><strong>$250K–$640K</strong></td><td style="text-align:center"><strong>$636K–$1.2M</strong></td></tr>
+</table>
+
+<div class="highlight-box" style="margin-top: 24px;">
+  <p>By Year 3, DragonCandy produces <strong>$636K–$1.2M in revenue per person</strong> — top 10% among software companies.</p>
+  <p>Most companies at this revenue level have 30–50 employees. We do it with 10–11 because the AI agents are doing the work of the other 20–40.</p>
+</div>
+
+<div class="footer-note">
+  Confidential — For Internal Use<br>
+  Prepared by the DragonCandy Team
+</div>
+
+</body>
+</html>

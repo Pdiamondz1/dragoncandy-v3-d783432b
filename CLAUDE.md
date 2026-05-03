@@ -1,3 +1,4 @@
+@docs/PROJECT_CONTEXT.md
 # DragonCandy — Claude Code Briefing
 
 ## Project Overview
