@@ -1,6 +1,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { validateDonnyToken, requireScope } from "../_shared/auth.ts";
+import { getModelConfig } from "../_shared/model-routing.ts";
+import { logCost } from "../_shared/cost-ledger.ts";
+import { getUserUsageStage, incrementUsage } from "../_shared/usage-tracker.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -117,7 +120,16 @@ function buildPromptForType(
   return `${campaignContext}\n\nGenerate a ${previewType.replace(/_/g, " ")} for this campaign.\n\n${typeInstructions[previewType]}\n\nReturn ONLY valid JSON, no markdown fences or extra text.`;
 }
 
-async function callClaude(prompt: string, systemPrompt: string): Promise<string> {
+interface ClaudeCallResult {
+  text: string;
+  usage: { input_tokens: number; output_tokens: number };
+}
+
+async function callClaude(
+  prompt: string,
+  systemPrompt: string,
+  modelConfig: ReturnType<typeof getModelConfig>,
+): Promise<ClaudeCallResult> {
   const response = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
@@ -126,8 +138,8 @@ async function callClaude(prompt: string, systemPrompt: string): Promise<string>
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 4096,
+      model: modelConfig.model,
+      max_tokens: modelConfig.maxTokens,
       system: systemPrompt,
       messages: [{ role: "user", content: prompt }],
     }),
@@ -142,7 +154,10 @@ async function callClaude(prompt: string, systemPrompt: string): Promise<string>
   const textBlock = result.content?.find(
     (b: { type: string }) => b.type === "text",
   );
-  return textBlock?.text ?? "";
+  return {
+    text: textBlock?.text ?? "",
+    usage: result.usage ?? { input_tokens: 0, output_tokens: 0 },
+  };
 }
 
 function parseJsonFromResponse(raw: string): Record<string, unknown> {
@@ -248,12 +263,24 @@ async function handleGenerate(
     return jsonResponse({ success: false, error: "Campaign not found" }, 404);
   }
 
+  const usageStage = await getUserUsageStage(supabaseAdmin, userId);
+  const modelConfig = getModelConfig("donny-campaign-preview", usageStage);
+
   const previews: Record<string, unknown>[] = [];
 
   for (let i = 0; i < preview_types.length; i++) {
     const previewType = preview_types[i] as PreviewType;
     const prompt = buildPromptForType(previewType, campaign, style_notes);
-    const raw = await callClaude(prompt, SYSTEM_PROMPT);
+    const { text: raw, usage } = await callClaude(prompt, SYSTEM_PROMPT, modelConfig);
+    await logCost(supabaseAdmin, {
+      userId,
+      edgeFunction: "donny-campaign-preview",
+      model: modelConfig.model,
+      tier: modelConfig.tier,
+      inputTokens: usage.input_tokens,
+      outputTokens: usage.output_tokens,
+    });
+    await incrementUsage(supabaseAdmin, userId, modelConfig.actionCost);
     const previewData = parseJsonFromResponse(raw);
 
     const title = `${previewType.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())} — ${campaign.title}`;
@@ -292,7 +319,7 @@ async function handleGenerate(
         preview_data: previewData,
         media_url: mediaUrl,
         ai_prompt_used: prompt,
-        generation_model: "claude-sonnet-4-20250514",
+        generation_model: modelConfig.model,
         sort_order: i,
       })
       .select()
@@ -335,7 +362,18 @@ async function handleRegenerate(
 
   // Build new prompt from original + style notes
   const newPrompt = `${original.ai_prompt_used}\n\nAdditional style notes: ${style_notes}`;
-  const raw = await callClaude(newPrompt, SYSTEM_PROMPT);
+  const usageStage = await getUserUsageStage(supabaseAdmin, userId);
+  const modelConfig = getModelConfig("donny-campaign-preview", usageStage);
+  const { text: raw, usage } = await callClaude(newPrompt, SYSTEM_PROMPT, modelConfig);
+  await logCost(supabaseAdmin, {
+    userId,
+    edgeFunction: "donny-campaign-preview",
+    model: modelConfig.model,
+    tier: modelConfig.tier,
+    inputTokens: usage.input_tokens,
+    outputTokens: usage.output_tokens,
+  });
+  await incrementUsage(supabaseAdmin, userId, modelConfig.actionCost);
   const previewData = parseJsonFromResponse(raw);
 
   // Fetch campaign for title
