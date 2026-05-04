@@ -20,6 +20,9 @@ export const TIER_FEATURES: TierFeature[] = [
   { key: 'api_access', label: 'API Access', description: 'Programmatic access to DragonCandy features', requiredTier: 'pro' },
   { key: 'custom_branding', label: 'Custom Branding', description: 'White-label campaigns with your brand', requiredTier: 'pro' },
   { key: 'priority_support', label: 'Priority Support', description: 'Dedicated support with faster response times', requiredTier: 'pro' },
+  { key: 'donny_assisted', label: 'Donny Assisted Mode', description: 'Donny drafts posts and suggests actions for your review', requiredTier: 'starter' },
+  { key: 'donny_auto_pilot', label: 'Donny Auto-Pilot', description: 'Donny generates, schedules, and publishes content autonomously', requiredTier: 'growth' },
+  { key: 'dragondash_rush', label: 'DragonDash Rush Posting', description: 'Simultaneous multi-platform posting with AI-written captions', requiredTier: 'starter' },
 ];
 
 export const TIER_ORDER: TierName[] = ['free', 'starter', 'growth', 'pro', 'enterprise'];
@@ -30,6 +33,22 @@ export const TIER_PRICES: Record<TierName, { monthly: number; annual: number }> 
   growth: { monthly: 499, annual: 399 },
   pro: { monthly: 999, annual: 799 },
   enterprise: { monthly: 0, annual: 0 },
+};
+
+export const DONNY_ACTION_BUDGETS: Record<TierName, number> = {
+  free: 50,
+  starter: 500,
+  growth: 2000,
+  pro: 10000,
+  enterprise: 50000,
+};
+
+export const DONNY_AUTOMATION_LEVELS: Record<TierName, 'manual' | 'assisted' | 'auto_pilot'> = {
+  free: 'manual',
+  starter: 'assisted',
+  growth: 'auto_pilot',
+  pro: 'auto_pilot',
+  enterprise: 'auto_pilot',
 };
 
 export function getFeature(key: string): TierFeature | undefined {
