@@ -1,6 +1,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { validateDonnyToken, requireScope } from "../_shared/auth.ts";
+import { getModelConfig, type ModelConfig } from "../_shared/model-routing.ts";
+import { logCost } from "../_shared/cost-ledger.ts";
+import { getUserUsageStage, incrementUsage } from "../_shared/usage-tracker.ts";
 import { embedQuery, retrieveContext } from "./rag.ts";
 import { SUB_AGENT_TOOLS } from "./tools.ts";
 import type { OrchestratorInput, OrchestratorOutput, UserContext } from "./types.ts";
@@ -117,7 +120,8 @@ interface ClaudeResponse {
 
 async function callClaude(
   systemPrompt: string,
-  messages: ClaudeMessage[]
+  messages: ClaudeMessage[],
+  modelConfig: ModelConfig
 ): Promise<ClaudeResponse> {
   const response = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
@@ -127,8 +131,8 @@ async function callClaude(
       "content-type": "application/json",
     },
     body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 1024,
+      model: modelConfig.model,
+      max_tokens: modelConfig.maxTokens,
       system: systemPrompt,
       tools: SUB_AGENT_TOOLS,
       messages,
@@ -285,8 +289,21 @@ serve(async (req) => {
       { role: "user", content: query },
     ];
 
+    // --- Model routing ---
+    const usageStage = await getUserUsageStage(supabase, userId);
+    const modelConfig = getModelConfig("donny-orchestrator", usageStage);
+
     // --- Tool use loop (max 3 iterations) ---
-    let claudeResult = await callClaude(systemPrompt, messages);
+    let claudeResult = await callClaude(systemPrompt, messages, modelConfig);
+    await logCost(supabase, {
+      userId,
+      edgeFunction: "donny-orchestrator",
+      model: modelConfig.model,
+      tier: modelConfig.tier,
+      inputTokens: claudeResult.usage?.input_tokens ?? 0,
+      outputTokens: claudeResult.usage?.output_tokens ?? 0,
+    });
+    await incrementUsage(supabase, userId, modelConfig.actionCost);
     let lastToolUsed = "general";
     let loopCount = 0;
 
@@ -328,7 +345,16 @@ serve(async (req) => {
       messages.push({ role: "assistant", content: claudeResult.content });
       messages.push({ role: "user", content: toolResultBlocks });
 
-      claudeResult = await callClaude(systemPrompt, messages);
+      claudeResult = await callClaude(systemPrompt, messages, modelConfig);
+      await logCost(supabase, {
+        userId,
+        edgeFunction: "donny-orchestrator",
+        model: modelConfig.model,
+        tier: modelConfig.tier,
+        inputTokens: claudeResult.usage?.input_tokens ?? 0,
+        outputTokens: claudeResult.usage?.output_tokens ?? 0,
+      });
+      await incrementUsage(supabase, userId, modelConfig.actionCost);
     }
 
     // --- Extract final answer ---
