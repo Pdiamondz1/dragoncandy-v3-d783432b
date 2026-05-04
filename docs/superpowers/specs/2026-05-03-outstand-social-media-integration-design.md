@@ -3,6 +3,7 @@
 **Date:** May 3, 2026
 **Audience:** Lead Developer, Engineering Team, Business Stakeholders
 **Status:** Approved Design — Ready for Implementation Planning
+**Cost Governance:** This spec inherits token budgets and model routing from the [Donny AI Cost Architecture spec](2026-05-03-donny-ai-cost-architecture-design.md).
 
 ---
 
@@ -87,6 +88,19 @@ Creator submits deliverable → Restaurant approves content
                          ▼         ▼        ▼          ▼
                     Post now   Schedule   Edit first   Skip
 ```
+
+### DragonDash Rush Posting
+
+The campaign content approval prompt differentiates by cost and speed:
+
+| Option | Tier | AI Work |
+|--------|------|---------|
+| **"Post now to all platforms"** | DragonDash rush ($25–50 surcharge) | T2/Sonnet — multi-platform simultaneous posting with AI-written platform-specific captions, optimized hashtags, cross-tagging |
+| **"Schedule for optimal times"** | Standard | T1/Haiku — picks best time per platform, queues posts |
+| **"Post to one platform now"** | Standard | T1/Haiku — single-platform post with caption |
+| **"Edit first" / "Skip"** | Free | No AI involved |
+
+Same pattern applies in Creator cross-post (Section 2) and Brand amplification (Section 3).
 
 ### Key Restaurant Features
 
@@ -318,11 +332,11 @@ User ──→ Donny AI ──→ Outstand MCP (25 tools) ──→ 10 Social Pl
 
 Users choose how much autonomy to give Donny:
 
-| Level | Behavior | Best For |
-|-------|----------|----------|
-| **Manual** | Donny suggests, user approves every action. Full control. | New users, sensitive brands |
-| **Assisted** (default) | Donny drafts posts and schedules them. User reviews before publish. | Most users |
-| **Auto-Pilot** | Donny generates, schedules, and publishes autonomously. User gets notification summaries. | Power users, high-volume restaurants |
+| Level | Behavior | Available On | Action Cost |
+|-------|----------|-------------|-------------|
+| **Manual** | Donny suggests, user approves every action. | All tiers | 0 actions |
+| **Assisted** (default) | Donny drafts posts and schedules them. User reviews before publish. | Starter+ | 1–3 actions/post |
+| **Auto-Pilot** | Donny generates, schedules, and publishes autonomously. Daily summary. | Growth+ | 10 actions/day |
 
 ---
 
