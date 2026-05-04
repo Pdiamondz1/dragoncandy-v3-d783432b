@@ -162,7 +162,8 @@ Return the top 5 best matches as a JSON array. Each element must have:
 
 Return ONLY a valid JSON array, no other text.`;
 
-    const modelConfig = getModelConfig("donny-creator-match");
+    const usageStage = await getUserUsageStage(supabaseAdmin, userId);
+    const modelConfig = getModelConfig("donny-creator-match", usageStage);
 
     const aiResponse = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",

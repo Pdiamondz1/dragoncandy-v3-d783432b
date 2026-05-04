@@ -100,16 +100,16 @@ export async function getUserSubscriptionTier(
   // Look up the user's org subscription tier
   const { data } = await supabaseAdmin
     .from("profiles")
-    .select("organization_id")
+    .select("org_id")
     .eq("id", userId)
     .maybeSingle();
 
-  if (!data?.organization_id) return "free";
+  if (!data?.org_id) return "free";
 
   const { data: org } = await supabaseAdmin
     .from("organizations")
     .select("subscription_tier")
-    .eq("id", data.organization_id)
+    .eq("id", data.org_id)
     .maybeSingle();
 
   return org?.subscription_tier ?? "free";

@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { validateDonnyToken, requireScope } from "../_shared/auth.ts";
-import { getModelConfig } from "../_shared/model-routing.ts";
+import { getModelConfig, type ModelConfig } from "../_shared/model-routing.ts";
 import { logCost } from "../_shared/cost-ledger.ts";
 import { getUserUsageStage, incrementUsage } from "../_shared/usage-tracker.ts";
 
@@ -54,7 +54,8 @@ async function fetchAndExtract(url: string): Promise<FetchedContent> {
 async function generateCampaignIdeas(
   pageContent: string,
   sourceType: string,
-  role: string | null
+  role: string | null,
+  modelConfig: ModelConfig
 ): Promise<{
   result: { business_context: Record<string, unknown>; campaign_ideas: unknown[] };
   usage: { input_tokens: number; output_tokens: number };
@@ -123,8 +124,6 @@ Business information:
 ${pageContent}
 
 Generate 3 diverse campaign ideas based on this business.`;
-
-  const modelConfig = getModelConfig("donny-campaign-generate");
 
   const response = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
@@ -218,8 +217,9 @@ serve(async (req) => {
         pageContent = `Title: ${extracted.title}\nDescription: ${extracted.description}\nContent: ${extracted.bodyText}`;
       }
 
-      const modelConfig = getModelConfig("donny-campaign-generate");
-      const { result: ideasResponse, usage } = await generateCampaignIdeas(pageContent, source_type, role);
+      const usageStage = await getUserUsageStage(supabaseAdmin, userId);
+      const modelConfig = getModelConfig("donny-campaign-generate", usageStage);
+      const { result: ideasResponse, usage } = await generateCampaignIdeas(pageContent, source_type, role, modelConfig);
 
       await logCost(supabaseAdmin, {
         userId,
@@ -339,7 +339,8 @@ serve(async (req) => {
     const assembledContent = contentSections.join("\n\n");
 
     // Call Anthropic Claude
-    const legacyModelConfig = getModelConfig("donny-campaign-generate");
+    const legacyUsageStage = await getUserUsageStage(supabaseAdmin, userId);
+    const legacyModelConfig = getModelConfig("donny-campaign-generate", legacyUsageStage);
     const legacySystemPrompt = `You are an expert marketing strategist for DragonCandy, a platform connecting brands with social media content creators. Your job is to analyze brand content and generate a complete, compelling campaign draft.
 
 Respond with valid JSON only — no markdown fences, no additional text, just raw JSON. Use this exact structure:
