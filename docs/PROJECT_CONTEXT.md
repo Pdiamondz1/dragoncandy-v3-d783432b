@@ -53,7 +53,8 @@ operating cost, Stripe in test mode. Production launch targeted next month.
 **Codebase scale**: 63 pages, 140+ hooks, 42 edge functions.
 **Repo**: `C:\GIT\dragoncandy-v3-d783432b`
 **Active integrations**: Toast POS, Stripe Connect, Claude Sonnet 4 + Haiku
-routing, OpenAI embeddings (RAG).
+routing, OpenAI embeddings (RAG). GPT-4o tasks (campaign generation, creator
+matching) migrating to Claude per cost architecture.
 
 ## 5. Active Workstreams
 
@@ -129,7 +130,10 @@ Stack all four revenue streams on one customer:
 Pro $999 → 3% / Enterprise → 2%.
 
 **Variable**: Donny credit overage $0.10–0.25/call; DragonDash rush
-surcharge $25–50. AI API spend hard-capped at 15% of revenue.
+surcharge $25–50. AI API spend hard-capped at 15% of revenue ($250/mo floor
+pre-revenue). Governed by Donny AI Cost Architecture spec — model routing
+matrix, invisible per-tier credit system with graceful degradation, cost
+ledger tracking.
 
 ## 9. Operating Instructions for Claude Code
 
@@ -182,4 +186,5 @@ Donny).
 - `prompt-delivery-payment-audit.md`
 - `DragonCandy_Engineering_Blueprint.md`
 - `DragonCandy_GTM_Capital_CAC_Playbook.md`
-- Social integration playbook
+- `Donny AI Cost Architecture` — model routing, token budgets, revenue cap governance
+- Social Media Integration spec (`docs/superpowers/specs/2026-05-03-outstand-social-media-integration-design.md`)
