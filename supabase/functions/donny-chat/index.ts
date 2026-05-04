@@ -1,6 +1,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { validateDonnyToken, requireScope } from "../_shared/auth.ts";
+import { getModelConfig } from "../_shared/model-routing.ts";
+import { logCost } from "../_shared/cost-ledger.ts";
+import { getUserUsageStage, incrementUsage } from "../_shared/usage-tracker.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -1397,6 +1400,13 @@ serve(async (req) => {
       return content.filter((b: any) => b.type === "tool_use");
     }
 
+    // Resolve model routing based on user's usage stage
+    const usageStage = await getUserUsageStage(supabaseAdmin, userId);
+    const modelConfig = getModelConfig("donny-chat", usageStage);
+    if (usageStage === "essential") {
+      console.log(`[donny-chat] User ${userId} in essential mode — routing to Haiku`);
+    }
+
     // Call Claude
     if (!ANTHROPIC_API_KEY) {
       throw new Error("ANTHROPIC_API_KEY is not configured — please set it in Supabase Edge Function secrets");
@@ -1409,8 +1419,8 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 8192,
+        model: modelConfig.model,
+        max_tokens: modelConfig.maxTokens,
         system: fullSystemPrompt,
         messages: claudeMessages,
         tools: TOOL_DEFINITIONS,
@@ -1424,6 +1434,14 @@ serve(async (req) => {
 
     let result = await response.json();
     let totalTokens = (result.usage?.input_tokens ?? 0) + (result.usage?.output_tokens ?? 0);
+    await logCost(supabaseAdmin, {
+      userId,
+      edgeFunction: "donny-chat",
+      model: modelConfig.model,
+      tier: modelConfig.tier,
+      inputTokens: result.usage?.input_tokens ?? 0,
+      outputTokens: result.usage?.output_tokens ?? 0,
+    });
 
     // Tool execution loop — Claude may request tool use
     while (result.stop_reason === "tool_use") {
@@ -1438,7 +1456,7 @@ serve(async (req) => {
           role: "assistant",
           content: extractText(assistantContent),
           tool_calls: assistantContent,
-          model: "claude-sonnet-4-20250514",
+          model: modelConfig.model,
           tokens_used: callTokens,
         })
         .select()
@@ -1488,7 +1506,7 @@ serve(async (req) => {
             role: "tool",
             content: toolUse.id,
             tool_result: toolResult,
-            model: "claude-sonnet-4-20250514",
+            model: modelConfig.model,
           });
         } catch (msgErr: any) {
           console.error(`[donny-chat] tool message insert failed:`, msgErr.message);
@@ -1515,8 +1533,8 @@ serve(async (req) => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 8192,
+          model: modelConfig.model,
+          max_tokens: modelConfig.maxTokens,
           system: fullSystemPrompt,
           messages: claudeMessages,
           tools: TOOL_DEFINITIONS,
@@ -1530,7 +1548,17 @@ serve(async (req) => {
 
       result = await response.json();
       totalTokens += (result.usage?.input_tokens ?? 0) + (result.usage?.output_tokens ?? 0);
+      await logCost(supabaseAdmin, {
+        userId,
+        edgeFunction: "donny-chat",
+        model: modelConfig.model,
+        tier: modelConfig.tier,
+        inputTokens: result.usage?.input_tokens ?? 0,
+        outputTokens: result.usage?.output_tokens ?? 0,
+      });
     }
+    // Increment usage once after the full tool-use loop completes
+    await incrementUsage(supabaseAdmin, userId, modelConfig.actionCost);
 
     // Extract final text response
     const finalContent = extractText(result.content);
@@ -1556,7 +1584,7 @@ serve(async (req) => {
       role: "assistant",
       content: displayContent,
       rich_card: richCard,
-      model: "claude-sonnet-4-20250514",
+      model: modelConfig.model,
       tokens_used: (result.usage?.input_tokens ?? 0) + (result.usage?.output_tokens ?? 0),
     });
 
