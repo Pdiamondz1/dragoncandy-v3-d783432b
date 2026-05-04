@@ -1,6 +1,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { validateDonnyToken, requireScope } from "../_shared/auth.ts";
+import { getModelConfig } from "../_shared/model-routing.ts";
+import { logCost } from "../_shared/cost-ledger.ts";
+import { getUserUsageStage, incrementUsage } from "../_shared/usage-tracker.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -10,7 +13,7 @@ const corsHeaders = {
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY")!;
+const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY")!;
 
 interface ExternalCreator {
   username: string;
@@ -159,22 +162,24 @@ Return the top 5 best matches as a JSON array. Each element must have:
 
 Return ONLY a valid JSON array, no other text.`;
 
-    const aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+    const modelConfig = getModelConfig("donny-creator-match");
+
+    const aiResponse = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${OPENAI_API_KEY}`,
         "Content-Type": "application/json",
+        "x-api-key": ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
+        model: modelConfig.model,
+        max_tokens: modelConfig.maxTokens,
         messages: [{ role: "user", content: prompt }],
-        temperature: 0.3,
-        max_tokens: 800,
       }),
     });
 
     if (!aiResponse.ok) {
-      console.error("donny-creator-match: OpenAI error", aiResponse.status);
+      console.error("donny-creator-match: AI API error", aiResponse.status);
       return new Response(
         JSON.stringify({ error: "AI matching failed" }),
         { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -182,7 +187,17 @@ Return ONLY a valid JSON array, no other text.`;
     }
 
     const aiData = await aiResponse.json();
-    const rawContent = aiData.choices?.[0]?.message?.content || "[]";
+    const rawContent = aiData.content?.[0]?.text || "[]";
+
+    await logCost(supabaseAdmin, {
+      userId,
+      edgeFunction: "donny-creator-match",
+      model: modelConfig.model,
+      tier: modelConfig.tier,
+      inputTokens: aiData.usage?.input_tokens ?? 0,
+      outputTokens: aiData.usage?.output_tokens ?? 0,
+    });
+    await incrementUsage(supabaseAdmin, userId, modelConfig.actionCost);
 
     let aiMatches: Array<{ index: number; match_score: number; niche_tags: string[]; reason: string }>;
     try {
