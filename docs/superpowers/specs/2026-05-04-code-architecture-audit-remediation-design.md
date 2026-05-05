@@ -108,9 +108,14 @@ Then delete all `@ts-ignore` lines:
 
 **Out of scope:** `any` types inside `node_modules` / third-party library definitions.
 
+### 3c: Supabase query convention fixes (Issue #10)
+
+- `HelpArticlePage.tsx:22` — replace `.select("*")` with explicit column list (the columns the component actually reads).
+- 27 `.select()` no-arg calls after mutations — replace with explicit fields. If the mutation only needs the returned ID, use `.select('id')`. The implementer determines the correct column list per-query by checking what the surrounding code destructures from the result.
+
 ### Verification
 
-`npm run typecheck` passes. Grep `": any"` in `src/` returns zero or a documented, justified handful with inline `eslint-disable-next-line` comments.
+`npm run typecheck` passes. Grep `": any"` in `src/` returns zero or a documented, justified handful with inline `eslint-disable-next-line` comments. Grep `.select("*")` in `src/` returns zero.
 
 ## Phase 4: Error Handling
 
@@ -128,7 +133,7 @@ Currently defined in `src/components/reviews/ReviewsErrorBoundary.tsx` but never
 
 Combined approach:
 
-1. Set `throwOnError: true` on the `QueryClient` default options for queries (not mutations — those still toast). Unhandled query errors propagate to the nearest `ErrorBoundary` automatically.
+1. Set `throwOnError: true` on the `QueryClient` default options for queries (not mutations — those still toast). Unhandled query errors propagate to the nearest `ErrorBoundary` automatically. The `ErrorBoundary` fallback displays a generic user-friendly message ("Something went wrong"), never raw error text or stack traces.
 
 2. For critical user paths (dashboard, messaging, campaign browse, creator profile), add explicit `error` destructuring with `<ErrorState>` and retry buttons:
    ```tsx
@@ -145,7 +150,7 @@ We will not add new `ErrorBoundary` wrappers around every public page and messag
 
 ### Verification
 
-`npm run build` passes. Manually verify that a simulated query failure shows `<ErrorState>` instead of an empty page.
+`npm run build` passes. To verify error handling: temporarily modify a hook's `queryFn` to throw (e.g., `throw new Error('test')`) and confirm the `<ErrorState>` component renders on critical pages instead of an empty page or raw error text. Revert the test throw after verification.
 
 ## Phase 5: Tailwind Token Drift
 
@@ -282,13 +287,6 @@ After all 7 phases, run a verification audit:
    - `export default` in `src/components/` (excluding `ui/`) -> 0
    - `.select("*")` in `src/` -> 0
 5. Visual spot-check: landing page, Donny chat, dashboard, messaging — confirm no regressions.
-
-## Supabase Query Fixes (Issue #10)
-
-Addressed inline during Phase 3 work:
-
-- `HelpArticlePage.tsx:22` — replace `.select("*")` with explicit column list.
-- 27 `.select()` no-arg calls after mutations — replace with explicit fields (e.g., `.select('id')` if only the new ID is needed).
 
 ## Out of Scope
 
