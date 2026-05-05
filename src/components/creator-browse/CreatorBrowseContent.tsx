@@ -4,7 +4,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { CreatorCard } from './CreatorCard';
 import { CreatorMapView } from './CreatorMapView';
-import AdvancedCreatorFilters from '@/components/creator-search/AdvancedCreatorFilters';
+import { AdvancedCreatorFilters } from '@/components/creator-search/AdvancedCreatorFilters';
 import type { CreatorFilters, CreatorProfile } from '@/hooks/useCreatorBrowse';
 
 interface CreatorBrowseContentProps {

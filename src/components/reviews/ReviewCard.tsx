@@ -2,7 +2,7 @@
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import StarRating from './StarRating';
+import { StarRating } from './StarRating';
 import { formatDistanceToNow } from 'date-fns';
 import { ReviewWithRelations } from '@/hooks/useReviews';
 
@@ -10,7 +10,7 @@ interface ReviewCardProps {
   review: ReviewWithRelations;
 }
 
-const ReviewCard: React.FC<ReviewCardProps> = ({ review }) => {
+const ReviewCardComponent: React.FC<ReviewCardProps> = ({ review }) => {
   return (
     <Card>
       <CardContent className="p-6">
@@ -79,4 +79,4 @@ const ReviewCard: React.FC<ReviewCardProps> = ({ review }) => {
   );
 };
 
-export default React.memo(ReviewCard);
+export const ReviewCard = React.memo(ReviewCardComponent);

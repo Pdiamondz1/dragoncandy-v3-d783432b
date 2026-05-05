@@ -52,7 +52,7 @@ const DEFAULT_DELIVERABLE: Omit<Deliverable, 'id'> = {
   aspect_ratio: '9:16',
 };
 
-export default function DeliverableBuilder({
+export function DeliverableBuilder({
   deliverables,
   onChange,
   maxDeliverables = 10,

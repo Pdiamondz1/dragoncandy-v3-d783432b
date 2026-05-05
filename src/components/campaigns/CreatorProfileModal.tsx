@@ -22,7 +22,7 @@ interface CreatorProfileModalProps {
   showActions?: boolean;
 }
 
-const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
+export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
   application,
   isOpen,
   onClose,
@@ -139,4 +139,3 @@ const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
   );
 };
 
-export default CreatorProfileModal;

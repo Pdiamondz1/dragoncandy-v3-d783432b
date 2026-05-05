@@ -8,7 +8,7 @@ import SiteGate, { isSiteUnlocked, isPublicPath } from '@/pages/SiteGate';
  * via localStorage. A small allowlist of public paths (e.g. /promo/:id) bypass
  * the gate so QR-based public flows continue to work.
  */
-export default function SiteGateGuard({ children }: { children: ReactNode }) {
+export function SiteGateGuard({ children }: { children: ReactNode }) {
   // Site password gate disabled — app is now publicly accessible.
   // To re-enable, restore the original logic below.
   // const { pathname } = useLocation();

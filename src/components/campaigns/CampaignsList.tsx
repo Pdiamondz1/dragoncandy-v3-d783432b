@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { useCampaigns, type Campaign } from '@/hooks/useCampaigns';
-import CampaignCard from '@/components/campaigns/CampaignCard';
+import { CampaignCard } from '@/components/campaigns/CampaignCard';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -11,7 +11,7 @@ interface CampaignsListProps {
   filterByOwnership?: boolean;
 }
 
-const CampaignsList: React.FC<CampaignsListProps> = ({ 
+export const CampaignsList: React.FC<CampaignsListProps> = ({ 
   statusFilter = 'all',
   filterByOwnership = true 
 }) => {
@@ -90,4 +90,3 @@ const CampaignsList: React.FC<CampaignsListProps> = ({
   );
 };
 
-export default CampaignsList;

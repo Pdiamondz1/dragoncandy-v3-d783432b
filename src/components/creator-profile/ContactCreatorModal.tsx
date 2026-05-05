@@ -29,7 +29,7 @@ interface ContactCreatorModalProps {
   trigger?: React.ReactNode;
 }
 
-const ContactCreatorModal: React.FC<ContactCreatorModalProps> = ({ 
+export const ContactCreatorModal: React.FC<ContactCreatorModalProps> = ({ 
   creator, 
   trigger 
 }) => {
@@ -198,4 +198,3 @@ const ContactCreatorModal: React.FC<ContactCreatorModalProps> = ({
   );
 };
 
-export default ContactCreatorModal;

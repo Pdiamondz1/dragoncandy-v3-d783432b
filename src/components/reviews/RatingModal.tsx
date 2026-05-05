@@ -9,8 +9,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import StarRating from './StarRating';
-import ReviewsErrorBoundary from './ReviewsErrorBoundary';
+import { StarRating } from './StarRating';
+import { ReviewsErrorBoundary } from './ReviewsErrorBoundary';
 import { useSubmitRating } from '@/hooks/useSubmitRating';
 import { CreateReviewData } from '@/types/reviews';
 
@@ -24,7 +24,7 @@ interface RatingModalProps {
   reviewType: 'business_to_creator' | 'creator_to_business' | 'brand_to_business' | 'business_to_brand';
 }
 
-const RatingModal: React.FC<RatingModalProps> = ({
+export const RatingModal: React.FC<RatingModalProps> = ({
   isOpen,
   onClose,
   collaborationId,
@@ -109,4 +109,3 @@ const RatingModal: React.FC<RatingModalProps> = ({
   );
 };
 
-export default RatingModal;

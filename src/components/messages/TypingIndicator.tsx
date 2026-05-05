@@ -6,7 +6,7 @@ interface TypingIndicatorProps {
   userName: string;
 }
 
-const TypingIndicator: React.FC<TypingIndicatorProps> = ({ userName }) => {
+export const TypingIndicator: React.FC<TypingIndicatorProps> = ({ userName }) => {
   return (
     <div className="flex gap-3 mb-4">
       <Avatar className="h-8 w-8 flex-shrink-0">
@@ -31,4 +31,3 @@ const TypingIndicator: React.FC<TypingIndicatorProps> = ({ userName }) => {
   );
 };
 
-export default TypingIndicator;

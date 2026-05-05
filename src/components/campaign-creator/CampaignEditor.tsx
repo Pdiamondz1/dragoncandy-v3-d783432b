@@ -8,7 +8,7 @@ import { TierBadge } from './TierBadge';
 import { EditorSection } from './EditorSection';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
-import CostBreakdown from '@/components/campaigns/CostBreakdown';
+import { CostBreakdown } from '@/components/campaigns/CostBreakdown';
 import { TIER_LIMITS } from '@/types/campaignMedia';
 import { mapDeliveryType } from '@/lib/campaignUtils';
 import { sanitizeNumericInput } from '@/lib/inputUtils';

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import DashboardLayout from '@/components/DashboardLayout';
+import { DashboardLayout } from '@/components/DashboardLayout';
 import { useCreatorDragonSharePosts, useCreatorMonthlySubmissionCount } from '@/hooks/useDragonShare';
 import { DragonShareSubmitSheet } from '@/components/dragonshare/DragonShareSubmitSheet';
 import { DragonShareExplainer } from '@/components/dragonshare/DragonShareExplainer';

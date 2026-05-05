@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Wallet } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import DashboardLayout from "@/components/DashboardLayout";
+import { DashboardLayout } from '@/components/DashboardLayout';
 import { PaymentTimeline } from "@/components/payments/PaymentTimeline";
 import { PaymentSummaryCards } from "@/components/payments/PaymentSummaryCards";
 import { usePaymentNotifications } from "@/hooks/usePaymentNotifications";

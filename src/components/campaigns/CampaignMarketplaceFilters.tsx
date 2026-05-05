@@ -36,7 +36,7 @@ const PLATFORM_OPTIONS = [
   'Blog',
 ];
 
-const CampaignMarketplaceFilters: React.FC<CampaignMarketplaceFiltersProps> = ({
+export const CampaignMarketplaceFilters: React.FC<CampaignMarketplaceFiltersProps> = ({
   filters,
   onFilterChange,
   onReset,
@@ -191,4 +191,3 @@ const CampaignMarketplaceFilters: React.FC<CampaignMarketplaceFiltersProps> = ({
   );
 };
 
-export default CampaignMarketplaceFilters;

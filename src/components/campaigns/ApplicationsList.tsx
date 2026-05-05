@@ -10,11 +10,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Users, BarChart3, Settings, Eye } from 'lucide-react';
 import { useCampaignApplications } from '@/hooks/useCampaignApplications';
 import { useApplicationFilters } from '@/hooks/useApplicationFilters';
-import ApplicationCard from './ApplicationCard';
-import ApplicationFiltersComponent from './ApplicationFilters';
-import BulkApplicationActions from './BulkApplicationActions';
-import ApplicationAnalytics from './ApplicationAnalytics';
-import CreatorProfileModal from './CreatorProfileModal';
+import { ApplicationCard } from './ApplicationCard';
+import { ApplicationFiltersComponent } from './ApplicationFilters';
+import { BulkApplicationActions } from './BulkApplicationActions';
+import { ApplicationAnalytics } from './ApplicationAnalytics';
+import { CreatorProfileModal } from './CreatorProfileModal';
 import { CampaignApplication } from '@/types/applications';
 import { useManageApplication } from '@/hooks/useManageApplication';
 
@@ -94,7 +94,7 @@ interface ApplicationsListProps {
   campaignId: string;
 }
 
-const ApplicationsList: React.FC<ApplicationsListProps> = ({ campaignId }) => {
+export const ApplicationsList: React.FC<ApplicationsListProps> = ({ campaignId }) => {
   const { data: applications = [], isLoading, error } = useCampaignApplications(campaignId);
   const { filters, filteredApplications, updateFilter, resetFilters } = useApplicationFilters(applications);
   const { data: campaignData } = useQuery({
@@ -329,4 +329,3 @@ const ApplicationsList: React.FC<ApplicationsListProps> = ({ campaignId }) => {
   );
 };
 
-export default ApplicationsList;

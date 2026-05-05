@@ -14,7 +14,7 @@ const availableContentTypes = [
   'Blog Content', 'User-Generated Content', 'Influencer Collaboration'
 ];
 
-const ContentTypeSelector: React.FC<ContentTypeSelectorProps> = ({
+export const ContentTypeSelector: React.FC<ContentTypeSelectorProps> = ({
   contentTypes,
   onContentTypesChange,
 }) => {
@@ -110,4 +110,3 @@ const ContentTypeSelector: React.FC<ContentTypeSelectorProps> = ({
   );
 };
 
-export default ContentTypeSelector;

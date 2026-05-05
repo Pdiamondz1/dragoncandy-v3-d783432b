@@ -24,7 +24,7 @@ interface CounterOfferModalProps {
   currentTimeline?: string | null;
 }
 
-const CounterOfferModal: React.FC<CounterOfferModalProps> = ({
+export const CounterOfferModal: React.FC<CounterOfferModalProps> = ({
   open,
   onOpenChange,
   applicationId,
@@ -127,4 +127,3 @@ const CounterOfferModal: React.FC<CounterOfferModalProps> = ({
   );
 };
 
-export default CounterOfferModal;

@@ -7,7 +7,7 @@ interface StoryboardProps {
   title?: string;
 }
 
-const Storyboard: React.FC<StoryboardProps> = ({ frames, title = 'Storyboard' }) => {
+export const Storyboard: React.FC<StoryboardProps> = ({ frames, title = 'Storyboard' }) => {
   return (
     <Card className="rounded-xl">
       <CardHeader>
@@ -65,4 +65,3 @@ const Storyboard: React.FC<StoryboardProps> = ({ frames, title = 'Storyboard' })
   );
 };
 
-export default Storyboard;

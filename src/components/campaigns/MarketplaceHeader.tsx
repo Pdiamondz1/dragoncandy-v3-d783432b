@@ -6,7 +6,7 @@ interface MarketplaceHeaderProps {
   totalCampaigns: number;
 }
 
-const MarketplaceHeader: React.FC<MarketplaceHeaderProps> = ({ totalCampaigns }) => {
+export const MarketplaceHeader: React.FC<MarketplaceHeaderProps> = ({ totalCampaigns }) => {
   return (
     <div className="flex items-center justify-between">
       <div>
@@ -26,4 +26,3 @@ const MarketplaceHeader: React.FC<MarketplaceHeaderProps> = ({ totalCampaigns })
   );
 };
 
-export default MarketplaceHeader;

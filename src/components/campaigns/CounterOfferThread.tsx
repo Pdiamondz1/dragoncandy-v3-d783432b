@@ -9,7 +9,7 @@ interface CounterOfferThreadProps {
   currentUserId?: string;
 }
 
-const CounterOfferThread: React.FC<CounterOfferThreadProps> = ({ counterOffers, currentUserId }) => {
+export const CounterOfferThread: React.FC<CounterOfferThreadProps> = ({ counterOffers, currentUserId }) => {
   if (counterOffers.length === 0) return null;
 
   const formatCurrency = (amount: number | null) => {
@@ -76,4 +76,3 @@ const CounterOfferThread: React.FC<CounterOfferThreadProps> = ({ counterOffers, 
   );
 };
 
-export default CounterOfferThread;

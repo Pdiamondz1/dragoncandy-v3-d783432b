@@ -11,7 +11,7 @@ interface FileUploadProgressProps {
   onRemoveFromQueue: (fileId: string) => void;
 }
 
-const FileUploadProgressComponent: React.FC<FileUploadProgressProps> = ({
+export const FileUploadProgressComponent: React.FC<FileUploadProgressProps> = ({
   uploadQueue,
   onRemoveFromQueue
 }) => {
@@ -92,4 +92,3 @@ const FileUploadProgressComponent: React.FC<FileUploadProgressProps> = ({
   );
 };
 
-export default FileUploadProgressComponent;

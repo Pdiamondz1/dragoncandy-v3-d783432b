@@ -1,8 +1,8 @@
 import React, { useState, useCallback, Component, type ReactNode } from 'react';
-import DashboardLayout from '@/components/DashboardLayout';
+import { DashboardLayout } from '@/components/DashboardLayout';
 import { CreatorBrowseHeader } from '@/components/creator-browse/CreatorBrowseHeader';
 import { CreatorMapView } from '@/components/creator-browse/CreatorMapView';
-import AdvancedCreatorFilters from '@/components/creator-search/AdvancedCreatorFilters';
+import { AdvancedCreatorFilters } from '@/components/creator-search/AdvancedCreatorFilters';
 import { BrandCreatorCard } from '@/components/brand-browse/BrandCreatorCard';
 import { ShortlistDrawer } from '@/components/brand-browse/ShortlistDrawer';
 import { CampaignContextSelector } from '@/components/brand-browse/CampaignContextSelector';

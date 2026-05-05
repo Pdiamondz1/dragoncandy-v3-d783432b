@@ -1,4 +1,4 @@
-import EnhancedFileUpload from '@/components/files/EnhancedFileUpload';
+import { EnhancedFileUpload } from '@/components/files/EnhancedFileUpload';
 
 interface ApplicationPortfolioUploadProps {
   portfolioFiles: File[];

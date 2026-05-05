@@ -12,7 +12,7 @@ interface SponsorshipProposalCardProps {
   onReject: (proposalId: string) => void;
 }
 
-const SponsorshipProposalCard: React.FC<SponsorshipProposalCardProps> = ({
+export const SponsorshipProposalCard: React.FC<SponsorshipProposalCardProps> = ({
   proposal,
   onAccept,
   onReject,
@@ -88,4 +88,3 @@ const SponsorshipProposalCard: React.FC<SponsorshipProposalCardProps> = ({
   );
 };
 
-export default SponsorshipProposalCard;

@@ -11,7 +11,7 @@ interface MobileOptimizedStarRatingProps {
   className?: string;
 }
 
-const MobileOptimizedStarRating: React.FC<MobileOptimizedStarRatingProps> = ({
+export const MobileOptimizedStarRating: React.FC<MobileOptimizedStarRatingProps> = ({
   rating,
   onRatingChange,
   readonly = false,
@@ -56,4 +56,3 @@ const MobileOptimizedStarRating: React.FC<MobileOptimizedStarRatingProps> = ({
   );
 };
 
-export default MobileOptimizedStarRating;

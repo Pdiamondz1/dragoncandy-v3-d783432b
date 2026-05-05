@@ -16,7 +16,7 @@ interface ProjectStatsCardsProps {
   projects: ProjectCollaboration[];
 }
 
-const ProjectStatsCards: React.FC<ProjectStatsCardsProps> = ({ projects }) => {
+export const ProjectStatsCards: React.FC<ProjectStatsCardsProps> = ({ projects }) => {
   const activeProjects = projects.filter(project => project.status === 'active');
   const completedProjects = projects.filter(project => project.status === 'completed');
 
@@ -80,4 +80,3 @@ const ProjectStatsCards: React.FC<ProjectStatsCardsProps> = ({ projects }) => {
   );
 };
 
-export default ProjectStatsCards;

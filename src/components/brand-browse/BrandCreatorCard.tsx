@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Bookmark, Send, Star, Instagram, Youtube } from 'lucide-react';
-import CreatorProfileModal from '@/components/creator-browse/CreatorProfileModal';
+import { CreatorProfileModal } from '@/components/creator-browse/CreatorProfileModal';
 import type { CreatorProfile } from '@/hooks/useCreatorBrowse';
 
 interface BrandCreatorCardProps {

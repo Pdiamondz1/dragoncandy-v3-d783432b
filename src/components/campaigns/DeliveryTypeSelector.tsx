@@ -57,7 +57,7 @@ interface DeliveryTypeSelectorProps {
   onFeeChange?: (fee: number) => void;
 }
 
-const DeliveryTypeSelector: React.FC<DeliveryTypeSelectorProps> = ({
+export const DeliveryTypeSelector: React.FC<DeliveryTypeSelectorProps> = ({
   value,
   onChange,
   onFeeChange,
@@ -134,5 +134,4 @@ const DeliveryTypeSelector: React.FC<DeliveryTypeSelectorProps> = ({
   );
 };
 
-export default DeliveryTypeSelector;
 export { deliveryOptions };

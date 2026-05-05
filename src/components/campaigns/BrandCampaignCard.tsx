@@ -16,7 +16,7 @@ interface BrandCampaignCardProps {
   submittedCampaignId?: string;
 }
 
-const BrandCampaignCard: React.FC<BrandCampaignCardProps> = ({
+export const BrandCampaignCard: React.FC<BrandCampaignCardProps> = ({
   campaign,
   onSponsor,
   onViewDetails,
@@ -217,4 +217,3 @@ const BrandCampaignCard: React.FC<BrandCampaignCardProps> = ({
   );
 };
 
-export default BrandCampaignCard;

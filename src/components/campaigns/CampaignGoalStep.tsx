@@ -28,7 +28,7 @@ interface CampaignGoalStepProps {
   isGenerating: boolean;
 }
 
-const CampaignGoalStep: React.FC<CampaignGoalStepProps> = ({
+export const CampaignGoalStep: React.FC<CampaignGoalStepProps> = ({
   campaignGoal,
   setCampaignGoal,
   onGenerateWithAI,
@@ -111,4 +111,3 @@ const CampaignGoalStep: React.FC<CampaignGoalStepProps> = ({
   );
 };
 
-export default CampaignGoalStep;

@@ -56,7 +56,7 @@ function getISODate(option: DateOption): string {
   }
 }
 
-const CampaignApplyForm: React.FC<CampaignApplyFormProps> = ({
+export const CampaignApplyForm: React.FC<CampaignApplyFormProps> = ({
   campaign,
   deliveryTier,
   onSuccess,
@@ -305,4 +305,3 @@ const CampaignApplyForm: React.FC<CampaignApplyFormProps> = ({
   );
 };
 
-export default CampaignApplyForm;

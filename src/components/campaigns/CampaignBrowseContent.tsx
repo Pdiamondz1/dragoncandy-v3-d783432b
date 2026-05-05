@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Grid, Map, Columns } from 'lucide-react';
-import CampaignMapView from './CampaignMapView';
+import { CampaignMapView } from './CampaignMapView';
 import { PublicCampaign } from '@/hooks/usePublicCampaigns';
 import { SponsorshipCampaign } from '@/hooks/useSponsorshipCampaigns';
 
@@ -12,7 +12,7 @@ interface CampaignBrowseContentProps {
   emptyState?: React.ReactNode;
 }
 
-const CampaignBrowseContent: React.FC<CampaignBrowseContentProps> = ({
+export const CampaignBrowseContent: React.FC<CampaignBrowseContentProps> = ({
   campaigns,
   onViewDetails,
   renderCampaignCard,
@@ -76,4 +76,3 @@ const CampaignBrowseContent: React.FC<CampaignBrowseContentProps> = ({
   );
 };
 
-export default CampaignBrowseContent;

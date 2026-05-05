@@ -12,7 +12,7 @@ interface CampaignWizardHeaderProps {
   steps: Step[];
 }
 
-const CampaignWizardHeader: React.FC<CampaignWizardHeaderProps> = ({
+export const CampaignWizardHeader: React.FC<CampaignWizardHeaderProps> = ({
   currentStep,
   steps,
 }) => {
@@ -65,4 +65,3 @@ const CampaignWizardHeader: React.FC<CampaignWizardHeaderProps> = ({
   );
 };
 
-export default CampaignWizardHeader;

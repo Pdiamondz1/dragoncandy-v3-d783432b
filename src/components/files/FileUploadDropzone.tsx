@@ -11,7 +11,7 @@ interface FileUploadDropzoneProps {
   className?: string;
 }
 
-const FileUploadDropzone: React.FC<FileUploadDropzoneProps> = ({
+export const FileUploadDropzone: React.FC<FileUploadDropzoneProps> = ({
   maxFiles,
   acceptedTypes,
   onDrop,
@@ -49,4 +49,3 @@ const FileUploadDropzone: React.FC<FileUploadDropzoneProps> = ({
   );
 };
 
-export default FileUploadDropzone;

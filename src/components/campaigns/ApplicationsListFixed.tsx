@@ -6,11 +6,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Users, BarChart3, Settings, Eye, RefreshCw } from 'lucide-react';
 import { useCampaignApplications } from '@/hooks/useFetchApplications';
 import { useApplicationFilters } from '@/hooks/useApplicationFilters';
-import ApplicationCard from './ApplicationCard';
-import ApplicationFiltersComponent from './ApplicationFilters';
-import BulkApplicationActions from './BulkApplicationActions';
-import ApplicationAnalytics from './ApplicationAnalytics';
-import CreatorProfileModal from './CreatorProfileModal';
+import { ApplicationCard } from './ApplicationCard';
+import { ApplicationFiltersComponent } from './ApplicationFilters';
+import { BulkApplicationActions } from './BulkApplicationActions';
+import { ApplicationAnalytics } from './ApplicationAnalytics';
+import { CreatorProfileModal } from './CreatorProfileModal';
 import { CampaignApplication } from '@/types/applications';
 import { useManageApplication } from '@/hooks/useManageApplication';
 import { useCampaign } from '@/hooks/useCampaigns';
@@ -21,7 +21,7 @@ interface ApplicationsListFixedProps {
   campaignId: string;
 }
 
-const ApplicationsListFixed: React.FC<ApplicationsListFixedProps> = ({ campaignId }) => {
+export const ApplicationsListFixed: React.FC<ApplicationsListFixedProps> = ({ campaignId }) => {
   const { data: applications = [], isLoading, error, refetch } = useCampaignApplications(campaignId);
   const { filters, filteredApplications, updateFilter, resetFilters } = useApplicationFilters(applications);
   const [selectedApplicationIds, setSelectedApplicationIds] = useState<string[]>([]);
@@ -315,4 +315,3 @@ const ApplicationsListFixed: React.FC<ApplicationsListFixedProps> = ({ campaignI
   );
 };
 
-export default ApplicationsListFixed;

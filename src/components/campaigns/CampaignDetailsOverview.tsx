@@ -9,7 +9,7 @@ interface CampaignDetailsOverviewProps {
   campaign: Campaign;
 }
 
-const CampaignDetailsOverview: React.FC<CampaignDetailsOverviewProps> = ({ campaign }) => {
+export const CampaignDetailsOverview: React.FC<CampaignDetailsOverviewProps> = ({ campaign }) => {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-2">
@@ -26,4 +26,3 @@ const CampaignDetailsOverview: React.FC<CampaignDetailsOverviewProps> = ({ campa
   );
 };
 
-export default CampaignDetailsOverview;

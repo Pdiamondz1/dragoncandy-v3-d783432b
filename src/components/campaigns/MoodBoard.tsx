@@ -9,7 +9,7 @@ interface MoodBoardProps {
   referenceDescriptions?: string[];
 }
 
-const MoodBoard: React.FC<MoodBoardProps> = ({
+export const MoodBoard: React.FC<MoodBoardProps> = ({
   title = 'Campaign Visual Guide',
   colorPalette,
   typography,
@@ -83,4 +83,3 @@ const MoodBoard: React.FC<MoodBoardProps> = ({
   );
 };
 
-export default MoodBoard;

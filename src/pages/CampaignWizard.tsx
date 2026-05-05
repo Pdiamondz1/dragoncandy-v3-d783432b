@@ -1,14 +1,14 @@
 import React from 'react';
-import DashboardLayout from '@/components/DashboardLayout';
+import { DashboardLayout } from '@/components/DashboardLayout';
 import { ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import CampaignCustomizeForm from '@/components/campaigns/CampaignCustomizeForm';
-import CampaignWizardHeader from '@/components/campaigns/CampaignWizardHeader';
-import CampaignTimelineBudgetStep from '@/components/campaigns/CampaignTimelineBudgetStep';
-import CampaignFinalizeStep from '@/components/campaigns/CampaignFinalizeStep';
-import CampaignBriefStep from '@/components/campaigns/CampaignBriefStep';
-import DeliveryTierStep from '@/components/campaigns/DeliveryTierStep';
-import CampaignVisualsStep from '@/components/campaigns/CampaignVisualsStep';
+import { CampaignCustomizeForm } from '@/components/campaigns/CampaignCustomizeForm';
+import { CampaignWizardHeader } from '@/components/campaigns/CampaignWizardHeader';
+import { CampaignTimelineBudgetStep } from '@/components/campaigns/CampaignTimelineBudgetStep';
+import { CampaignFinalizeStep } from '@/components/campaigns/CampaignFinalizeStep';
+import { CampaignBriefStep } from '@/components/campaigns/CampaignBriefStep';
+import { DeliveryTierStep } from '@/components/campaigns/DeliveryTierStep';
+import { CampaignVisualsStep } from '@/components/campaigns/CampaignVisualsStep';
 import { useCampaignWizard } from '@/hooks/useCampaignWizard';
 
 const CampaignWizard: React.FC = () => {

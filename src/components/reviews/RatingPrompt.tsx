@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Star, X } from 'lucide-react';
-import RatingModal from './RatingModal';
+import { RatingModal } from './RatingModal';
 
 interface RatingPromptProps {
   collaborationId?: string;
@@ -14,7 +14,7 @@ interface RatingPromptProps {
   onDismiss: () => void;
 }
 
-const RatingPrompt: React.FC<RatingPromptProps> = ({
+export const RatingPrompt: React.FC<RatingPromptProps> = ({
   collaborationId,
   sponsorshipId,
   revieweeId,
@@ -84,4 +84,3 @@ const RatingPrompt: React.FC<RatingPromptProps> = ({
   );
 };
 
-export default RatingPrompt;

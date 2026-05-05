@@ -11,7 +11,7 @@ interface MessageReactionsProps {
 
 const COMMON_EMOJIS = ['👍', '❤️', '😊', '😂', '😮', '😢', '🎉', '🔥'];
 
-const MessageReactions: React.FC<MessageReactionsProps> = ({ messageId }) => {
+export const MessageReactions: React.FC<MessageReactionsProps> = ({ messageId }) => {
   const { user } = useAuth();
   const { data: reactions = [] } = useMessageReactions(messageId);
   const addReaction = useAddReaction();
@@ -93,4 +93,3 @@ const MessageReactions: React.FC<MessageReactionsProps> = ({ messageId }) => {
   );
 };
 
-export default MessageReactions;

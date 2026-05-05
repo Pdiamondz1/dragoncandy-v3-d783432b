@@ -5,7 +5,7 @@ import { useCampaign } from '@/hooks/useCampaigns';
 import { useBrandSponsorshipStatus } from '@/hooks/useBrandSponsorshipStatus';
 import { useRestaurantProfile } from '@/hooks/useRestaurantProfile';
 import { useCreateDirectConversation } from '@/hooks/useConversations';
-import DashboardLayout from '@/components/DashboardLayout';
+import { DashboardLayout } from '@/components/DashboardLayout';
 import { Badge } from '@/components/ui/badge';
 import { SponsorshipProposalModal } from '@/components/campaigns/SponsorshipProposalModal';
 import { RestaurantProfileCard } from '@/components/campaigns/RestaurantProfileCard';

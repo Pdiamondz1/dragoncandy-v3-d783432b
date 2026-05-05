@@ -48,7 +48,7 @@ interface ContentApprovalPanelProps {
 
 const MAX_REVISIONS = 2;
 
-const ContentApprovalPanel: React.FC<ContentApprovalPanelProps> = ({
+export const ContentApprovalPanel: React.FC<ContentApprovalPanelProps> = ({
   collaborationId,
   campaignId,
   contentStatus,
@@ -407,4 +407,3 @@ const ContentApprovalPanel: React.FC<ContentApprovalPanelProps> = ({
   );
 };
 
-export default ContentApprovalPanel;

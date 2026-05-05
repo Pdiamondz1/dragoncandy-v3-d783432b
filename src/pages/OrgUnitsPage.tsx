@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { MapPin, Tag, MoreVertical, Plus, Building2 } from 'lucide-react';
-import DashboardLayout from '@/components/DashboardLayout';
+import { DashboardLayout } from '@/components/DashboardLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';

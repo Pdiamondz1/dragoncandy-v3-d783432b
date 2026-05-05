@@ -9,7 +9,7 @@ interface MarketplaceStatsProps {
   userApplications: number;
 }
 
-const MarketplaceStats: React.FC<MarketplaceStatsProps> = ({
+export const MarketplaceStats: React.FC<MarketplaceStatsProps> = ({
   totalCampaigns,
   filteredCampaigns,
   userApplications,
@@ -49,4 +49,3 @@ const MarketplaceStats: React.FC<MarketplaceStatsProps> = ({
   );
 };
 
-export default MarketplaceStats;

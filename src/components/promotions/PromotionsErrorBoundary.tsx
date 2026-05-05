@@ -13,7 +13,7 @@ interface State {
   error?: Error;
 }
 
-class PromotionsErrorBoundary extends Component<Props, State> {
+export class PromotionsErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
     this.state = { hasError: false };
@@ -60,4 +60,3 @@ class PromotionsErrorBoundary extends Component<Props, State> {
   }
 }
 
-export default PromotionsErrorBoundary;

@@ -5,8 +5,8 @@ import { Link } from 'react-router-dom';
 import { X, Download } from 'lucide-react';
 import { PublicCampaign } from '@/hooks/usePublicCampaigns';
 import { useCampaignDetail } from '@/hooks/useCampaignDetail';
-import DeliveryBadge from './DeliveryBadge';
-import CampaignApplyForm from './CampaignApplyForm';
+import { DeliveryBadge } from './DeliveryBadge';
+import { CampaignApplyForm } from './CampaignApplyForm';
 import { mapDeliveryType, getRelativeTime, formatBudget, getTierConfig } from '@/lib/campaignUtils';
 import { Badge } from '@/components/ui/badge';
 
@@ -491,4 +491,3 @@ export const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
   );
 };
 
-export default CampaignDetailModal;

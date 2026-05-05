@@ -7,7 +7,7 @@ interface VerifiedRouteProps {
   children: React.ReactNode;
 }
 
-const VerifiedRoute: React.FC<VerifiedRouteProps> = ({ children }) => {
+export const VerifiedRoute: React.FC<VerifiedRouteProps> = ({ children }) => {
   const { isAuthenticated, loading, profile } = useAuth();
   const emailNotVerified = !loading && isAuthenticated && profile?.email_verified !== true;
 
@@ -36,4 +36,3 @@ const VerifiedRoute: React.FC<VerifiedRouteProps> = ({ children }) => {
   return <>{children}</>;
 };
 
-export default VerifiedRoute;

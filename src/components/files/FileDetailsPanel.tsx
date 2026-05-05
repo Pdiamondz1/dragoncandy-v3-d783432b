@@ -9,7 +9,7 @@ interface FileDetailsPanelProps {
   file: FileUpload;
 }
 
-const FileDetailsPanel: React.FC<FileDetailsPanelProps> = ({ file }) => {
+export const FileDetailsPanel: React.FC<FileDetailsPanelProps> = ({ file }) => {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -98,4 +98,3 @@ const FileDetailsPanel: React.FC<FileDetailsPanelProps> = ({ file }) => {
   );
 };
 
-export default FileDetailsPanel;

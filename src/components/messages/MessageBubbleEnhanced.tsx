@@ -12,7 +12,7 @@ import {
 import { formatDistanceToNow } from 'date-fns';
 import { useAuth } from '@/hooks/useAuth';
 import { type Message } from '@/hooks/useMessages';
-import MessageReactions from './MessageReactions';
+import { MessageReactions } from './MessageReactions';
 
 interface MessageBubbleEnhancedProps {
   message: Message;
@@ -22,7 +22,7 @@ interface MessageBubbleEnhancedProps {
   onEdit?: (message: Message) => void;
 }
 
-const MessageBubbleEnhanced: React.FC<MessageBubbleEnhancedProps> = ({
+export const MessageBubbleEnhanced: React.FC<MessageBubbleEnhancedProps> = ({
   message,
   showAvatar = true,
   onReply,
@@ -248,4 +248,3 @@ const MessageBubbleEnhanced: React.FC<MessageBubbleEnhancedProps> = ({
   );
 };
 
-export default MessageBubbleEnhanced;

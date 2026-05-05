@@ -3,13 +3,13 @@ import React, { useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import DashboardLayout from '@/components/DashboardLayout';
+import { DashboardLayout } from '@/components/DashboardLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowLeft, Edit, Users, Target, AlertCircle } from 'lucide-react';
 import { useCampaign } from '@/hooks/useCampaigns';
-import CampaignDetailsOverview from '@/components/campaigns/CampaignDetailsOverview';
-import ApplicationsListFixed from '@/components/campaigns/ApplicationsListFixed';
-import CreatorMatchingSection from '@/components/campaigns/CreatorMatchingSection';
+import { CampaignDetailsOverview } from '@/components/campaigns/CampaignDetailsOverview';
+import { ApplicationsListFixed } from '@/components/campaigns/ApplicationsListFixed';
+import { CreatorMatchingSection } from '@/components/campaigns/CreatorMatchingSection';
 import { CreatorCampaignDetails } from '@/components/campaign-details/CreatorCampaignDetails';
 import { StickyApplyCTA } from '@/components/campaign-details/StickyApplyCTA';
 import { OneTapApplySheet } from '@/components/campaigns/OneTapApplySheet';
@@ -20,7 +20,7 @@ import { useCreatorApplicationStatus } from '@/hooks/useCreatorApplicationStatus
 import { useCampaignDetailEnriched } from '@/hooks/useCampaignDetailEnriched';
 import { useCreateApplication } from '@/hooks/useCreateApplication';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import ApplicationForm from '@/components/campaigns/ApplicationForm';
+import { ApplicationForm } from '@/components/campaigns/ApplicationForm';
 import type { DonnyPitchResult } from '@/hooks/useDonnyApplyPitch';
 
 const CampaignDetailsPage: React.FC = () => {

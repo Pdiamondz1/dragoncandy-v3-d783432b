@@ -51,7 +51,7 @@ const INDUSTRY_OPTIONS = [
   'Other',
 ];
 
-const BrandCampaignFilters: React.FC<BrandCampaignFiltersProps> = ({
+export const BrandCampaignFilters: React.FC<BrandCampaignFiltersProps> = ({
   filters,
   onFilterChange,
   onReset,
@@ -222,4 +222,3 @@ const BrandCampaignFilters: React.FC<BrandCampaignFiltersProps> = ({
   );
 };
 
-export default BrandCampaignFilters;

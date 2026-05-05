@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import DashboardLayout from '@/components/DashboardLayout';
+import { DashboardLayout } from '@/components/DashboardLayout';
 import { useOrgDragonSharePosts } from '@/hooks/useDragonShare';
 import { useOrg } from '@/hooks/useOrgData';
 import { useMyOrgRole } from '@/hooks/useOrgData';

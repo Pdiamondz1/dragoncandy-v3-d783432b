@@ -16,8 +16,8 @@ import type { Database } from '@/integrations/supabase/types';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import CostBreakdown from './CostBreakdown';
-import DeliveryBadge from './DeliveryBadge';
+import { CostBreakdown } from './CostBreakdown';
+import { DeliveryBadge } from './DeliveryBadge';
 import type { DeliveryTier } from '@/types/campaignMedia';
 import type { PricingType } from './PricingTypeSelector';
 import type { CampaignAnalysis } from '@/types/campaign';
@@ -66,7 +66,7 @@ interface CampaignFinalizeStepProps {
   onBack: () => void;
 }
 
-const CampaignFinalizeStep: React.FC<CampaignFinalizeStepProps> = ({
+export const CampaignFinalizeStep: React.FC<CampaignFinalizeStepProps> = ({
   campaignData,
   onBack,
 }) => {
@@ -677,4 +677,3 @@ const CampaignFinalizeStep: React.FC<CampaignFinalizeStepProps> = ({
   );
 };
 
-export default CampaignFinalizeStep;

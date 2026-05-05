@@ -36,7 +36,7 @@ interface AdvancedCreatorFiltersProps {
   onResetFilters: () => void;
 }
 
-const AdvancedCreatorFilters: React.FC<AdvancedCreatorFiltersProps> = ({
+export const AdvancedCreatorFilters: React.FC<AdvancedCreatorFiltersProps> = ({
   filters,
   onFilterChange,
   onResetFilters,
@@ -310,4 +310,3 @@ const AdvancedCreatorFilters: React.FC<AdvancedCreatorFiltersProps> = ({
   );
 };
 
-export default AdvancedCreatorFilters;

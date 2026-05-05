@@ -5,7 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Star, MapPin, Building2, MessageSquare } from 'lucide-react';
-import PublicProfileReviews from '@/components/profiles/PublicProfileReviews';
+import { PublicProfileReviews } from '@/components/profiles/PublicProfileReviews';
 import logo from '@/assets/Transparent_DragonCandy_logo.webp';
 
 interface BusinessProfile {

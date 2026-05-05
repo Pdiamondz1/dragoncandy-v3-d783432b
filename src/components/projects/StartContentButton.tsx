@@ -25,7 +25,7 @@ const DELIVERY_TIMES: Record<string, string> = {
   dragonrush: '1-3 hours',
 };
 
-const StartContentButton: React.FC<StartContentButtonProps> = ({
+export const StartContentButton: React.FC<StartContentButtonProps> = ({
   deliveryType,
   onStart,
   disabled = false,
@@ -92,4 +92,3 @@ const StartContentButton: React.FC<StartContentButtonProps> = ({
   );
 };
 
-export default StartContentButton;

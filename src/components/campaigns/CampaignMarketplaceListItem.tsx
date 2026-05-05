@@ -21,7 +21,7 @@ interface CampaignMarketplaceListItemProps {
   onViewDetails: (campaignId: string) => void;
 }
 
-const CampaignMarketplaceListItem: React.FC<CampaignMarketplaceListItemProps> = ({
+const CampaignMarketplaceListItemComponent: React.FC<CampaignMarketplaceListItemProps> = ({
   campaign,
   onApply,
   onViewDetails,
@@ -208,4 +208,4 @@ const CampaignMarketplaceListItem: React.FC<CampaignMarketplaceListItemProps> = 
   );
 };
 
-export default React.memo(CampaignMarketplaceListItem);
+export const CampaignMarketplaceListItem = React.memo(CampaignMarketplaceListItemComponent);

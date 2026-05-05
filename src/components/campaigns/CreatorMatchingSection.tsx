@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import { useCampaignMatches, useGenerateMatches, CreatorMatch } from '@/hooks/useCampaignMatches';
 import { useInviteCreator, useCampaignInvitations } from '@/hooks/useCampaignInvitations';
-import CreatorMatchCard from './CreatorMatchCard';
+import { CreatorMatchCard } from './CreatorMatchCard';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 
@@ -64,7 +64,7 @@ function sortMatches(matches: CreatorMatch[], sortBy: SortOption): CreatorMatch[
   });
 }
 
-const CreatorMatchingSection: React.FC<CreatorMatchingSectionProps> = ({ campaignId }) => {
+export const CreatorMatchingSection: React.FC<CreatorMatchingSectionProps> = ({ campaignId }) => {
   const { data: matches = [], isLoading: matchesLoading, refetch: refetchMatches } = useCampaignMatches(campaignId);
   const generateMatches = useGenerateMatches();
   const [activeTab, setActiveTab] = useState('ai-matches');
@@ -406,4 +406,3 @@ const CreatorMatchingSection: React.FC<CreatorMatchingSectionProps> = ({ campaig
   );
 };
 
-export default CreatorMatchingSection;

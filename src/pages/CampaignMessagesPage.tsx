@@ -1,11 +1,11 @@
 
 import React from 'react';
 import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
-import DashboardLayout from '@/components/DashboardLayout';
+import { DashboardLayout } from '@/components/DashboardLayout';
 import { ArrowLeft } from 'lucide-react';
 import { useCampaign } from '@/hooks/useCampaigns';
 import { useAuth } from '@/hooks/useAuth';
-import MessageThread from '@/components/messages/MessageThread';
+import { MessageThread } from '@/components/messages/MessageThread';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useCampaignApplications } from '@/hooks/useFetchApplications';
 

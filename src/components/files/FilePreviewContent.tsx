@@ -13,7 +13,7 @@ interface FilePreviewContentProps {
   className?: string;
 }
 
-const FilePreviewContent: React.FC<FilePreviewContentProps> = ({
+export const FilePreviewContent: React.FC<FilePreviewContentProps> = ({
   file,
   fileUrl,
   loading,
@@ -97,4 +97,3 @@ const FilePreviewContent: React.FC<FilePreviewContentProps> = ({
   }
 };
 
-export default FilePreviewContent;

@@ -2,8 +2,8 @@ import { useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import DashboardLayout from '@/components/DashboardLayout';
-import DirectMessagesList from '@/components/messages/DirectMessagesList';
+import { DashboardLayout } from '@/components/DashboardLayout';
+import { DirectMessagesList } from '@/components/messages/DirectMessagesList';
 
 const BrandMessages = () => {
   const { profile } = useAuth();

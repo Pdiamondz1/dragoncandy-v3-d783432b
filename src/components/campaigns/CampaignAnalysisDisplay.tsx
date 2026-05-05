@@ -28,7 +28,7 @@ interface CampaignAnalysisDisplayProps {
   onApproveAndCustomize?: () => void;
 }
 
-const CampaignAnalysisDisplay: React.FC<CampaignAnalysisDisplayProps> = ({
+export const CampaignAnalysisDisplay: React.FC<CampaignAnalysisDisplayProps> = ({
   analysis,
   onEditCampaignIdea,
   onApproveAndCustomize,
@@ -415,4 +415,3 @@ const CampaignAnalysisDisplay: React.FC<CampaignAnalysisDisplayProps> = ({
   );
 };
 
-export default CampaignAnalysisDisplay;

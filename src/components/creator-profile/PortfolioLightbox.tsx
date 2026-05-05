@@ -2,7 +2,7 @@ import React, { useCallback, useEffect } from 'react';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { X, ChevronLeft, ChevronRight } from 'lucide-react';
-import ContactCreatorModal from '@/components/creator-profile/ContactCreatorModal';
+import { ContactCreatorModal } from '@/components/creator-profile/ContactCreatorModal';
 
 interface PortfolioItem {
   url: string;

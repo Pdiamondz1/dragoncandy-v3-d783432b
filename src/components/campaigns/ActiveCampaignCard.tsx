@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { Upload } from 'lucide-react';
 import { CreatorCollaboration, DeliverableStatus } from '@/hooks/useCreatorCollaborations';
 import { mapDeliveryType } from '@/lib/campaignUtils';
-import DeliveryBadge from './DeliveryBadge';
+import { DeliveryBadge } from './DeliveryBadge';
 
 interface ActiveCampaignCardProps {
   collaboration: CreatorCollaboration;

@@ -21,7 +21,7 @@ const deliverableOptions = [
   'Blog Posts', 'Product Reviews', 'Unboxing Videos', 'Tutorials', 'Live Streams'
 ];
 
-const CampaignPlatformsForm: React.FC<CampaignPlatformsFormProps> = ({
+export const CampaignPlatformsForm: React.FC<CampaignPlatformsFormProps> = ({
   formData,
   onArrayChange,
 }) => {
@@ -77,4 +77,3 @@ const CampaignPlatformsForm: React.FC<CampaignPlatformsFormProps> = ({
   );
 };
 
-export default CampaignPlatformsForm;

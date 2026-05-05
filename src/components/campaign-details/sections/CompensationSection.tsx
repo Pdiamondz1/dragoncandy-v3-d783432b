@@ -1,5 +1,5 @@
 import { DollarSign, Shield, Lock, UserCheck } from 'lucide-react';
-import CostBreakdown from '@/components/campaigns/CostBreakdown';
+import { CostBreakdown } from '@/components/campaigns/CostBreakdown';
 import { useCampaignDeliverables } from '@/hooks/useCampaignDeliverables';
 import { TIER_LIMITS } from '@/types/campaignMedia';
 import { mapDeliveryType } from '@/lib/campaignUtils';

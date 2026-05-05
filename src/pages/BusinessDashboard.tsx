@@ -1,7 +1,7 @@
 // src/pages/BusinessDashboard.tsx
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import DashboardLayout from '@/components/DashboardLayout';
+import { DashboardLayout } from '@/components/DashboardLayout';
 import { DCTour } from '@/components/guidance/DCTour';
 import { useTour } from '@/hooks/useTour';
 import { Loader2, ChevronRight, Megaphone, Users, DollarSign, TrendingUp } from 'lucide-react';

@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { useReviews, ReviewWithRelations } from '@/hooks/useReviews';
-import ReviewCard from './ReviewCard';
+import { ReviewCard } from './ReviewCard';
 import { Skeleton } from '@/components/ui/skeleton';
 
 interface ReviewsListProps {
@@ -10,7 +10,7 @@ interface ReviewsListProps {
   limit?: number;
 }
 
-const ReviewsList: React.FC<ReviewsListProps> = ({ 
+export const ReviewsList: React.FC<ReviewsListProps> = ({ 
   revieweeId, 
   reviewType,
   limit 
@@ -66,4 +66,3 @@ const ReviewsList: React.FC<ReviewsListProps> = ({
   );
 };
 
-export default ReviewsList;

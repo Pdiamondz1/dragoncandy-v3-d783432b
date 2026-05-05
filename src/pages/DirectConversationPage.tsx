@@ -1,10 +1,10 @@
 import React from 'react';
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
-import DashboardLayout from '@/components/DashboardLayout';
+import { DashboardLayout } from '@/components/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import ConversationMessageThread from '@/components/messages/ConversationMessageThread';
+import { ConversationMessageThread } from '@/components/messages/ConversationMessageThread';
 import { useConversations } from '@/hooks/useConversations';
 import { supabase } from '@/integrations/supabase/client';
 import { CampaignConversationHeader } from '@/components/messaging/CampaignConversationHeader';

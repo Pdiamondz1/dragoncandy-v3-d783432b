@@ -245,4 +245,3 @@ export const QuickApprovalCard: React.FC<QuickApprovalCardProps> = ({
   );
 };
 
-export default QuickApprovalCard;

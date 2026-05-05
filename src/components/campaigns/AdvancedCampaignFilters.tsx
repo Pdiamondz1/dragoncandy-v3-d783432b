@@ -32,7 +32,7 @@ interface AdvancedCampaignFiltersProps {
 
 const PLATFORM_OPTIONS = ['Instagram', 'TikTok', 'YouTube', 'Facebook', 'LinkedIn', 'X (Twitter)'];
 
-const AdvancedCampaignFilters: React.FC<AdvancedCampaignFiltersProps> = ({
+export const AdvancedCampaignFilters: React.FC<AdvancedCampaignFiltersProps> = ({
   filters,
   onFilterChange,
   onReset,
@@ -261,4 +261,3 @@ const AdvancedCampaignFilters: React.FC<AdvancedCampaignFiltersProps> = ({
   );
 };
 
-export default AdvancedCampaignFilters;

@@ -117,4 +117,3 @@ export const CreatorApplicationCard: React.FC<CreatorApplicationCardProps> = ({
   );
 };
 
-export default CreatorApplicationCard;

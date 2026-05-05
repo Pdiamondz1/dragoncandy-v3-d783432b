@@ -15,7 +15,7 @@ interface ApplicationFormProps {
   onCancel?: () => void;
 }
 
-const ApplicationForm: React.FC<ApplicationFormProps> = ({ 
+export const ApplicationForm: React.FC<ApplicationFormProps> = ({ 
   campaign, 
   onSuccess, 
   onCancel 
@@ -214,4 +214,3 @@ const ApplicationForm: React.FC<ApplicationFormProps> = ({
   );
 };
 
-export default ApplicationForm;

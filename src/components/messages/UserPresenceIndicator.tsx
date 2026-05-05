@@ -12,7 +12,7 @@ interface UserPresenceIndicatorProps {
   size?: 'sm' | 'md' | 'lg';
 }
 
-const UserPresenceIndicator: React.FC<UserPresenceIndicatorProps> = ({
+export const UserPresenceIndicator: React.FC<UserPresenceIndicatorProps> = ({
   userId: _userId,
   userName,
   userEmail,
@@ -86,4 +86,3 @@ const UserPresenceIndicator: React.FC<UserPresenceIndicatorProps> = ({
   );
 };
 
-export default UserPresenceIndicator;

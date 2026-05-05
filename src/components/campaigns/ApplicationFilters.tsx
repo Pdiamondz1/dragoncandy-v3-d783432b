@@ -15,7 +15,7 @@ interface ApplicationFiltersProps {
   filteredCount: number;
 }
 
-const ApplicationFiltersComponent: React.FC<ApplicationFiltersProps> = ({
+export const ApplicationFiltersComponent: React.FC<ApplicationFiltersProps> = ({
   filters,
   onFilterChange,
   onReset,
@@ -101,4 +101,3 @@ const ApplicationFiltersComponent: React.FC<ApplicationFiltersProps> = ({
   );
 };
 
-export default ApplicationFiltersComponent;

@@ -16,12 +16,12 @@ import {
   Zap,
   Star
 } from 'lucide-react';
-import ProjectFileUpload from '@/components/projects/ProjectFileUpload';
-import ProjectTimerSection from '@/components/projects/ProjectTimerSection';
+import { ProjectFileUpload } from '@/components/projects/ProjectFileUpload';
+import { ProjectTimerSection } from '@/components/projects/ProjectTimerSection';
 import { useProjectComplete } from '@/hooks/useProjectComplete';
 import { useSearchParams } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import RatingModal from '@/components/reviews/RatingModal';
+import { RatingModal } from '@/components/reviews/RatingModal';
 import { supabase } from '@/integrations/supabase/client';
 
 interface ProjectCollaboration {
@@ -60,7 +60,7 @@ interface ProjectListProps {
   onMessageClick: (campaignId: string) => void;
 }
 
-const ProjectList: React.FC<ProjectListProps> = ({ projects, showProgress, onMessageClick }) => {
+export const ProjectList: React.FC<ProjectListProps> = ({ projects, showProgress, onMessageClick }) => {
   const { requestCompletion, requestingId } = useProjectComplete();
   const [searchParams] = useSearchParams();
   const highlightedProjectId = searchParams.get('highlight');
@@ -399,4 +399,3 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, showProgress, onMes
   );
 };
 
-export default ProjectList;

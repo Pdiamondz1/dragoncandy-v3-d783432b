@@ -1,11 +1,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { useSponsorshipReviewCompletion } from '@/hooks/useSponsorshipReviewCompletion';
-import RatingPrompt from './RatingPrompt';
+import { RatingPrompt } from './RatingPrompt';
 
 const STORAGE_KEY = 'dismissedSponsorshipRatingPrompts';
 
-const SponsorshipRatingPromptManager: React.FC = () => {
+export const SponsorshipRatingPromptManager: React.FC = () => {
   const { data: sponsorshipsForReview, isLoading } = useSponsorshipReviewCompletion();
   const [dismissedPrompts, setDismissedPrompts] = useState<string[]>([]);
 
@@ -54,4 +54,3 @@ const SponsorshipRatingPromptManager: React.FC = () => {
   );
 };
 
-export default SponsorshipRatingPromptManager;

@@ -13,7 +13,7 @@ interface State {
   error?: Error;
 }
 
-class ReviewsErrorBoundary extends Component<Props, State> {
+export class ReviewsErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
     this.state = { hasError: false };
@@ -60,4 +60,3 @@ class ReviewsErrorBoundary extends Component<Props, State> {
   }
 }
 
-export default ReviewsErrorBoundary;

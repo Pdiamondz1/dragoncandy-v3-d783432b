@@ -3,12 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useSponsorshipCampaigns, SponsorshipCampaign } from '@/hooks/useSponsorshipCampaigns';
 import { useBrandCampaignFilters } from '@/hooks/useBrandCampaignFilters';
-import DashboardLayout from '@/components/DashboardLayout';
-import BrandCampaignCard from '@/components/campaigns/BrandCampaignCard';
-import AdvancedCampaignFilters from '@/components/campaigns/AdvancedCampaignFilters';
-import CampaignBrowseContent from '@/components/campaigns/CampaignBrowseContent';
-import MarketplaceLoadingState from '@/components/campaigns/MarketplaceLoadingState';
-import MarketplaceErrorState from '@/components/campaigns/MarketplaceErrorState';
+import { DashboardLayout } from '@/components/DashboardLayout';
+import { BrandCampaignCard } from '@/components/campaigns/BrandCampaignCard';
+import { AdvancedCampaignFilters } from '@/components/campaigns/AdvancedCampaignFilters';
+import { CampaignBrowseContent } from '@/components/campaigns/CampaignBrowseContent';
+import { MarketplaceLoadingState } from '@/components/campaigns/MarketplaceLoadingState';
+import { MarketplaceErrorState } from '@/components/campaigns/MarketplaceErrorState';
 import { ArrowLeft, Search } from 'lucide-react';
 import {
   Sheet,

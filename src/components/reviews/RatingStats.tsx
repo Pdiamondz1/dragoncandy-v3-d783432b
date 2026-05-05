@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { useReviewStats } from '@/hooks/useReviews';
-import StarRating from './StarRating';
+import { StarRating } from './StarRating';
 import { Progress } from '@/components/ui/progress';
 
 interface RatingStatsProps {
@@ -9,7 +9,7 @@ interface RatingStatsProps {
   reviewType?: 'business_to_creator' | 'creator_to_business';
 }
 
-const RatingStats: React.FC<RatingStatsProps> = ({ revieweeId, reviewType }) => {
+export const RatingStats: React.FC<RatingStatsProps> = ({ revieweeId, reviewType }) => {
   const { data: stats, isLoading, error } = useReviewStats(revieweeId, reviewType);
 
   if (isLoading || !stats) {
@@ -65,4 +65,3 @@ const RatingStats: React.FC<RatingStatsProps> = ({ revieweeId, reviewType }) => 
   );
 };
 
-export default RatingStats;

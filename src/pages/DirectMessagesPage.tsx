@@ -1,10 +1,10 @@
 
 import React, { useState, useEffect } from 'react';
-import DashboardLayout from '@/components/DashboardLayout';
+import { DashboardLayout } from '@/components/DashboardLayout';
 import { ArrowLeft, MessageCircle } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import DirectMessagesList from '@/components/messages/DirectMessagesList';
-import ConversationMessageThread from '@/components/messages/ConversationMessageThread';
+import { DirectMessagesList } from '@/components/messages/DirectMessagesList';
+import { ConversationMessageThread } from '@/components/messages/ConversationMessageThread';
 import { ErrorState } from '@/components/ui/error-state';
 import { useConversations, type Conversation } from '@/hooks/useConversations';
 import { useNavigate, Link } from 'react-router-dom';

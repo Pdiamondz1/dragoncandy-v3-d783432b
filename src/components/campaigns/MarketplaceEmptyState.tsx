@@ -9,7 +9,7 @@ interface MarketplaceEmptyStateProps {
   onResetFilters?: () => void;
 }
 
-const MarketplaceEmptyState: React.FC<MarketplaceEmptyStateProps> = ({
+export const MarketplaceEmptyState: React.FC<MarketplaceEmptyStateProps> = ({
   totalCampaigns,
   onResetFilters,
 }) => {
@@ -36,4 +36,3 @@ const MarketplaceEmptyState: React.FC<MarketplaceEmptyStateProps> = ({
   );
 };
 
-export default MarketplaceEmptyState;

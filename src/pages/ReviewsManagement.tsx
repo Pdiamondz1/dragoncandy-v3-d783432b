@@ -1,14 +1,14 @@
 
 import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import DashboardLayout from '@/components/DashboardLayout';
+import { DashboardLayout } from '@/components/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import ReviewsList from '@/components/reviews/ReviewsList';
-import RatingStats from '@/components/reviews/RatingStats';
-import ReviewsErrorBoundary from '@/components/reviews/ReviewsErrorBoundary';
+import { ReviewsList } from '@/components/reviews/ReviewsList';
+import { RatingStats } from '@/components/reviews/RatingStats';
+import { ReviewsErrorBoundary } from '@/components/reviews/ReviewsErrorBoundary';
 import { Search, Download } from 'lucide-react';
 
 const ReviewsManagement = () => {

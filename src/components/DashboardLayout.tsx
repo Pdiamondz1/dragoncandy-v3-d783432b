@@ -33,7 +33,7 @@ import { useLogout } from '@/hooks/useLogout';
 import { useInactivityTimeout } from '@/hooks/useInactivityTimeout';
 import { InactivityWarningDialog } from '@/components/InactivityWarningDialog';
 import { useProfileData } from '@/hooks/useProfileData';
-import NotificationDropdown from '@/components/notifications/NotificationDropdown';
+import { NotificationDropdown } from '@/components/notifications/NotificationDropdown';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { MobileBottomNav } from '@/components/MobileBottomNav';
 import { MobileTopNav } from '@/components/MobileTopNav';
@@ -41,7 +41,7 @@ import { DonnyAvatar } from '@/components/donny/DonnyAvatar';
 import { useDonnyContext } from '@/contexts/DonnyProvider';
 import { OrgUnitSwitcher } from '@/components/org/OrgUnitSwitcher';
 import { useMyOrgRole } from '@/hooks/useOrgData';
-import ErrorBoundary from '@/components/ErrorBoundary';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import type { UserRole } from '@/types/user';
 import { getSidebarNav, getSettingsHref, getDashboardLabel } from '@/lib/navConfig';
 
@@ -284,8 +284,7 @@ const DashboardLayoutInner: React.FC<DashboardLayoutProps> = ({ children, userRo
   );
 };
 
-const DashboardLayout: React.FC<DashboardLayoutProps> = (props) => {
+export const DashboardLayout: React.FC<DashboardLayoutProps> = (props) => {
   return <DashboardLayoutInner {...props} />;
 };
 
-export default DashboardLayout;

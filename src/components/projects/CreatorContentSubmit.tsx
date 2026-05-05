@@ -27,7 +27,7 @@ interface CreatorContentSubmitProps {
   disputeOutcome: string | null;
 }
 
-const CreatorContentSubmit: React.FC<CreatorContentSubmitProps> = ({
+export const CreatorContentSubmit: React.FC<CreatorContentSubmitProps> = ({
   collaborationId,
   campaignId,
   contentStatus,
@@ -281,4 +281,3 @@ const CreatorContentSubmit: React.FC<CreatorContentSubmitProps> = ({
   );
 };
 
-export default CreatorContentSubmit;

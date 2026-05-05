@@ -7,7 +7,7 @@ interface FileValidationErrorsProps {
   errors: string[];
 }
 
-const FileValidationErrors: React.FC<FileValidationErrorsProps> = ({ errors }) => {
+export const FileValidationErrors: React.FC<FileValidationErrorsProps> = ({ errors }) => {
   if (errors.length === 0) return null;
 
   return (
@@ -27,4 +27,3 @@ const FileValidationErrors: React.FC<FileValidationErrorsProps> = ({ errors }) =
   );
 };
 
-export default FileValidationErrors;

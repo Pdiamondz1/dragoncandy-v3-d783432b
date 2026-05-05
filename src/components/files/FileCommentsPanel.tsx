@@ -14,7 +14,7 @@ interface FileCommentsPanelProps {
   comments?: FileComment[];
 }
 
-const FileCommentsPanel: React.FC<FileCommentsPanelProps> = ({
+export const FileCommentsPanel: React.FC<FileCommentsPanelProps> = ({
   fileId,
   comments = []
 }) => {
@@ -151,4 +151,3 @@ const FileCommentsPanel: React.FC<FileCommentsPanelProps> = ({
   );
 };
 
-export default FileCommentsPanel;

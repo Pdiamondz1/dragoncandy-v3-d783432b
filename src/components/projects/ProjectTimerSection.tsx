@@ -1,7 +1,7 @@
 import React from 'react';
 import { useDragonDashTimer } from '@/hooks/useDragonDashTimer';
-import DragonDashTimer from './DragonDashTimer';
-import StartContentButton from './StartContentButton';
+import { DragonDashTimer } from './DragonDashTimer';
+import { StartContentButton } from './StartContentButton';
 import { Skeleton } from '@/components/ui/skeleton';
 
 interface ProjectTimerSectionProps {
@@ -9,7 +9,7 @@ interface ProjectTimerSectionProps {
   deliveryType: string;
 }
 
-const ProjectTimerSection: React.FC<ProjectTimerSectionProps> = ({
+export const ProjectTimerSection: React.FC<ProjectTimerSectionProps> = ({
   collaborationId,
   deliveryType,
 }) => {
@@ -42,4 +42,3 @@ const ProjectTimerSection: React.FC<ProjectTimerSectionProps> = ({
   );
 };
 
-export default ProjectTimerSection;

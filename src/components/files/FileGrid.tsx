@@ -1,8 +1,8 @@
 
 import React from 'react';
 import type { FileUpload } from '@/types/files';
-import FileCard from './FileCard';
-import EmptyFileState from './EmptyFileState';
+import { FileCard } from './FileCard';
+import { EmptyFileState } from './EmptyFileState';
 
 interface FileGridProps {
   files: FileUpload[];
@@ -15,7 +15,7 @@ interface FileGridProps {
   onFileDelete: (file: FileUpload) => void;
 }
 
-const FileGrid: React.FC<FileGridProps> = ({
+export const FileGrid: React.FC<FileGridProps> = ({
   files,
   viewMode,
   searchQuery,
@@ -49,4 +49,3 @@ const FileGrid: React.FC<FileGridProps> = ({
   );
 };
 
-export default FileGrid;

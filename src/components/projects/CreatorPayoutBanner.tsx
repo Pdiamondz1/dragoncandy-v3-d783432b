@@ -17,7 +17,7 @@ interface CreatorPayoutBannerProps {
   creatorId: string;
 }
 
-const CreatorPayoutBanner: React.FC<CreatorPayoutBannerProps> = ({ creatorId }) => {
+export const CreatorPayoutBanner: React.FC<CreatorPayoutBannerProps> = ({ creatorId }) => {
   const [_isSettingUp, setIsSettingUp] = useState(false);
 
   // Check creator payout status
@@ -189,4 +189,3 @@ const CreatorPayoutBanner: React.FC<CreatorPayoutBannerProps> = ({ creatorId }) 
   return null;
 };
 
-export default CreatorPayoutBanner;

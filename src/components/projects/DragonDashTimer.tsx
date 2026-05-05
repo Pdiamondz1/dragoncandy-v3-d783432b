@@ -10,7 +10,7 @@ interface DragonDashTimerProps {
   className?: string;
 }
 
-const DragonDashTimer: React.FC<DragonDashTimerProps> = ({
+export const DragonDashTimer: React.FC<DragonDashTimerProps> = ({
   formattedTime,
   percentageRemaining,
   status,
@@ -102,4 +102,3 @@ const DragonDashTimer: React.FC<DragonDashTimerProps> = ({
   );
 };
 
-export default DragonDashTimer;

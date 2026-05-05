@@ -6,8 +6,8 @@ import { Upload } from 'lucide-react';
 import { FileRejection } from 'react-dropzone';
 import { useAuth } from '@/hooks/useAuth';
 import { useProjectFileUpload } from '@/hooks/useProjectFileUpload';
-import FileUploadDropzone from './upload/FileUploadDropzone';
-import FileUploadPreview from './upload/FileUploadPreview';
+import { FileUploadDropzone } from './upload/FileUploadDropzone';
+import { FileUploadPreview } from './upload/FileUploadPreview';
 
 interface ProjectFileUploadProps {
   campaignId: string;
@@ -15,7 +15,7 @@ interface ProjectFileUploadProps {
   onUploadComplete?: () => void;
 }
 
-const ProjectFileUpload: React.FC<ProjectFileUploadProps> = ({
+export const ProjectFileUpload: React.FC<ProjectFileUploadProps> = ({
   campaignId,
   campaignTitle,
   onUploadComplete
@@ -100,4 +100,3 @@ const ProjectFileUpload: React.FC<ProjectFileUploadProps> = ({
   );
 };
 
-export default ProjectFileUpload;

@@ -2,8 +2,8 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import ReviewsList from '@/components/reviews/ReviewsList';
-import RatingStats from '@/components/reviews/RatingStats';
+import { ReviewsList } from '@/components/reviews/ReviewsList';
+import { RatingStats } from '@/components/reviews/RatingStats';
 import { Star, MessageSquare } from 'lucide-react';
 
 interface PublicProfileReviewsProps {
@@ -12,7 +12,7 @@ interface PublicProfileReviewsProps {
   showStats?: boolean;
 }
 
-const PublicProfileReviews: React.FC<PublicProfileReviewsProps> = ({ 
+export const PublicProfileReviews: React.FC<PublicProfileReviewsProps> = ({ 
   profileId, 
   profileType,
   showStats = true 
@@ -68,4 +68,3 @@ const PublicProfileReviews: React.FC<PublicProfileReviewsProps> = ({
   );
 };
 
-export default PublicProfileReviews;

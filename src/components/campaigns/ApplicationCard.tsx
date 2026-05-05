@@ -6,10 +6,10 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Check, X, Clock, DollarSign, User, ArrowRightLeft, CreditCard, Loader2 } from 'lucide-react';
 import { useManageApplication } from '@/hooks/useManageApplication';
 import { CampaignApplication } from '@/types/applications';
-import ApplicationStatusBadge from './ApplicationStatusBadge';
+import { ApplicationStatusBadge } from './ApplicationStatusBadge';
 import { JointApprovalCard } from './JointApprovalCard';
-import CounterOfferModal from './CounterOfferModal';
-import CounterOfferThread from './CounterOfferThread';
+import { CounterOfferModal } from './CounterOfferModal';
+import { CounterOfferThread } from './CounterOfferThread';
 import { useCounterOffers } from '@/hooks/useCounterOffers';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -23,7 +23,7 @@ interface ApplicationCardProps {
   campaignEscrowStatus?: string | null;
 }
 
-const ApplicationCard: React.FC<ApplicationCardProps> = ({ 
+const ApplicationCardComponent: React.FC<ApplicationCardProps> = ({ 
   application, 
   showActions = false,
   isSponsored = false,
@@ -293,4 +293,4 @@ const ApplicationCard: React.FC<ApplicationCardProps> = ({
   );
 };
 
-export default React.memo(ApplicationCard);
+export const ApplicationCard = React.memo(ApplicationCardComponent);

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { ShieldAlert } from 'lucide-react';
-import DashboardLayout from '@/components/DashboardLayout';
+import { DashboardLayout } from '@/components/DashboardLayout';
 import { ProfileCompletionBar } from '@/components/settings/ProfileCompletionBar';
 import { CreatorSettingsSections } from '@/components/settings/CreatorSettingsSections';
 import { useCreatorProfileForm } from '@/hooks/useCreatorProfileForm';

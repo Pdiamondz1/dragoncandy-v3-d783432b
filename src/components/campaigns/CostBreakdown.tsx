@@ -9,7 +9,7 @@ interface CostBreakdownProps {
   deliveryType: string;
 }
 
-const CostBreakdown: React.FC<CostBreakdownProps> = ({
+export const CostBreakdown: React.FC<CostBreakdownProps> = ({
   deliverableCount,
   budgetTotal,
   baseCostPerDeliverable,
@@ -59,4 +59,3 @@ const CostBreakdown: React.FC<CostBreakdownProps> = ({
   );
 };
 
-export default CostBreakdown;

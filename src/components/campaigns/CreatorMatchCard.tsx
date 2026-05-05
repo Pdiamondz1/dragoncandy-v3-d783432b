@@ -19,7 +19,7 @@ import {
   CheckCircle2,
   AlertCircle,
 } from 'lucide-react';
-import ApplicationForm from './ApplicationForm';
+import { ApplicationForm } from './ApplicationForm';
 import { useCampaign } from '@/hooks/useCampaigns';
 import { CreatorMatch, ScoreBreakdown } from '@/hooks/useCampaignMatches';
 import { WhyExpander } from '@/components/guidance/WhyExpander';
@@ -87,7 +87,7 @@ const ScoreBar: React.FC<{ label: string; score: number; icon: React.ElementType
   </div>
 );
 
-const CreatorMatchCard: React.FC<CreatorMatchCardProps> = ({ match, isInvited, onInvite }) => {
+export const CreatorMatchCard: React.FC<CreatorMatchCardProps> = ({ match, isInvited, onInvite }) => {
   const [showApplicationForm, setShowApplicationForm] = useState(false);
   const [showBreakdown, setShowBreakdown] = useState(false);
   const { campaign } = useCampaign(match.campaign_id);
@@ -263,4 +263,3 @@ const CreatorMatchCard: React.FC<CreatorMatchCardProps> = ({ match, isInvited, o
   );
 };
 
-export default CreatorMatchCard;

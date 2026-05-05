@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { CreditCard, Users, ArrowUpRight, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import DashboardLayout from '@/components/DashboardLayout';
+import { DashboardLayout } from '@/components/DashboardLayout';
 import { WhyExpander } from '@/components/guidance/WhyExpander';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';

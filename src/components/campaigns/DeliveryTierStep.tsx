@@ -45,7 +45,7 @@ const TIER_META: Record<
 
 const TIER_ORDER: DeliveryTier[] = ['dragondash', 'express', 'standard'];
 
-const DeliveryTierStep = ({ selectedTier, onSelect, onContinue }: DeliveryTierStepProps) => {
+export const DeliveryTierStep = ({ selectedTier, onSelect, onContinue }: DeliveryTierStepProps) => {
   return (
     <div className="px-4 py-6">
       {/* Heading */}
@@ -141,6 +141,3 @@ const DeliveryTierStep = ({ selectedTier, onSelect, onContinue }: DeliveryTierSt
     </div>
   );
 };
-
-export { DeliveryTierStep };
-export default DeliveryTierStep;

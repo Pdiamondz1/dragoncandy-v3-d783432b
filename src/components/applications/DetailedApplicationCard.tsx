@@ -14,10 +14,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import ApplicationStatusBadge from '@/components/campaigns/ApplicationStatusBadge';
-import ContactRestaurantModal from '@/components/creator-profile/ContactRestaurantModal';
-import CounterOfferModal from '@/components/campaigns/CounterOfferModal';
-import CounterOfferThread from '@/components/campaigns/CounterOfferThread';
+import { ApplicationStatusBadge } from '@/components/campaigns/ApplicationStatusBadge';
+import { ContactRestaurantModal } from '@/components/creator-profile/ContactRestaurantModal';
+import { CounterOfferModal } from '@/components/campaigns/CounterOfferModal';
+import { CounterOfferThread } from '@/components/campaigns/CounterOfferThread';
 import { CampaignApplication } from '@/types/applications';
 import { useWithdrawApplication } from '@/hooks/useWithdrawApplication';
 import { useCounterOffers, useRespondToCounterOffer } from '@/hooks/useCounterOffers';
@@ -28,7 +28,7 @@ interface DetailedApplicationCardProps {
   application: CampaignApplication;
 }
 
-const DetailedApplicationCard: React.FC<DetailedApplicationCardProps> = ({ application }) => {
+export const DetailedApplicationCard: React.FC<DetailedApplicationCardProps> = ({ application }) => {
   const [showWithdrawDialog, setShowWithdrawDialog] = useState(false);
   const [showCounterModal, setShowCounterModal] = useState(false);
   const withdrawApplication = useWithdrawApplication();
@@ -275,4 +275,3 @@ const DetailedApplicationCard: React.FC<DetailedApplicationCardProps> = ({ appli
   );
 };
 
-export default DetailedApplicationCard;

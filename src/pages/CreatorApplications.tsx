@@ -1,14 +1,14 @@
 
 import React from 'react';
-import DashboardLayout from '@/components/DashboardLayout';
+import { DashboardLayout } from '@/components/DashboardLayout';
 import { ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useCreatorApplications } from '@/hooks/useFetchApplications';
 import { DCSkeleton } from '@/components/ui/dc-skeleton';
 import { ErrorState } from '@/components/ui/error-state';
-import ApplicationsStats from '@/components/applications/ApplicationsStats';
-import ApplicationsSearch from '@/components/applications/ApplicationsSearch';
-import ApplicationsTabsContent from '@/components/applications/ApplicationsTabsContent';
+import { ApplicationsStats } from '@/components/applications/ApplicationsStats';
+import { ApplicationsSearch } from '@/components/applications/ApplicationsSearch';
+import { ApplicationsTabsContent } from '@/components/applications/ApplicationsTabsContent';
 
 const CreatorApplications: React.FC = () => {
   const navigate = useNavigate();

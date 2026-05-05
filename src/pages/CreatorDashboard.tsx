@@ -1,4 +1,4 @@
-import DashboardLayout from '@/components/DashboardLayout';
+import { DashboardLayout } from '@/components/DashboardLayout';
 import { DCTour } from '@/components/guidance/DCTour';
 import { useTour } from '@/hooks/useTour';
 import { Badge } from '@/components/ui/badge';
@@ -12,7 +12,7 @@ import { useCreatorRecentActivity } from '@/hooks/useCreatorRecentActivity';
 import { useCreatorUpcomingDeadlines } from '@/hooks/useCreatorUpcomingDeadlines';
 import { Link } from 'react-router-dom';
 import { DollarSign, Target, Star, Clock } from 'lucide-react';
-import RatingPromptManager from '@/components/reviews/RatingPromptManager';
+import { RatingPromptManager } from '@/components/reviews/RatingPromptManager';
 import { DashboardHero } from '@/components/dashboard/DashboardHero';
 import { DashboardStatsGrid, type StatItem } from '@/components/dashboard/DashboardStatsGrid';
 import { QuickActionButtons, type QuickAction } from '@/components/dashboard/QuickActionButtons';

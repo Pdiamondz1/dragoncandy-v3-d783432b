@@ -1,11 +1,11 @@
 
 import React from 'react';
-import DashboardLayout from '@/components/DashboardLayout';
+import { DashboardLayout } from '@/components/DashboardLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Search } from 'lucide-react';
 
-const MarketplaceErrorState: React.FC = () => {
+export const MarketplaceErrorState: React.FC = () => {
   return (
     <DashboardLayout userRole="content_creator">
       <div className="flex-1 p-4 sm:p-6 lg:p-8 bg-background min-h-screen overflow-x-hidden">
@@ -30,4 +30,3 @@ const MarketplaceErrorState: React.FC = () => {
   );
 };
 
-export default MarketplaceErrorState;

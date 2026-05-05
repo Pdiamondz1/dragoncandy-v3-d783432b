@@ -18,7 +18,7 @@ interface ProtectedFilePreviewProps {
   collaborationId: string;
 }
 
-const ProtectedFilePreview: React.FC<ProtectedFilePreviewProps> = ({
+export const ProtectedFilePreview: React.FC<ProtectedFilePreviewProps> = ({
   file,
   contentStatus,
   isBusinessClient,
@@ -193,4 +193,3 @@ const ProtectedFilePreview: React.FC<ProtectedFilePreviewProps> = ({
   );
 };
 
-export default ProtectedFilePreview;

@@ -2,16 +2,16 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import DashboardLayout from '@/components/DashboardLayout';
+import { DashboardLayout } from '@/components/DashboardLayout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DollarSign, MessageSquare, Calendar, TrendingUp, CheckCircle, Clock, Loader2, Star } from 'lucide-react';
 import { useSponsorshipProposals, type SponsorshipProposal } from '@/hooks/useSponsorshipProposals';
 import { useSponsorshipComplete } from '@/hooks/useSponsorshipComplete';
-import SponsorshipProposalCard from '@/components/campaigns/SponsorshipProposalCard';
-import MarketplaceLoadingState from '@/components/campaigns/MarketplaceLoadingState';
-import SponsorshipRatingPromptManager from '@/components/reviews/SponsorshipRatingPromptManager';
-import ResponsiveRatingModal from '@/components/reviews/ResponsiveRatingModal';
+import { SponsorshipProposalCard } from '@/components/campaigns/SponsorshipProposalCard';
+import { MarketplaceLoadingState } from '@/components/campaigns/MarketplaceLoadingState';
+import { SponsorshipRatingPromptManager } from '@/components/reviews/SponsorshipRatingPromptManager';
+import { ResponsiveRatingModal } from '@/components/reviews/ResponsiveRatingModal';
 
 const BusinessSponsorships = () => {
   useAuth();

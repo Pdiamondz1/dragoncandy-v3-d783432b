@@ -24,7 +24,7 @@ interface BulkApplicationActionsProps {
   onSelectionChange: (selectedIds: string[]) => void;
 }
 
-const BulkApplicationActions: React.FC<BulkApplicationActionsProps> = ({
+export const BulkApplicationActions: React.FC<BulkApplicationActionsProps> = ({
   applications,
   selectedIds,
   onSelectionChange,
@@ -177,4 +177,3 @@ const BulkApplicationActions: React.FC<BulkApplicationActionsProps> = ({
   );
 };
 
-export default BulkApplicationActions;

@@ -37,7 +37,7 @@ const deliveryConfig = {
   },
 };
 
-const DeliveryBadge: React.FC<DeliveryBadgeProps> = ({
+export const DeliveryBadge: React.FC<DeliveryBadgeProps> = ({
   deliveryType,
   size = 'md',
   showTimeframe = true,
@@ -81,5 +81,4 @@ const DeliveryBadge: React.FC<DeliveryBadgeProps> = ({
   );
 };
 
-export default DeliveryBadge;
 export { deliveryConfig };

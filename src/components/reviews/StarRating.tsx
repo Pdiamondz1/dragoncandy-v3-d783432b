@@ -11,7 +11,7 @@ interface StarRatingProps {
   className?: string;
 }
 
-const StarRating: React.FC<StarRatingProps> = ({
+export const StarRating: React.FC<StarRatingProps> = ({
   rating,
   onRatingChange,
   readonly = false,
@@ -44,4 +44,3 @@ const StarRating: React.FC<StarRatingProps> = ({
   );
 };
 
-export default StarRating;

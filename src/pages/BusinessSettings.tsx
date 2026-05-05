@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import { Trash2, LogOut, ShieldAlert } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import DashboardLayout from '@/components/DashboardLayout';
+import { DashboardLayout } from '@/components/DashboardLayout';
 import { ProfileCompletionBar } from '@/components/settings/ProfileCompletionBar';
 import { BusinessSettingsSections } from '@/components/settings/BusinessSettingsSections';
 import { useBusinessProfileForm } from '@/hooks/useBusinessProfileForm';

@@ -19,7 +19,7 @@ interface FilePermissionsDialogProps {
   onClose: () => void;
 }
 
-const FilePermissionsDialog: React.FC<FilePermissionsDialogProps> = ({
+export const FilePermissionsDialog: React.FC<FilePermissionsDialogProps> = ({
   file,
   isOpen,
   onClose
@@ -239,4 +239,3 @@ const FilePermissionsDialog: React.FC<FilePermissionsDialogProps> = ({
   );
 };
 
-export default FilePermissionsDialog;

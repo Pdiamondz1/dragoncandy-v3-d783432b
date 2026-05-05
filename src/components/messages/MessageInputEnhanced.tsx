@@ -26,7 +26,7 @@ interface MessageInputEnhancedProps {
   onCancelReply?: () => void;
 }
 
-const MessageInputEnhanced: React.FC<MessageInputEnhancedProps> = ({
+export const MessageInputEnhanced: React.FC<MessageInputEnhancedProps> = ({
   campaignId,
   conversationId: _conversationId,
   onSendMessage,
@@ -259,4 +259,3 @@ const MessageInputEnhanced: React.FC<MessageInputEnhancedProps> = ({
   );
 };
 
-export default MessageInputEnhanced;

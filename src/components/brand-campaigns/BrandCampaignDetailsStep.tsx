@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import DeliverableBuilder from '@/components/campaigns/DeliverableBuilder';
+import { DeliverableBuilder } from '@/components/campaigns/DeliverableBuilder';
 import type { BrandDetailsData } from '@/hooks/useBrandCampaignWizard';
 import type { StagedFile } from '@/types/campaignMedia';
 

@@ -60,4 +60,3 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ userRole }) =>
   );
 };
 
-export default MobileBottomNav;

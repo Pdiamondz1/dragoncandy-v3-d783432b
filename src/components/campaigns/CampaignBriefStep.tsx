@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Lightbulb, Sparkles, Loader2, ArrowRight } from 'lucide-react';
-import ContentSourceSelector from './ContentSourceSelector';
+import { ContentSourceSelector } from './ContentSourceSelector';
 import { MediaUploader } from './MediaUploader';
 import type { ContentSource, StagedFile } from '@/types/campaignMedia';
 
@@ -22,7 +22,7 @@ interface CampaignBriefStepProps {
   onNext: () => void;
 }
 
-const CampaignBriefStep: React.FC<CampaignBriefStepProps> = ({
+export const CampaignBriefStep: React.FC<CampaignBriefStepProps> = ({
   campaignGoal,
   setCampaignGoal,
   contentSource,
@@ -131,4 +131,3 @@ const CampaignBriefStep: React.FC<CampaignBriefStepProps> = ({
   );
 };
 
-export default CampaignBriefStep;

@@ -1,6 +1,6 @@
 import { useAuth } from '@/hooks/useAuth';
 import { useBrandAnalytics } from '@/hooks/useBrandAnalytics';
-import DashboardLayout from '@/components/DashboardLayout';
+import { DashboardLayout } from '@/components/DashboardLayout';
 import { BarChart3, TrendingUp, DollarSign, Target, Eye, Loader2, AlertCircle } from 'lucide-react';
 
 const BrandAnalytics = () => {

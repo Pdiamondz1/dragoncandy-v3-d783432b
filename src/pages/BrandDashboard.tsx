@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useBrandDashboardStats } from '@/hooks/useBrandDashboardStats';
 import { useBrandActiveCampaigns } from '@/hooks/useBrandActiveCampaigns';
-import DashboardLayout from '@/components/DashboardLayout';
+import { DashboardLayout } from '@/components/DashboardLayout';
 import { DCTour } from '@/components/guidance/DCTour';
 import { useTour } from '@/hooks/useTour';
 import { Alert, AlertDescription } from '@/components/ui/alert';

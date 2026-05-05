@@ -155,7 +155,7 @@ const MediaGrid: React.FC<{
   </div>
 );
 
-const MediaGallery: React.FC<MediaGalleryProps> = ({
+export const MediaGallery: React.FC<MediaGalleryProps> = ({
   media,
   editable = false,
   showTypeFilter = false,
@@ -230,4 +230,3 @@ const MediaGallery: React.FC<MediaGalleryProps> = ({
   );
 };
 
-export default MediaGallery;

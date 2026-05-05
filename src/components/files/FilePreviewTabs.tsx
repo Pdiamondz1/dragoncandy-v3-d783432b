@@ -5,9 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Download, Share2 } from 'lucide-react';
 import type { FileUpload } from '@/types/files';
-import FilePreviewContent from './FilePreviewContent';
-import FileDetailsPanel from './FileDetailsPanel';
-import FileCommentsPanel from './FileCommentsPanel';
+import { FilePreviewContent } from './FilePreviewContent';
+import { FileDetailsPanel } from './FileDetailsPanel';
+import { FileCommentsPanel } from './FileCommentsPanel';
 
 interface FilePreviewTabsProps {
   file: FileUpload;
@@ -16,7 +16,7 @@ interface FilePreviewTabsProps {
   onDownload: () => void;
 }
 
-const FilePreviewTabs: React.FC<FilePreviewTabsProps> = ({
+export const FilePreviewTabs: React.FC<FilePreviewTabsProps> = ({
   file,
   fileUrl,
   loading,
@@ -70,4 +70,3 @@ const FilePreviewTabs: React.FC<FilePreviewTabsProps> = ({
   );
 };
 
-export default FilePreviewTabs;
