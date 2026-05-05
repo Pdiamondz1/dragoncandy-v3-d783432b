@@ -27,6 +27,7 @@ export default {
 				dc: {
 					teal: '#4DD9C0',
 					'teal-dark': '#00E5CC',
+					'teal-hover': '#3ec4ac',
 					pink: '#F9A8D4',
 					'pink-accent': '#EC4899',
 					'pink-bg': '#F9C8E0',
@@ -34,6 +35,8 @@ export default {
 					yellow: '#FACC15',
 					dark: '#1A1A2A',
 					card: '#FFFFFF',
+					text: '#111111',
+					'text-muted': '#555555',
 				},
 				border: 'hsl(var(--border))',
 				input: 'hsl(var(--input))',
