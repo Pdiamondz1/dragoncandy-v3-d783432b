@@ -31,7 +31,7 @@ export default function HelpArticlePage() {
   const feedbackMutation = useMutation({
     mutationFn: async (helpful: boolean) => {
       if (!user || !article) return;
-      await supabase.from("help_article_feedback" as any).insert({
+      await supabase.from("help_article_feedback").insert({
         article_id: article.id,
         user_id: user.id,
         helpful,

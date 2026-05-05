@@ -97,19 +97,16 @@ export const BrandCampaignReviewStep = ({
       let campaignId: string;
 
       if (draftCampaignId) {
-        // payload includes brand-specific fields not yet in generated types
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { error } = await supabase
           .from('campaigns')
-          .update(payload as any)
+          .update(payload)
           .eq('id', draftCampaignId);
         if (error) throw error;
         campaignId = draftCampaignId;
       } else {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { data, error } = await supabase
           .from('campaigns')
-          .insert(payload as any)
+          .insert(payload)
           .select('id')
           .single();
         if (error) throw error;
@@ -118,16 +115,13 @@ export const BrandCampaignReviewStep = ({
 
       if (detailsData.deliverables.length > 0) {
         if (draftCampaignId) {
-          // campaign_deliverables is not in generated types yet
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          await (supabase as any)
+          await supabase
             .from('campaign_deliverables')
             .delete()
             .eq('campaign_id', campaignId);
         }
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { error: delError } = await (supabase as any)
+        const { error: delError } = await supabase
           .from('campaign_deliverables')
           .insert(
             detailsData.deliverables.map((d, i) => ({

@@ -95,7 +95,7 @@ const CampaignDetailsPage: React.FC = () => {
 
       // Log to donny_events
       supabase
-        .from('donny_events' as any)
+        .from('donny_events')
         .insert({
           event_type: 'apply_with_donny',
           user_id: user!.id,
@@ -114,7 +114,7 @@ const CampaignDetailsPage: React.FC = () => {
   const handleEditDetails = (_pitch: DonnyPitchResult) => {
     // Log that user chose to edit
     supabase
-      .from('donny_events' as any)
+      .from('donny_events')
       .insert({
         event_type: 'apply_edit_details',
         user_id: user!.id,

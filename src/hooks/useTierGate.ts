@@ -29,7 +29,7 @@ export function useTierGate(featureKey: string): TierGateResult {
       since.setDate(since.getDate() - feature.rateLimit.periodDays);
 
       const { count } = await supabase
-        .from('campaign_brief_generations' as any)
+        .from('campaign_brief_generations')
         .select('*', { count: 'exact', head: true })
         .eq('org_id', activeOrg.id)
         .gte('generated_at', since.toISOString());

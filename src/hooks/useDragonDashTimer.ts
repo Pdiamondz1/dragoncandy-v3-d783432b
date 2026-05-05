@@ -169,9 +169,7 @@ export const useDragonDashTimer = (collaborationId: string | null) => {
       if (error) throw error;
 
       // Fire-and-forget: write payment event for content_started
-      // insert_payment_event RPC is not in generated types yet
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      supabase.rpc('insert_payment_event' as any, {
+      supabase.rpc('insert_payment_event', {
         p_event_type: 'content_started',
         p_entity_type: 'collaboration',
         p_entity_id: collaborationId,

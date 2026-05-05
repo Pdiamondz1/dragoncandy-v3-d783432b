@@ -78,9 +78,7 @@ export function BriefGeneratorHero({ orgId }: BriefGeneratorHeroProps) {
       setBrief(result);
 
       if (user?.id && orgId) {
-        // campaign_brief_generations is not in generated types yet
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { error: insertError } = await (supabase as any).from('campaign_brief_generations').insert({
+        const { error: insertError } = await supabase.from('campaign_brief_generations').insert({
           user_id: user.id,
           org_id: orgId,
           source_url: trimmed,

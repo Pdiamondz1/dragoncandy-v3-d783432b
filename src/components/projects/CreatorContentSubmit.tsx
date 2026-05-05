@@ -122,9 +122,8 @@ export const CreatorContentSubmit: React.FC<CreatorContentSubmitProps> = ({
       if (error) throw error;
 
       const eventType = revisionCount > 0 ? 'content_resubmitted' : 'content_submitted';
-      // insert_payment_event RPC is not in generated types yet
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      supabase.rpc('insert_payment_event' as any, {
+      // Fire-and-forget: write payment event
+      supabase.rpc('insert_payment_event', {
         p_event_type: eventType,
         p_entity_type: 'collaboration',
         p_entity_id: collaborationId,

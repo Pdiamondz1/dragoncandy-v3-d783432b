@@ -129,8 +129,7 @@ export const useBrandCampaignWizard = () => {
           exclusivity_days: detailsData.exclusivityDays || null,
           ai_preview_status: 'none',
           ...(campaignAnalysis ? { ai_analysis: campaignAnalysis as unknown as Record<string, unknown> } : {}),
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        } as any)
+        })
         .select('id')
         .single();
 

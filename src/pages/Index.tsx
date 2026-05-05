@@ -38,7 +38,7 @@ export default function Index() {
           if (pendingBrief) {
             try {
               const brief = JSON.parse(pendingBrief);
-              await supabase.from('campaign_brief_generations' as any).insert({
+              await supabase.from('campaign_brief_generations').insert({
                 user_id: user.id,
                 brief_jsonb: brief,
               });

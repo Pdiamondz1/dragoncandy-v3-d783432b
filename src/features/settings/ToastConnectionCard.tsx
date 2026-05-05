@@ -115,9 +115,7 @@ export const ToastConnectionCard = () => {
 
       if (biz) setBusinessId(biz.id);
 
-      // toast_connections is not in generated types yet — using runtime cast
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: conn } = await (supabase as any)
+      const { data: conn } = await supabase
         .from('toast_connections')
         .select('id, restaurant_guid, status, token_expires_at, last_sync_at, error_message, scopes, created_at')
         .eq('user_id', user.id)
@@ -233,8 +231,7 @@ export const ToastConnectionCard = () => {
     if (!connection) return;
     setDisconnecting(true);
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from('toast_connections')
         .update({ status: 'revoked', updated_at: new Date().toISOString() })
         .eq('id', connection.id);

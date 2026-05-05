@@ -48,9 +48,7 @@ export function useDonny(options?: UseDonnyOptions) {
     queryFn: async () => {
       if (!user) return null;
 
-      // donny_conversations is not in generated types yet — using runtime cast
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: existing, error: fetchError } = await (supabase as any)
+      const { data: existing, error: fetchError } = await supabase
         .from('donny_conversations')
         .select('id, user_id, created_at, last_message_at, context_snapshot')
         .eq('user_id', user.id)
@@ -61,8 +59,7 @@ export function useDonny(options?: UseDonnyOptions) {
       if (fetchError) throw fetchError;
       if (existing) return existing as DonnyConversation;
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: created, error: createError } = await (supabase as any)
+      const { data: created, error: createError } = await supabase
         .from('donny_conversations')
         .insert({ user_id: user.id })
         .select('id, user_id, created_at, last_message_at, context_snapshot')
@@ -80,9 +77,7 @@ export function useDonny(options?: UseDonnyOptions) {
     queryFn: async () => {
       if (!conversation) return [];
 
-      // donny_messages is not in generated types yet — using runtime cast
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error: fetchError } = await (supabase as any)
+      const { data, error: fetchError } = await supabase
         .from('donny_messages')
         .select('id, conversation_id, role, content, tool_calls, tool_result, rich_card, quick_actions, created_at')
         .eq('conversation_id', conversation.id)
@@ -135,8 +130,7 @@ export function useDonny(options?: UseDonnyOptions) {
       setError(null);
 
       // Insert user message locally first
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: insertError } = await (supabase as any)
+      const { error: insertError } = await supabase
         .from('donny_messages')
         .insert({
           conversation_id: conversation.id,
@@ -174,8 +168,7 @@ export function useDonny(options?: UseDonnyOptions) {
           })
         );
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { error: insertError } = await (supabase as any)
+        const { error: insertError } = await supabase
           .from('donny_messages')
           .insert({
             conversation_id: conversation.id,
@@ -222,8 +215,7 @@ export function useDonny(options?: UseDonnyOptions) {
     if (!conversation) return;
 
     // Delete all messages in this conversation
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase as any)
+    await supabase
       .from('donny_messages')
       .delete()
       .eq('conversation_id', conversation.id);
