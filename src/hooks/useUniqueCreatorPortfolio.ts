@@ -89,7 +89,6 @@ export const useUniqueCreatorPortfolio = () => {
         const uniqueMedia = mediaItems.sort(() => Math.random() - 0.5); // Simple shuffle for variety
         setPortfolioMedia(uniqueMedia);
         
-        if (import.meta.env.DEV) console.log('🎯 UniquePortfolio: Final unique portfolio media set:', uniqueMedia.length, 'items');
         
       } catch (err) {
         console.error('💥 UniquePortfolio: Critical error:', err);

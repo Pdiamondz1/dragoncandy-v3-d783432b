@@ -68,16 +68,6 @@ const createSmartFeed = (mediaItems: PortfolioMedia[]): PortfolioMedia[] => {
   // Limit total feed length
   const limitedFeed = finalShuffled.slice(0, MAX_FEED_LENGTH);
   
-  if (import.meta.env.DEV) {
-  if (import.meta.env.DEV) {
-    console.log('🧠 Smart Feed Logic:', {
-      originalItems: mediaItems.length,
-      duplicationFactor,
-      distributedItems: distributedItems.length,
-      finalFeedLength: limitedFeed.length
-    });
-  }
-  }
 
   return limitedFeed;
 };
@@ -143,7 +133,6 @@ export const useCreatorPortfolioFeed = () => {
         if (processedMedia.length > initialCount) {
           setTimeout(() => setPortfolioMedia(processedMedia), 0);
         }
-        if (import.meta.env.DEV) console.log('🎯 DragonFeed: Final portfolio media set:', processedMedia.length, 'items');
         
       } catch (err) {
         console.error('💥 DragonFeed: Critical error:', err);
