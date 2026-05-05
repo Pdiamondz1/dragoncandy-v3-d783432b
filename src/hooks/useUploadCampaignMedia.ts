@@ -71,7 +71,6 @@ export const useUploadCampaignMedia = (options?: UploadOptions) => {
           .from('campaign-assets')
           .getPublicUrl(filePath);
 
-        // @ts-ignore — campaign_media not in generated types yet
         const { data, error } = await supabase
           .from('campaign_media')
           .insert({

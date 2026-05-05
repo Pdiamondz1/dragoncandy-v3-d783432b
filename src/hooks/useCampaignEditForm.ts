@@ -189,13 +189,11 @@ export const useCampaignEditForm = (campaign: Campaign | undefined) => {
       await updateCampaign.mutateAsync({ id: campaign.id, updates: updates as any });
 
       if (structuredDeliverables.length > 0) {
-        // @ts-ignore — campaign_deliverables not in generated types yet
         await supabase
           .from('campaign_deliverables')
           .delete()
           .eq('campaign_id', campaign.id);
 
-        // @ts-ignore
         await supabase
           .from('campaign_deliverables')
           .insert(
