@@ -51,14 +51,14 @@ export const useProjectComplete = () => {
       // Update completion status - also set content_status to 'submitted' when creator marks complete
       const { data, error } = await supabase
         .from('campaign_collaborations')
-        .update({ 
+        .update({
           [statusField]: 'requested',
           updated_at: new Date().toISOString(),
           // If creator marks complete, also mark content as submitted
           ...(userRole === 'content_creator' && { content_status: 'submitted' })
         })
         .eq('id', collaborationId)
-        .select()
+        .select('id, application_id, business_completion_status, campaign_id, completed_at, content_deadline, content_started_at, content_status, contract_details, created_at, creator_completion_status, creator_id, deliverables_status, milestones, review_status, revision_count, status, updated_at')
         .single();
 
       if (error) throw error;
@@ -72,7 +72,7 @@ export const useProjectComplete = () => {
         // Both parties requested - mark as completed
         const { data: completedData, error: completeError } = await supabase
           .from('campaign_collaborations')
-          .update({ 
+          .update({
             status: 'completed',
             review_status: 'pending',
             business_completion_status: 'approved',
@@ -81,7 +81,7 @@ export const useProjectComplete = () => {
             completed_at: new Date().toISOString()
           })
           .eq('id', collaborationId)
-          .select()
+          .select('id, application_id, business_completion_status, campaign_id, completed_at, content_deadline, content_started_at, content_status, contract_details, created_at, creator_completion_status, creator_id, deliverables_status, milestones, review_status, revision_count, status, updated_at')
           .single();
 
         if (completeError) throw completeError;

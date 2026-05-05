@@ -21,7 +21,7 @@ export const useFilePermissions = () => {
           ...permissionData,
           granted_by: user!.id
         })
-        .select()
+        .select('id, file_upload_id, user_id, permission_type, granted_by, expires_at, created_at')
         .single();
 
       if (error) {

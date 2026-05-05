@@ -41,7 +41,7 @@ export const useCreateFileUpload = () => {
           uploaded_by: user.id,
           upload_status: 'completed'
         })
-        .select()
+        .select('id, filename, original_filename, file_path, bucket_name, file_size, mime_type, file_hash, upload_status, uploaded_by, campaign_id, file_category, metadata, is_public, is_compressed, compression_ratio, created_at, updated_at')
         .single();
 
       if (error) {

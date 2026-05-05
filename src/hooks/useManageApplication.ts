@@ -56,7 +56,7 @@ export const useManageApplication = () => {
             restaurant_approval_status: status === 'accepted' ? 'approved' : status === 'rejected' ? 'rejected' : 'pending'
           })
           .eq('id', applicationId)
-          .select()
+          .select('id, campaign_id, creator_id, status, restaurant_approval_status, final_approval_status')
           .single();
         if (error) throw error;
         return data;

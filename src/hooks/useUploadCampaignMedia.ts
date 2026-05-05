@@ -84,7 +84,7 @@ export const useUploadCampaignMedia = (options?: UploadOptions) => {
             duration_seconds: staged.duration || null,
             sort_order: i,
           })
-          .select()
+          .select('id, campaign_id, uploaded_by, media_type, file_url, file_name, file_size_bytes, mime_type, duration_seconds, sort_order')
           .single();
         if (error) throw error;
         results.push(data);

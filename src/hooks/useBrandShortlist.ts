@@ -35,7 +35,7 @@ export function useBrandShortlist() {
       const { data, error } = await supabase
         .from('brand_shortlists')
         .insert({ brand_id: user!.id, creator_id: creatorId })
-        .select()
+        .select('id, brand_id, creator_id, notes, created_at')
         .single();
 
       if (error) throw error;

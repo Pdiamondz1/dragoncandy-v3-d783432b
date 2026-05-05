@@ -58,12 +58,12 @@ export const useSponsorshipComplete = () => {
       // Update completion status
       const { data, error } = await supabase
         .from('campaign_sponsorships')
-        .update({ 
+        .update({
           [statusField]: 'requested',
           updated_at: new Date().toISOString()
         })
         .eq('id', sponsorshipId)
-        .select()
+        .select('id, status, brand_completion_status, business_completion_status, updated_at')
         .single();
 
       if (error) throw error;
@@ -77,7 +77,7 @@ export const useSponsorshipComplete = () => {
         // Both parties requested - mark as completed
         const { data: completedData, error: completeError } = await supabase
           .from('campaign_sponsorships')
-          .update({ 
+          .update({
             status: 'completed',
             review_status: 'pending',
             brand_completion_status: 'approved',
@@ -85,7 +85,7 @@ export const useSponsorshipComplete = () => {
             completed_at: new Date().toISOString()
           })
           .eq('id', sponsorshipId)
-          .select()
+          .select('id, status, brand_completion_status, business_completion_status, review_status, completed_at')
           .single();
 
         if (completeError) throw completeError;

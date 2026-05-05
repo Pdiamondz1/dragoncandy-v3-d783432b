@@ -19,7 +19,7 @@ export default function HelpArticlePage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("help_articles")
-        .select("*")
+        .select("id, title, body, slug")
         .eq("slug", slug)
         .single();
       if (error) throw error;

@@ -129,7 +129,7 @@ export const useCreateCampaignConversation = () => {
           participant_type: participantType,
           title: 'Campaign Discussion',
         })
-        .select()
+        .select('id')
         .single();
 
       if (conversationError) throw conversationError;

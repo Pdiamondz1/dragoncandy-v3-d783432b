@@ -39,7 +39,7 @@ export const useSendMessage = () => {
           category,
           forwarded_from_message_id: forwardedFromMessageId,
         })
-        .select()
+        .select('id, campaign_id, conversation_id, sender_id, recipient_id, content, created_at')
         .single();
 
       if (error) {
@@ -161,7 +161,7 @@ export const useStarMessage = () => {
         .from('messages')
         .update({ is_starred: isStarred })
         .eq('id', messageId)
-        .select()
+        .select('id, campaign_id, conversation_id, is_starred')
         .single();
 
       if (error) {

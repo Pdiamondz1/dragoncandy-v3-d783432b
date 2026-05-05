@@ -61,7 +61,7 @@ export const useSubmitSponsorshipProposal = () => {
           terms: params.terms || null,
           status: 'pending',
         })
-        .select()
+        .select('id, campaign_id, brand_id, restaurant_id, sponsorship_amount, proposal_message, terms, status, created_at')
         .single();
 
       if (error) throw error;

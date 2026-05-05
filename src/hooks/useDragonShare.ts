@@ -92,7 +92,7 @@ export function useSubmitDragonSharePost() {
       const { data, error } = await supabase
         .from('dragonshare_posts')
         .insert({ ...post, creator_id: user!.id })
-        .select()
+        .select('id, creator_id, platform, content_type, post_url, caption, target_org_id, target_org_unit_id, hashtags, mentions, status, submitted_at')
         .single();
       if (error) throw error;
       return data as DragonSharePost;

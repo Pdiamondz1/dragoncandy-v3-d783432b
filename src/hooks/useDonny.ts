@@ -65,7 +65,7 @@ export function useDonny(options?: UseDonnyOptions) {
       const { data: created, error: createError } = await (supabase as any)
         .from('donny_conversations')
         .insert({ user_id: user.id })
-        .select()
+        .select('id, user_id, created_at, last_message_at, context_snapshot')
         .single();
 
       if (createError) throw createError;

@@ -32,7 +32,7 @@ export const useBrandSettings = () => {
           updated_at: new Date().toISOString(),
         })
         .eq('user_id', user.id)
-        .select()
+        .select('id')
         .maybeSingle();
 
       if (error) throw error;

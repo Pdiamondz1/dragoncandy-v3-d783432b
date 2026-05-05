@@ -42,7 +42,7 @@ export const useCreateCampaign = () => {
           ...campaignData,
           user_id: user!.id,
         } as unknown as Database['public']['Tables']['campaigns']['Insert'])
-        .select()
+        .select('id, title, description, status, open_for_sponsorship, budget_min, budget_max, platforms, user_id')
         .single();
 
       if (error) {
@@ -194,7 +194,7 @@ export const useUpdateCampaign = () => {
         .update(updates as unknown as Database['public']['Tables']['campaigns']['Update'])
         .eq('id', id)
         .eq('user_id', user!.id)
-        .select()
+        .select('id, title, description, status, open_for_sponsorship, budget_min, budget_max, platforms, user_id')
         .single();
 
       if (error) {

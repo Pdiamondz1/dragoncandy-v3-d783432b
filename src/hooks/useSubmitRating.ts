@@ -17,7 +17,7 @@ export const useSubmitRating = () => {
           ...reviewData,
           reviewer_id: user.id,
         })
-        .select()
+        .select('id, collaboration_id, sponsorship_id, reviewer_id, reviewee_id, rating, review_text, created_at')
         .single();
 
       if (error) throw error;

@@ -74,7 +74,7 @@ export const useCreateCounterOffer = () => {
           proposed_timeline: proposedTimeline || null,
           message,
         })
-        .select()
+        .select('id, application_id, sender_id, sender_role, proposed_rate, proposed_timeline, message, status, created_at')
         .single();
 
       if (error) throw error;

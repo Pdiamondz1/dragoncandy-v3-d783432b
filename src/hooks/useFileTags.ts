@@ -38,7 +38,7 @@ export const useCreateFileTag = () => {
           ...tagData,
           created_by: user!.id
         })
-        .select()
+        .select('id, name, color, created_by, created_at')
         .single();
 
       if (error) {

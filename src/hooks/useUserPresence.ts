@@ -77,7 +77,7 @@ export const useUpdatePresence = () => {
           updated_at: new Date().toISOString(),
           last_seen: new Date().toISOString(),
         })
-        .select()
+        .select('id, user_id, status, last_seen, updated_at')
         .single();
 
       if (error) {

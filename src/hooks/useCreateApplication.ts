@@ -34,7 +34,7 @@ export const useCreateApplication = () => {
           proposed_rate: proposedRate,
           portfolio_url: portfolioUrl,
         })
-        .select()
+        .select('id, campaign_id, creator_id, status')
         .single();
 
       if (error) {

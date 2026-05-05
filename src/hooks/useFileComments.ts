@@ -21,7 +21,7 @@ export const useCreateFileComment = () => {
           ...commentData,
           user_id: user!.id
         })
-        .select()
+        .select('id, file_upload_id, user_id, comment_text, created_at')
         .single();
 
       if (error) {
