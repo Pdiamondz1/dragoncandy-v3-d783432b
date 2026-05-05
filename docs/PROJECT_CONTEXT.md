@@ -70,7 +70,8 @@ matching) migrating to Claude per cost architecture.
   widget, SMS, embeddable SDK). Single-agent workflow during launch week.
 
 **Workflow discipline**: Single Claude Code agent, one prompt at a time
-→ `npm run build` → verify → push. OpenClaw multi-agent (Scout/Forge/
+→ `npm run build` → verify → push. Session handoffs at plan-phase
+boundaries (see `.claude/handoffs/`). OpenClaw multi-agent (Scout/Forge/
 Athena/Guardian) deferred to post-launch.
 
 ## 6. On the Horizon
@@ -107,6 +108,14 @@ first; layer automated social APIs after.
 
 **Parallel agents = merge conflict risk during launch week.** Sequential
 single-agent workflow until post-launch stabilization.
+
+**Session handoffs preserve multi-session continuity.** Work that spans
+multiple sessions (plan execution, multi-task audits, staged rollouts)
+produces a handoff document in `.claude/handoffs/` at natural breakpoints.
+Fresh sessions check for active handoffs before starting. Handoffs carry
+execution state (what's done, what's next, gotchas discovered); they
+complement — not replace — memory (durable facts) and git log (change
+history).
 
 **Bulk changes break builds.** Surgical, one-change-at-a-time prompts with
 `npm run build` verification after each. Recovery via `git reset --hard`
