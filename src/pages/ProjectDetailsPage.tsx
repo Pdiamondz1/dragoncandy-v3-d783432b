@@ -25,7 +25,7 @@ import { CreatorPayoutBanner } from '@/components/projects/CreatorPayoutBanner';
 import { DragonDashTimer } from '@/components/projects/DragonDashTimer';
 import { StartContentButton } from '@/components/projects/StartContentButton';
 import { ProjectFileUpload } from '@/components/projects/ProjectFileUpload';
-import { useFileUploads } from '@/hooks/useFileUploads';
+import { useFileUploads } from '@/hooks/useFileQuery';
 import { ProtectedFilePreview } from '@/components/projects/ProtectedFilePreview';
 import { useDragonDashTimer } from '@/hooks/useDragonDashTimer';
 import { formatDistanceToNow, format } from 'date-fns';

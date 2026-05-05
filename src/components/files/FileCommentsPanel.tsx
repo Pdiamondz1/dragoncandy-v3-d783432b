@@ -5,7 +5,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card } from '@/components/ui/card';
 import { MessageSquare, Send, Reply } from 'lucide-react';
-import { useCreateFileComment } from '@/hooks/useFileOperations';
+import { useCreateFileComment } from '@/hooks/useFileComments';
 import { useAuth } from '@/hooks/useAuth';
 import type { FileComment } from '@/types/files';
 

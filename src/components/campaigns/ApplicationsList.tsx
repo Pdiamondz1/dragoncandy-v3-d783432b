@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Users, BarChart3, Settings, Eye } from 'lucide-react';
-import { useCampaignApplications } from '@/hooks/useCampaignApplications';
+import { useCampaignApplications } from '@/hooks/useFetchApplications';
 import { useApplicationFilters } from '@/hooks/useApplicationFilters';
 import { ApplicationCard } from './ApplicationCard';
 import { ApplicationFiltersComponent } from './ApplicationFilters';

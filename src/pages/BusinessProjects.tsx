@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { useProjectComplete } from '@/hooks/useProjectComplete';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useFileUploads } from '@/hooks/useFileUploads';
+import { useFileUploads } from '@/hooks/useFileQuery';
 import { formatFileSize } from '@/lib/fileUtils';
 import { cn } from '@/lib/utils';
 import { RatingModal } from '@/components/reviews/RatingModal';

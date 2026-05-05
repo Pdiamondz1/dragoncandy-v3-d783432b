@@ -1,7 +1,7 @@
 
 import { useState, useCallback } from 'react';
 import { validateFile, generateFileHash, compressImage } from '@/lib/fileUtils';
-import { useCreateFileUpload } from '@/hooks/useFileOperations';
+import { useCreateFileUpload } from '@/hooks/useFileUploadMutations';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useFileUploadNotification } from '@/hooks/useFileUploadNotification';

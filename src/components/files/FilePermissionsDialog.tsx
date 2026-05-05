@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card } from '@/components/ui/card';
 import { Share2, UserPlus, Trash2, Eye, Download, Edit, Calendar } from 'lucide-react';
-import { useFilePermissions } from '@/hooks/useFileOperations';
+import { useFilePermissions } from '@/hooks/useFilePermissions';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import type { FileUpload } from '@/types/files';

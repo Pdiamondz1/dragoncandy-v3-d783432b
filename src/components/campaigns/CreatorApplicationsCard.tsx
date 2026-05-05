@@ -3,7 +3,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Users, ExternalLink, DollarSign, Calendar } from 'lucide-react';
-import { useCampaignApplications } from '@/hooks/useCampaignApplications';
+import { useCampaignApplications } from '@/hooks/useFetchApplications';
 import { Skeleton } from '@/components/ui/skeleton';
 import { JointApprovalCard } from './JointApprovalCard';
 import { CampaignApplication } from '@/types/applications';

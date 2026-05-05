@@ -1,6 +1,7 @@
 import { ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
-import SiteGate, { isSiteUnlocked, isPublicPath } from '@/pages/SiteGate';
+import { isSiteUnlocked, isPublicPath } from '@/lib/siteGate';
+import SiteGate from '@/pages/SiteGate';
 
 /**
  * Global site-wide password gate. Renders the SiteGate page in place of any
