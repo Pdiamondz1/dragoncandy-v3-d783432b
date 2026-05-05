@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import DashboardLayout from '@/components/DashboardLayout';
@@ -14,7 +14,7 @@ import SponsorshipRatingPromptManager from '@/components/reviews/SponsorshipRati
 import ResponsiveRatingModal from '@/components/reviews/ResponsiveRatingModal';
 
 const BusinessSponsorships = () => {
-  const { user } = useAuth();
+  useAuth();
   const navigate = useNavigate();
   const { proposals, isLoading, updateProposalStatus } = useSponsorshipProposals();
   const { requestCompletion, requestingId } = useSponsorshipComplete();

@@ -1,10 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
 import { Star, MapPin, Building2, MessageSquare } from 'lucide-react';
 import PublicProfileReviews from '@/components/profiles/PublicProfileReviews';
 import logo from '@/assets/Transparent_DragonCandy_logo.webp';

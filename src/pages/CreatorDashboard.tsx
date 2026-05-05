@@ -1,4 +1,3 @@
-import React from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
 import { DCTour } from '@/components/guidance/DCTour';
 import { useTour } from '@/hooks/useTour';
@@ -11,8 +10,7 @@ import { useCreatorDashboardStats } from '@/hooks/useCreatorDashboardStats';
 import { useCreatorRecentActivity } from '@/hooks/useCreatorRecentActivity';
 import { useCreatorUpcomingDeadlines } from '@/hooks/useCreatorUpcomingDeadlines';
 import { Link } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { DollarSign, Target, Star, Clock, Loader2 } from 'lucide-react';
+import { DollarSign, Target, Star, Clock } from 'lucide-react';
 import RatingPromptManager from '@/components/reviews/RatingPromptManager';
 import { DashboardHero } from '@/components/dashboard/DashboardHero';
 import { DashboardStatsGrid, type StatItem } from '@/components/dashboard/DashboardStatsGrid';
@@ -21,7 +19,7 @@ import { DragonShareStatTile } from '@/components/dragonshare/DragonShareStatTil
 import { useCreatorDragonShareEarnings } from '@/hooks/useDragonShare';
 
 const CreatorDashboard = () => {
-  const { user, profile } = useAuth();
+  const { profile } = useAuth();
   const { data: stats, isLoading: statsLoading } = useCreatorDashboardStats();
   const { data: activities, isLoading: activitiesLoading } = useCreatorRecentActivity();
   const { data: deadlines, isLoading: deadlinesLoading } = useCreatorUpcomingDeadlines();

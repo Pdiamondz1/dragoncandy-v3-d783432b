@@ -3,7 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
-import { Send, Paperclip, X, Reply } from 'lucide-react';
+import { Send, Paperclip, X } from 'lucide-react';
 import { useTypingIndicator } from '@/hooks/useTypingIndicator';
 import { Message } from '@/hooks/useMessages';
 import { supabase } from '@/integrations/supabase/client';
@@ -28,7 +28,7 @@ interface MessageInputEnhancedProps {
 
 const MessageInputEnhanced: React.FC<MessageInputEnhancedProps> = ({
   campaignId,
-  conversationId,
+  conversationId: _conversationId,
   onSendMessage,
   disabled = false,
   placeholder = "Type a message…",

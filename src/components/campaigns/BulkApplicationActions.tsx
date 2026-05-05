@@ -13,7 +13,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { Check, X, Trash2 } from 'lucide-react';
+import { Check, X } from 'lucide-react';
 import { useManageApplication } from '@/hooks/useManageApplication';
 import { CampaignApplication } from '@/types/applications';
 import { toast } from '@/hooks/use-toast';

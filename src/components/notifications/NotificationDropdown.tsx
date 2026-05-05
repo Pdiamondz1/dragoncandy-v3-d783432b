@@ -11,13 +11,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Bell, Check, CheckCheck } from 'lucide-react';
+import { Bell, CheckCheck } from 'lucide-react';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useAuth } from '@/hooks/useAuth';
 
 const NotificationDropdown: React.FC = () => {
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
-  const { user } = useAuth();
+  useAuth();
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = React.useState(false);
 

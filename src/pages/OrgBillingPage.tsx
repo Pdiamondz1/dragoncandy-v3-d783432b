@@ -35,7 +35,7 @@ export default function OrgBillingPage() {
   const { data: myRole } = useMyOrgRole(activeOrg?.id);
   const { data: members = [] } = useOrgMembers(activeOrg?.id);
   const { toast } = useToast();
-  const navigate = useNavigate();
+  useNavigate();
   const [upgrading, setUpgrading] = useState(false);
 
   const userRole = profile?.role ?? 'business_client';

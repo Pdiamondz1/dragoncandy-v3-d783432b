@@ -7,7 +7,7 @@ import { useAuth } from './useAuth';
 export const useSponsorshipComplete = () => {
   const queryClient = useQueryClient();
   const { sendNotification } = useEmailNotifications();
-  const { user } = useAuth();
+  useAuth();
 
   const requestCompletion = useMutation({
     mutationFn: async ({ 

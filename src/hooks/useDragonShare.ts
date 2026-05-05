@@ -4,10 +4,6 @@ import { useAuth } from '@/hooks/useAuth';
 import type {
   DragonSharePost,
   DragonSharePostWithRelations,
-  DragonShareBoost,
-  DragonSharePayout,
-  PostStatus,
-  BoostStatus,
 } from '@/types/dragonshare';
 
 const KEYS = {

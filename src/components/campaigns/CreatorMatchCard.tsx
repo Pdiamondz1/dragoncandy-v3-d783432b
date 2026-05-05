@@ -5,7 +5,6 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Progress } from '@/components/ui/progress';
 import {
   UserPlus,
   Send,
@@ -19,7 +18,6 @@ import {
   Sparkles,
   CheckCircle2,
   AlertCircle,
-  Star,
 } from 'lucide-react';
 import ApplicationForm from './ApplicationForm';
 import { useCampaign } from '@/hooks/useCampaigns';

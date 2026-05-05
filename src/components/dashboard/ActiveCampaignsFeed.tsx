@@ -1,6 +1,6 @@
 // src/components/dashboard/ActiveCampaignsFeed.tsx
 import { useNavigate } from 'react-router-dom';
-import { useBusinessActiveCampaigns, type ActiveCampaignItem } from '@/hooks/useBusinessActiveCampaigns';
+import { useBusinessActiveCampaigns } from '@/hooks/useBusinessActiveCampaigns';
 import { Loader2 } from 'lucide-react';
 
 const statusStyles: Record<string, string> = {

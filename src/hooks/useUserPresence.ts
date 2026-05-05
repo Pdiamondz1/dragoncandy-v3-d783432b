@@ -47,7 +47,7 @@ export const useUserPresence = () => {
           schema: 'public',
           table: 'user_presence'
         },
-        (payload) => {
+        (_payload) => {
           queryClient.invalidateQueries({ queryKey: ['user-presence'] });
         }
       )

@@ -14,7 +14,7 @@ interface TierGateResult {
 
 export function useTierGate(featureKey: string): TierGateResult {
   const { activeOrg } = useAuth();
-  const [paywallOpen, setPaywallOpen] = useState(false);
+  const [_paywallOpen, setPaywallOpen] = useState(false);
 
   const currentTier = (activeOrg?.subscription_tier || 'free') as TierName;
   const feature = getFeature(featureKey);

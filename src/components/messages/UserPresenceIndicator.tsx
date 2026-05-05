@@ -2,7 +2,6 @@
 import React from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { useCurrentUserPresence } from '@/hooks/useUserPresence';
 
 interface UserPresenceIndicatorProps {
   userId: string;
@@ -14,7 +13,7 @@ interface UserPresenceIndicatorProps {
 }
 
 const UserPresenceIndicator: React.FC<UserPresenceIndicatorProps> = ({
-  userId,
+  userId: _userId,
   userName,
   userEmail,
   avatarUrl,

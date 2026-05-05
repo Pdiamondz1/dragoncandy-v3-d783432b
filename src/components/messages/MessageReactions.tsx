@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Smile, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { useMessageReactions, useAddReaction, useRemoveReaction } from '@/hooks/useMessageReactions';
 import { useAuth } from '@/hooks/useAuth';
 

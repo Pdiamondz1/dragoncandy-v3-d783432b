@@ -140,7 +140,7 @@ export const useSubmitSponsorshipProposal = () => {
         const recipientEmail = restaurantUser?.email || undefined;
         const recipientName = restaurantUser?.full_name || restaurantProfile?.business_name || 'Restaurant Owner';
         
-        const emailResult = await sendNotification(
+        await sendNotification(
           'sponsorship_proposal',
           recipientEmail,
           recipientName,

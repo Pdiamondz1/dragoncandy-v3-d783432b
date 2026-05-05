@@ -1,7 +1,7 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { Video, CheckCircle, XCircle, Clock, Ticket, TrendingUp } from 'lucide-react';
+import { Video, CheckCircle, Ticket, TrendingUp } from 'lucide-react';
 
 interface PromotionStatsProps {
   stats: {

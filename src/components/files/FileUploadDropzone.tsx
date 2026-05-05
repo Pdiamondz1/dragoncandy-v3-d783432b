@@ -1,5 +1,4 @@
 
-import React, { useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';

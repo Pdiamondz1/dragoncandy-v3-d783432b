@@ -8,11 +8,9 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
   Wallet,
   DollarSign,
-  Clock,
   CheckCircle,
   ExternalLink,
   AlertCircle,
-  TrendingUp,
   Loader2,
   CreditCard,
   Building2,

@@ -90,7 +90,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const fetchProfile = async (userId: string) => {
     try {
       // Test basic Supabase connection first
-      const { data: testData, error: testError } = await supabase
+      const { data: _testData, error: testError } = await supabase
         .from('profiles')
         .select('count', { count: 'exact', head: true });
       

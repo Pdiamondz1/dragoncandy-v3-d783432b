@@ -1,4 +1,3 @@
-import React from 'react';
 
 interface AuthModeToggleProps {
   mode: "login" | "signup";

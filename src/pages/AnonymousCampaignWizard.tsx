@@ -34,7 +34,6 @@ const AnonymousCampaignWizard: React.FC = () => {
     handleBackToCustomize,
     handleContinueFromTimelineBudget,
     handleBackToTimelineBudget,
-    handleBack,
     handlePublishAttempt,
     handleSaveDraftAttempt,
   } = useAnonymousCampaignWizard();

@@ -21,7 +21,7 @@ const BrandCampaignCard: React.FC<BrandCampaignCardProps> = ({
   onSponsor,
   onViewDetails,
   submittingCampaignId,
-  submittedCampaignId,
+  submittedCampaignId: _submittedCampaignId,
 }) => {
   const { data: existingProposal, isLoading: isLoadingProposal } = useBrandSponsorshipStatus(campaign.id);
 

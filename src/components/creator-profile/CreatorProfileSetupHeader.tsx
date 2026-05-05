@@ -1,5 +1,4 @@
 
-import React from 'react';
 import dragonCandyLogo from '@/assets/Transparent_DragonCandy_logo.webp';
 
 export const CreatorProfileSetupHeader = () => {

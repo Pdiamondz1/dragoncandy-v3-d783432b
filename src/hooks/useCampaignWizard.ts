@@ -46,7 +46,7 @@ export interface FinalCampaignData {
 
 export const useCampaignWizard = () => {
   const { user } = useAuth();
-  const navigate = useNavigate();
+  useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
   const [campaignGoal, setCampaignGoal] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);

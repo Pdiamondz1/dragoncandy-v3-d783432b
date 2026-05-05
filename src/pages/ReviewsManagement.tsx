@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Button } from '@/components/ui/button';
@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import ReviewsList from '@/components/reviews/ReviewsList';
 import RatingStats from '@/components/reviews/RatingStats';
-import { Search, Filter, Download, Star } from 'lucide-react';
+import { Search, Download } from 'lucide-react';
 
 const ReviewsManagement = () => {
   const { user, profile } = useAuth();

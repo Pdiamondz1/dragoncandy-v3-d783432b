@@ -11,7 +11,7 @@ const PricingPage = () => {
   const navigate = useNavigate();
   const { user, activeOrg } = useAuth();
   const { toast } = useToast();
-  const [loading, setLoading] = useState(false);
+  const [_loading, setLoading] = useState(false);
   const raw = searchParams.get('highlight');
   const highlightTier: TierName | null =
     raw && (TIER_ORDER as string[]).includes(raw) ? (raw as TierName) : null;

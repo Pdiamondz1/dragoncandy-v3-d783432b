@@ -4,7 +4,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Upload } from 'lucide-react';
 import { CreatorCollaboration, DeliverableStatus } from '@/hooks/useCreatorCollaborations';
-import { mapDeliveryType, formatBudget } from '@/lib/campaignUtils';
+import { mapDeliveryType } from '@/lib/campaignUtils';
 import DeliveryBadge from './DeliveryBadge';
 
 interface ActiveCampaignCardProps {

@@ -100,7 +100,7 @@ export const useSponsorshipProposals = () => {
       const proposal = proposals?.find(p => p.id === proposalId);
       
       if (proposal?.brand_profile?.user_id && proposal?.campaigns) {
-        const result = await sendNotification(
+        await sendNotification(
           'sponsorship_status',
           undefined, // Let edge function resolve email
           undefined, // Let edge function resolve name

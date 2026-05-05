@@ -3,15 +3,13 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { 
-  Wallet, 
-  ExternalLink, 
-  CheckCircle2, 
-  Clock, 
-  AlertCircle,
+  Wallet,
+  ExternalLink,
+  CheckCircle2,
   Loader2,
   DollarSign
 } from 'lucide-react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -20,8 +18,7 @@ interface CreatorPayoutBannerProps {
 }
 
 const CreatorPayoutBanner: React.FC<CreatorPayoutBannerProps> = ({ creatorId }) => {
-  const queryClient = useQueryClient();
-  const [isSettingUp, setIsSettingUp] = useState(false);
+  const [_isSettingUp, setIsSettingUp] = useState(false);
 
   // Check creator payout status
   const { data: payoutStatus, isLoading } = useQuery({

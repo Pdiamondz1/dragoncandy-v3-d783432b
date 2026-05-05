@@ -290,7 +290,7 @@ const FeedCard: React.FC<FeedCardProps> = ({ item, onItemClick }) => {
     }
   };
 
-  const toggleVideoPlayback = async (e: React.MouseEvent) => {
+  const toggleVideoPlayback = async (_e: React.MouseEvent) => {
     if (!videoRef.current) return;
     
     try {

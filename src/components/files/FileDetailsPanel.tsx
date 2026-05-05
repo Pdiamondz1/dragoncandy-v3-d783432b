@@ -1,7 +1,6 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Download, Clock, User, Eye } from 'lucide-react';
 import { formatFileSize } from '@/lib/fileUtils';
 import type { FileUpload } from '@/types/files';

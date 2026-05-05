@@ -12,7 +12,7 @@ import { useSponsorshipComplete } from '@/hooks/useSponsorshipComplete';
 import { useSponsorshipPayment } from '@/hooks/useSponsorshipPayment';
 import SponsorshipRatingPromptManager from '@/components/reviews/SponsorshipRatingPromptManager';
 import ResponsiveRatingModal from '@/components/reviews/ResponsiveRatingModal';
-import { Target, DollarSign, Calendar, ExternalLink, Loader2, MessageSquare, CheckCircle, Clock, Star, CreditCard, RefreshCw } from 'lucide-react';
+import { Target, ExternalLink, Loader2, MessageSquare, CheckCircle, Clock, Star, CreditCard, RefreshCw } from 'lucide-react';
 import { DCSkeleton } from '@/components/ui/dc-skeleton';
 import { DCEmptyState } from '@/components/ui/dc-empty-state';
 import { format } from 'date-fns';

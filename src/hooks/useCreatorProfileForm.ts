@@ -1,5 +1,5 @@
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback } from 'react';
 import type { Database } from '@/integrations/supabase/types';
 
 type CreatorSkill = Database['public']['Enums']['creator_skill'];

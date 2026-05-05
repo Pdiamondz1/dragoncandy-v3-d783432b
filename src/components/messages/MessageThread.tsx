@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Search } from 'lucide-react';
@@ -20,7 +20,7 @@ const MessageThread: React.FC<MessageThreadProps> = ({
   recipientId, 
   campaignTitle 
 }) => {
-  const { user } = useAuth();
+  useAuth();
   const { data: messages = [], isLoading } = useMessages(campaignId);
   const sendMessage = useSendMessage();
   const [showSearch, setShowSearch] = useState(false);

@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { MapPin, Clock, DollarSign, User, ExternalLink } from 'lucide-react';
+import { Clock, DollarSign, User } from 'lucide-react';
 import { CampaignApplication } from '@/types/applications';
 
 interface CreatorProfileModalProps {

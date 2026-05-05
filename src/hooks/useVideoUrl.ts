@@ -3,8 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 
 export const useVideoUrl = (videoUrl: string | null) => {
   const [resolvedUrl, setResolvedUrl] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [isLoading, _setIsLoading] = useState(false);
+  const [error, _setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!videoUrl) {

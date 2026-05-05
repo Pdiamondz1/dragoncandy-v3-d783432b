@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import type { BrandBriefData, BrandDetailsData, BrandGoal } from '@/hooks/useBrandCampaignWizard';
+import type { BrandBriefData, BrandDetailsData } from '@/hooks/useBrandCampaignWizard';
 import type { CampaignAnalysis } from '@/types/campaign';
 import type { ContentType } from '@/types/campaignMedia';
 

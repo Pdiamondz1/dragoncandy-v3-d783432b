@@ -1,5 +1,4 @@
 // src/pages/BusinessDashboard.tsx
-import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import DashboardLayout from '@/components/DashboardLayout';
@@ -12,7 +11,6 @@ import { DashboardHero } from '@/components/dashboard/DashboardHero';
 import { DashboardStatsGrid, type StatItem } from '@/components/dashboard/DashboardStatsGrid';
 import { QuickActionButtons, type QuickAction } from '@/components/dashboard/QuickActionButtons';
 import { useBusinessActiveCampaigns } from '@/hooks/useBusinessActiveCampaigns';
-import donnyIcon from '@/assets/donny-emblem.webp';
 import { DragonShareStatTile } from '@/components/dragonshare/DragonShareStatTile';
 import { useOrgBoostStats } from '@/hooks/useDragonShare';
 import { useOrg } from '@/hooks/useOrgData';

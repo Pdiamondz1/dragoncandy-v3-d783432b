@@ -1,13 +1,11 @@
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { CampaignAnalysis } from '@/types/campaign';
 import { useAnonymousCampaign } from './useAnonymousCampaign';
 
 export const useAnonymousCampaignWizard = () => {
   const {
     campaignData,
-    createNewCampaign,
     updateCampaignGoal,
     updateCampaignStep,
     updateCampaignAnalysis,

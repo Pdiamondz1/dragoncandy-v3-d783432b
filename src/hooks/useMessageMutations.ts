@@ -95,7 +95,7 @@ export const useSendMessage = () => {
 
       return { previousMessages, queryKey };
     },
-    onError: (error, variables, context) => {
+    onError: (_error, _variables, context) => {
       // Rollback optimistic update
       if (context?.previousMessages) {
         queryClient.setQueryData(context.queryKey, context.previousMessages);
@@ -107,7 +107,7 @@ export const useSendMessage = () => {
         variant: 'destructive',
       });
     },
-    onSuccess: async (data, variables) => {
+    onSuccess: async (_data, variables) => {
       const queryKey = variables.campaignId 
         ? ['messages', variables.campaignId, undefined]
         : ['messages', undefined, variables.conversationId];

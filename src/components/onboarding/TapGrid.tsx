@@ -15,7 +15,7 @@ interface TapGridProps {
   columns?: 3 | 4;
 }
 
-export function TapGrid({ items, selected, onToggle, mode, accentColor, columns = 3 }: TapGridProps) {
+export function TapGrid({ items, selected, onToggle, mode: _mode, accentColor, columns = 3 }: TapGridProps) {
   const gridClass = columns === 4 ? 'grid-cols-4' : 'grid-cols-3';
 
   const activeClasses = accentColor === 'teal'

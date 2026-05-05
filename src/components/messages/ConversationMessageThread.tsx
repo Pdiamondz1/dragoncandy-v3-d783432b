@@ -13,7 +13,7 @@ interface ConversationMessageThreadProps {
 const ConversationMessageThread: React.FC<ConversationMessageThreadProps> = ({
   conversationId,
   recipientId,
-  conversationTitle
+  conversationTitle: _conversationTitle
 }) => {
   const { user } = useAuth();
   const { data: messages = [], isLoading } = useMessages(undefined, conversationId);

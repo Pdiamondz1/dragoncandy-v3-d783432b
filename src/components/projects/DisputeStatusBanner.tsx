@@ -13,7 +13,7 @@ export function DisputeStatusBanner({
   contentStatus,
   disputeReason,
   disputeOutcome,
-  viewerRole,
+  viewerRole: _viewerRole,
   conversationLink,
 }: DisputeStatusBannerProps) {
   if (!['disputed', 'rejected', 'resolved'].includes(contentStatus || '')) return null;

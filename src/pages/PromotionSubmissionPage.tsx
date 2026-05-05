@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
 import { VideoUploader } from '@/components/promotions/VideoUploader';
 import { CustomerInfoForm, CustomerInfoFormData } from '@/components/promotions/CustomerInfoForm';
 import { usePromotionSubmission } from '@/hooks/usePromotionSubmission';
-import { Gift, Video, ImagePlus, User, CheckCircle, AlertCircle, ArrowRight, ArrowLeft, Loader2 } from 'lucide-react';
+import { Gift, Video, User, CheckCircle, AlertCircle, ArrowRight, ArrowLeft, Loader2 } from 'lucide-react';
 import { SocialHandleFields, useSocialHandles } from '@/features/promotions/submission/SubmissionForm';
 
 type Step = 'welcome' | 'video' | 'info' | 'success' | 'error';

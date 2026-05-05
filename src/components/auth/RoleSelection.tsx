@@ -1,4 +1,3 @@
-import React from "react";
 import { Store, Camera, Megaphone } from "lucide-react";
 
 interface RoleSelectionProps {

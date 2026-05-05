@@ -36,7 +36,7 @@ export function CampaignVisualsStep({
   onBack,
 }: CampaignVisualsStepProps) {
   const [showFootage, setShowFootage] = useState(rawFootage.length > 0);
-  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
+  const [uploadProgress, _setUploadProgress] = useState<Record<string, number>>({});
 
   return (
     <div className="space-y-4">

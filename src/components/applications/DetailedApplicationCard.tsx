@@ -1,8 +1,7 @@
 
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Clock, DollarSign, Building, MessageSquare, FolderOpen, X, Check, ArrowRightLeft } from 'lucide-react';
+import { Clock, DollarSign, Building, MessageSquare, X, Check, ArrowRightLeft } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
@@ -30,7 +29,6 @@ interface DetailedApplicationCardProps {
 }
 
 const DetailedApplicationCard: React.FC<DetailedApplicationCardProps> = ({ application }) => {
-  const navigate = useNavigate();
   const [showWithdrawDialog, setShowWithdrawDialog] = useState(false);
   const [showCounterModal, setShowCounterModal] = useState(false);
   const withdrawApplication = useWithdrawApplication();

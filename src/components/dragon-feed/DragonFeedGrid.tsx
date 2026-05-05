@@ -5,17 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Search, Filter, X } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
-
-interface PortfolioMedia {
-  id: string;
-  url: string;
-  type: 'image' | 'video';
-  creatorName: string;
-  creatorSlug: string;
-  creatorId: string;
-}
 
 export const DragonFeedGrid: React.FC = () => {
   const { portfolioMedia, loading, error } = useUniqueCreatorPortfolio();

@@ -1,6 +1,6 @@
 // src/pages/CreatorCampaignMarketplace.tsx
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { usePublicCampaigns, PublicCampaign } from '@/hooks/usePublicCampaigns';

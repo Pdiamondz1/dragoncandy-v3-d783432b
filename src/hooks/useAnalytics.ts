@@ -14,7 +14,7 @@ interface AnalyticsEvent {
 }
 
 export const useAnalytics = () => {
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
   const { trackEventOptimized, trackPageViewOptimized, trackUserActionOptimized, trackCampaignEventOptimized } = useOptimizedAnalytics();
 
   // Legacy direct tracking method (kept for backward compatibility)

@@ -19,7 +19,6 @@ import {
   ArrowUpDown,
   Filter,
   Trophy,
-  TrendingUp,
 } from 'lucide-react';
 import { useCampaignMatches, useGenerateMatches, CreatorMatch } from '@/hooks/useCampaignMatches';
 import { useInviteCreator, useCampaignInvitations } from '@/hooks/useCampaignInvitations';

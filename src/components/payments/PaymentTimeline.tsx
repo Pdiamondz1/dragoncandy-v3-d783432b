@@ -1,4 +1,4 @@
-import { CheckCircle, AlertCircle, AlertTriangle, Clock } from "lucide-react";
+import { CheckCircle, AlertCircle, AlertTriangle } from "lucide-react";
 import { usePaymentTimeline, type PaymentEvent } from "@/hooks/usePaymentTimeline";
 import { getPaymentMessage, type UserRole } from "@/lib/paymentEducation";
 import { Skeleton } from "@/components/ui/skeleton";

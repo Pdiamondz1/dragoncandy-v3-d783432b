@@ -6,17 +6,6 @@ import type { Database } from '@/integrations/supabase/types';
 
 type FeatureFlagRow = Database['public']['Tables']['feature_flags']['Row'];
 
-interface FeatureFlag {
-  id: string;
-  name: string;
-  description: string;
-  is_enabled: boolean;
-  rollout_percentage: number;
-  target_roles: string[] | null;
-  environment: string;
-  created_at: string;
-  updated_at: string;
-}
 
 export const useFeatureFlags = () => {
   const { user, profile } = useAuth();

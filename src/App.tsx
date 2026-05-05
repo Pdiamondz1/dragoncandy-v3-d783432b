@@ -60,7 +60,6 @@ const BusinessDragonFeed = lazy(() => import("./pages/BusinessDragonFeed"));
 const CreatorDragonFeed = lazy(() => import("./pages/CreatorDragonFeed"));
 const BusinessActivity = lazy(() => import("./pages/BusinessActivity"));
 const BrandDiscoverCampaigns = lazy(() => import("./pages/BrandDiscoverCampaigns"));
-const BrandCreateCampaign = lazy(() => import("./pages/BrandCreateCampaign"));
 const PublicCreatorProfile = lazy(() => import("./pages/PublicCreatorProfile"));
 const PublicBusinessProfile = lazy(() => import("./pages/PublicBusinessProfile"));
 const ReviewsManagement = lazy(() => import("./pages/ReviewsManagement"));

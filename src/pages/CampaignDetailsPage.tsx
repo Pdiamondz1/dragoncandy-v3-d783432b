@@ -111,7 +111,7 @@ const CampaignDetailsPage: React.FC = () => {
     }
   };
 
-  const handleEditDetails = (pitch: DonnyPitchResult) => {
+  const handleEditDetails = (_pitch: DonnyPitchResult) => {
     // Log that user chose to edit
     supabase
       .from('donny_events' as any)

@@ -7,7 +7,7 @@ import { useEmailNotifications } from '@/hooks/useEmailNotifications';
 export type ApprovalAction = 'approved' | 'rejected';
 
 export const useJointApproval = () => {
-  const { user } = useAuth();
+  useAuth();
   const queryClient = useQueryClient();
   const { sendNotification } = useEmailNotifications();
 

@@ -1,4 +1,3 @@
-import React from 'react';
 
 const statusStyles: Record<string, string> = {
   active: 'bg-emerald-100 text-emerald-700',

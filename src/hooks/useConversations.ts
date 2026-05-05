@@ -18,7 +18,6 @@ export interface Conversation {
 
 export const useConversations = () => {
   const { user } = useAuth();
-  const queryClient = useQueryClient();
 
   const query = useQuery({
     queryKey: ['conversations', user?.id],

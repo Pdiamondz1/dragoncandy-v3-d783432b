@@ -26,8 +26,8 @@ const MessageBubbleEnhanced: React.FC<MessageBubbleEnhancedProps> = ({
   message,
   showAvatar = true,
   onReply,
-  onForward,
-  onEdit
+  onForward: _onForward,
+  onEdit: _onEdit
 }) => {
   const { user } = useAuth();
 
