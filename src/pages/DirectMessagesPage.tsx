@@ -20,15 +20,6 @@ const DirectMessagesPage: React.FC = () => {
 
   const userRole = user?.user_metadata?.role || 'business_client';
 
-  if (error) {
-    return (
-      <DashboardLayout userRole={userRole as 'business_client' | 'content_creator' | 'brand'}>
-        <ErrorState message={error.message} onRetry={refetch} />
-      </DashboardLayout>
-    );
-  }
-
-  // When a conversation is selected, fetch the recipient
   useEffect(() => {
     if (selectedConversationId && user) {
       const conv = conversations.find(
@@ -47,6 +38,14 @@ const DirectMessagesPage: React.FC = () => {
         });
     }
   }, [selectedConversationId, user, conversations]);
+
+  if (error) {
+    return (
+      <DashboardLayout userRole={userRole as 'business_client' | 'content_creator' | 'brand'}>
+        <ErrorState message={error.message} onRetry={refetch} />
+      </DashboardLayout>
+    );
+  }
 
   const handleConversationSelect = (conversationId: string) => {
     setSelectedConversationId(conversationId);

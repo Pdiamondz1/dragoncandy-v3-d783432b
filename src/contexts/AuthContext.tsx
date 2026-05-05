@@ -122,7 +122,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
 
       // Start with the basic profile
-      let extendedProfile: Profile = {
+      const extendedProfile: Profile = {
         id: basicProfile.id,
         email: basicProfile.email,
         role: basicProfile.role,
