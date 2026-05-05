@@ -13,6 +13,8 @@ export function useScrollDirection(elementId = 'main-content'): ScrollDirection 
     const el = document.getElementById(elementId);
     if (!el) return;
 
+    prevScrollTop.current = el.scrollTop;
+
     const onScroll = () => {
       if (ticking.current) return;
       ticking.current = true;
