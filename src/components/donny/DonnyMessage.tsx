@@ -23,7 +23,7 @@ export function DonnyMessage({ message, avatarState = 'idle', isLatestAssistant 
   if (isUser) {
     return (
       <div className="flex justify-end">
-        <div className="bg-[#4DD9C0] rounded-2xl rounded-br-sm px-3.5 py-2.5 max-w-[75%]">
+        <div className="bg-dc-teal rounded-2xl rounded-br-sm px-3.5 py-2.5 max-w-[75%]">
           <p className="text-sm text-white leading-relaxed">{message.content}</p>
         </div>
       </div>
@@ -39,8 +39,8 @@ export function DonnyMessage({ message, avatarState = 'idle', isLatestAssistant 
       />
       <div className="max-w-[80%]">
         {message.content && (
-          <div className="bg-[#F9A8D4] rounded-2xl rounded-bl-sm px-3.5 py-2.5">
-            <div className="donny-markdown text-sm text-[#111] leading-relaxed">
+          <div className="bg-dc-pink rounded-2xl rounded-bl-sm px-3.5 py-2.5">
+            <div className="donny-markdown text-sm text-dc-text leading-relaxed">
               <ReactMarkdown
                 components={{
                   h1: ({ children }) => <h3 className="font-bold text-base mt-2 mb-1">{children}</h3>,
@@ -60,14 +60,14 @@ export function DonnyMessage({ message, avatarState = 'idle', isLatestAssistant 
                         <button
                           type="button"
                           onClick={() => parseAndDispatchDeepLink(`open help: ${helpMatch[1]}`)}
-                          className="text-[#EC4899] underline underline-offset-2 cursor-pointer"
+                          className="text-dc-pink-accent underline underline-offset-2 cursor-pointer"
                         >
                           {children}
                         </button>
                       );
                     }
                     return (
-                      <a href={href} target="_blank" rel="noopener noreferrer" className="text-[#EC4899] underline underline-offset-2">
+                      <a href={href} target="_blank" rel="noopener noreferrer" className="text-dc-pink-accent underline underline-offset-2">
                         {children}
                       </a>
                     );
@@ -99,8 +99,8 @@ export function DonnyMessage({ message, avatarState = 'idle', isLatestAssistant 
                 }}
                 className={
                   action.action === 'navigate'
-                    ? 'bg-[#4DD9C0] text-white text-xs font-semibold px-4 py-2 rounded-full'
-                    : 'bg-white text-[#EC4899] border border-gray-200 text-xs font-semibold px-4 py-2 rounded-full'
+                    ? 'bg-dc-teal text-white text-xs font-semibold px-4 py-2 rounded-full'
+                    : 'bg-white text-dc-pink-accent border border-gray-200 text-xs font-semibold px-4 py-2 rounded-full'
                 }
               >
                 {action.label}

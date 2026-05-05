@@ -24,7 +24,7 @@ const steps = [
 export const HowItWorks: React.FC = () => {
   return (
     <section id="how-it-works" className="bg-gray-50 -mx-4 md:-mx-8 lg:-mx-12 px-4 md:px-8 lg:px-12 py-10 md:py-16 lg:py-20 mb-8 animate-fade-in-up">
-      <h2 className="text-xl md:text-3xl lg:text-4xl font-extrabold uppercase text-[#111111] text-center mb-2">
+      <h2 className="text-xl md:text-3xl lg:text-4xl font-extrabold uppercase text-dc-text text-center mb-2">
         How It Works
       </h2>
       <p className="text-sm md:text-base text-gray-500 text-center mb-8 md:mb-12">
@@ -42,7 +42,7 @@ export const HowItWorks: React.FC = () => {
               <div className="w-9 h-9 md:w-12 md:h-12 rounded-full bg-dc-teal text-white font-extrabold text-sm md:text-lg flex items-center justify-center flex-shrink-0">
                 {step.number}
               </div>
-              <h3 className="text-base md:text-lg font-bold text-[#111111]">
+              <h3 className="text-base md:text-lg font-bold text-dc-text">
                 {step.title}
               </h3>
             </div>

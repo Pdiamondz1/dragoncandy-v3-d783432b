@@ -25,7 +25,7 @@ const features = [
 export const FeatureSection = () => {
   return (
     <div id="features" className="mb-8 animate-fade-in-up-delay-3">
-      <h2 className="text-xl md:text-3xl lg:text-4xl font-extrabold uppercase text-[#111111] text-center mb-2">
+      <h2 className="text-xl md:text-3xl lg:text-4xl font-extrabold uppercase text-dc-text text-center mb-2">
         Why DragonCandy
       </h2>
       <p className="text-sm md:text-base text-gray-500 text-center mb-8 md:mb-12">

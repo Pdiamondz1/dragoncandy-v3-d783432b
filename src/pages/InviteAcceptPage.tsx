@@ -78,7 +78,7 @@ export default function InviteAcceptPage() {
 
   if (!isAuthenticated) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#A8A8A0] p-6">
+      <div className="flex min-h-screen items-center justify-center bg-dc-gray p-6">
         <Card className="w-full max-w-sm">
           <CardContent className="flex flex-col items-center py-12 text-center">
             <Loader2 className="h-8 w-8 animate-spin text-teal-500 mb-4" />
@@ -96,7 +96,7 @@ export default function InviteAcceptPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#A8A8A0] p-6">
+    <div className="flex min-h-screen items-center justify-center bg-dc-gray p-6">
       <Card className="w-full max-w-sm">
         <CardContent className="flex flex-col items-center py-12 text-center">
           {status === 'loading' && (

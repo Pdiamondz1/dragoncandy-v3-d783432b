@@ -10,7 +10,7 @@ interface DonnyChatHeaderProps {
 
 export function DonnyChatHeader({ avatarState, onCollapse, onClose }: DonnyChatHeaderProps) {
   return (
-    <div className="flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-dc-teal to-[#00E5CC]">
+    <div className="flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-dc-teal to-dc-teal-dark">
       <DonnyAvatar size="md" state={avatarState} />
       <div className="flex-1">
         <div className="font-bold text-sm text-white">Donny</div>
