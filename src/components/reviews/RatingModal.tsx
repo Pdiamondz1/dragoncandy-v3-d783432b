@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import StarRating from './StarRating';
+import ReviewsErrorBoundary from './ReviewsErrorBoundary';
 import { useSubmitRating } from '@/hooks/useSubmitRating';
 import { CreateReviewData } from '@/types/reviews';
 
@@ -64,10 +65,11 @@ const RatingModal: React.FC<RatingModalProps> = ({
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-md">
+        <ReviewsErrorBoundary>
         <DialogHeader>
           <DialogTitle>Rate Your Experience with {revieweeName}</DialogTitle>
         </DialogHeader>
-        
+
         <div className="space-y-6">
           <div>
             <Label className="text-base font-medium">Overall Rating</Label>
@@ -101,6 +103,7 @@ const RatingModal: React.FC<RatingModalProps> = ({
             </Button>
           </div>
         </div>
+        </ReviewsErrorBoundary>
       </DialogContent>
     </Dialog>
   );

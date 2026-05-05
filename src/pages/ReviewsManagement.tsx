@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import ReviewsList from '@/components/reviews/ReviewsList';
 import RatingStats from '@/components/reviews/RatingStats';
+import ReviewsErrorBoundary from '@/components/reviews/ReviewsErrorBoundary';
 import { Search, Download } from 'lucide-react';
 
 const ReviewsManagement = () => {
@@ -25,6 +26,7 @@ const ReviewsManagement = () => {
 
   return (
     <DashboardLayout userRole={profile.role}>
+      <ReviewsErrorBoundary>
       <div className="min-h-screen bg-white overflow-x-hidden pb-24 md:pb-0 md:max-w-4xl md:mx-auto">
         {/* Template B header */}
         <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
@@ -115,6 +117,7 @@ const ReviewsManagement = () => {
           </Tabs>
         </div>
       </div>
+      </ReviewsErrorBoundary>
     </DashboardLayout>
   );
 };

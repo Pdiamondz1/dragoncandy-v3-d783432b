@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DCSkeleton, DCSkeletonGrid } from '@/components/ui/dc-skeleton';
+import { ErrorState } from '@/components/ui/error-state';
 import { useAuth } from '@/hooks/useAuth';
 import { useCreatorDashboardStats } from '@/hooks/useCreatorDashboardStats';
 import { useCreatorRecentActivity } from '@/hooks/useCreatorRecentActivity';
@@ -20,11 +21,19 @@ import { useCreatorDragonShareEarnings } from '@/hooks/useDragonShare';
 
 const CreatorDashboard = () => {
   const { profile } = useAuth();
-  const { data: stats, isLoading: statsLoading } = useCreatorDashboardStats();
+  const { data: stats, isLoading: statsLoading, error: statsError, refetch: refetchStats } = useCreatorDashboardStats();
   const { data: activities, isLoading: activitiesLoading } = useCreatorRecentActivity();
   const { data: deadlines, isLoading: deadlinesLoading } = useCreatorUpcomingDeadlines();
   const { data: dsEarnings } = useCreatorDragonShareEarnings();
   const { showTour, tourSteps, completeTour, skipTour } = useTour('/dashboard/creator');
+
+  if (statsError) {
+    return (
+      <DashboardLayout userRole="content_creator">
+        <ErrorState message={statsError.message} onRetry={refetchStats} />
+      </DashboardLayout>
+    );
+  }
 
   if (!profile) {
     return (

@@ -92,6 +92,7 @@ const queryClient = new QueryClient({
         return failureCount < 2; // Retry up to 2 times
       },
       staleTime: 5 * 60 * 1000, // 5 minutes
+      throwOnError: true,
     },
   },
 });
