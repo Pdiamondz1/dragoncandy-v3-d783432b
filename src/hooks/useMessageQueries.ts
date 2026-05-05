@@ -30,8 +30,8 @@ export const useMessages = (campaignId?: string, conversationId?: string) => {
 
       // Fetch parent messages for replies
       const parentMessageIds = [...new Set(data?.filter(m => m.parent_message_id).map(m => m.parent_message_id) || [])];
-      let parentMessages: any[] = [];
-      let parentProfiles: any[] = [];
+      let parentMessages: { id: string; content: string; sender_id: string }[] = [];
+      let parentProfiles: { id: string; full_name: string; email: string }[] = [];
       
       if (parentMessageIds.length > 0) {
         const { data: parentMessagesData } = await supabase

@@ -93,6 +93,8 @@ export const QuickApprovalCard: React.FC<QuickApprovalCardProps> = ({
       if (messageError) throw messageError;
 
       // Fire-and-forget: write payment event for revision_requested
+      // insert_payment_event RPC is not in generated types yet
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       supabase.rpc('insert_payment_event' as any, {
         p_event_type: 'revision_requested',
         p_entity_type: 'collaboration',

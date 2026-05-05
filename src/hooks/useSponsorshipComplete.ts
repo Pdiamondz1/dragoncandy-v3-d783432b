@@ -90,7 +90,8 @@ export const useSponsorshipComplete = () => {
 
         if (completeError) throw completeError;
 
-        const campaignData = sponsorship.campaigns as any;
+        const campaignsRaw = sponsorship.campaigns;
+        const campaignData = Array.isArray(campaignsRaw) ? campaignsRaw[0] : campaignsRaw;
 
         // Send completion confirmation email to brand
         await sendNotification(
@@ -126,7 +127,8 @@ export const useSponsorshipComplete = () => {
       }
 
       // Only one party requested - send notification to the other party
-      const campaignData = sponsorship.campaigns as any;
+      const campaignsRaw2 = sponsorship.campaigns;
+      const campaignData = Array.isArray(campaignsRaw2) ? campaignsRaw2[0] : campaignsRaw2;
 
       if (userRole === 'brand') {
         // Notify business owner

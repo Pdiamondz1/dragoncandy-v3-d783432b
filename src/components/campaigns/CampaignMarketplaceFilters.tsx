@@ -19,7 +19,7 @@ export interface CampaignMarketplaceFilters {
 
 interface CampaignMarketplaceFiltersProps {
   filters: CampaignMarketplaceFilters;
-  onFilterChange: (key: keyof CampaignMarketplaceFilters, value: any) => void;
+  onFilterChange: (key: keyof CampaignMarketplaceFilters, value: string | string[] | boolean | number | null) => void;
   onReset: () => void;
   totalCount: number;
   filteredCount: number;

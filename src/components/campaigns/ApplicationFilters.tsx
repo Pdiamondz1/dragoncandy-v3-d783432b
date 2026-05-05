@@ -9,7 +9,7 @@ import { ApplicationFilters } from '@/hooks/useApplicationFilters';
 
 interface ApplicationFiltersProps {
   filters: ApplicationFilters;
-  onFilterChange: (key: keyof ApplicationFilters, value: any) => void;
+  onFilterChange: (key: keyof ApplicationFilters, value: string | string[] | boolean) => void;
   onReset: () => void;
   totalCount: number;
   filteredCount: number;

@@ -65,9 +65,10 @@ const UpdatePassword: React.FC = () => {
       } catch {}
 
       window.location.href = "/auth?mode=login";
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error updating password:", err);
-      toast({ title: "Could not update password", description: err?.message || "Try the link again." });
+      const message = err instanceof Error ? err.message : "Try the link again.";
+      toast({ title: "Could not update password", description: message });
     } finally {
       setLoading(false);
     }

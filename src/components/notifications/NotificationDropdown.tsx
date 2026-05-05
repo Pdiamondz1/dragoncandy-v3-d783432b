@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Bell, CheckCheck } from 'lucide-react';
-import { useNotifications } from '@/hooks/useNotifications';
+import { useNotifications, type Notification } from '@/hooks/useNotifications';
 import { useAuth } from '@/hooks/useAuth';
 
 const NotificationDropdown: React.FC = () => {
@@ -39,7 +39,7 @@ const NotificationDropdown: React.FC = () => {
     return `${Math.floor(diffInMinutes / 1440)}d ago`;
   };
 
-  const handleNotificationClick = (notification: any) => {
+  const handleNotificationClick = (notification: Notification) => {
     markAsRead(notification.id);
     
     // Navigate based on notification type

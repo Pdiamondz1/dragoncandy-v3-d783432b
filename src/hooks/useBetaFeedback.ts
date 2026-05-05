@@ -29,7 +29,7 @@ export const useBetaFeedback = () => {
 
     try {
       const { error } = await supabase
-        .from('beta_feedback' as any)
+        .from('beta_feedback')
         .insert([{
           ...feedback,
           user_id: user.id,

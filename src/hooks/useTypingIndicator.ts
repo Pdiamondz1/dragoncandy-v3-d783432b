@@ -1,5 +1,6 @@
 
 import { useState, useEffect, useCallback } from 'react';
+import type { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -13,7 +14,7 @@ export const useTypingIndicator = (campaignId: string) => {
   const { user } = useAuth();
   const [typingUsers, setTypingUsers] = useState<TypingUser[]>([]);
   const [isTyping, setIsTyping] = useState(false);
-  const [channel, setChannel] = useState<any>(null);
+  const [channel, setChannel] = useState<RealtimeChannel | null>(null);
 
   // Listen for typing indicators and manage channel subscription
   useEffect(() => {
@@ -25,8 +26,8 @@ export const useTypingIndicator = (campaignId: string) => {
         const presenceState = channelInstance.presenceState();
         const currentTypingUsers: TypingUser[] = [];
 
-        Object.values(presenceState).forEach((presences: any) => {
-          presences.forEach((presence: any) => {
+        Object.values(presenceState).forEach((presences) => {
+          (presences as unknown as Array<{ user_id: string; user_name: string; typing: boolean; timestamp: number }>).forEach((presence) => {
             // Don't show our own typing indicator
             if (presence.user_id !== user.id && presence.typing) {
               currentTypingUsers.push({

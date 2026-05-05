@@ -54,12 +54,14 @@ export const RedemptionMetrics: React.FC<RedemptionMetricsProps> = ({
       const days = buildLast7Days();
       const sevenDaysAgo = days[0].date + 'T00:00:00.000Z';
 
-      const { data, error } = await (supabase
-        .from('promotion_redemptions' as any)
+      // promotion_redemptions is not in generated types yet
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase as any)
+        .from('promotion_redemptions')
         .select('redeemed_at')
         .eq('promotion_id', promotionId)
         .gte('redeemed_at', sevenDaysAgo)
-        .order('redeemed_at', { ascending: true }) as any);
+        .order('redeemed_at', { ascending: true });
 
       if (error || !data) return days;
 

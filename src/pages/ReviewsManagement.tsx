@@ -55,7 +55,7 @@ const ReviewsManagement = () => {
                   className="pl-9 rounded-full h-10 border-gray-200"
                 />
               </div>
-              <Select value={filterType} onValueChange={(value: any) => setFilterType(value)}>
+              <Select value={filterType} onValueChange={(value) => setFilterType(value as 'all' | 'received' | 'given')}>
                 <SelectTrigger className="w-36 rounded-full h-10 border-gray-200">
                   <SelectValue placeholder="Filter" />
                 </SelectTrigger>
@@ -69,7 +69,7 @@ const ReviewsManagement = () => {
           </div>
 
           {/* Reviews Tabs */}
-          <Tabs value={filterType} onValueChange={(value: any) => setFilterType(value)}>
+          <Tabs value={filterType} onValueChange={(value) => setFilterType(value as 'all' | 'received' | 'given')}>
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="all" className="text-xs">All</TabsTrigger>
               <TabsTrigger value="received" className="text-xs">Received</TabsTrigger>

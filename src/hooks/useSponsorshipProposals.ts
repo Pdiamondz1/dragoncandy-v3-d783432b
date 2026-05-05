@@ -12,7 +12,7 @@ export interface SponsorshipProposal {
   sponsorship_amount: number;
   proposal_message: string;
   status: 'pending' | 'accepted' | 'rejected' | 'completed';
-  terms: any;
+  terms: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
   brand_completion_status?: string;

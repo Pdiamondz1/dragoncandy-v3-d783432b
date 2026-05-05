@@ -90,9 +90,9 @@ export default function PromotionSubmissionPage() {
         } else if (data.max_redemptions && (data.current_redemptions || 0) >= data.max_redemptions) {
           setError('This promotion has reached its maximum number of redemptions');
         } else {
-          setPromotion(data as any);
+          setPromotion(data as unknown as Promotion);
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Error fetching promotion:', err);
         setError('Unable to load promotion details');
       } finally {

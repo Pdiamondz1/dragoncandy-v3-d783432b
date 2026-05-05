@@ -32,7 +32,7 @@ interface CreatorFilters {
 
 interface AdvancedCreatorFiltersProps {
   filters: CreatorFilters;
-  onFilterChange: (key: keyof CreatorFilters, value: any) => void;
+  onFilterChange: (key: keyof CreatorFilters, value: string | string[] | boolean | number) => void;
   onResetFilters: () => void;
 }
 

@@ -10,7 +10,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 
 interface BrandCampaignCardProps {
   campaign: SponsorshipCampaign;
-  onSponsor: (campaignId: string, existingProposal?: any) => void;
+  onSponsor: (campaignId: string, existingProposal?: { status: string; id: string }) => void;
   onViewDetails: (campaignId: string) => void;
   submittingCampaignId?: string;
   submittedCampaignId?: string;
@@ -198,7 +198,7 @@ const BrandCampaignCard: React.FC<BrandCampaignCardProps> = ({
               <div className="flex-1">
                 <Button
                   className="w-full rounded-full bg-dc-teal text-white font-bold hover:bg-dc-teal/90"
-                  onClick={() => onSponsor(campaign.id, existingProposal)}
+                  onClick={() => onSponsor(campaign.id, existingProposal ?? undefined)}
                   disabled={buttonConfig.disabled}
                 >
                   {buttonConfig.text}

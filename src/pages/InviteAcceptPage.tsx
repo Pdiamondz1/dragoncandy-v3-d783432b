@@ -48,7 +48,7 @@ export default function InviteAcceptPage() {
             .upsert({
               org_id: orgId,
               user_id: user.id,
-              role: role as any,
+              role: role,
               invited_by: invitedBy,
               invitation_status: 'active',
               joined_at: new Date().toISOString(),
@@ -67,9 +67,9 @@ export default function InviteAcceptPage() {
         setTimeout(() => {
           navigate('/dashboard/business', { replace: true });
         }, 2000);
-      } catch (err: any) {
+      } catch (err: unknown) {
         setStatus('error');
-        setErrorMessage(err.message ?? 'Failed to accept invitation.');
+        setErrorMessage(err instanceof Error ? err.message : 'Failed to accept invitation.');
       }
     };
 

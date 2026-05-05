@@ -23,6 +23,8 @@ export function WhyExpander({ expanderKey, title, body }: WhyExpanderProps) {
     if (opening && !logged[0] && user) {
       logged[1](true);
       supabase
+        // why_expander_views is not in generated types yet
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .from("why_expander_views" as any)
         .insert({ user_id: user.id, expander_key: expanderKey })
         .then(() => {});

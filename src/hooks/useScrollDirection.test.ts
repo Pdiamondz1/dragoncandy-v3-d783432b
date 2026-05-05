@@ -12,7 +12,7 @@ function createScrollContainer(id: string): HTMLDivElement {
 }
 
 function fireScroll(el: HTMLDivElement, scrollTop: number) {
-  (el as any).scrollTop = scrollTop;
+  Object.defineProperty(el, 'scrollTop', { value: scrollTop, writable: true });
   el.dispatchEvent(new Event('scroll'));
 }
 

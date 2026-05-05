@@ -59,10 +59,10 @@ export const useUniqueCreatorPortfolio = () => {
         }
 
         // Process portfolio URLs and create media items in parallel
-        const mediaPromises = creators.flatMap((creator: any) => {
+        const mediaPromises = creators.flatMap((creator) => {
           const urls = Array.isArray(creator.portfolio_urls) ? creator.portfolio_urls : [];
           return urls
-            .filter((url: any) => typeof url === 'string' && url.length > 0)
+            .filter((url: unknown) => typeof url === 'string' && url.length > 0)
             .map(async (url: string) => {
               const isExternal = url.startsWith('http');
               const finalUrl = isExternal ? url : await getSignedUrl(url);

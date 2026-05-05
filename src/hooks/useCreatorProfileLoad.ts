@@ -3,8 +3,11 @@ import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import type { Database } from '@/integrations/supabase/types';
 
-export const useCreatorProfileLoad = (setFormDataFromProfile: (profile: any) => void) => {
+type CreatorProfileRow = Database['public']['Tables']['creator_profiles']['Row'];
+
+export const useCreatorProfileLoad = (setFormDataFromProfile: (profile: Partial<CreatorProfileRow>) => void) => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const hasLoaded = useRef(false);

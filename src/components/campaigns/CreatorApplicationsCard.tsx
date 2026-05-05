@@ -6,6 +6,7 @@ import { Users, ExternalLink, DollarSign, Calendar } from 'lucide-react';
 import { useCampaignApplications } from '@/hooks/useCampaignApplications';
 import { Skeleton } from '@/components/ui/skeleton';
 import { JointApprovalCard } from './JointApprovalCard';
+import { CampaignApplication } from '@/types/applications';
 import { useCampaign } from '@/hooks/useCampaigns';
 import { useAuth } from '@/hooks/useAuth';
 import { useCampaignSponsorship } from '@/hooks/useCampaignSponsorship';
@@ -139,8 +140,8 @@ export const CreatorApplicationsCard = ({ campaignId }: CreatorApplicationsCardP
 
                   <div className="space-y-3 mt-3">
                     {isSponsored && userRole && application.status === 'pending' && (
-                      <JointApprovalCard 
-                        application={application as any} 
+                      <JointApprovalCard
+                        application={application as CampaignApplication & { brand_approval_status?: string; restaurant_approval_status?: string; final_approval_status?: string }}
                         userRole={userRole}
                       />
                     )}

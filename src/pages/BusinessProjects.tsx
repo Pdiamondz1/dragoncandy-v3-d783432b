@@ -227,7 +227,7 @@ const BusinessProjects: React.FC = () => {
   // Fetch files for selected project
   const { data: projectFiles } = useFileUploads(selectedProject || undefined, 'deliverable');
 
-  const handleDownloadFile = async (file: any) => {
+  const handleDownloadFile = async (file: { id: string; bucket_name: string; file_path: string; original_filename: string }) => {
     setDownloadingFileId(file.id);
     try {
       const { data } = await supabase.storage

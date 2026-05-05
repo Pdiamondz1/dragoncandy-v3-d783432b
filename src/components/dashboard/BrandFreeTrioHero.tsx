@@ -24,8 +24,10 @@ export function BrandFreeTrioHero({ orgId }: BrandFreeTrioHeroProps) {
   const { data: templates } = useQuery({
     queryKey: ['campaign_templates', orgId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('campaign_templates' as any)
+      // campaign_templates is not in generated types yet
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase as any)
+        .from('campaign_templates')
         .select('id, title, description, category, display_order')
         .eq('is_active', true)
         .order('display_order');

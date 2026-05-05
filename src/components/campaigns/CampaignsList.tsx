@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { useCampaigns } from '@/hooks/useCampaigns';
+import { useCampaigns, type Campaign } from '@/hooks/useCampaigns';
 import CampaignCard from '@/components/campaigns/CampaignCard';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
@@ -68,11 +68,11 @@ const CampaignsList: React.FC<CampaignsListProps> = ({
     );
   }
 
-  const handleViewDetails = (campaign: any) => {
+  const handleViewDetails = (campaign: Campaign) => {
     navigate(`/dashboard/business/campaigns/${campaign.id}`);
   };
 
-  const handleEdit = (campaign: any) => {
+  const handleEdit = (campaign: Campaign) => {
     navigate(`/dashboard/business/campaigns/${campaign.id}/edit`);
   };
 

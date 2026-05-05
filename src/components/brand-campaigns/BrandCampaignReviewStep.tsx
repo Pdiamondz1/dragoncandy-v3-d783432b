@@ -91,12 +91,14 @@ export const BrandCampaignReviewStep = ({
         deadline: deadline ? format(deadline, 'yyyy-MM-dd') : null,
         status: status,
         ai_preview_status: 'none',
-        ...(campaignAnalysis ? { ai_analysis: campaignAnalysis as any } : {}),
+        ...(campaignAnalysis ? { ai_analysis: campaignAnalysis as unknown as Record<string, unknown> } : {}),
       };
 
       let campaignId: string;
 
       if (draftCampaignId) {
+        // payload includes brand-specific fields not yet in generated types
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { error } = await supabase
           .from('campaigns')
           .update(payload as any)
@@ -104,6 +106,7 @@ export const BrandCampaignReviewStep = ({
         if (error) throw error;
         campaignId = draftCampaignId;
       } else {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { data, error } = await supabase
           .from('campaigns')
           .insert(payload as any)
@@ -115,14 +118,17 @@ export const BrandCampaignReviewStep = ({
 
       if (detailsData.deliverables.length > 0) {
         if (draftCampaignId) {
-          await supabase
-            .from('campaign_deliverables' as any)
+          // campaign_deliverables is not in generated types yet
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          await (supabase as any)
+            .from('campaign_deliverables')
             .delete()
             .eq('campaign_id', campaignId);
         }
 
-        const { error: delError } = await (supabase
-          .from('campaign_deliverables' as any)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { error: delError } = await (supabase as any)
+          .from('campaign_deliverables')
           .insert(
             detailsData.deliverables.map((d, i) => ({
               campaign_id: campaignId,
@@ -133,7 +139,7 @@ export const BrandCampaignReviewStep = ({
               description: d.description || null,
               sort_order: i,
             }))
-          ) as any);
+          );
 
         if (delError) throw delError;
       }

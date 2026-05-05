@@ -311,7 +311,7 @@ const ProjectDetailsPage: React.FC = () => {
 
             {files && files.length > 0 ? (
               <div className="space-y-2">
-                {files.map((file: any) => (
+                {files.map((file) => (
                   <ProtectedFilePreview
                     key={file.id}
                     file={file}

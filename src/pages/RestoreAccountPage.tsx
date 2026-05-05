@@ -30,9 +30,9 @@ export default function RestoreAccountPage() {
 
       setStatus('success');
       setTimeout(() => navigate('/dashboard/business', { replace: true }), 2000);
-    } catch (err: any) {
+    } catch (err: unknown) {
       setStatus('error');
-      setErrorMessage(err.message ?? 'Failed to restore organization.');
+      setErrorMessage(err instanceof Error ? err.message : 'Failed to restore organization.');
     }
   };
 

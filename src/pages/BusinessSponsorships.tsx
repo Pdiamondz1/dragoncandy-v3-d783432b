@@ -6,7 +6,7 @@ import DashboardLayout from '@/components/DashboardLayout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DollarSign, MessageSquare, Calendar, TrendingUp, CheckCircle, Clock, Loader2, Star } from 'lucide-react';
-import { useSponsorshipProposals } from '@/hooks/useSponsorshipProposals';
+import { useSponsorshipProposals, type SponsorshipProposal } from '@/hooks/useSponsorshipProposals';
 import { useSponsorshipComplete } from '@/hooks/useSponsorshipComplete';
 import SponsorshipProposalCard from '@/components/campaigns/SponsorshipProposalCard';
 import MarketplaceLoadingState from '@/components/campaigns/MarketplaceLoadingState';
@@ -58,7 +58,7 @@ const BusinessSponsorships = () => {
     },
   ];
 
-  const handleLeaveReview = (proposal: any) => {
+  const handleLeaveReview = (proposal: SponsorshipProposal) => {
     setRatingModal({
       isOpen: true,
       sponsorshipId: proposal.id,
@@ -67,7 +67,7 @@ const BusinessSponsorships = () => {
     });
   };
 
-  const getCompletionButton = (proposal: any) => {
+  const getCompletionButton = (proposal: SponsorshipProposal) => {
     const brandStatus = proposal.brand_completion_status || 'pending';
     const businessStatus = proposal.business_completion_status || 'pending';
     const isCompleted = !!proposal.completed_at;

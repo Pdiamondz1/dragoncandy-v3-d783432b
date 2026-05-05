@@ -9,7 +9,7 @@ interface SubmitSponsorshipProposalParams {
   restaurantUserId: string;
   sponsorshipAmount: number;
   proposalMessage: string;
-  terms?: any;
+  terms?: Record<string, unknown>;
 }
 
 export const useSubmitSponsorshipProposal = () => {

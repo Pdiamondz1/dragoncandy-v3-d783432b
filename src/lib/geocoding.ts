@@ -165,7 +165,7 @@ export class GeocodingService {
       let country = '';
 
       // Extract city and country from address_components
-      result.address_components.forEach((component: any) => {
+      result.address_components.forEach((component: { types: string[]; long_name: string; short_name: string }) => {
         if (component.types.includes('locality')) {
           city = component.long_name;
         } else if (component.types.includes('administrative_area_level_1') && !city) {

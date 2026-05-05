@@ -36,8 +36,8 @@ export const useApplicationFilters = (applications: CampaignApplication[]) => {
 
     // Sort applications
     filtered.sort((a, b) => {
-      let aValue: any;
-      let bValue: any;
+      let aValue: string | number | Date;
+      let bValue: string | number | Date;
 
       switch (filters.sortBy) {
         case 'created_at':
@@ -64,7 +64,7 @@ export const useApplicationFilters = (applications: CampaignApplication[]) => {
     return filtered;
   }, [applications, filters]);
 
-  const updateFilter = (key: keyof ApplicationFilters, value: any) => {
+  const updateFilter = (key: keyof ApplicationFilters, value: string | string[] | boolean) => {
     setFilters(prev => ({ ...prev, [key]: value }));
   };
 

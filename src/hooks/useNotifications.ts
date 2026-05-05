@@ -4,6 +4,18 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
 
+export interface NotificationData {
+  campaign_id?: string;
+  sponsorship_id?: string;
+  brand_id?: string;
+  status?: string;
+  content_id?: string;
+  liker_id?: string;
+  liker_name?: string;
+  invitation_id?: string;
+  [key: string]: unknown;
+}
+
 export interface Notification {
   id: string;
   type: 'application_received' | 'application_status_changed' | 'milestone_completed' | 'sponsorship_proposal_received' | 'sponsorship_status_changed' | 'content_liked' | 'campaign_invitation';
@@ -11,7 +23,7 @@ export interface Notification {
   message: string;
   read: boolean;
   created_at: string;
-  data?: any;
+  data?: NotificationData;
 }
 
 export const useNotifications = () => {
@@ -69,7 +81,7 @@ export const useNotifications = () => {
           .select('id,title')
           .eq('user_id', user.id);
 
-        const campaignIds = (myCampaigns || []).map((c: any) => c.id);
+        const campaignIds = (myCampaigns || []).map((c) => c.id);
         
         if (campaignIds.length > 0) {
           const { data: proposals } = await supabase
@@ -81,16 +93,16 @@ export const useNotifications = () => {
             .limit(10);
 
           if (proposals && proposals.length > 0) {
-            const brandIds = Array.from(new Set(proposals.map((p: any) => p.brand_id)));
+            const brandIds = Array.from(new Set(proposals.map((p) => p.brand_id)));
             const { data: brands } = await supabase
               .from('business_profiles')
               .select('id,business_name')
               .in('id', brandIds);
 
-            const brandMap = new Map((brands || []).map((b: any) => [b.id, b.business_name]));
-            const campaignTitleMap = new Map((myCampaigns || []).map((c: any) => [c.id, c.title]));
+            const brandMap = new Map((brands || []).map((b) => [b.id, b.business_name]));
+            const campaignTitleMap = new Map((myCampaigns || []).map((c) => [c.id, c.title]));
 
-            const restaurantNotifications: Notification[] = proposals.map((p: any) => ({
+            const restaurantNotifications: Notification[] = proposals.map((p) => ({
               id: `sponsorship-${p.id}`,
               type: 'sponsorship_proposal_received',
               title: 'New Sponsorship Proposal',
@@ -131,15 +143,15 @@ export const useNotifications = () => {
             .limit(10);
 
           if (myProposals && myProposals.length > 0) {
-            const proposalCampaignIds = myProposals.map((p: any) => p.campaign_id);
+            const proposalCampaignIds = myProposals.map((p) => p.campaign_id);
             const { data: campaigns } = await supabase
               .from('campaigns')
               .select('id,title')
               .in('id', proposalCampaignIds);
 
-            const campaignTitleMap = new Map((campaigns || []).map((c: any) => [c.id, c.title]));
+            const campaignTitleMap = new Map((campaigns || []).map((c) => [c.id, c.title]));
 
-            const brandNotifications: Notification[] = myProposals.map((p: any) => ({
+            const brandNotifications: Notification[] = myProposals.map((p) => ({
               id: `sponsorship-update-${p.id}`,
               type: 'sponsorship_status_changed',
               title: `Sponsorship ${p.status.charAt(0).toUpperCase() + p.status.slice(1)}`,
@@ -369,7 +381,7 @@ export const useNotifications = () => {
           filter: 'event_type=eq.dragon_feed_like'
         },
         async (payload) => {
-          const eventData = payload.new.event_data as any;
+          const eventData = payload.new.event_data as Record<string, unknown>;
           
           // Only notify if this is a 'like' action (not 'unlike')
           if (eventData?.action !== 'like') return;
@@ -410,7 +422,7 @@ export const useNotifications = () => {
             read: false,
             created_at: new Date().toISOString(),
             data: {
-              content_id: eventData.content_id,
+              content_id: eventData.content_id as string | undefined,
               liker_id: payload.new.user_id,
               liker_name: likerName,
             },

@@ -88,8 +88,9 @@ export const useSendMessage = () => {
       const previousMessages = queryClient.getQueryData(queryKey);
 
       // Optimistically update cache
-      queryClient.setQueryData(queryKey, (old: any) => {
+      queryClient.setQueryData(queryKey, (old: unknown) => {
         if (!old) return [optimisticMessage];
+        if (!Array.isArray(old)) return [optimisticMessage];
         return [...old, optimisticMessage];
       });
 

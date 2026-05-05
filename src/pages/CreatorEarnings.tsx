@@ -109,8 +109,9 @@ const CreatorEarnings: React.FC = () => {
 
       if (error) throw error;
 
-      return (data || []).map((collab: any) => {
-        const campaign = collab.campaigns;
+      return (data || []).map((collab) => {
+        const campaignsRaw = collab.campaigns;
+        const campaign = Array.isArray(campaignsRaw) ? campaignsRaw[0] : campaignsRaw;
         const amount = campaign?.fixed_price || campaign?.budget_min || campaign?.budget_max || 0;
         const platformFee = amount * 0.05; // 5% platform fee — keep in sync with edge function PLATFORM_FEE_RATE
 

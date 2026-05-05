@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { useFileUploadLogic } from '@/hooks/useFileUploadLogic';
+import type { FileUpload } from '@/types/files';
 import FileUploadDropzone from './FileUploadDropzone';
 import FileValidationErrors from './FileValidationErrors';
 import FileUploadProgressComponent from './FileUploadProgress';
@@ -11,7 +12,7 @@ interface EnhancedFileUploadProps {
   category?: string;
   maxFiles?: number;
   acceptedTypes?: string[];
-  onUploadComplete?: (files: any[]) => void;
+  onUploadComplete?: (files: FileUpload[]) => void;
   className?: string;
 }
 

@@ -94,7 +94,7 @@ export const useCreatorBrowse = () => {
     enabled: !!user,
   });
 
-  const handleFilterChange = useCallback((key: keyof CreatorFilters, value: any) => {
+  const handleFilterChange = useCallback((key: keyof CreatorFilters, value: string | string[] | boolean | number) => {
     setFilters(prev => ({ ...prev, [key]: value }));
   }, []);
 

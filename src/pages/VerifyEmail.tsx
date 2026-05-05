@@ -40,7 +40,7 @@ const VerifyEmail = () => {
           navigate('/auth?mode=login');
         }, 2000);
 
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error('VerifyEmail: unexpected error, redirecting to GET endpoint', error);
         const redirect = encodeURIComponent(window.location.origin);
         window.location.replace(`https://zocahiffooqdybdhguqv.supabase.co/functions/v1/verify-email?token=${token}&redirect=${redirect}`);

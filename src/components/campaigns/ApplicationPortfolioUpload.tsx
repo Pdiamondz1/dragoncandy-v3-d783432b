@@ -16,7 +16,7 @@ export const ApplicationPortfolioUpload = ({ portfolioFiles, onPortfolioFilesCha
         onUploadComplete={(files) => {
           // For applications, we still work with File objects temporarily
           // This will be properly handled by the application submission logic
-          const fileObjects = files.map(f => new File([], f.original_filename || f.name || 'file'));
+          const fileObjects = files.map(f => new File([], f.original_filename || f.filename || 'file'));
           onPortfolioFilesChange([...portfolioFiles, ...fileObjects]);
         }}
       />

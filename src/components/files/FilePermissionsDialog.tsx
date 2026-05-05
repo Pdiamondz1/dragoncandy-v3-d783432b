@@ -74,7 +74,7 @@ const FilePermissionsDialog: React.FC<FilePermissionsDialogProps> = ({
     }
   };
 
-  const getPermissionColor = (type: string) => {
+  const getPermissionColor = (type: string): 'default' | 'secondary' | 'destructive' | 'outline' => {
     switch (type) {
       case 'view': return 'secondary';
       case 'download': return 'default';
@@ -117,7 +117,7 @@ const FilePermissionsDialog: React.FC<FilePermissionsDialogProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium">Permission Type</label>
-                  <Select value={newPermissionType} onValueChange={(value: any) => setNewPermissionType(value)}>
+                  <Select value={newPermissionType} onValueChange={(value) => setNewPermissionType(value as 'view' | 'download' | 'edit' | 'delete' | 'share')}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -174,7 +174,7 @@ const FilePermissionsDialog: React.FC<FilePermissionsDialogProps> = ({
                           </p>
                           <div className="flex items-center gap-2 mt-1">
                             <Badge 
-                              variant={getPermissionColor(permission.permission_type) as any}
+                              variant={getPermissionColor(permission.permission_type)}
                               className="text-xs"
                             >
                               {getPermissionIcon(permission.permission_type)}

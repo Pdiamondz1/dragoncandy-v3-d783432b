@@ -57,8 +57,9 @@ export const AuthenticationModal: React.FC<AuthenticationModalProps> = ({
       
       onSuccess?.();
       onClose();
-    } catch (error: any) {
-      toast.error(error.message || 'Authentication failed');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Authentication failed';
+      toast.error(message);
     } finally {
       setIsLoading(false);
     }

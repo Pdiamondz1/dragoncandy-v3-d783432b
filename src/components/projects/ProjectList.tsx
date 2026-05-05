@@ -29,9 +29,9 @@ interface ProjectCollaboration {
   campaign_id: string;
   creator_id: string;
   status: 'active' | 'completed' | 'cancelled';
-  contract_details?: any;
-  milestones?: any;
-  deliverables_status?: any;
+  contract_details?: Record<string, unknown> | null;
+  milestones?: Record<string, unknown> | null;
+  deliverables_status?: Record<string, unknown> | null;
   business_completion_status?: string;
   creator_completion_status?: string;
   completed_at?: string | null;

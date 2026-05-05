@@ -32,7 +32,7 @@ const BrandDiscoverCampaigns = () => {
   const { data: campaigns = [], isLoading, error } = useSponsorshipCampaigns(user?.id);
   const { filters, filteredCampaigns, updateFilter, resetFilters } = useBrandCampaignFilters(campaigns);
 
-  const [selectedCampaign, setSelectedCampaign] = useState<any>(null);
+  const [selectedCampaign, setSelectedCampaign] = useState<SponsorshipCampaign | null>(null);
   const [showSponsorDialog, setShowSponsorDialog] = useState(false);
   const [sponsorshipAmount, setSponsorshipAmount] = useState('');
   const [proposalMessage, setProposalMessage] = useState('');
@@ -56,7 +56,7 @@ const BrandDiscoverCampaigns = () => {
     return <MarketplaceErrorState />;
   }
 
-  const handleSponsor = (campaignId: string, existingProposal?: any) => {
+  const handleSponsor = (campaignId: string, existingProposal?: { status: string; id: string }) => {
     if (existingProposal) {
       toast({
         title: 'Proposal Already Submitted',
@@ -97,9 +97,10 @@ const BrandDiscoverCampaigns = () => {
       setSponsorshipAmount('');
       setProposalMessage('');
       setSelectedCampaign(null);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error submitting sponsorship via hook:', err);
-      if (err?.message === 'DUPLICATE_PROPOSAL') {
+      const errMessage = err instanceof Error ? err.message : '';
+      if (errMessage === 'DUPLICATE_PROPOSAL') {
         toast({
           title: 'Proposal Already Exists',
           description: 'You have already submitted a proposal for this campaign. Check your sponsorships page to view it.',
@@ -108,7 +109,7 @@ const BrandDiscoverCampaigns = () => {
       } else {
         toast({
           title: 'Error',
-          description: err?.message || 'Failed to submit sponsorship proposal. Please try again.',
+          description: errMessage || 'Failed to submit sponsorship proposal. Please try again.',
           variant: 'destructive',
         });
       }

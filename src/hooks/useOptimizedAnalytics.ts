@@ -10,7 +10,7 @@ export const useOptimizedAnalytics = () => {
   const { getCachedData, invalidateCache } = useAnalyticsCache();
 
   // Use batched tracking for high-frequency events
-  const trackEventOptimized = (eventType: string, eventData?: Record<string, any>) => {
+  const trackEventOptimized = (eventType: string, eventData?: Record<string, unknown>) => {
     addEvent(eventType, {
       ...eventData,
       user_role: profile?.role,
@@ -26,7 +26,7 @@ export const useOptimizedAnalytics = () => {
     });
   };
 
-  const trackUserActionOptimized = (action: string, context?: Record<string, any>) => {
+  const trackUserActionOptimized = (action: string, context?: Record<string, unknown>) => {
     addEvent('user_action', { 
       action,
       user_role: profile?.role,
@@ -34,7 +34,7 @@ export const useOptimizedAnalytics = () => {
     });
   };
 
-  const trackCampaignEventOptimized = (eventType: string, campaignId: string, additionalData?: Record<string, any>) => {
+  const trackCampaignEventOptimized = (eventType: string, campaignId: string, additionalData?: Record<string, unknown>) => {
     addEvent('campaign_event', {
       campaign_event_type: eventType,
       campaign_id: campaignId,
@@ -100,15 +100,15 @@ export const useOptimizedAnalytics = () => {
     return getCachedData(cacheKey, async () => {
       const analyticsData = await getAnalyticsData(timeRange);
       
-      const pageViews = analyticsData.pageViews.reduce((acc: any, view: any) => {
-        const pageName = view.event_data?.page_name || 'Unknown';
+      const pageViews = analyticsData.pageViews.reduce<Record<string, number>>((acc, view) => {
+        const pageName = (view.event_data as Record<string, unknown>)?.page_name as string || 'Unknown';
         acc[pageName] = (acc[pageName] || 0) + 1;
         return acc;
       }, {});
 
       return Object.entries(pageViews)
         .map(([page, count]) => ({ page, count }))
-        .sort((a: any, b: any) => b.count - a.count)
+        .sort((a, b) => (b.count as number) - (a.count as number))
         .slice(0, 10);
     }, 10 * 60 * 1000); // Cache for 10 minutes
   };
@@ -119,7 +119,7 @@ export const useOptimizedAnalytics = () => {
     return getCachedData(cacheKey, async () => {
       const analyticsData = await getAnalyticsData(timeRange);
       
-      const dailyActivity = analyticsData.rawEvents.reduce((acc: any, event: any) => {
+      const dailyActivity = analyticsData.rawEvents.reduce<Record<string, number>>((acc, event) => {
         const date = new Date(event.created_at).toLocaleDateString();
         acc[date] = (acc[date] || 0) + 1;
         return acc;
@@ -127,7 +127,7 @@ export const useOptimizedAnalytics = () => {
 
       return Object.entries(dailyActivity)
         .map(([date, count]) => ({ date, count }))
-        .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     }, 15 * 60 * 1000); // Cache for 15 minutes
   };
 

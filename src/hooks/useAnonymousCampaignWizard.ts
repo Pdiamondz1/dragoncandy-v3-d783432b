@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { useAnonymousCampaign } from './useAnonymousCampaign';
+import { useAnonymousCampaign, type AnonymousCustomizedData, type AnonymousTimelineBudgetData } from './useAnonymousCampaign';
+import { CampaignData } from '@/types/campaign';
 
 export const useAnonymousCampaignWizard = () => {
   const {
@@ -22,17 +23,18 @@ export const useAnonymousCampaignWizard = () => {
   const customizedCampaign = campaignData?.customizedData || null;
   
   // Combine all data for the finalize step
+  const rawGoals = customizedCampaign?.goals || campaignAnalysis?.goals || [];
+  const goalsString = Array.isArray(rawGoals) ? rawGoals.join('. ') : String(rawGoals);
+
   const finalCampaignData = campaignData?.timelineBudgetData ? {
     // Use customized data if available, otherwise fall back to analysis data
     title: customizedCampaign?.title || campaignAnalysis?.title || '',
     description: customizedCampaign?.description || campaignAnalysis?.description || '',
-    goals: customizedCampaign?.goals || campaignAnalysis?.goals || [],
+    goals: goalsString,
     deliverables: customizedCampaign?.content_types || campaignAnalysis?.content_types || [],
     platforms: customizedCampaign?.platforms || campaignAnalysis?.recommended_platforms || [],
     style: customizedCampaign?.style || '',
     tone: customizedCampaign?.tone || '',
-    target_audience: customizedCampaign?.target_audience || campaignAnalysis?.target_audience || '',
-    key_messages: customizedCampaign?.key_messages || campaignAnalysis?.key_messages || [],
     // Timeline and budget data - map to correct property names
     budgetMin: campaignData.timelineBudgetData.budgetMin || campaignData.timelineBudgetData.budget_min || 500,
     budgetMax: campaignData.timelineBudgetData.budgetMax || campaignData.timelineBudgetData.budget_max || 2000,
@@ -96,8 +98,17 @@ export const useAnonymousCampaignWizard = () => {
     updateCampaignStep(2);
   };
 
-  const handleContinueFromCustomize = (data: any) => {
-    updateCustomizedData(data);
+  const handleContinueFromCustomize = (data: CampaignData) => {
+    const customized: AnonymousCustomizedData = {
+      title: data.title,
+      description: data.description,
+      goals: data.goals,
+      platforms: data.platforms,
+      content_types: data.content_types,
+      target_audience: data.target_audience,
+      key_messages: data.key_messages,
+    };
+    updateCustomizedData(customized);
     updateCampaignStep(4);
   };
 
@@ -105,8 +116,18 @@ export const useAnonymousCampaignWizard = () => {
     updateCampaignStep(3);
   };
 
-  const handleContinueFromTimelineBudget = (data: any) => {
-    updateTimelineBudgetData(data);
+  const handleContinueFromTimelineBudget = (data: { goals: string; deadline: Date; deliveryType: string; deliveryFee: number; pricingType: string; fixedPrice?: number; budgetMin?: number; budgetMax?: number }) => {
+    const timelineBudget: AnonymousTimelineBudgetData = {
+      goals: data.goals,
+      deadline: data.deadline.toISOString(),
+      deliveryType: data.deliveryType,
+      deliveryFee: data.deliveryFee,
+      pricingType: data.pricingType,
+      fixedPrice: data.fixedPrice,
+      budgetMin: data.budgetMin,
+      budgetMax: data.budgetMax,
+    };
+    updateTimelineBudgetData(timelineBudget);
   };
 
   const handleBackToTimelineBudget = () => {

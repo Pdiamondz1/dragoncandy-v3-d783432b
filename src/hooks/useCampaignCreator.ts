@@ -3,6 +3,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import type { Database } from '@/integrations/supabase/types';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { mapDeliveryTierToDb } from '@/lib/campaignUtils';
@@ -189,8 +190,8 @@ export function useCampaignCreator() {
       if (error) throw error;
 
       const parsed = donnyGenerateResponseSchema.parse(data);
-      setBusinessContext(parsed.business_context as any);
-      setCampaignIdeas(parsed.campaign_ideas as any);
+      setBusinessContext(parsed.business_context as BusinessContext);
+      setCampaignIdeas(parsed.campaign_ideas as CampaignIdea[]);
 
       addMessage(`Found ${parsed.business_context.business_name} — looking good!`);
 
@@ -247,7 +248,7 @@ export function useCampaignCreator() {
 
       if (error) throw error;
       const parsed = donnyGenerateResponseSchema.parse(data);
-      setCampaignIdeas(parsed.campaign_ideas as any);
+      setCampaignIdeas(parsed.campaign_ideas as CampaignIdea[]);
       setExtractionMessages(["Here are 3 new ideas!"]);
     } catch (err) {
       toast.error('Failed to regenerate', { description: String(err) });
@@ -325,7 +326,7 @@ export function useCampaignCreator() {
 
       const { data, error } = await supabase
         .from('campaigns')
-        .insert(insertPayload as any)
+        .insert(insertPayload as unknown as Database['public']['Tables']['campaigns']['Insert'])
         .select('id')
         .single();
 

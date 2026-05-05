@@ -68,7 +68,8 @@ export const useBusinessProfileForm = () => {
     setFormData(prev => ({ ...prev, [field]: value }));
   }, []);
 
-  const setFormDataFromProfile = useCallback((businessProfile: any) => {
+  type BusinessProfileRow = Partial<Database['public']['Tables']['business_profiles']['Row']>;
+  const setFormDataFromProfile = useCallback((businessProfile: BusinessProfileRow) => {
     // Only load profile data once to prevent overwriting user edits
     if (hasLoadedRef.current) return;
     

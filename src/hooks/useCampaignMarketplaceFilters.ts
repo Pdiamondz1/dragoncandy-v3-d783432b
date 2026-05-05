@@ -111,8 +111,8 @@ export const useCampaignMarketplaceFilters = (campaigns: PublicCampaign[]) => {
 
     // Sort campaigns
     filtered.sort((a, b) => {
-      let aValue: any;
-      let bValue: any;
+      let aValue: number | Date;
+      let bValue: number | Date;
 
       switch (filters.sortBy) {
         case 'created_at':
@@ -143,7 +143,7 @@ export const useCampaignMarketplaceFilters = (campaigns: PublicCampaign[]) => {
     return filtered;
   }, [campaigns, filters]);
 
-  const updateFilter = (key: keyof CampaignMarketplaceFilters, value: any) => {
+  const updateFilter = (key: keyof CampaignMarketplaceFilters, value: string | string[] | boolean) => {
     setFilters(prev => ({ ...prev, [key]: value }));
   };
 

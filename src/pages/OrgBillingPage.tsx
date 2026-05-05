@@ -11,6 +11,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useMyOrgRole } from '@/hooks/useOrgData';
 import { useOrgMembers } from '@/hooks/useOrgMembers';
 import { SEAT_LIMITS } from '@/types/org';
+import type { UserRole } from '@/types/user';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -67,7 +68,7 @@ export default function OrgBillingPage() {
   };
 
   return (
-    <DashboardLayout userRole={userRole as any}>
+    <DashboardLayout userRole={userRole as UserRole}>
       <div className="mx-auto max-w-2xl space-y-6 p-4 lg:p-6">
         <div className="flex items-center justify-between">
           <div>

@@ -5,13 +5,13 @@ import { useCreateFileUpload } from '@/hooks/useFileOperations';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useFileUploadNotification } from '@/hooks/useFileUploadNotification';
-import type { FileUploadProgress } from '@/types/files';
+import type { FileUpload, FileUploadProgress } from '@/types/files';
 
 interface UseFileUploadLogicProps {
   bucketName: string;
   campaignId?: string;
   category?: string;
-  onUploadComplete?: (files: any[]) => void;
+  onUploadComplete?: (files: FileUpload[]) => void;
 }
 
 export const useFileUploadLogic = ({

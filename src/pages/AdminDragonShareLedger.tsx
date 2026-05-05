@@ -6,13 +6,25 @@ import { Button } from '@/components/ui/button';
 import { Download, Sparkles } from 'lucide-react';
 import type { UserRole } from '@/types/user';
 
+interface DragonShareBoostRow {
+  id: string;
+  amount_cents: number;
+  platform_fee_cents: number;
+  creator_payout_cents: number;
+  status: string;
+  boosted_at: string;
+  tier_label: string;
+  post: { id: string; creator_id: string; platform: string; content_type: string; creator: { full_name: string } | null } | null;
+  org: { name: string } | null;
+}
+
 const AdminDragonShareLedger: React.FC = () => {
   const { profile } = useAuth();
   const userRole = (profile?.role as UserRole) ?? 'content_creator';
 
   const { data: boosts, isLoading } = useQuery({
     queryKey: ['admin-dragonshare-ledger'],
-    queryFn: async () => {
+    queryFn: async (): Promise<DragonShareBoostRow[]> => {
       const { data, error } = await supabase
         .from('dragonshare_boosts')
         .select(`
@@ -23,7 +35,7 @@ const AdminDragonShareLedger: React.FC = () => {
         `)
         .order('boosted_at', { ascending: false });
       if (error) throw error;
-      return data;
+      return (data ?? []) as unknown as DragonShareBoostRow[];
     },
   });
 
@@ -48,8 +60,8 @@ const AdminDragonShareLedger: React.FC = () => {
     (boosts ?? []).forEach((b) => {
       rows.push([
         new Date(b.boosted_at).toISOString(),
-        (b.post as any)?.creator?.full_name ?? '',
-        (b.org as any)?.name ?? '',
+        b.post?.creator?.full_name ?? '',
+        b.org?.name ?? '',
         b.tier_label,
         (b.amount_cents / 100).toFixed(2),
         (b.platform_fee_cents / 100).toFixed(2),
@@ -121,8 +133,8 @@ const AdminDragonShareLedger: React.FC = () => {
                 {(boosts ?? []).map((b) => (
                   <tr key={b.id} className="border-t">
                     <td className="p-3">{new Date(b.boosted_at).toLocaleDateString()}</td>
-                    <td className="p-3">{(b.post as any)?.creator?.full_name ?? '—'}</td>
-                    <td className="p-3">{(b.org as any)?.name ?? '—'}</td>
+                    <td className="p-3">{b.post?.creator?.full_name ?? '—'}</td>
+                    <td className="p-3">{b.org?.name ?? '—'}</td>
                     <td className="p-3 text-right">${(b.amount_cents / 100).toFixed(2)}</td>
                     <td className="p-3 text-right">${(b.platform_fee_cents / 100).toFixed(2)}</td>
                     <td className="p-3 text-right">${(b.creator_payout_cents / 100).toFixed(2)}</td>

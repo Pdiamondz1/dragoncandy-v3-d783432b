@@ -93,7 +93,8 @@ export function useCollaboration(collaborationId: string) {
       if (error) throw error;
       if (!data) return null;
 
-      const campaignData = data.campaigns as any;
+      const campaignsRaw = data.campaigns;
+      const campaignData = Array.isArray(campaignsRaw) ? campaignsRaw[0] : campaignsRaw;
 
       const [{ data: creatorProfile }, { data: businessProfile }] = await Promise.all([
         supabase

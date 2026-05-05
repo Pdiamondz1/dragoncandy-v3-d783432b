@@ -2,6 +2,10 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { useEmailNotifications } from './useEmailNotifications';
+import type { Database } from '@/integrations/supabase/types';
+
+type CollaborationRow = Database['public']['Tables']['campaign_collaborations']['Row'];
+type CompletionResult = CollaborationRow & { payoutSuccess?: boolean; payoutAmount?: number };
 
 export const useProjectComplete = () => {
   const queryClient = useQueryClient();
@@ -107,7 +111,7 @@ export const useProjectComplete = () => {
         }
 
         // Send completion confirmation emails to both parties with payment info
-        const campaignData = collaboration.campaigns as any;
+        const campaignData = collaboration.campaigns as { id: string; title: string; user_id: string };
 
         // Email to business owner (payer)
         await sendNotification(
@@ -146,6 +150,7 @@ export const useProjectComplete = () => {
       }
 
       // Only one party requested - send notification to the other party
+      const collabCampaign = collaboration.campaigns as { id: string; title: string; user_id: string };
       if (userRole === 'content_creator') {
         // Notify business owner
         await sendNotification(
@@ -153,8 +158,8 @@ export const useProjectComplete = () => {
           '', // Will fetch from profile
           '', // Will fetch from profile
           {
-            recipientUserId: (collaboration.campaigns as any).user_id,
-            campaignTitle: (collaboration.campaigns as any).title,
+            recipientUserId: collabCampaign.user_id,
+            campaignTitle: collabCampaign.title,
             requesterName: creatorProfile?.creator_name ?? '',
             actionUrl: `${window.location.origin}/dashboard/business/projects?highlight=${collaborationId}`
           }
@@ -167,7 +172,7 @@ export const useProjectComplete = () => {
           creatorProfile?.creator_name ?? '',
           {
             recipientUserId: collaboration.creator_id,
-            campaignTitle: (collaboration.campaigns as any).title,
+            campaignTitle: collabCampaign.title,
             requesterName: 'Business Owner',
             actionUrl: `${window.location.origin}/dashboard/creator/projects?highlight=${collaborationId}`
           }
@@ -176,7 +181,7 @@ export const useProjectComplete = () => {
 
       return data;
     },
-    onSuccess: (data: any) => {
+    onSuccess: (data: CompletionResult) => {
       queryClient.invalidateQueries({ queryKey: ['projects'] });
       queryClient.invalidateQueries({ queryKey: ['creator-projects'] });
       queryClient.invalidateQueries({ queryKey: ['business-projects'] });

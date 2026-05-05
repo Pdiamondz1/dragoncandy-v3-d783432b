@@ -73,8 +73,8 @@ export const useCampaignMatches = (campaignId: string) => {
       }
 
       // Transform the data to match our interface
-      const transformedData = data?.map((match: any) => {
-        const matchReasons = match.match_reasons as any || {};
+      const transformedData = data?.map((match) => {
+        const matchReasons = (match.match_reasons ?? {}) as Record<string, unknown>;
         return {
           id: match.id,
           campaign_id: match.campaign_id,

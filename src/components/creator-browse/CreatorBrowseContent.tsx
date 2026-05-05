@@ -11,7 +11,7 @@ interface CreatorBrowseContentProps {
   filteredCreators: CreatorProfile[];
   filters: CreatorFilters;
   mapFilters?: CreatorFilters;
-  onFilterChange: (key: keyof CreatorFilters, value: any) => void;
+  onFilterChange: (key: keyof CreatorFilters, value: string | string[] | boolean | number) => void;
   onResetFilters: () => void;
   isLoading: boolean;
   error: Error | null;

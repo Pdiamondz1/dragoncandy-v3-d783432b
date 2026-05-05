@@ -122,6 +122,8 @@ const CreatorContentSubmit: React.FC<CreatorContentSubmitProps> = ({
       if (error) throw error;
 
       const eventType = revisionCount > 0 ? 'content_resubmitted' : 'content_submitted';
+      // insert_payment_event RPC is not in generated types yet
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       supabase.rpc('insert_payment_event' as any, {
         p_event_type: eventType,
         p_entity_type: 'collaboration',
@@ -138,7 +140,8 @@ const CreatorContentSubmit: React.FC<CreatorContentSubmitProps> = ({
         .single();
 
       if (collaboration) {
-        const campaignData = collaboration.campaigns as any;
+        const campaigns = collaboration.campaigns as unknown as { user_id: string; title: string }[] | { user_id: string; title: string };
+        const campaignData = Array.isArray(campaigns) ? campaigns[0] : campaigns;
         await supabase
           .from('messages')
           .insert({

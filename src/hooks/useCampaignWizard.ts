@@ -51,7 +51,7 @@ export const useCampaignWizard = () => {
   const [campaignGoal, setCampaignGoal] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [campaignAnalysis, setCampaignAnalysis] = useState<CampaignAnalysis | null>(null);
-  const [customizedCampaign, setCustomizedCampaign] = useState<any>(null);
+  const [customizedCampaign, setCustomizedCampaign] = useState<Partial<CampaignAnalysis> | null>(null);
   const [timelineBudgetData, setTimelineBudgetData] = useState<TimelineBudgetData | null>(null);
   const [finalCampaignData, setFinalCampaignData] = useState<FinalCampaignData | null>(null);
 
@@ -102,9 +102,10 @@ export const useCampaignWizard = () => {
       setCurrentStep(3); // Step 3: Details (Brief is Step 2, so after AI generation go to Step 3)
       toast.success('Campaign analysis generated successfully!');
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error generating campaign analysis:', error);
-      toast.error(error.message || 'Failed to generate campaign analysis. Please try again.');
+      const message = error instanceof Error ? error.message : 'Failed to generate campaign analysis. Please try again.';
+      toast.error(message);
     } finally {
       setIsGenerating(false);
     }
@@ -151,21 +152,22 @@ export const useCampaignWizard = () => {
           platforms: customizedCampaign?.platforms || campaignAnalysis?.recommended_platforms || [],
           style: customizedCampaign?.style || '',
           tone: customizedCampaign?.tone || '',
-          status: 'draft' as any,
+          status: 'draft',
           content_source: contentSource,
           ai_preview_status: 'none',
           delivery_type: deliveryTier ? mapDeliveryTierToDb(deliveryTier) : undefined,
           delivery_fee: deliveryFee,
-          ...(campaignAnalysis ? { ai_analysis: campaignAnalysis as any } : {}),
-        } as any)
+          ...(campaignAnalysis ? { ai_analysis: campaignAnalysis as unknown as Record<string, unknown> } : {}),
+        })
         .select('id')
         .single();
 
       if (error) throw error;
       setDraftCampaignId(campaign.id);
       return campaign.id;
-    } catch (error: any) {
-      toast.error('Failed to save draft: ' + (error.message || 'Unknown error'));
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      toast.error('Failed to save draft: ' + message);
       return null;
     }
   };

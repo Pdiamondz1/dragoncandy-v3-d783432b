@@ -24,7 +24,7 @@ interface CampaignFilters {
 
 interface AdvancedCampaignFiltersProps {
   filters: CampaignFilters;
-  onFilterChange: (key: keyof CampaignFilters, value: any) => void;
+  onFilterChange: (key: string, value: string | string[] | boolean | number | null) => void;
   onReset: () => void;
   totalCount: number;
   filteredCount: number;

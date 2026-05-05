@@ -52,7 +52,7 @@ export const VideoUploader: React.FC<VideoUploaderProps> = ({
         videoRef.current.play();
       }
       setCameraActive(true);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Camera error:', error);
       setCameraError('Unable to access camera. Please use the upload option or camera app.');
       setCameraActive(false);

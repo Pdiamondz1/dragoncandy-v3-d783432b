@@ -23,9 +23,10 @@ export const useToastSyncStatus = (promotionId: string | undefined) => {
     queryFn: async (): Promise<SyncStatus> => {
       if (!promotionId || !user?.id) return 'not_connected';
 
-      // Find the latest sync event for this promotion
-      const { data: events, error } = await (supabase
-        .from('toast_sync_events' as any)
+      // toast_sync_events is not in generated types yet
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: events, error } = await (supabase as any)
+        .from('toast_sync_events')
         .select('event_type, status')
         .or(
           `request_payload->promotion_id.eq.${promotionId},` +
@@ -33,7 +34,7 @@ export const useToastSyncStatus = (promotionId: string | undefined) => {
         )
         .in('event_type', ['discount_push', 'discount_push_skipped_tier', 'discount_update', 'discount_delete'])
         .order('created_at', { ascending: false })
-        .limit(1) as any);
+        .limit(1);
 
       if (error) {
         console.warn('useToastSyncStatus query error:', error);
