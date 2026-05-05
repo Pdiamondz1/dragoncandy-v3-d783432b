@@ -292,6 +292,42 @@ Screenshots are stored in `/designs`:
 
 \---
 
+## Session Continuity
+
+Work that spans multiple sessions uses handoff documents stored in `.claude/handoffs/`.
+
+### Resuming Work
+
+At the start of every session, check `.claude/handoffs/` for existing handoffs:
+- **User explicitly continues** ("pick up where we left off", "continue the audit", "what's next") → Load the freshest relevant handoff and begin working from its "Immediate Next Steps"
+- **Ambiguous request that could relate to an active handoff** → Load it and note: "Loaded handoff context for [X]." The user can redirect if wrong
+- **Clearly unrelated request** → Do not mention handoffs
+
+When loading a handoff, verify its context still holds: check the branch, confirm referenced files exist, and review git log for commits since the handoff was created.
+
+### Creating Handoffs
+
+Invoke the `session-handoff` skill to create a handoff at these moments:
+- Completing a plan phase or task batch with more work remaining
+- Before switching to a different workstream
+- When context is heavy and the session is ending with pending work
+
+Do NOT create handoffs for:
+- Small self-contained fixes (git log is sufficient)
+- Work that completed fully within the session
+- Sessions with no meaningful state to preserve
+
+### Relationship to Other Persistence
+
+| Layer | Purpose | Update cadence |
+|-------|---------|----------------|
+| Memory (`.claude/...memory/`) | Durable user/project facts, preferences, feedback | When new facts are learned |
+| PROJECT_CONTEXT.md | Project identity, strategy, principles, stack | Monthly or at major milestones |
+| Handoffs (`.claude/handoffs/`) | In-flight execution state, next steps, gotchas | Per work session or plan phase |
+| Git log | What changed and why | Per commit |
+
+\---
+
 ## Environment Variables
 
 ```
