@@ -78,7 +78,7 @@ export const useAnonymousCampaignWizard = () => {
 
     } catch (error) {
       console.error('Error generating campaign analysis:', error);
-      toast.error(error.message || 'Failed to generate campaign analysis. Please try again.');
+      toast.error(error instanceof Error ? error.message : 'Failed to generate campaign analysis. Please try again.');
     } finally {
       setIsGenerating(false);
     }

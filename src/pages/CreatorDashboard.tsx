@@ -89,7 +89,7 @@ const CreatorDashboard = () => {
         {/* Unified gradient header */}
         <DashboardHero
           roleLabel="Creator Dashboard"
-          userName={profile.creator_name || profile.full_name}
+          userName={profile.creator_name || profile.full_name || ''}
         >
           {/* Rating Prompts */}
           <RatingPromptManager />

@@ -33,11 +33,11 @@ class BrowseCreatorsErrorBoundary extends Component<
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, info: React.ErrorInfo) {
+  override componentDidCatch(error: Error, info: React.ErrorInfo) {
     console.error('[BrandCreators] Caught render error:', error, info);
   }
 
-  render() {
+  override render() {
     if (this.state.hasError) {
       return (
         <DashboardLayout userRole="brand">

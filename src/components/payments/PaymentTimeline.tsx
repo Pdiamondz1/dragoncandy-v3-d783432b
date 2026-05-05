@@ -105,10 +105,10 @@ export function PaymentTimeline({ entityType, entityId, userRole, variant }: Pay
                   {variant === 'full' && (
                     <p className="text-xs text-gray-400 mt-0.5">{formatTimestamp(event.created_at)}</p>
                   )}
-                  {variant === 'full' && event.event_type === 'revision_requested' && event.metadata?.notes && (
+                  {variant === 'full' && event.event_type === 'revision_requested' && Boolean(event.metadata?.notes) && (
                     <p className="text-xs text-amber-600 mt-1 italic">"{String(event.metadata.notes)}"</p>
                   )}
-                  {event.metadata?.platform_fee && (
+                  {Boolean(event.metadata?.platform_fee) && (
                     <p className="text-xs text-gray-400 mt-0.5">
                       Platform fee: ${(Number(event.metadata.platform_fee) / 100).toFixed(2)}
                     </p>

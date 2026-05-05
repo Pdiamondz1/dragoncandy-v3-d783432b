@@ -129,7 +129,7 @@ export const useFileUploadLogic = ({
           campaign_id: campaignId,
           file_category: category,
           is_compressed: processedFile !== file,
-          compression_ratio: processedFile !== file ? (file.size - processedFile.size) / file.size : null,
+          compression_ratio: processedFile !== file ? (file.size - processedFile.size) / file.size : undefined,
           metadata: {
             original_size: file.size,
             processed_size: processedFile.size

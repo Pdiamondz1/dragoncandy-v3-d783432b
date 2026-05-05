@@ -163,8 +163,8 @@ const MessageBubbleEnhanced: React.FC<MessageBubbleEnhancedProps> = ({
                         style={{ maxHeight: '240px', maxWidth: '280px' }}
                         role="button"
                         tabIndex={0}
-                        onClick={() => window.open(message.attachment_url, '_blank')}
-                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); window.open(message.attachment_url, '_blank'); } }}
+                        onClick={() => window.open(message.attachment_url ?? undefined, '_blank')}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); window.open(message.attachment_url ?? undefined, '_blank'); } }}
                         onError={(e) => {
                           const target = e.target as HTMLImageElement;
                           target.style.display = 'none';

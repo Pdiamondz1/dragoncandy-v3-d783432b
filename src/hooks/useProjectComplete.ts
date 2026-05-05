@@ -129,7 +129,7 @@ export const useProjectComplete = () => {
         await sendNotification(
           'project_completion',
           '', // Will fetch from profile
-          creatorProfile.creator_name,
+          creatorProfile?.creator_name ?? '',
           {
             recipientUserId: collaboration.creator_id,
             campaignTitle: campaignData.title,
@@ -155,7 +155,7 @@ export const useProjectComplete = () => {
           {
             recipientUserId: (collaboration.campaigns as any).user_id,
             campaignTitle: (collaboration.campaigns as any).title,
-            requesterName: creatorProfile.creator_name,
+            requesterName: creatorProfile?.creator_name ?? '',
             actionUrl: `${window.location.origin}/dashboard/business/projects?highlight=${collaborationId}`
           }
         );
@@ -164,7 +164,7 @@ export const useProjectComplete = () => {
         await sendNotification(
           'completion_request',
           '', // Will fetch from profile
-          creatorProfile.creator_name,
+          creatorProfile?.creator_name ?? '',
           {
             recipientUserId: collaboration.creator_id,
             campaignTitle: (collaboration.campaigns as any).title,

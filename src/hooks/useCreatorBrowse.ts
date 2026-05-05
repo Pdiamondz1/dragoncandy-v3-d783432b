@@ -168,7 +168,7 @@ export const useCreatorBrowse = () => {
     })();
 
     const matchesPlatforms = filters.platforms.length === 0 || (() => {
-      const creatorPlatforms = [];
+      const creatorPlatforms: string[] = [];
       if (creator.instagram_url) creatorPlatforms.push('Instagram');
       if (creator.tiktok_url) creatorPlatforms.push('TikTok');
       if (creator.youtube_url) creatorPlatforms.push('YouTube');

@@ -31,7 +31,7 @@ const FileCommentsPanel: React.FC<FileCommentsPanelProps> = ({
     await createComment.mutateAsync({
       file_upload_id: fileId,
       comment_text: newComment,
-      parent_comment_id: replyTo
+      parent_comment_id: replyTo ?? undefined
     });
 
     setNewComment('');

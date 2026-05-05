@@ -358,7 +358,7 @@ const CreatorMatchingSection: React.FC<CreatorMatchingSectionProps> = ({ campaig
                           )}
                           {creator.skills && creator.skills.length > 0 && (
                             <div className="flex flex-wrap gap-1 mt-2">
-                              {creator.skills.slice(0, 4).map((skill, index) => (
+                              {creator.skills.slice(0, 4).map((skill: string, index: number) => (
                                 <Badge key={index} variant="secondary" className="text-xs">
                                   {skill}
                                 </Badge>

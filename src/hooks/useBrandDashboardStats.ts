@@ -71,7 +71,7 @@ export const useBrandDashboardStats = () => {
       ).reduce((sum, s) => sum + (Number(s.sponsorship_amount) || 0), 0) || 0;
 
       const creatorsConnected = conversations?.filter(
-        c => c.conversation_type === 'direct'
+        (c: { conversation_type: string }) => c.conversation_type === 'direct'
       ).length || 0;
 
       // Calculate budget stats

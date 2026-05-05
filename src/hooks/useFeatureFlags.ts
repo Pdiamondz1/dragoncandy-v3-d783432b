@@ -34,7 +34,7 @@ export const useFeatureFlags = () => {
         const enabledFlags: Record<string, boolean> = {};
 
         if (flags && Array.isArray(flags)) {
-          flags.forEach((flag: FeatureFlagRow) => {
+          (flags as FeatureFlagRow[]).forEach((flag) => {
             let shouldEnable = false;
 
             // Check if flag is globally enabled

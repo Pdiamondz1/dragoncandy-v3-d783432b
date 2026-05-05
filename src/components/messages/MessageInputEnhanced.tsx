@@ -40,7 +40,7 @@ const MessageInputEnhanced: React.FC<MessageInputEnhancedProps> = ({
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const { sendTypingIndicator } = useTypingIndicator(campaignId);
+  const { sendTypingIndicator } = useTypingIndicator(campaignId ?? '');
   const { user } = useAuth();
   const typingTimeoutRef = useRef<NodeJS.Timeout>();
 

@@ -66,7 +66,7 @@ export const useBetaOnboarding = () => {
         
         const progressMap: Record<string, UserProgress> = {};
         if (progressData && Array.isArray(progressData)) {
-          progressData.forEach((progress: UserProgressRow) => {
+          (progressData as UserProgressRow[]).forEach((progress) => {
             progressMap[progress.step_id] = {
               step_id: progress.step_id,
               completed_at: progress.completed_at,
@@ -78,7 +78,7 @@ export const useBetaOnboarding = () => {
 
         // Find the first incomplete step
         if (stepsData && Array.isArray(stepsData)) {
-          const firstIncompleteIndex = stepsData.findIndex((step: OnboardingStepRow) => 
+          const firstIncompleteIndex = (stepsData as OnboardingStepRow[]).findIndex((step) =>
             !progressMap[step.id]?.completed_at
           );
           setCurrentStepIndex(firstIncompleteIndex >= 0 ? firstIncompleteIndex : 0);

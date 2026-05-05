@@ -23,7 +23,7 @@ class ReviewsErrorBoundary extends Component<Props, State> {
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+  override componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error('Reviews error boundary caught an error:', error, errorInfo);
   }
 
@@ -31,7 +31,7 @@ class ReviewsErrorBoundary extends Component<Props, State> {
     this.setState({ hasError: false, error: undefined });
   };
 
-  render() {
+  override render() {
     if (this.state.hasError) {
       return (
         <Card className="border-red-200 bg-red-50">

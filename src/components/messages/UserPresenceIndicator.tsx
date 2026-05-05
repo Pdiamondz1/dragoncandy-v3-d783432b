@@ -20,9 +20,7 @@ const UserPresenceIndicator: React.FC<UserPresenceIndicatorProps> = ({
   showLabel = false,
   size = 'md'
 }) => {
-  // Temporarily disable presence functionality to fix the crash
-  const presence = null; // useCurrentUserPresence(userId);
-
+  // Presence functionality temporarily disabled
   const getDisplayName = () => {
     return userEmail || 'Unknown User';
   };
@@ -73,14 +71,14 @@ const UserPresenceIndicator: React.FC<UserPresenceIndicatorProps> = ({
           <AvatarFallback>{userEmail?.[0]?.toUpperCase()}</AvatarFallback>
         </Avatar>
         <div
-          className={`absolute -bottom-0.5 -right-0.5 ${indicatorSizeClasses[size]} rounded-full border-2 border-card ${getStatusColor(presence?.status)}`}
+          className={`absolute -bottom-0.5 -right-0.5 ${indicatorSizeClasses[size]} rounded-full border-2 border-card ${getStatusColor(undefined)}`}
         />
       </div>
       {showLabel && (
         <div className="flex flex-col">
           <span className="text-sm font-medium">{getDisplayName()}</span>
           <Badge variant="outline" className="text-xs">
-            {getStatusLabel(presence?.status)}
+            {getStatusLabel(undefined)}
           </Badge>
         </div>
       )}
