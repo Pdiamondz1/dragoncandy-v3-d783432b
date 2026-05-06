@@ -19,7 +19,9 @@ every social share displays the Lovable logo.
 
 - index.html head replacement (Issue 1)
 - react-helmet-async installation + SEO component + per-page wiring (Issues 2, 6)
+- Remove manual `document.title` calls in ForgotPassword.tsx and UpdatePassword.tsx
 - sitemap.xml creation + robots.txt update (Issue 3)
+- SiteGate PUBLIC_PATH_PREFIXES expansion (future-proofing for gate re-enable)
 - JSON-LD structured data on key pages (Issue 5)
 - Alt text fixes on profile images (Issue 7)
 - h1 deduplication across all pages (Issue 8)
@@ -30,7 +32,11 @@ every social share displays the Lovable logo.
 ### Out of scope
 
 - Issue 4: vite-plugin-prerender (deferred, Lovable build-pipeline risk)
-- OG image asset creation (public/og/og-default.png) — needs design, not code
+- OG image asset creation (public/og/og-default.png) — needs design, not code.
+  **Interim fallback**: until the OG image is created, index.html and the
+  SEO component will reference an existing brand asset
+  (`/icons/icon-512.png`) as the OG image so social unfurls show the
+  DragonCandy logo rather than a broken image.
 - Dynamic sitemap build script for creator/business profile slugs
 - Google Search Console / Bing Webmaster Tools verification setup
 - hreflang (no non-English locales planned)
@@ -75,13 +81,20 @@ Replace lines 19-31 of `index.html` with DragonCandy-branded meta tags:
 - Author: DragonCandy
 - Canonical: https://dragoncandy.io/
 - OG tags: site_name, title, description, type, url, image (pointing to
-  /og/og-default.png), image dimensions, locale
+  `/icons/icon-512.png` as interim fallback until a proper 1200x630 OG
+  image is created), image dimensions, locale
 - Twitter tags: summary_large_image card, @dragoncandy handle, title,
   description, image
 - Organization JSON-LD script block
 
 These serve as fallbacks when react-helmet-async hasn't hydrated (crawlers
 that don't execute JS, social previewers).
+
+### Replacing existing document.title calls
+
+`ForgotPassword.tsx` and `UpdatePassword.tsx` manually set `document.title`
+via `useEffect`. These must be removed and replaced with the `<SEO>`
+component to avoid conflicting title logic.
 
 ### Per-page SEO values
 
@@ -112,6 +125,15 @@ routes: `/`, `/landing`, `/pricing`, `/help`, `/auth`. Each entry includes
 
 Append `Sitemap: https://dragoncandy.io/sitemap.xml` to the existing
 `public/robots.txt`.
+
+### SiteGate PUBLIC_PATH_PREFIXES
+
+The site gate (`src/lib/siteGate.ts`) is currently disabled, but the
+`PUBLIC_PATH_PREFIXES` allowlist only contains `/promo/`. Add the public
+routes that should remain accessible if the gate is ever re-enabled:
+`/landing`, `/pricing`, `/help`, `/auth`, `/creator/`, `/business/`.
+This prevents a gate re-enable from accidentally blocking crawlers and
+public profiles.
 
 ### h1 deduplication
 
