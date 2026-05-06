@@ -130,16 +130,15 @@ Note: This goes BEFORE `req.json()` so we don't consume the request body before 
 
 - [ ] **Step 3: Verify placement is correct**
 
-The handler flow should now be:
-1. CORS check (line 1403)
-2. Auth resolution (lines 1408-1433) → `userId` set
-3. `supabaseAdmin` created (line 1435)
-4. **NEW: Quota check** → returns 429 if exceeded
-5. Parse request body (line 1437)
-6. Input length check (line 1439)
-7. Sanitize input (line 1446)
-8. Rate limit check (line 1449)
-9. ... rest of handler
+The handler flow should now be (line numbers approximate — shifted ~12 lines by insertion):
+1. CORS check → Auth resolution → `userId` set
+2. `supabaseAdmin` created
+3. **NEW: Quota check** → returns 429 if exceeded
+4. Parse request body (`req.json()`)
+5. Input length check
+6. Sanitize input
+7. Rate limit check (30/hour)
+8. ... rest of handler
 
 - [ ] **Step 4: Commit**
 
@@ -339,9 +338,9 @@ After the `clearChat` callback (ends around line 224), add:
   const retry = useCallback(() => {
     if (lastUserMessage.current && !isSendingRef.current) {
       setError(null);
-      sendMessage(lastUserMessage.current);
+      sendMessageMutation.mutate({ content: lastUserMessage.current, isRetry: true });
     }
-  }, [sendMessage]);
+  }, [sendMessageMutation]);
 ```
 
 - [ ] **Step 2: Replace the `sendMessageMutation` with streaming fetch**
@@ -357,7 +356,7 @@ Replace the entire `sendMessageMutation` (lines 120-204) with a new version that
 
 ```typescript
   const sendMessageMutation = useMutation({
-    mutationFn: async (content: string) => {
+    mutationFn: async ({ content, isRetry = false }: { content: string; isRetry?: boolean }) => {
       if (!conversation || !user) throw new Error('No active conversation');
       if (isSendingRef.current) throw new Error('Message already in flight');
 
@@ -369,16 +368,18 @@ Replace the entire `sendMessageMutation` (lines 120-204) with a new version that
       setStreamingContent('');
       setError(null);
 
-      // Insert user message locally first
-      const { error: insertError } = await supabase
-        .from('donny_messages')
-        .insert({
-          conversation_id: conversation.id,
-          role: 'user',
-          content,
-        });
+      // Insert user message locally first (skip on retry — message already exists)
+      if (!isRetry) {
+        const { error: insertError } = await supabase
+          .from('donny_messages')
+          .insert({
+            conversation_id: conversation.id,
+            role: 'user',
+            content,
+          });
 
-      if (insertError) throw insertError;
+        if (insertError) throw insertError;
+      }
 
       // Get session for auth header
       const { data: { session } } = await supabase.auth.getSession();
@@ -536,7 +537,21 @@ Replace the entire `sendMessageMutation` (lines 120-204) with a new version that
   });
 ```
 
-- [ ] **Step 3: Update the return object to include `retry`**
+- [ ] **Step 3: Update `sendMessage` wrapper for new mutation signature**
+
+The existing `sendMessage` callback (around line 206) calls `sendMessageMutation.mutate(content)`. Since the mutation now takes `{ content, isRetry }`, update it:
+
+```typescript
+  const sendMessage = useCallback(
+    (content: string) => {
+      if (isSendingRef.current) return;
+      sendMessageMutation.mutate({ content });
+    },
+    [sendMessageMutation]
+  );
+```
+
+- [ ] **Step 4: Update the return object to include `retry`**
 
 Change the return object (around line 237) to include `retry`:
 
@@ -550,15 +565,15 @@ Change the return object (around line 237) to include `retry`:
   };
 ```
 
-- [ ] **Step 4: Run build to verify**
+- [ ] **Step 5: Run build to verify**
 
 ```bash
 npm run build
 ```
 
-Expected: Build succeeds. If there are TypeScript errors about the return type not matching expectations, check that `retry` is a `() => void` function.
+Expected: Build succeeds. If there are TypeScript errors about the return type not matching expectations, check that `retry` is a `() => void` function and `sendMessageMutation.mutate` accepts `{ content: string; isRetry?: boolean }`.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
 git add src/hooks/useDonny.ts
