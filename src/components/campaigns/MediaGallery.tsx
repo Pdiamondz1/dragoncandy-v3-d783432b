@@ -46,7 +46,7 @@ const MediaItemCard: React.FC<MediaItemCardProps> = ({ item, editable, onRemove,
   const video = isVideo(item);
 
   return (
-    <div className="relative group cursor-pointer" onClick={onClick}>
+    <button type="button" className="relative group cursor-pointer w-full text-left" onClick={onClick}>
       <div className="aspect-square rounded-lg overflow-hidden bg-gray-100 relative">
         {video ? (
           /* Video placeholder with play icon */
@@ -95,7 +95,7 @@ const MediaItemCard: React.FC<MediaItemCardProps> = ({ item, editable, onRemove,
       <p className="mt-1 text-xs text-gray-600 truncate" title={item.file_name}>
         {item.file_name}
       </p>
-    </div>
+    </button>
   );
 };
 

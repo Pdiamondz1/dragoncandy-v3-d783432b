@@ -23,12 +23,12 @@ export function EditableField({ label, value, originalValue, onChange, multiline
 
   if (!isEditing) {
     return (
-      <div className="group cursor-pointer" onClick={() => setIsEditing(true)}>
+      <button type="button" className="group cursor-pointer w-full text-left" onClick={() => setIsEditing(true)}>
         <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">{label}</label>
         <p className={`mt-1 text-sm ${isModified ? 'text-gray-900' : 'text-teal-600'}`}>
           {value || <span className="text-gray-400 italic">Click to edit</span>}
         </p>
-      </div>
+      </button>
     );
   }
 
