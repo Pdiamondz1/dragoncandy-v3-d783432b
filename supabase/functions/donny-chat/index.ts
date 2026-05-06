@@ -368,6 +368,39 @@ const TOOL_DEFINITIONS = [
   },
 ];
 
+const TOOLS_BY_ROLE: Record<string, string[]> = {
+  business_client: [
+    'create_campaign', 'get_campaigns', 'update_campaign', 'generate_campaign',
+    'match_creators', 'get_creator_profile', 'invite_creator',
+    'get_applications', 'respond_to_application',
+    'get_submissions', 'approve_content', 'request_revision',
+    'prepare_payment', 'get_payment_status',
+    'update_profile', 'get_dashboard_summary', 'get_analytics',
+    'send_message', 'get_onboarding_step', 'complete_onboarding_step',
+    'generate_campaign_preview', 'get_toast_insights',
+    'schedule_post', 'suggest_post_times',
+  ],
+  brand: [
+    'create_campaign', 'get_campaigns', 'update_campaign', 'generate_campaign',
+    'match_creators', 'get_creator_profile', 'invite_creator',
+    'get_applications', 'respond_to_application',
+    'get_submissions', 'approve_content', 'request_revision',
+    'prepare_payment', 'get_payment_status',
+    'update_profile', 'get_dashboard_summary', 'get_analytics',
+    'send_message', 'get_onboarding_step', 'complete_onboarding_step',
+    'generate_campaign_preview', 'get_toast_insights',
+    'schedule_post', 'suggest_post_times',
+  ],
+  content_creator: [
+    'get_campaigns', 'get_creator_profile',
+    'apply_to_campaign', 'get_submissions',
+    'get_payment_status',
+    'update_profile', 'get_dashboard_summary', 'get_analytics',
+    'send_message', 'get_onboarding_step', 'complete_onboarding_step',
+    'schedule_post', 'suggest_post_times',
+  ],
+};
+
 // Build system prompt with user context
 function buildSystemPrompt(
   profile: Record<string, any>,
@@ -609,6 +642,7 @@ async function executeTool(
   toolName: string,
   args: Record<string, any>,
   userId: string,
+  userRole: string,
   supabaseAdmin: any,
   requestContext?: {
     page_url?: string;
@@ -1348,6 +1382,14 @@ serve(async (req) => {
 
     if (!profile) throw new Error("Profile not found");
 
+    const roleTools = TOOLS_BY_ROLE[profile.role];
+    if (!roleTools) {
+      console.warn(`[donny-chat] Unknown role "${profile.role}" — defaulting to content_creator tool set`);
+    }
+    const allowedTools = TOOL_DEFINITIONS.filter(
+      (t) => (roleTools ?? TOOLS_BY_ROLE.content_creator).includes(t.name)
+    );
+
     // Load user context for system prompt
     const { data: campaigns } = await supabaseAdmin
       .from("campaigns")
@@ -1423,7 +1465,7 @@ serve(async (req) => {
         max_tokens: modelConfig.maxTokens,
         system: fullSystemPrompt,
         messages: claudeMessages,
-        tools: TOOL_DEFINITIONS,
+        tools: allowedTools,
       }),
     });
 
@@ -1470,7 +1512,7 @@ serve(async (req) => {
         let status = "completed";
 
         try {
-          const execution = await executeTool(toolUse.name, toolUse.input, userId, supabaseAdmin, requestContext);
+          const execution = await executeTool(toolUse.name, toolUse.input, userId, profile.role, supabaseAdmin, requestContext);
           toolResult = execution.result;
         } catch (err: any) {
           toolResult = { error: err.message };
@@ -1537,7 +1579,7 @@ serve(async (req) => {
           max_tokens: modelConfig.maxTokens,
           system: fullSystemPrompt,
           messages: claudeMessages,
-          tools: TOOL_DEFINITIONS,
+          tools: allowedTools,
         }),
       });
 
