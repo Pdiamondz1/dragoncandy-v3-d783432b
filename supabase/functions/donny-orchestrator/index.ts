@@ -390,14 +390,21 @@ serve(async (req) => {
       console.error("[donny-orchestrator] logging failed:", logErr);
     }
 
-    const output: OrchestratorOutput = {
-      answer,
+    // Return as SSE events for frontend streaming consumption
+    const textChunk = JSON.stringify({ text: answer });
+    const doneChunk = JSON.stringify({
       suggested_actions,
       agent_used: lastToolUsed,
-    };
+      answer,
+    });
+    const sseBody = `event: text_delta\ndata: ${textChunk}\n\nevent: done\ndata: ${doneChunk}\n\n`;
 
-    return new Response(JSON.stringify(output), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    return new Response(sseBody, {
+      headers: {
+        ...corsHeaders,
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+      },
     });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Internal error";
