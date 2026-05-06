@@ -18,7 +18,7 @@ interface CreatorProfileSetupFormProps {
   portfolioPaths: string[];
   loading: boolean;
   isFormValid: boolean;
-  onInputChange: (field: string, value: string) => void;
+  onInputChange: (field: string, value: string | boolean) => void;
   onSkillChange: (skillId: CreatorSkill, checked: boolean) => void;
   onAvatarFileChange: (file: File | null) => void;
   onPortfolioPathsChange: (paths: string[]) => void;

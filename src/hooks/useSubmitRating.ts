@@ -17,7 +17,7 @@ export const useSubmitRating = () => {
           ...reviewData,
           reviewer_id: user.id,
         })
-        .select()
+        .select('id, collaboration_id, sponsorship_id, reviewer_id, reviewee_id, rating, review_text, created_at')
         .single();
 
       if (error) throw error;
@@ -55,7 +55,7 @@ export const useSubmitRating = () => {
   });
 };
 
-async function updateCollaborationReviewStatus(collaborationId: string, reviewerId: string) {
+async function updateCollaborationReviewStatus(collaborationId: string, _reviewerId: string) {
   // Check how many reviews exist for this collaboration
   const { data: reviews, error: reviewsError } = await supabase
     .from('project_reviews')
@@ -80,7 +80,7 @@ async function updateCollaborationReviewStatus(collaborationId: string, reviewer
   }
 }
 
-async function updateSponsorshipReviewStatus(sponsorshipId: string, reviewerId: string) {
+async function updateSponsorshipReviewStatus(sponsorshipId: string, _reviewerId: string) {
   // Check how many reviews exist for this sponsorship
   const { data: reviews, error: reviewsError } = await supabase
     .from('project_reviews')

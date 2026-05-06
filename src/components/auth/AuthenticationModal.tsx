@@ -22,7 +22,7 @@ export const AuthenticationModal: React.FC<AuthenticationModalProps> = ({
   onClose,
   title = "Sign up to publish your campaign",
   description = "Create an account to publish your campaign to our marketplace and connect with talented creators.",
-  actionText = "Continue with your campaign",
+  actionText: _actionText = "Continue with your campaign",
   onSuccess,
 }) => {
   const [email, setEmail] = useState('');
@@ -57,8 +57,9 @@ export const AuthenticationModal: React.FC<AuthenticationModalProps> = ({
       
       onSuccess?.();
       onClose();
-    } catch (error: any) {
-      toast.error(error.message || 'Authentication failed');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Authentication failed';
+      toast.error(message);
     } finally {
       setIsLoading(false);
     }

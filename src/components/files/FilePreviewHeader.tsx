@@ -9,7 +9,7 @@ interface FilePreviewHeaderProps {
   file: FileUpload;
 }
 
-const FilePreviewHeader: React.FC<FilePreviewHeaderProps> = ({ file }) => {
+export const FilePreviewHeader: React.FC<FilePreviewHeaderProps> = ({ file }) => {
   return (
     <DialogHeader>
       <DialogTitle className="flex items-center gap-2">
@@ -22,4 +22,3 @@ const FilePreviewHeader: React.FC<FilePreviewHeaderProps> = ({ file }) => {
   );
 };
 
-export default FilePreviewHeader;

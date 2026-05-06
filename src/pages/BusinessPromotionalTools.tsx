@@ -1,5 +1,5 @@
 import React from 'react';
-import DashboardLayout from '@/components/DashboardLayout';
+import { DashboardLayout } from '@/components/DashboardLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ActivePromotionsTab } from '@/components/promotions/ActivePromotionsTab';
 import { PendingReviewsTab } from '@/components/promotions/PendingReviewsTab';

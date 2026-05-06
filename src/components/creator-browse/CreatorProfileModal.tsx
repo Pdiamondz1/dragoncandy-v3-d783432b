@@ -30,9 +30,9 @@ import {
   TrendingUp,
   Play,
 } from 'lucide-react';
-import ContactCreatorModal from '@/components/creator-profile/ContactCreatorModal';
+import { ContactCreatorModal } from '@/components/creator-profile/ContactCreatorModal';
 import { PortfolioLightbox } from '@/components/creator-profile/PortfolioLightbox';
-import PublicProfileReviews from '@/components/profiles/PublicProfileReviews';
+import { PublicProfileReviews } from '@/components/profiles/PublicProfileReviews';
 
 interface CreatorProfile {
   id: string;
@@ -112,7 +112,7 @@ const resolveAvatarUrl = (raw: string | null | undefined, width = 160): string |
   return `${SUPABASE_URL}/storage/v1/render/image/public/profile-assets/${raw}?width=${width}&height=${width}&resize=cover&quality=75`;
 };
 
-const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
+export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
   creator,
   isOpen,
   onClose,
@@ -539,4 +539,3 @@ const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
   );
 };
 
-export default CreatorProfileModal;

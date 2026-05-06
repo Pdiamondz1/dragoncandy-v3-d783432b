@@ -2,7 +2,7 @@
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Search } from 'lucide-react';
-import ApplicationCard from '@/components/campaigns/ApplicationCard';
+import { ApplicationCard } from '@/components/campaigns/ApplicationCard';
 import { CampaignApplication } from '@/types/applications';
 
 interface ApplicationsListProps {
@@ -10,7 +10,7 @@ interface ApplicationsListProps {
   emptyMessage?: string;
 }
 
-const ApplicationsList: React.FC<ApplicationsListProps> = ({ 
+export const ApplicationsList: React.FC<ApplicationsListProps> = ({ 
   applications, 
   emptyMessage = 'No applications with this status yet.' 
 }) => {
@@ -37,4 +37,3 @@ const ApplicationsList: React.FC<ApplicationsListProps> = ({
   );
 };
 
-export default ApplicationsList;

@@ -10,18 +10,18 @@ import { DonnyProvider } from "@/contexts/DonnyProvider";
 import { DonnyDesktopPanel } from "@/components/donny/DonnyDesktopPanel";
 import { AnalyticsProvider } from "@/components/analytics/AnalyticsProvider";
 import { PerformanceMonitor } from "@/components/analytics/PerformanceMonitor";
-import ErrorBoundary from "@/components/ErrorBoundary";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ThemeProvider } from "@/components/ThemeProvider";
-import ProtectedRoute from "@/components/ProtectedRoute";
-import VerifiedRoute from "@/components/VerifiedRoute";
+import { ProtectedRoute } from '@/components/ProtectedRoute';
+import { VerifiedRoute } from '@/components/VerifiedRoute';
 import { BusinessRoute } from "@/components/BusinessRoute";
 import { BrandRoute } from "@/components/BrandRoute";
 import Index from "./pages/Index";
-import SiteGateGuard from "@/components/SiteGateGuard";
+import { SiteGateGuard } from "@/components/SiteGateGuard";
 import { Navigate } from "react-router-dom";
 import NotFound from "./pages/NotFound";
 import AuthPage from "./pages/AuthPage";
-import PromotionsErrorBoundary from "./components/promotions/PromotionsErrorBoundary";
+import { PromotionsErrorBoundary } from "./components/promotions/PromotionsErrorBoundary";
 import { useAuth } from "@/hooks/useAuth";
 import { PageTransition } from "@/components/PageTransition";
 import type { UserRole } from "@/types/user";
@@ -60,7 +60,6 @@ const BusinessDragonFeed = lazy(() => import("./pages/BusinessDragonFeed"));
 const CreatorDragonFeed = lazy(() => import("./pages/CreatorDragonFeed"));
 const BusinessActivity = lazy(() => import("./pages/BusinessActivity"));
 const BrandDiscoverCampaigns = lazy(() => import("./pages/BrandDiscoverCampaigns"));
-const BrandCreateCampaign = lazy(() => import("./pages/BrandCreateCampaign"));
 const PublicCreatorProfile = lazy(() => import("./pages/PublicCreatorProfile"));
 const PublicBusinessProfile = lazy(() => import("./pages/PublicBusinessProfile"));
 const ReviewsManagement = lazy(() => import("./pages/ReviewsManagement"));
@@ -90,9 +89,9 @@ const queryClient = new QueryClient({
     queries: {
       retry: (failureCount, error) => {
         console.error('Query failed:', error);
-        return failureCount < 2; // Retry up to 2 times
+        return failureCount < 2;
       },
-      staleTime: 5 * 60 * 1000, // 5 minutes
+      staleTime: 5 * 60 * 1000,
     },
   },
 });

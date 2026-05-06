@@ -8,7 +8,7 @@ interface ApplicationAnalyticsProps {
   applications: CampaignApplication[];
 }
 
-const ApplicationAnalytics: React.FC<ApplicationAnalyticsProps> = ({ applications }) => {
+export const ApplicationAnalytics: React.FC<ApplicationAnalyticsProps> = ({ applications }) => {
   const totalApplications = applications.length;
   const pendingCount = applications.filter(app => app.status === 'pending').length;
   const acceptedCount = applications.filter(app => app.status === 'accepted').length;
@@ -133,4 +133,3 @@ const ApplicationAnalytics: React.FC<ApplicationAnalyticsProps> = ({ application
   );
 };
 
-export default ApplicationAnalytics;

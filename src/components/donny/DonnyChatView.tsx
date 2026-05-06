@@ -44,8 +44,8 @@ export function DonnyChatView() {
         {messages.length === 0 && !isStreaming && (
           <div className="flex flex-col items-center justify-center h-full text-center px-6">
             <div className="text-3xl mb-2">🐉</div>
-            <p className="text-sm font-semibold text-[#111]">Hey! I'm Donny</p>
-            <p className="text-xs text-[#555] mt-1">Ask me anything — find creators, manage campaigns, check analytics, or just brainstorm ideas.</p>
+            <p className="text-sm font-semibold text-dc-text">Hey! I'm Donny</p>
+            <p className="text-xs text-dc-text-muted mt-1">Ask me anything — find creators, manage campaigns, check analytics, or just brainstorm ideas.</p>
           </div>
         )}
         {messages.map((msg, i) => (

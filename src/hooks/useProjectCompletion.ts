@@ -2,6 +2,15 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
+interface CollaborationWithCampaign {
+  id: string;
+  status: string;
+  review_status: string | null;
+  creator_id: string;
+  campaign_id: string;
+  campaigns: { id: string; title: string; user_id: string } | null;
+}
+
 export interface CompletedCollaboration {
   id: string;
   campaign_id: string;
@@ -45,7 +54,7 @@ export const useProjectCompletion = (userId?: string) => {
         }
 
         // Filter collaborations where user is involved
-        const userCollaborations = (collaborations as any[]).filter((collab: any) =>
+        const userCollaborations = (collaborations as unknown as CollaborationWithCampaign[]).filter((collab) =>
           collab.creator_id === userId || collab.campaigns?.user_id === userId
         );
 
@@ -53,8 +62,8 @@ export const useProjectCompletion = (userId?: string) => {
 
         // Get profile names for all participants
         const allUserIds = [...new Set([
-          ...userCollaborations.map((c: any) => c.creator_id),
-          ...userCollaborations.map((c: any) => c.campaigns?.user_id).filter(Boolean)
+          ...userCollaborations.map((c) => c.creator_id),
+          ...userCollaborations.map((c) => c.campaigns?.user_id).filter(Boolean) as string[]
         ])];
 
         const { data: profiles } = await supabase
@@ -66,16 +75,16 @@ export const useProjectCompletion = (userId?: string) => {
         const { data: existingReviews } = await supabase
           .from('project_reviews')
           .select('collaboration_id, reviewer_id')
-          .in('collaboration_id', userCollaborations.map((c: any) => c.id))
+          .in('collaboration_id', userCollaborations.map((c) => c.id))
           .eq('reviewer_id', userId);
 
-        const reviewedCollaborationIds = new Set((existingReviews as any[])?.map((r: any) => r.collaboration_id) || []);
+        const reviewedCollaborationIds = new Set((existingReviews ?? []).map((r) => r.collaboration_id));
 
         // Transform to final format
-        const result: CompletedCollaboration[] = userCollaborations.map((collab: any) => {
+        const result: CompletedCollaboration[] = userCollaborations.map((collab) => {
           const isCreator = collab.creator_id === userId;
           const otherPartyId = isCreator ? collab.campaigns?.user_id : collab.creator_id;
-          const otherPartyProfile = (profiles as any[])?.find((p: any) => p.id === otherPartyId);
+          const otherPartyProfile = (profiles ?? []).find((p) => p.id === otherPartyId);
           
           return {
             id: collab.id,

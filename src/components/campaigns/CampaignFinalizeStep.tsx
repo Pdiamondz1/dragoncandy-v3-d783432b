@@ -12,11 +12,12 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Rocket, FileText, HelpCircle, DollarSign, Clock, Image, Video, Film, LayoutGrid } from 'lucide-react';
 import { format } from 'date-fns';
 import { useCampaigns } from '@/hooks/useCampaigns';
+import type { Database } from '@/integrations/supabase/types';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import CostBreakdown from './CostBreakdown';
-import DeliveryBadge from './DeliveryBadge';
+import { CostBreakdown } from './CostBreakdown';
+import { DeliveryBadge } from './DeliveryBadge';
 import type { DeliveryTier } from '@/types/campaignMedia';
 import type { PricingType } from './PricingTypeSelector';
 import type { CampaignAnalysis } from '@/types/campaign';
@@ -65,7 +66,7 @@ interface CampaignFinalizeStepProps {
   onBack: () => void;
 }
 
-const CampaignFinalizeStep: React.FC<CampaignFinalizeStepProps> = ({
+export const CampaignFinalizeStep: React.FC<CampaignFinalizeStepProps> = ({
   campaignData,
   onBack,
 }) => {
@@ -187,7 +188,7 @@ const CampaignFinalizeStep: React.FC<CampaignFinalizeStepProps> = ({
         // Update existing draft campaign
         const { data: updatedCampaign, error: updateError } = await supabase
           .from('campaigns')
-          .update(campaignPayload as any)
+          .update(campaignPayload as unknown as Database['public']['Tables']['campaigns']['Update'])
           .eq('id', campaignData.draftCampaignId)
           .select('id')
           .single();
@@ -196,7 +197,7 @@ const CampaignFinalizeStep: React.FC<CampaignFinalizeStepProps> = ({
         campaign = updatedCampaign;
       } else {
         // Create a new campaign
-        campaign = await createCampaign.mutateAsync(campaignPayload as any);
+        campaign = await createCampaign.mutateAsync(campaignPayload as unknown as Parameters<typeof createCampaign.mutateAsync>[0]);
       }
 
       // Insert structured deliverables if present
@@ -676,4 +677,3 @@ const CampaignFinalizeStep: React.FC<CampaignFinalizeStepProps> = ({
   );
 };
 
-export default CampaignFinalizeStep;

@@ -40,8 +40,9 @@ export const useBusinessProfileSubmit = () => {
 
       const accountType = isBrand ? 'brand' : 'restaurant';
 
-      // Base profile data
-      const profileData: any = {
+      type BusinessProfileUpdate = Database['public']['Tables']['business_profiles']['Update'];
+      // Base profile data (user_id added at insert time)
+      const profileData: BusinessProfileUpdate = {
         business_name: formData.business_name,
         industry: formData.industry as IndustryType,
         website_url: formData.website_url,
@@ -112,11 +113,11 @@ export const useBusinessProfileSubmit = () => {
       });
 
       return true;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error updating profile:', error);
       const msg = error instanceof UploadError
         ? `Upload failed: ${error.message}`
-        : error.message || 'Please try again.';
+        : error instanceof Error ? error.message : 'Please try again.';
       toast({
         title: "Error updating profile",
         description: msg,

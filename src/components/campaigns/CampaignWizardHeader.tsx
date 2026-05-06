@@ -12,7 +12,7 @@ interface CampaignWizardHeaderProps {
   steps: Step[];
 }
 
-const CampaignWizardHeader: React.FC<CampaignWizardHeaderProps> = ({
+export const CampaignWizardHeader: React.FC<CampaignWizardHeaderProps> = ({
   currentStep,
   steps,
 }) => {
@@ -20,7 +20,7 @@ const CampaignWizardHeader: React.FC<CampaignWizardHeaderProps> = ({
     <>
       {/* Header */}
       <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Campaign Wizard</h1>
+        <h2 className="text-3xl font-bold text-gray-900 mb-2">Campaign Wizard</h2>
         <p className="text-gray-600">
           Let DragonCandy AI analyze your goals and create the perfect campaign structure
         </p>
@@ -65,4 +65,3 @@ const CampaignWizardHeader: React.FC<CampaignWizardHeaderProps> = ({
   );
 };
 
-export default CampaignWizardHeader;

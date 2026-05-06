@@ -8,7 +8,7 @@ interface ApplicationStatusBadgeProps {
   showIcon?: boolean;
 }
 
-const ApplicationStatusBadge: React.FC<ApplicationStatusBadgeProps> = ({ 
+export const ApplicationStatusBadge: React.FC<ApplicationStatusBadgeProps> = ({ 
   status, 
   showIcon = true 
 }) => {
@@ -63,4 +63,3 @@ const ApplicationStatusBadge: React.FC<ApplicationStatusBadgeProps> = ({
   );
 };
 
-export default ApplicationStatusBadge;

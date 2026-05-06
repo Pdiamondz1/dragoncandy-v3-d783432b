@@ -4,15 +4,15 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import DashboardLayout from '@/components/DashboardLayout';
+import { DashboardLayout } from '@/components/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { useBrandSponsorships } from '@/hooks/useBrandSponsorships';
+import { useBrandSponsorships, type BrandSponsorship } from '@/hooks/useBrandSponsorships';
 import { useSponsorshipComplete } from '@/hooks/useSponsorshipComplete';
 import { useSponsorshipPayment } from '@/hooks/useSponsorshipPayment';
-import SponsorshipRatingPromptManager from '@/components/reviews/SponsorshipRatingPromptManager';
-import ResponsiveRatingModal from '@/components/reviews/ResponsiveRatingModal';
-import { Target, DollarSign, Calendar, ExternalLink, Loader2, MessageSquare, CheckCircle, Clock, Star, CreditCard, RefreshCw } from 'lucide-react';
+import { SponsorshipRatingPromptManager } from '@/components/reviews/SponsorshipRatingPromptManager';
+import { ResponsiveRatingModal } from '@/components/reviews/ResponsiveRatingModal';
+import { Target, ExternalLink, Loader2, MessageSquare, CheckCircle, Clock, Star, CreditCard, RefreshCw } from 'lucide-react';
 import { DCSkeleton } from '@/components/ui/dc-skeleton';
 import { DCEmptyState } from '@/components/ui/dc-empty-state';
 import { format } from 'date-fns';
@@ -71,7 +71,7 @@ const BrandSponsorships = () => {
     }
   };
 
-  const handleMessageRestaurant = async (sponsorship: any) => {
+  const handleMessageRestaurant = async (sponsorship: BrandSponsorship) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
@@ -94,7 +94,7 @@ const BrandSponsorships = () => {
     }
   };
 
-  const handleLeaveReview = (sponsorship: any) => {
+  const handleLeaveReview = (sponsorship: BrandSponsorship) => {
     setRatingModal({
       isOpen: true,
       sponsorshipId: sponsorship.id,
@@ -103,7 +103,7 @@ const BrandSponsorships = () => {
     });
   };
 
-  const handlePayment = (sponsorship: any) => {
+  const handlePayment = (sponsorship: BrandSponsorship) => {
     initiatePayment.mutate({
       sponsorshipId: sponsorship.id,
       amount: sponsorship.sponsorship_amount || 0,
@@ -111,11 +111,11 @@ const BrandSponsorships = () => {
     });
   };
 
-  const handleVerifyPayment = (sponsorship: any) => {
+  const handleVerifyPayment = (sponsorship: BrandSponsorship) => {
     verifyPayment.mutate({ sponsorshipId: sponsorship.id });
   };
 
-  const getPaymentSection = (sponsorship: any) => {
+  const getPaymentSection = (sponsorship: BrandSponsorship) => {
     if (sponsorship.status !== 'accepted' && sponsorship.status !== 'completed') return null;
 
     const paymentStatus = sponsorship.payment_status || 'unpaid';
@@ -174,7 +174,7 @@ const BrandSponsorships = () => {
     );
   };
 
-  const getCompletionButton = (proposal: any) => {
+  const getCompletionButton = (proposal: BrandSponsorship) => {
     const brandStatus = proposal.brand_completion_status || 'pending';
     const businessStatus = proposal.business_completion_status || 'pending';
     const isCompleted = !!proposal.completed_at;

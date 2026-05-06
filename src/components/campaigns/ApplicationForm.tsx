@@ -15,7 +15,7 @@ interface ApplicationFormProps {
   onCancel?: () => void;
 }
 
-const ApplicationForm: React.FC<ApplicationFormProps> = ({ 
+export const ApplicationForm: React.FC<ApplicationFormProps> = ({ 
   campaign, 
   onSuccess, 
   onCancel 
@@ -85,7 +85,7 @@ const ApplicationForm: React.FC<ApplicationFormProps> = ({
               {campaign.pricing_type === 'fixed' && campaign.fixed_price
                 ? `${formatCurrency(campaign.fixed_price)} Fixed`
                 : campaign.budget_max
-                  ? `${formatCurrency(campaign.budget_min)} - ${formatCurrency(campaign.budget_max)}`
+                  ? `${formatCurrency(campaign.budget_min ?? null)} - ${formatCurrency(campaign.budget_max ?? null)}`
                   : 'Budget not specified'
               }
             </Badge>
@@ -214,4 +214,3 @@ const ApplicationForm: React.FC<ApplicationFormProps> = ({
   );
 };
 
-export default ApplicationForm;

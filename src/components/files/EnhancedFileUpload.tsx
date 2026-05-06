@@ -1,9 +1,10 @@
 
 import React from 'react';
 import { useFileUploadLogic } from '@/hooks/useFileUploadLogic';
-import FileUploadDropzone from './FileUploadDropzone';
-import FileValidationErrors from './FileValidationErrors';
-import FileUploadProgressComponent from './FileUploadProgress';
+import type { FileUpload } from '@/types/files';
+import { FileUploadDropzone } from './FileUploadDropzone';
+import { FileValidationErrors } from './FileValidationErrors';
+import { FileUploadProgressComponent } from './FileUploadProgress';
 
 interface EnhancedFileUploadProps {
   bucketName: string;
@@ -11,11 +12,11 @@ interface EnhancedFileUploadProps {
   category?: string;
   maxFiles?: number;
   acceptedTypes?: string[];
-  onUploadComplete?: (files: any[]) => void;
+  onUploadComplete?: (files: FileUpload[]) => void;
   className?: string;
 }
 
-const EnhancedFileUpload: React.FC<EnhancedFileUploadProps> = ({
+export const EnhancedFileUpload: React.FC<EnhancedFileUploadProps> = ({
   bucketName,
   campaignId,
   category = 'general',
@@ -54,4 +55,3 @@ const EnhancedFileUpload: React.FC<EnhancedFileUploadProps> = ({
   );
 };
 
-export default EnhancedFileUpload;

@@ -1,0 +1,1202 @@
+<!DOCTYPE html><html><head><title></title><meta charset="utf-8"><style>* {
+	box-sizing: border-box;
+}
+
+html {
+	font-size: 100%;
+}
+
+body {
+	font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell',
+		'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+	line-height: 1.6;
+	font-size: 0.6875em; /* 11 pt */
+	color: #111;
+	margin: 0;
+}
+
+body > :first-child {
+	padding-top: 0;
+	margin-top: 0;
+}
+
+body > :last-child {
+	margin-bottom: 0;
+	padding-bottom: 0;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+	margin: 0;
+	padding: 0.5em 0 0.25em;
+}
+
+h5,
+h6 {
+	padding: 0;
+}
+
+h5 {
+	font-size: 1em;
+}
+
+h6 {
+	font-size: 0.875em;
+	text-transform: uppercase;
+}
+
+p {
+	margin: 0.25em 0 1em;
+}
+
+blockquote {
+	margin: 0.5em 0 1em;
+	padding-left: 0.5em;
+	padding-right: 1em;
+	border-left: 4px solid gainsboro;
+	font-style: italic;
+}
+
+ul,
+ol {
+	margin: 0;
+	margin-left: 1em;
+	padding: 0 1.5em 0.5em;
+}
+
+pre {
+	white-space: pre-wrap;
+}
+
+h1 code,
+h2 code,
+h3 code,
+h4 code,
+h5 code,
+h6 code,
+p code,
+li code,
+pre code {
+	background-color: #f8f8f8;
+	padding: 0.1em 0.375em;
+	border: 1px solid #f8f8f8;
+	border-radius: 0.25em;
+	font-family: monospace;
+	font-size: 1.2em;
+}
+
+pre code {
+	display: block;
+	padding: 0.5em;
+}
+
+.page-break {
+	page-break-after: always;
+}
+
+img {
+	max-width: 100%;
+	margin: 1em 0;
+}
+
+table {
+	border-spacing: 0;
+	border-collapse: collapse;
+	display: block;
+	margin: 0 0 1em;
+	width: 100%;
+	overflow: auto;
+}
+
+table th,
+table td {
+	padding: 0.5em 1em;
+	border: 1px solid gainsboro;
+}
+
+table th {
+	font-weight: 600;
+}
+
+table tr {
+	background-color: white;
+	border-top: 1px solid gainsboro;
+}
+
+table tr:nth-child(2n) {
+	background-color: whitesmoke;
+}
+/*# sourceURL=C:\Users\dwill\AppData\Roaming\npm\node_modules\md-to-pdf\markdown.css*/</style><style>pre code.hljs {
+  display: block;
+  overflow-x: auto;
+  padding: 1em
+}
+code.hljs {
+  padding: 3px 5px
+}
+/*!
+  Theme: GitHub
+  Description: Light theme as seen on github.com
+  Author: github.com
+  Maintainer: @Hirse
+  Updated: 2021-05-15
+
+  Outdated base version: https://github.com/primer/github-syntax-light
+  Current colors taken from GitHub's CSS
+*/
+.hljs {
+  color: #24292e;
+  background: #ffffff
+}
+.hljs-doctag,
+.hljs-keyword,
+.hljs-meta .hljs-keyword,
+.hljs-template-tag,
+.hljs-template-variable,
+.hljs-type,
+.hljs-variable.language_ {
+  /* prettylights-syntax-keyword */
+  color: #d73a49
+}
+.hljs-title,
+.hljs-title.class_,
+.hljs-title.class_.inherited__,
+.hljs-title.function_ {
+  /* prettylights-syntax-entity */
+  color: #6f42c1
+}
+.hljs-attr,
+.hljs-attribute,
+.hljs-literal,
+.hljs-meta,
+.hljs-number,
+.hljs-operator,
+.hljs-variable,
+.hljs-selector-attr,
+.hljs-selector-class,
+.hljs-selector-id {
+  /* prettylights-syntax-constant */
+  color: #005cc5
+}
+.hljs-regexp,
+.hljs-string,
+.hljs-meta .hljs-string {
+  /* prettylights-syntax-string */
+  color: #032f62
+}
+.hljs-built_in,
+.hljs-symbol {
+  /* prettylights-syntax-variable */
+  color: #e36209
+}
+.hljs-comment,
+.hljs-code,
+.hljs-formula {
+  /* prettylights-syntax-comment */
+  color: #6a737d
+}
+.hljs-name,
+.hljs-quote,
+.hljs-selector-tag,
+.hljs-selector-pseudo {
+  /* prettylights-syntax-entity-tag */
+  color: #22863a
+}
+.hljs-subst {
+  /* prettylights-syntax-storage-modifier-import */
+  color: #24292e
+}
+.hljs-section {
+  /* prettylights-syntax-markup-heading */
+  color: #005cc5;
+  font-weight: bold
+}
+.hljs-bullet {
+  /* prettylights-syntax-markup-list */
+  color: #735c0f
+}
+.hljs-emphasis {
+  /* prettylights-syntax-markup-italic */
+  color: #24292e;
+  font-style: italic
+}
+.hljs-strong {
+  /* prettylights-syntax-markup-bold */
+  color: #24292e;
+  font-weight: bold
+}
+.hljs-addition {
+  /* prettylights-syntax-markup-inserted */
+  color: #22863a;
+  background-color: #f0fff4
+}
+.hljs-deletion {
+  /* prettylights-syntax-markup-deleted */
+  color: #b31d28;
+  background-color: #ffeef0
+}
+.hljs-char.escape_,
+.hljs-link,
+.hljs-params,
+.hljs-property,
+.hljs-punctuation,
+.hljs-tag {
+  /* purposely ignored */
+  
+}/*# sourceURL=C:\Users\dwill\AppData\Roaming\npm\node_modules\md-to-pdf\node_modules\highlight.js\styles\github.css*/</style></head>
+	<body class="">
+		<h1 id="dragoncandy-x-outstandso-social-media-integration-strategy--design">DragonCandy x Outstand.so: Social Media Integration Strategy &amp; Design</h1>
+<p><strong>Date:</strong> May 3, 2026
+<strong>Audience:</strong> Lead Developer, Engineering Team, Business Stakeholders
+<strong>Status:</strong> Approved Design — Ready for Implementation Planning
+<strong>Cost Governance:</strong> This spec inherits token budgets and model routing from the <a href="2026-05-03-donny-ai-cost-architecture-design.md">Donny AI Cost Architecture spec</a>.</p>
+<hr>
+<h2 id="executive-summary">Executive Summary</h2>
+<p>DragonCandy connects restaurants, creators, and brands for content delivery — but today, the social media posting that makes that content valuable happens entirely outside the platform. This integration closes the loop: content gets created, approved, AND published within DragonCandy, with Donny AI reducing friction to near-zero.</p>
+<p><strong>Integration Partner:</strong> Outstand.so — a unified, developer-first social media API supporting 10 platforms through a single REST API. White-label ready, usage-based pricing ($0.01/post after 1,000 included), and a 25-tool MCP server purpose-built for AI agent workflows.</p>
+<h3 id="core-decisions">Core Decisions</h3>
+<table>
+<thead>
+<tr>
+<th>Decision</th>
+<th>Choice</th>
+<th>Rationale</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Feature Scope</td>
+<td>Full suite (posting, scheduling, analytics, engagement)</td>
+<td>Complete vision for dev team, even if phased</td>
+</tr>
+<tr>
+<td>Account Model</td>
+<td>Each role connects own accounts</td>
+<td>Simplest foundation; delegated access designed for future</td>
+</tr>
+<tr>
+<td>Interaction Model</td>
+<td>Donny-first, manual UI as fallback</td>
+<td>Aligns with "less typing" philosophy; Outstand MCP enables this</td>
+</tr>
+<tr>
+<td>Rollout Strategy</td>
+<td>Role-first (Restaurant → Creator → Brand → Cross-role)</td>
+<td>Restaurants get value first; each phase builds on the last</td>
+</tr>
+<tr>
+<td>Campaign Tie-in</td>
+<td>Deep integration</td>
+<td>Social hooks at every campaign lifecycle stage</td>
+</tr>
+</tbody></table>
+<h3 id="platform-priorities-by-role">Platform Priorities by Role</h3>
+<table>
+<thead>
+<tr>
+<th>Role</th>
+<th>Primary Platforms</th>
+<th>Secondary</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Restaurant</td>
+<td>Instagram, TikTok, Google Business Profile, Facebook</td>
+<td>YouTube, Threads</td>
+</tr>
+<tr>
+<td>Creator</td>
+<td>Instagram, TikTok, YouTube, X</td>
+<td>Threads, LinkedIn</td>
+</tr>
+<tr>
+<td>Brand</td>
+<td>Instagram, TikTok, LinkedIn, YouTube</td>
+<td>Facebook, X</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="1-restaurant-role-social-media-strategy">1. Restaurant Role: Social Media Strategy</h2>
+<h3 id="value-proposition">Value Proposition</h3>
+<blockquote>
+<p>"Run your restaurant's entire social media presence without leaving DragonCandy — or just tell Donny what to post."</p>
+</blockquote>
+<h3 id="core-workflow-daily-social-management">Core Workflow: Daily Social Management</h3>
+<pre><code>Step 1: CONNECT ACCOUNTS (one-time setup)
+  └─ OAuth flow → Instagram, TikTok, Google Business, Facebook
+
+Step 2: CONTENT SOURCES (3 input channels)
+  ├─ Own photos/videos (uploaded by restaurant staff)
+  ├─ Creator deliverables (from approved campaign content)
+  └─ Donny-generated (AI creates posts from menu, events, trends)
+
+Step 3: DONNY CREATES &amp; SCHEDULES
+  └─ "Donny, post today's lunch special to Instagram and Google Business"
+     → Donny writes caption, selects hashtags, picks optimal time,
+       schedules across platforms
+
+Step 4: REVIEW &amp; APPROVE (optional)
+  └─ Content calendar shows scheduled posts → owner previews →
+     approves or edits → publishes
+
+Step 5: ENGAGE &amp; MONITOR
+  └─ Donny alerts on comments/mentions → suggests replies →
+     restaurant approves or auto-responds
+
+Step 6: TRACK PERFORMANCE
+  └─ Unified analytics dashboard → engagement rates, reach,
+     follower growth → feeds into ROI Dashboard
+</code></pre>
+<h3 id="campaign-integrated-workflow">Campaign-Integrated Workflow</h3>
+<p>When a creator's deliverable is approved within a campaign:</p>
+<pre><code>Creator submits deliverable → Restaurant approves content
+                                       │
+                                       ▼
+                    ┌──────────────────────────────────┐
+                    │  Donny prompts: "This reel is    │
+                    │  approved! Want me to post it to  ��
+                    │  your Instagram and TikTok? I'll  │
+                    │  credit @creator and use your     │
+                    │  brand hashtags."                  │
+                    └──────────────────────────────────┘
+                                       │
+                         ┌─────────┬───┴────┬─────────���┐
+                         ▼         ▼        ▼          ▼
+                    Post now   Schedule   Edit first   Skip
+</code></pre>
+<h3 id="dragondash-rush-posting">DragonDash Rush Posting</h3>
+<p>The campaign content approval prompt differentiates by cost and speed:</p>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Tier</th>
+<th>AI Work</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>"Post now to all platforms"</strong></td>
+<td>DragonDash rush ($25–50 surcharge)</td>
+<td>T2/Sonnet — multi-platform simultaneous posting with AI-written platform-specific captions, optimized hashtags, cross-tagging</td>
+</tr>
+<tr>
+<td><strong>"Schedule for optimal times"</strong></td>
+<td>Standard</td>
+<td>T1/Haiku — picks best time per platform, queues posts</td>
+</tr>
+<tr>
+<td><strong>"Post to one platform now"</strong></td>
+<td>Standard</td>
+<td>T1/Haiku — single-platform post with caption</td>
+</tr>
+<tr>
+<td><strong>"Edit first" / "Skip"</strong></td>
+<td>Free</td>
+<td>No AI involved</td>
+</tr>
+</tbody></table>
+<p>Same pattern applies in Creator cross-post (Section 2) and Brand amplification (Section 3).</p>
+<h3 id="key-restaurant-features">Key Restaurant Features</h3>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Content Calendar</strong></td>
+<td>Visual weekly/monthly view of scheduled posts across all platforms. Drag-and-drop rescheduling.</td>
+</tr>
+<tr>
+<td><strong>Social Analytics</strong></td>
+<td>Engagement, reach, follower growth, best posting times. Feeds directly into existing ROI Dashboard.</td>
+</tr>
+<tr>
+<td><strong>Engagement Hub</strong></td>
+<td>Unified inbox for comments and mentions across platforms. Donny suggests replies, restaurant approves.</td>
+</tr>
+<tr>
+<td><strong>UGC Reposting</strong></td>
+<td>When creators tag the restaurant, Donny detects it and offers to reshare to the restaurant's accounts.</td>
+</tr>
+<tr>
+<td><strong>Google Business Sync</strong></td>
+<td>Auto-post updates, photos, and specials to Google Business Profile — critical for local search visibility.</td>
+</tr>
+<tr>
+<td><strong>Donny Auto-Pilot</strong></td>
+<td>Optional: Donny generates and schedules a weekly content plan based on menu, events, and trending topics.</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="2-creator-role-social-media-strategy">2. Creator Role: Social Media Strategy</h2>
+<h3 id="value-proposition-1">Value Proposition</h3>
+<blockquote>
+<p>"Every deliverable you create on DragonCandy becomes content for your own channels too — Donny handles the cross-posting so you can focus on creating."</p>
+</blockquote>
+<h3 id="core-workflow-campaign-content-to-personal-brand-growth">Core Workflow: Campaign Content to Personal Brand Growth</h3>
+<pre><code>Step 1: CONNECT ACCOUNTS (one-time setup)
+  └�� OAuth flow → Instagram, TikTok, YouTube, X
+
+Step 2: CREATE CAMPAIGN CONTENT (existing DragonCandy flow)
+  └─ Creator produces deliverables for restaurant/brand campaigns →
+     uploads to DragonCandy → gets approved
+
+Step 3: DONNY CROSS-POST PROMPT (the magic moment)
+  └─ "Your reel for Sakura Sushi just got approved! Want me to
+     post a version to your Instagram and TikTok? I'll adjust
+     the caption for your audience and add your portfolio hashtags."
+     ├─ Cross-post now
+     ├─ Schedule for later
+     ├─ Customize caption/hashtags
+     └─ Skip
+
+Step 4: STANDALONE CONTENT CREATION (beyond campaigns)
+  └─ Creators post their own original content — behind-the-scenes,
+     day-in-my-life, portfolio highlights. Donny helps write
+     captions and schedule.
+
+Step 5: BUILD SOCIAL PROOF
+  └─ Analytics from connected accounts automatically enhance the
+     creator's DragonCandy profile — follower counts, engagement
+     rates, top posts become portfolio proof points.
+
+Step 6: WIN MORE CAMPAIGNS
+  └─ Verified social metrics make the creator more competitive →
+     restaurants/brands see real engagement data → more invitations
+     and higher rates.
+</code></pre>
+<h3 id="the-creator-flywheel">The Creator Flywheel</h3>
+<p>Every campaign deliverable feeds a growth loop:</p>
+<pre><code>        ┌──��───────────────────────────────┐
+        │  Create content via DC campaigns │
+        └──────────────┬───────────────────┘
+                       │
+                       ▼
+        ┌──────��─────────────��─────────────┐
+        │  Cross-post to own socials       │
+        │  (via Donny + Outstand)          │
+        └──────────────┬───────────────────┘
+                       │
+                       ▼
+        ┌────────────────���─────────────────┐
+        │  Grow audience &amp; metrics         │
+        │  (engagement, followers, reach)  │
+        └──────────────┬────────────────��──���
+                       │
+                       ▼
+        ┌──────────���─────────────────────���─┐
+        │  Stronger DC profile             │
+        │  (verified metrics = social      │
+        │   proof for restaurants/brands)  │
+        └──────────────┬──────────────���────┘
+                       │
+                       ▼
+              More campaigns &amp; higher rates
+                       │
+                       └──────── loops back to top
+</code></pre>
+<h3 id="key-creator-features">Key Creator Features</h3>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Auto Cross-Post</strong></td>
+<td>When campaign content is approved, Donny offers to post a creator-branded version to their own channels with one tap.</td>
+</tr>
+<tr>
+<td><strong>Portfolio Analytics</strong></td>
+<td>Real engagement data from connected accounts feeds into the creator's DragonCandy profile — verified, not self-reported.</td>
+</tr>
+<tr>
+<td><strong>Content Calendar</strong></td>
+<td>Schedule posts across personal channels. Campaign deadlines and social posts in one unified calendar view.</td>
+</tr>
+<tr>
+<td><strong>Donny Caption Writer</strong></td>
+<td>Donny rewrites campaign captions for the creator's personal voice — different tone, hashtags, and CTA for their audience vs. the restaurant's.</td>
+</tr>
+<tr>
+<td><strong>Growth Insights</strong></td>
+<td>Donny analyzes which campaign content performed best on creator's socials and recommends what types of campaigns to apply for next.</td>
+</tr>
+<tr>
+<td><strong>Verified Creator Badge</strong></td>
+<td>Creators with connected and active social accounts get a "Verified" badge on their profile — builds trust with restaurants and brands.</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="3-brand-role-social-media-strategy">3. Brand Role: Social Media Strategy</h2>
+<h3 id="value-proposition-2">Value Proposition</h3>
+<blockquote>
+<p>"Sponsor a campaign and watch it go live across the restaurant's, creator's, AND your own channels — with real-time performance data flowing back to your dashboard."</p>
+</blockquote>
+<h3 id="core-workflow-sponsorship-to-amplification-to-measurement">Core Workflow: Sponsorship to Amplification to Measurement</h3>
+<pre><code>Step 1: CONNECT ACCOUNTS (one-time setup)
+  └─ OAuth flow → Instagram, TikTok, LinkedIn, YouTube
+
+Step 2: SPONSOR A CAMPAIGN (existing DragonCandy flow)
+  └─ Brand discovers and sponsors a restaurant campaign →
+     sets budget, terms, content requirements
+
+Step 3: CONTENT GETS CREATED &amp; APPROVED
+  └─ Creator produces deliverables → restaurant approves →
+     brand reviews sponsored content for brand guidelines compliance
+
+Step 4: DONNY AMPLIFICATION PROMPT
+  └─ "The sponsored reel for Sakura Sushi x Coca-Cola is live on
+     the restaurant's Instagram! Want me to amplify it?"
+     ├─ Repost to brand's Instagram &amp; LinkedIn with sponsor copy
+     ├─ Create a "behind the sponsorship" story for brand's TikTok
+     └─ Start tracking engagement across all 3 parties' posts
+
+Step 5: MULTI-CHANNEL PERFORMANCE TRACKING
+  └─ Unified view: how did the sponsored content perform across
+     the restaurant's accounts, the creator's accounts, AND the
+     brand's own accounts?
+
+Step 6: SPONSORSHIP ROI REPORT
+  └─ Donny generates a per-sponsorship ROI report: total reach,
+     engagement, cost-per-impression, and recommendation for
+     next sponsorship.
+</code></pre>
+<h3 id="the-brand-multiplier-effect">The Brand Multiplier Effect</h3>
+<p>One sponsored campaign produces content across three audiences:</p>
+<pre><code>                 ┌─────────────────────────┐
+                 │  1 Sponsored Campaign    │
+                 └────────┬────────────────┘
+              ┌───────────┼──���────────────┐
+              ▼           ▼               ▼
+     ┌────────────┐ ┌──────────┐  ┌────────────┐
+     │ Restaurant │ │ Creator  │  │   Brand    │
+     │            │ │          │  │            │
+     │ Posts to   │ │ Cross-   │  │ Amplifies  │
+     │ IG, TikTok │ │ posts to │  │ on IG,     │
+     │ GBP, FB    │ │ IG, TT,  │  │ TikTok,    │
+     │            │ │ YT, X    │  │ LinkedIn,  │
+     │ 15K local  │ │ 50K      │  │ YouTube    │
+     │ followers  │ │ engaged  │  │ 200K brand │
+     │            │ │ followers│  │ followers  │
+     └─────┬──────┘ └────┬─────┘  └─────┬──────┘
+           └──────────────┼────────���─────┘
+                          ▼
+              265K+ combined reach
+              All tracked in one dashboard
+</code></pre>
+<h3 id="key-brand-features">Key Brand Features</h3>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Sponsorship Amplification</strong></td>
+<td>One-tap repost of sponsored campaign content to the brand's own channels with Donny-written sponsor copy.</td>
+</tr>
+<tr>
+<td><strong>Cross-Party Analytics</strong></td>
+<td>See how sponsored content performed across ALL parties — restaurant, creator, AND brand accounts. Total reach, impressions, engagement.</td>
+</tr>
+<tr>
+<td><strong>Creator Vetting by Metrics</strong></td>
+<td>Browse creators with verified, real-time social metrics. Filter by engagement rate, audience size, platform strength, content niche.</td>
+</tr>
+<tr>
+<td><strong>Donny Sponsorship Intelligence</strong></td>
+<td>"Which campaigns should I sponsor next?" — Donny recommends based on past sponsorship ROI, trending content categories, and audience overlap.</td>
+</tr>
+<tr>
+<td><strong>Brand Guidelines Enforcement</strong></td>
+<td>Set brand voice, required hashtags, mandatory disclosures (#ad, #sponsored). Donny auto-applies when amplifying content.</td>
+</tr>
+<tr>
+<td><strong>Sponsorship ROI Reports</strong></td>
+<td>Donny generates per-sponsorship reports: cost-per-impression, engagement rate, audience demographics, and "sponsor again?" recommendation.</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="4-donny-ai-the-social-media-brain">4. Donny AI: The Social Media Brain</h2>
+<h3 id="architecture">Architecture</h3>
+<pre><code>User ──→ Donny AI ──→ Outstand MCP (25 tools) ──→ 10 Social Platforms
+ │         │              │
+ │    Interprets     Handles OAuth,
+ │    intent,        rate limits,
+ │    writes copy,   media formatting,
+ │    picks time     platform rules
+ │
+ ���─ "Post my special to Instagram"
+    (natural language, zero UI navigation)
+</code></pre>
+<h3 id="donny-capabilities-via-outstand-mcp">Donny Capabilities via Outstand MCP</h3>
+<table>
+<thead>
+<tr>
+<th>Category</th>
+<th>What Donny Can Do</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Create</strong></td>
+<td>Write captions, select hashtags, format per platform requirements</td>
+</tr>
+<tr>
+<td><strong>Schedule</strong></td>
+<td>Pick optimal posting times based on analytics, queue content</td>
+</tr>
+<tr>
+<td><strong>Publish</strong></td>
+<td>Post to multiple platforms simultaneously in one action</td>
+</tr>
+<tr>
+<td><strong>Analyze</strong></td>
+<td>Pull engagement stats, track follower growth, identify trends</td>
+</tr>
+<tr>
+<td><strong>Engage</strong></td>
+<td>Read comments, draft replies, detect mentions and tags</td>
+</tr>
+<tr>
+<td><strong>Manage</strong></td>
+<td>Upload media, list connected accounts, manage connections</td>
+</tr>
+</tbody></table>
+<h3 id="example-commands-by-role">Example Commands by Role</h3>
+<p><strong>Restaurant:</strong></p>
+<ul>
+<li>"Donny, post our new salmon roll photo to Instagram and Google Business with today's lunch special pricing"</li>
+<li>"Donny, schedule a week of posts using the content from our last 3 campaigns"</li>
+<li>"Donny, what's our best performing post this month?"</li>
+<li>"Donny, reply to the Google reviews from this week — thank positive ones, address concerns professionally"</li>
+</ul>
+<p><strong>Creator:</strong></p>
+<ul>
+<li>"Donny, cross-post that approved reel to my TikTok and Instagram — use my voice, not the restaurant's"</li>
+<li>"Donny, what kind of campaign content gets me the most engagement on my channels?"</li>
+<li>"Donny, schedule my behind-the-scenes from the shoot for Thursday at 6pm on all platforms"</li>
+<li>"Donny, show me how my follower count has grown since I started on DragonCandy"</li>
+</ul>
+<p><strong>Brand:</strong></p>
+<ul>
+<li>"Donny, amplify the Sakura Sushi campaign to our LinkedIn and Instagram with sponsor copy"</li>
+<li>"Donny, how did our last 5 sponsorships perform across all channels?"</li>
+<li>"Donny, which campaigns in the marketplace would reach an audience that overlaps with ours?"</li>
+<li>"Donny, generate a sponsorship ROI report for Q2 and post the highlights to our LinkedIn"</li>
+</ul>
+<h3 id="donny-automation-levels">Donny Automation Levels</h3>
+<p>Users choose how much autonomy to give Donny:</p>
+<table>
+<thead>
+<tr>
+<th>Level</th>
+<th>Behavior</th>
+<th>Available On</th>
+<th>Action Cost</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Manual</strong></td>
+<td>Donny suggests, user approves every action.</td>
+<td>All tiers</td>
+<td>0 actions</td>
+</tr>
+<tr>
+<td><strong>Assisted</strong> (default)</td>
+<td>Donny drafts posts and schedules them. User reviews before publish.</td>
+<td>Starter+</td>
+<td>1–3 actions/post</td>
+</tr>
+<tr>
+<td><strong>Auto-Pilot</strong></td>
+<td>Donny generates, schedules, and publishes autonomously. Daily summary.</td>
+<td>Growth+</td>
+<td>10 actions/day</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="5-campaign-lifecycle-social-media-hooks">5. Campaign Lifecycle: Social Media Hooks</h2>
+<p>Social media is woven into every stage of the campaign flow, not bolted on as an afterthought.</p>
+<pre><code>┌──────────────────┐    ┌───���──────────────────────────────────────┐
+│ CAMPAIGN CREATED │───▶│ Social Hook: Donny offers to announce    │
+│ Restaurant       │    │ the campaign on restaurant's socials.    │
+│ publishes        │    │ "Looking for creators! Apply on DC"      │
+└────────┬────────���┘    └────────────────��─────────────────────────┘
+         │
+         ▼
+┌──────────────────┐    ┌───────────��─────────────���────────────────┐
+│ BRAND SPONSORS   │─���─▶│ Social Hook: Brand can announce          │
+│ Brand backs      │    │ partnership on LinkedIn. "Proud to       │
+│ campaign         │    │ sponsor local creators at [Restaurant]"  │
+└────────��─────────┘    └──────────��────────────────────────���──────┘
+         │
+         ▼
+┌─────────────��────┐    ┌──────────────────────────────────────────┐
+│ CREATOR MATCHED  │───▶│ Social Hook: Creator can share           │
+│ Application      │    │ excitement. "Excited to create for       │
+│ accepted         │    │ [Restaurant]! Stay tuned" (optional)     │
+└────────┬─────────┘    └──────────���────────────────────────────���──┘
+         │
+         ▼
+┌──────────────────┐    ┌───────���────────────────���─────────────────┐
+│ CONTENT APPROVED │───▶│ TRIPLE SOCIAL HOOK (key moment):         │
+│ *** KEY MOMENT   │    │ → Restaurant: Donny posts deliverable    │
+│                  │    │ → Creator: Donny cross-posts creator     │
+│                  │    │   version to creator's channels          │
+│                  │    │ → Brand: Donny amplifies sponsored       │
+│                  │    │   content to brand's channels            │
+└────────┬─────────┘    └───────���─────────────────────────────────���┘
+         │
+         ▼
+┌──────────────────┐    ┌──────��──────────────��────────────────────┐
+│ CAMPAIGN         │───▶│ Analytics Hook: Aggregate social         │
+│ COMPLETE         │    │ performance across all 3 parties →       │
+│ Payment released │    │ feed into ROI Dashboard → Donny          │
+│                  │    │ generates campaign performance summary   │
+└──────────────────���    └─────────────────���────────────────────────┘
+</code></pre>
+<hr>
+<h2 id="6-technical-architecture">6. Technical Architecture</h2>
+<h3 id="system-layers">System Layers</h3>
+<pre><code>┌─────────────────────────────────────────────────────┐
+│  FRONTEND (React + TypeScript)                      │
+│  Content Calendar | Post Composer | Analytics       │
+│  Dashboard | Account Settings | Engagement Hub      │
+└───────────────────────┬─────────────────────────────┘
+                        │
+┌───────────────────────┴────���────────────────────────┐
+│  DONNY AI (MCP Client)                              │
+│  Natural language → social media actions             │
+│  Outstand MCP 25-tool integration                   │
+└───────────────────────┬───────��─────────────────────┘
+                        │
+┌─────────���─────────────┴───────��─────────────────────��
+│  SUPABASE BACKEND                                   │
+│  Edge Functions (Outstand API proxy)                │
+│  Encrypted Token Storage (AES-256)                  │
+│  Social Post Records | Analytics Cache              │
+└───────────────────────┬─────────────────────────────┘
+                        │
+┌───��───────────────────┴──────────────────────────��──┐
+│  OUTSTAND.SO API                                    │
+│  Unified API → 10 social platforms                  │
+│  Handles OAuth, rate limits, media formatting       │
+└──��────────────────────┬──────��──────────────────────┘
+                        │
+    ┌───────┬───────┬───┴───┬────────┬────────┐
+    IG    TikTok  GBP     FB    LinkedIn  YouTube
+                   X    Threads  Bluesky  Pinterest
+</code></pre>
+<h3 id="key-technical-decisions">Key Technical Decisions</h3>
+<table>
+<thead>
+<tr>
+<th>Decision</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>API Proxy</strong></td>
+<td>All Outstand API calls go through Supabase Edge Functions — never direct from client</td>
+</tr>
+<tr>
+<td><strong>Token Storage</strong></td>
+<td>OAuth tokens encrypted with AES-256 in Supabase, following existing <code>toast_connections</code> pattern</td>
+</tr>
+<tr>
+<td><strong>Outstand Auth</strong></td>
+<td>Bearer token API key stored as Supabase secret, not exposed to frontend</td>
+</tr>
+<tr>
+<td><strong>Social Account Linking</strong></td>
+<td>New <code>social_connections</code> table linking profile_id to Outstand social_account_id per platform</td>
+</tr>
+<tr>
+<td><strong>Post Records</strong></td>
+<td>New <code>social_posts</code> table tracking all posts (Outstand post_id, platform, status, analytics)</td>
+</tr>
+<tr>
+<td><strong>Analytics Caching</strong></td>
+<td>Pull analytics from Outstand periodically, cache in Supabase for fast dashboard rendering</td>
+</tr>
+<tr>
+<td><strong>White-Label</strong></td>
+<td>Outstand's white-label mode enabled — no third-party branding surfaces to users</td>
+</tr>
+<tr>
+<td><strong>BYOK Future</strong></td>
+<td>Architecture supports Bring Your Own Keys if users want to connect their own platform developer apps</td>
+</tr>
+</tbody></table>
+<h3 id="outstandso-api-reference">Outstand.so API Reference</h3>
+<table>
+<thead>
+<tr>
+<th>Endpoint</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>POST /v1/posts</code></td>
+<td>Create and optionally schedule a post</td>
+</tr>
+<tr>
+<td><code>GET /v1/posts</code></td>
+<td>List posts with filtering</td>
+</tr>
+<tr>
+<td><code>GET /v1/posts/{id}</code></td>
+<td>Get post details and analytics</td>
+</tr>
+<tr>
+<td><code>DELETE /v1/posts/{id}</code></td>
+<td>Delete or cancel a scheduled post</td>
+</tr>
+<tr>
+<td><code>POST /v1/posts/{id}/comments</code></td>
+<td>Publish a comment/reply</td>
+</tr>
+<tr>
+<td><code>GET /v1/posts/{id}/comments</code></td>
+<td>Retrieve comments</td>
+</tr>
+<tr>
+<td><code>POST /v1/media</code></td>
+<td>Get presigned upload URL</td>
+</tr>
+<tr>
+<td><code>POST /v1/media/{id}/confirm</code></td>
+<td>Confirm upload completion</td>
+</tr>
+<tr>
+<td><code>GET /v1/social-accounts</code></td>
+<td>List connected social accounts</td>
+</tr>
+<tr>
+<td><code>GET /v1/social-accounts/{id}/metrics</code></td>
+<td>Get account-level metrics</td>
+</tr>
+<tr>
+<td><code>POST /v1/social-networks</code></td>
+<td>Initiate OAuth connection</td>
+</tr>
+<tr>
+<td><code>DELETE /v1/social-networks/{id}</code></td>
+<td>Disconnect a social account</td>
+</tr>
+</tbody></table>
+<h3 id="outstand-pricing-for-cost-planning">Outstand Pricing (for cost planning)</h3>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Cost</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Base fee</td>
+<td>$5/month (includes 1,000 posts)</td>
+</tr>
+<tr>
+<td>Per-post overage</td>
+<td>$0.01 per additional post</td>
+</tr>
+<tr>
+<td>Per connected account</td>
+<td>$0.50/month</td>
+</tr>
+<tr>
+<td>Volume discount</td>
+<td>Available for 500K+ monthly posts</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="7-implementation-phases">7. Implementation Phases</h2>
+<h3 id="phase-1-restaurant-social-media-4-5-weeks">Phase 1: Restaurant Social Media (~4-5 weeks)</h3>
+<p><strong>Goal:</strong> Full social media experience for restaurants. Establishes the foundation reused by all later phases.</p>
+<table>
+<thead>
+<tr>
+<th>Step</th>
+<th>Deliverable</th>
+<th>Type</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1a</td>
+<td>Outstand API client &amp; encrypted token storage in Supabase Edge Functions</td>
+<td>Backend / Foundation</td>
+</tr>
+<tr>
+<td>1b</td>
+<td>Donny MCP integration — wire Outstand's 25-tool MCP server into Donny with role-aware prompting</td>
+<td>AI / Foundation</td>
+</tr>
+<tr>
+<td>1c</td>
+<td>Account connection UI — OAuth flow in restaurant settings, connected account display</td>
+<td>Frontend</td>
+</tr>
+<tr>
+<td>1d</td>
+<td>Post creation &amp; scheduling — Donny-first + manual composer, multi-platform publish, content calendar</td>
+<td>Frontend + Backend</td>
+</tr>
+<tr>
+<td>1e</td>
+<td>Analytics &amp; engagement — per-post and account-level analytics, engagement hub, ROI Dashboard integration</td>
+<td>Frontend + Backend</td>
+</tr>
+</tbody></table>
+<p><strong>Foundation work in Phase 1 (reused by Phases 2-4):</strong></p>
+<ul>
+<li>Outstand API client (Edge Function)</li>
+<li>OAuth flow components</li>
+<li>Donny MCP social tool routing</li>
+<li>Content calendar component</li>
+<li>Post composer component</li>
+<li>Analytics fetching and caching layer</li>
+</ul>
+<h3 id="phase-2-creator-social-media-3-4-weeks">Phase 2: Creator Social Media (~3-4 weeks)</h3>
+<p><strong>Goal:</strong> Cross-posting, portfolio analytics, and personal brand growth tools for creators.</p>
+<table>
+<thead>
+<tr>
+<th>Deliverable</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Creator account connection</td>
+<td>Reuses Phase 1 OAuth components, configured for creator platforms</td>
+</tr>
+<tr>
+<td>Cross-post on content approval</td>
+<td>Hook into campaign approval flow, Donny prompts creator to cross-post</td>
+</tr>
+<tr>
+<td>Donny caption rewriter</td>
+<td>Takes restaurant-facing caption, rewrites for creator's voice and audience</td>
+</tr>
+<tr>
+<td>Creator content calendar</td>
+<td>Reuses Phase 1 calendar, adds campaign deadline integration</td>
+</tr>
+<tr>
+<td>Portfolio analytics (verified)</td>
+<td>Pull real metrics from connected accounts into creator's DC profile</td>
+</tr>
+<tr>
+<td>Verified Creator badge</td>
+<td>Badge logic based on connected + active accounts</td>
+</tr>
+<tr>
+<td>Growth insights</td>
+<td>Donny analyzes cross-post performance, recommends campaign types</td>
+</tr>
+<tr>
+<td>Standalone posting</td>
+<td>Creators can post non-campaign content through DragonCandy</td>
+</tr>
+</tbody></table>
+<h3 id="phase-3-brand-social-media-3-4-weeks">Phase 3: Brand Social Media (~3-4 weeks)</h3>
+<p><strong>Goal:</strong> Sponsorship amplification, cross-party analytics, and brand intelligence.</p>
+<table>
+<thead>
+<tr>
+<th>Deliverable</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Brand account connection</td>
+<td>Reuses Phase 1 OAuth, configured for brand platforms (LinkedIn priority)</td>
+</tr>
+<tr>
+<td>Sponsorship amplification</td>
+<td>One-tap repost of sponsored content to brand's channels</td>
+</tr>
+<tr>
+<td>Brand guidelines enforcement</td>
+<td>Set voice, hashtags, disclosures; Donny auto-applies</td>
+</tr>
+<tr>
+<td>Cross-party analytics</td>
+<td>Aggregate performance across restaurant + creator + brand accounts per sponsorship</td>
+</tr>
+<tr>
+<td>Creator vetting by metrics</td>
+<td>Enhance creator browse with verified social metrics and filtering</td>
+</tr>
+<tr>
+<td>Donny sponsorship intelligence</td>
+<td>AI-powered recommendations for which campaigns to sponsor</td>
+</tr>
+<tr>
+<td>Sponsorship ROI reports</td>
+<td>Per-sponsorship reports with cost-per-impression, reach, engagement</td>
+</tr>
+<tr>
+<td>Brand content calendar</td>
+<td>Reuses Phase 1 calendar, adds sponsorship timeline integration</td>
+</tr>
+</tbody></table>
+<h3 id="phase-4-cross-role--advanced-3-4-weeks">Phase 4: Cross-Role &amp; Advanced (~3-4 weeks)</h3>
+<p><strong>Goal:</strong> Tie all three roles together in the campaign lifecycle. Advanced automation.</p>
+<table>
+<thead>
+<tr>
+<th>Deliverable</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Campaign social hooks (all 5 stages)</td>
+<td>Social prompts at campaign creation, sponsorship, matching, approval, completion</td>
+</tr>
+<tr>
+<td>Triple-post on content approval</td>
+<td>Simultaneous posting to restaurant, creator, and brand channels on approval</td>
+</tr>
+<tr>
+<td>Donny Auto-Pilot mode</td>
+<td>Autonomous content generation, scheduling, and publishing with notification summaries</td>
+</tr>
+<tr>
+<td>UGC detection &amp; reposting</td>
+<td>Donny detects when creators tag restaurants, offers to reshare</td>
+</tr>
+<tr>
+<td>Unified cross-role analytics</td>
+<td>Combined dashboard showing campaign social performance across all parties</td>
+</tr>
+<tr>
+<td>Donny weekly content planner</td>
+<td>AI generates a week of content based on menu, events, trends, past performance</td>
+</tr>
+<tr>
+<td>Delegated posting (architecture)</td>
+<td>Build the permission model for future cross-account posting (Phase 2 of delegated access)</td>
+</tr>
+<tr>
+<td>Performance-based recommendations</td>
+<td>Donny uses historical data to recommend optimal posting strategies per role</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="8-guiding-principles-for-implementation">8. Guiding Principles for Implementation</h2>
+<table>
+<thead>
+<tr>
+<th>Principle</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Donny First, UI Second</strong></td>
+<td>Every social action should be achievable via Donny. The manual UI is fallback, not primary.</td>
+</tr>
+<tr>
+<td><strong>Never Store Secrets Client-Side</strong></td>
+<td>Outstand API keys and OAuth tokens live in Supabase with AES-256 encryption. Edge Functions proxy all calls.</td>
+</tr>
+<tr>
+<td><strong>White-Label Everything</strong></td>
+<td>Users see "DragonCandy Social" not "Powered by Outstand." No third-party branding surfaces.</td>
+</tr>
+<tr>
+<td><strong>Build for Reuse</strong></td>
+<td>Phase 1 components (OAuth, posting, analytics) are role-agnostic. Phases 2-3 configure, not rebuild.</td>
+</tr>
+<tr>
+<td><strong>Respect Existing Patterns</strong></td>
+<td>Follow the existing Toast POS integration pattern for OAuth token storage and Edge Function proxy design.</td>
+</tr>
+<tr>
+<td><strong>RLS on Everything</strong></td>
+<td>All new social tables follow existing Row Level Security patterns. Users can only access their own social data.</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="9-2026-market-context">9. 2026 Market Context</h2>
+<p>This integration is informed by current social media marketing trends:</p>
+<p><strong>Restaurants:</strong></p>
+<ul>
+<li>Instagram and Google Business Profile are non-negotiable for local discovery</li>
+<li>61% of diners say TikTok food content directly influences where they eat</li>
+<li>Short-form video (Reels, TikTok, YouTube Shorts) is the highest-engagement format</li>
+<li>Staff-led content (EGC) is emerging as a powerful, underused asset in hospitality</li>
+</ul>
+<p><strong>Creators:</strong></p>
+<ul>
+<li>Creator economy revenue growing 16.2% YoY to $20.6 billion in 2026</li>
+<li>Shift toward long-term brand partnerships over one-off sponsorships</li>
+<li>Micro-influencers with local community trust preferred over large national creators</li>
+<li>92% of consumers trust UGC over traditional brand advertising</li>
+</ul>
+<p><strong>Brands:</strong></p>
+<ul>
+<li>Focus on 2-3 platforms done well rather than spreading thin</li>
+<li>AI-driven personalization is becoming foundational</li>
+<li>Performance-driven influencer marketing — brands want measurable ROI, not just impressions</li>
+<li>Authenticity and values-driven branding matter more than polish, especially for Gen Z and Millennials</li>
+</ul>
+<hr>
+<h2 id="10-success-metrics">10. Success Metrics</h2>
+<p>How we know this integration is working:</p>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Target</th>
+<th>Measured By</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Social accounts connected per role</td>
+<td>60% of active users connect at least 1 account within 30 days</td>
+<td>Supabase <code>social_connections</code> table</td>
+</tr>
+<tr>
+<td>Posts published through DragonCandy</td>
+<td>500+ posts/month within 60 days of Phase 1 launch</td>
+<td>Outstand API analytics</td>
+</tr>
+<tr>
+<td>Campaign content cross-posted</td>
+<td>40% of approved deliverables get cross-posted by creators</td>
+<td>Cross-post prompt acceptance rate</td>
+</tr>
+<tr>
+<td>Donny social command usage</td>
+<td>70% of social actions initiated through Donny vs. manual UI</td>
+<td>Analytics events</td>
+</tr>
+<tr>
+<td>Brand amplification rate</td>
+<td>50% of sponsored content amplified to brand's channels</td>
+<td>Sponsorship amplification tracking</td>
+</tr>
+<tr>
+<td>Time-to-post reduction</td>
+<td>80% reduction in time from content approval to social publish</td>
+<td>Timestamp deltas</td>
+</tr>
+<tr>
+<td>Creator profile engagement lift</td>
+<td>25% increase in campaign application rates for verified creators</td>
+<td>Application rate comparison</td>
+</tr>
+</tbody></table>
+
+	
+
+</body></html>

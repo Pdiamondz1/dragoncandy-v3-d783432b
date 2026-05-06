@@ -6,7 +6,6 @@ import { useAuth } from '@/hooks/useAuth';
 import {
   uploadProfileAsset,
   UploadError,
-  type ProfileAssetKind,
 } from '@/lib/storage/uploadProfileAsset';
 import { AvatarCropModal } from '@/components/settings/AvatarCropModal';
 

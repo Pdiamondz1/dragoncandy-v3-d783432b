@@ -9,7 +9,7 @@ interface SubmitSponsorshipProposalParams {
   restaurantUserId: string;
   sponsorshipAmount: number;
   proposalMessage: string;
-  terms?: any;
+  terms?: Record<string, unknown>;
 }
 
 export const useSubmitSponsorshipProposal = () => {
@@ -61,7 +61,7 @@ export const useSubmitSponsorshipProposal = () => {
           terms: params.terms || null,
           status: 'pending',
         })
-        .select()
+        .select('id, campaign_id, brand_id, restaurant_id, sponsorship_amount, proposal_message, terms, status, created_at')
         .single();
 
       if (error) throw error;
@@ -140,7 +140,7 @@ export const useSubmitSponsorshipProposal = () => {
         const recipientEmail = restaurantUser?.email || undefined;
         const recipientName = restaurantUser?.full_name || restaurantProfile?.business_name || 'Restaurant Owner';
         
-        const emailResult = await sendNotification(
+        await sendNotification(
           'sponsorship_proposal',
           recipientEmail,
           recipientName,

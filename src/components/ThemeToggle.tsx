@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 export const ThemeToggle: React.FC = () => {
-  const { setTheme, theme } = useTheme();
+  const { setTheme } = useTheme();
 
   return (
     <DropdownMenu>

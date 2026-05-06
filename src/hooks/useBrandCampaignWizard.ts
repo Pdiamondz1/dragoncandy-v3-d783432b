@@ -128,8 +128,8 @@ export const useBrandCampaignWizard = () => {
           usage_rights_days: detailsData.usageRightsDays,
           exclusivity_days: detailsData.exclusivityDays || null,
           ai_preview_status: 'none',
-          ...(campaignAnalysis ? { ai_analysis: campaignAnalysis as any } : {}),
-        } as any)
+          ...(campaignAnalysis ? { ai_analysis: campaignAnalysis as unknown as Record<string, unknown> } : {}),
+        })
         .select('id')
         .single();
 

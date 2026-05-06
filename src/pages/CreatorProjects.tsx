@@ -1,15 +1,15 @@
 
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import DashboardLayout from '@/components/DashboardLayout';
+import { DashboardLayout } from '@/components/DashboardLayout';
 import { ChevronLeft, AlertCircle } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import ProjectStatsCards from '@/components/projects/ProjectStatsCards';
-import ProjectList from '@/components/projects/ProjectList';
-import CreatorPayoutBanner from '@/components/projects/CreatorPayoutBanner';
+import { ProjectStatsCards } from '@/components/projects/ProjectStatsCards';
+import { ProjectList } from '@/components/projects/ProjectList';
+import { CreatorPayoutBanner } from '@/components/projects/CreatorPayoutBanner';
 import { useToast } from '@/hooks/use-toast';
 
 interface ProjectCollaboration {
@@ -17,9 +17,9 @@ interface ProjectCollaboration {
   campaign_id: string;
   creator_id: string;
   status: 'active' | 'completed' | 'cancelled';
-  contract_details?: any;
-  milestones?: any;
-  deliverables_status?: any;
+  contract_details?: Record<string, unknown> | null;
+  milestones?: Record<string, unknown> | null;
+  deliverables_status?: Record<string, unknown> | null;
   business_completion_status?: string;
   creator_completion_status?: string;
   completed_at?: string | null;

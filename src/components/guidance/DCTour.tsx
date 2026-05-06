@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useLayoutEffect } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "@/lib/motion";
 import { Button } from "@/components/ui/button";
 import type { TourStep } from "@/lib/tours/role-tours";
@@ -9,9 +9,14 @@ interface DCTourProps {
   onSkip: () => void;
 }
 
+const POPOVER_WIDTH = 288;
+const GAP = 12;
+const EDGE_MARGIN = 16;
+
 export function DCTour({ steps, onComplete, onSkip }: DCTourProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
+  const [popoverHeight, setPopoverHeight] = useState(0);
   const popoverRef = useRef<HTMLDivElement>(null);
   const reducedMotion = useReducedMotion();
 
@@ -39,6 +44,12 @@ export function DCTour({ steps, onComplete, onSkip }: DCTourProps) {
     };
   }, [updateTargetRect]);
 
+  useLayoutEffect(() => {
+    if (popoverRef.current) {
+      setPopoverHeight(popoverRef.current.offsetHeight);
+    }
+  }, [currentStep]);
+
   const next = () => {
     if (isLast) {
       onComplete();
@@ -54,21 +65,37 @@ export function DCTour({ steps, onComplete, onSkip }: DCTourProps) {
   if (!step) return null;
 
   const padding = 8;
-  const popoverTop = targetRect
-    ? targetRect.bottom + padding
-    : window.innerHeight / 2;
-  const popoverLeft = targetRect
-    ? Math.min(
-        Math.max(targetRect.left, 16),
-        window.innerWidth - 300
-      )
-    : 16;
 
-  // If popover would go off bottom, position above target
-  const wouldOverflow = popoverTop + 180 > window.innerHeight;
-  const finalTop = wouldOverflow && targetRect
-    ? targetRect.top - 180 - padding
-    : popoverTop;
+  let showAbove = false;
+  let finalTop: number;
+  let finalLeft: number;
+
+  if (targetRect) {
+    const targetCenterX = targetRect.left + targetRect.width / 2;
+    finalLeft = Math.min(
+      Math.max(targetCenterX - POPOVER_WIDTH / 2, EDGE_MARGIN),
+      window.innerWidth - POPOVER_WIDTH - EDGE_MARGIN
+    );
+
+    const spaceBelow = window.innerHeight - targetRect.bottom - GAP;
+    const spaceAbove = targetRect.top - GAP;
+    const h = popoverHeight || 180;
+
+    showAbove = spaceBelow < h && spaceAbove > spaceBelow;
+    finalTop = showAbove
+      ? targetRect.top - h - GAP
+      : targetRect.bottom + GAP;
+  } else {
+    finalTop = window.innerHeight / 2;
+    finalLeft = EDGE_MARGIN;
+  }
+
+  const arrowLeft = targetRect
+    ? Math.min(
+        Math.max(targetRect.left + targetRect.width / 2 - finalLeft - 6, 12),
+        POPOVER_WIDTH - 24
+      )
+    : POPOVER_WIDTH / 2 - 6;
 
   return (
     <div className="fixed inset-0 z-[80]" aria-modal="true" role="dialog">
@@ -132,13 +159,22 @@ export function DCTour({ steps, onComplete, onSkip }: DCTourProps) {
         <motion.div
           key={currentStep}
           ref={popoverRef}
-          initial={reducedMotion ? { opacity: 1 } : { opacity: 0, y: 8 }}
+          initial={reducedMotion ? { opacity: 1 } : { opacity: 0, y: showAbove ? -8 : 8 }}
           animate={{ opacity: 1, y: 0 }}
-          exit={reducedMotion ? { opacity: 0 } : { opacity: 0, y: -8 }}
+          exit={reducedMotion ? { opacity: 0 } : { opacity: 0, y: showAbove ? 8 : -8 }}
           transition={{ duration: 0.15 }}
           className="absolute z-[82] w-72 bg-white rounded-xl shadow-2xl border border-gray-100 p-4"
-          style={{ top: finalTop, left: popoverLeft }}
+          style={{ top: finalTop, left: finalLeft }}
         >
+          {/* Arrow pointing toward target */}
+          <div
+            className="absolute w-3 h-3 bg-white border-gray-100 rotate-45"
+            style={showAbove
+              ? { bottom: -6, left: arrowLeft, borderRight: '1px solid', borderBottom: '1px solid' }
+              : { top: -6, left: arrowLeft, borderLeft: '1px solid', borderTop: '1px solid' }
+            }
+          />
+
           <div className="space-y-2">
             <p className="text-sm font-semibold text-dc-dark">{step.title}</p>
             <p className="text-xs text-gray-600 leading-relaxed">{step.body}</p>

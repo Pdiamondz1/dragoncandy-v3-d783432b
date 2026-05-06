@@ -18,7 +18,6 @@ export interface Conversation {
 
 export const useConversations = () => {
   const { user } = useAuth();
-  const queryClient = useQueryClient();
 
   const query = useQuery({
     queryKey: ['conversations', user?.id],
@@ -37,6 +36,8 @@ export const useConversations = () => {
       return data as Conversation[];
     },
     enabled: !!user,
+    staleTime: 30_000,
+    refetchOnWindowFocus: 'always',
   });
 
   return query;
@@ -130,7 +131,7 @@ export const useCreateCampaignConversation = () => {
           participant_type: participantType,
           title: 'Campaign Discussion',
         })
-        .select()
+        .select('id')
         .single();
 
       if (conversationError) throw conversationError;

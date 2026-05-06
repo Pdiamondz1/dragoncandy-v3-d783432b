@@ -5,7 +5,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card } from '@/components/ui/card';
 import { MessageSquare, Send, Reply } from 'lucide-react';
-import { useCreateFileComment } from '@/hooks/useFileOperations';
+import { useCreateFileComment } from '@/hooks/useFileComments';
 import { useAuth } from '@/hooks/useAuth';
 import type { FileComment } from '@/types/files';
 
@@ -14,7 +14,7 @@ interface FileCommentsPanelProps {
   comments?: FileComment[];
 }
 
-const FileCommentsPanel: React.FC<FileCommentsPanelProps> = ({
+export const FileCommentsPanel: React.FC<FileCommentsPanelProps> = ({
   fileId,
   comments = []
 }) => {
@@ -31,7 +31,7 @@ const FileCommentsPanel: React.FC<FileCommentsPanelProps> = ({
     await createComment.mutateAsync({
       file_upload_id: fileId,
       comment_text: newComment,
-      parent_comment_id: replyTo
+      parent_comment_id: replyTo ?? undefined
     });
 
     setNewComment('');
@@ -151,4 +151,3 @@ const FileCommentsPanel: React.FC<FileCommentsPanelProps> = ({
   );
 };
 
-export default FileCommentsPanel;

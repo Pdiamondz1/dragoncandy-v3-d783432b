@@ -1,5 +1,5 @@
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback } from 'react';
 import type { Database } from '@/integrations/supabase/types';
 
 type CreatorSkill = Database['public']['Enums']['creator_skill'];
@@ -82,7 +82,8 @@ export const useCreatorProfileForm = () => {
     }
   };
 
-  const setFormDataFromProfile = useCallback((profile: any) => {
+  type CreatorProfileRow = Partial<Database['public']['Tables']['creator_profiles']['Row']>;
+  const setFormDataFromProfile = useCallback((profile: CreatorProfileRow) => {
     if (isLoaded) return; // Prevent reloading if already loaded
     
     setFormData({

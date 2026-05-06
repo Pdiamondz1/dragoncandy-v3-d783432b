@@ -7,6 +7,7 @@ import { useDonnyContext } from "@/contexts/DonnyProvider";
 import { ArrowLeft, ThumbsUp, ThumbsDown, Sparkles, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DCSkeleton } from "@/components/ui/dc-skeleton";
+import { SEO } from "@/components/SEO";
 
 export default function HelpArticlePage() {
   const { slug } = useParams<{ slug: string }>();
@@ -19,7 +20,7 @@ export default function HelpArticlePage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("help_articles")
-        .select("*")
+        .select("id, title, body, slug")
         .eq("slug", slug)
         .single();
       if (error) throw error;
@@ -31,7 +32,7 @@ export default function HelpArticlePage() {
   const feedbackMutation = useMutation({
     mutationFn: async (helpful: boolean) => {
       if (!user || !article) return;
-      await supabase.from("help_article_feedback" as any).insert({
+      await supabase.from("help_article_feedback").insert({
         article_id: article.id,
         user_id: user.id,
         helpful,
@@ -70,6 +71,17 @@ export default function HelpArticlePage() {
 
   return (
     <div className="min-h-screen bg-white">
+      <SEO
+        title={`${article.title} - DragonCandy Help`}
+        description={article.body?.slice(0, 155) ?? `Help article: ${article.title}`}
+        path={`/help/${slug}`}
+        jsonLd={{
+          "@context": "https://schema.org",
+          "@type": "Article",
+          "headline": article.title,
+          "url": `https://dragoncandy.io/help/${slug}`,
+        }}
+      />
       <div className="max-w-2xl mx-auto px-4 py-8 lg:py-12">
         {/* Back link */}
         <Link

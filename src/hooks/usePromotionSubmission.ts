@@ -105,11 +105,11 @@ export const usePromotionSubmission = () => {
       });
 
       return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error submitting promotion:', error);
       toast({
         title: "Submission Failed",
-        description: error.message || "Failed to submit. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to submit. Please try again.",
         variant: "destructive",
       });
       return { success: false, reason: 'error' };

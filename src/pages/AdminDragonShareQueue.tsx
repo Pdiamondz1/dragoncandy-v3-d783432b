@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import DashboardLayout from '@/components/DashboardLayout';
+import { DashboardLayout } from '@/components/DashboardLayout';
 import { useAdminDragonShareQueue, useVerifyDragonSharePost } from '@/hooks/useDragonShare';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';

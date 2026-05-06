@@ -48,7 +48,7 @@ interface ContentApprovalPanelProps {
 
 const MAX_REVISIONS = 2;
 
-const ContentApprovalPanel: React.FC<ContentApprovalPanelProps> = ({
+export const ContentApprovalPanel: React.FC<ContentApprovalPanelProps> = ({
   collaborationId,
   campaignId,
   contentStatus,
@@ -187,7 +187,7 @@ const ContentApprovalPanel: React.FC<ContentApprovalPanelProps> = ({
       if (messageError) throw messageError;
 
       // Fire-and-forget: write payment event for revision_requested
-      supabase.rpc('insert_payment_event' as any, {
+      supabase.rpc('insert_payment_event', {
         p_event_type: 'revision_requested',
         p_entity_type: 'collaboration',
         p_entity_id: collaborationId,
@@ -405,4 +405,3 @@ const ContentApprovalPanel: React.FC<ContentApprovalPanelProps> = ({
   );
 };
 
-export default ContentApprovalPanel;

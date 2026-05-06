@@ -14,7 +14,7 @@ const availablePlatforms = [
   'LinkedIn', 'Pinterest', 'Snapchat', 'YouTube Shorts'
 ];
 
-const PlatformSelector: React.FC<PlatformSelectorProps> = ({
+export const PlatformSelector: React.FC<PlatformSelectorProps> = ({
   platforms,
   onPlatformsChange,
 }) => {
@@ -110,4 +110,3 @@ const PlatformSelector: React.FC<PlatformSelectorProps> = ({
   );
 };
 
-export default PlatformSelector;

@@ -1,5 +1,4 @@
 
-import React, { useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -12,7 +11,7 @@ interface FileUploadDropzoneProps {
   className?: string;
 }
 
-const FileUploadDropzone: React.FC<FileUploadDropzoneProps> = ({
+export const FileUploadDropzone: React.FC<FileUploadDropzoneProps> = ({
   maxFiles,
   acceptedTypes,
   onDrop,
@@ -50,4 +49,3 @@ const FileUploadDropzone: React.FC<FileUploadDropzoneProps> = ({
   );
 };
 
-export default FileUploadDropzone;

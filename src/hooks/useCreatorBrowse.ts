@@ -94,7 +94,7 @@ export const useCreatorBrowse = () => {
     enabled: !!user,
   });
 
-  const handleFilterChange = useCallback((key: keyof CreatorFilters, value: any) => {
+  const handleFilterChange = useCallback((key: keyof CreatorFilters, value: string | string[] | boolean | number) => {
     setFilters(prev => ({ ...prev, [key]: value }));
   }, []);
 
@@ -168,7 +168,7 @@ export const useCreatorBrowse = () => {
     })();
 
     const matchesPlatforms = filters.platforms.length === 0 || (() => {
-      const creatorPlatforms = [];
+      const creatorPlatforms: string[] = [];
       if (creator.instagram_url) creatorPlatforms.push('Instagram');
       if (creator.tiktok_url) creatorPlatforms.push('TikTok');
       if (creator.youtube_url) creatorPlatforms.push('YouTube');

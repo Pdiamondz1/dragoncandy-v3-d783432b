@@ -30,15 +30,15 @@ export default function RestoreAccountPage() {
 
       setStatus('success');
       setTimeout(() => navigate('/dashboard/business', { replace: true }), 2000);
-    } catch (err: any) {
+    } catch (err: unknown) {
       setStatus('error');
-      setErrorMessage(err.message ?? 'Failed to restore organization.');
+      setErrorMessage(err instanceof Error ? err.message : 'Failed to restore organization.');
     }
   };
 
   if (!isAuthenticated) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#A8A8A0] p-6">
+      <div className="flex min-h-screen items-center justify-center bg-dc-gray p-6">
         <Card className="w-full max-w-sm">
           <CardContent className="flex flex-col items-center py-12 text-center">
             <p className="font-medium mb-4">Sign in to restore your account</p>
@@ -55,7 +55,7 @@ export default function RestoreAccountPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#A8A8A0] p-6">
+    <div className="flex min-h-screen items-center justify-center bg-dc-gray p-6">
       <Card className="w-full max-w-sm">
         <CardContent className="flex flex-col items-center py-12 text-center">
           {status === 'idle' && (

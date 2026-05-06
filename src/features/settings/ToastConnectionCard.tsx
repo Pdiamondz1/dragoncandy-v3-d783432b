@@ -115,13 +115,12 @@ export const ToastConnectionCard = () => {
 
       if (biz) setBusinessId(biz.id);
 
-      // Get existing toast connection
-      const { data: conn } = await (supabase
-        .from('toast_connections' as any)
+      const { data: conn } = await supabase
+        .from('toast_connections')
         .select('id, restaurant_guid, status, token_expires_at, last_sync_at, error_message, scopes, created_at')
         .eq('user_id', user.id)
         .eq('status', 'active')
-        .maybeSingle() as any);
+        .maybeSingle();
 
       setConnection(conn);
     } catch (err) {
@@ -192,9 +191,10 @@ export const ToastConnectionCard = () => {
       if (data?.redirect_url) {
         window.location.href = data.redirect_url;
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Toast connect failed:', err);
-      toast({ title: 'Connection failed', description: err.message || 'Please try again.', variant: 'destructive' });
+      const message = err instanceof Error ? err.message : 'Please try again.';
+      toast({ title: 'Connection failed', description: message, variant: 'destructive' });
     } finally {
       setConnecting(false);
     }
@@ -218,8 +218,9 @@ export const ToastConnectionCard = () => {
         description: `Toast responded successfully. ${data?.refreshed || 0} token(s) refreshed.`,
       });
       fetchConnection();
-    } catch (err: any) {
-      toast({ title: 'Test failed', description: err.message || 'Could not reach Toast.', variant: 'destructive' });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Could not reach Toast.';
+      toast({ title: 'Test failed', description: message, variant: 'destructive' });
     } finally {
       setTesting(false);
     }
@@ -230,17 +231,18 @@ export const ToastConnectionCard = () => {
     if (!connection) return;
     setDisconnecting(true);
     try {
-      const { error } = await (supabase
-        .from('toast_connections' as any)
+      const { error } = await supabase
+        .from('toast_connections')
         .update({ status: 'revoked', updated_at: new Date().toISOString() })
-        .eq('id', connection.id) as any);
+        .eq('id', connection.id);
       if (error) throw error;
 
       toast({ title: 'Toast disconnected', description: 'Your connection has been revoked.' });
       setConnection(null);
       setDisconnectOpen(false);
-    } catch (err: any) {
-      toast({ title: 'Disconnect failed', description: err.message || 'Please try again.', variant: 'destructive' });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Please try again.';
+      toast({ title: 'Disconnect failed', description: message, variant: 'destructive' });
     } finally {
       setDisconnecting(false);
     }

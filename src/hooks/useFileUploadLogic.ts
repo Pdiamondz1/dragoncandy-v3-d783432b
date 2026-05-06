@@ -1,17 +1,17 @@
 
 import { useState, useCallback } from 'react';
 import { validateFile, generateFileHash, compressImage } from '@/lib/fileUtils';
-import { useCreateFileUpload } from '@/hooks/useFileOperations';
+import { useCreateFileUpload } from '@/hooks/useFileUploadMutations';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useFileUploadNotification } from '@/hooks/useFileUploadNotification';
-import type { FileUploadProgress } from '@/types/files';
+import type { FileUpload, FileUploadProgress } from '@/types/files';
 
 interface UseFileUploadLogicProps {
   bucketName: string;
   campaignId?: string;
   category?: string;
-  onUploadComplete?: (files: any[]) => void;
+  onUploadComplete?: (files: FileUpload[]) => void;
 }
 
 export const useFileUploadLogic = ({
@@ -129,7 +129,7 @@ export const useFileUploadLogic = ({
           campaign_id: campaignId,
           file_category: category,
           is_compressed: processedFile !== file,
-          compression_ratio: processedFile !== file ? (file.size - processedFile.size) / file.size : null,
+          compression_ratio: processedFile !== file ? (file.size - processedFile.size) / file.size : undefined,
           metadata: {
             original_size: file.size,
             processed_size: processedFile.size

@@ -1,19 +1,18 @@
-import React from 'react';
-import DashboardLayout from '@/components/DashboardLayout';
+import { DashboardLayout } from '@/components/DashboardLayout';
 import { DCTour } from '@/components/guidance/DCTour';
 import { useTour } from '@/hooks/useTour';
 import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DCSkeleton, DCSkeletonGrid } from '@/components/ui/dc-skeleton';
+import { ErrorState } from '@/components/ui/error-state';
 import { useAuth } from '@/hooks/useAuth';
 import { useCreatorDashboardStats } from '@/hooks/useCreatorDashboardStats';
 import { useCreatorRecentActivity } from '@/hooks/useCreatorRecentActivity';
 import { useCreatorUpcomingDeadlines } from '@/hooks/useCreatorUpcomingDeadlines';
 import { Link } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { DollarSign, Target, Star, Clock, Loader2 } from 'lucide-react';
-import RatingPromptManager from '@/components/reviews/RatingPromptManager';
+import { DollarSign, Target, Star, Clock } from 'lucide-react';
+import { RatingPromptManager } from '@/components/reviews/RatingPromptManager';
 import { DashboardHero } from '@/components/dashboard/DashboardHero';
 import { DashboardStatsGrid, type StatItem } from '@/components/dashboard/DashboardStatsGrid';
 import { QuickActionButtons, type QuickAction } from '@/components/dashboard/QuickActionButtons';
@@ -21,12 +20,20 @@ import { DragonShareStatTile } from '@/components/dragonshare/DragonShareStatTil
 import { useCreatorDragonShareEarnings } from '@/hooks/useDragonShare';
 
 const CreatorDashboard = () => {
-  const { user, profile } = useAuth();
-  const { data: stats, isLoading: statsLoading } = useCreatorDashboardStats();
+  const { profile } = useAuth();
+  const { data: stats, isLoading: statsLoading, error: statsError, refetch: refetchStats } = useCreatorDashboardStats();
   const { data: activities, isLoading: activitiesLoading } = useCreatorRecentActivity();
   const { data: deadlines, isLoading: deadlinesLoading } = useCreatorUpcomingDeadlines();
   const { data: dsEarnings } = useCreatorDragonShareEarnings();
   const { showTour, tourSteps, completeTour, skipTour } = useTour('/dashboard/creator');
+
+  if (statsError) {
+    return (
+      <DashboardLayout userRole="content_creator">
+        <ErrorState message={statsError.message} onRetry={refetchStats} />
+      </DashboardLayout>
+    );
+  }
 
   if (!profile) {
     return (
@@ -91,7 +98,7 @@ const CreatorDashboard = () => {
         {/* Unified gradient header */}
         <DashboardHero
           roleLabel="Creator Dashboard"
-          userName={profile.creator_name || profile.full_name}
+          userName={profile.creator_name || profile.full_name || ''}
         >
           {/* Rating Prompts */}
           <RatingPromptManager />

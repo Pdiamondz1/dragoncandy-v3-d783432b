@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Lightbulb, Target, Users, Clock, DollarSign, Sparkles } from 'lucide-react';
 
-const CampaignWizardSidebar: React.FC = () => {
+export const CampaignWizardSidebar: React.FC = () => {
   const tips = [
     {
       icon: Target,
@@ -93,4 +93,3 @@ const CampaignWizardSidebar: React.FC = () => {
   );
 };
 
-export default CampaignWizardSidebar;

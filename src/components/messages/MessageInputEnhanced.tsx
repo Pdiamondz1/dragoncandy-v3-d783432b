@@ -3,7 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
-import { Send, Paperclip, X, Reply } from 'lucide-react';
+import { Send, Paperclip, X } from 'lucide-react';
 import { useTypingIndicator } from '@/hooks/useTypingIndicator';
 import { Message } from '@/hooks/useMessages';
 import { supabase } from '@/integrations/supabase/client';
@@ -26,7 +26,7 @@ interface MessageInputEnhancedProps {
   onCancelReply?: () => void;
 }
 
-const MessageInputEnhanced: React.FC<MessageInputEnhancedProps> = ({
+export const MessageInputEnhanced: React.FC<MessageInputEnhancedProps> = ({
   campaignId,
   conversationId,
   onSendMessage,
@@ -40,9 +40,23 @@ const MessageInputEnhanced: React.FC<MessageInputEnhancedProps> = ({
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const { sendTypingIndicator } = useTypingIndicator(campaignId);
+  const { sendTypingIndicator } = useTypingIndicator(campaignId ?? '');
   const { user } = useAuth();
   const typingTimeoutRef = useRef<NodeJS.Timeout>();
+
+  const draftKey = `dc_msg_draft_${conversationId || campaignId}`;
+
+  // Load draft on mount / conversation switch — reset to empty if no draft exists
+  useEffect(() => {
+    const saved = localStorage.getItem(draftKey);
+    setMessage(saved || '');
+  }, [draftKey]);
+
+  // Persist draft on change
+  useEffect(() => {
+    if (message) localStorage.setItem(draftKey, message);
+    else localStorage.removeItem(draftKey);
+  }, [message, draftKey]);
 
   // Focus input when reply is set
   useEffect(() => {
@@ -109,6 +123,7 @@ const MessageInputEnhanced: React.FC<MessageInputEnhancedProps> = ({
         threadId: replyingTo?.thread_id || replyingTo?.id,
       });
 
+      localStorage.removeItem(draftKey);
       setMessage('');
       setFile(null);
       sendTypingIndicator(false);
@@ -259,4 +274,3 @@ const MessageInputEnhanced: React.FC<MessageInputEnhancedProps> = ({
   );
 };
 
-export default MessageInputEnhanced;

@@ -9,7 +9,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import MobileOptimizedStarRating from './MobileOptimizedStarRating';
+import { MobileOptimizedStarRating } from './MobileOptimizedStarRating';
 import { useSubmitRating } from '@/hooks/useSubmitRating';
 import { CreateReviewData } from '@/types/reviews';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -24,7 +24,7 @@ interface ResponsiveRatingModalProps {
   reviewType: 'business_to_creator' | 'creator_to_business' | 'brand_to_business' | 'business_to_brand';
 }
 
-const ResponsiveRatingModal: React.FC<ResponsiveRatingModalProps> = ({
+export const ResponsiveRatingModal: React.FC<ResponsiveRatingModalProps> = ({
   isOpen,
   onClose,
   collaborationId,
@@ -115,4 +115,3 @@ const ResponsiveRatingModal: React.FC<ResponsiveRatingModalProps> = ({
   );
 };
 
-export default ResponsiveRatingModal;

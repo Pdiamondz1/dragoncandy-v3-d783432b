@@ -1,14 +1,15 @@
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import DashboardLayout from '@/components/DashboardLayout';
+import { DashboardLayout } from '@/components/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import ReviewsList from '@/components/reviews/ReviewsList';
-import RatingStats from '@/components/reviews/RatingStats';
-import { Search, Filter, Download, Star } from 'lucide-react';
+import { ReviewsList } from '@/components/reviews/ReviewsList';
+import { RatingStats } from '@/components/reviews/RatingStats';
+import { ReviewsErrorBoundary } from '@/components/reviews/ReviewsErrorBoundary';
+import { Search, Download } from 'lucide-react';
 
 const ReviewsManagement = () => {
   const { user, profile } = useAuth();
@@ -25,6 +26,7 @@ const ReviewsManagement = () => {
 
   return (
     <DashboardLayout userRole={profile.role}>
+      <ReviewsErrorBoundary>
       <div className="min-h-screen bg-white overflow-x-hidden pb-24 md:pb-0 md:max-w-4xl md:mx-auto">
         {/* Template B header */}
         <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
@@ -55,7 +57,7 @@ const ReviewsManagement = () => {
                   className="pl-9 rounded-full h-10 border-gray-200"
                 />
               </div>
-              <Select value={filterType} onValueChange={(value: any) => setFilterType(value)}>
+              <Select value={filterType} onValueChange={(value) => setFilterType(value as 'all' | 'received' | 'given')}>
                 <SelectTrigger className="w-36 rounded-full h-10 border-gray-200">
                   <SelectValue placeholder="Filter" />
                 </SelectTrigger>
@@ -69,7 +71,7 @@ const ReviewsManagement = () => {
           </div>
 
           {/* Reviews Tabs */}
-          <Tabs value={filterType} onValueChange={(value: any) => setFilterType(value)}>
+          <Tabs value={filterType} onValueChange={(value) => setFilterType(value as 'all' | 'received' | 'given')}>
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="all" className="text-xs">All</TabsTrigger>
               <TabsTrigger value="received" className="text-xs">Received</TabsTrigger>
@@ -115,6 +117,7 @@ const ReviewsManagement = () => {
           </Tabs>
         </div>
       </div>
+      </ReviewsErrorBoundary>
     </DashboardLayout>
   );
 };

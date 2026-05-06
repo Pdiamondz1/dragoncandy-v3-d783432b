@@ -1,4 +1,3 @@
-import React from "react";
 import { Store, Camera, Megaphone } from "lucide-react";
 
 interface RoleSelectionProps {
@@ -9,9 +8,9 @@ interface RoleSelectionProps {
 export const RoleSelection = ({ onSelectRole, onBackToLogin }: RoleSelectionProps) => {
   return (
     <div className="flex-1 flex flex-col justify-center px-6 py-8">
-      <h1 className="text-xl font-bold uppercase tracking-wider text-white text-center mb-3">
+      <h2 className="text-xl font-bold uppercase tracking-wider text-white text-center mb-3">
         Join DragonCandy
-      </h1>
+      </h2>
       <p className="text-white/70 text-sm text-center mb-8">
         How will you use DragonCandy?
       </p>

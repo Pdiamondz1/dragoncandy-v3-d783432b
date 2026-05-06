@@ -26,12 +26,13 @@ export const useBusinessActivity = () => {
         if (eventsError) throw eventsError;
 
         // Process events to get unique liked items (latest action wins)
-        const likedContentMap = new Map<string, { creatorId: string; action: string; timestamp: Date }>();
+        const likedContentMap = new Map<string, { creatorId: string; action: string | undefined; timestamp: Date }>();
         
-        likeEvents?.forEach((event: any) => {
-          const contentId = event.event_data?.content_id;
-          const creatorId = event.event_data?.creator_id;
-          const action = event.event_data?.action;
+        likeEvents?.forEach((event) => {
+          const eventData = event.event_data as Record<string, unknown> | null;
+          const contentId = eventData?.content_id as string | undefined;
+          const creatorId = eventData?.creator_id as string | undefined;
+          const action = eventData?.action as string | undefined;
           
           if (contentId && creatorId) {
             const existing = likedContentMap.get(contentId);

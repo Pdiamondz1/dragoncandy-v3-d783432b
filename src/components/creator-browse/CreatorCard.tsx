@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import CreatorProfileModal from './CreatorProfileModal';
+import { CreatorProfileModal } from './CreatorProfileModal';
 import { CreatorPortfolioModal } from '@/components/creator-profile/CreatorPortfolioModal';
 import { Heart } from 'lucide-react';
 import type { CreatorProfile } from '@/hooks/useCreatorBrowse';

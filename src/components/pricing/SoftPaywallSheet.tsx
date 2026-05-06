@@ -20,7 +20,7 @@ export function SoftPaywallSheet({ featureKey, open, onClose }: SoftPaywallSheet
   const price = TIER_PRICES[requiredTier as TierName];
 
   const logEvent = async (action: 'viewed' | 'clicked_upgrade' | 'dismissed') => {
-    await supabase.from('pricing_funnel_events' as any).insert({
+    await supabase.from('pricing_funnel_events').insert({
       user_id: user?.id,
       org_id: activeOrg?.id,
       feature_key: featureKey,

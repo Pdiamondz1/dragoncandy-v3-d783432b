@@ -8,7 +8,7 @@ interface ApplicationsSearchProps {
   onSearchChange: (value: string) => void;
 }
 
-const ApplicationsSearch: React.FC<ApplicationsSearchProps> = ({
+export const ApplicationsSearch: React.FC<ApplicationsSearchProps> = ({
   searchTerm,
   onSearchChange,
 }) => {
@@ -25,4 +25,3 @@ const ApplicationsSearch: React.FC<ApplicationsSearchProps> = ({
   );
 };
 
-export default ApplicationsSearch;

@@ -2,6 +2,10 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { useEmailNotifications } from './useEmailNotifications';
+import type { Database } from '@/integrations/supabase/types';
+
+type CollaborationRow = Database['public']['Tables']['campaign_collaborations']['Row'];
+type CompletionResult = CollaborationRow & { payoutSuccess?: boolean; payoutAmount?: number };
 
 export const useProjectComplete = () => {
   const queryClient = useQueryClient();
@@ -47,14 +51,14 @@ export const useProjectComplete = () => {
       // Update completion status - also set content_status to 'submitted' when creator marks complete
       const { data, error } = await supabase
         .from('campaign_collaborations')
-        .update({ 
+        .update({
           [statusField]: 'requested',
           updated_at: new Date().toISOString(),
           // If creator marks complete, also mark content as submitted
           ...(userRole === 'content_creator' && { content_status: 'submitted' })
         })
         .eq('id', collaborationId)
-        .select()
+        .select('id, application_id, business_completion_status, campaign_id, completed_at, content_deadline, content_started_at, content_status, contract_details, created_at, creator_completion_status, creator_id, deliverables_status, milestones, review_status, revision_count, status, updated_at')
         .single();
 
       if (error) throw error;
@@ -68,7 +72,7 @@ export const useProjectComplete = () => {
         // Both parties requested - mark as completed
         const { data: completedData, error: completeError } = await supabase
           .from('campaign_collaborations')
-          .update({ 
+          .update({
             status: 'completed',
             review_status: 'pending',
             business_completion_status: 'approved',
@@ -77,7 +81,7 @@ export const useProjectComplete = () => {
             completed_at: new Date().toISOString()
           })
           .eq('id', collaborationId)
-          .select()
+          .select('id, application_id, business_completion_status, campaign_id, completed_at, content_deadline, content_started_at, content_status, contract_details, created_at, creator_completion_status, creator_id, deliverables_status, milestones, review_status, revision_count, status, updated_at')
           .single();
 
         if (completeError) throw completeError;
@@ -107,7 +111,7 @@ export const useProjectComplete = () => {
         }
 
         // Send completion confirmation emails to both parties with payment info
-        const campaignData = collaboration.campaigns as any;
+        const campaignData = collaboration.campaigns as { id: string; title: string; user_id: string };
 
         // Email to business owner (payer)
         await sendNotification(
@@ -129,7 +133,7 @@ export const useProjectComplete = () => {
         await sendNotification(
           'project_completion',
           '', // Will fetch from profile
-          creatorProfile.creator_name,
+          creatorProfile?.creator_name ?? '',
           {
             recipientUserId: collaboration.creator_id,
             campaignTitle: campaignData.title,
@@ -146,6 +150,7 @@ export const useProjectComplete = () => {
       }
 
       // Only one party requested - send notification to the other party
+      const collabCampaign = collaboration.campaigns as { id: string; title: string; user_id: string };
       if (userRole === 'content_creator') {
         // Notify business owner
         await sendNotification(
@@ -153,9 +158,9 @@ export const useProjectComplete = () => {
           '', // Will fetch from profile
           '', // Will fetch from profile
           {
-            recipientUserId: (collaboration.campaigns as any).user_id,
-            campaignTitle: (collaboration.campaigns as any).title,
-            requesterName: creatorProfile.creator_name,
+            recipientUserId: collabCampaign.user_id,
+            campaignTitle: collabCampaign.title,
+            requesterName: creatorProfile?.creator_name ?? '',
             actionUrl: `${window.location.origin}/dashboard/business/projects?highlight=${collaborationId}`
           }
         );
@@ -164,10 +169,10 @@ export const useProjectComplete = () => {
         await sendNotification(
           'completion_request',
           '', // Will fetch from profile
-          creatorProfile.creator_name,
+          creatorProfile?.creator_name ?? '',
           {
             recipientUserId: collaboration.creator_id,
-            campaignTitle: (collaboration.campaigns as any).title,
+            campaignTitle: collabCampaign.title,
             requesterName: 'Business Owner',
             actionUrl: `${window.location.origin}/dashboard/creator/projects?highlight=${collaborationId}`
           }
@@ -176,7 +181,7 @@ export const useProjectComplete = () => {
 
       return data;
     },
-    onSuccess: (data: any) => {
+    onSuccess: (data: CompletionResult) => {
       queryClient.invalidateQueries({ queryKey: ['projects'] });
       queryClient.invalidateQueries({ queryKey: ['creator-projects'] });
       queryClient.invalidateQueries({ queryKey: ['business-projects'] });

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import DashboardLayout from '@/components/DashboardLayout';
-import ErrorBoundary from '@/components/ErrorBoundary';
+import { DashboardLayout } from '@/components/DashboardLayout';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { CreatorBrowseHeader } from '@/components/creator-browse/CreatorBrowseHeader';
 import { CreatorBrowseContent } from '@/components/creator-browse/CreatorBrowseContent';
 import { useCreatorBrowse } from '@/hooks/useCreatorBrowse';

@@ -106,8 +106,8 @@ export const useBrandCampaignFilters = (campaigns: SponsorshipCampaign[]) => {
 
     // Sorting
     filtered.sort((a, b) => {
-      let aValue: any;
-      let bValue: any;
+      let aValue: number;
+      let bValue: number;
 
       switch (filters.sortBy) {
         case 'budget_min':
@@ -135,7 +135,7 @@ export const useBrandCampaignFilters = (campaigns: SponsorshipCampaign[]) => {
     return filtered;
   }, [campaigns, filters]);
 
-  const updateFilter = (key: keyof BrandCampaignFilters, value: any) => {
+  const updateFilter = (key: string, value: string | string[] | boolean | number | null) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
   };
 

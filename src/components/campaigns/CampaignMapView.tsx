@@ -15,7 +15,7 @@ interface CampaignMapViewProps {
   onViewDetails: (campaignId: string) => void;
 }
 
-const CampaignMapView: React.FC<CampaignMapViewProps> = ({ campaigns, onViewDetails }) => {
+export const CampaignMapView: React.FC<CampaignMapViewProps> = ({ campaigns, onViewDetails }) => {
   const { isLoaded, loadError } = useLoadScript({
     googleMapsApiKey: GOOGLE_MAPS_API_KEY,
     libraries: GOOGLE_MAPS_LIBRARIES,
@@ -194,4 +194,3 @@ const CampaignMapView: React.FC<CampaignMapViewProps> = ({ campaigns, onViewDeta
   );
 };
 
-export default CampaignMapView;

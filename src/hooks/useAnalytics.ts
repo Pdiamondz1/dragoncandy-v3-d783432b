@@ -14,7 +14,7 @@ interface AnalyticsEvent {
 }
 
 export const useAnalytics = () => {
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
   const { trackEventOptimized, trackPageViewOptimized, trackUserActionOptimized, trackCampaignEventOptimized } = useOptimizedAnalytics();
 
   // Legacy direct tracking method (kept for backward compatibility)
@@ -33,10 +33,6 @@ export const useAnalytics = () => {
         .from('analytics_events')
         .insert([analyticsEvent]);
 
-      // Log to console in development
-      if (process.env.NODE_ENV === 'development') {
-        console.log('Analytics Event:', analyticsEvent);
-      }
     } catch (error) {
       console.error('Failed to track analytics event:', error);
     }

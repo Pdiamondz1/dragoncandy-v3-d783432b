@@ -9,13 +9,13 @@ import { ApplicationFilters } from '@/hooks/useApplicationFilters';
 
 interface ApplicationFiltersProps {
   filters: ApplicationFilters;
-  onFilterChange: (key: keyof ApplicationFilters, value: any) => void;
+  onFilterChange: (key: keyof ApplicationFilters, value: string | string[] | boolean) => void;
   onReset: () => void;
   totalCount: number;
   filteredCount: number;
 }
 
-const ApplicationFiltersComponent: React.FC<ApplicationFiltersProps> = ({
+export const ApplicationFiltersComponent: React.FC<ApplicationFiltersProps> = ({
   filters,
   onFilterChange,
   onReset,
@@ -101,4 +101,3 @@ const ApplicationFiltersComponent: React.FC<ApplicationFiltersProps> = ({
   );
 };
 
-export default ApplicationFiltersComponent;

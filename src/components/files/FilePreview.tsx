@@ -3,9 +3,9 @@ import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import type { FileUpload } from '@/types/files';
-import FilePreviewHeader from './FilePreviewHeader';
-import FilePreviewTabs from './FilePreviewTabs';
-import FilePreviewContent from './FilePreviewContent';
+import { FilePreviewHeader } from './FilePreviewHeader';
+import { FilePreviewTabs } from './FilePreviewTabs';
+import { FilePreviewContent } from './FilePreviewContent';
 
 interface FilePreviewProps {
   file: FileUpload;
@@ -15,7 +15,7 @@ interface FilePreviewProps {
   className?: string;
 }
 
-const FilePreview: React.FC<FilePreviewProps> = ({
+export const FilePreview: React.FC<FilePreviewProps> = ({
   file,
   isOpen,
   onClose,
@@ -83,4 +83,3 @@ const FilePreview: React.FC<FilePreviewProps> = ({
   );
 };
 
-export default FilePreview;

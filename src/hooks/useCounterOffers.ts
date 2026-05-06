@@ -58,7 +58,7 @@ export const useCreateCounterOffer = () => {
       // Update application status to counter_offered
       const { error: statusError } = await supabase
         .from('campaign_applications')
-        .update({ status: 'counter_offered' as any })
+        .update({ status: 'counter_offered' })
         .eq('id', applicationId);
 
       if (statusError) throw statusError;
@@ -74,7 +74,7 @@ export const useCreateCounterOffer = () => {
           proposed_timeline: proposedTimeline || null,
           message,
         })
-        .select()
+        .select('id, application_id, sender_id, sender_role, proposed_rate, proposed_timeline, message, status, created_at')
         .single();
 
       if (error) throw error;
@@ -141,22 +141,32 @@ export const useRespondToCounterOffer = () => {
       applicationId: string;
       response: 'accepted' | 'declined';
     }) => {
-      // Update counter-offer status
-      const { error: offerError } = await supabase
+      // Update counter-offer status with race guard
+      const { error: offerError, count: offerCount } = await supabase
         .from('application_counter_offers')
         .update({ status: response })
-        .eq('id', counterOfferId);
+        .eq('id', counterOfferId)
+        .eq('status', 'pending')
+        .select('id', { count: 'exact' });
 
       if (offerError) throw offerError;
+      if (offerCount === 0) {
+        throw new Error('This counter offer is no longer pending — it may have already been responded to.');
+      }
 
-      // If accepted, update application status to accepted (NO collaboration creation here)
+      // If accepted, update application status with race guard
       if (response === 'accepted') {
-        const { error: appError } = await supabase
+        const { error: appError, count: appCount } = await supabase
           .from('campaign_applications')
-          .update({ status: 'accepted' as any })
-          .eq('id', applicationId);
+          .update({ status: 'accepted' })
+          .eq('id', applicationId)
+          .eq('status', 'counter_offered')
+          .select('id', { count: 'exact' });
 
         if (appError) throw appError;
+        if (appCount === 0) {
+          throw new Error('This application status has already changed.');
+        }
       }
 
       return { response, applicationId };

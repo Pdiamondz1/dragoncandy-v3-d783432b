@@ -48,18 +48,22 @@ export const useManageApplication = () => {
 
         return app;
       } else {
-        // Non-sponsored: direct status update + set restaurant_approval_status for consistency
-        const { data, error } = await supabase
+        // Non-sponsored: direct status update with race guard
+        const { data, error, count } = await supabase
           .from('campaign_applications')
           .update({
             status,
             restaurant_approval_status: status === 'accepted' ? 'approved' : status === 'rejected' ? 'rejected' : 'pending'
           })
           .eq('id', applicationId)
-          .select()
-          .single();
+          .in('status', ['pending', 'counter_offered'])
+          .select('id, campaign_id, creator_id, status, restaurant_approval_status, final_approval_status', { count: 'exact' });
+
         if (error) throw error;
-        return data;
+        if (count === 0) {
+          throw new Error('This application is no longer pending — its status may have already changed.');
+        }
+        return data![0];
       }
     },
     onSuccess: async (data) => {

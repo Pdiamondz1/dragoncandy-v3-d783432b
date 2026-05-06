@@ -1,12 +1,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { CampaignAnalysis, CampaignData, CampaignCustomizeFormProps } from '@/types/campaign';
-import CampaignBasicFields from './CampaignBasicFields';
-import PlatformSelector from './PlatformSelector';
-import ContentTypeSelector from './ContentTypeSelector';
+import { CampaignData, CampaignCustomizeFormProps } from '@/types/campaign';
+import { CampaignBasicFields } from './CampaignBasicFields';
+import { PlatformSelector } from './PlatformSelector';
+import { ContentTypeSelector } from './ContentTypeSelector';
 
-const CampaignCustomizeForm: React.FC<CampaignCustomizeFormProps> = ({
+export const CampaignCustomizeForm: React.FC<CampaignCustomizeFormProps> = ({
   initialData,
   onContinue,
   onBackToAnalysis,
@@ -85,4 +85,3 @@ const CampaignCustomizeForm: React.FC<CampaignCustomizeFormProps> = ({
   );
 };
 
-export default CampaignCustomizeForm;

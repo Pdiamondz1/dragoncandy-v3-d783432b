@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Download, Share2, MoreHorizontal, File } from 'lucide-react';
 import { formatFileSize, getFileTypeCategory } from '@/lib/fileUtils';
 import type { FileUpload } from '@/types/files';
-import FilePreview from './FilePreview';
+import { FilePreview } from './FilePreview';
 
 interface FileCardProps {
   file: FileUpload;
@@ -17,7 +17,7 @@ interface FileCardProps {
   onDelete: (file: FileUpload) => void;
 }
 
-const FileCard: React.FC<FileCardProps> = ({
+export const FileCard: React.FC<FileCardProps> = ({
   file,
   viewMode,
   onSelect,
@@ -141,4 +141,3 @@ const FileCard: React.FC<FileCardProps> = ({
   );
 };
 
-export default FileCard;

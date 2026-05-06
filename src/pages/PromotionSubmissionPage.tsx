@@ -1,12 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
 import { VideoUploader } from '@/components/promotions/VideoUploader';
 import { CustomerInfoForm, CustomerInfoFormData } from '@/components/promotions/CustomerInfoForm';
 import { usePromotionSubmission } from '@/hooks/usePromotionSubmission';
-import { Gift, Video, ImagePlus, User, CheckCircle, AlertCircle, ArrowRight, ArrowLeft, Loader2 } from 'lucide-react';
+import { Gift, Video, User, CheckCircle, AlertCircle, ArrowRight, ArrowLeft, Loader2 } from 'lucide-react';
 import { SocialHandleFields, useSocialHandles } from '@/features/promotions/submission/SubmissionForm';
+import { SEO } from '@/components/SEO';
 
 type Step = 'welcome' | 'video' | 'info' | 'success' | 'error';
 
@@ -90,9 +91,9 @@ export default function PromotionSubmissionPage() {
         } else if (data.max_redemptions && (data.current_redemptions || 0) >= data.max_redemptions) {
           setError('This promotion has reached its maximum number of redemptions');
         } else {
-          setPromotion(data as any);
+          setPromotion(data as unknown as Promotion);
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Error fetching promotion:', err);
         setError('Unable to load promotion details');
       } finally {
@@ -169,6 +170,11 @@ export default function PromotionSubmissionPage() {
 
   return (
     <div className="min-h-screen bg-white overflow-x-hidden pb-8">
+      <SEO
+        title={`${promotion.title} - Submit on DragonCandy`}
+        description={`Submit content for ${promotion.business_profiles?.business_name ?? 'a business'}'s promotion on DragonCandy.`}
+        path={`/promo/${promotionId}`}
+      />
       {/* Template C header */}
       <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
         <div className="flex-1 text-center">

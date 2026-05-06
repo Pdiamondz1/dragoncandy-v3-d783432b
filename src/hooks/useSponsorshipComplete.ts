@@ -7,7 +7,7 @@ import { useAuth } from './useAuth';
 export const useSponsorshipComplete = () => {
   const queryClient = useQueryClient();
   const { sendNotification } = useEmailNotifications();
-  const { user } = useAuth();
+  useAuth();
 
   const requestCompletion = useMutation({
     mutationFn: async ({ 
@@ -58,12 +58,12 @@ export const useSponsorshipComplete = () => {
       // Update completion status
       const { data, error } = await supabase
         .from('campaign_sponsorships')
-        .update({ 
+        .update({
           [statusField]: 'requested',
           updated_at: new Date().toISOString()
         })
         .eq('id', sponsorshipId)
-        .select()
+        .select('id, status, brand_completion_status, business_completion_status, updated_at')
         .single();
 
       if (error) throw error;
@@ -77,7 +77,7 @@ export const useSponsorshipComplete = () => {
         // Both parties requested - mark as completed
         const { data: completedData, error: completeError } = await supabase
           .from('campaign_sponsorships')
-          .update({ 
+          .update({
             status: 'completed',
             review_status: 'pending',
             brand_completion_status: 'approved',
@@ -85,12 +85,13 @@ export const useSponsorshipComplete = () => {
             completed_at: new Date().toISOString()
           })
           .eq('id', sponsorshipId)
-          .select()
+          .select('id, status, brand_completion_status, business_completion_status, review_status, completed_at')
           .single();
 
         if (completeError) throw completeError;
 
-        const campaignData = sponsorship.campaigns as any;
+        const campaignsRaw = sponsorship.campaigns;
+        const campaignData = Array.isArray(campaignsRaw) ? campaignsRaw[0] : campaignsRaw;
 
         // Send completion confirmation email to brand
         await sendNotification(
@@ -126,7 +127,8 @@ export const useSponsorshipComplete = () => {
       }
 
       // Only one party requested - send notification to the other party
-      const campaignData = sponsorship.campaigns as any;
+      const campaignsRaw2 = sponsorship.campaigns;
+      const campaignData = Array.isArray(campaignsRaw2) ? campaignsRaw2[0] : campaignsRaw2;
 
       if (userRole === 'brand') {
         // Notify business owner

@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { CheckCircle, Clock, XCircle, DollarSign, FileText, CreditCard } from 'lucide-react';
+import { CheckCircle, Clock, XCircle, DollarSign, FileText } from 'lucide-react';
 import { BrandSponsorshipStatus } from '@/hooks/useBrandSponsorshipStatus';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';

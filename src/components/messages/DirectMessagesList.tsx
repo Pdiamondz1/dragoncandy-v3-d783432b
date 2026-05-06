@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { MessageSquare, Archive, Search, X, Megaphone } from 'lucide-react';
 import { useConversations, useArchiveConversation, Conversation } from '@/hooks/useConversations';
-import UserPresenceIndicator from './UserPresenceIndicator';
+import { UserPresenceIndicator } from './UserPresenceIndicator';
 import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { useAuth } from '@/hooks/useAuth';
@@ -16,7 +16,7 @@ interface DirectMessagesListProps {
   activeConversationId?: string | null;
 }
 
-const DirectMessagesList: React.FC<DirectMessagesListProps> = ({
+export const DirectMessagesList: React.FC<DirectMessagesListProps> = ({
   onConversationSelect,
   onCampaignNavigate,
   activeConversationId,
@@ -223,4 +223,3 @@ const DirectMessagesList: React.FC<DirectMessagesListProps> = ({
   );
 };
 
-export default DirectMessagesList;

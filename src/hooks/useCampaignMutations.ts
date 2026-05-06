@@ -1,6 +1,7 @@
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import type { Database } from '@/integrations/supabase/types';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
 import { cleanupCampaignMedia } from '@/lib/cleanupCampaignMedia';
@@ -40,8 +41,8 @@ export const useCreateCampaign = () => {
         .insert({
           ...campaignData,
           user_id: user!.id,
-        } as any)
-        .select()
+        } as unknown as Database['public']['Tables']['campaigns']['Insert'])
+        .select('id, title, description, status, open_for_sponsorship, budget_min, budget_max, platforms, user_id')
         .single();
 
       if (error) {
@@ -190,10 +191,10 @@ export const useUpdateCampaign = () => {
     mutationFn: async ({ id, updates }: { id: string; updates: Partial<CreateCampaignData> }) => {
       const { data, error } = await supabase
         .from('campaigns')
-        .update(updates as any)
+        .update(updates as unknown as Database['public']['Tables']['campaigns']['Update'])
         .eq('id', id)
         .eq('user_id', user!.id)
-        .select()
+        .select('id, title, description, status, open_for_sponsorship, budget_min, budget_max, platforms, user_id')
         .single();
 
       if (error) {

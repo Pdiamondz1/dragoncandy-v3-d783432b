@@ -1,17 +1,17 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Search } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { CreatorCard } from './CreatorCard';
 import { CreatorMapView } from './CreatorMapView';
-import AdvancedCreatorFilters from '@/components/creator-search/AdvancedCreatorFilters';
+import { AdvancedCreatorFilters } from '@/components/creator-search/AdvancedCreatorFilters';
 import type { CreatorFilters, CreatorProfile } from '@/hooks/useCreatorBrowse';
 
 interface CreatorBrowseContentProps {
   filteredCreators: CreatorProfile[];
   filters: CreatorFilters;
   mapFilters?: CreatorFilters;
-  onFilterChange: (key: keyof CreatorFilters, value: any) => void;
+  onFilterChange: (key: keyof CreatorFilters, value: string | string[] | boolean | number) => void;
   onResetFilters: () => void;
   isLoading: boolean;
   error: Error | null;

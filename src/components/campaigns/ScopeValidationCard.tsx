@@ -99,4 +99,3 @@ export const ScopeValidationCard: React.FC<ScopeValidationCardProps> = ({
   );
 };
 
-export default ScopeValidationCard;

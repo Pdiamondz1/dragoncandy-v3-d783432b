@@ -1,10 +1,9 @@
-import React, { useState, useRef, useCallback } from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { toast as sonnerToast } from "sonner";
 import { Eye, EyeOff, Store, Camera, Megaphone } from "lucide-react";
-import ReCaptcha, { ReCaptchaHandle } from "./ReCaptcha";
 import type { UserRole as Role } from "@/types/user";
 
 interface AuthFormProps {
@@ -20,25 +19,8 @@ export const AuthForm = ({ mode, onError, preSelectedRole, onChangeRole }: AuthF
   const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const captchaRef = useRef<ReCaptchaHandle>(null);
 
   const role: Role | undefined = preSelectedRole;
-
-  const handleCaptchaExpired = useCallback(() => {
-    toast({
-      title: "CAPTCHA expired",
-      description: "Please verify again.",
-      variant: "destructive",
-    });
-  }, []);
-
-  const handleCaptchaError = useCallback(() => {
-    toast({
-      title: "CAPTCHA error",
-      description: "There was an error loading the CAPTCHA. Please refresh the page.",
-      variant: "destructive",
-    });
-  }, []);
 
   const handleSocialClick = () => {
     sonnerToast("Coming soon", {
@@ -52,68 +34,9 @@ export const AuthForm = ({ mode, onError, preSelectedRole, onChangeRole }: AuthF
     setLoading(true);
 
     try {
-      // Get reCAPTCHA token with timestamp
-      const tokenData = captchaRef.current?.getTokenWithAge();
-
-      if (!tokenData || !tokenData.token) {
-        onError("Please complete the CAPTCHA verification.");
-        setLoading(false);
-        return;
-      }
-
-      // Check token age (Google tokens expire after 2 minutes)
-      const tokenAgeSeconds = (Date.now() - tokenData.issuedAt) / 1000;
-      const MAX_TOKEN_AGE = 100; // 100 seconds to be safe
-
-      if (tokenAgeSeconds > MAX_TOKEN_AGE) {
-        onError("CAPTCHA expired. Please verify again.");
-        toast({
-          title: "CAPTCHA Expired",
-          description: "Please complete the CAPTCHA verification again.",
-          variant: "destructive",
-        });
-        captchaRef.current?.reset();
-        setLoading(false);
-        return;
-      }
-
-      // Verify reCAPTCHA token with backend
-      const { data: verificationData, error: verificationError } = await supabase.functions.invoke(
-        'verify-recaptcha',
-        {
-          body: { token: tokenData.token },
-        }
-      );
-
-      if (verificationError || !verificationData?.success) {
-        console.error('❌ reCAPTCHA verification failed:', verificationError || verificationData);
-
-        const errorCodes = verificationData?.errorCodes || [];
-        let errorMessage = "CAPTCHA verification failed. Please try again.";
-
-        if (errorCodes.includes('invalid-input-secret')) {
-          errorMessage = "Server configuration error. Please contact support.";
-        } else if (errorCodes.includes('timeout-or-duplicate')) {
-          errorMessage = "CAPTCHA expired or already used. Please verify again.";
-        } else if (errorCodes.includes('invalid-input-response')) {
-          errorMessage = "Invalid CAPTCHA response. Please try again.";
-        }
-
-        onError(errorMessage);
-        toast({
-          title: "Verification Failed",
-          description: errorMessage,
-          variant: "destructive",
-        });
-        captchaRef.current?.reset();
-        setLoading(false);
-        return;
-      }
-
       if (mode === "signup") {
         if (!role) {
           onError("Please select a role.");
-          captchaRef.current?.reset();
           setLoading(false);
           return;
         }
@@ -134,7 +57,6 @@ export const AuthForm = ({ mode, onError, preSelectedRole, onChangeRole }: AuthF
         if (signupError) {
           console.error('❌ AuthForm: Signup error:', signupError);
           onError(signupError.message);
-          captchaRef.current?.reset();
           setLoading(false);
           return;
         }
@@ -172,7 +94,6 @@ export const AuthForm = ({ mode, onError, preSelectedRole, onChangeRole }: AuthF
           await supabase.auth.signOut();
         }
 
-        captchaRef.current?.reset();
         setLoading(false);
       } else {
         // Login mode
@@ -184,7 +105,6 @@ export const AuthForm = ({ mode, onError, preSelectedRole, onChangeRole }: AuthF
         if (loginError) {
           console.error('❌ AuthForm: Login error:', loginError);
           onError(loginError.message);
-          captchaRef.current?.reset();
           setLoading(false);
           return;
         }
@@ -200,7 +120,6 @@ export const AuthForm = ({ mode, onError, preSelectedRole, onChangeRole }: AuthF
           if (profile && !profile.email_verified) {
             await supabase.auth.signOut();
             onError('Please verify your email before logging in. Check your inbox for the verification link.');
-            captchaRef.current?.reset();
             setLoading(false);
             return;
           }
@@ -211,13 +130,11 @@ export const AuthForm = ({ mode, onError, preSelectedRole, onChangeRole }: AuthF
           description: "You have been logged in successfully.",
         });
 
-        captchaRef.current?.reset();
         // The AuthContext will handle the redirect automatically via useEffect
       }
     } catch (err: unknown) {
       console.error('❌ AuthForm: Unexpected error:', err);
       onError("Something went wrong. Please try again.");
-      captchaRef.current?.reset();
       setLoading(false);
     }
   };
@@ -324,13 +241,6 @@ export const AuthForm = ({ mode, onError, preSelectedRole, onChangeRole }: AuthF
               </Link>
             </div>
           )}
-
-          {/* reCAPTCHA Widget */}
-          <ReCaptcha
-            ref={captchaRef}
-            onExpired={handleCaptchaExpired}
-            onError={handleCaptchaError}
-          />
 
           {/* Submit button */}
           <button

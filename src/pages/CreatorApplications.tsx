@@ -1,18 +1,18 @@
 
 import React from 'react';
-import DashboardLayout from '@/components/DashboardLayout';
-import { ArrowLeft, AlertCircle } from 'lucide-react';
+import { DashboardLayout } from '@/components/DashboardLayout';
+import { ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useCreatorApplications } from '@/hooks/useFetchApplications';
 import { DCSkeleton } from '@/components/ui/dc-skeleton';
-import { DCErrorState } from '@/components/ui/dc-empty-state';
-import ApplicationsStats from '@/components/applications/ApplicationsStats';
-import ApplicationsSearch from '@/components/applications/ApplicationsSearch';
-import ApplicationsTabsContent from '@/components/applications/ApplicationsTabsContent';
+import { ErrorState } from '@/components/ui/error-state';
+import { ApplicationsStats } from '@/components/applications/ApplicationsStats';
+import { ApplicationsSearch } from '@/components/applications/ApplicationsSearch';
+import { ApplicationsTabsContent } from '@/components/applications/ApplicationsTabsContent';
 
 const CreatorApplications: React.FC = () => {
   const navigate = useNavigate();
-  const { data: applications = [], isLoading, error } = useCreatorApplications();
+  const { data: applications = [], isLoading, error, refetch } = useCreatorApplications();
   const [searchTerm, setSearchTerm] = React.useState('');
 
   const filteredApplications = applications.filter(application =>
@@ -44,12 +44,7 @@ const CreatorApplications: React.FC = () => {
   if (error) {
     return (
       <DashboardLayout userRole="content_creator">
-        <div className="min-h-screen bg-white overflow-x-hidden flex items-center justify-center p-4">
-          <DCErrorState
-            message="Failed to load applications. Please try again."
-            onRetry={() => window.location.reload()}
-          />
-        </div>
+        <ErrorState message={error.message} onRetry={refetch} />
       </DashboardLayout>
     );
   }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -29,8 +29,9 @@ const ViewStripeDashboardButton = () => {
       if (data?.url) {
         window.open(data.url, '_blank');
       }
-    } catch (err: any) {
-      toast({ title: 'Failed to open dashboard', description: err.message || 'Please try again.', variant: 'destructive' });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Please try again.';
+      toast({ title: 'Failed to open dashboard', description: message, variant: 'destructive' });
     } finally {
       setLoading(false);
     }

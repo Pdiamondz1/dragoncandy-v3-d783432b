@@ -1,35 +1,8 @@
 import { useState, FormEvent } from 'react';
 import dragonCandyLogo from '@/assets/Transparent_DragonCandy_logo.webp';
+import { SITE_GATE_KEY, ONE_HOUR_MS } from '@/lib/siteGate';
 
 const SITE_PASSWORD = 'dragoncandy2026';
-export const SITE_GATE_KEY = 'dc_site_unlocked_until';
-const ONE_HOUR_MS = 60 * 60 * 1000;
-
-// Paths that should remain publicly accessible (do not gate).
-// Keep this list narrow — only routes that strictly need public access.
-const PUBLIC_PATH_PREFIXES = [
-  '/promo/', // public promotion submission via QR
-];
-
-export const isPublicPath = (pathname: string) => {
-  return PUBLIC_PATH_PREFIXES.some((p) => pathname.startsWith(p));
-};
-
-export const isSiteUnlocked = () => {
-  try {
-    const raw = localStorage.getItem(SITE_GATE_KEY);
-    if (!raw) return false;
-    const expiresAt = parseInt(raw, 10);
-    if (!Number.isFinite(expiresAt)) return false;
-    if (Date.now() >= expiresAt) {
-      localStorage.removeItem(SITE_GATE_KEY);
-      return false;
-    }
-    return true;
-  } catch {
-    return false;
-  }
-};
 
 export default function SiteGate() {
   const [password, setPassword] = useState('');
@@ -62,7 +35,7 @@ export default function SiteGate() {
   };
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center px-6 py-12 bg-gradient-to-br from-[#F9C8E0] via-white to-[#4DD9C0]/40">
+    <div className="min-h-screen w-full flex items-center justify-center px-6 py-12 bg-gradient-to-br from-dc-pink-bg via-white to-dc-teal/40">
       <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl border-2 border-teal-300 p-8 md:p-10">
         <div className="flex flex-col items-center text-center">
           <img
@@ -70,10 +43,10 @@ export default function SiteGate() {
             alt="DragonCandy"
             className="h-16 md:h-20 mb-6"
           />
-          <h1 className="text-2xl md:text-3xl font-extrabold text-[#111111] mb-2">
+          <h1 className="text-2xl md:text-3xl font-extrabold text-dc-text mb-2">
             Private Preview
           </h1>
-          <p className="text-sm text-[#555555] mb-6">
+          <p className="text-sm text-dc-text-muted mb-6">
             Enter the access password to continue to DragonCandy.
           </p>
         </div>
@@ -88,19 +61,19 @@ export default function SiteGate() {
               if (error) setError('');
             }}
             placeholder="Password"
-            className="w-full h-12 rounded-full border-2 border-teal-300 bg-white px-5 text-base text-[#111111] placeholder:text-gray-400 focus:outline-none focus:border-[#EC4899] focus:ring-2 focus:ring-[#EC4899]/30 transition"
+            className="w-full h-12 rounded-full border-2 border-teal-300 bg-white px-5 text-base text-dc-text placeholder:text-gray-400 focus:outline-none focus:border-dc-pink-accent focus:ring-2 focus:ring-dc-pink-accent/30 transition"
             aria-label="Site access password"
           />
 
           {error && (
-            <p className="text-sm text-[#EC4899] font-semibold text-center">
+            <p className="text-sm text-dc-pink-accent font-semibold text-center">
               {error}
             </p>
           )}
 
           <button
             type="submit"
-            className="w-full h-12 rounded-full bg-[#4DD9C0] hover:bg-[#3cc6ad] text-white font-bold text-base shadow-md transition-colors"
+            className="w-full h-12 rounded-full bg-dc-teal hover:bg-dc-teal-hover text-white font-bold text-base shadow-md transition-colors"
           >
             Submit
           </button>

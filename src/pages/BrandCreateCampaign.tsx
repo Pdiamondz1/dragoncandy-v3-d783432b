@@ -1,8 +1,8 @@
 import React from 'react';
-import DashboardLayout from '@/components/DashboardLayout';
+import { DashboardLayout } from '@/components/DashboardLayout';
 import { ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import CampaignWizardHeader from '@/components/campaigns/CampaignWizardHeader';
+import { CampaignWizardHeader } from '@/components/campaigns/CampaignWizardHeader';
 import { BrandCampaignBriefStep } from '@/components/brand-campaigns/BrandCampaignBriefStep';
 import { BrandCampaignDetailsStep } from '@/components/brand-campaigns/BrandCampaignDetailsStep';
 import { BrandCampaignPreviewStep } from '@/components/brand-campaigns/BrandCampaignPreviewStep';

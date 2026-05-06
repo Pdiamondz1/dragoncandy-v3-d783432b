@@ -1,5 +1,5 @@
 
-import React, { Component, ErrorInfo, ReactNode } from 'react';
+import { Component, ErrorInfo, ReactNode } from 'react';
 
 interface Props {
   children: ReactNode;
@@ -24,7 +24,7 @@ class ErrorBoundary extends Component<Props, State> {
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+  override componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('[ErrorBoundary] Component error details:', {
       error: error.message,
       stack: error.stack,
@@ -37,7 +37,7 @@ class ErrorBoundary extends Component<Props, State> {
     this.setState({ hasError: false, error: undefined });
   };
 
-  render() {
+  override render() {
     if (this.state.hasError) {
       if (this.props.fallback) return this.props.fallback;
 
@@ -71,7 +71,7 @@ class ErrorBoundary extends Component<Props, State> {
             <div className="space-y-2">
               <button
                 onClick={this.handleRetry}
-                className="block w-full px-6 py-2.5 bg-dc-teal text-white rounded-full font-bold hover:bg-[#3ec4ac] transition-colors"
+                className="block w-full px-6 py-2.5 bg-dc-teal text-white rounded-full font-bold hover:bg-dc-teal-hover transition-colors"
               >
                 Try Again
               </button>
@@ -94,4 +94,3 @@ class ErrorBoundary extends Component<Props, State> {
 }
 
 export { ErrorBoundary };
-export default ErrorBoundary;

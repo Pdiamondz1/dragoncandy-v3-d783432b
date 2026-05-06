@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Smile, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { useMessageReactions, useAddReaction, useRemoveReaction } from '@/hooks/useMessageReactions';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -11,7 +11,7 @@ interface MessageReactionsProps {
 
 const COMMON_EMOJIS = ['👍', '❤️', '😊', '😂', '😮', '😢', '🎉', '🔥'];
 
-const MessageReactions: React.FC<MessageReactionsProps> = ({ messageId }) => {
+export const MessageReactions: React.FC<MessageReactionsProps> = ({ messageId }) => {
   const { user } = useAuth();
   const { data: reactions = [] } = useMessageReactions(messageId);
   const addReaction = useAddReaction();
@@ -93,4 +93,3 @@ const MessageReactions: React.FC<MessageReactionsProps> = ({ messageId }) => {
   );
 };
 
-export default MessageReactions;

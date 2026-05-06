@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { MessageSquare } from 'lucide-react';
-import MessageBubbleEnhanced from './MessageBubbleEnhanced';
+import { MessageBubbleEnhanced } from './MessageBubbleEnhanced';
 import { type Message } from '@/hooks/useMessages';
 
 interface MessageListProps {
@@ -15,7 +15,7 @@ interface MessageListProps {
   onEdit?: (message: Message) => void;
 }
 
-const MessageList: React.FC<MessageListProps> = ({
+export const MessageList: React.FC<MessageListProps> = ({
   messages,
   isLoading,
   onReply,
@@ -90,4 +90,3 @@ const MessageList: React.FC<MessageListProps> = ({
   );
 };
 
-export default MessageList;

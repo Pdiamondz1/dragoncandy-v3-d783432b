@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import DashboardLayout from '@/components/DashboardLayout';
+import { DashboardLayout } from '@/components/DashboardLayout';
 import { useOrgDragonSharePosts } from '@/hooks/useDragonShare';
 import { useOrg } from '@/hooks/useOrgData';
 import { useMyOrgRole } from '@/hooks/useOrgData';
@@ -15,7 +15,7 @@ import { Coachmark } from '@/components/guidance/Coachmark';
 type Tab = 'available' | 'boosted' | 'all';
 
 export function BusinessDragonSharePage({ userRole }: { userRole: UserRole }) {
-  const { profile } = useAuth();
+  useAuth();
   const { data: org } = useOrg();
   const { data: myRole } = useMyOrgRole(org?.id);
   const { data: posts, isLoading } = useOrgDragonSharePosts(org?.id);

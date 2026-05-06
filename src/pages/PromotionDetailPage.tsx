@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { usePromotions, Promotion, PromotionSubmission } from '@/hooks/usePromotions';
-import DashboardLayout from '@/components/DashboardLayout';
+import { DashboardLayout } from '@/components/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -12,9 +12,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
-  ArrowLeft, Calendar, Gift, Users, QrCode, Copy, Check, X,
+  ArrowLeft, Calendar, Gift, Users, Copy, Check, X,
   Download, Pause, Play, Clock, Mail, Phone, User, Loader2,
-  Image as ImageIcon, Video, AlertTriangle,
+  Video, AlertTriangle,
 } from 'lucide-react';
 import { format, isAfter, isBefore } from 'date-fns';
 import { toast } from '@/hooks/use-toast';

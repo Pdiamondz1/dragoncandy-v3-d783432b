@@ -1,11 +1,11 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Search } from 'lucide-react';
-import MessageList from './MessageList';
-import MessageInputEnhanced from './MessageInputEnhanced';
-import MessageSearch from './MessageSearch';
+import { MessageList } from './MessageList';
+import { MessageInputEnhanced } from './MessageInputEnhanced';
+import { MessageSearch } from './MessageSearch';
 import { useMessages, useSendMessage, type Message } from '@/hooks/useMessages';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -15,12 +15,12 @@ interface MessageThreadProps {
   campaignTitle?: string;
 }
 
-const MessageThread: React.FC<MessageThreadProps> = ({ 
+export const MessageThread: React.FC<MessageThreadProps> = ({ 
   campaignId, 
   recipientId, 
   campaignTitle 
 }) => {
-  const { user } = useAuth();
+  useAuth();
   const { data: messages = [], isLoading } = useMessages(campaignId);
   const sendMessage = useSendMessage();
   const [showSearch, setShowSearch] = useState(false);
@@ -99,4 +99,3 @@ const MessageThread: React.FC<MessageThreadProps> = ({
   );
 };
 
-export default MessageThread;

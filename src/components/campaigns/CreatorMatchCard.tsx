@@ -5,7 +5,6 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Progress } from '@/components/ui/progress';
 import {
   UserPlus,
   Send,
@@ -19,9 +18,8 @@ import {
   Sparkles,
   CheckCircle2,
   AlertCircle,
-  Star,
 } from 'lucide-react';
-import ApplicationForm from './ApplicationForm';
+import { ApplicationForm } from './ApplicationForm';
 import { useCampaign } from '@/hooks/useCampaigns';
 import { CreatorMatch, ScoreBreakdown } from '@/hooks/useCampaignMatches';
 import { WhyExpander } from '@/components/guidance/WhyExpander';
@@ -89,7 +87,7 @@ const ScoreBar: React.FC<{ label: string; score: number; icon: React.ElementType
   </div>
 );
 
-const CreatorMatchCard: React.FC<CreatorMatchCardProps> = ({ match, isInvited, onInvite }) => {
+export const CreatorMatchCard: React.FC<CreatorMatchCardProps> = ({ match, isInvited, onInvite }) => {
   const [showApplicationForm, setShowApplicationForm] = useState(false);
   const [showBreakdown, setShowBreakdown] = useState(false);
   const { campaign } = useCampaign(match.campaign_id);
@@ -265,4 +263,3 @@ const CreatorMatchCard: React.FC<CreatorMatchCardProps> = ({ match, isInvited, o
   );
 };
 
-export default CreatorMatchCard;

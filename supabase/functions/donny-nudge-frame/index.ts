@@ -1,5 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getModelConfig } from "../_shared/model-routing.ts";
+import { logCost } from "../_shared/cost-ledger.ts";
+import { getUserUsageStage, incrementUsage } from "../_shared/usage-tracker.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -31,6 +34,12 @@ serve(async (req) => {
       throw new Error("ANTHROPIC_API_KEY not configured");
     }
 
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    // Get model config from routing matrix
+    const usageStage = await getUserUsageStage(supabase, user_id);
+    const modelConfig = getModelConfig("donny-nudge-frame", usageStage);
+
     // Generate AI summary and priority
     const aiResponse = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -40,7 +49,7 @@ serve(async (req) => {
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model: "claude-haiku-4-5-20251001",
+        model: modelConfig.model,
         max_tokens: 200,
         system:
           "You generate brief, friendly notification summaries for a marketplace app connecting businesses with content creators. Respond with JSON only: { \"summary\": \"<one-line summary with personality>\", \"priority\": \"high|medium|low\" }. High = requires action (new application, content submitted). Medium = informational (milestone, status change). Low = nice-to-know.",
@@ -57,11 +66,23 @@ serve(async (req) => {
     const content = aiResult.content?.[0]?.text ?? "{}";
     const parsed = JSON.parse(content);
 
+    // Log cost to ledger
+    await logCost(supabase, {
+      userId: user_id,
+      edgeFunction: "donny-nudge-frame",
+      model: modelConfig.model,
+      tier: modelConfig.tier,
+      inputTokens: aiResult.usage?.input_tokens ?? 0,
+      outputTokens: aiResult.usage?.output_tokens ?? 0,
+    });
+
+    // Increment usage
+    await incrementUsage(supabase, user_id, modelConfig.actionCost);
+
     // Determine actions based on event type
     const actions = getActionsForType(type, data);
 
     // Insert nudge into database
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     const { error } = await supabase.from("donny_nudges").upsert(
       {
         user_id,

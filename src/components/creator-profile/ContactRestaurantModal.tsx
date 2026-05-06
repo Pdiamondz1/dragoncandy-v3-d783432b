@@ -21,7 +21,7 @@ interface ContactRestaurantModalProps {
   trigger?: React.ReactNode;
 }
 
-const ContactRestaurantModal: React.FC<ContactRestaurantModalProps> = ({ 
+export const ContactRestaurantModal: React.FC<ContactRestaurantModalProps> = ({ 
   restaurant, 
   campaignTitle,
   trigger 
@@ -144,4 +144,3 @@ const ContactRestaurantModal: React.FC<ContactRestaurantModalProps> = ({
   );
 };
 
-export default ContactRestaurantModal;

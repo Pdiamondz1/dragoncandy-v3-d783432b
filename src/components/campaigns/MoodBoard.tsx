@@ -1,6 +1,5 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import type { MoodBoardData } from '@/types/campaignMedia';
 
 interface MoodBoardProps {
   title?: string;
@@ -10,7 +9,7 @@ interface MoodBoardProps {
   referenceDescriptions?: string[];
 }
 
-const MoodBoard: React.FC<MoodBoardProps> = ({
+export const MoodBoard: React.FC<MoodBoardProps> = ({
   title = 'Campaign Visual Guide',
   colorPalette,
   typography,
@@ -84,4 +83,3 @@ const MoodBoard: React.FC<MoodBoardProps> = ({
   );
 };
 
-export default MoodBoard;

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { UserPlus, Search, Shield, ShieldCheck, User, MoreVertical } from 'lucide-react';
-import DashboardLayout from '@/components/DashboardLayout';
+import { DashboardLayout } from '@/components/DashboardLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -16,6 +16,7 @@ import { useOrgMembers, useUpdateMemberRole, useRemoveMember } from '@/hooks/use
 import { InviteModal } from '@/components/org/InviteModal';
 import { useToast } from '@/hooks/use-toast';
 import type { OrgMember, OrgRole } from '@/types/org';
+import type { UserRole } from '@/types/user';
 
 const ROLE_BADGES: Record<OrgRole, { label: string; variant: 'default' | 'secondary' | 'outline' }> = {
   owner: { label: 'Owner', variant: 'default' },
@@ -75,8 +76,8 @@ export default function TeamPage() {
     try {
       await updateRole.mutateAsync({ memberId: member.id, newRole });
       toast({ title: `${member.full_name ?? member.email} is now ${ROLE_BADGES[newRole].label}` });
-    } catch (err: any) {
-      toast({ title: 'Error', description: err.message, variant: 'destructive' });
+    } catch (err: unknown) {
+      toast({ title: 'Error', description: err instanceof Error ? err.message : 'An error occurred', variant: 'destructive' });
     }
   };
 
@@ -85,8 +86,8 @@ export default function TeamPage() {
     try {
       await removeMember.mutateAsync(member.id);
       toast({ title: isSelf ? 'You left the organization' : `${member.full_name ?? member.email} removed` });
-    } catch (err: any) {
-      toast({ title: 'Error', description: err.message, variant: 'destructive' });
+    } catch (err: unknown) {
+      toast({ title: 'Error', description: err instanceof Error ? err.message : 'An error occurred', variant: 'destructive' });
     }
   };
 
@@ -97,7 +98,7 @@ export default function TeamPage() {
   };
 
   return (
-    <DashboardLayout userRole={userRole as any}>
+    <DashboardLayout userRole={userRole as UserRole}>
       <div className="mx-auto max-w-2xl space-y-6 p-4 lg:p-6">
         <div className="flex items-center justify-between">
           <div>

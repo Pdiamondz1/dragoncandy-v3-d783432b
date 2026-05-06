@@ -8,7 +8,7 @@ import { LaunchpadScreen } from '@/components/campaign-creator/LaunchpadScreen';
 import { CampaignPreviewCard } from '@/components/campaign-creator/CampaignPreviewCard';
 import { AuthenticationModal } from '@/components/auth/AuthenticationModal';
 import { MobileBottomNav } from '@/components/MobileBottomNav';
-import DashboardLayout from '@/components/DashboardLayout';
+import { DashboardLayout } from '@/components/DashboardLayout';
 
 export default function CampaignCreator() {
   const [showAuthModal, setShowAuthModal] = useState(false);

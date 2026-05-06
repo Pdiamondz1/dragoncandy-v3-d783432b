@@ -7,10 +7,10 @@ export const BottomCTA = () => {
 
   return (
     <div id="cta" className="text-center mt-12 md:mt-20 lg:mt-28 mb-12 lg:mb-20 bg-gradient-to-br from-white via-white to-dc-teal/5 rounded-3xl p-6 md:p-10 lg:p-16 shadow-card-elevated border border-dc-teal/20 hover:shadow-glow-teal hover:border-dc-teal/40 transition-all duration-500">
-      <h2 className="text-2xl md:text-3xl lg:text-5xl font-bold text-[#111111] mb-4 md:mb-6 tracking-tight">
+      <h2 className="text-2xl md:text-3xl lg:text-5xl font-bold text-dc-text mb-4 md:mb-6 tracking-tight">
         Ready to Get Started?
       </h2>
-      <p className="text-base md:text-lg lg:text-xl text-[#555555] mb-8 md:mb-12 max-w-xl mx-auto leading-relaxed">
+      <p className="text-base md:text-lg lg:text-xl text-dc-text-muted mb-8 md:mb-12 max-w-xl mx-auto leading-relaxed">
         Whether you're a restaurant, a brand, or a creator — DragonCandy has you covered.
       </p>
       <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">

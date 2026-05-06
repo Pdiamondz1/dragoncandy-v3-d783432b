@@ -10,7 +10,7 @@ interface CampaignSponsorshipToggleProps {
   onToggle: (value: boolean) => void;
 }
 
-const CampaignSponsorshipToggle: React.FC<CampaignSponsorshipToggleProps> = ({
+export const CampaignSponsorshipToggle: React.FC<CampaignSponsorshipToggleProps> = ({
   openForSponsorship,
   onToggle,
 }) => {
@@ -71,4 +71,3 @@ const CampaignSponsorshipToggle: React.FC<CampaignSponsorshipToggleProps> = ({
   );
 };
 
-export default CampaignSponsorshipToggle;

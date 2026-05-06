@@ -1,10 +1,10 @@
 import React from 'react';
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
-import DashboardLayout from '@/components/DashboardLayout';
+import { DashboardLayout } from '@/components/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import ConversationMessageThread from '@/components/messages/ConversationMessageThread';
+import { ConversationMessageThread } from '@/components/messages/ConversationMessageThread';
 import { useConversations } from '@/hooks/useConversations';
 import { supabase } from '@/integrations/supabase/client';
 import { CampaignConversationHeader } from '@/components/messaging/CampaignConversationHeader';
@@ -20,6 +20,24 @@ const DirectConversationPage: React.FC = () => {
   const navigationState = location.state as { from?: string; backPath?: string } | null;
 
   const userRole = user?.user_metadata?.role || 'business_client';
+
+  const [otherParticipantId, setOtherParticipantId] = React.useState<string>("");
+
+  React.useEffect(() => {
+    if (conversationId && user) {
+      supabase
+        .from('conversation_participants')
+        .select('user_id')
+        .eq('conversation_id', conversationId)
+        .neq('user_id', user.id)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data) {
+            setOtherParticipantId(data.user_id);
+          }
+        });
+    }
+  }, [conversationId, user]);
 
   // Find the current conversation
   const conversation = conversations.find(c => c.conversation_id === conversationId);
@@ -41,27 +59,6 @@ const DirectConversationPage: React.FC = () => {
       </DashboardLayout>
     );
   }
-
-  // Get the other participant's ID from conversation participants
-  // We'll query the conversation_participants table to get the actual other participant
-  const [otherParticipantId, setOtherParticipantId] = React.useState<string>("");
-
-  React.useEffect(() => {
-    if (conversationId && user) {
-      // Fetch conversation participants to get the other user's ID
-      supabase
-        .from('conversation_participants')
-        .select('user_id')
-        .eq('conversation_id', conversationId)
-        .neq('user_id', user.id)
-        .maybeSingle()
-        .then(({ data }) => {
-          if (data) {
-            setOtherParticipantId(data.user_id);
-          }
-        });
-    }
-  }, [conversationId, user]);
 
   const recipientId = otherParticipantId;
 

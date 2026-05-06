@@ -8,7 +8,7 @@ interface FileUploadPreviewProps {
   uploadProgress: {[key: string]: number};
 }
 
-const FileUploadPreview: React.FC<FileUploadPreviewProps> = ({
+export const FileUploadPreview: React.FC<FileUploadPreviewProps> = ({
   files,
   uploadProgress
 }) => {
@@ -51,4 +51,3 @@ const FileUploadPreview: React.FC<FileUploadPreviewProps> = ({
   );
 };
 
-export default FileUploadPreview;

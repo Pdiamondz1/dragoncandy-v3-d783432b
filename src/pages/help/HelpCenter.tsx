@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Search, BookOpen, Megaphone, Zap, CreditCard, Shield, ChevronDown, ArrowLeft } from "lucide-react";
 import { DCSkeleton } from "@/components/ui/dc-skeleton";
 import { Button } from "@/components/ui/button";
+import { SEO } from "@/components/SEO";
 
 interface HelpArticle {
   id: string;
@@ -66,6 +67,11 @@ export default function HelpCenter() {
 
   return (
     <div className="min-h-screen bg-white">
+      <SEO
+        title="Help Center"
+        description="Guides, FAQs, and tutorials for DragonCandy creators, restaurants, and brands."
+        path="/help"
+      />
       <div className="max-w-2xl lg:max-w-3xl mx-auto px-4 py-8 lg:py-12">
         <Button
           variant="ghost"

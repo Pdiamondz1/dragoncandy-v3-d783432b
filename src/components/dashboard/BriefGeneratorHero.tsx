@@ -78,7 +78,7 @@ export function BriefGeneratorHero({ orgId }: BriefGeneratorHeroProps) {
       setBrief(result);
 
       if (user?.id && orgId) {
-        const { error: insertError } = await supabase.from('campaign_brief_generations' as any).insert({
+        const { error: insertError } = await supabase.from('campaign_brief_generations').insert({
           user_id: user.id,
           org_id: orgId,
           source_url: trimmed,

@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Search, X } from 'lucide-react';
 import { useSearchMessages } from '@/hooks/useMessages';
-import MessageBubbleEnhanced from './MessageBubbleEnhanced';
+import { MessageBubbleEnhanced } from './MessageBubbleEnhanced';
 
 interface MessageSearchProps {
   campaignId: string;
@@ -13,7 +13,7 @@ interface MessageSearchProps {
   onClose: () => void;
 }
 
-const MessageSearch: React.FC<MessageSearchProps> = ({ campaignId, isOpen, onClose }) => {
+export const MessageSearch: React.FC<MessageSearchProps> = ({ campaignId, isOpen, onClose }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   
@@ -86,4 +86,3 @@ const MessageSearch: React.FC<MessageSearchProps> = ({ campaignId, isOpen, onClo
   );
 };
 
-export default MessageSearch;

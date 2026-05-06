@@ -40,7 +40,7 @@ export function CreatorSettingsSections({
   selectedSkills,
   avatarFile,
   portfolioPaths,
-  completion,
+  completion: _completion,
   onInputChange,
   onSkillChange,
   onAvatarFileChange,

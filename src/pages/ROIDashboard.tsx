@@ -1,6 +1,5 @@
 import React from 'react';
-import DashboardLayout from '@/components/DashboardLayout';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { DashboardLayout } from '@/components/DashboardLayout';
 import {
   DollarSign,
   TrendingUp,
@@ -25,8 +24,6 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  LineChart,
-  Line,
   Area,
   AreaChart,
 } from 'recharts';

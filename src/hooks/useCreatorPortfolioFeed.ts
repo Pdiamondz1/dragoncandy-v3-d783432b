@@ -68,16 +68,6 @@ const createSmartFeed = (mediaItems: PortfolioMedia[]): PortfolioMedia[] => {
   // Limit total feed length
   const limitedFeed = finalShuffled.slice(0, MAX_FEED_LENGTH);
   
-  if (import.meta.env.DEV) {
-  if (import.meta.env.DEV) {
-    console.log('🧠 Smart Feed Logic:', {
-      originalItems: mediaItems.length,
-      duplicationFactor,
-      distributedItems: distributedItems.length,
-      finalFeedLength: limitedFeed.length
-    });
-  }
-  }
 
   return limitedFeed;
 };
@@ -111,10 +101,10 @@ export const useCreatorPortfolioFeed = () => {
         }
 
         // Process portfolio URLs and create media items in parallel
-        const mediaPromises = creators.flatMap((creator: any) => {
+        const mediaPromises = creators.flatMap((creator) => {
           const urls = Array.isArray(creator.portfolio_urls) ? creator.portfolio_urls : [];
           return urls
-            .filter((url: any) => typeof url === 'string' && url.length > 0)
+            .filter((url: unknown) => typeof url === 'string' && url.length > 0)
             .map(async (url: string) => {
               const isExternal = url.startsWith('http');
               const finalUrl = isExternal ? url : await getSignedUrl(url);
@@ -143,7 +133,6 @@ export const useCreatorPortfolioFeed = () => {
         if (processedMedia.length > initialCount) {
           setTimeout(() => setPortfolioMedia(processedMedia), 0);
         }
-        if (import.meta.env.DEV) console.log('🎯 DragonFeed: Final portfolio media set:', processedMedia.length, 'items');
         
       } catch (err) {
         console.error('💥 DragonFeed: Critical error:', err);

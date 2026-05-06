@@ -9,7 +9,7 @@ import {
 import type { DeliveryTier, StagedFile, Deliverable } from '@/types/campaignMedia';
 import { TIER_LIMITS } from '@/types/campaignMedia';
 import { MediaUploader } from '@/components/campaigns/MediaUploader';
-import DeliverableBuilder from '@/components/campaigns/DeliverableBuilder';
+import { DeliverableBuilder } from '@/components/campaigns/DeliverableBuilder';
 import { Button } from '@/components/ui/button';
 
 interface CampaignVisualsStepProps {
@@ -36,7 +36,7 @@ export function CampaignVisualsStep({
   onBack,
 }: CampaignVisualsStepProps) {
   const [showFootage, setShowFootage] = useState(rawFootage.length > 0);
-  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
+  const [uploadProgress, _setUploadProgress] = useState<Record<string, number>>({});
 
   return (
     <div className="space-y-4">
@@ -139,4 +139,3 @@ export function CampaignVisualsStep({
   );
 }
 
-export default CampaignVisualsStep;

@@ -1,8 +1,8 @@
 import React, { useState, useCallback, Component, type ReactNode } from 'react';
-import DashboardLayout from '@/components/DashboardLayout';
+import { DashboardLayout } from '@/components/DashboardLayout';
 import { CreatorBrowseHeader } from '@/components/creator-browse/CreatorBrowseHeader';
 import { CreatorMapView } from '@/components/creator-browse/CreatorMapView';
-import AdvancedCreatorFilters from '@/components/creator-search/AdvancedCreatorFilters';
+import { AdvancedCreatorFilters } from '@/components/creator-search/AdvancedCreatorFilters';
 import { BrandCreatorCard } from '@/components/brand-browse/BrandCreatorCard';
 import { ShortlistDrawer } from '@/components/brand-browse/ShortlistDrawer';
 import { CampaignContextSelector } from '@/components/brand-browse/CampaignContextSelector';
@@ -14,6 +14,7 @@ import { useBrandActiveCampaigns } from '@/hooks/useBrandActiveCampaigns';
 import { useInviteCreator } from '@/hooks/useCampaignInvitations';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { ErrorState } from '@/components/ui/error-state';
 import { AlertCircle, RefreshCw, Users } from 'lucide-react';
 import { DCSkeleton } from '@/components/ui/dc-skeleton';
 import { DCEmptyState } from '@/components/ui/dc-empty-state';
@@ -33,11 +34,11 @@ class BrowseCreatorsErrorBoundary extends Component<
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, info: React.ErrorInfo) {
+  override componentDidCatch(error: Error, info: React.ErrorInfo) {
     console.error('[BrandCreators] Caught render error:', error, info);
   }
 
-  render() {
+  override render() {
     if (this.state.hasError) {
       return (
         <DashboardLayout userRole="brand">
@@ -143,13 +144,7 @@ const BrandCreators: React.FC = () => {
   if (error) {
     return (
       <DashboardLayout userRole="brand">
-        <div className="min-h-screen bg-white flex items-center justify-center p-4">
-          <div className="border-2 border-dc-teal rounded-2xl p-6 text-center max-w-sm w-full">
-            <AlertCircle className="h-10 w-10 text-red-400 mx-auto mb-3" />
-            <h3 className="font-bold text-gray-900 mb-2">Unable to load creators</h3>
-            <p className="text-gray-500 text-sm">Please refresh the page to try again.</p>
-          </div>
-        </div>
+        <ErrorState message={error.message} onRetry={() => window.location.reload()} />
       </DashboardLayout>
     );
   }

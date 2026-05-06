@@ -1,10 +1,9 @@
 
-import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
-import DashboardLayout from '@/components/DashboardLayout';
+import { DashboardLayout } from '@/components/DashboardLayout';
 import { AlertCircle } from 'lucide-react';
 import { useCampaigns } from '@/hooks/useCampaigns';
-import ApplicationsListFixed from '@/components/campaigns/ApplicationsListFixed';
+import { ApplicationsListFixed } from '@/components/campaigns/ApplicationsListFixed';
 
 const BusinessProposals = () => {
   const { campaignId } = useParams<{ campaignId: string }>();

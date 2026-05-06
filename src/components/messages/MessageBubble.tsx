@@ -10,7 +10,7 @@ interface MessageBubbleProps {
   message: Message;
 }
 
-const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
+export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
   const { user } = useAuth();
   const isOwn = message.sender_id === user?.id;
   const senderName = message.sender_profile?.full_name || 'Unknown User';
@@ -74,4 +74,3 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
   );
 };
 
-export default MessageBubble;

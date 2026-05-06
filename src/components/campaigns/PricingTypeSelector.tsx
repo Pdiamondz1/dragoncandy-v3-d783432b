@@ -21,7 +21,7 @@ interface PricingTypeSelectorProps {
   aiRecommendedPrice?: number;
 }
 
-const PricingTypeSelector: React.FC<PricingTypeSelectorProps> = ({
+export const PricingTypeSelector: React.FC<PricingTypeSelectorProps> = ({
   value,
   onChange,
   fixedPrice,
@@ -217,4 +217,3 @@ const PricingTypeSelector: React.FC<PricingTypeSelectorProps> = ({
   );
 };
 
-export default PricingTypeSelector;

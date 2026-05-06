@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import DashboardLayout from '@/components/DashboardLayout';
+import { DashboardLayout } from '@/components/DashboardLayout';
 import { useBusinessActivity } from '@/hooks/useBusinessActivity';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';

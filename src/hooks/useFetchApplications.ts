@@ -107,9 +107,14 @@ export const useCreatorApplications = () => {
       }
 
       // Collect unique campaign owner IDs
+      type CampaignJoin = { title: string; description: string | null; budget_min: number | null; budget_max: number | null; deadline: string | null; user_id: string };
+      const getCampaign = (app: typeof data[0]): CampaignJoin | undefined => {
+        const c = app.campaign;
+        return Array.isArray(c) ? c[0] : (c as CampaignJoin | null) ?? undefined;
+      };
       const campaignOwnerIds = [...new Set(
         data
-          .map(app => (app.campaign as any)?.user_id)
+          .map(app => getCampaign(app)?.user_id)
           .filter(Boolean)
       )] as string[];
 
@@ -138,7 +143,7 @@ export const useCreatorApplications = () => {
 
       // Add creator profile AND business profile to all applications
       const enrichedApplications = data.map(app => {
-        const campaign = app.campaign as any;
+        const campaign = getCampaign(app);
         return {
           ...app,
           creator_profile: creatorProfile ? {

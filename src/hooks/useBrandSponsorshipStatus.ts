@@ -7,7 +7,7 @@ export interface BrandSponsorshipStatus {
   sponsorship_amount: number;
   proposal_message: string;
   status: 'pending' | 'accepted' | 'rejected';
-  terms: any;
+  terms: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
   payment_status?: 'unpaid' | 'pending' | 'paid' | 'refunded';

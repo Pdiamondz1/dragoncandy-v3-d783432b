@@ -10,13 +10,17 @@ export interface BrandSponsorship {
   sponsorship_amount: number;
   proposal_message: string;
   status: 'pending' | 'accepted' | 'rejected' | 'completed';
-  terms: any;
+  terms: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
   brand_completion_status?: string;
   business_completion_status?: string;
   completed_at?: string;
   review_status?: string;
+  payment_status?: 'unpaid' | 'pending' | 'paid' | 'refunded';
+  payment_intent_id?: string;
+  payment_date?: string;
+  payment_method?: string;
   campaigns?: {
     id: string;
     title: string;

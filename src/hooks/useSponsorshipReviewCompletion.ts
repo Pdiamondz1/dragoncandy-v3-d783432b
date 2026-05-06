@@ -91,7 +91,7 @@ export const useSponsorshipReviewCompletion = () => {
         if (restaurantProfile) {
           sponsorshipsForReview.push({
             id: sponsorship.id,
-            campaignTitle: (sponsorship.campaigns as any)?.title || 'Unknown Campaign',
+            campaignTitle: (Array.isArray(sponsorship.campaigns) ? sponsorship.campaigns[0]?.title : (sponsorship.campaigns as { title?: string } | null)?.title) || 'Unknown Campaign',
             otherPartyName: restaurantProfile.business_name,
             otherPartyId: restaurantProfile.user_id,
             userRole: 'brand',
@@ -115,7 +115,7 @@ export const useSponsorshipReviewCompletion = () => {
         if (brandProfile) {
           sponsorshipsForReview.push({
             id: sponsorship.id,
-            campaignTitle: (sponsorship.campaigns as any)?.title || 'Unknown Campaign',
+            campaignTitle: (Array.isArray(sponsorship.campaigns) ? sponsorship.campaigns[0]?.title : (sponsorship.campaigns as { title?: string } | null)?.title) || 'Unknown Campaign',
             otherPartyName: brandProfile.business_name,
             otherPartyId: brandProfile.user_id,
             userRole: 'business',

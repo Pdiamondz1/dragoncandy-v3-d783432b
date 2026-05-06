@@ -64,7 +64,7 @@ interface BusinessSettingsSectionsProps {
 export function BusinessSettingsSections({
   formData,
   logoFile,
-  completion,
+  completion: _completion,
   onInputChange,
   onLogoChange,
   onFieldBlur,

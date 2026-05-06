@@ -1,4 +1,5 @@
 
+import { SEO } from "@/components/SEO";
 import { Header } from "@/components/landing/Header";
 import { HeroSection } from "@/components/landing/HeroSection";
 import { BriefGeneratorPreview } from "@/components/landing/BriefGeneratorPreview";
@@ -24,6 +25,11 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen bg-white relative overflow-x-hidden">
+      <SEO
+        title="DragonCandy - AI-Powered Marketplace for Brands & Creators"
+        description="DragonCandy connects restaurants, brands, and content creators for short-form social media campaigns. Powered by Donny AI."
+        path="/landing"
+      />
       {/* Main content — mobile-first, scales up elegantly on desktop */}
       <div className="relative z-10 max-w-md md:max-w-2xl lg:max-w-5xl xl:max-w-6xl mx-auto px-4 md:px-8 lg:px-12">
         <Header />

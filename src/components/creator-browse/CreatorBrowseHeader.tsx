@@ -74,7 +74,7 @@ export const CreatorBrowseHeader: React.FC<CreatorBrowseHeaderProps> = ({
     <div className="space-y-4">
       {/* Title */}
       <div>
-        <h1 className="text-2xl font-extrabold text-gray-900">Find Creators</h1>
+        <h2 className="text-2xl font-extrabold text-gray-900">Find Creators</h2>
         <p className="text-sm text-gray-500 mt-1">Discover local creators matched to your brand</p>
       </div>
 

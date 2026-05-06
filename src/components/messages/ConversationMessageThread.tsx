@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import MessageList from './MessageList';
-import MessageInputEnhanced from './MessageInputEnhanced';
+import { MessageList } from './MessageList';
+import { MessageInputEnhanced } from './MessageInputEnhanced';
 import { useMessages, useSendMessage, type Message } from '@/hooks/useMessages';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -10,10 +10,10 @@ interface ConversationMessageThreadProps {
   conversationTitle?: string;
 }
 
-const ConversationMessageThread: React.FC<ConversationMessageThreadProps> = ({
+export const ConversationMessageThread: React.FC<ConversationMessageThreadProps> = ({
   conversationId,
   recipientId,
-  conversationTitle
+  conversationTitle: _conversationTitle
 }) => {
   const { user } = useAuth();
   const { data: messages = [], isLoading } = useMessages(undefined, conversationId);
@@ -78,4 +78,3 @@ const ConversationMessageThread: React.FC<ConversationMessageThreadProps> = ({
   );
 };
 
-export default ConversationMessageThread;

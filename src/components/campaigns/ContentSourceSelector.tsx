@@ -32,7 +32,7 @@ const options: {
   },
 ];
 
-const ContentSourceSelector = ({ value, onChange }: ContentSourceSelectorProps) => {
+export const ContentSourceSelector = ({ value, onChange }: ContentSourceSelectorProps) => {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
       {options.map((option) => {
@@ -70,4 +70,3 @@ const ContentSourceSelector = ({ value, onChange }: ContentSourceSelectorProps) 
   );
 };
 
-export default ContentSourceSelector;

@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import type { BrandBriefData, BrandDetailsData, BrandGoal } from '@/hooks/useBrandCampaignWizard';
+import type { BrandBriefData, BrandDetailsData } from '@/hooks/useBrandCampaignWizard';
 import type { CampaignAnalysis } from '@/types/campaign';
 import type { ContentType } from '@/types/campaignMedia';
 
@@ -91,7 +91,7 @@ export const BrandCampaignReviewStep = ({
         deadline: deadline ? format(deadline, 'yyyy-MM-dd') : null,
         status: status,
         ai_preview_status: 'none',
-        ...(campaignAnalysis ? { ai_analysis: campaignAnalysis as any } : {}),
+        ...(campaignAnalysis ? { ai_analysis: campaignAnalysis as unknown as Record<string, unknown> } : {}),
       };
 
       let campaignId: string;
@@ -99,14 +99,14 @@ export const BrandCampaignReviewStep = ({
       if (draftCampaignId) {
         const { error } = await supabase
           .from('campaigns')
-          .update(payload as any)
+          .update(payload)
           .eq('id', draftCampaignId);
         if (error) throw error;
         campaignId = draftCampaignId;
       } else {
         const { data, error } = await supabase
           .from('campaigns')
-          .insert(payload as any)
+          .insert(payload)
           .select('id')
           .single();
         if (error) throw error;
@@ -116,13 +116,13 @@ export const BrandCampaignReviewStep = ({
       if (detailsData.deliverables.length > 0) {
         if (draftCampaignId) {
           await supabase
-            .from('campaign_deliverables' as any)
+            .from('campaign_deliverables')
             .delete()
             .eq('campaign_id', campaignId);
         }
 
-        const { error: delError } = await (supabase
-          .from('campaign_deliverables' as any)
+        const { error: delError } = await supabase
+          .from('campaign_deliverables')
           .insert(
             detailsData.deliverables.map((d, i) => ({
               campaign_id: campaignId,
@@ -133,7 +133,7 @@ export const BrandCampaignReviewStep = ({
               description: d.description || null,
               sort_order: i,
             }))
-          ) as any);
+          );
 
         if (delError) throw delError;
       }

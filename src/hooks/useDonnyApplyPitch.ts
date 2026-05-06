@@ -20,7 +20,7 @@ export const useDonnyApplyPitch = () => {
     mutationFn: async ({
       campaignId,
       budgetMin,
-      budgetMax,
+      budgetMax: _budgetMax,
     }: {
       campaignId: string;
       budgetMin?: number | null;

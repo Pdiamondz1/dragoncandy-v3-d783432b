@@ -1,16 +1,16 @@
 // src/pages/CreatorCampaignMarketplace.tsx
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { usePublicCampaigns, PublicCampaign } from '@/hooks/usePublicCampaigns';
 import { useCreatorApplications, CreatorApplication } from '@/hooks/useCreatorApplications';
-import DashboardLayout from '@/components/DashboardLayout';
+import { DashboardLayout } from '@/components/DashboardLayout';
 import { CampaignSwipeCard } from '@/components/campaigns/CampaignSwipeCard';
 import { CampaignDetailModal } from '@/components/campaigns/CampaignDetailModal';
 import { CreatorApplicationCard } from '@/components/campaigns/CreatorApplicationCard';
-import MarketplaceLoadingState from '@/components/campaigns/MarketplaceLoadingState';
-import MarketplaceErrorState from '@/components/campaigns/MarketplaceErrorState';
+import { MarketplaceLoadingState } from '@/components/campaigns/MarketplaceLoadingState';
+import { MarketplaceErrorState } from '@/components/campaigns/MarketplaceErrorState';
 import { useCampaignFilters } from '@/hooks/useCampaignFilters';
 import { useGeoDistance } from '@/hooks/useGeoDistance';
 import { useDonnyMatches } from '@/hooks/useDonnyMatches';

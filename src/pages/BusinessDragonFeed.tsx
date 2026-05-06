@@ -1,5 +1,5 @@
 import React from 'react';
-import DashboardLayout from '@/components/DashboardLayout';
+import { DashboardLayout } from '@/components/DashboardLayout';
 import { DragonFeedGrid } from '@/components/dragon-feed/DragonFeedGrid';
 
 const BusinessDragonFeed: React.FC = () => {

@@ -1,43 +1,15 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 import { Input } from "@/components/ui/input";
 import { cleanupAuthState } from "@/lib/authCleanup";
 import { AuthHeader } from "@/components/auth/AuthHeader";
-
-const setSEO = (title: string, description: string, canonical?: string) => {
-  document.title = title;
-  const metaDesc = document.querySelector('meta[name="description"]');
-  if (metaDesc) metaDesc.setAttribute('content', description);
-  else {
-    const m = document.createElement('meta');
-    m.setAttribute('name', 'description');
-    m.setAttribute('content', description);
-    document.head.appendChild(m);
-  }
-  const existingCanonical = document.querySelector('link[rel="canonical"]');
-  const href = canonical || window.location.href;
-  if (existingCanonical) existingCanonical.setAttribute('href', href);
-  else {
-    const link = document.createElement('link');
-    link.setAttribute('rel', 'canonical');
-    link.setAttribute('href', href);
-    document.head.appendChild(link);
-  }
-};
+import { SEO } from "@/components/SEO";
 
 const UpdatePassword: React.FC = () => {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    setSEO(
-      "Update Password | DragonCandy",
-      "Set a new password for your DragonCandy account.",
-      `${window.location.origin}/auth/update-password`
-    );
-  }, []);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,9 +37,10 @@ const UpdatePassword: React.FC = () => {
       } catch {}
 
       window.location.href = "/auth?mode=login";
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error updating password:", err);
-      toast({ title: "Could not update password", description: err?.message || "Try the link again." });
+      const message = err instanceof Error ? err.message : "Try the link again.";
+      toast({ title: "Could not update password", description: message });
     } finally {
       setLoading(false);
     }
@@ -75,6 +48,11 @@ const UpdatePassword: React.FC = () => {
 
   return (
     <main className="min-h-screen bg-white flex flex-col overflow-x-hidden">
+      <SEO
+        title="Update Password"
+        description="Set a new password for your DragonCandy account."
+        path="/auth/update-password"
+      />
       {/* Template C header */}
       <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
         <div className="flex-1 text-center">

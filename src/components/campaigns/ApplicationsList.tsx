@@ -4,18 +4,17 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Users, BarChart3, Settings, Eye } from 'lucide-react';
-import { useCampaignApplications } from '@/hooks/useCampaignApplications';
+import { useCampaignApplications } from '@/hooks/useFetchApplications';
 import { useApplicationFilters } from '@/hooks/useApplicationFilters';
-import ApplicationCard from './ApplicationCard';
-import ApplicationFiltersComponent from './ApplicationFilters';
-import BulkApplicationActions from './BulkApplicationActions';
-import ApplicationAnalytics from './ApplicationAnalytics';
-import CreatorProfileModal from './CreatorProfileModal';
+import { ApplicationCard } from './ApplicationCard';
+import { ApplicationFiltersComponent } from './ApplicationFilters';
+import { BulkApplicationActions } from './BulkApplicationActions';
+import { ApplicationAnalytics } from './ApplicationAnalytics';
+import { CreatorProfileModal } from './CreatorProfileModal';
 import { CampaignApplication } from '@/types/applications';
 import { useManageApplication } from '@/hooks/useManageApplication';
 
@@ -95,7 +94,7 @@ interface ApplicationsListProps {
   campaignId: string;
 }
 
-const ApplicationsList: React.FC<ApplicationsListProps> = ({ campaignId }) => {
+export const ApplicationsList: React.FC<ApplicationsListProps> = ({ campaignId }) => {
   const { data: applications = [], isLoading, error } = useCampaignApplications(campaignId);
   const { filters, filteredApplications, updateFilter, resetFilters } = useApplicationFilters(applications);
   const { data: campaignData } = useQuery({
@@ -330,4 +329,3 @@ const ApplicationsList: React.FC<ApplicationsListProps> = ({ campaignId }) => {
   );
 };
 
-export default ApplicationsList;

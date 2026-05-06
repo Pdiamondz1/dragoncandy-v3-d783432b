@@ -26,9 +26,12 @@ export interface CampaignAnalysis {
   target_audience?: string;
   goals?: string[];
   recommended_platforms?: string[];
+  platforms?: string[];
   content_types?: string[];
   key_messages?: string[];
   success_metrics?: string[];
+  style?: string;
+  tone?: string;
   budget_recommendations?: {
     min: number;
     max: number;

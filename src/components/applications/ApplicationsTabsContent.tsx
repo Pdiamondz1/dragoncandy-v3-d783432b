@@ -1,8 +1,8 @@
 
 import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import ApplicationsList from './ApplicationsList';
-import DetailedApplicationCard from './DetailedApplicationCard';
+import { ApplicationsList } from './ApplicationsList';
+import { DetailedApplicationCard } from './DetailedApplicationCard';
 import { CampaignApplication } from '@/types/applications';
 
 interface ApplicationsTabsContentProps {
@@ -14,7 +14,7 @@ interface ApplicationsTabsContentProps {
   searchTerm: string;
 }
 
-const ApplicationsTabsContent: React.FC<ApplicationsTabsContentProps> = ({
+export const ApplicationsTabsContent: React.FC<ApplicationsTabsContentProps> = ({
   filteredApplications,
   pendingApplications,
   counterOfferedApplications = [],
@@ -102,4 +102,3 @@ const ApplicationsTabsContent: React.FC<ApplicationsTabsContentProps> = ({
   );
 };
 
-export default ApplicationsTabsContent;

@@ -48,9 +48,8 @@ export function useDonny(options?: UseDonnyOptions) {
     queryFn: async () => {
       if (!user) return null;
 
-      // Try to get existing conversation
       const { data: existing, error: fetchError } = await supabase
-        .from('donny_conversations' as any)
+        .from('donny_conversations')
         .select('id, user_id, created_at, last_message_at, context_snapshot')
         .eq('user_id', user.id)
         .order('last_message_at', { ascending: false })
@@ -58,13 +57,12 @@ export function useDonny(options?: UseDonnyOptions) {
         .maybeSingle();
 
       if (fetchError) throw fetchError;
-      if (existing) return existing as unknown as DonnyConversation;
+      if (existing) return existing as DonnyConversation;
 
-      // Create new conversation
       const { data: created, error: createError } = await supabase
-        .from('donny_conversations' as any)
+        .from('donny_conversations')
         .insert({ user_id: user.id })
-        .select()
+        .select('id, user_id, created_at, last_message_at, context_snapshot')
         .single();
 
       if (createError) throw createError;
@@ -80,13 +78,13 @@ export function useDonny(options?: UseDonnyOptions) {
       if (!conversation) return [];
 
       const { data, error: fetchError } = await supabase
-        .from('donny_messages' as any)
+        .from('donny_messages')
         .select('id, conversation_id, role, content, tool_calls, tool_result, rich_card, quick_actions, created_at')
         .eq('conversation_id', conversation.id)
         .order('created_at', { ascending: true });
 
       if (fetchError) throw fetchError;
-      return (data ?? []) as unknown as DonnyMessage[];
+      return (data ?? []) as DonnyMessage[];
     },
     enabled: !!conversation,
   });
@@ -133,7 +131,7 @@ export function useDonny(options?: UseDonnyOptions) {
 
       // Insert user message locally first
       const { error: insertError } = await supabase
-        .from('donny_messages' as any)
+        .from('donny_messages')
         .insert({
           conversation_id: conversation.id,
           role: 'user',
@@ -171,7 +169,7 @@ export function useDonny(options?: UseDonnyOptions) {
         );
 
         const { error: insertError } = await supabase
-          .from('donny_messages' as any)
+          .from('donny_messages')
           .insert({
             conversation_id: conversation.id,
             role: 'assistant',
@@ -218,7 +216,7 @@ export function useDonny(options?: UseDonnyOptions) {
 
     // Delete all messages in this conversation
     await supabase
-      .from('donny_messages' as any)
+      .from('donny_messages')
       .delete()
       .eq('conversation_id', conversation.id);
 

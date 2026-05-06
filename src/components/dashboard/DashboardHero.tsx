@@ -15,9 +15,9 @@ export function DashboardHero({ roleLabel, userName, children }: DashboardHeroPr
           <p className="font-sans text-sm font-bold uppercase tracking-wide text-dc-teal">
             {roleLabel}
           </p>
-          <h1 className="text-2xl font-bold text-gray-900 truncate mt-1">
+          <h2 className="text-2xl font-bold text-gray-900 truncate mt-1">
             Welcome back, {userName}
-          </h1>
+          </h2>
           <p className="text-gray-500 mt-1 text-sm">
             Here's what's happening with your account today.
           </p>

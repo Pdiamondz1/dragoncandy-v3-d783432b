@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { CreditCard, Users, ArrowUpRight, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import DashboardLayout from '@/components/DashboardLayout';
+import { DashboardLayout } from '@/components/DashboardLayout';
 import { WhyExpander } from '@/components/guidance/WhyExpander';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useMyOrgRole } from '@/hooks/useOrgData';
 import { useOrgMembers } from '@/hooks/useOrgMembers';
 import { SEAT_LIMITS } from '@/types/org';
+import type { UserRole } from '@/types/user';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -35,7 +36,7 @@ export default function OrgBillingPage() {
   const { data: myRole } = useMyOrgRole(activeOrg?.id);
   const { data: members = [] } = useOrgMembers(activeOrg?.id);
   const { toast } = useToast();
-  const navigate = useNavigate();
+  useNavigate();
   const [upgrading, setUpgrading] = useState(false);
 
   const userRole = profile?.role ?? 'business_client';
@@ -67,7 +68,7 @@ export default function OrgBillingPage() {
   };
 
   return (
-    <DashboardLayout userRole={userRole as any}>
+    <DashboardLayout userRole={userRole as UserRole}>
       <div className="mx-auto max-w-2xl space-y-6 p-4 lg:p-6">
         <div className="flex items-center justify-between">
           <div>

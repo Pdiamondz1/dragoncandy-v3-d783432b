@@ -36,9 +36,9 @@ export const AnonymousCampaignLayout: React.FC<AnonymousCampaignLayoutProps> = (
                   Back to Landing
                 </Button>
                 <div className="h-6 w-px bg-muted" />
-                <h1 className="text-xl font-semibold text-foreground">
+                <h2 className="text-xl font-semibold text-foreground">
                   Campaign Wizard
-                </h1>
+                </h2>
               </div>
               <div className="flex items-center gap-3">
                 <Badge variant="secondary" className="flex items-center gap-2 rounded-xl">

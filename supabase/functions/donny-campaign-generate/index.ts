@@ -1,6 +1,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { validateDonnyToken, requireScope } from "../_shared/auth.ts";
+import { getModelConfig, type ModelConfig } from "../_shared/model-routing.ts";
+import { logCost } from "../_shared/cost-ledger.ts";
+import { getUserUsageStage, incrementUsage } from "../_shared/usage-tracker.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -10,7 +13,7 @@ const corsHeaders = {
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY")!;
+const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY")!;
 
 interface FetchedContent {
   title: string;
@@ -51,8 +54,12 @@ async function fetchAndExtract(url: string): Promise<FetchedContent> {
 async function generateCampaignIdeas(
   pageContent: string,
   sourceType: string,
-  role: string | null
-): Promise<{ business_context: Record<string, unknown>; campaign_ideas: unknown[] }> {
+  role: string | null,
+  modelConfig: ModelConfig
+): Promise<{
+  result: { business_context: Record<string, unknown>; campaign_ideas: unknown[] };
+  usage: { input_tokens: number; output_tokens: number };
+}> {
   const systemPrompt = `You are Donny, a creative AI assistant for DragonCandy — a marketplace connecting restaurants with content creators.
 
 Given information about a business, you will:
@@ -118,31 +125,35 @@ ${pageContent}
 
 Generate 3 diverse campaign ideas based on this business.`;
 
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
+  const response = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
     headers: {
-      'Authorization': `Bearer ${OPENAI_API_KEY}`,
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
+      "x-api-key": ANTHROPIC_API_KEY,
+      "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify({
-      model: 'gpt-4o',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
+      model: modelConfig.model,
+      max_tokens: modelConfig.maxTokens,
       temperature: 0.8,
-      response_format: { type: 'json_object' },
+      system: systemPrompt,
+      messages: [
+        { role: "user", content: userPrompt },
+      ],
     }),
   });
 
   if (!response.ok) {
     const err = await response.text();
-    throw new Error(`OpenAI API error: ${err}`);
+    throw new Error(`Anthropic API error: ${err}`);
   }
 
   const data = await response.json();
-  const content = data.choices[0].message.content;
-  return JSON.parse(content);
+  const content = data.content?.[0]?.text ?? "{}";
+  return {
+    result: JSON.parse(content),
+    usage: { input_tokens: data.usage?.input_tokens ?? 0, output_tokens: data.usage?.output_tokens ?? 0 },
+  };
 }
 
 serve(async (req) => {
@@ -206,10 +217,22 @@ serve(async (req) => {
         pageContent = `Title: ${extracted.title}\nDescription: ${extracted.description}\nContent: ${extracted.bodyText}`;
       }
 
-      const ideasResponse = await generateCampaignIdeas(pageContent, source_type, role);
+      const usageStage = await getUserUsageStage(supabaseAdmin, userId);
+      const modelConfig = getModelConfig("donny-campaign-generate", usageStage);
+      const { result: ideasResponse, usage } = await generateCampaignIdeas(pageContent, source_type, role, modelConfig);
+
+      await logCost(supabaseAdmin, {
+        userId,
+        edgeFunction: "donny-campaign-generate",
+        model: modelConfig.model,
+        tier: modelConfig.tier,
+        inputTokens: usage.input_tokens,
+        outputTokens: usage.output_tokens,
+      });
+      await incrementUsage(supabaseAdmin, userId, modelConfig.actionCost);
 
       return new Response(JSON.stringify(ideasResponse), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
@@ -315,21 +338,10 @@ serve(async (req) => {
 
     const assembledContent = contentSections.join("\n\n");
 
-    // Call OpenAI GPT-4o
-    const openaiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${OPENAI_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "gpt-4o",
-        temperature: 0.7,
-        max_tokens: 3000,
-        messages: [
-          {
-            role: "system",
-            content: `You are an expert marketing strategist for DragonCandy, a platform connecting brands with social media content creators. Your job is to analyze brand content and generate a complete, compelling campaign draft.
+    // Call Anthropic Claude
+    const legacyUsageStage = await getUserUsageStage(supabaseAdmin, userId);
+    const legacyModelConfig = getModelConfig("donny-campaign-generate", legacyUsageStage);
+    const legacySystemPrompt = `You are an expert marketing strategist for DragonCandy, a platform connecting brands with social media content creators. Your job is to analyze brand content and generate a complete, compelling campaign draft.
 
 Respond with valid JSON only — no markdown fences, no additional text, just raw JSON. Use this exact structure:
 {
@@ -355,8 +367,21 @@ Respond with valid JSON only — no markdown fences, no additional text, just ra
     "mood": "Tone and mood of the content",
     "references": "References or inspiration sources"
   }
-}`,
-          },
+}`;
+
+    const anthropicResponse = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify({
+        model: legacyModelConfig.model,
+        max_tokens: legacyModelConfig.maxTokens,
+        temperature: 0.7,
+        system: legacySystemPrompt,
+        messages: [
           {
             role: "user",
             content: `Generate a campaign draft based on the following brand information:\n\n${assembledContent}`,
@@ -365,9 +390,19 @@ Respond with valid JSON only — no markdown fences, no additional text, just ra
       }),
     });
 
-    if (!openaiResponse.ok) { throw new Error("OpenAI API error: " + openaiResponse.status); }
-    const openaiResult = await openaiResponse.json();
-    const rawContent: string = openaiResult.choices?.[0]?.message?.content ?? "";
+    if (!anthropicResponse.ok) { throw new Error("AI API error: " + anthropicResponse.status); }
+    const anthropicResult = await anthropicResponse.json();
+    const rawContent: string = anthropicResult.content?.[0]?.text ?? "";
+
+    await logCost(supabaseAdmin, {
+      userId,
+      edgeFunction: "donny-campaign-generate",
+      model: legacyModelConfig.model,
+      tier: legacyModelConfig.tier,
+      inputTokens: anthropicResult.usage?.input_tokens ?? 0,
+      outputTokens: anthropicResult.usage?.output_tokens ?? 0,
+    });
+    await incrementUsage(supabaseAdmin, userId, legacyModelConfig.actionCost);
 
     // Strip markdown fences if present
     const cleaned = rawContent

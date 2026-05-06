@@ -2,9 +2,9 @@
 import React, { useState, useEffect } from 'react';
 import { useProjectCompletion } from '@/hooks/useProjectCompletion';
 import { useAuth } from '@/hooks/useAuth';
-import RatingPrompt from './RatingPrompt';
+import { RatingPrompt } from './RatingPrompt';
 
-const RatingPromptManager: React.FC = () => {
+export const RatingPromptManager: React.FC = () => {
   const { user } = useAuth();
   const { data: completedProjects, isLoading } = useProjectCompletion(user?.id);
   const [dismissedPrompts, setDismissedPrompts] = useState<Set<string>>(new Set());
@@ -53,4 +53,3 @@ const RatingPromptManager: React.FC = () => {
   );
 };
 
-export default RatingPromptManager;

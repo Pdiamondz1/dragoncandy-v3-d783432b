@@ -1,6 +1,6 @@
 import React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import DashboardLayout from '@/components/DashboardLayout';
+import { DashboardLayout } from '@/components/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -8,11 +8,9 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
   Wallet,
   DollarSign,
-  Clock,
   CheckCircle,
   ExternalLink,
   AlertCircle,
-  TrendingUp,
   Loader2,
   CreditCard,
   Building2,
@@ -111,8 +109,9 @@ const CreatorEarnings: React.FC = () => {
 
       if (error) throw error;
 
-      return (data || []).map((collab: any) => {
-        const campaign = collab.campaigns;
+      return (data || []).map((collab) => {
+        const campaignsRaw = collab.campaigns;
+        const campaign = Array.isArray(campaignsRaw) ? campaignsRaw[0] : campaignsRaw;
         const amount = campaign?.fixed_price || campaign?.budget_min || campaign?.budget_max || 0;
         const platformFee = amount * 0.05; // 5% platform fee — keep in sync with edge function PLATFORM_FEE_RATE
 

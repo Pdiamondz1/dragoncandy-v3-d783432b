@@ -5,6 +5,7 @@ import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import type { Campaign } from '@/hooks/useCampaignQueries';
+import type { CreateCampaignData } from '@/hooks/useCampaignMutations';
 import type { Deliverable } from '@/types/campaignMedia';
 
 export interface CampaignEditFormData {
@@ -185,17 +186,14 @@ export const useCampaignEditForm = (campaign: Campaign | undefined) => {
         },
       };
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await updateCampaign.mutateAsync({ id: campaign.id, updates: updates as any });
+      await updateCampaign.mutateAsync({ id: campaign.id, updates: updates as Partial<CreateCampaignData> });
 
       if (structuredDeliverables.length > 0) {
-        // @ts-ignore — campaign_deliverables not in generated types yet
         await supabase
           .from('campaign_deliverables')
           .delete()
           .eq('campaign_id', campaign.id);
 
-        // @ts-ignore
         await supabase
           .from('campaign_deliverables')
           .insert(

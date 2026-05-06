@@ -1,9 +1,8 @@
-import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useBrandDashboardStats } from '@/hooks/useBrandDashboardStats';
 import { useBrandActiveCampaigns } from '@/hooks/useBrandActiveCampaigns';
-import DashboardLayout from '@/components/DashboardLayout';
+import { DashboardLayout } from '@/components/DashboardLayout';
 import { DCTour } from '@/components/guidance/DCTour';
 import { useTour } from '@/hooks/useTour';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -11,6 +10,7 @@ import { DashboardHero } from '@/components/dashboard/DashboardHero';
 import { DashboardStatsGrid, type StatItem } from '@/components/dashboard/DashboardStatsGrid';
 import { QuickActionButtons, type QuickAction } from '@/components/dashboard/QuickActionButtons';
 import { ActivityFeedCard } from '@/components/dashboard/ActivityFeedCard';
+import { ErrorState } from '@/components/ui/error-state';
 import { Rocket, DollarSign, Users, TrendingUp, Loader2, AlertCircle } from 'lucide-react';
 import { DCSkeleton, DCSkeletonGrid } from '@/components/ui/dc-skeleton';
 import { DragonShareStatTile } from '@/components/dragonshare/DragonShareStatTile';
@@ -26,11 +26,19 @@ function formatSpend(amount: number): string {
 const BrandDashboard = () => {
   const { profile } = useAuth();
   const navigate = useNavigate();
-  const { data: stats, isLoading: statsLoading, isError: statsError } = useBrandDashboardStats();
+  const { data: stats, isLoading: statsLoading, isError: statsError, error: statsErrorObj, refetch: refetchStats } = useBrandDashboardStats();
   const { data: campaigns, isLoading: campaignsLoading } = useBrandActiveCampaigns();
   const { data: org } = useOrg();
   const { data: dsBoosts } = useOrgBoostStats(org?.id);
   const { showTour, tourSteps, completeTour, skipTour } = useTour('/dashboard/brand');
+
+  if (statsError) {
+    return (
+      <DashboardLayout userRole="brand">
+        <ErrorState message={statsErrorObj?.message ?? 'Failed to load dashboard data.'} onRetry={refetchStats} />
+      </DashboardLayout>
+    );
+  }
 
   if (!profile) {
     return (

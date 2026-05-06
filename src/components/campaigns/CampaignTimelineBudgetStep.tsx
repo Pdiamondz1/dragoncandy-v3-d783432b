@@ -12,7 +12,7 @@ import { CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import type { DeliveryTier } from '@/types/campaignMedia';
-import PricingTypeSelector, { PricingType } from './PricingTypeSelector';
+import { PricingTypeSelector, PricingType } from './PricingTypeSelector';
 
 const timelineBudgetSchema = z.object({
   goals: z.string().min(10, 'Please describe your campaign goals (minimum 10 characters)'),
@@ -68,7 +68,7 @@ interface CampaignTimelineBudgetStepProps {
   onBackToCustomize: () => void;
 }
 
-const CampaignTimelineBudgetStep: React.FC<CampaignTimelineBudgetStepProps> = ({
+export const CampaignTimelineBudgetStep: React.FC<CampaignTimelineBudgetStepProps> = ({
   deliveryTier,
   deliveryFee,
   initialData,
@@ -246,4 +246,3 @@ const CampaignTimelineBudgetStep: React.FC<CampaignTimelineBudgetStepProps> = ({
   );
 };
 
-export default CampaignTimelineBudgetStep;

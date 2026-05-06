@@ -12,7 +12,7 @@ import {
 import { formatDistanceToNow } from 'date-fns';
 import { useAuth } from '@/hooks/useAuth';
 import { type Message } from '@/hooks/useMessages';
-import MessageReactions from './MessageReactions';
+import { MessageReactions } from './MessageReactions';
 
 interface MessageBubbleEnhancedProps {
   message: Message;
@@ -22,12 +22,12 @@ interface MessageBubbleEnhancedProps {
   onEdit?: (message: Message) => void;
 }
 
-const MessageBubbleEnhanced: React.FC<MessageBubbleEnhancedProps> = ({
+export const MessageBubbleEnhanced: React.FC<MessageBubbleEnhancedProps> = ({
   message,
   showAvatar = true,
   onReply,
-  onForward,
-  onEdit
+  onForward: _onForward,
+  onEdit: _onEdit
 }) => {
   const { user } = useAuth();
 
@@ -163,8 +163,8 @@ const MessageBubbleEnhanced: React.FC<MessageBubbleEnhancedProps> = ({
                         style={{ maxHeight: '240px', maxWidth: '280px' }}
                         role="button"
                         tabIndex={0}
-                        onClick={() => window.open(message.attachment_url, '_blank')}
-                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); window.open(message.attachment_url, '_blank'); } }}
+                        onClick={() => window.open(message.attachment_url ?? undefined, '_blank')}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); window.open(message.attachment_url ?? undefined, '_blank'); } }}
                         onError={(e) => {
                           const target = e.target as HTMLImageElement;
                           target.style.display = 'none';
@@ -248,4 +248,3 @@ const MessageBubbleEnhanced: React.FC<MessageBubbleEnhancedProps> = ({
   );
 };
 
-export default MessageBubbleEnhanced;

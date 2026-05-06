@@ -1,6 +1,5 @@
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 
 interface CacheEntry<T> {
   data: T;
@@ -9,7 +8,7 @@ interface CacheEntry<T> {
 }
 
 class AnalyticsCache {
-  private cache = new Map<string, CacheEntry<any>>();
+  private cache = new Map<string, CacheEntry<unknown>>();
   private readonly DEFAULT_TTL = 5 * 60 * 1000; // 5 minutes
 
   set<T>(key: string, data: T, ttl = this.DEFAULT_TTL): void {

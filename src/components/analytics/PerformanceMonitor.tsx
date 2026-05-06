@@ -24,7 +24,7 @@ export const PerformanceMonitor: React.FC = () => {
     // Monitor memory usage (if available)
     const checkMemoryUsage = () => {
       if ('memory' in performance) {
-        const memory = (performance as any).memory;
+        const memory = (performance as unknown as { memory: { usedJSHeapSize: number; totalJSHeapSize: number; jsHeapSizeLimit: number } }).memory;
         trackPerformance('memory_used', memory.usedJSHeapSize, {
           total_heap: memory.totalJSHeapSize,
           heap_limit: memory.jsHeapSizeLimit

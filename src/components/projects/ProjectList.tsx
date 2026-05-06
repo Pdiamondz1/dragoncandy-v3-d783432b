@@ -6,23 +6,22 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
-  Briefcase, 
+  Briefcase,
   Calendar,
-  DollarSign, 
+  DollarSign,
   MessageSquare,
   CheckCircle2,
-  Clock,
   Loader2,
   AlertCircle,
   Zap,
   Star
 } from 'lucide-react';
-import ProjectFileUpload from '@/components/projects/ProjectFileUpload';
-import ProjectTimerSection from '@/components/projects/ProjectTimerSection';
+import { ProjectFileUpload } from '@/components/projects/ProjectFileUpload';
+import { ProjectTimerSection } from '@/components/projects/ProjectTimerSection';
 import { useProjectComplete } from '@/hooks/useProjectComplete';
 import { useSearchParams } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import RatingModal from '@/components/reviews/RatingModal';
+import { RatingModal } from '@/components/reviews/RatingModal';
 import { supabase } from '@/integrations/supabase/client';
 
 interface ProjectCollaboration {
@@ -30,9 +29,9 @@ interface ProjectCollaboration {
   campaign_id: string;
   creator_id: string;
   status: 'active' | 'completed' | 'cancelled';
-  contract_details?: any;
-  milestones?: any;
-  deliverables_status?: any;
+  contract_details?: Record<string, unknown> | null;
+  milestones?: Record<string, unknown> | null;
+  deliverables_status?: Record<string, unknown> | null;
   business_completion_status?: string;
   creator_completion_status?: string;
   completed_at?: string | null;
@@ -61,7 +60,7 @@ interface ProjectListProps {
   onMessageClick: (campaignId: string) => void;
 }
 
-const ProjectList: React.FC<ProjectListProps> = ({ projects, showProgress, onMessageClick }) => {
+export const ProjectList: React.FC<ProjectListProps> = ({ projects, showProgress, onMessageClick }) => {
   const { requestCompletion, requestingId } = useProjectComplete();
   const [searchParams] = useSearchParams();
   const highlightedProjectId = searchParams.get('highlight');
@@ -110,19 +109,6 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, showProgress, onMes
     const daysSinceStart = Math.floor((now.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24));
     
     return Math.min(Math.floor((daysSinceStart / 30) * 100), 90);
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active':
-        return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'completed':
-        return 'bg-green-100 text-green-800 border-green-200';
-      case 'cancelled':
-        return 'bg-red-100 text-red-800 border-red-200';
-      default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
-    }
   };
 
   const handleMarkComplete = (collaborationId: string) => {
@@ -413,4 +399,3 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, showProgress, onMes
   );
 };
 
-export default ProjectList;

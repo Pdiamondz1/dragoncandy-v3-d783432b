@@ -8,10 +8,10 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card } from '@/components/ui/card';
 import { Share2, UserPlus, Trash2, Eye, Download, Edit, Calendar } from 'lucide-react';
-import { useFilePermissions } from '@/hooks/useFileOperations';
+import { useFilePermissions } from '@/hooks/useFilePermissions';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import type { FileUpload, FilePermission } from '@/types/files';
+import type { FileUpload } from '@/types/files';
 
 interface FilePermissionsDialogProps {
   file: FileUpload;
@@ -19,7 +19,7 @@ interface FilePermissionsDialogProps {
   onClose: () => void;
 }
 
-const FilePermissionsDialog: React.FC<FilePermissionsDialogProps> = ({
+export const FilePermissionsDialog: React.FC<FilePermissionsDialogProps> = ({
   file,
   isOpen,
   onClose
@@ -74,7 +74,7 @@ const FilePermissionsDialog: React.FC<FilePermissionsDialogProps> = ({
     }
   };
 
-  const getPermissionColor = (type: string) => {
+  const getPermissionColor = (type: string): 'default' | 'secondary' | 'destructive' | 'outline' => {
     switch (type) {
       case 'view': return 'secondary';
       case 'download': return 'default';
@@ -117,7 +117,7 @@ const FilePermissionsDialog: React.FC<FilePermissionsDialogProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium">Permission Type</label>
-                  <Select value={newPermissionType} onValueChange={(value: any) => setNewPermissionType(value)}>
+                  <Select value={newPermissionType} onValueChange={(value) => setNewPermissionType(value as 'view' | 'download' | 'edit' | 'delete' | 'share')}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -174,7 +174,7 @@ const FilePermissionsDialog: React.FC<FilePermissionsDialogProps> = ({
                           </p>
                           <div className="flex items-center gap-2 mt-1">
                             <Badge 
-                              variant={getPermissionColor(permission.permission_type) as any}
+                              variant={getPermissionColor(permission.permission_type)}
                               className="text-xs"
                             >
                               {getPermissionIcon(permission.permission_type)}
@@ -239,4 +239,3 @@ const FilePermissionsDialog: React.FC<FilePermissionsDialogProps> = ({
   );
 };
 
-export default FilePermissionsDialog;

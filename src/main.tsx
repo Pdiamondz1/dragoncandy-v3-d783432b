@@ -1,4 +1,5 @@
 import { createRoot } from 'react-dom/client'
+import { HelmetProvider } from "react-helmet-async";
 import App from './App.tsx'
 import './index.css'
 
@@ -15,7 +16,11 @@ window.addEventListener('error', (event) => {
 const root = document.getElementById("root")!;
 
 try {
-  createRoot(root).render(<App />);
+  createRoot(root).render(
+    <HelmetProvider>
+      <App />
+    </HelmetProvider>
+  );
 } catch (err) {
   console.error('[Fatal] React failed to mount:', err);
   root.innerHTML =

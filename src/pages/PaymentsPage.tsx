@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Wallet } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import DashboardLayout from "@/components/DashboardLayout";
+import { DashboardLayout } from '@/components/DashboardLayout';
 import { PaymentTimeline } from "@/components/payments/PaymentTimeline";
 import { PaymentSummaryCards } from "@/components/payments/PaymentSummaryCards";
 import { usePaymentNotifications } from "@/hooks/usePaymentNotifications";
@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import type { PaymentEvent } from "@/hooks/usePaymentTimeline";
 import type { UserRole } from "@/lib/paymentEducation";
+import type { UserRole as AppUserRole } from "@/types/user";
 
 type Tab = 'active' | 'completed' | 'issues';
 
@@ -68,7 +69,7 @@ export default function PaymentsPage() {
   const displayed = activeTab === 'active' ? activeEntities : activeTab === 'completed' ? completedEntities : issueEntities;
 
   return (
-    <DashboardLayout userRole={profile?.role as any ?? 'business_client'}>
+    <DashboardLayout userRole={(profile?.role ?? 'business_client') as AppUserRole}>
       <div className="space-y-6 p-4 max-w-2xl mx-auto">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 uppercase tracking-wide">Your Payments</h1>

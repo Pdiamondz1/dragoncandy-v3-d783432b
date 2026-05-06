@@ -33,7 +33,7 @@ import { useLogout } from '@/hooks/useLogout';
 import { useInactivityTimeout } from '@/hooks/useInactivityTimeout';
 import { InactivityWarningDialog } from '@/components/InactivityWarningDialog';
 import { useProfileData } from '@/hooks/useProfileData';
-import NotificationDropdown from '@/components/notifications/NotificationDropdown';
+import { NotificationDropdown } from '@/components/notifications/NotificationDropdown';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { MobileBottomNav } from '@/components/MobileBottomNav';
 import { MobileTopNav } from '@/components/MobileTopNav';
@@ -41,7 +41,7 @@ import { DonnyAvatar } from '@/components/donny/DonnyAvatar';
 import { useDonnyContext } from '@/contexts/DonnyProvider';
 import { OrgUnitSwitcher } from '@/components/org/OrgUnitSwitcher';
 import { useMyOrgRole } from '@/hooks/useOrgData';
-import ErrorBoundary from '@/components/ErrorBoundary';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import type { UserRole } from '@/types/user';
 import { getSidebarNav, getSettingsHref, getDashboardLabel } from '@/lib/navConfig';
 
@@ -184,9 +184,9 @@ const DashboardLayoutInner: React.FC<DashboardLayoutProps> = ({ children, userRo
                 <div className="flex items-center gap-4">
                   <SidebarTrigger className="hover:bg-muted transition-colors duration-200" />
                   <div className="hidden sm:block">
-                    <h1 className="text-lg font-semibold text-foreground tracking-tight">
+                    <h2 className="text-lg font-semibold text-foreground tracking-tight">
                       {getDashboardLabel(userRole)}
-                    </h1>
+                    </h2>
                   </div>
                 </div>
 
@@ -268,7 +268,7 @@ const DashboardLayoutInner: React.FC<DashboardLayoutProps> = ({ children, userRo
             </header>
           )}
 
-          <main className={`${isMobile ? 'flex-1 min-h-screen overflow-x-hidden pb-24 px-4 w-full min-w-0 max-w-full' : 'flex-1 p-6 lg:p-8'} animate-fade-in`}>
+          <main className={`${isMobile ? 'flex-1 min-h-screen overflow-x-hidden pt-4 pb-24 px-4 w-full min-w-0 max-w-full' : 'flex-1 p-6 lg:p-8'} animate-fade-in`}>
             <ErrorBoundary level="page">
               {children}
             </ErrorBoundary>
@@ -284,8 +284,7 @@ const DashboardLayoutInner: React.FC<DashboardLayoutProps> = ({ children, userRo
   );
 };
 
-const DashboardLayout: React.FC<DashboardLayoutProps> = (props) => {
+export const DashboardLayout: React.FC<DashboardLayoutProps> = (props) => {
   return <DashboardLayoutInner {...props} />;
 };
 
-export default DashboardLayout;

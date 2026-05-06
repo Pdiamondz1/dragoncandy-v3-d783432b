@@ -12,7 +12,7 @@ export interface SponsorshipProposal {
   sponsorship_amount: number;
   proposal_message: string;
   status: 'pending' | 'accepted' | 'rejected' | 'completed';
-  terms: any;
+  terms: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
   brand_completion_status?: string;
@@ -79,19 +79,25 @@ export const useSponsorshipProposals = () => {
   });
 
   const updateProposalStatus = useMutation({
-    mutationFn: async ({ 
-      proposalId, 
-      status 
-    }: { 
-      proposalId: string; 
+    mutationFn: async ({
+      proposalId,
+      status
+    }: {
+      proposalId: string;
       status: 'accepted' | 'rejected';
     }) => {
-      const { error } = await supabase
+      const { data, error, count } = await supabase
         .from('campaign_sponsorships')
         .update({ status })
-        .eq('id', proposalId);
+        .eq('id', proposalId)
+        .eq('status', 'pending')
+        .select('id', { count: 'exact' });
 
       if (error) throw error;
+      if (count === 0) {
+        throw new Error('This sponsorship is no longer pending — someone else may have already responded.');
+      }
+      return data;
     },
     onSuccess: async (_, { proposalId, status }) => {
       queryClient.invalidateQueries({ queryKey: ['sponsorship-proposals'] });
@@ -100,7 +106,7 @@ export const useSponsorshipProposals = () => {
       const proposal = proposals?.find(p => p.id === proposalId);
       
       if (proposal?.brand_profile?.user_id && proposal?.campaigns) {
-        const result = await sendNotification(
+        await sendNotification(
           'sponsorship_status',
           undefined, // Let edge function resolve email
           undefined, // Let edge function resolve name

@@ -1,4 +1,3 @@
-import React from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import {
@@ -53,7 +52,7 @@ const DEFAULT_DELIVERABLE: Omit<Deliverable, 'id'> = {
   aspect_ratio: '9:16',
 };
 
-export default function DeliverableBuilder({
+export function DeliverableBuilder({
   deliverables,
   onChange,
   maxDeliverables = 10,

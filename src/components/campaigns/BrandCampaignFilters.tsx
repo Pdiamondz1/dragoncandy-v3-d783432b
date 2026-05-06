@@ -25,7 +25,7 @@ export interface BrandCampaignFilters {
 
 interface BrandCampaignFiltersProps {
   filters: BrandCampaignFilters;
-  onFilterChange: (key: keyof BrandCampaignFilters, value: any) => void;
+  onFilterChange: (key: keyof BrandCampaignFilters, value: string | string[] | boolean) => void;
   onReset: () => void;
   totalCount: number;
   filteredCount: number;
@@ -51,7 +51,7 @@ const INDUSTRY_OPTIONS = [
   'Other',
 ];
 
-const BrandCampaignFilters: React.FC<BrandCampaignFiltersProps> = ({
+export const BrandCampaignFilters: React.FC<BrandCampaignFiltersProps> = ({
   filters,
   onFilterChange,
   onReset,
@@ -188,7 +188,7 @@ const BrandCampaignFilters: React.FC<BrandCampaignFiltersProps> = ({
         <div className="grid grid-cols-2 gap-2">
           <Select
             value={filters.sortBy}
-            onValueChange={(value: any) => onFilterChange('sortBy', value)}
+            onValueChange={(value) => onFilterChange('sortBy', value)}
           >
             <SelectTrigger id="sort">
               <SelectValue />
@@ -201,7 +201,7 @@ const BrandCampaignFilters: React.FC<BrandCampaignFiltersProps> = ({
           </Select>
           <Select
             value={filters.sortOrder}
-            onValueChange={(value: any) => onFilterChange('sortOrder', value)}
+            onValueChange={(value) => onFilterChange('sortOrder', value)}
           >
             <SelectTrigger>
               <SelectValue />
@@ -222,4 +222,3 @@ const BrandCampaignFilters: React.FC<BrandCampaignFiltersProps> = ({
   );
 };
 
-export default BrandCampaignFilters;

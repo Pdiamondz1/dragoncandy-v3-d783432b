@@ -3,8 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Loader2, Sparkles, RefreshCw, ArrowLeft, ArrowRight, SkipForward } from 'lucide-react';
 import { useDonnyPreview, extractMoodBoard, extractStoryboard } from '@/hooks/useDonnyPreview';
-import MoodBoard from './MoodBoard';
-import Storyboard from './Storyboard';
+import { MoodBoard } from './MoodBoard';
+import { Storyboard } from './Storyboard';
 
 interface CampaignAIPreviewStepProps {
   campaignId: string;
@@ -13,7 +13,7 @@ interface CampaignAIPreviewStepProps {
   onBack: () => void;
 }
 
-const CampaignAIPreviewStep: React.FC<CampaignAIPreviewStepProps> = ({
+export const CampaignAIPreviewStep: React.FC<CampaignAIPreviewStepProps> = ({
   campaignId,
   onApprove,
   onSkip,
@@ -153,4 +153,3 @@ const CampaignAIPreviewStep: React.FC<CampaignAIPreviewStepProps> = ({
   return null;
 };
 
-export default CampaignAIPreviewStep;

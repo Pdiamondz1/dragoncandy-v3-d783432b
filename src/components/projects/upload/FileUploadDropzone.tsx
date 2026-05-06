@@ -9,7 +9,7 @@ interface FileUploadDropzoneProps {
   fileRejections: FileRejection[];
 }
 
-const FileUploadDropzone: React.FC<FileUploadDropzoneProps> = ({
+export const FileUploadDropzone: React.FC<FileUploadDropzoneProps> = ({
   onDrop,
   fileRejections
 }) => {
@@ -71,4 +71,3 @@ const FileUploadDropzone: React.FC<FileUploadDropzoneProps> = ({
   );
 };
 
-export default FileUploadDropzone;

@@ -10,7 +10,7 @@ interface ApplicationsStatsProps {
   acceptedCount: number;
 }
 
-const ApplicationsStats: React.FC<ApplicationsStatsProps> = ({
+export const ApplicationsStats: React.FC<ApplicationsStatsProps> = ({
   applications,
   pendingCount,
   acceptedCount,
@@ -94,4 +94,3 @@ const ApplicationsStats: React.FC<ApplicationsStatsProps> = ({
   );
 };
 
-export default ApplicationsStats;

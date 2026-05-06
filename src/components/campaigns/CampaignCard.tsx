@@ -20,7 +20,7 @@ interface CampaignCardProps {
   onEdit?: (campaign: Campaign) => void;
 }
 
-const CampaignCard: React.FC<CampaignCardProps> = ({ 
+const CampaignCardComponent: React.FC<CampaignCardProps> = ({ 
   campaign, 
   onViewDetails, 
   onEdit 
@@ -454,4 +454,4 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
   );
 };
 
-export default React.memo(CampaignCard);
+export const CampaignCard = React.memo(CampaignCardComponent);

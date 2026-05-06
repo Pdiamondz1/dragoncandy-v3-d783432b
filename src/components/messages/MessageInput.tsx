@@ -12,7 +12,7 @@ interface MessageInputProps {
   placeholder?: string;
 }
 
-const MessageInput: React.FC<MessageInputProps> = ({ 
+export const MessageInput: React.FC<MessageInputProps> = ({ 
   campaignId,
   onSendMessage, 
   disabled = false,
@@ -22,10 +22,25 @@ const MessageInput: React.FC<MessageInputProps> = ({
   const { sendTypingIndicator } = useTypingIndicator(campaignId);
   const typingTimeoutRef = useRef<NodeJS.Timeout>();
 
+  const draftKey = `dc_msg_draft_${campaignId}`;
+
+  // Load draft on mount / conversation switch — reset to empty if no draft exists
+  useEffect(() => {
+    const saved = localStorage.getItem(draftKey);
+    setMessage(saved || '');
+  }, [draftKey]);
+
+  // Persist draft on change
+  useEffect(() => {
+    if (message) localStorage.setItem(draftKey, message);
+    else localStorage.removeItem(draftKey);
+  }, [message, draftKey]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (message.trim() && !disabled) {
       onSendMessage(message.trim());
+      localStorage.removeItem(draftKey);
       setMessage('');
       sendTypingIndicator(false);
     }
@@ -96,4 +111,3 @@ const MessageInput: React.FC<MessageInputProps> = ({
   );
 };
 
-export default MessageInput;

@@ -49,14 +49,14 @@ export const Header: React.FC = () => {
           <button
             key={link.target}
             onClick={() => scrollToSection(link.target)}
-            className="text-sm font-medium text-[#555555] hover:text-dc-teal transition-colors duration-200 bg-transparent border-none cursor-pointer"
+            className="text-sm font-medium text-dc-text-muted hover:text-dc-teal transition-colors duration-200 bg-transparent border-none cursor-pointer"
           >
             {link.label}
           </button>
         ))}
         <Button
           variant="ghost"
-          className="rounded-full text-[#555555] hover:text-dc-teal font-medium"
+          className="rounded-full text-dc-text-muted hover:text-dc-teal font-medium"
           onClick={() => navigate('/auth?mode=login')}
         >
           Login
@@ -86,7 +86,7 @@ export const Header: React.FC = () => {
                 <button
                   key={link.target}
                   onClick={() => handleNavClick(link.target)}
-                  className="w-full text-left px-4 py-2 rounded-full text-[#555555] hover:text-dc-teal font-medium bg-transparent border-none cursor-pointer"
+                  className="w-full text-left px-4 py-2 rounded-full text-dc-text-muted hover:text-dc-teal font-medium bg-transparent border-none cursor-pointer"
                 >
                   {link.label}
                 </button>
@@ -94,7 +94,7 @@ export const Header: React.FC = () => {
               <hr className="border-gray-200 my-1" />
               <Button
                 variant="ghost"
-                className="w-full justify-start rounded-full text-[#555555] hover:text-dc-teal"
+                className="w-full justify-start rounded-full text-dc-text-muted hover:text-dc-teal"
                 onClick={() => handleNavigate('/auth?mode=login')}
               >
                 Login

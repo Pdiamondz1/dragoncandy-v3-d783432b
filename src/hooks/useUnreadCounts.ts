@@ -23,5 +23,7 @@ export const useUnreadMessageCounts = () => {
       return data || [];
     },
     enabled: !!user,
+    staleTime: 15_000,
+    refetchOnWindowFocus: 'always',
   });
 };

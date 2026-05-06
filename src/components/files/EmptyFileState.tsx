@@ -8,7 +8,7 @@ interface EmptyFileStateProps {
   filterType: string;
 }
 
-const EmptyFileState: React.FC<EmptyFileStateProps> = ({
+export const EmptyFileState: React.FC<EmptyFileStateProps> = ({
   searchQuery,
   filterType
 }) => {
@@ -26,4 +26,3 @@ const EmptyFileState: React.FC<EmptyFileStateProps> = ({
   );
 };
 
-export default EmptyFileState;

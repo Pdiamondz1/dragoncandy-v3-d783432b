@@ -81,10 +81,16 @@ export const useDragonDashTimer = (collaborationId: string | null) => {
       if (error) throw error;
 
       const now = new Date();
-      const d = data as any;
+      const d = data as unknown as {
+        content_started_at: string | null;
+        content_deadline: string | null;
+        content_status: string;
+        campaign: { delivery_type: string }[] | { delivery_type: string } | null;
+      };
       const contentStartedAt = d.content_started_at;
       const contentDeadline = d.content_deadline;
-      const deliveryType = d.campaign?.delivery_type || 'standard';
+      const campaignRecord = Array.isArray(d.campaign) ? d.campaign[0] : d.campaign;
+      const deliveryType = campaignRecord?.delivery_type || 'standard';
       const contentStatus = d.content_status;
 
       let status: TimerData['status'] = 'not_started';
@@ -140,8 +146,12 @@ export const useDragonDashTimer = (collaborationId: string | null) => {
 
       if (fetchError) throw fetchError;
 
-      const collabAny = collab as any;
-      const deliveryType = collabAny.campaign?.delivery_type || 'standard';
+      const collabData = collab as unknown as {
+        campaign: { id: string; title: string; delivery_type: string; user_id: string }[] | { id: string; title: string; delivery_type: string; user_id: string } | null;
+        creator: { full_name: string }[] | { full_name: string } | null;
+      };
+      const campaignRec = Array.isArray(collabData.campaign) ? collabData.campaign[0] : collabData.campaign;
+      const deliveryType = campaignRec?.delivery_type || 'standard';
       const duration = DELIVERY_DURATIONS[deliveryType] || DELIVERY_DURATIONS.standard;
       
       const now = new Date();
@@ -159,11 +169,11 @@ export const useDragonDashTimer = (collaborationId: string | null) => {
       if (error) throw error;
 
       // Fire-and-forget: write payment event for content_started
-      supabase.rpc('insert_payment_event' as any, {
+      supabase.rpc('insert_payment_event', {
         p_event_type: 'content_started',
         p_entity_type: 'collaboration',
         p_entity_id: collaborationId,
-        p_campaign_id: collabAny.campaign?.id ?? '',
+        p_campaign_id: campaignRec?.id ?? '',
         p_metadata: {},
       }).then(() => {}, () => {});
 
@@ -179,11 +189,12 @@ export const useDragonDashTimer = (collaborationId: string | null) => {
         dragonrush: '1-3 hours',
       };
 
+      const creatorRec = Array.isArray(collabData.creator) ? collabData.creator[0] : collabData.creator;
       sendNotification('content_started', undefined, undefined, {
-        campaignTitle: collabAny.campaign?.title,
-        campaignId: collabAny.campaign?.id,
-        recipientUserId: collabAny.campaign?.user_id,
-        creatorName: collabAny.creator?.full_name || 'A creator',
+        campaignTitle: campaignRec?.title,
+        campaignId: campaignRec?.id,
+        recipientUserId: campaignRec?.user_id,
+        creatorName: creatorRec?.full_name || 'A creator',
         deliveryTime: deliveryLabels[deliveryType] || '72 hours',
         projectId: collaborationId,
       });

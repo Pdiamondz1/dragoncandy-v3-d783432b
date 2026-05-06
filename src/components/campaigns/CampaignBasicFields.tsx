@@ -12,7 +12,7 @@ interface CampaignBasicFieldsProps {
   onTargetAudienceChange: (targetAudience: string) => void;
 }
 
-const CampaignBasicFields: React.FC<CampaignBasicFieldsProps> = ({
+export const CampaignBasicFields: React.FC<CampaignBasicFieldsProps> = ({
   title,
   description,
   targetAudience,
@@ -63,4 +63,3 @@ const CampaignBasicFields: React.FC<CampaignBasicFieldsProps> = ({
   );
 };
 
-export default CampaignBasicFields;

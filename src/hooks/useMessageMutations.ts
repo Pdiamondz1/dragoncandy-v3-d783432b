@@ -39,7 +39,7 @@ export const useSendMessage = () => {
           category,
           forwarded_from_message_id: forwardedFromMessageId,
         })
-        .select()
+        .select('id, campaign_id, conversation_id, sender_id, recipient_id, content, created_at')
         .single();
 
       if (error) {
@@ -49,6 +49,8 @@ export const useSendMessage = () => {
 
       return data;
     },
+    retry: 3,
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 8000),
     onMutate: async (variables) => {
       // Create optimistic message
       const optimisticMessage = {
@@ -88,14 +90,15 @@ export const useSendMessage = () => {
       const previousMessages = queryClient.getQueryData(queryKey);
 
       // Optimistically update cache
-      queryClient.setQueryData(queryKey, (old: any) => {
+      queryClient.setQueryData(queryKey, (old: unknown) => {
         if (!old) return [optimisticMessage];
+        if (!Array.isArray(old)) return [optimisticMessage];
         return [...old, optimisticMessage];
       });
 
       return { previousMessages, queryKey };
     },
-    onError: (error, variables, context) => {
+    onError: (_error, _variables, context) => {
       // Rollback optimistic update
       if (context?.previousMessages) {
         queryClient.setQueryData(context.queryKey, context.previousMessages);
@@ -107,7 +110,7 @@ export const useSendMessage = () => {
         variant: 'destructive',
       });
     },
-    onSuccess: async (data, variables) => {
+    onSuccess: async (_data, variables) => {
       const queryKey = variables.campaignId 
         ? ['messages', variables.campaignId, undefined]
         : ['messages', undefined, variables.conversationId];
@@ -160,7 +163,7 @@ export const useStarMessage = () => {
         .from('messages')
         .update({ is_starred: isStarred })
         .eq('id', messageId)
-        .select()
+        .select('id, campaign_id, conversation_id, is_starred')
         .single();
 
       if (error) {

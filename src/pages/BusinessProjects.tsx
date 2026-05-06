@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import DashboardLayout from '@/components/DashboardLayout';
+import { DashboardLayout } from '@/components/DashboardLayout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -14,10 +14,10 @@ import {
 } from 'lucide-react';
 import { useProjectComplete } from '@/hooks/useProjectComplete';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useFileUploads } from '@/hooks/useFileUploads';
+import { useFileUploads } from '@/hooks/useFileQuery';
 import { formatFileSize } from '@/lib/fileUtils';
 import { cn } from '@/lib/utils';
-import RatingModal from '@/components/reviews/RatingModal';
+import { RatingModal } from '@/components/reviews/RatingModal';
 import { QuickApprovalCard } from '@/components/projects/QuickApprovalCard';
 import { useToast } from '@/hooks/use-toast';
 
@@ -227,7 +227,7 @@ const BusinessProjects: React.FC = () => {
   // Fetch files for selected project
   const { data: projectFiles } = useFileUploads(selectedProject || undefined, 'deliverable');
 
-  const handleDownloadFile = async (file: any) => {
+  const handleDownloadFile = async (file: { id: string; bucket_name: string; file_path: string; original_filename: string }) => {
     setDownloadingFileId(file.id);
     try {
       const { data } = await supabase.storage

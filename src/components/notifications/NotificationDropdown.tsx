@@ -11,13 +11,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Bell, Check, CheckCheck } from 'lucide-react';
-import { useNotifications } from '@/hooks/useNotifications';
+import { Bell, CheckCheck } from 'lucide-react';
+import { useNotifications, type Notification } from '@/hooks/useNotifications';
 import { useAuth } from '@/hooks/useAuth';
 
-const NotificationDropdown: React.FC = () => {
+export const NotificationDropdown: React.FC = () => {
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
-  const { user } = useAuth();
+  useAuth();
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = React.useState(false);
 
@@ -39,7 +39,7 @@ const NotificationDropdown: React.FC = () => {
     return `${Math.floor(diffInMinutes / 1440)}d ago`;
   };
 
-  const handleNotificationClick = (notification: any) => {
+  const handleNotificationClick = (notification: Notification) => {
     markAsRead(notification.id);
     
     // Navigate based on notification type
@@ -131,4 +131,3 @@ const NotificationDropdown: React.FC = () => {
   );
 };
 
-export default NotificationDropdown;

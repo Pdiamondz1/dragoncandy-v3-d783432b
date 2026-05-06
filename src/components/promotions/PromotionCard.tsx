@@ -10,7 +10,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Calendar, Gift, QrCode, Users, Pause, Play, Copy, Check, MoreVertical, Pencil, Trash2, Download, AlertTriangle, ChevronRight } from 'lucide-react';
+import { Calendar, Gift, QrCode, Pause, Play, Copy, Check, MoreVertical, Pencil, Trash2, Download, AlertTriangle, ChevronRight } from 'lucide-react';
 import { format, isAfter, isBefore } from 'date-fns';
 import { Promotion } from '@/hooks/usePromotions';
 import { toast } from '@/hooks/use-toast';
@@ -96,10 +96,6 @@ export const PromotionCard: React.FC<PromotionCardProps> = ({
     }
   };
 
-  const redemptionProgress = promotion.max_redemptions 
-    ? Math.min(100, ((promotion.current_redemptions || 0) / promotion.max_redemptions) * 100)
-    : 0;
-  
   const isNearlyFull = promotion.max_redemptions != null &&
     (promotion.current_redemptions || 0) >= promotion.max_redemptions * 0.8;
 

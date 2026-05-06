@@ -13,7 +13,7 @@ interface State {
   error?: Error;
 }
 
-class PromotionsErrorBoundary extends Component<Props, State> {
+export class PromotionsErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
     this.state = { hasError: false };
@@ -23,7 +23,7 @@ class PromotionsErrorBoundary extends Component<Props, State> {
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+  override componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error('Promotions error boundary caught an error:', error, errorInfo);
   }
 
@@ -31,7 +31,7 @@ class PromotionsErrorBoundary extends Component<Props, State> {
     this.setState({ hasError: false, error: undefined });
   };
 
-  render() {
+  override render() {
     if (this.state.hasError) {
       return (
         <Card className="border-red-200 bg-red-50">
@@ -60,4 +60,3 @@ class PromotionsErrorBoundary extends Component<Props, State> {
   }
 }
 
-export default PromotionsErrorBoundary;

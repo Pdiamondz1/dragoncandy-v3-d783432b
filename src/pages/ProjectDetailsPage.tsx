@@ -1,7 +1,7 @@
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { PaymentTimeline } from "@/components/payments/PaymentTimeline";
-import DashboardLayout from '@/components/DashboardLayout';
+import { DashboardLayout } from '@/components/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -19,14 +19,14 @@ import { useAuth } from '@/hooks/useAuth';
 import { useCollaboration } from '@/hooks/useCollaboration';
 import { usePaymentTimeline } from '@/hooks/usePaymentTimeline';
 import { usePaymentNotifications } from '@/hooks/usePaymentNotifications';
-import ContentApprovalPanel from '@/components/projects/ContentApprovalPanel';
-import CreatorContentSubmit from '@/components/projects/CreatorContentSubmit';
-import CreatorPayoutBanner from '@/components/projects/CreatorPayoutBanner';
-import DragonDashTimer from '@/components/projects/DragonDashTimer';
-import StartContentButton from '@/components/projects/StartContentButton';
-import ProjectFileUpload from '@/components/projects/ProjectFileUpload';
-import { useFileUploads } from '@/hooks/useFileUploads';
-import ProtectedFilePreview from '@/components/projects/ProtectedFilePreview';
+import { ContentApprovalPanel } from '@/components/projects/ContentApprovalPanel';
+import { CreatorContentSubmit } from '@/components/projects/CreatorContentSubmit';
+import { CreatorPayoutBanner } from '@/components/projects/CreatorPayoutBanner';
+import { DragonDashTimer } from '@/components/projects/DragonDashTimer';
+import { StartContentButton } from '@/components/projects/StartContentButton';
+import { ProjectFileUpload } from '@/components/projects/ProjectFileUpload';
+import { useFileUploads } from '@/hooks/useFileQuery';
+import { ProtectedFilePreview } from '@/components/projects/ProtectedFilePreview';
 import { useDragonDashTimer } from '@/hooks/useDragonDashTimer';
 import { formatDistanceToNow, format } from 'date-fns';
 
@@ -311,7 +311,7 @@ const ProjectDetailsPage: React.FC = () => {
 
             {files && files.length > 0 ? (
               <div className="space-y-2">
-                {files.map((file: any) => (
+                {files.map((file) => (
                   <ProtectedFilePreview
                     key={file.id}
                     file={file}

@@ -10,18 +10,18 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 
 interface BrandCampaignCardProps {
   campaign: SponsorshipCampaign;
-  onSponsor: (campaignId: string, existingProposal?: any) => void;
+  onSponsor: (campaignId: string, existingProposal?: { status: string; id: string }) => void;
   onViewDetails: (campaignId: string) => void;
   submittingCampaignId?: string;
   submittedCampaignId?: string;
 }
 
-const BrandCampaignCard: React.FC<BrandCampaignCardProps> = ({
+export const BrandCampaignCard: React.FC<BrandCampaignCardProps> = ({
   campaign,
   onSponsor,
   onViewDetails,
   submittingCampaignId,
-  submittedCampaignId,
+  submittedCampaignId: _submittedCampaignId,
 }) => {
   const { data: existingProposal, isLoading: isLoadingProposal } = useBrandSponsorshipStatus(campaign.id);
 
@@ -122,10 +122,10 @@ const BrandCampaignCard: React.FC<BrandCampaignCardProps> = ({
               </span>
             </div>
           </div>
-          {campaign.sponsorship_count > 0 && (
+          {(campaign.sponsorship_count ?? 0) > 0 && (
             <Badge variant="secondary" className="gap-1">
               <TrendingUp className="h-3 w-3" />
-              {campaign.sponsorship_count} Sponsor{campaign.sponsorship_count !== 1 ? 's' : ''}
+              {campaign.sponsorship_count ?? 0} Sponsor{(campaign.sponsorship_count ?? 0) !== 1 ? 's' : ''}
             </Badge>
           )}
         </div>
@@ -168,10 +168,10 @@ const BrandCampaignCard: React.FC<BrandCampaignCardProps> = ({
             <span>Deadline: {formatDate(campaign.deadline)}</span>
           </div>
 
-          {campaign.application_count > 0 && (
+          {(campaign.application_count ?? 0) > 0 && (
             <div className="flex items-center gap-2 text-muted-foreground">
               <Users className="h-4 w-4" />
-              <span>{campaign.application_count} Creator{campaign.application_count !== 1 ? 's' : ''} Applied</span>
+              <span>{campaign.application_count ?? 0} Creator{(campaign.application_count ?? 0) !== 1 ? 's' : ''} Applied</span>
             </div>
           )}
         </div>
@@ -198,7 +198,7 @@ const BrandCampaignCard: React.FC<BrandCampaignCardProps> = ({
               <div className="flex-1">
                 <Button
                   className="w-full rounded-full bg-dc-teal text-white font-bold hover:bg-dc-teal/90"
-                  onClick={() => onSponsor(campaign.id, existingProposal)}
+                  onClick={() => onSponsor(campaign.id, existingProposal ?? undefined)}
                   disabled={buttonConfig.disabled}
                 >
                   {buttonConfig.text}
@@ -217,4 +217,3 @@ const BrandCampaignCard: React.FC<BrandCampaignCardProps> = ({
   );
 };
 
-export default BrandCampaignCard;

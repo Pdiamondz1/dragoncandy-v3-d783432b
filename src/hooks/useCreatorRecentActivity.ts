@@ -39,12 +39,14 @@ export const useCreatorRecentActivity = () => {
         if (applicationsError) {
           console.error('Error fetching applications:', applicationsError);
         } else {
-          (applications as any[])?.forEach((app: any) => {
+          applications?.forEach((app) => {
+            const campaignArr = app.campaigns as { title: string }[] | null;
+            const campaignTitle = campaignArr?.[0]?.title;
             activities.push({
               id: app.id,
               type: 'application',
               status: app.status,
-              description: `Applied to "${app.campaigns?.title || 'Unknown Campaign'}" campaign`,
+              description: `Applied to "${campaignTitle || 'Unknown Campaign'}" campaign`,
               created_at: app.created_at,
               campaign_id: app.campaign_id,
             });
@@ -69,17 +71,19 @@ export const useCreatorRecentActivity = () => {
         if (collaborationsError) {
           console.error('Error fetching collaborations:', collaborationsError);
         } else {
-          (collaborations as any[])?.forEach((collab: any) => {
+          collaborations?.forEach((collab) => {
+            const collabCampaignArr = collab.campaigns as { title: string }[] | null;
+            const campaignTitle = collabCampaignArr?.[0]?.title;
             let description = '';
             switch (collab.status) {
               case 'active':
-                description = `Started working on "${collab.campaigns?.title || 'Unknown Campaign'}"`;
+                description = `Started working on "${campaignTitle || 'Unknown Campaign'}"`;
                 break;
               case 'completed':
-                description = `Completed project "${collab.campaigns?.title || 'Unknown Campaign'}"`;
+                description = `Completed project "${campaignTitle || 'Unknown Campaign'}"`;
                 break;
               default:
-                description = `Project "${collab.campaigns?.title || 'Unknown Campaign'}" status updated`;
+                description = `Project "${campaignTitle || 'Unknown Campaign'}" status updated`;
             }
 
             activities.push({

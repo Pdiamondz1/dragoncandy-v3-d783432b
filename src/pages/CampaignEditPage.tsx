@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import DashboardLayout from '@/components/DashboardLayout';
+import { DashboardLayout } from '@/components/DashboardLayout';
 import { useCampaign } from '@/hooks/useCampaigns';
 import { useCampaignEditForm } from '@/hooks/useCampaignEditForm';
 import { useCampaignDeliverables } from '@/hooks/useCampaignDeliverables';
@@ -11,8 +11,8 @@ import { DeliverablesList } from '@/components/campaign-creator/DeliverablesList
 import { BudgetSlider } from '@/components/campaign-creator/BudgetSlider';
 import { TimelinePicker } from '@/components/campaign-creator/TimelinePicker';
 import { TierBadge } from '@/components/campaign-creator/TierBadge';
-import CostBreakdown from '@/components/campaigns/CostBreakdown';
-import CampaignSponsorshipToggle from '@/components/campaigns/CampaignSponsorshipToggle';
+import { CostBreakdown } from '@/components/campaigns/CostBreakdown';
+import { CampaignSponsorshipToggle } from '@/components/campaigns/CampaignSponsorshipToggle';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/hooks/useAuth';

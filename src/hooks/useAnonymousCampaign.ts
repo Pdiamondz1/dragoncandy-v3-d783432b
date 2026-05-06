@@ -1,12 +1,39 @@
 import { useState, useEffect } from 'react';
 import { CampaignAnalysis } from '@/types/campaign';
 
+export interface AnonymousCustomizedData {
+  title?: string;
+  description?: string;
+  goals?: string | string[];
+  platforms?: string[];
+  content_types?: string[];
+  style?: string;
+  tone?: string;
+  target_audience?: string;
+  key_messages?: string[];
+  budget_min?: number;
+  budget_max?: number;
+}
+
+export interface AnonymousTimelineBudgetData {
+  goals?: string;
+  deadline?: string;
+  budgetMin?: number;
+  budgetMax?: number;
+  budget_min?: number;
+  budget_max?: number;
+  pricingType?: string;
+  fixedPrice?: number;
+  deliveryType?: string;
+  deliveryFee?: number;
+}
+
 export interface AnonymousCampaignData {
   id: string;
   goal: string;
   analysis: CampaignAnalysis | null;
-  customizedData: any | null;
-  timelineBudgetData: any | null;
+  customizedData: AnonymousCustomizedData | null;
+  timelineBudgetData: AnonymousTimelineBudgetData | null;
   createdAt: string;
   step: number;
 }
@@ -71,13 +98,13 @@ export const useAnonymousCampaign = () => {
     }
   };
 
-  const updateCustomizedData = (data: any) => {
+  const updateCustomizedData = (data: AnonymousCustomizedData) => {
     if (campaignData) {
       setCampaignData({ ...campaignData, customizedData: data, step: 3 });
     }
   };
 
-  const updateTimelineBudgetData = (data: any) => {
+  const updateTimelineBudgetData = (data: AnonymousTimelineBudgetData) => {
     if (campaignData) {
       setCampaignData({ ...campaignData, timelineBudgetData: data, step: 5 });
     }

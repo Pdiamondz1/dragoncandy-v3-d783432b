@@ -1,10 +1,11 @@
 
 import React, { useState, useEffect } from 'react';
-import DashboardLayout from '@/components/DashboardLayout';
+import { DashboardLayout } from '@/components/DashboardLayout';
 import { ArrowLeft, MessageCircle } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import DirectMessagesList from '@/components/messages/DirectMessagesList';
-import ConversationMessageThread from '@/components/messages/ConversationMessageThread';
+import { DirectMessagesList } from '@/components/messages/DirectMessagesList';
+import { ConversationMessageThread } from '@/components/messages/ConversationMessageThread';
+import { ErrorState } from '@/components/ui/error-state';
 import { useConversations, type Conversation } from '@/hooks/useConversations';
 import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -12,14 +13,13 @@ import { supabase } from '@/integrations/supabase/client';
 const DirectMessagesPage: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { data: conversations = [] } = useConversations();
+  const { data: conversations = [], error, refetch } = useConversations();
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [recipientId, setRecipientId] = useState<string>('');
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
 
   const userRole = user?.user_metadata?.role || 'business_client';
 
-  // When a conversation is selected, fetch the recipient
   useEffect(() => {
     if (selectedConversationId && user) {
       const conv = conversations.find(
@@ -38,6 +38,14 @@ const DirectMessagesPage: React.FC = () => {
         });
     }
   }, [selectedConversationId, user, conversations]);
+
+  if (error) {
+    return (
+      <DashboardLayout userRole={userRole as 'business_client' | 'content_creator' | 'brand'}>
+        <ErrorState message={error.message} onRetry={refetch} />
+      </DashboardLayout>
+    );
+  }
 
   const handleConversationSelect = (conversationId: string) => {
     setSelectedConversationId(conversationId);

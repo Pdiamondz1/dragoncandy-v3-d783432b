@@ -24,7 +24,6 @@ function extractStoragePath(fileUrl: string): string | null {
 
 export async function cleanupCampaignMedia(campaignId: string): Promise<void> {
   // 1. Fetch only reference/sample media for this campaign
-  // @ts-ignore — campaign_media not in generated types yet
   const { data: media, error: fetchError } = await supabase
     .from('campaign_media')
     .select('id, file_url, file_name, media_type')
@@ -61,7 +60,6 @@ export async function cleanupCampaignMedia(campaignId: string): Promise<void> {
 
   // 4. Delete the database records
   const mediaIds = media.map((m: { id: string }) => m.id);
-  // @ts-ignore — campaign_media not in generated types yet
   const { error: deleteError } = await supabase
     .from('campaign_media')
     .delete()

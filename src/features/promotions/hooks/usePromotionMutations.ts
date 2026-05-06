@@ -63,7 +63,7 @@ export const usePromotionMutations = () => {
       const { data: promotion, error } = await supabase
         .from('promotions')
         .insert({ user_id: user!.id, business_id: biz.id, status: 'active', ...data })
-        .select()
+        .select('id, title, discount_type, discount_value, start_date, end_date, status')
         .single();
       if (error) throw error;
 

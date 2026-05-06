@@ -25,7 +25,7 @@ export function BrandFreeTrioHero({ orgId }: BrandFreeTrioHeroProps) {
     queryKey: ['campaign_templates', orgId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('campaign_templates' as any)
+        .from('campaign_templates')
         .select('id, title, description, category, display_order')
         .eq('is_active', true)
         .order('display_order');

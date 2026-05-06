@@ -247,7 +247,7 @@ export const usePromotions = () => {
           status: 'active', // Set to active by default so it appears immediately
           ...data,
         })
-        .select()
+        .select('id, title, status, discount_type, discount_value, start_date, end_date')
         .single();
       
       if (error) throw error;

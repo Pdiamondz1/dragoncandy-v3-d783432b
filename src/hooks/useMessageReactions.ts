@@ -48,7 +48,7 @@ export const useAddReaction = () => {
           user_id: user.id,
           emoji,
         })
-        .select()
+        .select('id, message_id, user_id, emoji, created_at')
         .single();
 
       if (error) {

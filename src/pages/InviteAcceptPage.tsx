@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { SEO } from '@/components/SEO';
 
 export default function InviteAcceptPage() {
   const [searchParams] = useSearchParams();
@@ -48,7 +49,7 @@ export default function InviteAcceptPage() {
             .upsert({
               org_id: orgId,
               user_id: user.id,
-              role: role as any,
+              role: role,
               invited_by: invitedBy,
               invitation_status: 'active',
               joined_at: new Date().toISOString(),
@@ -67,9 +68,9 @@ export default function InviteAcceptPage() {
         setTimeout(() => {
           navigate('/dashboard/business', { replace: true });
         }, 2000);
-      } catch (err: any) {
+      } catch (err: unknown) {
         setStatus('error');
-        setErrorMessage(err.message ?? 'Failed to accept invitation.');
+        setErrorMessage(err instanceof Error ? err.message : 'Failed to accept invitation.');
       }
     };
 
@@ -78,7 +79,7 @@ export default function InviteAcceptPage() {
 
   if (!isAuthenticated) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#A8A8A0] p-6">
+      <div className="flex min-h-screen items-center justify-center bg-dc-gray p-6">
         <Card className="w-full max-w-sm">
           <CardContent className="flex flex-col items-center py-12 text-center">
             <Loader2 className="h-8 w-8 animate-spin text-teal-500 mb-4" />
@@ -96,7 +97,13 @@ export default function InviteAcceptPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#A8A8A0] p-6">
+    <div className="flex min-h-screen items-center justify-center bg-dc-gray p-6">
+      <SEO
+        title="Accept Your DragonCandy Invite"
+        description="Accept your invitation to join DragonCandy."
+        path="/invite/accept"
+        noindex
+      />
       <Card className="w-full max-w-sm">
         <CardContent className="flex flex-col items-center py-12 text-center">
           {status === 'loading' && (

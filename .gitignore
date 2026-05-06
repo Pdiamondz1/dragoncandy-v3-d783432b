@@ -27,9 +27,58 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-.worktrees/
+
+# AI tool config directories
+.adal/
+.agents/
+.augment/
+.bob/
+.claude/skills/
 .claude/worktrees/
+.codebuddy/
+.commandcode/
+.continue/
+.cortex/
+.crush/
+.factory/
+.goose/
+.iflow/
+.junie/
+.kilocode/
+.kiro/
+.kode/
+.mcpjam/
+.mux/
+.neovate/
+.openhands/
+.pi/
+.pochi/
+.qoder/
+.qwen/
+.roo/
+.trae/
+.vibe/
+.windsurf/
+.zencoder/
+
+# External skill folders
+agent-skills/
+bencium-claude-code-design-skill/
+claude-marketplace/
+skills/
+ui-ux-pro-max-skill/
 
 # Superpowers brainstorm artifacts
 .superpowers/
 .worktrees/
+
+# Supabase temp files
+supabase/.temp/
+
+# Local settings (per-machine)
+.claude/settings.local.json
+
+# Misc artifacts
+*.patch
+*.png.tmp
+mintty.*.png
