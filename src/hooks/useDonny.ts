@@ -41,6 +41,7 @@ export function useDonny(options?: UseDonnyOptions) {
   const [error, setError] = useState<string | null>(null);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const isSendingRef = useRef(false);
+  const lastUserMessage = useRef<string>("");
 
   // Load or create conversation
   const { data: conversation } = useQuery({
@@ -118,47 +119,146 @@ export function useDonny(options?: UseDonnyOptions) {
 
   // Send message mutation
   const sendMessageMutation = useMutation({
-    mutationFn: async (content: string) => {
+    mutationFn: async ({ content, isRetry = false }: { content: string; isRetry?: boolean }) => {
       if (!conversation || !user) throw new Error('No active conversation');
       if (isSendingRef.current) throw new Error('Message already in flight');
 
       isSendingRef.current = true;
+      lastUserMessage.current = content;
 
       setIsStreaming(true);
       setAvatarState('thinking');
       setStreamingContent('');
       setError(null);
 
-      // Insert user message locally first
-      const { error: insertError } = await supabase
-        .from('donny_messages')
-        .insert({
-          conversation_id: conversation.id,
-          role: 'user',
-          content,
-        });
+      // Insert user message locally first (skip on retry — message already exists)
+      if (!isRetry) {
+        const { error: insertError } = await supabase
+          .from('donny_messages')
+          .insert({
+            conversation_id: conversation.id,
+            role: 'user',
+            content,
+          });
 
-      if (insertError) throw insertError;
+        if (insertError) throw insertError;
+      }
 
-      // Call orchestrator edge function
-      const { data, error: fnError } = await supabase.functions.invoke('donny-orchestrator', {
-        body: {
-          query: content,
-          page_path: window.location.pathname,
-          page_context: options?.campaignContext || {},
-          user_role: profile?.role || 'content_creator',
-          org_id: activeOrg?.id,
-          conversation_history: messages.slice(-10).map(m => ({
-            role: m.role === 'user' ? 'user' as const : 'assistant' as const,
-            content: m.content || '',
-          })),
-        },
-      });
+      // Get session for auth header
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('No active session');
 
-      if (fnError) throw fnError;
+      // Call orchestrator with streaming support
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/donny-orchestrator`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+          },
+          body: JSON.stringify({
+            query: content,
+            page_path: window.location.pathname,
+            page_context: options?.campaignContext || {},
+            user_role: profile?.role || 'content_creator',
+            org_id: activeOrg?.id,
+            conversation_history: messages.slice(-10).map(m => ({
+              role: m.role === 'user' ? 'user' as const : 'assistant' as const,
+              content: m.content || '',
+            })),
+          }),
+        }
+      );
 
-      // Orchestrator returns { answer, suggested_actions, agent_used }
-      // Save assistant message to DB
+      // Handle non-OK responses (quota exceeded, auth errors, etc.)
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        if (errorData?.error === 'monthly_quota_exceeded') {
+          throw new Error(
+            `You've used all ${errorData.budget} Donny actions this month. Upgrade your plan to continue.`
+          );
+        }
+        throw new Error(errorData?.error || errorData?.message || 'Something went wrong');
+      }
+
+      const contentType = response.headers.get('Content-Type') || '';
+
+      // SSE streaming response
+      if (contentType.includes('text/event-stream')) {
+        const reader = response.body!.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let accumulatedText = '';
+        let suggestedActions: Array<{ label: string; route: string }> = [];
+
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+
+            const events = buffer.split('\n\n');
+            buffer = events.pop() ?? '';
+
+            for (const event of events) {
+              const lines = event.split('\n');
+              let eventType = '';
+              let eventData = '';
+
+              for (const line of lines) {
+                if (line.startsWith('event: ')) eventType = line.slice(7);
+                else if (line.startsWith('data: ')) eventData = line.slice(6);
+              }
+
+              if (eventType === 'text_delta' && eventData) {
+                const { text } = JSON.parse(eventData);
+                accumulatedText += text;
+                setStreamingContent(accumulatedText);
+              } else if (eventType === 'done' && eventData) {
+                const parsed = JSON.parse(eventData);
+                suggestedActions = parsed.suggested_actions ?? [];
+                if (parsed.answer) {
+                  accumulatedText = parsed.answer;
+                }
+              }
+            }
+          }
+        } catch (streamErr) {
+          // Connection dropped — preserve partial text
+          if (accumulatedText) {
+            setStreamingContent(accumulatedText);
+          }
+          throw streamErr;
+        }
+
+        // Save assistant message to DB
+        if (accumulatedText) {
+          const quickActions = suggestedActions.map(
+            (a: { label: string; route: string }) => ({
+              label: a.label,
+              action: 'navigate' as const,
+              url: a.route,
+            })
+          );
+
+          await supabase.from('donny_messages').insert({
+            conversation_id: conversation.id,
+            role: 'assistant',
+            content: accumulatedText,
+            quick_actions: quickActions.length > 0 ? quickActions : null,
+          });
+        } else {
+          throw new Error('Donny could not generate a response');
+        }
+
+        return { answer: accumulatedText, suggested_actions: suggestedActions };
+      }
+
+      // JSON fallback (non-streaming response)
+      const data = await response.json();
+
       if (data?.answer) {
         const quickActions = (data.suggested_actions ?? []).map(
           (a: { label: string; route: string }) => ({
@@ -168,16 +268,12 @@ export function useDonny(options?: UseDonnyOptions) {
           })
         );
 
-        const { error: insertError } = await supabase
-          .from('donny_messages')
-          .insert({
-            conversation_id: conversation.id,
-            role: 'assistant',
-            content: data.answer,
-            quick_actions: quickActions.length > 0 ? quickActions : null,
-          });
-
-        if (insertError) throw insertError;
+        await supabase.from('donny_messages').insert({
+          conversation_id: conversation.id,
+          role: 'assistant',
+          content: data.answer,
+          quick_actions: quickActions.length > 0 ? quickActions : null,
+        });
       } else {
         throw new Error(data?.error || 'Donny could not generate a response');
       }
@@ -198,15 +294,15 @@ export function useDonny(options?: UseDonnyOptions) {
       setAvatarState('error');
       setTimeout(() => setAvatarState('idle'), 3000);
       setIsStreaming(false);
-      setStreamingContent('');
+      // Don't clear streamingContent on error — preserve partial text
       setError(err instanceof Error ? err.message : 'Something went wrong');
     },
   });
 
   const sendMessage = useCallback(
     (content: string) => {
-      if (isSendingRef.current) return; // Silently discard duplicate sends
-      sendMessageMutation.mutate(content);
+      if (isSendingRef.current) return;
+      sendMessageMutation.mutate({ content });
     },
     [sendMessageMutation]
   );
@@ -222,6 +318,13 @@ export function useDonny(options?: UseDonnyOptions) {
 
     queryClient.invalidateQueries({ queryKey: ['donny-messages', conversation.id] });
   }, [conversation, queryClient]);
+
+  const retry = useCallback(() => {
+    if (lastUserMessage.current && !isSendingRef.current) {
+      setError(null);
+      sendMessageMutation.mutate({ content: lastUserMessage.current, isRetry: true });
+    }
+  }, [sendMessageMutation]);
 
   const quickChips = DEFAULT_QUICK_CHIPS[profile?.role ?? 'business_client'] ?? [];
 
@@ -239,5 +342,6 @@ export function useDonny(options?: UseDonnyOptions) {
     sendMessage,
     clearChat,
     quickChips,
+    retry,
   };
 }
