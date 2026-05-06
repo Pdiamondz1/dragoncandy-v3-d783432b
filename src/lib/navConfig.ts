@@ -24,6 +24,7 @@ import {
   Sparkles,
   MapPin,
   Package,
+  Share2,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { UserRole } from '@/types/user';
@@ -53,6 +54,7 @@ export const businessSidebarNav: SidebarNavItem[] = [
   { icon: Briefcase, label: 'Projects', href: '/dashboard/business/projects' },
   { icon: DollarSign, label: 'Sponsorships', href: '/dashboard/business/sponsorships' },
   { icon: QrCode, label: 'UGC Campaigns', href: '/dashboard/business/promotions' },
+  { icon: Share2, label: 'Social Media', href: '/dashboard/business/social' },
   { icon: Sparkles, label: 'DragonShare', href: '/dashboard/business/dragonshare' },
   { icon: MessageSquare, label: 'Messages', href: '/dashboard/business/messages' },
   { icon: BarChart3, label: 'Analytics', href: '/dashboard/analytics' },
@@ -180,6 +182,7 @@ const businessDrawerMenu: DrawerMenuSection[] = [
       { icon: Briefcase, label: 'Projects', href: '/dashboard/business/projects' },
       { icon: DollarSign, label: 'Sponsorships', href: '/dashboard/business/sponsorships' },
       { icon: QrCode, label: 'UGC Campaigns', href: '/dashboard/business/promotions' },
+      { icon: Share2, label: 'Social Media', href: '/dashboard/business/social' },
       { icon: Sparkles, label: 'DragonShare', href: '/dashboard/business/dragonshare' },
       { icon: MessageSquare, label: 'Messages', href: '/dashboard/business/messages' },
       { icon: BarChart3, label: 'Analytics', href: '/dashboard/analytics' },

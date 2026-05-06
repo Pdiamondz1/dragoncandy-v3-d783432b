@@ -52,6 +52,8 @@ const BusinessProposals = lazy(() => import("./pages/BusinessProposals"));
 const BusinessProjects = lazy(() => import("./pages/BusinessProjects"));
 const BusinessSponsorships = lazy(() => import("./pages/BusinessSponsorships"));
 const BusinessPromotionalTools = lazy(() => import("./pages/BusinessPromotionalTools"));
+const OutstandManager = lazy(() => import("./pages/OutstandManager"));
+const OutstandOAuthCallbackPage = lazy(() => import("./pages/OutstandOAuthCallbackPage"));
 const CreatorApplications = lazy(() => import("./pages/CreatorApplications"));
 const CreatorProjects = lazy(() => import("./pages/CreatorProjects"));
 const CreatorEarnings = lazy(() => import("./pages/CreatorEarnings"));
@@ -182,6 +184,10 @@ function AnimatedRoutes() {
           {/* Business Promotional Tools Route */}
           <Route path="/dashboard/business/promotions" element={<ProtectedRoute><BusinessRoute><PromotionsErrorBoundary><BusinessPromotionalTools /></PromotionsErrorBoundary></BusinessRoute></ProtectedRoute>} />
           <Route path="/dashboard/business/promotions/:promotionId" element={<ProtectedRoute><BusinessRoute><PromotionsErrorBoundary><PromotionDetailPage /></PromotionsErrorBoundary></BusinessRoute></ProtectedRoute>} />
+
+          {/* Business Social Media (Outstand) Routes */}
+          <Route path="/dashboard/business/social" element={<ProtectedRoute><BusinessRoute><OutstandManager /></BusinessRoute></ProtectedRoute>} />
+          <Route path="/dashboard/business/social/oauth-callback" element={<ProtectedRoute><BusinessRoute><OutstandOAuthCallbackPage /></BusinessRoute></ProtectedRoute>} />
 
           {/* Business Org Routes */}
           <Route path="/dashboard/business/locations" element={<ProtectedRoute><BusinessRoute><OrgUnitsPage /></BusinessRoute></ProtectedRoute>} />
