@@ -4,7 +4,13 @@ const ONE_HOUR_MS = 60 * 60 * 1000;
 // Paths that should remain publicly accessible (do not gate).
 // Keep this list narrow — only routes that strictly need public access.
 const PUBLIC_PATH_PREFIXES = [
-  '/promo/', // public promotion submission via QR
+  '/promo/',
+  '/landing',
+  '/pricing',
+  '/help',
+  '/auth',
+  '/creator/',
+  '/business/',
 ];
 
 export const isPublicPath = (pathname: string) => {
