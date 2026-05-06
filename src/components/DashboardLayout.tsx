@@ -268,7 +268,7 @@ const DashboardLayoutInner: React.FC<DashboardLayoutProps> = ({ children, userRo
             </header>
           )}
 
-          <main className={`${isMobile ? 'flex-1 min-h-screen overflow-x-hidden pt-14 pb-24 px-4 w-full min-w-0 max-w-full' : 'flex-1 p-6 lg:p-8'} animate-fade-in`}>
+          <main className={`${isMobile ? 'flex-1 min-h-screen overflow-x-hidden pb-24 px-4 w-full min-w-0 max-w-full' : 'flex-1 p-6 lg:p-8'} animate-fade-in`}>
             <ErrorBoundary level="page">
               {children}
             </ErrorBoundary>

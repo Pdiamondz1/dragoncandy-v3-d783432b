@@ -29,7 +29,7 @@ export const MobileTopNav: React.FC<MobileTopNavProps> = ({
     location.pathname === href || location.pathname.startsWith(href + '/');
 
   return (
-    <header className={`fixed top-0 left-0 right-0 w-full z-50 flex items-center justify-between px-4 py-2 ${bgClass} border-b border-border`}>
+    <header className={`sticky top-0 z-50 flex items-center justify-between px-4 py-2 ${bgClass} border-b border-border`}>
       <Link to="/" className="flex-shrink-0">
         <img src={dragonCandyLogo} alt="DragonCandy" className="w-[64px] md:w-[120px] lg:w-[140px] h-auto" />
       </Link>
