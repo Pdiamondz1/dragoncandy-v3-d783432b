@@ -668,7 +668,7 @@ async function getConversationHistory(
 }
 
 
-// Execute a tool call against Supabase — all 21 tools
+// Execute a tool call against Supabase — all tools, with per-tool authorization
 async function executeTool(
   toolName: string,
   args: Record<string, any>,
@@ -784,6 +784,16 @@ async function executeTool(
         return { result: { success: false, error: "No campaign specified. Please tell me which campaign to use." } };
       }
 
+      const { data: campaignOwner, error: ownerErr } = await supabaseAdmin
+        .from("campaigns")
+        .select("user_id")
+        .eq("id", resolvedCampaignId)
+        .single();
+      if (ownerErr) throw ownerErr;
+      if (campaignOwner.user_id !== userId) {
+        throw new Error("You don't have access to this campaign");
+      }
+
       const response = await fetch(`${SUPABASE_URL}/functions/v1/send-campaign-invitation`, {
         method: "POST",
         headers: {
@@ -823,6 +833,18 @@ async function executeTool(
     }
 
     case "apply_to_campaign": {
+      if (userRole !== "content_creator") {
+        throw new Error("Only content creators can apply to campaigns");
+      }
+      const { data: campaign, error: campaignErr } = await supabaseAdmin
+        .from("campaigns")
+        .select("id, status")
+        .eq("id", args.campaign_id)
+        .single();
+      if (campaignErr) throw campaignErr;
+      if (campaign.status !== "published") {
+        throw new Error("This campaign is not accepting applications");
+      }
       const { data, error } = await supabaseAdmin
         .from("campaign_applications")
         .insert({
@@ -839,6 +861,16 @@ async function executeTool(
     }
 
     case "respond_to_application": {
+      const { data: app, error: appErr } = await supabaseAdmin
+        .from("campaign_applications")
+        .select("id, status, campaign_id, creator_id, campaigns!campaign_id(user_id)")
+        .eq("id", args.application_id)
+        .returns<{ id: string; status: string; campaign_id: string; creator_id: string; campaigns: { user_id: string } | null }>()
+        .single();
+      if (appErr) throw appErr;
+      if (app.campaigns?.user_id !== userId) {
+        throw new Error("You don't have access to this application");
+      }
       const newStatus = args.action === "accept" ? "accepted" : "rejected";
       const { data, error } = await supabaseAdmin
         .from("campaign_applications")
@@ -870,6 +902,16 @@ async function executeTool(
     }
 
     case "approve_content": {
+      const { data: upload, error: uploadErr } = await supabaseAdmin
+        .from("file_uploads")
+        .select("id, filename, campaign_id, campaigns!campaign_id(user_id)")
+        .eq("id", args.submission_id)
+        .returns<{ id: string; filename: string; campaign_id: string; campaigns: { user_id: string } | null }>()
+        .single();
+      if (uploadErr) throw uploadErr;
+      if (upload.campaigns?.user_id !== userId) {
+        throw new Error("You don't have access to this submission");
+      }
       const { data, error } = await supabaseAdmin
         .from("file_uploads")
         .update({ upload_status: "approved" })
@@ -881,6 +923,16 @@ async function executeTool(
     }
 
     case "request_revision": {
+      const { data: upload, error: uploadErr } = await supabaseAdmin
+        .from("file_uploads")
+        .select("id, filename, campaign_id, campaigns!campaign_id(user_id)")
+        .eq("id", args.submission_id)
+        .returns<{ id: string; filename: string; campaign_id: string; campaigns: { user_id: string } | null }>()
+        .single();
+      if (uploadErr) throw uploadErr;
+      if (upload.campaigns?.user_id !== userId) {
+        throw new Error("You don't have access to this submission");
+      }
       const { data, error } = await supabaseAdmin
         .from("file_uploads")
         .update({ upload_status: "revision_requested" })
@@ -889,7 +941,6 @@ async function executeTool(
         .single();
       if (error) throw error;
 
-      // Add feedback as a file comment
       await supabaseAdmin.from("file_comments").insert({
         file_upload_id: args.submission_id,
         user_id: userId,
