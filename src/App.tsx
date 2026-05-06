@@ -16,6 +16,7 @@ import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { VerifiedRoute } from '@/components/VerifiedRoute';
 import { BusinessRoute } from "@/components/BusinessRoute";
 import { BrandRoute } from "@/components/BrandRoute";
+import { Spinner } from "@/components/ui/spinner";
 import Index from "./pages/Index";
 import { SiteGateGuard } from "@/components/SiteGateGuard";
 import { Navigate } from "react-router-dom";
@@ -118,7 +119,7 @@ function DashboardRedirect() {
 function AnimatedRoutes() {
   const location = useLocation();
   return (
-    <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-dc-teal" /></div>}>
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><Spinner /></div>}>
       <PageTransition locationKey={location.pathname}>
         <Routes location={location}>
           <Route path="/" element={<Index />} />

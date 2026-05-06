@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Play, Pause, Heart, MessageSquare, Loader2, User, Sparkles } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { Spinner } from '@/components/ui/spinner';
 
 interface BusinessDashboardSideFeedProps {
   onItemClick: (item: FeedMediaItem, index: number) => void;
@@ -314,7 +315,7 @@ const FeedCard: React.FC<FeedCardProps> = ({ item, onItemClick }) => {
       <div className="relative aspect-square overflow-hidden">
         {!loaded && !error && (
           <div className="absolute inset-0 bg-muted animate-pulse flex items-center justify-center">
-            <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            <Spinner className="border-primary border-t-transparent" label="Loading image..." />
           </div>
         )}
         

@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
+import { Spinner } from '@/components/ui/spinner';
 
 interface VerifiedRouteProps {
   children: React.ReactNode;
@@ -20,7 +21,7 @@ export const VerifiedRoute: React.FC<VerifiedRouteProps> = ({ children }) => {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-pink-600"></div>
+        <Spinner className="h-32 w-32 border-pink-600" />
       </div>
     );
   }
