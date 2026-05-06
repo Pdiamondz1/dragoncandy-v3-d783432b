@@ -64,6 +64,8 @@ export const useMessages = (campaignId?: string, conversationId?: string) => {
       return messagesWithProfiles as Message[];
     },
     enabled: !!(campaignId || conversationId),
+    staleTime: 10_000,
+    refetchOnWindowFocus: 'always',
   });
 
   // Set up real-time subscription with stable channel name

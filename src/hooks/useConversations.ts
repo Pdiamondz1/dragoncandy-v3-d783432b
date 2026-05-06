@@ -36,6 +36,8 @@ export const useConversations = () => {
       return data as Conversation[];
     },
     enabled: !!user,
+    staleTime: 30_000,
+    refetchOnWindowFocus: 'always',
   });
 
   return query;
