@@ -7,7 +7,7 @@
 
 | # | Issue | Severity | Section |
 |---|-------|----------|---------|
-| 2 | All 21 tools exposed regardless of role | Critical | 1 |
+| 2 | All 25 tools exposed regardless of role | Critical | 1 |
 | 3 | Prompt injection — no input separation | High | 2 |
 | 4 | max_tokens 8192, no dynamic budgeting | High | 3 |
 | 6 | HelpBriefDrawer — no focus trap / Escape | Medium | 4 |
@@ -32,7 +32,7 @@ src/hooks/useLogout.ts                    — Section 6
 
 ## Section 1: Role-Based Tool Filtering (Audit #2)
 
-**Problem:** Line 1426 passes `tools: TOOL_DEFINITIONS` (all 21 tools) to
+**Problem:** Line 1426 passes `tools: TOOL_DEFINITIONS` (all 25 tools) to
 Claude regardless of user role. A creator can chat their way into Claude
 calling a brand-side tool. Server-side authorization catches most of these,
 but the attack surface is the cost — an injected prompt can chain tool calls
@@ -80,8 +80,12 @@ const TOOLS_BY_ROLE: Record<string, string[]> = {
 Derive `allowedTools` once after profile lookup:
 
 ```typescript
+const roleTools = TOOLS_BY_ROLE[profile.role];
+if (!roleTools) {
+  console.warn(`[donny-chat] Unknown role "${profile.role}" — defaulting to content_creator tool set`);
+}
 const allowedTools = TOOL_DEFINITIONS.filter(
-  (t) => (TOOLS_BY_ROLE[profile.role] ?? TOOLS_BY_ROLE.content_creator).includes(t.name)
+  (t) => (roleTools ?? TOOLS_BY_ROLE.content_creator).includes(t.name)
 );
 ```
 
@@ -167,9 +171,15 @@ automated script per Free user can exhaust the budget.
 
 ### Tier-based ceiling
 
-After `getModelConfig()` returns, clamp `maxTokens`:
+After `getModelConfig()` returns, look up the user's subscription tier via
+`getUserSubscriptionTier()` (from `_shared/usage-tracker.ts`) and clamp
+`maxTokens`. Note: `usageStage` (`full_power`/`conservation`/`essential`)
+controls model routing; the subscription tier (`free`/`starter`/`growth`/
+`pro`/`enterprise`) controls the token budget — these are different values.
 
 ```typescript
+import { getUserSubscriptionTier } from "../_shared/usage-tracker.ts";
+
 const MAX_TOKENS_BY_TIER: Record<string, number> = {
   free: 1024,
   starter: 2048,
@@ -178,11 +188,13 @@ const MAX_TOKENS_BY_TIER: Record<string, number> = {
   enterprise: 8192,
 };
 
-const tierMaxTokens = MAX_TOKENS_BY_TIER[usageStage] ?? 1024;
+const subscriptionTier = await getUserSubscriptionTier(supabaseAdmin, userId);
+const tierMaxTokens = MAX_TOKENS_BY_TIER[subscriptionTier] ?? 1024;
 const clampedMaxTokens = Math.min(modelConfig.maxTokens, tierMaxTokens);
 ```
 
-Use `clampedMaxTokens` in both Claude API calls.
+Use `clampedMaxTokens` in both Claude API calls. `getUserSubscriptionTier`
+is already imported for usage tracking — no new dependency.
 
 ### Tool-loop circuit breaker
 
@@ -261,8 +273,10 @@ mismatch).
 4. **`invite_creator`** — Verify `campaigns.user_id === userId` on the
    resolved campaign before calling the edge function.
 
-5. **`apply_to_campaign`** — Verify the campaign exists and
-   `status === 'published'` before inserting.
+5. **`apply_to_campaign`** — Verify the campaign exists,
+   `status === 'published'`, and `profile.role === 'content_creator'`
+   before inserting. The role check makes the tool self-contained even
+   though Section 1 already restricts tool visibility by role.
 
 6. **`update_campaign`** — Verify `campaigns.user_id === userId` before
    updating.
@@ -296,7 +310,10 @@ cached data from memory. Old Donny messages could flash briefly on the next
 login.
 
 **Fix:** In `useLogout.ts`, after `clearChat()`, purge all Donny-related
-cache:
+cache. `removeQueries({ queryKey: ['donny'] })` uses TanStack Query's
+default prefix matching — it matches all keys starting with `'donny'`
+(e.g., `['donny-messages', ...]`, `['donny-conversation', ...]`,
+`['donny-dashboard', ...]`). Do not pass `exact: true`.
 
 ```typescript
 import { useQueryClient } from '@tanstack/react-query';
