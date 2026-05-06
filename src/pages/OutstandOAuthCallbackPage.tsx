@@ -7,6 +7,9 @@ import {
   useOutstandConfig,
   OUTSTAND_PROXY_BASE_URL,
 } from '@/integrations/outstand/Provider';
+import { useOutstandPaths } from '@/hooks/outstand/useOutstandPaths';
+import { useAuth } from '@/hooks/useAuth';
+import type { UserRole } from '@/types/user';
 import { toast } from 'sonner';
 
 const PENDING_NETWORK_KEY = 'outstand_pending_network';
@@ -17,6 +20,7 @@ const OneStepCallback: React.FC<{ accountId: string; username: string | null }> 
 }) => {
   const navigate = useNavigate();
   const { apiKey } = useOutstandConfig();
+  const { accountsTab } = useOutstandPaths();
   const [status, setStatus] = useState<'pending' | 'error'>('pending');
   const [error, setError] = useState<string | null>(null);
   const ranOnce = useRef(false);
@@ -48,7 +52,7 @@ const OneStepCallback: React.FC<{ accountId: string; username: string | null }> 
           throw new Error(body?.error || `Request failed (${res.status})`);
         }
         toast.success(`${network.charAt(0).toUpperCase() + network.slice(1)} connected.`);
-        navigate('/dashboard/business/social?tab=accounts', { replace: true });
+        navigate(accountsTab, { replace: true });
       })
       .catch((e) => {
         const message = e instanceof Error ? e.message : 'Connection failed';
@@ -56,7 +60,7 @@ const OneStepCallback: React.FC<{ accountId: string; username: string | null }> 
         setError(message);
         toast.error(`Connection failed: ${message}`);
       });
-  }, [accountId, username, apiKey, navigate]);
+  }, [accountId, username, apiKey, navigate, accountsTab]);
 
   if (status === 'error') {
     return (
@@ -71,6 +75,7 @@ const OneStepCallback: React.FC<{ accountId: string; username: string | null }> 
 const Inner: React.FC = () => {
   const navigate = useNavigate();
   const { apiKey, baseUrl } = useOutstandConfig();
+  const { accountsTab } = useOutstandPaths();
   const params = new URLSearchParams(window.location.search);
   const session = params.get('session');
   const success = params.get('success');
@@ -93,12 +98,12 @@ const Inner: React.FC = () => {
           sessionStorage.removeItem(PENDING_NETWORK_KEY);
           const count = accounts?.length ?? 0;
           toast.success(count === 1 ? 'Account connected.' : `${count} accounts connected.`);
-          navigate('/dashboard/business/social?tab=accounts', { replace: true });
+          navigate(accountsTab, { replace: true });
         }}
         onError={(error) => {
-          console.error('Outstand OAuth callback error:', error);
+          console.error('OAuth callback error:', error);
           toast.error(`Connection failed: ${error.message}`);
-          navigate('/dashboard/business/social?tab=accounts', { replace: true });
+          navigate(accountsTab, { replace: true });
         }}
       />
     );
@@ -116,8 +121,10 @@ const Inner: React.FC = () => {
 };
 
 const OutstandOAuthCallbackPage: React.FC = () => {
+  const { profile } = useAuth();
+  const role: UserRole = profile?.role ?? 'business_client';
   return (
-    <DashboardLayout userRole="business_client">
+    <DashboardLayout userRole={role}>
       <DragonCandyOutstandProvider>
         <div className="min-h-screen flex items-center justify-center px-4">
           <div className="w-full max-w-md bg-white rounded-2xl p-6 border-2 border-dc-teal">

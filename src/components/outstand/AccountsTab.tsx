@@ -1,13 +1,15 @@
 import React from 'react';
 import { ConnectAccountButtonGroup, AccountsList, type SocialNetwork } from '@outstand-so/ui';
 import { useOutstandConfig } from '@/integrations/outstand/Provider';
+import { useOutstandPaths } from '@/hooks/outstand/useOutstandPaths';
 import { toast } from 'sonner';
 
 const SUPPORTED_NETWORKS: SocialNetwork[] = ['facebook', 'instagram', 'tiktok', 'x', 'youtube'];
 
 export const AccountsTab: React.FC = () => {
   const { apiKey, baseUrl } = useOutstandConfig();
-  const redirectUri = `${window.location.origin}/dashboard/business/social/oauth-callback`;
+  const { oauthCallback } = useOutstandPaths();
+  const redirectUri = `${window.location.origin}${oauthCallback}`;
 
   return (
     <div className="space-y-4">

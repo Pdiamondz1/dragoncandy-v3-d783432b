@@ -38,9 +38,12 @@ const ALLOWED_PLATFORMS: ReadonlySet<string> = new Set([
   "youtube",
 ]);
 
-interface BusinessContext {
+// Tenant scoping is per-user: every authenticated user (restaurant or creator)
+// has their own set of connected social accounts. businessId is optional and
+// kept only for legacy restaurant rows where it's still useful for joins.
+interface TenantContext {
   userId: string;
-  businessId: string;
+  businessId: string | null;
 }
 
 function jsonResponse(status: number, body: unknown): Response {
@@ -89,10 +92,10 @@ function extractOutstandPath(rawUrl: string): { path: string; search: string } {
   return { path, search: url.search };
 }
 
-async function resolveBusiness(
+async function resolveTenant(
   authHeader: string,
   admin: SupabaseClient,
-): Promise<BusinessContext | { error: number; message: string }> {
+): Promise<TenantContext | { error: number; message: string }> {
   const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     global: { headers: { Authorization: authHeader } },
   });
@@ -100,25 +103,27 @@ async function resolveBusiness(
   if (userErr || !userData.user) {
     return { error: 401, message: "unauthorized" };
   }
-  const { data: biz, error: bizErr } = await admin
+  // business_profiles is optional now (creators don't have one). Look it up
+  // best-effort so legacy restaurant rows can still join on business_id.
+  const { data: biz } = await admin
     .from("business_profiles")
     .select("id")
     .eq("user_id", userData.user.id)
     .maybeSingle();
-  if (bizErr || !biz) {
-    return { error: 403, message: "no_business_profile" };
-  }
-  return { userId: userData.user.id, businessId: biz.id as string };
+  return {
+    userId: userData.user.id,
+    businessId: (biz?.id as string | undefined) ?? null,
+  };
 }
 
 async function listOwnedAccountIds(
   admin: SupabaseClient,
-  businessId: string,
+  userId: string,
 ): Promise<Set<string>> {
   const { data } = await admin
     .from("business_outstand_accounts")
     .select("outstand_social_account_id")
-    .eq("business_id", businessId)
+    .eq("user_id", userId)
     .neq("status", "revoked");
   const rows = (data ?? []) as Array<{ outstand_social_account_id: string }>;
   return new Set(rows.map((r) => r.outstand_social_account_id));
@@ -306,7 +311,7 @@ function filterListBody(
 
 async function recordConnectionFromAuthResponse(
   admin: SupabaseClient,
-  ctx: BusinessContext,
+  ctx: TenantContext,
   bodyText: string,
 ): Promise<void> {
   if (!bodyText) return;
@@ -352,7 +357,7 @@ async function recordConnectionFromAuthResponse(
           connected_at: new Date().toISOString(),
           last_seen_at: new Date().toISOString(),
         },
-        { onConflict: "business_id,outstand_social_account_id" },
+        { onConflict: "user_id,outstand_social_account_id" },
       );
     })
     .filter((p): p is NonNullable<typeof p> => p !== null);
@@ -365,7 +370,7 @@ async function recordConnectionFromAuthResponse(
 // session token. The browser POSTs here to record the new mapping.
 async function handleRecordConnection(
   admin: SupabaseClient,
-  ctx: BusinessContext,
+  ctx: TenantContext,
   bodyText: string,
 ): Promise<Response> {
   let body: any = null;
@@ -384,12 +389,12 @@ async function handleRecordConnection(
     return jsonResponse(400, { error: "unsupported_network", network });
   }
 
-  // Refuse if a different business has already mapped this account_id.
+  // Refuse if any other tenant already owns this account_id.
   const { data: existing } = await admin
     .from("business_outstand_accounts")
-    .select("business_id")
+    .select("user_id")
     .eq("outstand_social_account_id", accountId)
-    .neq("business_id", ctx.businessId)
+    .neq("user_id", ctx.userId)
     .neq("status", "revoked")
     .maybeSingle();
   if (existing) {
@@ -418,13 +423,13 @@ async function handleRecordConnection(
 
 async function recordDisconnect(
   admin: SupabaseClient,
-  ctx: BusinessContext,
+  ctx: TenantContext,
   outstandAccountId: string,
 ): Promise<void> {
   await admin
     .from("business_outstand_accounts")
     .update({ status: "revoked", updated_at: new Date().toISOString() })
-    .eq("business_id", ctx.businessId)
+    .eq("user_id", ctx.userId)
     .eq("outstand_social_account_id", outstandAccountId);
 }
 
@@ -447,13 +452,13 @@ serve(async (req: Request) => {
   }
 
   const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-  const ctxOrError = await resolveBusiness(authHeader, admin);
+  const ctxOrError = await resolveTenant(authHeader, admin);
   if ("error" in ctxOrError) {
     return jsonResponse(ctxOrError.error, { error: ctxOrError.message });
   }
-  const ctx: BusinessContext = ctxOrError;
+  const ctx: TenantContext = ctxOrError;
 
-  const ownedIds = await listOwnedAccountIds(admin, ctx.businessId);
+  const ownedIds = await listOwnedAccountIds(admin, ctx.userId);
 
   const { path, search } = extractOutstandPath(req.url);
   const bodyText =

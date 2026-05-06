@@ -10,6 +10,8 @@ import { ScheduledTab } from '@/components/outstand/ScheduledTab';
 import { PublishedTab } from '@/components/outstand/PublishedTab';
 import { AccountsTab } from '@/components/outstand/AccountsTab';
 import { useSanitizeFileInputs } from '@/hooks/outstand/useSanitizeFileInputs';
+import { useAuth } from '@/hooks/useAuth';
+import type { UserRole } from '@/types/user';
 
 const VALID_TABS = ['compose', 'scheduled', 'published', 'accounts'] as const;
 type TabValue = (typeof VALID_TABS)[number];
@@ -96,7 +98,7 @@ const OutstandManagerInner: React.FC = () => {
               Social Media Manager
             </h1>
             <p className="text-xs text-gray-500 mt-1">
-              Compose, schedule, and engage with your customers across Facebook, Instagram, TikTok, X, and YouTube.
+              Compose, schedule, and engage across Facebook, Instagram, TikTok, X, and YouTube.
             </p>
           </div>
           <button
@@ -180,8 +182,10 @@ const OutstandManagerInner: React.FC = () => {
 };
 
 const OutstandManager: React.FC = () => {
+  const { profile } = useAuth();
+  const role: UserRole = profile?.role ?? 'business_client';
   return (
-    <DashboardLayout userRole="business_client">
+    <DashboardLayout userRole={role}>
       <DragonCandyOutstandProvider>
         <OutstandManagerInner />
       </DragonCandyOutstandProvider>

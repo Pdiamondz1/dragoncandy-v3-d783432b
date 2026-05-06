@@ -4,6 +4,7 @@ import { DCEmptyState } from '@/components/ui/dc-empty-state';
 import { DCSkeleton } from '@/components/ui/dc-skeleton';
 import { Share2 } from 'lucide-react';
 import { CustomComposeForm } from './CustomComposeForm';
+import { useOutstandPaths } from '@/hooks/outstand/useOutstandPaths';
 
 interface ComposeTabProps {
   accounts: SocialAccount[];
@@ -12,6 +13,7 @@ interface ComposeTabProps {
 }
 
 export const ComposeTab: React.FC<ComposeTabProps> = ({ accounts, accountsLoading, onPosted }) => {
+  const { accountsTab } = useOutstandPaths();
   if (accountsLoading) {
     return (
       <div className="space-y-3">
@@ -27,7 +29,7 @@ export const ComposeTab: React.FC<ComposeTabProps> = ({ accounts, accountsLoadin
         icon={Share2}
         title="Connect an account first"
         subtitle="You need at least one connected social account before you can compose a post."
-        cta={{ label: 'Go to Accounts', to: '/dashboard/business/social?tab=accounts' }}
+        cta={{ label: 'Go to Accounts', to: accountsTab }}
       />
     );
   }
