@@ -310,10 +310,11 @@ cached data from memory. Old Donny messages could flash briefly on the next
 login.
 
 **Fix:** In `useLogout.ts`, after `clearChat()`, purge all Donny-related
-cache. `removeQueries({ queryKey: ['donny'] })` uses TanStack Query's
-default prefix matching — it matches all keys starting with `'donny'`
-(e.g., `['donny-messages', ...]`, `['donny-conversation', ...]`,
-`['donny-dashboard', ...]`). Do not pass `exact: true`.
+cache. TanStack Query's prefix matching works on array element equality
+(`['donny']` matches `['donny', 'foo']`), not substring matching within
+elements. Since Donny query keys use hyphenated names (`'donny-messages'`,
+`'donny-conversation'`, `'donny-dashboard'`, `'donny-nudges'`,
+`'donny-chip-state'`), use a predicate to match all of them:
 
 ```typescript
 import { useQueryClient } from '@tanstack/react-query';
@@ -327,7 +328,11 @@ export const useLogout = () => {
   const logout = async () => {
     try {
       await clearChat();
-      queryClient.removeQueries({ queryKey: ['donny'] });
+      queryClient.removeQueries({
+        predicate: (query) =>
+          typeof query.queryKey[0] === 'string' &&
+          query.queryKey[0].startsWith('donny'),
+      });
       await signOut();
       navigate('/landing');
     } catch (error) {
