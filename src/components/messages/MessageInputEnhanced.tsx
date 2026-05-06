@@ -28,7 +28,7 @@ interface MessageInputEnhancedProps {
 
 export const MessageInputEnhanced: React.FC<MessageInputEnhancedProps> = ({
   campaignId,
-  conversationId: _conversationId,
+  conversationId,
   onSendMessage,
   disabled = false,
   placeholder = "Type a message…",
@@ -43,6 +43,20 @@ export const MessageInputEnhanced: React.FC<MessageInputEnhancedProps> = ({
   const { sendTypingIndicator } = useTypingIndicator(campaignId ?? '');
   const { user } = useAuth();
   const typingTimeoutRef = useRef<NodeJS.Timeout>();
+
+  const draftKey = `dc_msg_draft_${conversationId || campaignId}`;
+
+  // Load draft on mount / conversation switch — reset to empty if no draft exists
+  useEffect(() => {
+    const saved = localStorage.getItem(draftKey);
+    setMessage(saved || '');
+  }, [draftKey]);
+
+  // Persist draft on change
+  useEffect(() => {
+    if (message) localStorage.setItem(draftKey, message);
+    else localStorage.removeItem(draftKey);
+  }, [message, draftKey]);
 
   // Focus input when reply is set
   useEffect(() => {
@@ -109,6 +123,7 @@ export const MessageInputEnhanced: React.FC<MessageInputEnhancedProps> = ({
         threadId: replyingTo?.thread_id || replyingTo?.id,
       });
 
+      localStorage.removeItem(draftKey);
       setMessage('');
       setFile(null);
       sendTypingIndicator(false);
