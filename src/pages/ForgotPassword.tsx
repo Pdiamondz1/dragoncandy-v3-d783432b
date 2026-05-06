@@ -1,42 +1,14 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 import { Input } from "@/components/ui/input";
 import { AuthHeader } from "@/components/auth/AuthHeader";
-
-const setSEO = (title: string, description: string, canonical?: string) => {
-  document.title = title;
-  const metaDesc = document.querySelector('meta[name="description"]');
-  if (metaDesc) metaDesc.setAttribute('content', description);
-  else {
-    const m = document.createElement('meta');
-    m.setAttribute('name', 'description');
-    m.setAttribute('content', description);
-    document.head.appendChild(m);
-  }
-  const existingCanonical = document.querySelector('link[rel="canonical"]');
-  const href = canonical || window.location.href;
-  if (existingCanonical) existingCanonical.setAttribute('href', href);
-  else {
-    const link = document.createElement('link');
-    link.setAttribute('rel', 'canonical');
-    link.setAttribute('href', href);
-    document.head.appendChild(link);
-  }
-};
+import { SEO } from "@/components/SEO";
 
 const ForgotPassword: React.FC = () => {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    setSEO(
-      "Reset Password | DragonCandy",
-      "Reset your DragonCandy account password via email.",
-      `${window.location.origin}/auth/forgot`
-    );
-  }, []);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,6 +39,11 @@ const ForgotPassword: React.FC = () => {
 
   return (
     <main className="min-h-screen bg-white flex flex-col overflow-x-hidden">
+      <SEO
+        title="Reset Password"
+        description="Reset your DragonCandy account password via email."
+        path="/auth/forgot"
+      />
       {/* Template C header */}
       <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
         <div className="flex-1 text-center">

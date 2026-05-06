@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { SEO } from '@/components/SEO';
 
 const VerifyEmail = () => {
   const [searchParams] = useSearchParams();
@@ -52,6 +53,12 @@ const VerifyEmail = () => {
 
   return (
     <div className="min-h-screen bg-white flex flex-col overflow-x-hidden">
+      <SEO
+        title="Verify Your Email"
+        description="Verifying your DragonCandy email address."
+        path="/verify-email"
+        noindex
+      />
       {/* Template C header */}
       <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
         <div className="flex-1 text-center">
