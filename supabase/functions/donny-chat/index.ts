@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { validateDonnyToken, requireScope } from "../_shared/auth.ts";
 import { getModelConfig } from "../_shared/model-routing.ts";
 import { logCost } from "../_shared/cost-ledger.ts";
-import { getUserUsageStage, incrementUsage } from "../_shared/usage-tracker.ts";
+import { getUserUsageStage, incrementUsage, getUserSubscriptionTier } from "../_shared/usage-tracker.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -420,6 +420,14 @@ function sanitizeUserInput(text: string): string {
   }
   return sanitized;
 }
+
+const MAX_TOKENS_BY_TIER: Record<string, number> = {
+  free: 1024,
+  starter: 2048,
+  growth: 4096,
+  pro: 8192,
+  enterprise: 8192,
+};
 
 // Build system prompt with user context
 function buildSystemPrompt(
@@ -1481,6 +1489,10 @@ serve(async (req) => {
       console.log(`[donny-chat] User ${userId} in essential mode — routing to Haiku`);
     }
 
+    const subscriptionTier = await getUserSubscriptionTier(supabaseAdmin, userId);
+    const tierMaxTokens = MAX_TOKENS_BY_TIER[subscriptionTier] ?? 1024;
+    const clampedMaxTokens = Math.min(modelConfig.maxTokens, tierMaxTokens);
+
     // Call Claude
     if (!ANTHROPIC_API_KEY) {
       throw new Error("ANTHROPIC_API_KEY is not configured — please set it in Supabase Edge Function secrets");
@@ -1494,7 +1506,7 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         model: modelConfig.model,
-        max_tokens: modelConfig.maxTokens,
+        max_tokens: clampedMaxTokens,
         system: fullSystemPrompt,
         messages: claudeMessages,
         tools: allowedTools,
@@ -1518,7 +1530,12 @@ serve(async (req) => {
     });
 
     // Tool execution loop — Claude may request tool use
+    const TOKEN_CEILING = clampedMaxTokens * 3;
     while (result.stop_reason === "tool_use") {
+      if (totalTokens > TOKEN_CEILING) {
+        console.warn(`[donny-chat] Token ceiling hit (${totalTokens}/${TOKEN_CEILING}) — breaking tool loop`);
+        break;
+      }
       const assistantContent = result.content;
       const callTokens = (result.usage?.input_tokens ?? 0) + (result.usage?.output_tokens ?? 0);
 
@@ -1608,7 +1625,7 @@ serve(async (req) => {
         },
         body: JSON.stringify({
           model: modelConfig.model,
-          max_tokens: modelConfig.maxTokens,
+          max_tokens: clampedMaxTokens,
           system: fullSystemPrompt,
           messages: claudeMessages,
           tools: allowedTools,
