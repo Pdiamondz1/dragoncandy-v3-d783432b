@@ -425,7 +425,7 @@ const PublicCreatorProfile = () => {
                   ) : (
                     <img
                       src={toThumbnailUrl(url)}
-                      alt={`Portfolio item ${index + 1}`}
+                      alt={`${profile.creator_name} portfolio ${index + 1}`}
                       className="w-full h-full object-cover"
                       onError={(e) => {
                         const target = e.target as HTMLImageElement;

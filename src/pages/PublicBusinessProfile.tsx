@@ -234,7 +234,7 @@ const PublicBusinessProfile = () => {
               <div key={index} className="aspect-square rounded-xl overflow-hidden">
                 <img
                   src={url}
-                  alt={`Sample content ${index + 2}`}
+                  alt={`${profile.business_name} content sample ${index + 2}`}
                   className="w-full h-full object-cover"
                   loading="lazy"
                 />
