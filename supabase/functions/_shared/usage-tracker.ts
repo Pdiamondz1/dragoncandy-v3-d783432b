@@ -114,3 +114,28 @@ export async function getUserSubscriptionTier(
 
   return org?.subscription_tier ?? "free";
 }
+
+export async function checkQuotaOrBlock(
+  supabaseAdmin: SupabaseClient,
+  userId: string
+): Promise<
+  | { allowed: true }
+  | { allowed: false; used: number; budget: number; tier: string }
+> {
+  const periodStart = getCurrentPeriodStart();
+  const tier = await getUserSubscriptionTier(supabaseAdmin, userId);
+  const budget = TIER_BUDGETS[tier] ?? TIER_BUDGETS.free;
+
+  const { data } = await supabaseAdmin
+    .from("donny_usage")
+    .select("actions_used")
+    .eq("user_id", userId)
+    .eq("period_start", periodStart)
+    .maybeSingle();
+
+  const used = data?.actions_used ?? 0;
+  if (used >= budget) {
+    return { allowed: false, used, budget, tier };
+  }
+  return { allowed: true };
+}
