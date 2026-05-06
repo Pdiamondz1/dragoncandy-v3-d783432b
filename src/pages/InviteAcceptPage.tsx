@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { SEO } from '@/components/SEO';
 
 export default function InviteAcceptPage() {
   const [searchParams] = useSearchParams();
@@ -97,6 +98,12 @@ export default function InviteAcceptPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-dc-gray p-6">
+      <SEO
+        title="Accept Your DragonCandy Invite"
+        description="Accept your invitation to join DragonCandy."
+        path="/invite/accept"
+        noindex
+      />
       <Card className="w-full max-w-sm">
         <CardContent className="flex flex-col items-center py-12 text-center">
           {status === 'loading' && (

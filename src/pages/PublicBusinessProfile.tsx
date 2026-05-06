@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Star, MapPin, Building2, MessageSquare } from 'lucide-react';
 import { PublicProfileReviews } from '@/components/profiles/PublicProfileReviews';
 import logo from '@/assets/Transparent_DragonCandy_logo.webp';
+import { SEO } from '@/components/SEO';
 
 interface BusinessProfile {
   id: string;
@@ -129,6 +130,20 @@ const PublicBusinessProfile = () => {
 
   return (
     <div className="bg-white min-h-screen">
+      <SEO
+        title={`${profile.business_name} - DragonCandy`}
+        description={`View ${profile.business_name}'s profile, active campaigns, and creator collaborations on DragonCandy.`}
+        path={`/business/${slug}`}
+        image={profile.logo_url || undefined}
+        type="profile"
+        jsonLd={{
+          "@context": "https://schema.org",
+          "@type": "Organization",
+          "name": profile.business_name,
+          "image": profile.logo_url,
+          "url": `https://dragoncandy.io/business/${slug}`,
+        }}
+      />
       {/* Hero Image */}
       <div className="relative">
         <div className="h-[40vh] w-full overflow-hidden bg-pink-200">

@@ -10,6 +10,7 @@ import { ContactCreatorModal } from '@/components/creator-profile/ContactCreator
 import { PortfolioLightbox } from '@/components/creator-profile/PortfolioLightbox';
 import { InviteToCampaignModal } from '@/components/campaigns/InviteToCampaignModal';
 import logo from '@/assets/Transparent_DragonCandy_logo.webp';
+import { SEO } from '@/components/SEO';
 
 interface CreatorProfile {
   id: string;
@@ -266,6 +267,21 @@ const PublicCreatorProfile = () => {
 
   return (
     <div className="bg-white min-h-screen">
+      <SEO
+        title={`${profile.creator_name} - Content Creator on DragonCandy`}
+        description={profile.bio?.slice(0, 155) ?? `Browse the portfolio, reviews, and rates for ${profile.creator_name} on DragonCandy.`}
+        path={`/creator/${slug}`}
+        image={profile.avatar_url || undefined}
+        type="profile"
+        jsonLd={{
+          "@context": "https://schema.org",
+          "@type": "Person",
+          "name": profile.creator_name,
+          "image": profile.avatar_url,
+          "url": `https://dragoncandy.io/creator/${slug}`,
+          "jobTitle": "Content Creator",
+        }}
+      />
       {/* Hero Image */}
       <div className="relative">
         <div className="h-[40vh] w-full overflow-hidden bg-pink-200">

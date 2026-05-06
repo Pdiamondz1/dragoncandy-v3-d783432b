@@ -1,6 +1,7 @@
 import React, { Suspense, lazy, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Loader2 } from 'lucide-react';
+import { SEO } from '@/components/SEO';
 
 /**
  * Valid brief slugs — Vite's import.meta.glob gives us a map of all .mdx files
@@ -41,6 +42,11 @@ export default function HelpBriefPage() {
 
   return (
     <div className="min-h-screen bg-white">
+      <SEO
+        title={`${slug ? slug.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()) : 'Help'} - DragonCandy Help`}
+        description={`DragonCandy help guide for ${slug?.replace(/-/g, ' ') ?? 'promotions'}.`}
+        path={`/help/promotions/${slug}`}
+      />
       {/* Sticky header */}
       <header className="sticky top-0 z-30 bg-white border-b border-gray-100 px-4 py-3 flex items-center gap-3">
         <Link
