@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { validateDonnyToken, requireScope } from "../_shared/auth.ts";
 import { getModelConfig } from "../_shared/model-routing.ts";
 import { logCost } from "../_shared/cost-ledger.ts";
-import { getUserUsageStage, incrementUsage, getUserSubscriptionTier } from "../_shared/usage-tracker.ts";
+import { getUserUsageStage, incrementUsage, getUserSubscriptionTier, checkQuotaOrBlock } from "../_shared/usage-tracker.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -1433,6 +1433,20 @@ serve(async (req) => {
     }
 
     const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    // Monthly quota enforcement
+    const quotaCheck = await checkQuotaOrBlock(supabaseAdmin, userId);
+    if (!quotaCheck.allowed) {
+      return new Response(
+        JSON.stringify({
+          error: "monthly_quota_exceeded",
+          message: `You've used ${quotaCheck.used}/${quotaCheck.budget} Donny actions this month.`,
+          tier: quotaCheck.tier,
+          upgrade_url: "/settings/billing",
+        }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     const { conversation_id, message, context: requestContext } = await req.json();
 
