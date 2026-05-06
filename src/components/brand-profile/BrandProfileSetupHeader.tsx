@@ -6,7 +6,7 @@ export const BrandProfileSetupHeader = () => {
       <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-dc-teal mb-4">
         <Sparkles className="h-8 w-8 text-white" />
       </div>
-      <h1 className="text-3xl font-bold">Welcome to DragonCandy</h1>
+      <h2 className="text-3xl font-bold">Welcome to DragonCandy</h2>
       <p className="text-muted-foreground max-w-2xl mx-auto">
         Set up your brand profile to start sponsoring campaigns, partnering with local creators, and amplifying your marketing reach.
       </p>

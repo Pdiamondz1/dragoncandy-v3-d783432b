@@ -184,9 +184,9 @@ const DashboardLayoutInner: React.FC<DashboardLayoutProps> = ({ children, userRo
                 <div className="flex items-center gap-4">
                   <SidebarTrigger className="hover:bg-muted transition-colors duration-200" />
                   <div className="hidden sm:block">
-                    <h1 className="text-lg font-semibold text-foreground tracking-tight">
+                    <h2 className="text-lg font-semibold text-foreground tracking-tight">
                       {getDashboardLabel(userRole)}
-                    </h1>
+                    </h2>
                   </div>
                 </div>
 

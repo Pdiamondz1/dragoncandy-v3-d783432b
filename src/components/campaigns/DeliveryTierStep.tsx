@@ -49,7 +49,7 @@ export const DeliveryTierStep = ({ selectedTier, onSelect, onContinue }: Deliver
   return (
     <div className="px-4 py-6">
       {/* Heading */}
-      <h1 className="text-2xl font-bold text-gray-900 mb-1">How fast do you need it?</h1>
+      <h2 className="text-2xl font-bold text-gray-900 mb-1">How fast do you need it?</h2>
       <p className="text-sm text-gray-500 mb-6">
         Choose your delivery speed — this determines scope and pricing
       </p>

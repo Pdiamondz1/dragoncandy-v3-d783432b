@@ -10,9 +10,9 @@ export const MarketplaceHeader: React.FC<MarketplaceHeaderProps> = ({ totalCampa
   return (
     <div className="flex items-center justify-between">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">
+        <h2 className="text-3xl font-bold text-gray-900">
           Browse Campaigns
-        </h1>
+        </h2>
         <p className="text-gray-600">
           Discover exciting campaigns and grow your creative business
         </p>

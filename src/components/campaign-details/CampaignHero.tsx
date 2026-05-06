@@ -91,7 +91,7 @@ export function CampaignHero({
 
       {/* Bottom overlay content */}
       <div className="absolute bottom-0 left-0 right-0 px-5 pb-4">
-        <h1 className="text-xl font-bold text-white mb-0.5">{campaign.title}</h1>
+        <h2 className="text-xl font-bold text-white mb-0.5">{campaign.title}</h2>
         <span className="text-xs text-white/80 capitalize">
           {campaignType}
           {businessName ? ` · ${businessName}` : ''}
