@@ -1,6 +1,6 @@
 # Donny AI Audit Remediation — Phase 2
 
-> Fixes the final 2 of 8 issues from `docs/donny-ai-audit.docx`.
+> Fixes the final 2 of 8 issues from `docs/donny-ai-audit.txt`.
 > Phase 1 (6 fixes) completed in prior session.
 
 ## Scope
@@ -17,6 +17,7 @@ supabase/functions/_shared/usage-tracker.ts         — Section 1
 supabase/functions/donny-chat/index.ts               — Section 1
 supabase/functions/donny-orchestrator/index.ts        — Sections 1, 2
 src/hooks/useDonny.ts                                — Sections 1, 2
+src/contexts/DonnyProvider.tsx                       — Section 2
 src/components/donny/DonnyChatView.tsx               — Section 2
 ```
 
@@ -24,11 +25,18 @@ src/components/donny/DonnyChatView.tsx               — Section 2
 
 ## Section 1: Monthly LLM Quota Enforcement (Audit #1 — Critical)
 
-**Problem:** The pricing PDF promises Free=50, Starter=50, Growth=200,
-Pro/Enterprise=unlimited monthly Donny actions, but nothing in the codebase
-enforces these limits. Usage is tracked (`donny_usage` table, `incrementUsage()`),
-but users are never blocked when they exceed their budget. One automated script
-per Free user can exhaust the platform's Claude budget.
+**Problem:** Monthly Donny action limits are not enforced. Usage is tracked
+(`donny_usage` table, `incrementUsage()`), but users are never blocked when
+they exceed their budget. One automated script per Free user can exhaust
+the platform's Claude budget.
+
+**Tier budget values:** The audit's pricing PDF cites Free=50, Starter=50,
+Growth=200, but `TIER_BUDGETS` in `_shared/usage-tracker.ts` (set during
+cost architecture implementation) uses Free=50, Starter=500, Growth=2000,
+Pro=10000, Enterprise=50000. The code values are authoritative — they were
+established by the cost architecture spec and migration
+(`20260503000000_donny_cost_architecture.sql`). The pricing PDF predates
+this spec and was superseded. This enforcement uses the code values.
 
 **Why no new migration:** The existing `donny_usage` table already tracks
 per-user, per-month usage with `actions_used`, `actions_budget`, and
@@ -71,12 +79,35 @@ export async function checkQuotaOrBlock(
 ### Edge function enforcement
 
 Both `donny-chat/index.ts` and `donny-orchestrator/index.ts` call this
-after auth resolution but before any Claude API call or profile lookup:
+after auth resolution but before any Claude API call or profile lookup.
+
+**`donny-chat/index.ts`** — add `checkQuotaOrBlock` to existing import from
+`"../_shared/usage-tracker.ts"` (already imports `getUserUsageStage`,
+`incrementUsage`, `getUserSubscriptionTier`). The service-role client is
+named `supabaseAdmin`:
 
 ```typescript
-import { checkQuotaOrBlock } from "../_shared/usage-tracker.ts";
-
 const quotaCheck = await checkQuotaOrBlock(supabaseAdmin, userId);
+if (!quotaCheck.allowed) {
+  return new Response(
+    JSON.stringify({
+      error: "monthly_quota_exceeded",
+      message: `You've used ${quotaCheck.used}/${quotaCheck.budget} Donny actions this month.`,
+      tier: quotaCheck.tier,
+      upgrade_url: "/settings/billing",
+    }),
+    { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+  );
+}
+```
+
+**`donny-orchestrator/index.ts`** — add `checkQuotaOrBlock` to existing
+import from `"../_shared/usage-tracker.ts"` (already imports
+`getUserUsageStage`, `incrementUsage`). The service-role client is named
+`supabase` (not `supabaseAdmin`):
+
+```typescript
+const quotaCheck = await checkQuotaOrBlock(supabase, userId);
 if (!quotaCheck.allowed) {
   return new Response(
     JSON.stringify({
@@ -210,6 +241,9 @@ const response = await fetch(
 
 **Stream reading logic:**
 
+SSE events are delimited by double newlines (`\n\n`). Parse complete events
+from the buffer, tracking the current event type:
+
 ```typescript
 const reader = response.body!.getReader();
 const decoder = new TextDecoder();
@@ -221,22 +255,27 @@ while (true) {
   if (done) break;
   buffer += decoder.decode(value, { stream: true });
 
-  // Parse complete SSE events from buffer
-  const lines = buffer.split("\n");
-  buffer = lines.pop() ?? "";
+  // Split on double-newline to get complete SSE events
+  const events = buffer.split("\n\n");
+  buffer = events.pop() ?? ""; // last element is incomplete
 
-  for (const line of lines) {
-    if (line.startsWith("event: text_delta")) {
-      // Next data line has the text
-    } else if (line.startsWith("data: ") && currentEvent === "text_delta") {
-      const { text } = JSON.parse(line.slice(6));
+  for (const event of events) {
+    const lines = event.split("\n");
+    let eventType = "";
+    let eventData = "";
+
+    for (const line of lines) {
+      if (line.startsWith("event: ")) eventType = line.slice(7);
+      else if (line.startsWith("data: ")) eventData = line.slice(6);
+    }
+
+    if (eventType === "text_delta" && eventData) {
+      const { text } = JSON.parse(eventData);
       accumulatedText += text;
       setStreamingContent(accumulatedText);
-    } else if (line.startsWith("event: done")) {
-      // Next data line has suggested_actions
-    } else if (line.startsWith("data: ") && currentEvent === "done") {
-      const { suggested_actions, agent_used } = JSON.parse(line.slice(6));
-      // Save final assistant message to DB
+    } else if (eventType === "done" && eventData) {
+      const { suggested_actions, agent_used } = JSON.parse(eventData);
+      // Save final assistant message to DB with accumulatedText + suggested_actions
     }
   }
 }
@@ -245,6 +284,14 @@ while (true) {
 **Non-streaming fallback:** If the response Content-Type is `application/json`
 (quota error, validation error, auth error), fall back to reading the body
 as JSON. This handles 429 quota responses and other error cases cleanly.
+
+**Connection drop handling:** If `reader.read()` throws (network failure),
+preserve whatever `accumulatedText` was built so far — set it as the final
+`streamingContent` so the user can still see the partial response. Show the
+error with a retry button. The user message (already inserted into DB before
+the fetch) stays; on retry, a new user message is not re-inserted — instead
+the retry resends the same query to the orchestrator, and on success, saves
+a new assistant message.
 
 **User message insertion** stays the same — inserted into `donny_messages`
 before the fetch. **Assistant message insertion** moves to after the stream
@@ -327,6 +374,51 @@ in the error block:
 
 `DonnyChatInput` already has `disabled={isStreaming}` — the send button is
 already disabled during streaming. No changes needed there.
+
+### Layer 5: DonnyProvider context pass-through
+
+`DonnyChatView` gets state from `useDonnyContext()`, not directly from
+`useDonny()`. The `DonnyProvider` at `src/contexts/DonnyProvider.tsx` must
+be updated to pass through the new values:
+
+1. Add `streamingContent` and `retry` to the `DonnyContextValue` interface:
+
+```typescript
+interface DonnyContextValue {
+  // ... existing fields ...
+  streamingContent: string;
+  retry: () => void;
+}
+```
+
+2. Pass them through in the `value` memo:
+
+```typescript
+const value = useMemo<DonnyContextValue>(
+  () => ({
+    // ... existing fields ...
+    streamingContent: donny.streamingContent,
+    retry: donny.retry,
+  }),
+  [
+    // ... existing deps ...
+    donny.streamingContent, donny.retry,
+  ]
+);
+```
+
+3. `DonnyChatView` destructures `streamingContent` and `retry` from context:
+
+```typescript
+const { messages, isStreaming, streamingContent, error, retry, ... } = useDonnyContext();
+```
+
+### Concurrent requests
+
+The `isSendingRef` guard in `useDonny.ts` prevents duplicate sends from a
+single tab. Multi-tab concurrent requests are an accepted edge case — the
+existing per-hour rate limit (30 messages/hour) catches abuse. No server-side
+single-flight enforcement is needed for Phase 2.
 
 ---
 
