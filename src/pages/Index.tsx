@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { SEO } from "@/components/SEO";
 
 export default function Index() {
   const navigate = useNavigate();
@@ -130,6 +131,11 @@ export default function Index() {
 
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-background">
+        <SEO
+          title="DragonCandy - AI-Powered Marketplace for Brands & Creators"
+          description="DragonCandy connects restaurants, brands, and content creators for short-form social media campaigns. Powered by Donny AI."
+          path="/"
+        />
         <div className="text-center space-y-4">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-pink-600 mx-auto"></div>
           <div className="text-lg font-medium text-foreground">Loading DragonCandy...</div>

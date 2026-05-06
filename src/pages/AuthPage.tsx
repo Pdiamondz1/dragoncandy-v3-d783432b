@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { SEO } from "@/components/SEO";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -178,6 +179,11 @@ const AuthPage = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#1A5C5C] via-[#2D7A7A] to-[#9B5A8A] flex flex-col">
+      <SEO
+        title="Sign In or Sign Up - DragonCandy"
+        description="Log in to DragonCandy or create a brand, restaurant, or creator account in under a minute."
+        path="/auth"
+      />
       {/* Top nav — logo left, hamburger right */}
       <div className="flex items-center px-5 pt-6 pb-2">
         <Link to="/">

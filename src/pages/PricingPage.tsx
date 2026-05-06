@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { TierComparisonGrid } from '@/components/pricing/TierComparisonGrid';
-import { TIER_ORDER, type TierName } from '@/lib/pricing/tier-features';
+import { SEO } from '@/components/SEO';
+import { TIER_ORDER, TIER_PRICES, type TierName } from '@/lib/pricing/tier-features';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -42,6 +43,22 @@ const PricingPage = () => {
 
   return (
     <div className="min-h-screen bg-white">
+      <SEO
+        title="Pricing"
+        description="Simple, transparent pricing for restaurants and brands running creator campaigns on DragonCandy. Pay only for content delivered."
+        path="/pricing"
+        jsonLd={{
+          "@context": "https://schema.org",
+          "@type": "ItemList",
+          "name": "DragonCandy Pricing Plans",
+          "itemListElement": [
+            { "@type": "Offer", "name": "Free", "price": "0", "priceCurrency": "USD" },
+            { "@type": "Offer", "name": "Starter", "price": String(TIER_PRICES.starter.monthly), "priceCurrency": "USD", "billingDuration": "P1M" },
+            { "@type": "Offer", "name": "Growth", "price": String(TIER_PRICES.growth.monthly), "priceCurrency": "USD", "billingDuration": "P1M" },
+            { "@type": "Offer", "name": "Pro", "price": String(TIER_PRICES.pro.monthly), "priceCurrency": "USD", "billingDuration": "P1M" },
+          ],
+        }}
+      />
       {/* Header */}
       <div className="px-4 pt-12 pb-8 text-center md:pt-20 md:pb-12">
         <h1 className="text-3xl font-bold uppercase tracking-tight text-gray-900 md:text-5xl">
