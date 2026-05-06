@@ -150,12 +150,14 @@ only renders when React fails to mount (no other h1 on the page).
 
 ### Alt text
 
-Two files need fixes:
+Two files need fixes. Portfolio items are plain URL strings (not objects),
+so there is no caption field available. Use the creator/business name for
+descriptiveness:
 
 - `PublicCreatorProfile.tsx`: change `alt="Portfolio item ${index + 1}"`
-  to `alt={item.caption ?? \`${profile.creator_name} portfolio\`}`
+  to `` alt={`${profile.creator_name} portfolio ${index + 1}`} ``
 - `PublicBusinessProfile.tsx`: change `alt="Sample content ${index + 2}"`
-  to `alt={item.caption ?? \`${profile.business_name} content sample\`}`
+  to `` alt={`${profile.business_name} content sample ${index + 2}`} ``
 
 ### Accessibility: div onClick to button
 
@@ -172,7 +174,7 @@ Two other flagged files use `onClick={(e) => e.stopPropagation()}` on
 wrapper divs to prevent event bubbling — these are not primary click
 targets and don't need conversion:
 
-- `PromotionCard.tsx` line 172: stopPropagation on a button group wrapper
+- `src/components/promotions/PromotionCard.tsx` line 172: stopPropagation on a button group wrapper
 - `CampaignDetailModal.tsx` line 75: stopPropagation on modal content area
 
 ### Dependency cleanup
