@@ -89,10 +89,9 @@ const queryClient = new QueryClient({
     queries: {
       retry: (failureCount, error) => {
         console.error('Query failed:', error);
-        return failureCount < 2; // Retry up to 2 times
+        return failureCount < 2;
       },
-      staleTime: 5 * 60 * 1000, // 5 minutes
-      throwOnError: true,
+      staleTime: 5 * 60 * 1000,
     },
   },
 });
