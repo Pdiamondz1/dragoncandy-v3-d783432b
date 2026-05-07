@@ -23,6 +23,7 @@ export const TIER_FEATURES: TierFeature[] = [
   { key: 'donny_assisted', label: 'Donny Assisted Mode', description: 'Donny drafts posts and suggests actions for your review', requiredTier: 'starter' },
   { key: 'donny_auto_pilot', label: 'Donny Auto-Pilot', description: 'Donny generates, schedules, and publishes content autonomously', requiredTier: 'growth' },
   { key: 'dragondash_rush', label: 'DragonDash Rush Posting', description: 'Simultaneous multi-platform posting with AI-written captions', requiredTier: 'starter' },
+  { key: 'active_campaigns', label: 'More Active Campaigns', description: 'Publish more campaigns simultaneously to the marketplace', requiredTier: 'starter' },
 ];
 
 export const TIER_ORDER: TierName[] = ['free', 'starter', 'growth', 'pro', 'enterprise'];

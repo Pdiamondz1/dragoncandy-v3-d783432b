@@ -24,6 +24,9 @@ import type { CampaignAnalysis } from '@/types/campaign';
 import { useScopeValidation } from '@/hooks/useScopeValidation';
 import { ScopeValidationCard } from './ScopeValidationCard';
 import { mapDeliveryTierToDb } from '@/lib/campaignUtils';
+import { useActiveCampaignGate } from '@/hooks/useActiveCampaignGate';
+import { SoftPaywallSheet } from '@/components/pricing/SoftPaywallSheet';
+import { useAuth } from '@/hooks/useAuth';
 
 const finalizeSchema = z.object({
   title: z.string().min(3, 'Campaign name must be at least 3 characters'),
@@ -71,9 +74,12 @@ export const CampaignFinalizeStep: React.FC<CampaignFinalizeStepProps> = ({
   onBack,
 }) => {
   const [isCreating, setIsCreating] = useState(false);
+  const [showCampaignLimitPaywall, setShowCampaignLimitPaywall] = useState(false);
   const { createCampaign } = useCampaigns();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { activeOrg } = useAuth();
+  const campaignGate = useActiveCampaignGate();
 
   const scopeValidation = useScopeValidation(
     campaignData.structuredDeliverables ?? [],
@@ -126,14 +132,20 @@ export const CampaignFinalizeStep: React.FC<CampaignFinalizeStepProps> = ({
   };
 
   const handleCreateCampaign = async (data: FinalizeFormData, forceStatus?: 'draft' | 'published') => {
+    const wantToPublish = forceStatus === 'published' || (!forceStatus && data.publishImmediately);
+
+    if (wantToPublish && !campaignGate.allowed) {
+      setShowCampaignLimitPaywall(true);
+      return;
+    }
+
     setIsCreating(true);
-    
+
     // For fixed-price campaigns that want to publish, open a blank window IMMEDIATELY
     // This prevents popup blockers since it's synchronous with the user click
     let checkoutWindow: Window | null = null;
-    const wantToPublish = forceStatus === 'published' || (!forceStatus && data.publishImmediately);
     const isFixedPrice = campaignData.pricingType === 'fixed';
-    
+
     if (wantToPublish && isFixedPrice) {
       checkoutWindow = window.open('about:blank', '_blank');
     }
@@ -480,7 +492,7 @@ export const CampaignFinalizeStep: React.FC<CampaignFinalizeStepProps> = ({
           <span>${getTotalCost().toFixed(2)}</span>
         </div>
         <p className="text-xs text-gray-400">
-          A 5% service fee is deducted from the creator's payout — you are not charged extra.
+          A {Math.round((activeOrg?.take_rate ?? 0.10) * 100)}% service fee is deducted from the creator's payout — you are not charged extra.
         </p>
       </div>
 
@@ -673,6 +685,19 @@ export const CampaignFinalizeStep: React.FC<CampaignFinalizeStepProps> = ({
           </div>
         </form>
       </Form>
+
+      {!campaignGate.loading && !campaignGate.allowed && (
+        <div className="mt-4 p-4 rounded-xl border border-orange-200 bg-orange-50 text-sm text-orange-800">
+          You've reached your active campaign limit ({campaignGate.currentCount}/{campaignGate.limit}).
+          Upgrade your plan to publish more campaigns simultaneously.
+        </div>
+      )}
+
+      <SoftPaywallSheet
+        featureKey="active_campaigns"
+        open={showCampaignLimitPaywall}
+        onClose={() => setShowCampaignLimitPaywall(false)}
+      />
     </div>
   );
 };
