@@ -49,7 +49,7 @@ export const useManageApplication = () => {
         return app;
       } else {
         // Non-sponsored: direct status update with race guard
-        const { data, error, count } = await supabase
+        const { data, error } = await supabase
           .from('campaign_applications')
           .update({
             status,
@@ -57,10 +57,10 @@ export const useManageApplication = () => {
           })
           .eq('id', applicationId)
           .in('status', ['pending', 'counter_offered'])
-          .select('id, campaign_id, creator_id, status, restaurant_approval_status, final_approval_status', { count: 'exact' });
+          .select('id, campaign_id, creator_id, status, restaurant_approval_status, final_approval_status');
 
         if (error) throw error;
-        if (count === 0) {
+        if (!data || data.length === 0) {
           throw new Error('This application is no longer pending — its status may have already changed.');
         }
         return data![0];

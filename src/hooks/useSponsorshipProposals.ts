@@ -86,15 +86,15 @@ export const useSponsorshipProposals = () => {
       proposalId: string;
       status: 'accepted' | 'rejected';
     }) => {
-      const { data, error, count } = await supabase
+      const { data, error } = await supabase
         .from('campaign_sponsorships')
         .update({ status })
         .eq('id', proposalId)
         .eq('status', 'pending')
-        .select('id', { count: 'exact' });
+        .select('id');
 
       if (error) throw error;
-      if (count === 0) {
+      if (!data || data.length === 0) {
         throw new Error('This sponsorship is no longer pending — someone else may have already responded.');
       }
       return data;

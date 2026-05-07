@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CreatorProfileModal } from './CreatorProfileModal';
 import { CreatorPortfolioModal } from '@/components/creator-profile/CreatorPortfolioModal';
 import { Heart } from 'lucide-react';

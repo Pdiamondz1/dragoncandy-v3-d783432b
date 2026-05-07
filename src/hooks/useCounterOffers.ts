@@ -142,29 +142,29 @@ export const useRespondToCounterOffer = () => {
       response: 'accepted' | 'declined';
     }) => {
       // Update counter-offer status with race guard
-      const { error: offerError, count: offerCount } = await supabase
+      const { data: offerRows, error: offerError } = await supabase
         .from('application_counter_offers')
         .update({ status: response })
         .eq('id', counterOfferId)
         .eq('status', 'pending')
-        .select('id', { count: 'exact' });
+        .select('id');
 
       if (offerError) throw offerError;
-      if (offerCount === 0) {
+      if (!offerRows || offerRows.length === 0) {
         throw new Error('This counter offer is no longer pending — it may have already been responded to.');
       }
 
       // If accepted, update application status with race guard
       if (response === 'accepted') {
-        const { error: appError, count: appCount } = await supabase
+        const { data: appRows, error: appError } = await supabase
           .from('campaign_applications')
           .update({ status: 'accepted' })
           .eq('id', applicationId)
           .eq('status', 'counter_offered')
-          .select('id', { count: 'exact' });
+          .select('id');
 
         if (appError) throw appError;
-        if (appCount === 0) {
+        if (!appRows || appRows.length === 0) {
           throw new Error('This application status has already changed.');
         }
       }

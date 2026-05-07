@@ -94,11 +94,6 @@ const toThumbnailUrl = (url: string, width = 540): string => {
   return `${SUPABASE_URL}/storage/v1/render/image/public/${storagePath}?width=${width}&quality=75`;
 };
 
-const resolveAvatarUrl = (raw: string | null | undefined): string | undefined => {
-  if (!raw) return undefined;
-  if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
-  return undefined;
-};
 
 export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
   creator,
