@@ -361,7 +361,7 @@ const BusinessProjects: React.FC = () => {
               </p>
               <Button
                 onClick={() => navigate('/dashboard/business/campaigns')}
-                className="rounded-full bg-dc-teal-btn text-white font-bold px-6"
+                className="rounded-full bg-dc-teal text-white font-bold px-6"
               >
                 View My Campaigns
               </Button>
@@ -490,7 +490,7 @@ const BusinessProjects: React.FC = () => {
                               onClick={() => handleMarkComplete(project.id)}
                               disabled={requestingId === project.id}
                               size="sm"
-                              className="rounded-full bg-dc-teal-btn text-white font-bold"
+                              className="rounded-full bg-dc-teal text-white font-bold"
                             >
                               {requestingId === project.id ? (
                                 <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Completing...</>
@@ -503,7 +503,7 @@ const BusinessProjects: React.FC = () => {
                             <Button
                               onClick={() => handleLeaveReview(project)}
                               size="sm"
-                              className="rounded-full bg-dc-pink-accent-btn text-white font-bold"
+                              className="rounded-full bg-dc-pink-accent text-white font-bold"
                             >
                               <Star className="h-4 w-4 mr-2" />
                               Leave Review
@@ -632,7 +632,7 @@ const BusinessProjects: React.FC = () => {
                               </div>
                               <Button
                                 size="sm"
-                                className="rounded-full bg-dc-teal-btn text-white font-bold shrink-0"
+                                className="rounded-full bg-dc-teal text-white font-bold shrink-0"
                                 onClick={() => handleDownloadFile(file)}
                                 disabled={downloadingFileId === file.id}
                               >

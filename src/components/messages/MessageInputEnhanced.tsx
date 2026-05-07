@@ -264,7 +264,7 @@ export const MessageInputEnhanced: React.FC<MessageInputEnhancedProps> = ({
         <button
           type="submit"
           disabled={(!message.trim() && !file) || disabled || uploading}
-          className="w-10 h-10 rounded-full bg-dc-teal-btn text-white flex items-center justify-center flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-dc-teal-btn-hover transition-colors"
+          className="w-10 h-10 rounded-full bg-dc-teal text-white flex items-center justify-center flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-dc-teal/90 transition-colors"
           aria-label="Send message"
         >
           <Send className="h-5 w-5" />

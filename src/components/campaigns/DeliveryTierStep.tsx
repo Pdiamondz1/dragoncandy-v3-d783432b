@@ -134,7 +134,7 @@ export const DeliveryTierStep = ({ selectedTier, onSelect, onContinue }: Deliver
       <button
         onClick={onContinue}
         disabled={selectedTier === null}
-        className="w-full rounded-full bg-dc-teal-btn hover:bg-dc-teal-btn-hover text-white font-semibold py-3 text-base mt-6 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        className="w-full rounded-full bg-dc-teal hover:bg-dc-teal/90 text-white font-semibold py-3 text-base mt-6 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
       >
         Continue
       </button>

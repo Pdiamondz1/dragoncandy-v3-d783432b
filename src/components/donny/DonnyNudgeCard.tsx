@@ -15,7 +15,7 @@ const priorityStyles = {
 };
 
 const variantStyles = {
-  primary: 'bg-dc-teal-btn text-white',
+  primary: 'bg-dc-teal text-white',
   secondary: 'bg-white text-gray-600 border border-gray-200',
   ghost: 'bg-gray-100 text-gray-500',
 };

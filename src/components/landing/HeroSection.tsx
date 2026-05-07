@@ -23,7 +23,7 @@ export const HeroSection: React.FC = () => {
           I'm a Restaurant — Get Started
         </Button>
         <Button
-          className="w-full h-12 rounded-full bg-dc-pink-accent-btn text-white font-bold text-base hover:bg-dc-pink-accent-btn-hover hover:shadow-lg transition-all duration-300"
+          className="w-full h-12 rounded-full bg-dc-pink-accent text-white font-bold text-base hover:bg-pink-600 hover:shadow-lg transition-all duration-300"
           onClick={() => navigate('/auth?mode=signup')}
         >
           I'm a Brand/Sponsor — Launch Campaigns

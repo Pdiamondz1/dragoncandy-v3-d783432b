@@ -255,7 +255,7 @@ const CreatorCampaignMarketplace = () => {
                     onClick={filters.distanceRadius !== 'any'
                       ? () => setDistanceRadius('any')
                       : clearFilters}
-                    className="rounded-full bg-dc-teal-btn text-white text-sm font-bold px-6 py-2 hover:bg-dc-teal-btn-hover transition-colors"
+                    className="rounded-full bg-dc-teal text-white text-sm font-bold px-6 py-2 hover:bg-dc-teal-dark transition-colors"
                   >
                     {filters.distanceRadius !== 'any' ? 'Expand radius' : 'Clear filters'}
                   </button>
@@ -297,7 +297,7 @@ const CreatorCampaignMarketplace = () => {
                               e.stopPropagation();
                               handleViewDetail(campaign);
                             }}
-                            className="rounded-full bg-dc-teal-btn text-white text-xs font-bold px-4 py-1.5 hover:bg-dc-teal-btn-hover transition-colors"
+                            className="rounded-full bg-dc-teal text-white text-xs font-bold px-4 py-1.5 hover:bg-dc-teal-dark transition-colors"
                           >
                             View
                           </button>

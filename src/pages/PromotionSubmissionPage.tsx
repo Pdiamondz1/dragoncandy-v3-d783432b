@@ -197,7 +197,7 @@ export default function PromotionSubmissionPage() {
             </div>
           )}
           <h2 className="text-lg font-bold text-gray-900">{businessName}</h2>
-          <Badge className="mt-2 text-base px-4 py-1 bg-dc-teal-btn text-white rounded-full">
+          <Badge className="mt-2 text-base px-4 py-1 bg-dc-teal text-white rounded-full">
             {formatDiscount()}
           </Badge>
         </div>
@@ -236,7 +236,7 @@ export default function PromotionSubmissionPage() {
 
             <button
               onClick={() => setStep('video')}
-              className="w-full rounded-full bg-dc-teal-btn text-white font-bold py-3 flex items-center justify-center gap-2 hover:bg-dc-teal-btn-hover transition-colors"
+              className="w-full rounded-full bg-dc-teal text-white font-bold py-3 flex items-center justify-center gap-2 hover:bg-dc-teal/90 transition-colors"
             >
               Let's Start
               <ArrowRight className="w-4 h-4" />

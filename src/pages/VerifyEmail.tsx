@@ -93,7 +93,7 @@ const VerifyEmail = () => {
               <p className="text-sm text-gray-500">{errorMessage}</p>
               <button
                 onClick={() => navigate('/auth')}
-                className="w-full rounded-full bg-dc-teal-btn text-white font-bold py-3 hover:bg-dc-teal-btn-hover transition-colors"
+                className="w-full rounded-full bg-dc-teal text-white font-bold py-3 hover:bg-dc-teal/90 transition-colors"
               >
                 Go to Login
               </button>

@@ -25,7 +25,7 @@ export function StickyApplyCTA({
         {canApply && (
           <button
             onClick={onApply}
-            className="w-full rounded-full bg-dc-teal-btn text-white font-bold py-3.5 h-14 flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
+            className="w-full rounded-full bg-dc-teal text-white font-bold py-3.5 h-14 flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
           >
             <Send className="h-4 w-4" />
             Apply with Donny
@@ -40,7 +40,7 @@ export function StickyApplyCTA({
         {hasApplied && applicationStatus === 'accepted' && (
           <button
             onClick={onViewProject}
-            className="w-full rounded-full bg-dc-teal-btn text-white font-bold py-3.5 h-14 flex items-center justify-center gap-2"
+            className="w-full rounded-full bg-dc-teal text-white font-bold py-3.5 h-14 flex items-center justify-center gap-2"
           >
             <FolderOpen className="h-4 w-4" />
             View Project

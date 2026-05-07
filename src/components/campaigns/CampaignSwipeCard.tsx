@@ -298,7 +298,7 @@ const CardContent: React.FC<CardContentProps> = ({ campaign, onViewDetail, match
               e.preventDefault();
               onViewDetail(campaign);
             }}
-            className="w-full bg-dc-teal-btn text-white rounded-full h-11 font-bold hover:bg-dc-teal-btn-hover transition-colors duration-150 active:scale-95 text-sm relative z-10"
+            className="w-full bg-dc-teal text-white rounded-full h-11 font-bold hover:bg-dc-teal-dark transition-colors duration-150 active:scale-95 text-sm relative z-10"
           >
             View Campaign
           </button>

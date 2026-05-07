@@ -185,7 +185,7 @@ export function BriefGeneratorPreview() {
           </div>
 
           <Button
-            className="w-full h-12 rounded-full bg-dc-teal-btn text-white font-bold text-base hover:bg-dc-teal-btn-hover hover:shadow-glow-teal transition-all duration-300"
+            className="w-full h-12 rounded-full bg-dc-teal text-white font-bold text-base hover:bg-dc-teal-dark hover:shadow-glow-teal transition-all duration-300"
             onClick={handleSaveAndSignUp}
           >
             Save this brief — sign up free
@@ -209,7 +209,7 @@ export function BriefGeneratorPreview() {
             Sign up for a free account to generate unlimited briefs.
           </p>
           <Button
-            className="w-full h-12 rounded-full bg-dc-teal-btn text-white font-bold text-base hover:bg-dc-teal-btn-hover hover:shadow-glow-teal transition-all duration-300"
+            className="w-full h-12 rounded-full bg-dc-teal text-white font-bold text-base hover:bg-dc-teal-dark hover:shadow-glow-teal transition-all duration-300"
             onClick={() => navigate('/auth?mode=signup')}
           >
             Sign up free
@@ -250,7 +250,7 @@ export function BriefGeneratorPreview() {
         </div>
 
         <Button
-          className="w-full h-12 rounded-full bg-dc-teal-btn text-white font-bold text-base hover:bg-dc-teal-btn-hover hover:shadow-glow-teal transition-all duration-300"
+          className="w-full h-12 rounded-full bg-dc-teal text-white font-bold text-base hover:bg-dc-teal-dark hover:shadow-glow-teal transition-all duration-300"
           disabled={!url.trim()}
           onClick={handleGenerate}
         >

@@ -16,7 +16,7 @@ export const EmptyStateNoCampaigns: React.FC = () => {
       </p>
       <Link
         to="/dashboard/brand/campaigns/create"
-        className="px-8 py-3 bg-dc-teal-btn text-white rounded-full font-semibold text-sm hover:bg-dc-teal-btn-hover transition-colors"
+        className="px-8 py-3 bg-dc-teal text-white rounded-full font-semibold text-sm hover:bg-dc-teal/90 transition-colors"
       >
         Create Campaign
       </Link>

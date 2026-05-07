@@ -251,7 +251,7 @@ const CreatorEarnings: React.FC = () => {
                   onClick={() => setupStripeMutation.mutate()}
                   disabled={setupStripeMutation.isPending}
                   size="sm"
-                  className="rounded-full bg-dc-teal-btn text-white font-bold text-xs"
+                  className="rounded-full bg-dc-teal text-white font-bold text-xs"
                 >
                   {setupStripeMutation.isPending ? (
                     <Loader2 className="h-4 w-4 animate-spin mr-1" />
@@ -387,7 +387,7 @@ const CreatorEarnings: React.FC = () => {
                 </div>
                 <Button
                   size="sm"
-                  className="rounded-full bg-dc-teal-btn text-white font-bold"
+                  className="rounded-full bg-dc-teal text-white font-bold"
                   onClick={() => setupStripeMutation.mutate()}
                   disabled={setupStripeMutation.isPending}
                 >

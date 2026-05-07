@@ -87,7 +87,7 @@ const ForgotPassword: React.FC = () => {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full rounded-full bg-dc-teal-btn text-white font-bold py-3 hover:bg-dc-teal-btn-hover transition-colors disabled:opacity-60"
+                className="w-full rounded-full bg-dc-teal text-white font-bold py-3 hover:bg-dc-teal/90 transition-colors disabled:opacity-60"
               >
                 {loading ? "Sending…" : "Send reset link"}
               </button>

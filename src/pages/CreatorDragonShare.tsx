@@ -48,7 +48,7 @@ const CreatorDragonShare: React.FC = () => {
               {monthlyCount ?? 0}/{FREE_LIMIT} this month
             </span>
             <Coachmark coachmarkKey="dragonshare_submit" title="Paste a link, tag a brand, get paid" body="Submit posts you've already made about brands you love.">
-              <Button onClick={() => setSubmitOpen(true)} disabled={!canSubmit} className="rounded-full bg-dc-teal-btn hover:bg-dc-teal-btn-hover text-white font-semibold px-6">
+              <Button onClick={() => setSubmitOpen(true)} disabled={!canSubmit} className="rounded-full bg-dc-teal hover:bg-dc-teal-dark text-white font-semibold px-6">
                 <Sparkles className="mr-2 h-4 w-4" />
                 Submit Post
               </Button>

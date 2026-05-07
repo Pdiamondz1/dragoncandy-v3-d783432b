@@ -19,7 +19,7 @@ const buttonVariants = cva(
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
         "dc-primary":
-          "bg-dc-teal-btn text-white dark:text-dc-dark hover:bg-dc-teal-btn-hover transition-[color,background-color,transform] duration-150 hover:scale-[1.02] active:scale-[0.98]",
+          "bg-dc-teal text-white dark:text-dc-dark hover:bg-dc-teal/90 transition-[color,background-color,transform] duration-150 hover:scale-[1.02] active:scale-[0.98]",
         "dc-outline":
           "border-2 border-dc-teal text-dc-teal bg-transparent hover:bg-dc-teal/10 transition-[color,background-color,transform] duration-150 hover:scale-[1.02] active:scale-[0.98]",
         "dc-ghost":

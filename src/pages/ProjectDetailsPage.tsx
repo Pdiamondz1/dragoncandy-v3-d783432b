@@ -88,7 +88,7 @@ const ProjectDetailsPage: React.FC = () => {
             </p>
             <Button
               onClick={() => navigate(-1)}
-              className="w-full rounded-full bg-dc-teal-btn text-white font-bold py-3"
+              className="w-full rounded-full bg-dc-teal text-white font-bold py-3"
             >
               Go Back
             </Button>
@@ -330,7 +330,7 @@ const ProjectDetailsPage: React.FC = () => {
 
           {/* Primary CTA — full-width teal pill */}
           <Button
-            className="w-full rounded-full bg-dc-teal-btn text-white font-bold py-3"
+            className="w-full rounded-full bg-dc-teal text-white font-bold py-3"
             onClick={() => navigate(`/messages/${collaboration.campaign_id}`)}
           >
             <MessageSquare className="h-4 w-4 mr-2" />

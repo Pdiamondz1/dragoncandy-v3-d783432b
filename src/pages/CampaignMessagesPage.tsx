@@ -87,7 +87,7 @@ const CampaignMessagesPage: React.FC = () => {
               </p>
               <Link
                 to="/messages"
-                className="rounded-full bg-dc-teal-btn text-white font-bold px-6 py-2 text-sm inline-block"
+                className="rounded-full bg-dc-teal text-white font-bold px-6 py-2 text-sm inline-block"
               >
                 Back to Messages
               </Link>
@@ -125,7 +125,7 @@ const CampaignMessagesPage: React.FC = () => {
               </p>
               <Link
                 to="/messages"
-                className="rounded-full bg-dc-teal-btn text-white font-bold px-6 py-2 text-sm inline-block"
+                className="rounded-full bg-dc-teal text-white font-bold px-6 py-2 text-sm inline-block"
               >
                 Back to Messages
               </Link>

@@ -79,7 +79,7 @@ export default function SiteGate() {
 
           <button
             type="submit"
-            className="w-full h-12 rounded-full bg-dc-teal-btn hover:bg-dc-teal-btn-hover text-white font-bold text-base shadow-md transition-colors"
+            className="w-full h-12 rounded-full bg-dc-teal hover:bg-dc-teal-hover text-white font-bold text-base shadow-md transition-colors"
           >
             Submit
           </button>

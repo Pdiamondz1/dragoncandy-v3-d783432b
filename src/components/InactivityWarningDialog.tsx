@@ -32,7 +32,7 @@ export const InactivityWarningDialog: React.FC<InactivityWarningDialogProps> = (
         <AlertDialogFooter className="sm:justify-center">
           <AlertDialogAction
             onClick={onConfirm}
-            className="w-full bg-dc-teal-btn hover:bg-dc-teal-btn-hover text-white rounded-full font-bold"
+            className="w-full bg-dc-teal hover:bg-dc-teal-dark text-white rounded-full font-bold"
           >
             I'm still here
           </AlertDialogAction>

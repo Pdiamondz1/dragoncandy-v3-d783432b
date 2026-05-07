@@ -255,7 +255,7 @@ export const AuthForm = ({ mode, onError, preSelectedRole, onChangeRole }: AuthF
           {/* Submit button */}
           <button
             type="submit"
-            className="w-full h-12 rounded-full bg-dc-teal-btn text-white font-bold text-base disabled:opacity-60 hover:opacity-90 transition-opacity"
+            className="w-full h-12 rounded-full bg-dc-teal text-white font-bold text-base disabled:opacity-60 hover:opacity-90 transition-opacity"
             disabled={loading}
           >
             {mode === "login"

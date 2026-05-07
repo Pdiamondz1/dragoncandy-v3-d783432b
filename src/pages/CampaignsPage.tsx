@@ -132,7 +132,7 @@ const CampaignsPage: React.FC = () => {
                   onClick={() => setStatusFilter(tab.key)}
                   className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors shrink-0 ${
                     statusFilter === tab.key
-                      ? 'bg-dc-teal-btn text-white'
+                      ? 'bg-dc-teal text-white'
                       : 'bg-gray-100 text-gray-600'
                   }`}
                 >

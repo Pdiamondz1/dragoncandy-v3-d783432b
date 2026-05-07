@@ -59,7 +59,7 @@ export function DonnyAvatar({
       {badgeCount != null && badgeCount > 0 && (
         <span
           className={cn(
-            'absolute flex items-center justify-center rounded-full bg-dc-pink-accent-btn text-white font-bold border-2 border-white',
+            'absolute flex items-center justify-center rounded-full bg-dc-pink-accent text-white font-bold border-2 border-white',
             badgeSizeClasses[size]
           )}
         >

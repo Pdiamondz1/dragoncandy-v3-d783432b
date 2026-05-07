@@ -130,7 +130,7 @@ export function CampaignVisualsStep({
         <Button
           type="button"
           onClick={onContinue}
-          className="bg-dc-teal-btn hover:bg-dc-teal-btn-hover text-white rounded-full px-8"
+          className="bg-dc-teal hover:bg-dc-teal/90 text-white rounded-full px-8"
         >
           Continue to Review
         </Button>

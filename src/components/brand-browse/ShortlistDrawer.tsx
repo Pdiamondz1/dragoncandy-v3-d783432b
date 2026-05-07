@@ -202,7 +202,7 @@ export const ShortlistDrawer: React.FC<ShortlistDrawerProps> = ({
                 <button
                   onClick={handleBulkInvite}
                   disabled={!selectedCampaignId || isBulkInviting || count === 0}
-                  className="w-full flex items-center justify-center gap-2 py-3 bg-dc-teal-btn text-white rounded-full font-semibold text-sm hover:bg-dc-teal-btn-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full flex items-center justify-center gap-2 py-3 bg-dc-teal text-white rounded-full font-semibold text-sm hover:bg-dc-teal/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Send className="h-4 w-4" />
                   {isBulkInviting

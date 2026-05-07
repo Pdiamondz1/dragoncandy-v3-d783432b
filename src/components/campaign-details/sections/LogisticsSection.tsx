@@ -67,7 +67,7 @@ export function LogisticsSection({ campaign }: LogisticsSectionProps) {
                   <Badge
                     key={scope}
                     variant={campaign.geographic_scope === scope ? 'default' : 'outline'}
-                    className={`capitalize ${campaign.geographic_scope === scope ? 'bg-dc-teal-btn text-white' : ''}`}
+                    className={`capitalize ${campaign.geographic_scope === scope ? 'bg-dc-teal text-white' : ''}`}
                   >
                     {scope}
                   </Badge>

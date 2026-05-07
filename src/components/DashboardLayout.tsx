@@ -118,7 +118,7 @@ const AppSidebar: React.FC<AppSidebarProps> = ({ userRole }) => {
             <SidebarGroupContent className="px-4 pt-2">
               <Link to="/dashboard/business/campaigns/create">
                 <Button
-                  className="w-full bg-dc-teal-btn text-white hover:bg-dc-teal-btn-hover hover:shadow-glow-teal rounded-full font-semibold transition-all duration-300"
+                  className="w-full bg-dc-teal text-white hover:bg-dc-teal-dark hover:shadow-glow-teal rounded-full font-semibold transition-all duration-300"
                   size={collapsed ? 'icon' : 'default'}
                 >
                   <PlusCircle className="h-4 w-4" />

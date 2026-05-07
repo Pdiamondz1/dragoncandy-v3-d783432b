@@ -50,7 +50,7 @@ export const BrandSection: React.FC = () => {
 
       <div className="text-center">
         <Button
-          className="w-full sm:w-auto sm:px-8 rounded-full bg-dc-teal-btn text-white font-bold py-3 text-base hover:bg-dc-teal-btn-hover hover:shadow-glow-teal transition-all duration-300 group"
+          className="w-full sm:w-auto sm:px-8 rounded-full bg-dc-teal text-white font-bold py-3 text-base hover:bg-dc-teal-dark hover:shadow-glow-teal transition-all duration-300 group"
           onClick={() => navigate('/auth?mode=signup')}
         >
           Launch Your First Campaign

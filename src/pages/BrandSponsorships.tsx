@@ -162,7 +162,7 @@ const BrandSponsorships = () => {
       <Button
         onClick={() => handlePayment(sponsorship)}
         disabled={initiatePayment.isPending}
-        className="rounded-full bg-dc-teal-btn hover:bg-dc-teal-btn-hover text-white font-bold"
+        className="rounded-full bg-dc-teal hover:bg-dc-teal/90 text-white font-bold"
       >
         {initiatePayment.isPending ? (
           <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -348,7 +348,7 @@ const BrandSponsorships = () => {
                       <Button
                         size="sm"
                         onClick={() => handleLeaveReview(sponsorship)}
-                        className="rounded-full bg-dc-pink-accent-btn text-white hover:bg-dc-pink-accent-btn-hover"
+                        className="rounded-full bg-dc-pink-accent text-white hover:bg-dc-pink-accent/90"
                       >
                         <Star className="h-3 w-3 mr-1" />
                         Leave Review

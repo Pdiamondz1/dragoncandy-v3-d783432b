@@ -175,7 +175,7 @@ const AnonymousCampaignWizard: React.FC = () => {
                 </p>
                 <button
                   onClick={handleBackToTimelineBudget}
-                  className="w-full rounded-full bg-dc-teal-btn text-white font-bold py-3"
+                  className="w-full rounded-full bg-dc-teal text-white font-bold py-3"
                 >
                   Go Back to Timeline &amp; Budget
                 </button>

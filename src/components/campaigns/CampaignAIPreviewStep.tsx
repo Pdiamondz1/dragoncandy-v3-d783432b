@@ -139,7 +139,7 @@ export const CampaignAIPreviewStep: React.FC<CampaignAIPreviewStepProps> = ({
 
           <Button
             onClick={onApprove}
-            className="bg-dc-teal-btn hover:bg-dc-teal-btn-hover text-white rounded-full flex items-center gap-2"
+            className="bg-dc-teal hover:bg-dc-teal/90 text-white rounded-full flex items-center gap-2"
           >
             Approve &amp; Continue
             <ArrowRight className="h-4 w-4" aria-hidden="true" />

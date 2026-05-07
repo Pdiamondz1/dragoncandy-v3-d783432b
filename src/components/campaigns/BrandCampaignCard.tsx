@@ -197,7 +197,7 @@ export const BrandCampaignCard: React.FC<BrandCampaignCardProps> = ({
             <TooltipTrigger asChild>
               <div className="flex-1">
                 <Button
-                  className="w-full rounded-full bg-dc-teal-btn text-white font-bold hover:bg-dc-teal-btn-hover"
+                  className="w-full rounded-full bg-dc-teal text-white font-bold hover:bg-dc-teal/90"
                   onClick={() => onSponsor(campaign.id, existingProposal ?? undefined)}
                   disabled={buttonConfig.disabled}
                 >
