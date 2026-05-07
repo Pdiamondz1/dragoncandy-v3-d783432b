@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Menu } from "lucide-react";
-import dragonCandyLogo from "@/assets/Transparent_DragonCandy_logo.webp";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
@@ -37,8 +36,11 @@ export const Header: React.FC = () => {
   return (
     <header className="flex items-center justify-between py-4 bg-white animate-fade-in">
       <img
-        src={dragonCandyLogo}
+        src="/logo.webp"
         alt="DragonCandy"
+        width={140}
+        height={47}
+        fetchPriority="high"
         className="w-[100px] md:w-[120px] lg:w-[140px] h-auto cursor-pointer transition-transform duration-200 hover:scale-105"
         onClick={() => navigate('/')}
       />
