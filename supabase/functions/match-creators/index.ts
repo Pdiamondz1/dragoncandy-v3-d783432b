@@ -1,8 +1,9 @@
-
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.0';
 import { corsHeaders } from "../_shared/cors.ts";
+
+const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -366,6 +367,22 @@ serve(async (req) => {
   }
 
   try {
+    // Require authentication
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders(req), "Content-Type": "application/json" },
+      });
+    }
+    const token = authHeader.replace("Bearer ", "");
+    const supabaseAnon = createClient(supabaseUrl, SUPABASE_ANON_KEY);
+    const { data: { user: caller }, error: authError } = await supabaseAnon.auth.getUser(token);
+    if (authError || !caller) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders(req), "Content-Type": "application/json" },
+      });
+    }
+
     console.log('Starting enhanced match-creators function');
 
     const { campaignId } = await req.json();
@@ -388,6 +405,12 @@ serve(async (req) => {
     }
 
     console.log('Campaign fetched:', campaign?.title);
+
+    if (campaign.user_id !== caller.id) {
+      return new Response(JSON.stringify({ error: "Only the campaign owner can run matching" }), {
+        status: 403, headers: { ...corsHeaders(req), "Content-Type": "application/json" },
+      });
+    }
 
     // Fetch campaign owner profile for geographic scoring
     const { data: ownerProfile } = await supabase

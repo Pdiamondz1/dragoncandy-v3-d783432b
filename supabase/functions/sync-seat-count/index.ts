@@ -14,10 +14,40 @@ serve(async (req) => {
     const stripeSecretKey = Deno.env.get('STRIPE_SECRET_KEY');
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // Require authentication
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders(req), "Content-Type": "application/json" },
+      });
+    }
+    const token = authHeader.replace("Bearer ", "");
+    const supabaseAnon = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!);
+    const { data: { user: caller }, error: authError } = await supabaseAnon.auth.getUser(token);
+    if (authError || !caller) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders(req), "Content-Type": "application/json" },
+      });
+    }
+
     const { org_id } = await req.json();
     if (!org_id) {
       return new Response(JSON.stringify({ error: 'org_id required' }), {
         status: 400, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Verify caller is an admin/owner of this org
+    const { data: membership } = await supabase
+      .from('org_members')
+      .select('role')
+      .eq('user_id', caller.id)
+      .eq('org_id', org_id)
+      .eq('invitation_status', 'active')
+      .single();
+    if (!membership || !['owner', 'admin'].includes(membership.role)) {
+      return new Response(JSON.stringify({ error: 'Only org admins can sync seats' }), {
+        status: 403, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
       });
     }
 
