@@ -454,12 +454,12 @@ serve(async (req) => {
         const subscriptionId = subscription.id;
 
         const PRICE_TO_TIER: Record<string, string> = {
-          'price_test_starter_monthly': 'starter',
-          'price_test_starter_annual': 'starter',
-          'price_test_growth_monthly': 'growth',
-          'price_test_growth_annual': 'growth',
-          'price_test_pro_monthly': 'pro',
-          'price_test_pro_annual': 'pro',
+          'price_1TUHaMJi7lqzzhdMW9vjJIpb': 'starter',
+          'price_1TUHaPJi7lqzzhdM3IFf3Zqa': 'starter',
+          'price_1TUHaSJi7lqzzhdMwmOKQnRa': 'growth',
+          'price_1TUHaUJi7lqzzhdMWNiKolGJ': 'growth',
+          'price_1TUHaXJi7lqzzhdMDZPUOSFJ': 'pro',
+          'price_1TUHaaJi7lqzzhdMjFiX0cJl': 'pro',
         };
         const VALID_TIERS = new Set(['starter', 'growth', 'pro']);
 

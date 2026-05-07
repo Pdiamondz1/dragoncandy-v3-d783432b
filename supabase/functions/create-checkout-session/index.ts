@@ -5,16 +5,16 @@ import { corsHeaders } from "../_shared/cors.ts";
 
 // Base price IDs per tier and billing period
 const BASE_PRICES: Record<string, Record<string, string>> = {
-  starter: { monthly: 'price_test_starter_monthly', annual: 'price_test_starter_annual' },
-  growth:  { monthly: 'price_test_growth_monthly',  annual: 'price_test_growth_annual' },
-  pro:     { monthly: 'price_test_pro_monthly',     annual: 'price_test_pro_annual' },
+  starter: { monthly: 'price_1TUHaMJi7lqzzhdMW9vjJIpb', annual: 'price_1TUHaPJi7lqzzhdM3IFf3Zqa' },
+  growth:  { monthly: 'price_1TUHaSJi7lqzzhdMwmOKQnRa', annual: 'price_1TUHaUJi7lqzzhdMWNiKolGJ' },
+  pro:     { monthly: 'price_1TUHaXJi7lqzzhdMDZPUOSFJ', annual: 'price_1TUHaaJi7lqzzhdMjFiX0cJl' },
 };
 
 // Per-seat add-on price IDs per tier
 const SEAT_PRICES: Record<string, string> = {
-  starter: 'price_test_seat_starter',
-  growth:  'price_test_seat_growth',
-  pro:     'price_test_seat_pro',
+  starter: 'price_1TUHagJi7lqzzhdMmQzixpeE',
+  growth:  'price_1TUHajJi7lqzzhdM2J8RXusW',
+  pro:     'price_1TUHamJi7lqzzhdMZiv9kst7',
 };
 
 serve(async (req) => {
