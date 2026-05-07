@@ -84,7 +84,7 @@ export const CreatorPortfolioModal: React.FC<CreatorPortfolioModalProps> = ({
 
         {/* Thumbnail gallery */}
         {total > 1 && (
-          <div className="flex gap-2 px-4 pb-4 flex-shrink-0 overflow-x-auto">
+          <div className="flex gap-2 px-4 pb-4 flex-shrink-0 overflow-x-auto md:overflow-x-visible md:flex-wrap">
             {images.map((image, index) => (
               <button
                 key={index}
