@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { GoogleMap, useLoadScript, Marker, InfoWindow } from '@react-google-maps/api';
+import { GoogleMap, useJsApiLoader, Marker, InfoWindow } from '@react-google-maps/api';
 import { GOOGLE_MAPS_API_KEY, GOOGLE_MAPS_LIBRARIES, DEFAULT_MAP_CENTER, DEFAULT_MAP_ZOOM, MAP_CONTAINER_STYLE, MAP_OPTIONS } from '@/lib/googleMapsConfig';
 import { useCampaignGeocoding } from '@/hooks/useCampaignGeocoding';
 import { PublicCampaign } from '@/hooks/usePublicCampaigns';
@@ -16,7 +16,8 @@ interface CampaignMapViewProps {
 }
 
 export const CampaignMapView: React.FC<CampaignMapViewProps> = ({ campaigns, onViewDetails }) => {
-  const { isLoaded, loadError } = useLoadScript({
+  const { isLoaded, loadError } = useJsApiLoader({
+    id: 'google-map-script',
     googleMapsApiKey: GOOGLE_MAPS_API_KEY,
     libraries: GOOGLE_MAPS_LIBRARIES,
   });
