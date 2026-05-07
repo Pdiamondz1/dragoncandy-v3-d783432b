@@ -1,6 +1,6 @@
 
 export const ALLOWED_FILE_TYPES = {
-  images: ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'],
+  images: ['image/jpeg', 'image/png', 'image/gif', 'image/webp'],
   videos: ['video/mp4', 'video/webm', 'video/quicktime', 'video/avi'],
   documents: ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
   spreadsheets: ['application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
