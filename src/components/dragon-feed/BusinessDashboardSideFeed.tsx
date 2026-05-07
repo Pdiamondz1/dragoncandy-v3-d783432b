@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Play, Pause, Heart, MessageSquare, Loader2, User, Sparkles } from 'lucide-react';
+import { Play, Pause, Heart, MessageSquare, User, Sparkles } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Spinner } from '@/components/ui/spinner';
@@ -86,7 +86,7 @@ export const BusinessDashboardSideFeed: React.FC<BusinessDashboardSideFeedProps>
   if (loading) {
     return (
       <div className="h-full flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <Spinner className="text-primary" />
       </div>
     );
   }
