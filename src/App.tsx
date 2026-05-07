@@ -94,6 +94,7 @@ const queryClient = new QueryClient({
         return failureCount < 2;
       },
       staleTime: 5 * 60 * 1000,
+      refetchOnWindowFocus: false,
     },
   },
 });
