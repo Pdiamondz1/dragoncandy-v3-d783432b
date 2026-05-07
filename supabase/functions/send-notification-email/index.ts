@@ -80,6 +80,25 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
+    // Auth gate: require either service-role token or a valid user JWT
+    const authHeader = req.headers.get("Authorization") || "";
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") as string;
+    const isService = authHeader === `Bearer ${serviceKey}`;
+    if (!isService) {
+      const supabaseUrl = Deno.env.get("SUPABASE_URL") as string;
+      const anonKey = Deno.env.get("SUPABASE_ANON_KEY") as string;
+      const userClient = createClient(supabaseUrl, anonKey, {
+        global: { headers: { Authorization: authHeader } },
+      });
+      const { data: userData, error: userErr } = await userClient.auth.getUser();
+      if (userErr || !userData?.user) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401,
+          headers: { "Content-Type": "application/json", ...corsHeaders(req) },
+        });
+      }
+    }
+
     const { to, recipientName, type, data }: NotificationEmailRequest = await req.json();
 
     console.log('Incoming notification request:', { type, to, recipientUserId: data?.recipientUserId, collaborationId: data?.collaborationId, campaignId: data?.campaignId });
