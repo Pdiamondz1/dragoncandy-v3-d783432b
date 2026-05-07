@@ -237,7 +237,7 @@ export function MediaUploader({
 
       {/* Thumbnail grid */}
       {files.length > 0 && (
-        <div className="mt-3 flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+        <div className="mt-3 flex gap-3 overflow-x-auto pb-2 scrollbar-hide md:overflow-x-visible md:flex-wrap">
           {files.map((staged, index) => (
             <div key={`${staged.name}-${index}`} className="relative rounded-lg overflow-hidden bg-gray-200 w-24 h-24 flex-shrink-0">
               {/* Preview */}
