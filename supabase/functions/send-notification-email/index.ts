@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "npm:resend@2.0.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { htmlEscape } from "../_shared/htmlEscape.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -124,12 +125,33 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log('Sending notification email:', type, 'to:', resolvedTo);
     const rn = resolvedRecipientName;
+    const esc = {
+      rn: htmlEscape(rn),
+      recipientName: htmlEscape(recipientName || ''),
+      applicantName: htmlEscape(data.applicantName || ''),
+      campaignTitle: htmlEscape(data.campaignTitle || ''),
+      senderName: htmlEscape(data.senderName || ''),
+      message: htmlEscape(data.message || ''),
+      brandName: htmlEscape(data.brandName || ''),
+      businessName: htmlEscape(data.businessName || ''),
+      creatorName: htmlEscape(data.creatorName || ''),
+      uploaderName: htmlEscape(data.uploaderName || ''),
+      requesterName: htmlEscape(data.requesterName || ''),
+      likerName: htmlEscape(data.likerName || ''),
+      description: htmlEscape(data.description || ''),
+      invitationMessage: htmlEscape(data.invitationMessage || ''),
+      applicationStatus: htmlEscape(data.applicationStatus || ''),
+      proposalStatus: htmlEscape(data.proposalStatus || ''),
+      party: htmlEscape(data.party || ''),
+      updateDetails: htmlEscape(data.updateDetails || ''),
+      deliveryTime: htmlEscape(data.deliveryTime || ''),
+    };
     const templates: Record<NotificationType, { subject: string; html: string }> = {
       new_application: {
-        subject: `New Application for "${data.campaignTitle}"`,
+        subject: `New Application for "${esc.campaignTitle}"`,
         html: `
-          <p>Hi ${rn},</p>
-          <p>Great news! <strong>${data.applicantName}</strong> has applied to your campaign <strong>"${data.campaignTitle}"</strong>.</p>
+          <p>Hi ${esc.rn},</p>
+          <p>Great news! <strong>${esc.applicantName}</strong> has applied to your campaign <strong>"${esc.campaignTitle}"</strong>.</p>
           <p>Review their application and portfolio to see if they're a good fit for your project.</p>
           <p style="margin-top: 30px;">
             <a href="${baseUrl}/dashboard/business/campaigns/${data.campaignId}" 
@@ -140,10 +162,10 @@ const handler = async (req: Request): Promise<Response> => {
         `,
       },
       application_status: {
-        subject: `Application ${data.applicationStatus} for "${data.campaignTitle}"`,
+        subject: `Application ${esc.applicationStatus} for "${esc.campaignTitle}"`,
         html: `
-          <p>Hi ${recipientName},</p>
-          <p>Your application for <strong>"${data.campaignTitle}"</strong> has been <strong>${data.applicationStatus?.toLowerCase()}</strong>.</p>
+          <p>Hi ${esc.recipientName},</p>
+          <p>Your application for <strong>"${esc.campaignTitle}"</strong> has been <strong>${esc.applicationStatus.toLowerCase()}</strong>.</p>
           ${data.applicationStatus === 'accepted' 
             ? `<p>Congratulations! The business owner is interested in working with you. Check your messages to coordinate next steps.</p>` 
             : `<p>Don't worry - there are many more great opportunities waiting for you in the marketplace!</p>`
@@ -157,11 +179,11 @@ const handler = async (req: Request): Promise<Response> => {
         `,
       },
       new_message: {
-        subject: `New message from ${data.senderName}`,
+        subject: `New message from ${esc.senderName}`,
         html: `
-          <p>Hi ${recipientName},</p>
-          <p>You have a new message from <strong>${data.senderName}</strong>${data.campaignTitle ? ` about "${data.campaignTitle}"` : ''}.</p>
-          ${data.message ? `<blockquote style="border-left: 4px solid #8B5CF6; padding-left: 16px; margin: 20px 0; color: #374151;">${data.message}</blockquote>` : ''}
+          <p>Hi ${esc.recipientName},</p>
+          <p>You have a new message from <strong>${esc.senderName}</strong>${data.campaignTitle ? ` about "${esc.campaignTitle}"` : ''}.</p>
+          ${data.message ? `<blockquote style="border-left: 4px solid #8B5CF6; padding-left: 16px; margin: 20px 0; color: #374151;">${esc.message}</blockquote>` : ''}
           <p style="margin-top: 30px;">
             <a href="${baseUrl}/messages${data.campaignId ? `/${data.campaignId}` : ''}" 
                style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block;">
@@ -173,8 +195,8 @@ const handler = async (req: Request): Promise<Response> => {
       payment_received: {
         subject: `Payment Received - $${data.amount}`,
         html: `
-          <p>Hi ${recipientName},</p>
-          <p>Great news! You've received a payment of <strong>$${data.amount}</strong> for your work on <strong>"${data.campaignTitle}"</strong>.</p>
+          <p>Hi ${esc.recipientName},</p>
+          <p>Great news! You've received a payment of <strong>$${data.amount}</strong> for your work on <strong>"${esc.campaignTitle}"</strong>.</p>
           <p>The funds will be available in your account shortly. Thank you for your excellent work!</p>
           <p style="margin-top: 30px;">
             <a href="${baseUrl}/dashboard/creator/projects" 
@@ -185,10 +207,10 @@ const handler = async (req: Request): Promise<Response> => {
         `,
       },
       review_request: {
-        subject: `Please review your collaboration on "${data.campaignTitle}"`,
+        subject: `Please review your collaboration on "${esc.campaignTitle}"`,
         html: `
-          <p>Hi ${recipientName},</p>
-          <p>Your collaboration on <strong>"${data.campaignTitle}"</strong> is now complete! 🎉</p>
+          <p>Hi ${esc.recipientName},</p>
+          <p>Your collaboration on <strong>"${esc.campaignTitle}"</strong> is now complete! 🎉</p>
           <p>We'd love to hear about your experience. Your feedback helps build trust in the DragonCandy community.</p>
           <p style="margin-top: 30px;">
             <a href="${baseUrl}${data.reviewUrl}" 
@@ -199,11 +221,11 @@ const handler = async (req: Request): Promise<Response> => {
         `,
       },
       campaign_update: {
-        subject: `Campaign Update: "${data.campaignTitle}"`,
+        subject: `Campaign Update: "${esc.campaignTitle}"`,
         html: `
-          <p>Hi ${recipientName},</p>
-          <p>There's an update to the campaign <strong>"${data.campaignTitle}"</strong>:</p>
-          ${data.updateDetails ? `<div style="background: #F9FAFB; padding: 16px; border-radius: 8px; margin: 20px 0;">${data.updateDetails}</div>` : ''}
+          <p>Hi ${esc.recipientName},</p>
+          <p>There's an update to the campaign <strong>"${esc.campaignTitle}"</strong>:</p>
+          ${data.updateDetails ? `<div style="background: #F9FAFB; padding: 16px; border-radius: 8px; margin: 20px 0;">${esc.updateDetails}</div>` : ''}
           <p style="margin-top: 30px;">
             <a href="${baseUrl}/dashboard/business/campaigns/${data.campaignId}" 
                style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block;">
@@ -213,7 +235,7 @@ const handler = async (req: Request): Promise<Response> => {
         `,
       },
       campaign_published: {
-        subject: `🎉 Your Campaign "${data.campaignTitle}" is Now Live!`,
+        subject: `🎉 Your Campaign "${esc.campaignTitle}" is Now Live!`,
         html: `
           <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto;">
             <div style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); padding: 40px 20px; text-align: center; border-radius: 12px 12px 0 0;">
@@ -221,10 +243,10 @@ const handler = async (req: Request): Promise<Response> => {
             </div>
             
             <div style="background: white; padding: 40px 20px; border-radius: 0 0 12px 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-              <p style="font-size: 16px; color: #374151; margin-top: 0;">Hi ${rn},</p>
+              <p style="font-size: 16px; color: #374151; margin-top: 0;">Hi ${esc.rn},</p>
               
               <p style="font-size: 16px; color: #374151; line-height: 1.6;">
-                Congratulations! Your campaign <strong>"${data.campaignTitle}"</strong> is now <strong>live in the DragonCandy marketplace</strong> and visible to talented content creators! 🚀
+                Congratulations! Your campaign <strong>"${esc.campaignTitle}"</strong> is now <strong>live in the DragonCandy marketplace</strong> and visible to talented content creators! 🚀
               </p>
 
               <div style="background: #F0FDF4; border-left: 4px solid #10B981; padding: 16px; margin: 24px 0; border-radius: 4px;">
@@ -284,11 +306,11 @@ const handler = async (req: Request): Promise<Response> => {
         `,
       },
       sponsorship_proposal: {
-        subject: `New Sponsorship Proposal from ${data.brandName}`,
+        subject: `New Sponsorship Proposal from ${esc.brandName}`,
         html: `
-          <p>Hi ${recipientName},</p>
-          <p><strong>${data.brandName}</strong> has submitted a sponsorship proposal of <strong>$${data.sponsorshipAmount}</strong> for your campaign <strong>"${data.campaignTitle}"</strong>!</p>
-          ${data.message ? `<p>Their message:</p><blockquote style="border-left: 4px solid #8B5CF6; padding-left: 16px; margin: 20px 0; color: #374151;">${data.message}</blockquote>` : ''}
+          <p>Hi ${esc.recipientName},</p>
+          <p><strong>${esc.brandName}</strong> has submitted a sponsorship proposal of <strong>$${data.sponsorshipAmount}</strong> for your campaign <strong>"${esc.campaignTitle}"</strong>!</p>
+          ${data.message ? `<p>Their message:</p><blockquote style="border-left: 4px solid #8B5CF6; padding-left: 16px; margin: 20px 0; color: #374151;">${esc.message}</blockquote>` : ''}
           <p style="margin-top: 30px;">
             <a href="${baseUrl}/dashboard/business/sponsorships" 
                style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block;">
@@ -298,10 +320,10 @@ const handler = async (req: Request): Promise<Response> => {
         `,
       },
       sponsorship_status: {
-        subject: `Sponsorship ${data.proposalStatus} for "${data.campaignTitle}"`,
+        subject: `Sponsorship ${esc.proposalStatus} for "${esc.campaignTitle}"`,
         html: `
-          <p>Hi ${recipientName},</p>
-          <p>Your sponsorship proposal for <strong>"${data.campaignTitle}"</strong> has been <strong>${data.proposalStatus?.toLowerCase()}</strong>.</p>
+          <p>Hi ${esc.recipientName},</p>
+          <p>Your sponsorship proposal for <strong>"${esc.campaignTitle}"</strong> has been <strong>${esc.proposalStatus.toLowerCase()}</strong>.</p>
           ${data.proposalStatus === 'accepted' 
             ? `<p>Congratulations! The restaurant is excited to partner with your brand. Check your messages to coordinate next steps.</p>` 
             : `<p>Thank you for your interest. There are many more great sponsorship opportunities available!</p>`
@@ -317,8 +339,8 @@ const handler = async (req: Request): Promise<Response> => {
       approval_pending: {
         subject: `Action Required: Creator Application Awaiting Your Approval`,
         html: `
-          <p>Hi ${rn},</p>
-          <p>A creator application for campaign <strong>"${data.campaignTitle}"</strong> has been approved by the ${data.party}.</p>
+          <p>Hi ${esc.rn},</p>
+          <p>A creator application for campaign <strong>"${esc.campaignTitle}"</strong> has been approved by the ${esc.party}.</p>
           <p><strong>Your approval is now required</strong> to finalize the collaboration.</p>
           <p style="margin-top: 30px;">
             <a href="${baseUrl}/dashboard/business/campaigns/${data.campaignId}" 
@@ -331,8 +353,8 @@ const handler = async (req: Request): Promise<Response> => {
       content_liked: {
         subject: `Someone liked your content! ❤️`,
         html: `
-          <p>Hi ${rn},</p>
-          <p>Great news! <strong>${data.likerName || 'A business client'}</strong> liked your content on DragonCandy!</p>
+          <p>Hi ${esc.rn},</p>
+          <p>Great news! <strong>${esc.likerName || 'A business client'}</strong> liked your content on DragonCandy!</p>
           <p>This is a great sign that your work is resonating with potential clients. Keep creating amazing content!</p>
           ${data.contentUrl ? `
             <p style="margin: 20px 0;">
@@ -351,7 +373,7 @@ const handler = async (req: Request): Promise<Response> => {
         `,
       },
       new_campaign_for_brands: {
-        subject: `🎉 New Campaign Available: "${data.campaignTitle}"`,
+        subject: `🎉 New Campaign Available: "${esc.campaignTitle}"`,
         html: `
           <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto;">
             <div style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); padding: 40px 20px; text-align: center; border-radius: 12px 12px 0 0;">
@@ -359,15 +381,15 @@ const handler = async (req: Request): Promise<Response> => {
             </div>
             
             <div style="background: white; padding: 40px 20px; border-radius: 0 0 12px 12px;">
-              <p style="font-size: 16px; color: #374151;">Hi ${rn},</p>
+              <p style="font-size: 16px; color: #374151;">Hi ${esc.rn},</p>
               
               <p style="font-size: 16px; color: #374151; line-height: 1.6;">
-                A new campaign is looking for brand sponsors! <strong>"${data.campaignTitle}"</strong> is now live and open for sponsorship opportunities.
+                A new campaign is looking for brand sponsors! <strong>"${esc.campaignTitle}"</strong> is now live and open for sponsorship opportunities.
               </p>
 
               ${data.description ? `
                 <div style="background: #F9FAFB; padding: 16px; border-radius: 8px; margin: 20px 0;">
-                  <p style="margin: 0; color: #6B7280; font-size: 14px; line-height: 1.6;">${data.description}</p>
+                  <p style="margin: 0; color: #6B7280; font-size: 14px; line-height: 1.6;">${esc.description}</p>
                 </div>
               ` : ''}
 
@@ -396,18 +418,18 @@ const handler = async (req: Request): Promise<Response> => {
         `,
       },
       new_campaign_for_creators: {
-        subject: `🎬 New Campaign: "${data.campaignTitle}"`,
+        subject: `🎬 New Campaign: "${esc.campaignTitle}"`,
         html: `
           <div style="font-family: 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto;">
             <div style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); padding: 40px 20px; text-align: center; border-radius: 12px 12px 0 0;">
               <h1 style="color: white; margin: 0; font-size: 28px;">🎯 New Campaign Alert!</h1>
             </div>
             <div style="background: white; padding: 40px 20px; border-radius: 0 0 12px 12px;">
-              <p style="font-size: 16px; color: #374151;">Hi ${rn},</p>
+              <p style="font-size: 16px; color: #374151;">Hi ${esc.rn},</p>
               <p style="font-size: 16px; color: #374151; line-height: 1.6;">
-                A new campaign opportunity is now live! <strong>"${data.campaignTitle}"</strong> is looking for talented creators like you.
+                A new campaign opportunity is now live! <strong>"${esc.campaignTitle}"</strong> is looking for talented creators like you.
               </p>
-              ${data.description ? `<div style="background: #F9FAFB; padding: 16px; border-radius: 8px; margin: 20px 0;"><p style="margin: 0; color: #6B7280; font-size: 14px; line-height: 1.6;">${data.description}</p></div>` : ''}
+              ${data.description ? `<div style="background: #F9FAFB; padding: 16px; border-radius: 8px; margin: 20px 0;"><p style="margin: 0; color: #6B7280; font-size: 14px; line-height: 1.6;">${esc.description}</p></div>` : ''}
               ${data.budget ? `<div style="background: #ECFDF5; border-left: 4px solid #10B981; padding: 16px; margin: 24px 0; border-radius: 4px;"><p style="margin: 0; color: #065F46; font-weight: 600;">💰 Budget: $${data.budget}</p></div>` : ''}
               ${data.platforms && data.platforms.length > 0 ? `<div style="margin: 20px 0;"><p style="font-weight: 600; color: #374151; margin-bottom: 8px;">📱 Platforms:</p><p style="color: #6B7280; font-size: 14px;">${data.platforms.join(', ')}</p></div>` : ''}
               <p style="text-align: center; margin-top: 40px;"><a href="${baseUrl}/dashboard/creator/marketplace" style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600; font-size: 16px;">View Campaign & Apply</a></p>
@@ -416,15 +438,15 @@ const handler = async (req: Request): Promise<Response> => {
         `,
       },
       file_uploaded_by_creator: {
-        subject: `📁 New Files Uploaded: "${data.campaignTitle}"`,
+        subject: `📁 New Files Uploaded: "${esc.campaignTitle}"`,
         html: `
           <div style="font-family: 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto;">
             <div style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); padding: 40px 20px; text-align: center; border-radius: 12px 12px 0 0;">
               <h1 style="color: white; margin: 0; font-size: 28px;">📁 New Deliverables!</h1>
             </div>
             <div style="background: white; padding: 40px 20px; border-radius: 0 0 12px 12px;">
-              <p style="font-size: 16px; color: #374151;">Hi ${rn},</p>
-              <p style="font-size: 16px; color: #374151; line-height: 1.6;"><strong>${data.uploaderName}</strong> has uploaded <strong>${data.fileCount} new ${data.fileCount === 1 ? 'file' : 'files'}</strong> to your campaign <strong>"${data.campaignTitle}"</strong>.</p>
+              <p style="font-size: 16px; color: #374151;">Hi ${esc.rn},</p>
+              <p style="font-size: 16px; color: #374151; line-height: 1.6;"><strong>${esc.uploaderName}</strong> has uploaded <strong>${data.fileCount} new ${data.fileCount === 1 ? 'file' : 'files'}</strong> to your campaign <strong>"${esc.campaignTitle}"</strong>.</p>
               <div style="background: #F0F9FF; border-left: 4px solid #0EA5E9; padding: 16px; margin: 24px 0; border-radius: 4px;"><p style="margin: 0; color: #075985; font-weight: 600;">✅ Ready for Review</p><p style="margin: 8px 0 0 0; color: #075985; font-size: 14px;">The creator has submitted their work. Please review and provide feedback.</p></div>
               <p style="text-align: center; margin-top: 40px;"><a href="${data.collaborationId ? `${baseUrl}/projects/${data.collaborationId}` : `${baseUrl}/business/projects`}" style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600; font-size: 16px;">Review Files</a></p>
             </div>
@@ -432,15 +454,15 @@ const handler = async (req: Request): Promise<Response> => {
         `,
       },
       file_uploaded_by_restaurant: {
-        subject: `📁 New Reference Files: "${data.campaignTitle}"`,
+        subject: `📁 New Reference Files: "${esc.campaignTitle}"`,
         html: `
           <div style="font-family: 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto;">
             <div style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); padding: 40px 20px; text-align: center; border-radius: 12px 12px 0 0;">
               <h1 style="color: white; margin: 0; font-size: 28px;">📁 New Campaign Files!</h1>
             </div>
             <div style="background: white; padding: 40px 20px; border-radius: 0 0 12px 12px;">
-              <p style="font-size: 16px; color: #374151;">Hi ${rn},</p>
-              <p style="font-size: 16px; color: #374151; line-height: 1.6;"><strong>${data.uploaderName}</strong> has uploaded <strong>${data.fileCount} new ${data.fileCount === 1 ? 'file' : 'files'}</strong> for campaign <strong>"${data.campaignTitle}"</strong>.</p>
+              <p style="font-size: 16px; color: #374151;">Hi ${esc.rn},</p>
+              <p style="font-size: 16px; color: #374151; line-height: 1.6;"><strong>${esc.uploaderName}</strong> has uploaded <strong>${data.fileCount} new ${data.fileCount === 1 ? 'file' : 'files'}</strong> for campaign <strong>"${esc.campaignTitle}"</strong>.</p>
               <div style="background: #FEF3C7; border-left: 4px solid #F59E0B; padding: 16px; margin: 24px 0; border-radius: 4px;"><p style="margin: 0; color: #92400E; font-weight: 600;">📋 Reference Materials</p><p style="margin: 8px 0 0 0; color: #92400E; font-size: 14px;">New reference files are available to help with your content creation.</p></div>
               <p style="text-align: center; margin-top: 40px;"><a href="${data.collaborationId ? `${baseUrl}/projects/${data.collaborationId}` : `${baseUrl}/creator/projects`}" style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600; font-size: 16px;">View Files</a></p>
             </div>
@@ -455,8 +477,8 @@ const handler = async (req: Request): Promise<Response> => {
               <h1 style="color: white; margin: 0; font-size: 28px;">⏰ Action Required</h1>
             </div>
             <div style="background: white; padding: 40px 20px; border-radius: 0 0 12px 12px;">
-              <p style="font-size: 16px; color: #374151;">Hi ${rn},</p>
-              <p style="font-size: 16px; color: #374151; line-height: 1.6;"><strong>${data.requesterName}</strong> has marked the project <strong>"${data.campaignTitle}"</strong> as complete.</p>
+              <p style="font-size: 16px; color: #374151;">Hi ${esc.rn},</p>
+              <p style="font-size: 16px; color: #374151; line-height: 1.6;"><strong>${esc.requesterName}</strong> has marked the project <strong>"${esc.campaignTitle}"</strong> as complete.</p>
               <div style="background: #FEF3C7; border-left: 4px solid #F59E0B; padding: 16px; margin: 24px 0; border-radius: 4px;">
                 <p style="margin: 0; color: #92400E; font-weight: 600;">⚡ Your Approval Needed</p>
                 <p style="margin: 8px 0 0 0; color: #92400E; font-size: 14px;">Please review and approve the project completion to finalize the collaboration.</p>
@@ -478,8 +500,8 @@ const handler = async (req: Request): Promise<Response> => {
               <h1 style="color: white; margin: 0; font-size: 28px;">🎉 Project Complete!</h1>
             </div>
             <div style="background: white; padding: 40px 20px; border-radius: 0 0 12px 12px;">
-              <p style="font-size: 16px; color: #374151;">Hi ${rn},</p>
-              <p style="font-size: 16px; color: #374151; line-height: 1.6;">Congratulations! The project <strong>"${data.campaignTitle}"</strong> has been successfully completed. 🎊</p>
+              <p style="font-size: 16px; color: #374151;">Hi ${esc.rn},</p>
+              <p style="font-size: 16px; color: #374151; line-height: 1.6;">Congratulations! The project <strong>"${esc.campaignTitle}"</strong> has been successfully completed. 🎊</p>
               <div style="background: #ECFDF5; border-left: 4px solid #10B981; padding: 16px; margin: 24px 0; border-radius: 4px;">
                 <p style="margin: 0; color: #065F46; font-weight: 600;">✅ Both parties have approved completion</p>
                 <p style="margin: 8px 0 0 0; color: #065F46; font-size: 14px;">This collaboration is now officially complete. Time to celebrate and leave a review!</p>
@@ -514,8 +536,8 @@ const handler = async (req: Request): Promise<Response> => {
               <h1 style="color: white; margin: 0; font-size: 28px;">⏰ Action Required</h1>
             </div>
             <div style="background: white; padding: 40px 20px; border-radius: 0 0 12px 12px;">
-              <p style="font-size: 16px; color: #374151;">Hi ${rn},</p>
-              <p style="font-size: 16px; color: #374151; line-height: 1.6;"><strong>${data.requesterName}</strong> has marked the sponsorship for campaign <strong>"${data.campaignTitle}"</strong> as complete.</p>
+              <p style="font-size: 16px; color: #374151;">Hi ${esc.rn},</p>
+              <p style="font-size: 16px; color: #374151; line-height: 1.6;"><strong>${esc.requesterName}</strong> has marked the sponsorship for campaign <strong>"${esc.campaignTitle}"</strong> as complete.</p>
               <div style="background: #FEF3C7; border-left: 4px solid #F59E0B; padding: 16px; margin: 24px 0; border-radius: 4px;">
                 <p style="margin: 0; color: #92400E; font-weight: 600;">⚡ Your Approval Needed</p>
                 <p style="margin: 8px 0 0 0; color: #92400E; font-size: 14px;">Please review and approve the sponsorship completion to finalize the partnership.</p>
@@ -537,8 +559,8 @@ const handler = async (req: Request): Promise<Response> => {
               <h1 style="color: white; margin: 0; font-size: 28px;">🎉 Sponsorship Complete!</h1>
             </div>
             <div style="background: white; padding: 40px 20px; border-radius: 0 0 12px 12px;">
-              <p style="font-size: 16px; color: #374151;">Hi ${rn},</p>
-              <p style="font-size: 16px; color: #374151; line-height: 1.6;">Congratulations! The sponsorship for campaign <strong>"${data.campaignTitle}"</strong> has been successfully completed. 🎊</p>
+              <p style="font-size: 16px; color: #374151;">Hi ${esc.rn},</p>
+              <p style="font-size: 16px; color: #374151; line-height: 1.6;">Congratulations! The sponsorship for campaign <strong>"${esc.campaignTitle}"</strong> has been successfully completed. 🎊</p>
               <div style="background: #ECFDF5; border-left: 4px solid #10B981; padding: 16px; margin: 24px 0; border-radius: 4px;">
                 <p style="margin: 0; color: #065F46; font-weight: 600;">✅ Both parties have approved completion</p>
                 <p style="margin: 8px 0 0 0; color: #065F46; font-size: 14px;">This sponsorship partnership is now officially complete. Time to celebrate and share feedback!</p>
@@ -554,7 +576,7 @@ const handler = async (req: Request): Promise<Response> => {
         `,
       },
       content_started: {
-        subject: `🚀 Creator Started Working on "${data.campaignTitle}"`,
+        subject: `🚀 Creator Started Working on "${esc.campaignTitle}"`,
         html: `
           <div style="font-family: 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto;">
             <div style="background: linear-gradient(135deg, #10B981 0%, #059669 100%); padding: 40px 20px; text-align: center; border-radius: 12px 12px 0 0;">
@@ -562,12 +584,12 @@ const handler = async (req: Request): Promise<Response> => {
             </div>
             
             <div style="background: white; padding: 40px 20px;">
-              <p style="font-size: 16px; color: #374151; line-height: 1.6;">Hi ${rn},</p>
+              <p style="font-size: 16px; color: #374151; line-height: 1.6;">Hi ${esc.rn},</p>
               
-              <p style="font-size: 16px; color: #374151; line-height: 1.6;"><strong>${data.creatorName}</strong> has started working on your campaign <strong>"${data.campaignTitle}"</strong>!</p>
+              <p style="font-size: 16px; color: #374151; line-height: 1.6;"><strong>${esc.creatorName}</strong> has started working on your campaign <strong>"${esc.campaignTitle}"</strong>!</p>
               
               <div style="background: #F0FDF4; border-left: 4px solid #10B981; padding: 16px; margin: 24px 0; border-radius: 4px;">
-                <p style="margin: 0; color: #065F46; font-weight: 600;">⏱️ Delivery Window: ${data.deliveryTime || '72 hours'}</p>
+                <p style="margin: 0; color: #065F46; font-weight: 600;">⏱️ Delivery Window: ${esc.deliveryTime || '72 hours'}</p>
                 <p style="margin: 8px 0 0 0; color: #065F46; font-size: 14px;">The creator is committed to delivering content within this timeframe.</p>
               </div>
 
@@ -584,12 +606,12 @@ const handler = async (req: Request): Promise<Response> => {
         `,
       },
       counter_offer: {
-        subject: `New Counter Offer for "${data.campaignTitle}"`,
+        subject: `New Counter Offer for "${esc.campaignTitle}"`,
         html: `
-          <p>Hi ${rn},</p>
-          <p>You've received a <strong>counter offer</strong> for campaign <strong>"${data.campaignTitle}"</strong>.</p>
+          <p>Hi ${esc.rn},</p>
+          <p>You've received a <strong>counter offer</strong> for campaign <strong>"${esc.campaignTitle}"</strong>.</p>
           ${data.amount ? `<p>Proposed rate: <strong>$${data.amount}</strong></p>` : ''}
-          ${data.message ? `<blockquote style="border-left: 4px solid #F59E0B; padding-left: 16px; margin: 20px 0; color: #374151;">${data.message}</blockquote>` : ''}
+          ${data.message ? `<blockquote style="border-left: 4px solid #F59E0B; padding-left: 16px; margin: 20px 0; color: #374151;">${esc.message}</blockquote>` : ''}
           <p>You can accept, decline, or counter back with your own terms.</p>
           <p style="margin-top: 30px;">
             <a href="${baseUrl}/dashboard/creator/applications" 
@@ -600,10 +622,10 @@ const handler = async (req: Request): Promise<Response> => {
         `,
       },
       counter_offer_response: {
-        subject: `Counter Offer ${data.applicationStatus === 'accepted' ? 'Accepted' : 'Declined'} - "${data.campaignTitle}"`,
+        subject: `Counter Offer ${data.applicationStatus === 'accepted' ? 'Accepted' : 'Declined'} - "${esc.campaignTitle}"`,
         html: `
-          <p>Hi ${rn},</p>
-          <p>Your counter offer for campaign <strong>"${data.campaignTitle}"</strong> has been <strong>${data.applicationStatus}</strong>.</p>
+          <p>Hi ${esc.rn},</p>
+          <p>Your counter offer for campaign <strong>"${esc.campaignTitle}"</strong> has been <strong>${esc.applicationStatus}</strong>.</p>
           ${data.applicationStatus === 'accepted'
             ? `<p>Great news! The terms have been agreed upon. Please proceed with escrow payment to start the project.</p>
                <p style="margin-top: 30px;">
@@ -626,10 +648,10 @@ const handler = async (req: Request): Promise<Response> => {
               <h1 style="color: white; margin: 0; font-size: 28px;">${data.isRecipient ? '💰 Payment Received!' : '✅ Payment Confirmed!'}</h1>
             </div>
             <div style="background: white; padding: 40px 20px; border-radius: 0 0 12px 12px;">
-              <p style="font-size: 16px; color: #374151;">Hi ${rn},</p>
+              <p style="font-size: 16px; color: #374151;">Hi ${esc.rn},</p>
               ${data.isRecipient 
-                ? `<p style="font-size: 16px; color: #374151; line-height: 1.6;"><strong>${data.brandName}</strong> has completed their sponsorship payment of <strong>$${data.sponsorshipAmount?.toLocaleString()}</strong> for campaign <strong>"${data.campaignTitle}"</strong>.</p>`
-                : `<p style="font-size: 16px; color: #374151; line-height: 1.6;">Your sponsorship payment of <strong>$${data.sponsorshipAmount?.toLocaleString()}</strong> for campaign <strong>"${data.campaignTitle}"</strong> has been successfully processed.</p>`
+                ? `<p style="font-size: 16px; color: #374151; line-height: 1.6;"><strong>${esc.brandName}</strong> has completed their sponsorship payment of <strong>$${data.sponsorshipAmount?.toLocaleString()}</strong> for campaign <strong>"${esc.campaignTitle}"</strong>.</p>`
+                : `<p style="font-size: 16px; color: #374151; line-height: 1.6;">Your sponsorship payment of <strong>$${data.sponsorshipAmount?.toLocaleString()}</strong> for campaign <strong>"${esc.campaignTitle}"</strong> has been successfully processed.</p>`
               }
               <div style="background: #ECFDF5; border-left: 4px solid #10B981; padding: 16px; margin: 24px 0; border-radius: 4px;">
                 <p style="margin: 0; color: #065F46; font-weight: 600;">✅ Payment Verified</p>
@@ -658,8 +680,8 @@ const handler = async (req: Request): Promise<Response> => {
             </div>
             <div style="padding: 20px;">
               <p>Hi there!</p>
-              <p><strong>${data.businessName}</strong> has invited you to their campaign: <strong>${data.campaignTitle}</strong></p>
-              ${data.invitationMessage ? '<p style="background: #f0fdfa; border-left: 3px solid #4DD9C0; padding: 12px; margin: 16px 0; font-style: italic;">' + data.invitationMessage + '</p>' : ''}
+              <p><strong>${esc.businessName}</strong> has invited you to their campaign: <strong>${esc.campaignTitle}</strong></p>
+              ${data.invitationMessage ? '<p style="background: #f0fdfa; border-left: 3px solid #4DD9C0; padding: 12px; margin: 16px 0; font-style: italic;">' + esc.invitationMessage + '</p>' : ''}
               <p>Check out the campaign details and apply if you're interested:</p>
               <div style="text-align: center; margin: 24px 0;">
                 <a href="${data.campaignUrl}" style="background: #4DD9C0; color: white; padding: 12px 32px; border-radius: 24px; text-decoration: none; font-weight: bold;">View Campaign</a>
