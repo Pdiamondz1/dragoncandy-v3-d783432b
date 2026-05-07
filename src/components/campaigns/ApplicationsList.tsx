@@ -164,7 +164,7 @@ export const ApplicationsList: React.FC<ApplicationsListProps> = ({ campaignId }
   return (
     <div className="space-y-6">
       <Tabs defaultValue="applications" className="space-y-6">
-        <div className="overflow-x-auto -mx-1 px-1">
+        <div className="overflow-x-auto -mx-1 px-1 md:overflow-x-visible">
         <TabsList className="grid w-full min-w-max whitespace-nowrap grid-cols-3">
           <TabsTrigger value="applications" className="flex items-center gap-1.5 text-xs sm:text-sm">
             <Users className="h-4 w-4 shrink-0" />
