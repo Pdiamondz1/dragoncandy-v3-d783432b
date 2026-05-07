@@ -8,13 +8,13 @@
 
 DragonCandy was designed mobile-first. Horizontal scroll containers use `overflow-x-auto` with `scrollbar-hide` throughout the app — a pattern that works on mobile (touch-swipe) but leaves content inaccessible on desktop where users have no way to scroll hidden overflow.
 
-13 components have this issue. 6 are critical (hidden scrollbar, no fallback). Additionally, the broader desktop experience has not been audited for other responsiveness gaps.
+14 components have this issue. 6 are critical (hidden scrollbar, no fallback). Additionally, the broader desktop experience has not been audited for other responsiveness gaps.
 
 ## Solution
 
 Two-phase approach on a single feature branch:
 
-1. **Fix 13 overflow components** using a wrapping pattern on desktop breakpoints
+1. **Fix 14 overflow components** using a wrapping pattern on desktop breakpoints
 2. **Audit all pages for broader desktop UX issues** and fix what surfaces
 
 ## Phase 1: Overflow Fix Pattern
@@ -35,6 +35,7 @@ On mobile, preserve current horizontal scroll behavior. On desktop (`md:` breakp
 
 - Mobile (< 768px): `overflow-x-auto` + `scrollbar-hide` — unchanged
 - Desktop (>= 768px): `md:overflow-x-visible` removes scroll container, `md:flex-wrap` flows items onto new rows
+- Tailwind version: ^3.4.11 — `overflow-x-visible` is a native utility (supported since v3.3+)
 
 ### Component Manifest
 
@@ -43,11 +44,11 @@ On mobile, preserve current horizontal scroll behavior. On desktop (`md:` breakp
 | Component | File | Line | Content |
 |-----------|------|------|---------|
 | CreatorBrowseHeader | `src/components/creator-browse/CreatorBrowseHeader.tsx` | 94 | Content-type filter pills |
-| CampaignSearchFilters | `src/components/campaign-search/CampaignSearchFilters.tsx` | 155, 185, 206, 225, 244, 263, 282 | 7 filter pill rows (content type, delivery tier, distance, budget, etc.) |
+| CampaignSearchFilters | `src/components/campaigns/CampaignSearchFilters.tsx` | 155, 185, 206, 225, 244, 263, 282 | 7 filter pill rows (content type, delivery tier, distance, budget, etc.) |
 | PromotionDetailPage | `src/pages/PromotionDetailPage.tsx` | 411 | Status filter tabs |
 | ApplicationsTabsContent | `src/components/applications/ApplicationsTabsContent.tsx` | 29 | Application status tabs |
-| ApplicationsList | `src/components/applications/ApplicationsList.tsx` | 167 | Application status tabs |
-| ApplicationsListFixed | `src/components/applications/ApplicationsListFixed.tsx` | 116 | Application status tabs |
+| ApplicationsList | `src/components/campaigns/ApplicationsList.tsx` | 167 | Application status tabs |
+| ApplicationsListFixed | `src/components/campaigns/ApplicationsListFixed.tsx` | 116 | Application status tabs |
 | CampaignApplyForm | `src/components/campaigns/CampaignApplyForm.tsx` | 230 | Form selection pills |
 
 #### Card carousels and galleries — `md:flex-wrap` or `md:grid`
@@ -56,8 +57,9 @@ On mobile, preserve current horizontal scroll behavior. On desktop (`md:` breakp
 |-----------|------|------|---------|-------------------|
 | DonnyPicksRow | `src/components/campaigns/DonnyPicksRow.tsx` | 26 | Campaign cards | `md:grid md:grid-cols-2 lg:grid-cols-3` for predictable layout |
 | CampaignDetailModal | `src/components/campaigns/CampaignDetailModal.tsx` | 290, 310 | Visual references + raw footage thumbnails | `md:flex-wrap` with constrained card widths |
-| CampaignReferencesGallery | `src/components/campaigns/CampaignReferencesGallery.tsx` | 18 | Reference media thumbnails | `md:flex-wrap` with constrained card widths |
-| MediaUploader | `src/components/media/MediaUploader.tsx` | 240 | Uploaded file preview thumbnails | `md:flex-wrap` with constrained card widths |
+| CampaignReferencesGallery | `src/components/campaign-details/CampaignReferencesGallery.tsx` | 18 | Reference media thumbnails | `md:flex-wrap` with constrained card widths |
+| MediaUploader | `src/components/campaigns/MediaUploader.tsx` | 240 | Uploaded file preview thumbnails | `md:flex-wrap` with constrained card widths |
+| CreatorPortfolioModal | `src/components/creator-profile/CreatorPortfolioModal.tsx` | 87 | Portfolio thumbnail strip | `md:flex-wrap` with constrained card widths |
 
 #### Progress indicators — `md:overflow-x-visible md:flex-wrap`
 
@@ -69,7 +71,7 @@ On mobile, preserve current horizontal scroll behavior. On desktop (`md:` breakp
 
 | Component | File | Line | Content |
 |-----------|------|------|---------|
-| BusinessDashboardSideFeed | `src/components/dashboard/BusinessDashboardSideFeed.tsx` | 139 | Vertical feed content |
+| BusinessDashboardSideFeed | `src/components/dragon-feed/BusinessDashboardSideFeed.tsx` | 139 | Vertical feed content |
 
 ## Phase 2: Broad Desktop UX Audit
 
@@ -106,17 +108,19 @@ Each finding becomes a line item in the implementation plan. Small fixes land on
 | Card carousels lose visual rhythm when wrapped | Use `md:grid md:grid-cols-2 lg:grid-cols-3` instead of `md:flex-wrap` for card-heavy components. Grid gives predictable columns. |
 | Breaking existing `lg:` desktop styles | All fixes use `md:` additions only. Existing `lg:` overrides cascade normally. Never modify base (non-prefixed) classes. |
 | Mobile regression | Only `md:`-prefixed classes added. Mobile behavior unchanged. Verify swipe still works at mobile viewport during testing. |
+| Keyboard navigation on wrapped pills | Wrapped filter pills use native `<button>` elements — tab order follows DOM order left-to-right, top-to-bottom, which matches visual flow. No additional focus management needed. |
 
 ## Verification
 
 - `npm run build` after every batch of changes
 - Visual check at 3 breakpoints: 375px (mobile), 768px (tablet), 1280px (desktop)
-- Confirm mobile swipe behavior preserved on all 13 components
+- Confirm mobile swipe behavior preserved on all 14 components
+- Tab through wrapped filter pills on desktop to confirm keyboard navigation order matches visual flow
 - Each component fix is its own commit for easy revert
 
 ## Implementation Order
 
-1. Fix 13 overflow components (known, surgical — one commit per component)
+1. Fix 14 overflow components (known, surgical — one commit per component)
 2. Run desktop audit across all pages at md/lg breakpoints
 3. Catalog audit findings
 4. Implement audit fixes (same branch if small, separate branch if large)
