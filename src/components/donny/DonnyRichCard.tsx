@@ -34,7 +34,7 @@ export function DonnyRichCard({ card }: DonnyRichCardProps) {
           <div className="flex gap-2 mt-2">
             <Button
               size="sm"
-              className="flex-1 rounded-full bg-dc-teal hover:bg-dc-teal-hover text-white text-xs"
+              className="flex-1 rounded-full bg-dc-teal-btn hover:bg-dc-teal-btn-hover text-white text-xs"
               onClick={() => navigate(`/creator/${card.data.profile_slug || card.data.id}`)}
             >
               View Portfolio
@@ -63,7 +63,7 @@ export function DonnyRichCard({ card }: DonnyRichCardProps) {
           </div>
           <Button
             size="sm"
-            className="w-full rounded-full bg-dc-teal hover:bg-dc-teal-hover text-white text-xs mt-2"
+            className="w-full rounded-full bg-dc-teal-btn hover:bg-dc-teal-btn-hover text-white text-xs mt-2"
             onClick={() => navigate(`/dashboard/business/campaigns/${card.data.id}`)}
           >
             View Campaign
@@ -81,7 +81,7 @@ export function DonnyRichCard({ card }: DonnyRichCardProps) {
           <div className="text-xs text-dc-text-muted">{card.data.description}</div>
           <Button
             size="sm"
-            className="w-full rounded-full bg-dc-teal hover:bg-dc-teal-hover text-white text-xs mt-2"
+            className="w-full rounded-full bg-dc-teal-btn hover:bg-dc-teal-btn-hover text-white text-xs mt-2"
             onClick={() => navigate(card.data.payment_url)}
           >
             Confirm Payment

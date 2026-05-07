@@ -235,7 +235,7 @@ export const CampaignTimelineBudgetStep: React.FC<CampaignTimelineBudgetStepProp
             </Button>
             <Button
               type="submit"
-              className="bg-dc-teal hover:bg-dc-teal/90 text-white rounded-full"
+              className="bg-dc-teal-btn hover:bg-dc-teal-btn-hover text-white rounded-full"
             >
               Continue to Visuals
             </Button>

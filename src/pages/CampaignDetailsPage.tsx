@@ -152,7 +152,7 @@ const CampaignDetailsPage: React.FC = () => {
             </p>
             <button
               onClick={() => navigate(backHref)}
-              className="w-full rounded-full bg-dc-teal text-white font-bold py-3"
+              className="w-full rounded-full bg-dc-teal-btn text-white font-bold py-3"
             >
               Back to Campaigns
             </button>
@@ -273,7 +273,7 @@ const CampaignDetailsPage: React.FC = () => {
           {isOwnCampaign && (
             <button
               onClick={() => navigate(`/dashboard/business/campaigns/${campaign.id}/edit`)}
-              className="w-full rounded-full bg-dc-teal text-white font-bold py-3 mt-6 flex items-center justify-center gap-2"
+              className="w-full rounded-full bg-dc-teal-btn text-white font-bold py-3 mt-6 flex items-center justify-center gap-2"
             >
               <Edit className="h-4 w-4" aria-hidden="true" /> Edit Campaign
             </button>

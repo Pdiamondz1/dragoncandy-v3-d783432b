@@ -139,7 +139,7 @@ export const MessageBubbleEnhanced: React.FC<MessageBubbleEnhancedProps> = ({
         <div
           className={`inline-block px-4 py-2.5 max-w-full transition-shadow duration-200 ${
             isOwnMessage
-              ? 'bg-dc-teal text-dc-text rounded-2xl rounded-br-md shadow-sm'
+              ? 'bg-dc-teal-btn text-dc-text rounded-2xl rounded-br-md shadow-sm'
               : 'bg-dc-pink text-dc-text rounded-2xl rounded-bl-md shadow-sm'
           }`}
         >

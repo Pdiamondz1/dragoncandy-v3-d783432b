@@ -72,7 +72,7 @@ export const BrandCampaignPreviewStep: React.FC<BrandCampaignPreviewStepProps> =
               Skip Preview
             </Button>
             <Button
-              className="flex-1 rounded-full bg-dc-teal hover:bg-dc-teal/90 text-white"
+              className="flex-1 rounded-full bg-dc-teal-btn hover:bg-dc-teal-btn-hover text-white"
               onClick={saveDraft}
             >
               Try Again

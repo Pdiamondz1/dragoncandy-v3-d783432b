@@ -389,8 +389,8 @@ export function OnboardingWizard() {
               disabled={!isStepValid()}
               className={`w-full rounded-full py-6 text-base font-bold transition-all duration-200 ${
                 accentColor === 'teal'
-                  ? 'bg-dc-teal hover:bg-teal-500 text-white disabled:bg-gray-200 disabled:text-gray-400'
-                  : 'bg-dc-pink-accent hover:bg-pink-600 text-white disabled:bg-gray-200 disabled:text-gray-400'
+                  ? 'bg-dc-teal-btn hover:bg-dc-teal-btn-hover text-white disabled:bg-gray-200 disabled:text-gray-400'
+                  : 'bg-dc-pink-accent-btn hover:bg-dc-pink-accent-btn-hover text-white disabled:bg-gray-200 disabled:text-gray-400'
               }`}
             >
               <span className="flex items-center gap-2">

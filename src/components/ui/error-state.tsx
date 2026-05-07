@@ -15,7 +15,7 @@ export function ErrorState({ message = 'Something went wrong', onRetry }: ErrorS
       {onRetry && (
         <Button
           onClick={onRetry}
-          className="bg-dc-teal hover:bg-dc-teal/90 text-white rounded-full"
+          className="bg-dc-teal-btn hover:bg-dc-teal-btn-hover text-white rounded-full"
         >
           <RefreshCw className="h-4 w-4 mr-2" />
           Try Again

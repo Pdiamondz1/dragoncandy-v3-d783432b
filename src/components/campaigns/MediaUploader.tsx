@@ -226,7 +226,7 @@ export function MediaUploader({
           </div>
           <div className="h-1 bg-gray-200 rounded-full overflow-hidden">
             <div
-              className="h-full bg-dc-teal rounded-full transition-all"
+              className="h-full bg-dc-teal-btn rounded-full transition-all"
               style={{
                 width: `${Math.min(100, (totalBytes / maxTotalBytes) * 100)}%`,
               }}
@@ -300,7 +300,7 @@ export function MediaUploader({
               {uploadProgress?.[staged.name] != null && uploadProgress[staged.name] < 100 && (
                 <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-600">
                   <div
-                    className="h-full bg-dc-teal rounded-full transition-all duration-300"
+                    className="h-full bg-dc-teal-btn rounded-full transition-all duration-300"
                     style={{ width: `${uploadProgress[staged.name]}%` }}
                   />
                 </div>

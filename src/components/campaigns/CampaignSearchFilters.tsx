@@ -159,7 +159,7 @@ export const CampaignSearchFilters: React.FC<CampaignSearchFiltersProps> = ({
                   onClick={() => onContentTypeChange(pill.value)}
                   className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${
                     filters.contentType === pill.value
-                      ? 'bg-dc-teal text-white'
+                      ? 'bg-dc-teal-btn text-white'
                       : 'bg-gray-50 text-gray-600 border border-gray-200 hover:border-dc-teal'
                   }`}
                 >
@@ -189,7 +189,7 @@ export const CampaignSearchFilters: React.FC<CampaignSearchFiltersProps> = ({
               onClick={() => onContentTypeChange(pill.value)}
               className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${
                 filters.contentType === pill.value
-                  ? 'bg-dc-teal text-white'
+                  ? 'bg-dc-teal-btn text-white'
                   : 'bg-gray-50 text-gray-600 border border-gray-200 hover:border-dc-teal'
               }`}
             >
@@ -229,7 +229,7 @@ export const CampaignSearchFilters: React.FC<CampaignSearchFiltersProps> = ({
                   onClick={() => onContentTypeChange(pill.value)}
                   className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${
                     filters.contentType === pill.value
-                      ? 'bg-dc-teal text-white'
+                      ? 'bg-dc-teal-btn text-white'
                       : 'bg-gray-50 text-gray-600 border border-gray-200 hover:border-dc-teal'
                   }`}
                 >
@@ -248,7 +248,7 @@ export const CampaignSearchFilters: React.FC<CampaignSearchFiltersProps> = ({
                   onClick={() => onDistanceChange(pill.value)}
                   className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${
                     filters.distanceRadius === pill.value
-                      ? 'bg-dc-teal text-white'
+                      ? 'bg-dc-teal-btn text-white'
                       : 'bg-gray-50 text-gray-600 border border-gray-200 hover:border-dc-teal'
                   }`}
                 >
@@ -267,7 +267,7 @@ export const CampaignSearchFilters: React.FC<CampaignSearchFiltersProps> = ({
                   onClick={() => onBudgetMinChange(pill.value)}
                   className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${
                     filters.budgetMin === pill.value
-                      ? 'bg-dc-teal text-white'
+                      ? 'bg-dc-teal-btn text-white'
                       : 'bg-gray-50 text-gray-600 border border-gray-200 hover:border-dc-teal'
                   }`}
                 >
@@ -286,7 +286,7 @@ export const CampaignSearchFilters: React.FC<CampaignSearchFiltersProps> = ({
                   onClick={() => onBudgetMaxChange(pill.value)}
                   className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${
                     filters.budgetMax === pill.value
-                      ? 'bg-dc-teal text-white'
+                      ? 'bg-dc-teal-btn text-white'
                       : 'bg-gray-50 text-gray-600 border border-gray-200 hover:border-dc-teal'
                   }`}
                 >

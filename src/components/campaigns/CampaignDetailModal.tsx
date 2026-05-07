@@ -359,7 +359,7 @@ export const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
                   {deliverables.length > 0
                     ? deliverables.map((d, i) => (
                         <div key={d.id} className="flex gap-3 items-start">
-                          <div className="w-6 h-6 rounded-full bg-dc-teal text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
+                          <div className="w-6 h-6 rounded-full bg-dc-teal-btn text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
                             {i + 1}
                           </div>
                           <div>
@@ -376,7 +376,7 @@ export const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
                       ))
                     : fallbackDeliverables.map((d, i) => (
                         <div key={i} className="flex gap-3 items-start">
-                          <div className="w-6 h-6 rounded-full bg-dc-teal text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
+                          <div className="w-6 h-6 rounded-full bg-dc-teal-btn text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
                             {i + 1}
                           </div>
                           <div className="text-sm text-gray-800">{d}</div>
@@ -483,7 +483,7 @@ export const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
             <div className="flex-shrink-0 px-4 py-3 border-t border-gray-100 bg-white shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
               <button
                 onClick={() => setShowApplyForm(true)}
-                className="w-full bg-dc-teal text-white rounded-full py-3.5 font-bold text-sm hover:bg-dc-teal-dark transition-colors active:scale-95"
+                className="w-full bg-dc-teal-btn text-white rounded-full py-3.5 font-bold text-sm hover:bg-dc-teal-btn-hover transition-colors active:scale-95"
               >
                 Apply for This Campaign
               </button>

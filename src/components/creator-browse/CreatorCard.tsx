@@ -190,7 +190,7 @@ export const CreatorCard: React.FC<CreatorCardProps> = React.memo(({ creator }) 
               e.stopPropagation();
               handleCardClick();
             }}
-            className="mt-auto w-full bg-dc-teal text-dc-text rounded-full font-semibold text-sm py-2 hover:bg-teal-500 transition-colors"
+            className="mt-auto w-full bg-dc-teal-btn text-dc-text rounded-full font-semibold text-sm py-2 hover:bg-dc-teal-btn-hover transition-colors"
           >
             View Profile
           </button>

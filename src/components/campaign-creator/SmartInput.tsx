@@ -136,7 +136,7 @@ export function SmartInput({ onSubmit, isExtracting, externalValue }: SmartInput
       </div>
       {(value.trim() || attachments.length > 0) && (
         <Button
-          className="w-full rounded-full bg-dc-teal hover:bg-dc-teal/90 text-white font-semibold text-base py-6"
+          className="w-full rounded-full bg-dc-teal-btn hover:bg-dc-teal-btn-hover text-white font-semibold text-base py-6"
           disabled={isExtracting}
           onClick={handleSubmit}
         >

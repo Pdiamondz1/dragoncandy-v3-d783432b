@@ -22,7 +22,7 @@ export const BottomCTA = () => {
           <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
         </Button>
         <Button
-          className="w-full sm:w-auto sm:px-8 rounded-full bg-dc-pink-accent text-white font-bold py-3 text-base lg:text-lg hover:bg-pink-600 hover:shadow-lg transition-all duration-300 group"
+          className="w-full sm:w-auto sm:px-8 rounded-full bg-dc-pink-accent-btn text-white font-bold py-3 text-base lg:text-lg hover:bg-dc-pink-accent-btn-hover hover:shadow-lg transition-all duration-300 group"
           onClick={() => navigate('/auth?mode=signup')}
         >
           I'm a Brand/Sponsor — Launch Campaigns

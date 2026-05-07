@@ -57,7 +57,7 @@ export function TapGrid({ items, selected, onToggle, mode: _mode, accentColor, c
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 className={`absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center text-white text-[10px] ${
-                  accentColor === 'teal' ? 'bg-dc-teal' : 'bg-dc-pink'
+                  accentColor === 'teal' ? 'bg-dc-teal-btn' : 'bg-dc-pink'
                 }`}
               >
                 ✓

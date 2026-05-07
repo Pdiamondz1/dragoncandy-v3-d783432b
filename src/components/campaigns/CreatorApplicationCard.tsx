@@ -70,7 +70,7 @@ export const CreatorApplicationCard: React.FC<CreatorApplicationCardProps> = ({
   }[application.status];
 
   const actionClass = application.status === 'accepted'
-    ? 'bg-dc-teal text-white border-dc-teal font-semibold'
+    ? 'bg-dc-teal-btn text-white border-dc-teal font-semibold'
     : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300';
 
   return (

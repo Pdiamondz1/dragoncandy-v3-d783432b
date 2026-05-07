@@ -187,7 +187,7 @@ const CampaignEditPage: React.FC = () => {
             <p className="text-gray-500 text-sm">The campaign you're trying to edit doesn't exist.</p>
             <button
               onClick={() => navigate('/dashboard/business/campaigns')}
-              className="w-full rounded-full bg-dc-teal text-white font-bold py-3"
+              className="w-full rounded-full bg-dc-teal-btn text-white font-bold py-3"
             >
               Back to Campaigns
             </button>
@@ -514,7 +514,7 @@ const CampaignEditPage: React.FC = () => {
             <button
               onClick={() => handleSaveWithNavigation('published')}
               disabled={isSaving || !formData.title.trim()}
-              className="w-full rounded-full bg-dc-teal text-white font-bold py-3 flex items-center justify-center gap-2 disabled:opacity-60"
+              className="w-full rounded-full bg-dc-teal-btn text-white font-bold py-3 flex items-center justify-center gap-2 disabled:opacity-60"
             >
               <Save className="h-4 w-4" aria-hidden="true" />
               {isSaving ? 'Publishing…' : 'Publish Campaign'}

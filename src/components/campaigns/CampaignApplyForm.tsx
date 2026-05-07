@@ -282,7 +282,7 @@ export const CampaignApplyForm: React.FC<CampaignApplyFormProps> = ({
       <button
         type="submit"
         disabled={createApplication.isPending || (!isFixedPrice && (!proposedRate || Number(proposedRate) <= 0))}
-        className="w-full bg-dc-teal text-white rounded-full py-3.5 font-bold text-sm hover:bg-dc-teal-btn-hover transition-colors active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        className="w-full bg-dc-teal-btn text-white rounded-full py-3.5 font-bold text-sm hover:bg-dc-teal-btn-hover transition-colors active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
       >
         {createApplication.isPending ? (
           <>

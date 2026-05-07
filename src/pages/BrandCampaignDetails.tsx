@@ -67,7 +67,7 @@ const BrandCampaignDetails = () => {
             <h2 className="text-lg font-bold text-gray-900">Campaign Not Found</h2>
             <button
               onClick={() => navigate('/dashboard/brand/discover-campaigns')}
-              className="w-full rounded-full bg-dc-teal text-white font-bold py-3"
+              className="w-full rounded-full bg-dc-teal-btn text-white font-bold py-3"
             >
               Back to Discovery
             </button>
@@ -312,7 +312,7 @@ const BrandCampaignDetails = () => {
           <button
             onClick={handleContactRestaurant}
             disabled={createConversation.isPending}
-            className="w-full rounded-full bg-dc-teal text-white font-bold py-3 flex items-center justify-center gap-2 disabled:opacity-60"
+            className="w-full rounded-full bg-dc-teal-btn text-white font-bold py-3 flex items-center justify-center gap-2 disabled:opacity-60"
           >
             {createConversation.isPending ? (
               <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />

@@ -43,7 +43,7 @@ export function ApplyConfirmation({ open, onClose, businessName }: ApplyConfirma
             onClose();
             navigate('/dashboard/creator/campaigns');
           }}
-          className="w-full rounded-full bg-dc-teal text-white font-bold py-3.5"
+          className="w-full rounded-full bg-dc-teal-btn text-white font-bold py-3.5"
         >
           Browse more campaigns
         </button>

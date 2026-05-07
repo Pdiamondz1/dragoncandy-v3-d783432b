@@ -284,7 +284,7 @@ export const BrandCampaignDetailsStep = ({
         <Button
           onClick={onContinue}
           disabled={!canContinue}
-          className="flex-1 rounded-full bg-dc-teal hover:bg-dc-teal/90 text-white font-semibold"
+          className="flex-1 rounded-full bg-dc-teal-btn hover:bg-dc-teal-btn-hover text-white font-semibold"
         >
           Continue
         </Button>
