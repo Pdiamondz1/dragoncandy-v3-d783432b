@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.0';
 import { Resend } from "npm:resend@2.0.0";
 import { corsHeaders } from "../_shared/cors.ts";
+import { htmlEscape } from "../_shared/htmlEscape.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -27,9 +28,9 @@ const handler = async (req: Request): Promise<Response> => {
         status: 401, headers: { ...corsHeaders(req), "Content-Type": "application/json" },
       });
     }
-    const token = authHeader.replace("Bearer ", "");
+    const bearerToken = authHeader.replace("Bearer ", "");
     const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey);
-    const { data: { user: caller }, error: authError } = await supabaseAuth.auth.getUser(token);
+    const { data: { user: caller }, error: authError } = await supabaseAuth.auth.getUser(bearerToken);
     if (authError || !caller) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401, headers: { ...corsHeaders(req), "Content-Type": "application/json" },
@@ -99,7 +100,7 @@ const handler = async (req: Request): Promise<Response> => {
             </div>
             
             <div style="background: #ffffff; padding: 40px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 10px 10px;">
-              <h2 style="color: #1f2937; margin-top: 0;">Hi ${name}!</h2>
+              <h2 style="color: #1f2937; margin-top: 0;">Hi ${htmlEscape(name)}!</h2>
               
               <p style="font-size: 16px; color: #4b5563;">
                 Thanks for signing up! Please verify your email address to complete your registration and access all features.

@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.0";
 import { Resend } from "npm:resend@2.0.0";
 import { corsHeaders } from "../_shared/cors.ts";
+import { htmlEscape } from "../_shared/htmlEscape.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -129,7 +130,7 @@ const handler = async (req: Request): Promise<Response> => {
                   <tr>
                     <td style="padding: 40px;">
                       <p style="color: #374151; font-size: 16px; line-height: 1.6; margin: 0 0 20px;">
-                        Hi ${name},
+                        Hi ${htmlEscape(name)},
                       </p>
                       
                       <p style="color: #374151; font-size: 16px; line-height: 1.6; margin: 0 0 20px;">

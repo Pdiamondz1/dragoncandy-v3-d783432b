@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.0";
 import { Resend } from "npm:resend@2.0.0";
 import { corsHeaders } from "../_shared/cors.ts";
+import { htmlEscape } from "../_shared/htmlEscape.ts";
 
 interface PromotionNotificationRequest {
   type: 'video_approved' | 'video_rejected';
@@ -44,6 +45,13 @@ const handler = async (req: Request): Promise<Response> => {
     const data: PromotionNotificationRequest = await req.json();
     console.log("Received notification request:", { ...data, customerPhone: "***" });
 
+    const esc = {
+      customerName: htmlEscape(data.customerName),
+      businessName: htmlEscape(data.businessName),
+      discountCode: htmlEscape(data.discountCode ?? ''),
+      rejectionReason: htmlEscape(data.rejectionReason ?? ''),
+    };
+
     const results = {
       emailSent: false,
       smsSent: false,
@@ -75,19 +83,19 @@ const handler = async (req: Request): Promise<Response> => {
               <body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; background-color: #f8f9fa;">
                 <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
                   <div style="background: linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%); padding: 40px 30px; text-align: center;">
-                    <h1 style="color: white; margin: 0; font-size: 28px;">🎉 Congratulations, ${data.customerName}!</h1>
+                    <h1 style="color: white; margin: 0; font-size: 28px;">🎉 Congratulations, ${esc.customerName}!</h1>
                     <p style="color: rgba(255,255,255,0.9); margin-top: 10px; font-size: 16px;">Your video has been approved!</p>
                   </div>
                   
                   <div style="padding: 40px 30px; text-align: center;">
                     <p style="color: #64748b; font-size: 16px; margin-bottom: 30px;">
-                      Thank you for sharing your experience at <strong>${data.businessName}</strong>! 
+                      Thank you for sharing your experience at <strong>${esc.businessName}</strong>! 
                       Here's your exclusive discount code:
                     </p>
                     
                     <div style="background: linear-gradient(135deg, #fdf2f8 0%, #ede9fe 100%); border: 2px dashed #ec4899; border-radius: 12px; padding: 30px; margin: 20px 0;">
                       <p style="color: #64748b; font-size: 14px; margin: 0 0 10px 0; text-transform: uppercase; letter-spacing: 1px;">Your Discount Code</p>
-                      <p style="font-size: 36px; font-weight: bold; color: #8b5cf6; margin: 0; letter-spacing: 4px;">${data.discountCode}</p>
+                      <p style="font-size: 36px; font-weight: bold; color: #8b5cf6; margin: 0; letter-spacing: 4px;">${esc.discountCode}</p>
                       <p style="font-size: 24px; color: #ec4899; margin: 15px 0 0 0; font-weight: bold;">${discountDisplay}</p>
                     </div>
                     
@@ -140,16 +148,16 @@ const handler = async (req: Request): Promise<Response> => {
                   
                   <div style="padding: 40px 30px;">
                     <p style="color: #374151; font-size: 16px; line-height: 1.6;">
-                      Hi ${data.customerName},
+                      Hi ${esc.customerName},
                     </p>
                     <p style="color: #64748b; font-size: 16px; line-height: 1.6;">
-                      Thank you for submitting a video to <strong>${data.businessName}</strong>. 
+                      Thank you for submitting a video to <strong>${esc.businessName}</strong>. 
                       Unfortunately, we weren't able to approve your submission at this time.
                     </p>
                     ${data.rejectionReason ? `
                     <div style="background: #f8fafc; border-left: 4px solid #94a3b8; padding: 15px 20px; margin: 20px 0;">
                       <p style="color: #64748b; font-size: 14px; margin: 0;">
-                        <strong>Reason:</strong> ${data.rejectionReason}
+                        <strong>Reason:</strong> ${esc.rejectionReason}
                       </p>
                     </div>
                     ` : ''}
@@ -158,7 +166,7 @@ const handler = async (req: Request): Promise<Response> => {
                     </p>
                     <p style="color: #374151; font-size: 16px; margin-top: 30px;">
                       Best regards,<br>
-                      The ${data.businessName} Team
+                      The ${esc.businessName} Team
                     </p>
                   </div>
                   
