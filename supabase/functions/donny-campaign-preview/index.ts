@@ -22,6 +22,7 @@ const VALID_PREVIEW_TYPES = [
 type PreviewType = typeof VALID_PREVIEW_TYPES[number];
 
 function jsonResponse(
+  req: Request,
   body: Record<string, unknown>,
   status = 200,
 ): Response {
@@ -216,6 +217,7 @@ const SYSTEM_PROMPT =
   "You are Donny, DragonCandy's creative director AI. Generate structured creative preview data for social media campaigns. Be specific, actionable, and on-brand. Always return valid JSON.";
 
 async function handleGenerate(
+  req: Request,
   userId: string,
   body: Record<string, unknown>,
   supabaseAdmin: ReturnType<typeof createClient>,
@@ -329,6 +331,7 @@ async function handleGenerate(
 }
 
 async function handleRegenerate(
+  req: Request,
   userId: string,
   body: Record<string, unknown>,
   supabaseAdmin: ReturnType<typeof createClient>,
@@ -422,6 +425,7 @@ async function handleRegenerate(
 }
 
 async function handleList(
+  req: Request,
   userId: string,
   body: Record<string, unknown>,
   supabaseAdmin: ReturnType<typeof createClient>,
@@ -447,6 +451,7 @@ async function handleList(
 }
 
 async function handleApprove(
+  req: Request,
   userId: string,
   body: Record<string, unknown>,
   supabaseAdmin: ReturnType<typeof createClient>,
@@ -522,9 +527,9 @@ serve(async (req) => {
       case "regenerate":
         return await handleRegenerate(req, userId, body, supabaseAdmin);
       case "list":
-        return await handleList(userId, body, supabaseAdmin);
+        return await handleList(req, userId, body, supabaseAdmin);
       case "approve":
-        return await handleApprove(userId, body, supabaseAdmin);
+        return await handleApprove(req, userId, body, supabaseAdmin);
       default:
         return jsonResponse(req, {
             success: false,

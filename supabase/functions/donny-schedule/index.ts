@@ -28,6 +28,7 @@ const VALID_CONTENT_TYPES = [
 ] as const;
 
 function jsonResponse(
+  req: Request,
   body: Record<string, unknown>,
   status = 200,
 ): Response {
@@ -71,6 +72,7 @@ async function authenticateRequest(
 // ---------------------------------------------------------------------------
 
 async function handleCreate(
+  req: Request,
   userId: string,
   body: Record<string, unknown>,
   supabaseAdmin: ReturnType<typeof createClient>,
@@ -135,6 +137,7 @@ async function handleCreate(
 }
 
 async function handleUpdate(
+  req: Request,
   userId: string,
   body: Record<string, unknown>,
   supabaseAdmin: ReturnType<typeof createClient>,
@@ -190,6 +193,7 @@ async function handleUpdate(
 }
 
 async function handleDelete(
+  req: Request,
   userId: string,
   body: Record<string, unknown>,
   supabaseAdmin: ReturnType<typeof createClient>,
@@ -228,6 +232,7 @@ async function handleDelete(
 }
 
 async function handleList(
+  req: Request,
   userId: string,
   body: Record<string, unknown>,
   supabaseAdmin: ReturnType<typeof createClient>,
@@ -280,6 +285,7 @@ async function handleList(
 }
 
 async function handleSuggestTimes(
+  req: Request,
   body: Record<string, unknown>,
 ): Promise<Response> {
   const { platform, content_type, target_audience } = body as {
