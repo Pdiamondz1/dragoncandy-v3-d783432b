@@ -4,6 +4,7 @@ import ReactMarkdown from 'react-markdown';
 import { DonnyAvatar } from './DonnyAvatar';
 import { DonnyRichCard } from './DonnyRichCard';
 import { parseAndDispatchDeepLink } from '@/features/donny/deepLinks';
+import { safeUrl } from '@/lib/safeUrl';
 import type { DonnyMessage as DonnyMessageType, DonnyAvatarState } from '@/types/donny';
 
 interface DonnyMessageProps {
@@ -67,7 +68,7 @@ export function DonnyMessage({ message, avatarState = 'idle', isLatestAssistant 
                       );
                     }
                     return (
-                      <a href={href} target="_blank" rel="noopener noreferrer" className="text-dc-pink-accent underline underline-offset-2">
+                      <a href={safeUrl(href) ?? '#'} target="_blank" rel="noopener noreferrer" className="text-dc-pink-accent underline underline-offset-2">
                         {children}
                       </a>
                     );
