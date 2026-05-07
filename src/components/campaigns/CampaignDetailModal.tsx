@@ -287,7 +287,7 @@ export const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
             {referenceMedia.length > 0 && (
               <div className="px-4 py-4 border-b border-gray-100">
                 <h3 className="text-sm font-bold text-gray-900 mb-2">Visual References</h3>
-                <div className="flex gap-2 overflow-x-auto pb-1">
+                <div className="flex gap-2 overflow-x-auto pb-1 md:overflow-x-visible md:flex-wrap">
                   {referenceMedia.map((item) => (
                     <div key={item.id} className="flex-shrink-0 w-24 h-24 rounded-xl overflow-hidden border border-gray-200">
                       <img
@@ -307,7 +307,7 @@ export const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
                 {campaign.application_status === 'accepted' ? (
                   <>
                     <h3 className="text-sm font-bold text-gray-900 mb-2">📹 Raw Footage</h3>
-                    <div className="flex gap-2 overflow-x-auto pb-1">
+                    <div className="flex gap-2 overflow-x-auto pb-1 md:overflow-x-visible md:flex-wrap">
                       {detail?.media
                         .filter(m => m.media_type === 'raw_footage')
                         .map((item) => (
@@ -359,7 +359,7 @@ export const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
                   {deliverables.length > 0
                     ? deliverables.map((d, i) => (
                         <div key={d.id} className="flex gap-3 items-start">
-                          <div className="w-6 h-6 rounded-full bg-dc-teal text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
+                          <div className="w-6 h-6 rounded-full bg-dc-teal-btn text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
                             {i + 1}
                           </div>
                           <div>
@@ -376,7 +376,7 @@ export const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
                       ))
                     : fallbackDeliverables.map((d, i) => (
                         <div key={i} className="flex gap-3 items-start">
-                          <div className="w-6 h-6 rounded-full bg-dc-teal text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
+                          <div className="w-6 h-6 rounded-full bg-dc-teal-btn text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
                             {i + 1}
                           </div>
                           <div className="text-sm text-gray-800">{d}</div>
@@ -483,7 +483,7 @@ export const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
             <div className="flex-shrink-0 px-4 py-3 border-t border-gray-100 bg-white shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
               <button
                 onClick={() => setShowApplyForm(true)}
-                className="w-full bg-dc-teal text-white rounded-full py-3.5 font-bold text-sm hover:bg-dc-teal-dark transition-colors active:scale-95"
+                className="w-full bg-dc-teal-btn text-white rounded-full py-3.5 font-bold text-sm hover:bg-dc-teal-btn-hover transition-colors active:scale-95"
               >
                 Apply for This Campaign
               </button>
