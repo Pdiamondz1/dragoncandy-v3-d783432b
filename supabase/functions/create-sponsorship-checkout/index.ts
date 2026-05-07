@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { writePaymentEvent } from "../_shared/payment-events.ts";
-import { PLATFORM_FEE_RATE } from "../_shared/platform-fee.ts";
+import { getOrgTakeRate } from "../_shared/platform-fee.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -96,9 +96,10 @@ serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    const platformFee = Math.round(amount * PLATFORM_FEE_RATE * 100);
+    const takeRate = await getOrgTakeRate(adminClient, user.id);
+    const platformFee = Math.round(amount * takeRate * 100);
     const totalAmount = Math.round(amount * 100);
-    logStep("Fee calculation", { amount, platformFee: platformFee / 100, totalAmount: totalAmount / 100 });
+    logStep("Fee calculation", { amount, takeRate, platformFee: platformFee / 100, totalAmount: totalAmount / 100 });
 
     const origin = req.headers.get("origin") || "https://dragoncandy-v3.lovable.app";
 

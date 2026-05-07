@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { writePaymentEvent } from "../_shared/payment-events.ts";
-import { calculatePlatformFee } from "../_shared/platform-fee.ts";
+import { calculatePlatformFee, getOrgTakeRate } from "../_shared/platform-fee.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -81,10 +81,12 @@ serve(async (req) => {
       throw new Error("Sponsorship has no amount to pay out");
     }
 
-    const { feeDollars: platformFee, netPayoutDollars: restaurantPayout } = calculatePlatformFee(sponsorshipAmount);
+    const takeRate = await getOrgTakeRate(supabaseClient, user.id);
+    const { feeDollars: platformFee, netPayoutDollars: restaurantPayout } = calculatePlatformFee(sponsorshipAmount, takeRate);
 
-    logStep("Payout calculation", { 
+    logStep("Payout calculation", {
       sponsorshipAmount,
+      takeRate,
       platformFee,
       restaurantPayout,
     });

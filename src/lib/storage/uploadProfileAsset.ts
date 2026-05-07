@@ -23,6 +23,26 @@ const PORTFOLIO_MIME_TYPES = [
 const PROFILE_MAX_SIZE = 10 * 1024 * 1024; // 10 MB
 const PORTFOLIO_MAX_SIZE = 50 * 1024 * 1024; // 50 MB
 
+const IMAGE_MAGIC: Array<{ mime: string; bytes: number[] }> = [
+  { mime: 'image/jpeg', bytes: [0xFF, 0xD8, 0xFF] },
+  { mime: 'image/png', bytes: [0x89, 0x50, 0x4E, 0x47] },
+  { mime: 'image/gif', bytes: [0x47, 0x49, 0x46, 0x38] },
+  { mime: 'image/webp', bytes: [0x52, 0x49, 0x46, 0x46] },
+];
+
+const VIDEO_MAGIC: Array<{ mime: string; bytes: number[] }> = [
+  { mime: 'video/mp4', bytes: [0x00, 0x00, 0x00] },
+];
+
+async function validateMagicBytes(file: File, allowedMimes: string[]): Promise<boolean> {
+  const buffer = await file.slice(0, 16).arrayBuffer();
+  const header = new Uint8Array(buffer);
+  const allMagic = [...IMAGE_MAGIC, ...VIDEO_MAGIC].filter(m => allowedMimes.includes(m.mime));
+  return allMagic.some(({ bytes }) =>
+    bytes.every((b, i) => header[i] === b)
+  );
+}
+
 export type ProfileAssetKind =
   | 'avatar'
   | 'logo'
@@ -67,8 +87,20 @@ export async function uploadProfileAsset({
     throw new UploadError(`File is too large. Maximum size is ${limitMB}MB.`);
   }
 
-  // Build path: {userId}/{kind}-{timestamp}.{ext}
-  const ext = file.name.split('.').pop() || 'bin';
+  // Validate extension
+  const ext = (file.name.split('.').pop() || '').toLowerCase();
+  const ALLOWED_EXTENSIONS = isPortfolioKind
+    ? ['jpg', 'jpeg', 'png', 'webp', 'gif', 'mp4', 'mov']
+    : ['jpg', 'jpeg', 'png', 'webp', 'gif'];
+  if (!ALLOWED_EXTENSIONS.includes(ext)) {
+    throw new UploadError(`File extension .${ext} is not allowed.`);
+  }
+
+  // Validate magic bytes match declared MIME type
+  const magicValid = await validateMagicBytes(file, allowedTypes);
+  if (!magicValid) {
+    throw new UploadError('File content does not match its declared type.');
+  }
   const path = `${userId}/${kind}-${Date.now()}.${ext}`;
 
   const { error: uploadError } = await supabase.storage

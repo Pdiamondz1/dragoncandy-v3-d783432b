@@ -2,7 +2,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { writePaymentEvent } from "../_shared/payment-events.ts";
-import { calculatePlatformFee } from "../_shared/platform-fee.ts";
+import { calculatePlatformFee, getOrgTakeRate } from "../_shared/platform-fee.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -121,6 +121,7 @@ Deno.serve(async (req) => {
     const baseAmount = campaign.pricing_type === 'fixed' ? campaign.fixed_price : campaign.budget_max;
     const totalAmount = (baseAmount || 0) + (campaign.delivery_fee || 0);
     const totalAmountCents = Math.round(totalAmount * 100);
+    const takeRate = await getOrgTakeRate(supabaseClient, campaign.user_id);
 
     // Execute outcome
     if (outcome === 'refund') {
@@ -150,7 +151,7 @@ Deno.serve(async (req) => {
 
       // Pay creator's portion (minus platform fee)
       const creatorAmount = creatorAmountCents / 100;
-      const { netPayoutDollars } = calculatePlatformFee(creatorAmount);
+      const { netPayoutDollars } = calculatePlatformFee(creatorAmount, takeRate);
 
       const { data: creatorProfile } = await supabaseClient
         .from('creator_profiles')
@@ -183,7 +184,7 @@ Deno.serve(async (req) => {
       logStep("Partial payment", { creatorSplit, creatorAmountCents, refundAmountCents });
     } else if (outcome === 'approved') {
       // Full payout to creator (inline — avoids release-creator-payout overwriting content_status)
-      const { netPayoutDollars } = calculatePlatformFee(totalAmount);
+      const { netPayoutDollars } = calculatePlatformFee(totalAmount, takeRate);
 
       const { data: creatorProfile } = await supabaseClient
         .from('creator_profiles')
