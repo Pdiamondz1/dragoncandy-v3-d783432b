@@ -43,7 +43,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
       isOwn ? "flex-row-reverse" : "flex-row"
     )}>
       <Avatar className="h-8 w-8 flex-shrink-0">
-        <AvatarImage src={avatarUrl || undefined} />
+        <AvatarImage src={avatarUrl || undefined} alt={senderName} />
         <AvatarFallback className="text-xs">
           {senderName.charAt(0).toUpperCase()}
         </AvatarFallback>

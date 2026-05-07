@@ -187,6 +187,7 @@ export const DragonFeedCard: React.FC<DragonFeedCardProps> = ({ media }) => {
               <video
                 ref={videoRef}
                 src={media.url}
+                aria-label="Feed video"
                 className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110 cursor-pointer"
                 onLoadedData={handleLoad}
                 onError={handleError}

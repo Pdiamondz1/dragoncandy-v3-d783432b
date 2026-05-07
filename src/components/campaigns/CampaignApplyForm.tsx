@@ -252,7 +252,7 @@ export const CampaignApplyForm: React.FC<CampaignApplyFormProps> = ({
                       : 'border-gray-200 hover:border-gray-300'
                   }`}
                 >
-                  <img src={toThumbnailUrl(url)} alt={`Portfolio ${i + 1}`} className="w-full h-full object-cover" loading="lazy" />
+                  <img src={toThumbnailUrl(url)} alt={`Portfolio sample ${i + 1}`} className="w-full h-full object-cover" loading="lazy" />
                 </button>
               ))}
             </div>

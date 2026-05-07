@@ -148,7 +148,7 @@ const CardContent: React.FC<CardContentProps> = ({ campaign, onViewDetail, match
         <div className="w-full h-full relative overflow-hidden">
           <img
             src={campaign.cover_image_url}
-            alt="Campaign logo"
+            alt=""
             className="w-full h-full object-cover scale-150 blur-2xl opacity-60"
             loading="lazy"
             draggable={false}

@@ -227,7 +227,7 @@ export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
             {/* Header Section */}
             <div className="flex items-start gap-4">
               <Avatar className="h-20 w-20">
-                <AvatarImage src={resolveAvatarUrl(profile.avatar_url)} />
+                <AvatarImage src={resolveAvatarUrl(profile.avatar_url)} alt={profile.creator_name ?? "Creator avatar"} />
                 <AvatarFallback>
                   <User className="h-10 w-10" />
                 </AvatarFallback>
@@ -475,7 +475,7 @@ export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
                         ) : (
                           <img
                             src={toThumbnailUrl(url)}
-                            alt={`Portfolio ${index + 1}`}
+                            alt={`${profile.creator_name} portfolio ${index + 1}`}
                             className="w-full h-full object-cover"
                             loading="lazy"
                             decoding="async"

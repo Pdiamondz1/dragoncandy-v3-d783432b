@@ -42,7 +42,7 @@ export const FileCommentsPanel: React.FC<FileCommentsPanelProps> = ({
     <Card key={comment.id} className={`p-4 ${isReply ? 'ml-8 mt-2' : ''}`}>
       <div className="flex gap-3">
         <Avatar className="h-8 w-8">
-          <AvatarImage src={comment.user_profile?.avatar_url || ''} />
+          <AvatarImage src={comment.user_profile?.avatar_url || ''} alt={comment.user_profile?.full_name ?? "User avatar"} />
           <AvatarFallback>
             {comment.user_profile?.full_name?.[0] || 'U'}
           </AvatarFallback>
@@ -119,7 +119,7 @@ export const FileCommentsPanel: React.FC<FileCommentsPanelProps> = ({
           
           <div className="flex gap-3">
             <Avatar className="h-8 w-8">
-              <AvatarImage src={user?.user_metadata?.avatar_url || ''} />
+              <AvatarImage src={user?.user_metadata?.avatar_url || ''} alt="User avatar" />
               <AvatarFallback>
                 {user?.email?.[0]?.toUpperCase() || 'U'}
               </AvatarFallback>

@@ -139,6 +139,7 @@ export const SubmissionCard: React.FC<SubmissionCardProps> = ({
                 <video
                   src={resolvedUrl}
                   controls
+                  aria-label="Content submission video"
                   className="w-full h-full object-contain"
                 />
               )

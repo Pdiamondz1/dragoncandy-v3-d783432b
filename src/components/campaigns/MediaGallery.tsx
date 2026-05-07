@@ -120,6 +120,7 @@ const Lightbox: React.FC<LightboxProps> = ({ item, open, onClose }) => {
             <video
               src={item.file_url}
               controls
+              aria-label="Campaign media"
               className="max-w-full max-h-[80vh] rounded-lg"
             />
           ) : (

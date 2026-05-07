@@ -416,6 +416,7 @@ const PublicCreatorProfile = () => {
                     <div className="w-full h-full bg-gradient-to-br from-gray-800 to-gray-900 relative">
                       <video
                         src={`${url}#t=0.5`}
+                        aria-label="Portfolio video"
                         className="w-full h-full object-cover"
                         muted
                         playsInline

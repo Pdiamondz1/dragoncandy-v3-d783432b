@@ -153,6 +153,7 @@ export const CurrentPortfolioDisplay = ({ portfolioPaths, onRemoveItem }: Curren
               <div className="relative w-full h-full">
                 <video
                   src={item.url}
+                  aria-label="Portfolio video"
                   className="w-full h-full object-cover"
                   muted
                   playsInline

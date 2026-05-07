@@ -35,7 +35,7 @@ function MediaPreviewButton({ submission }: { submission: PromotionSubmission })
         {isImage ? (
           <img
             src={resolvedUrl || submission.video_url}
-            alt="Submission"
+            alt="Content submission"
             className="w-full h-full object-cover"
             loading="lazy"
           />
@@ -59,7 +59,7 @@ function MediaPreviewButton({ submission }: { submission: PromotionSubmission })
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             ) : resolvedUrl ? (
               isImage ? (
-                <img src={resolvedUrl} alt="Submission" className="w-full h-full object-contain" />
+                <img src={resolvedUrl} alt="Content submission" className="w-full h-full object-contain" />
               ) : (
                 <video src={resolvedUrl} controls className="w-full h-full object-contain" />
               )

@@ -55,6 +55,7 @@ export function CampaignReferencesGallery({ referenceMedia }: CampaignReferences
             <video
               src={referenceMedia[lightboxIndex].file_url}
               controls
+              aria-label="Campaign reference video"
               className="max-w-full max-h-[80vh] rounded-lg"
               onClick={(e) => e.stopPropagation()}
             />

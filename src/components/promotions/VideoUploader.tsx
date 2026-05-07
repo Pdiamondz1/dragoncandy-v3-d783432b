@@ -207,7 +207,7 @@ export const VideoUploader: React.FC<VideoUploaderProps> = ({
       <div className="relative aspect-video bg-muted rounded-lg overflow-hidden">
         {videoPreview ? (
           selectedFile?.type.startsWith('image/') ? (
-            <img src={videoPreview} alt="Preview" className="w-full h-full object-contain" />
+            <img src={videoPreview} alt="Video upload preview" className="w-full h-full object-contain" />
           ) : (
             <video src={videoPreview} controls className="w-full h-full object-cover" />
           )

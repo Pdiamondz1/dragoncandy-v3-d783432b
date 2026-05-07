@@ -54,6 +54,7 @@ export const FilePreviewContent: React.FC<FilePreviewContentProps> = ({
       return (
         <video
           controls
+          aria-label="File preview"
           className={`max-w-full max-h-96 rounded-lg ${className}`}
           poster={fileUrl}
         >
@@ -65,7 +66,7 @@ export const FilePreviewContent: React.FC<FilePreviewContentProps> = ({
     case 'audio':
       return (
         <div className="p-8 bg-gray-50 rounded-lg text-center">
-          <audio controls className="w-full">
+          <audio controls aria-label="File audio preview" className="w-full">
             <source src={fileUrl} type={file.mime_type} />
             Your browser does not support the audio tag.
           </audio>

@@ -166,7 +166,7 @@ const VideoCard: React.FC<VideoCardProps> = ({ submission }) => {
               isImageUrl(submission.video_url) ? (
                 <img src={resolvedUrl} alt={`Submission by ${submission.customer_name}`} className="w-full h-full object-contain" loading="lazy" />
               ) : (
-                <video src={resolvedUrl} controls playsInline preload="metadata" className="w-full h-full object-contain" />
+                <video src={resolvedUrl} controls playsInline preload="metadata" aria-label="Approved video submission" className="w-full h-full object-contain" />
               )
             ) : (
               <p className="text-muted-foreground">Unable to load media</p>
