@@ -48,16 +48,16 @@ serve(async (req) => {
     if (!user?.email) throw new Error("User not authenticated or email not available");
     logStep("User authenticated", { userId: user.id, email: user.email });
 
-    const { sponsorshipId, amount, campaignTitle } = await req.json();
-    if (!sponsorshipId || !amount) {
-      throw new Error("Missing required fields: sponsorshipId and amount");
+    const { sponsorshipId } = await req.json();
+    if (!sponsorshipId) {
+      throw new Error("Missing required field: sponsorshipId");
     }
-    logStep("Request payload", { sponsorshipId, amount, campaignTitle });
+    logStep("Request payload", { sponsorshipId });
 
     // Verify caller owns this sponsorship
     const { data: sponsorship, error: sponsorshipError } = await adminClient
       .from('campaign_sponsorships')
-      .select('brand_id, campaign_id')
+      .select('brand_id, campaign_id, sponsorship_amount, campaign:campaigns(title)')
       .eq('id', sponsorshipId)
       .single();
 
@@ -89,8 +89,15 @@ serve(async (req) => {
       logStep("Found existing customer", { customerId });
     }
 
-    const platformFee = Math.round(amount * PLATFORM_FEE_RATE * 100); // Convert to cents
-    const totalAmount = Math.round(amount * 100); // Convert to cents
+    const amount = sponsorship.sponsorship_amount;
+    if (!amount || amount <= 0) {
+      return new Response(JSON.stringify({ error: 'Invalid sponsorship amount' }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const platformFee = Math.round(amount * PLATFORM_FEE_RATE * 100);
+    const totalAmount = Math.round(amount * 100);
     logStep("Fee calculation", { amount, platformFee: platformFee / 100, totalAmount: totalAmount / 100 });
 
     const origin = req.headers.get("origin") || "https://dragoncandy-v3.lovable.app";
@@ -104,7 +111,7 @@ serve(async (req) => {
           price_data: {
             currency: "usd",
             product_data: {
-              name: `Sponsorship: ${campaignTitle || 'Campaign Sponsorship'}`,
+              name: `Sponsorship: ${(sponsorship as any).campaign?.title || 'Campaign Sponsorship'}`,
               description: `Sponsorship payment for campaign`,
             },
             unit_amount: totalAmount,
