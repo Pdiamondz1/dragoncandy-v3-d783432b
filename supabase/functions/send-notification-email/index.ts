@@ -84,6 +84,8 @@ const handler = async (req: Request): Promise<Response> => {
     const authHeader = req.headers.get("Authorization") || "";
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") as string;
     const isService = authHeader === `Bearer ${serviceKey}`;
+    let callerUserId: string | null = null;
+    let callerEmail: string | null = null;
     if (!isService) {
       const supabaseUrl = Deno.env.get("SUPABASE_URL") as string;
       const anonKey = Deno.env.get("SUPABASE_ANON_KEY") as string;
@@ -97,9 +99,28 @@ const handler = async (req: Request): Promise<Response> => {
           headers: { "Content-Type": "application/json", ...corsHeaders(req) },
         });
       }
+      callerUserId = userData.user.id;
+      callerEmail = userData.user.email ?? null;
     }
 
     const { to, recipientName, type, data }: NotificationEmailRequest = await req.json();
+
+    // For non-service callers, prevent enumerating other users' emails:
+    // they may only send to themselves (their own auth email).
+    if (!isService) {
+      if (data?.recipientUserId && data.recipientUserId !== callerUserId) {
+        return new Response(JSON.stringify({ error: "Forbidden: cannot resolve other users' emails" }), {
+          status: 403,
+          headers: { "Content-Type": "application/json", ...corsHeaders(req) },
+        });
+      }
+      if (to && callerEmail && to.toLowerCase() !== callerEmail.toLowerCase()) {
+        return new Response(JSON.stringify({ error: "Forbidden: recipient must be self" }), {
+          status: 403,
+          headers: { "Content-Type": "application/json", ...corsHeaders(req) },
+        });
+      }
+    }
 
     console.log('Incoming notification request:', { type, to, recipientUserId: data?.recipientUserId, collaborationId: data?.collaborationId, campaignId: data?.campaignId });
 
