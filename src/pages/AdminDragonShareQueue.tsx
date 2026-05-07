@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { safeUrl } from '@/lib/safeUrl';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { useAdminDragonShareQueue, useVerifyDragonSharePost } from '@/hooks/useDragonShare';
 import { useAuth } from '@/hooks/useAuth';
@@ -90,7 +91,7 @@ const AdminDragonShareQueue: React.FC = () => {
                 )}
 
                 <a
-                  href={post.post_url}
+                  href={safeUrl(post.post_url) ?? '#'}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-1 text-sm text-teal-600 hover:underline"

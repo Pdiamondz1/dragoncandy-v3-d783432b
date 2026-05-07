@@ -1,4 +1,5 @@
 import React from 'react';
+import { safeUrl } from '@/lib/safeUrl';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import logo from '@/assets/Transparent_DragonCandy_logo.webp';
 import { Button } from '@/components/ui/button';
@@ -178,7 +179,7 @@ export const MessageBubbleEnhanced: React.FC<MessageBubbleEnhancedProps> = ({
                       isOwnMessage ? 'bg-white/15' : 'bg-muted/60'
                     }`}>
                       <a
-                        href={message.attachment_url}
+                        href={safeUrl(message.attachment_url) ?? '#'}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-xs underline flex items-center gap-1.5"

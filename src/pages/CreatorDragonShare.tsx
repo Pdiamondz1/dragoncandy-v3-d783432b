@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { safeUrl } from '@/lib/safeUrl';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { useCreatorDragonSharePosts, useCreatorMonthlySubmissionCount } from '@/hooks/useDragonShare';
 import { DragonShareSubmitSheet } from '@/components/dragonshare/DragonShareSubmitSheet';
@@ -141,7 +142,7 @@ function CreatorPostCard({ post }: { post: DragonSharePostWithRelations }) {
               +${(boost.creator_payout_cents / 100).toFixed(0)}
             </span>
           )}
-          <a href={post.post_url} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground">
+          <a href={safeUrl(post.post_url) ?? '#'} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground">
             <ExternalLink className="h-4 w-4" />
           </a>
         </div>

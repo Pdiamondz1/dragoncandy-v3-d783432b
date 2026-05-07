@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { safeUrl } from '@/lib/safeUrl';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Sparkles, ExternalLink, SkipForward } from 'lucide-react';
@@ -35,7 +36,7 @@ export function DragonSharePostCard({ post, canBoost, onSkip }: Props) {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <a href={post.post_url} target="_blank" rel="noopener noreferrer">
+            <a href={safeUrl(post.post_url) ?? '#'} target="_blank" rel="noopener noreferrer">
               <ExternalLink className="h-4 w-4 text-muted-foreground hover:text-foreground" />
             </a>
             <span className="text-xs text-muted-foreground">

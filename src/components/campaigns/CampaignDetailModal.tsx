@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { X, Download } from 'lucide-react';
+import { safeUrl } from '@/lib/safeUrl';
 import { PublicCampaign } from '@/hooks/usePublicCampaigns';
 import { useCampaignDetail } from '@/hooks/useCampaignDetail';
 import { DeliveryBadge } from './DeliveryBadge';
@@ -315,7 +316,7 @@ export const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
                                 className="w-full h-full object-cover"
                               />
                               <a
-                                href={item.file_url}
+                                href={safeUrl(item.file_url) ?? '#'}
                                 download={item.file_name}
                                 target="_blank"
                                 rel="noopener noreferrer"
