@@ -8,7 +8,7 @@
 | Severity | Count | Issues |
 |----------|-------|--------|
 | CRITICAL | 4 | #1, #2, #3, #4 |
-| HIGH | 8 | #6, #7, #8, #9, #10, #11, #12, #13, #14 |
+| HIGH | 9 | #6, #7, #8, #9, #10, #11, #12, #13, #14 |
 | MEDIUM | 8 | #15, #16, #17, #18, #19, #20, #21, #23 |
 | LOW | 3 | #24, #25, #26 |
 | Deferred | 2 | #5 (Toast webhook sig), #22 (Toast token encryption) |
@@ -78,7 +78,7 @@ export const corsHeaders = (req: Request) => {
 };
 ```
 
-Used by: #18 (all 56 edge functions).
+Used by: #18 (all 55 edge functions).
 
 ### `src/lib/csvEscape.ts`
 
@@ -183,17 +183,16 @@ Apply to: `website_url`, `instagram_url`, `tiktok_url`, `facebook_url`, `linkedi
 
 **File:** `src/hooks/useLogout.ts`
 
-**Problem:** Cached query data persists across user sessions on shared devices.
+**Problem:** Cached query data persists across user sessions on shared devices. The file already imports `useQueryClient` and does a partial `removeQueries` for Donny queries, but doesn't clear the full cache.
 
-**Fix:** Add `queryClient.clear()` after `signOut()`:
+**Fix:** Replace the selective `queryClient.removeQueries(...)` with `queryClient.clear()`, placed after `signOut()` but before `navigate()`:
 ```ts
-import { useQueryClient } from "@tanstack/react-query";
-
-const queryClient = useQueryClient();
-// ... in logout handler:
+await clearChat();
 await signOut();
 queryClient.clear();
+navigate('/landing');
 ```
+Remove the existing `queryClient.removeQueries({ predicate: ... })` block — `clear()` is a superset.
 
 ### #8 — Profile-assets bucket (migration + frontend)
 
@@ -208,17 +207,20 @@ queryClient.clear();
 
 **Impact:** Every component rendering profile images/avatars from this bucket needs updating. This is the highest-touch change in the spec.
 
+**Affected components discovery:** `grep -r "profile-assets" src/` and `grep -r "getPublicUrl.*profile" src/` will enumerate all references that need signed-URL migration.
+
 ### #9 — Server-side MIME validation
 
-**File:** `src/lib/storage/uploadProfileAsset.ts` + new edge function
+**Files:**
+- `src/lib/storage/uploadProfileAsset.ts` (add client-side magic byte pre-check)
+- New edge function: `supabase/functions/validate-upload/index.ts` (server-side validation gate)
 
-**Problem:** MIME validation is client-side only — trivially bypassed.
+**Problem:** MIME validation is client-side only — trivially bypassed via raw `fetch()`.
 
-**Fix:**
-1. Add file magic byte validation at upload time.
-2. Check first 16 bytes against known signatures: `FF D8 FF` (JPEG), `89 50 4E 47` (PNG), `47 49 46 38` (GIF), `52 49 46 46` (WebP RIFF header).
-3. Reject on mismatch before uploading to Supabase Storage.
-4. Whitelist file extensions to `[jpg, jpeg, png, webp, gif]` server-side.
+**Fix (two layers):**
+1. **Client-side (defense in depth):** Read the first 16 bytes of the file via `FileReader` and check against known magic byte signatures before uploading: `FF D8 FF` (JPEG), `89 50 4E 47` (PNG), `47 49 46 38` (GIF), `52 49 46 46` (WebP RIFF header). Reject on mismatch.
+2. **Server-side (authoritative):** Create a `validate-upload` edge function that the client calls with the file. The function reads magic bytes, validates against the allowlist, and returns a signed upload URL only if the file passes. This prevents bypassing via direct Supabase Storage API calls.
+3. Whitelist file extensions to `[jpg, jpeg, png, webp, gif]` on both layers.
 
 ### #10 — profile_views anonymous writes (migration)
 
@@ -253,6 +255,13 @@ USING (
 )
 ```
 
+**Performance:** Add a composite index to keep the self-join fast:
+```sql
+CREATE INDEX idx_conv_participants_active
+ON conversation_participants (conversation_id, user_id)
+WHERE left_at IS NULL;
+```
+
 ### #13 — campaign_sponsorships UPDATE narrowing (migration)
 
 **File:** `supabase/migrations/20260506_security_sponsorship_update.sql`
@@ -262,6 +271,8 @@ USING (
 ### #14 — email_verification_tokens write policies (migration)
 
 **File:** `supabase/migrations/20260506_security_email_tokens.sql`
+
+**Safety note:** The `verify-email` edge function uses a service-role Supabase client (confirmed at `verify-email/index.ts:62`), which bypasses RLS entirely. This policy only blocks authenticated client-side writes — it will not break email verification.
 
 **Fix:**
 ```sql
@@ -303,7 +314,7 @@ sessionStorage.removeItem('dc_gate_redirect');
 
 ### #18 — CORS wildcard on all edge functions
 
-**Files:** All 56 edge functions in `supabase/functions/*/index.ts`
+**Files:** All 55 edge functions in `supabase/functions/*/index.ts`
 
 **Fix:**
 1. Create `_shared/cors.ts` (defined above in Shared Utilities).
@@ -428,7 +439,7 @@ From the audit's Section 11, verify:
 - `index.html` (#21)
 - `vite.config.ts` (#25)
 - `.gitignore` (#26)
-- All 56 edge functions in `supabase/functions/` (#18 — CORS)
+- All 55 edge functions in `supabase/functions/` (#18 — CORS)
 - Frontend components rendering profile-assets URLs (#8 — signed URLs)
 
 ### Deferred (no API access)
