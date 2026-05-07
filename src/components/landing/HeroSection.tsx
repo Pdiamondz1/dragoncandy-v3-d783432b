@@ -30,7 +30,7 @@ export const HeroSection: React.FC = () => {
         </Button>
         <Button
           variant="outline"
-          className="w-full h-12 rounded-full bg-white text-dc-pink-accent font-semibold text-base border border-gray-200 hover:border-dc-teal hover:text-dc-teal transition-all duration-300"
+          className="w-full h-12 rounded-full bg-white text-dc-pink-accent-btn font-semibold text-base border border-gray-200 hover:border-dc-teal hover:text-dc-teal transition-all duration-300"
           onClick={() => navigate('/auth?mode=signup')}
         >
           I'm a Creator — Join the Marketplace
