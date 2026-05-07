@@ -12,6 +12,7 @@ import { AnalyticsProvider } from "@/components/analytics/AnalyticsProvider";
 import { PerformanceMonitor } from "@/components/analytics/PerformanceMonitor";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import { LazyMotion, domAnimation } from "@/lib/motion";
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { VerifiedRoute } from '@/components/VerifiedRoute';
 import { BusinessRoute } from "@/components/BusinessRoute";
@@ -281,6 +282,7 @@ const App = () => {
     <ErrorBoundary>
       <ThemeProvider>
       <QueryClientProvider client={queryClient}>
+        <LazyMotion features={domAnimation} strict>
         <AuthProvider>
             <AnalyticsProvider>
               <ErrorBoundary level="widget" fallback={null}>
@@ -306,6 +308,7 @@ const App = () => {
               </TooltipProvider>
             </AnalyticsProvider>
         </AuthProvider>
+        </LazyMotion>
       </QueryClientProvider>
       </ThemeProvider>
     </ErrorBoundary>

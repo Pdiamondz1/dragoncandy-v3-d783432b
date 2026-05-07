@@ -1,6 +1,6 @@
-import { motion, useReducedMotion, AnimatePresence } from "framer-motion";
+import { LazyMotion, domAnimation, m, useReducedMotion, AnimatePresence } from "framer-motion";
 
-export { motion, useReducedMotion, AnimatePresence };
+export { m as motion, useReducedMotion, AnimatePresence, LazyMotion, domAnimation };
 
 export const tapScale = {
   whileTap: { scale: 0.98, y: 2 },
