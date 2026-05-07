@@ -19,25 +19,25 @@ const BusinessPromotionalTools: React.FC = () => {
       <div className="min-h-screen overflow-x-hidden pb-24 md:pb-0 md:max-w-4xl md:mx-auto">
         {/* Template A: Pink gradient header */}
         <div className="bg-gradient-to-b from-dc-pink-bg to-pink-50 px-4 pt-6 pb-4">
-          <h1 className="font-sans text-sm font-bold uppercase tracking-wide text-dc-teal inline-flex items-center gap-2">
+          <h1 className="font-sans text-sm font-bold uppercase tracking-wide text-dc-text inline-flex items-center gap-2">
             Customer Generated Content Campaigns
             <HelpTooltip
               slug="create-promotion"
               summary="Create QR-based promotions that turn customers into content creators. They film or snap, you reward them with a discount."
             />
           </h1>
-          <p className="text-xs text-gray-500 mt-1">
+          <p className="text-xs text-dc-text-muted mt-1">
             Create QR-based video promotions to incentivize customer content creation.
           </p>
           {/* Stats row */}
           <div className="grid grid-cols-2 gap-3 mt-4">
             <div className="bg-white rounded-2xl p-4 border-2 border-dc-teal">
-              <p className="text-3xl font-extrabold text-gray-900">{pendingCount}</p>
-              <p className="text-xs text-gray-500">Pending Reviews</p>
+              <p className="text-3xl font-extrabold text-dc-text">{pendingCount}</p>
+              <p className="text-xs text-dc-text-muted">Pending Reviews</p>
             </div>
             <div className="bg-white rounded-2xl p-4 border-2 border-dc-teal">
-              <p className="text-3xl font-extrabold text-gray-900">{approvedCount}</p>
-              <p className="text-xs text-gray-500">Approved Videos</p>
+              <p className="text-3xl font-extrabold text-dc-text">{approvedCount}</p>
+              <p className="text-xs text-dc-text-muted">Approved Videos</p>
             </div>
           </div>
         </div>
@@ -55,7 +55,7 @@ const BusinessPromotionalTools: React.FC = () => {
                 <Video className="h-3 w-3" />
                 Pending
                 {pendingCount > 0 && (
-                  <span className="ml-1 bg-dc-teal text-white text-xs px-1.5 py-0.5 rounded-full">
+                  <span className="ml-1 bg-dc-teal text-dc-text text-xs px-1.5 py-0.5 rounded-full">
                     {pendingCount}
                   </span>
                 )}
@@ -64,7 +64,7 @@ const BusinessPromotionalTools: React.FC = () => {
                 <Film className="h-3 w-3" />
                 Videos
                 {approvedCount > 0 && (
-                  <span className="ml-1 bg-dc-teal text-white text-xs px-1.5 py-0.5 rounded-full">
+                  <span className="ml-1 bg-dc-teal text-dc-text text-xs px-1.5 py-0.5 rounded-full">
                     {approvedCount}
                   </span>
                 )}

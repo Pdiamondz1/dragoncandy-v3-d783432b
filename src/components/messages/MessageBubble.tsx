@@ -56,8 +56,8 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
         <div className={cn(
           "rounded-lg px-4 py-2 break-words",
           isOwn
-            ? "bg-dc-teal text-white"
-            : "bg-dc-pink text-foreground"
+            ? "bg-dc-teal text-dc-text"
+            : "bg-dc-pink text-dc-text"
         )}>
           <p className="text-sm whitespace-pre-wrap">{message.content}</p>
         </div>

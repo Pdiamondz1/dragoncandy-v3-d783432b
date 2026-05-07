@@ -90,7 +90,7 @@ export const MessageBubbleEnhanced: React.FC<MessageBubbleEnhancedProps> = ({
         showAvatar ? (
           <Avatar className="h-8 w-8 flex-shrink-0 mt-1 ring-2 ring-teal-400">
             <AvatarImage src={senderAvatar || logo} alt={senderName} />
-            <AvatarFallback className="bg-dc-pink text-white text-xs font-semibold">
+            <AvatarFallback className="bg-dc-pink text-dc-text text-xs font-semibold">
               {senderName.charAt(0).toUpperCase()}
             </AvatarFallback>
           </Avatar>
@@ -120,7 +120,7 @@ export const MessageBubbleEnhanced: React.FC<MessageBubbleEnhancedProps> = ({
         {message.parent_message_id && message.parent_message && (
           <div className={`mb-1 px-3 py-1.5 rounded-lg text-xs border-l-2 ${
             isOwnMessage
-              ? 'bg-dc-teal/20 border-white/40 text-white/80'
+              ? 'bg-dc-teal/20 border-dc-text/40 text-dc-text/80'
               : 'bg-muted border-dc-pink/40 text-muted-foreground'
           }`}>
             <span className="font-medium text-[10px]">
@@ -138,8 +138,8 @@ export const MessageBubbleEnhanced: React.FC<MessageBubbleEnhancedProps> = ({
         <div
           className={`inline-block px-4 py-2.5 max-w-full transition-shadow duration-200 ${
             isOwnMessage
-              ? 'bg-dc-teal text-white rounded-2xl rounded-br-md shadow-sm'
-              : 'bg-dc-pink text-white rounded-2xl rounded-bl-md shadow-sm'
+              ? 'bg-dc-teal text-dc-text rounded-2xl rounded-br-md shadow-sm'
+              : 'bg-dc-pink text-dc-text rounded-2xl rounded-bl-md shadow-sm'
           }`}
         >
           <p className="text-base whitespace-pre-wrap break-words leading-relaxed">
