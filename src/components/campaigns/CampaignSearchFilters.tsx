@@ -152,14 +152,14 @@ export const CampaignSearchFilters: React.FC<CampaignSearchFiltersProps> = ({
             >
               <Search className="w-4 h-4 text-gray-500" />
             </button>
-            <div className="flex gap-1.5 overflow-x-auto scrollbar-hide">
+            <div className="flex gap-1.5 overflow-x-auto scrollbar-hide md:overflow-x-visible md:flex-wrap">
               {CONTENT_TYPE_PILLS.map((pill) => (
                 <button
                   key={pill.value}
                   onClick={() => onContentTypeChange(pill.value)}
                   className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${
                     filters.contentType === pill.value
-                      ? 'bg-dc-teal text-white'
+                      ? 'bg-dc-teal-btn text-white'
                       : 'bg-gray-50 text-gray-600 border border-gray-200 hover:border-dc-teal'
                   }`}
                 >
@@ -182,14 +182,14 @@ export const CampaignSearchFilters: React.FC<CampaignSearchFiltersProps> = ({
       </div>
 
       {searchOpen && (
-        <div className="flex gap-1.5 overflow-x-auto scrollbar-hide">
+        <div className="flex gap-1.5 overflow-x-auto scrollbar-hide md:overflow-x-visible md:flex-wrap">
           {CONTENT_TYPE_PILLS.map((pill) => (
             <button
               key={pill.value}
               onClick={() => onContentTypeChange(pill.value)}
               className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${
                 filters.contentType === pill.value
-                  ? 'bg-dc-teal text-white'
+                  ? 'bg-dc-teal-btn text-white'
                   : 'bg-gray-50 text-gray-600 border border-gray-200 hover:border-dc-teal'
               }`}
             >
@@ -203,7 +203,7 @@ export const CampaignSearchFilters: React.FC<CampaignSearchFiltersProps> = ({
         <div className="space-y-2 pt-1">
           <div>
             <SectionLabel>Delivery Speed</SectionLabel>
-            <div className="flex gap-1.5 overflow-x-auto scrollbar-hide">
+            <div className="flex gap-1.5 overflow-x-auto scrollbar-hide md:overflow-x-visible md:flex-wrap">
             {DELIVERY_TIER_PILLS.map((pill) => (
               <button
                 key={pill.value}
@@ -222,14 +222,14 @@ export const CampaignSearchFilters: React.FC<CampaignSearchFiltersProps> = ({
 
           <div>
             <SectionLabel>More Content Types</SectionLabel>
-            <div className="flex gap-1.5 overflow-x-auto scrollbar-hide mb-2.5">
+            <div className="flex gap-1.5 overflow-x-auto scrollbar-hide md:overflow-x-visible md:flex-wrap mb-2.5">
               {MORE_CONTENT_PILLS.map((pill) => (
                 <button
                   key={pill.value}
                   onClick={() => onContentTypeChange(pill.value)}
                   className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${
                     filters.contentType === pill.value
-                      ? 'bg-dc-teal text-white'
+                      ? 'bg-dc-teal-btn text-white'
                       : 'bg-gray-50 text-gray-600 border border-gray-200 hover:border-dc-teal'
                   }`}
                 >
@@ -241,14 +241,14 @@ export const CampaignSearchFilters: React.FC<CampaignSearchFiltersProps> = ({
 
           <div>
             <SectionLabel>Distance</SectionLabel>
-            <div className="flex gap-1.5 overflow-x-auto scrollbar-hide mb-2.5">
+            <div className="flex gap-1.5 overflow-x-auto scrollbar-hide md:overflow-x-visible md:flex-wrap mb-2.5">
               {DISTANCE_PILLS.map((pill) => (
                 <button
                   key={String(pill.value)}
                   onClick={() => onDistanceChange(pill.value)}
                   className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${
                     filters.distanceRadius === pill.value
-                      ? 'bg-dc-teal text-white'
+                      ? 'bg-dc-teal-btn text-white'
                       : 'bg-gray-50 text-gray-600 border border-gray-200 hover:border-dc-teal'
                   }`}
                 >
@@ -260,14 +260,14 @@ export const CampaignSearchFilters: React.FC<CampaignSearchFiltersProps> = ({
 
           <div>
             <SectionLabel>Budget Min</SectionLabel>
-            <div className="flex gap-1.5 overflow-x-auto scrollbar-hide mb-2.5">
+            <div className="flex gap-1.5 overflow-x-auto scrollbar-hide md:overflow-x-visible md:flex-wrap mb-2.5">
               {BUDGET_MIN_PILLS.map((pill) => (
                 <button
                   key={String(pill.value)}
                   onClick={() => onBudgetMinChange(pill.value)}
                   className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${
                     filters.budgetMin === pill.value
-                      ? 'bg-dc-teal text-white'
+                      ? 'bg-dc-teal-btn text-white'
                       : 'bg-gray-50 text-gray-600 border border-gray-200 hover:border-dc-teal'
                   }`}
                 >
@@ -279,14 +279,14 @@ export const CampaignSearchFilters: React.FC<CampaignSearchFiltersProps> = ({
 
           <div>
             <SectionLabel>Budget Max</SectionLabel>
-            <div className="flex gap-1.5 overflow-x-auto scrollbar-hide mb-2.5">
+            <div className="flex gap-1.5 overflow-x-auto scrollbar-hide md:overflow-x-visible md:flex-wrap mb-2.5">
               {BUDGET_MAX_PILLS.map((pill) => (
                 <button
                   key={String(pill.value)}
                   onClick={() => onBudgetMaxChange(pill.value)}
                   className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${
                     filters.budgetMax === pill.value
-                      ? 'bg-dc-teal text-white'
+                      ? 'bg-dc-teal-btn text-white'
                       : 'bg-gray-50 text-gray-600 border border-gray-200 hover:border-dc-teal'
                   }`}
                 >
