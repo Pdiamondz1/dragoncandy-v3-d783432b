@@ -9,6 +9,7 @@ export const cleanupAuthState = () => {
         localStorage.removeItem(key);
       }
     });
+    localStorage.removeItem('dc_site_unlocked_until');
 
     // Remove keys from sessionStorage if present
     try {
@@ -17,6 +18,7 @@ export const cleanupAuthState = () => {
           sessionStorage.removeItem(key);
         }
       });
+      sessionStorage.removeItem('dc_gate_redirect');
     } catch {}
   } catch {}
 };
