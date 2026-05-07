@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Label } from '@/components/ui/label';
 import { Upload, CheckCircle } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
@@ -7,6 +7,7 @@ import {
   uploadProfileAsset,
   UploadError,
 } from '@/lib/storage/uploadProfileAsset';
+import { getSignedProfileUrl } from '@/hooks/useSignedUrl';
 import { AvatarCropModal } from '@/components/settings/AvatarCropModal';
 
 interface AvatarUploadProps {
@@ -26,7 +27,17 @@ export const AvatarUpload = ({
   const [uploading, setUploading] = useState(false);
   const [localPreview, setLocalPreview] = useState<string | null>(null);
   const [cropSrc, setCropSrc] = useState<string | null>(null);
+  const [resolvedAvatarUrl, setResolvedAvatarUrl] = useState<string | undefined>(undefined);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!avatarUrl) { setResolvedAvatarUrl(undefined); return; }
+    getSignedProfileUrl(avatarUrl).then((url) => {
+      if (!cancelled) setResolvedAvatarUrl(url);
+    });
+    return () => { cancelled = true; };
+  }, [avatarUrl]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -42,14 +53,14 @@ export const AvatarUpload = ({
 
     setUploading(true);
     try {
-      const { url } = await uploadProfileAsset({
+      const { path } = await uploadProfileAsset({
         file: croppedFile,
         userId: user.id,
         kind: 'avatar',
       });
       onAvatarFileChange(croppedFile);
       setLocalPreview(URL.createObjectURL(croppedFile));
-      onAvatarUrlChange?.(url);
+      onAvatarUrlChange?.(path);
       toast({ title: 'Profile photo uploaded \u2713' });
     } catch (err) {
       const msg = err instanceof UploadError ? err.message : 'Upload failed.';
@@ -63,7 +74,7 @@ export const AvatarUpload = ({
     }
   };
 
-  const previewSrc = localPreview || avatarUrl;
+  const previewSrc = localPreview || resolvedAvatarUrl;
 
   return (
     <div>

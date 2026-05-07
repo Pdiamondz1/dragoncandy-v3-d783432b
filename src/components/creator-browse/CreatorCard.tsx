@@ -1,29 +1,9 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { CreatorProfileModal } from './CreatorProfileModal';
 import { CreatorPortfolioModal } from '@/components/creator-profile/CreatorPortfolioModal';
 import { Heart } from 'lucide-react';
 import type { CreatorProfile } from '@/hooks/useCreatorBrowse';
-
-const SUPABASE_URL = 'https://zocahiffooqdybdhguqv.supabase.co';
-
-/** Build a public URL for a storage path, with optional image transform for thumbnails. */
-const resolveStorageUrl = (raw: string | null | undefined, width?: number): string | undefined => {
-  if (!raw) return undefined;
-  if (raw.startsWith('http://') || raw.startsWith('https://')) {
-    if (!width) return raw;
-    // Apply image transform only to Supabase storage URLs
-    const marker = '/storage/v1/object/public/';
-    const idx = raw.indexOf(marker);
-    if (idx === -1) return raw;
-    const storagePath = raw.substring(idx + marker.length);
-    return `${SUPABASE_URL}/storage/v1/render/image/public/${storagePath}?width=${width}&quality=75`;
-  }
-  // Relative storage path
-  if (width) {
-    return `${SUPABASE_URL}/storage/v1/render/image/public/profile-assets/${raw}?width=${width}&quality=75`;
-  }
-  return `${SUPABASE_URL}/storage/v1/object/public/profile-assets/${raw}`;
-};
+import { getSignedProfileUrl } from '@/hooks/useSignedUrl';
 
 interface CreatorCardProps {
   creator: CreatorProfile;
@@ -61,25 +41,37 @@ export const CreatorCard: React.FC<CreatorCardProps> = React.memo(({ creator }) 
   const [avatarImgFailed, setAvatarImgFailed] = useState(false);
   const [isFavorite, setIsFavorite] = useState(() => getFavorites().includes(creator.id));
 
-  // Resolve thumbnail synchronously — prefer the uploaded avatar and use the
-  // original asset URL so the full photo can render without transform cropping.
-  const thumbnailUrl = useMemo(() => {
-    if (creator.avatar_url && !avatarImgFailed) {
-      return resolveStorageUrl(creator.avatar_url);
-    }
-    const firstPortfolio = creator.portfolio_urls?.[0];
-    if (firstPortfolio && !isVideoPath(firstPortfolio) && !portfolioImgFailed) {
-      return resolveStorageUrl(firstPortfolio);
-    }
-    return null;
+  const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
+  const [resolvedPortfolioUrls, setResolvedPortfolioUrls] = useState<string[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const resolve = async () => {
+      if (creator.avatar_url && !avatarImgFailed) {
+        const url = await getSignedProfileUrl(creator.avatar_url);
+        if (!cancelled && url) { setThumbnailUrl(url); return; }
+      }
+      const firstPortfolio = creator.portfolio_urls?.[0];
+      if (firstPortfolio && !isVideoPath(firstPortfolio) && !portfolioImgFailed) {
+        const url = await getSignedProfileUrl(firstPortfolio);
+        if (!cancelled && url) { setThumbnailUrl(url); return; }
+      }
+      if (!cancelled) setThumbnailUrl(null);
+    };
+    resolve();
+    return () => { cancelled = true; };
   }, [creator.portfolio_urls, creator.avatar_url, portfolioImgFailed, avatarImgFailed]);
 
-  // Resolved portfolio URLs for the portfolio modal (synchronous)
-  const resolvedPortfolioUrls = useMemo(() => {
-    const first = creator.portfolio_urls?.[0];
-    if (!first) return [];
-    const url = resolveStorageUrl(first);
-    return url ? [url] : [];
+  useEffect(() => {
+    let cancelled = false;
+    const resolve = async () => {
+      const first = creator.portfolio_urls?.[0];
+      if (!first) { setResolvedPortfolioUrls([]); return; }
+      const url = await getSignedProfileUrl(first);
+      if (!cancelled) setResolvedPortfolioUrls(url ? [url] : []);
+    };
+    resolve();
+    return () => { cancelled = true; };
   }, [creator.portfolio_urls]);
 
   const handleCardClick = () => setIsModalOpen(true);

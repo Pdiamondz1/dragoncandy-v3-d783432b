@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Label } from '@/components/ui/label';
 import { Upload, CheckCircle } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
@@ -7,6 +7,7 @@ import {
   uploadProfileAsset,
   UploadError,
 } from '@/lib/storage/uploadProfileAsset';
+import { getSignedProfileUrl } from '@/hooks/useSignedUrl';
 import { AvatarCropModal } from '@/components/settings/AvatarCropModal';
 
 interface FileUploadSectionProps {
@@ -41,8 +42,18 @@ export const FileUploadSection = ({
     { url: string; name: string }[]
   >([]);
   const [logoCropSrc, setLogoCropSrc] = useState<string | null>(null);
+  const [resolvedLogoUrl, setResolvedLogoUrl] = useState<string | undefined>(undefined);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const sampleInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!logoUrl) { setResolvedLogoUrl(undefined); return; }
+    getSignedProfileUrl(logoUrl).then((url) => {
+      if (!cancelled) setResolvedLogoUrl(url);
+    });
+    return () => { cancelled = true; };
+  }, [logoUrl]);
 
   const handleLogoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -58,14 +69,14 @@ export const FileUploadSection = ({
 
     setLogoUploading(true);
     try {
-      const { url } = await uploadProfileAsset({
+      const { path } = await uploadProfileAsset({
         file: croppedFile,
         userId: user.id,
         kind: 'logo',
       });
       onLogoChange(croppedFile);
       setLocalLogoPreview(URL.createObjectURL(croppedFile));
-      onLogoUrlChange?.(url);
+      onLogoUrlChange?.(path);
       toast({ title: 'Logo uploaded \u2713' });
     } catch (err) {
       const msg =
@@ -96,12 +107,12 @@ export const FileUploadSection = ({
 
     for (const file of fileList) {
       try {
-        const { url } = await uploadProfileAsset({
+        const { path } = await uploadProfileAsset({
           file,
           userId: user.id,
           kind: 'sample',
         });
-        uploadedUrls.push(url);
+        uploadedUrls.push(path);
         previews.push({ url: URL.createObjectURL(file), name: file.name });
         completed++;
         setSampleProgress({ done: completed, total: fileList.length });
@@ -129,7 +140,7 @@ export const FileUploadSection = ({
   const truncateName = (name: string) =>
     name.length > 24 ? name.slice(0, 21) + '…' : name;
 
-  const logoPreviewSrc = localLogoPreview || logoUrl;
+  const logoPreviewSrc = localLogoPreview || resolvedLogoUrl;
 
   return (
     <>

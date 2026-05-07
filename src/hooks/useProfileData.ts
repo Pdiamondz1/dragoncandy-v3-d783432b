@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import { getSignedProfileUrl } from '@/hooks/useSignedUrl';
 
 interface ProfileData {
   avatarUrl?: string;
@@ -26,21 +27,8 @@ export const useProfileData = () => {
   
   const hasFetchedRef = useRef(false);
 
-  const getPublicUrl = (filePath: string | null | undefined, width?: number): string | undefined => {
-    if (!filePath) return undefined;
-
-    // If it's already a full URL, return as is
-    if (filePath.startsWith('http')) return filePath;
-
-    // Use Supabase image transform when a target width is provided
-    if (width) {
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://zocahiffooqdybdhguqv.supabase.co';
-      return `${supabaseUrl}/storage/v1/render/image/public/profile-assets/${filePath}?width=${width}&height=${width}&resize=cover&quality=75`;
-    }
-
-    // Convert storage path to public URL
-    const { data } = supabase.storage.from('profile-assets').getPublicUrl(filePath);
-    return data.publicUrl;
+  const resolveProfileUrl = async (filePath: string | null | undefined): Promise<string | undefined> => {
+    return getSignedProfileUrl(filePath);
   };
 
   const fetchProfileData = useCallback(async (forceRefresh = false) => {
@@ -71,7 +59,7 @@ export const useProfileData = () => {
           .eq('user_id', user.id)
           .single();
 
-        const avatarUrl = getPublicUrl(creatorProfile?.avatar_url, 72);
+        const avatarUrl = await resolveProfileUrl(creatorProfile?.avatar_url);
         const newData = {
           avatarUrl,
           displayName: creatorProfile?.creator_name || profile.full_name,
@@ -88,7 +76,7 @@ export const useProfileData = () => {
           .eq('user_id', user.id)
           .single();
 
-        const avatarUrl = getPublicUrl(businessProfile?.logo_url, 72);
+        const avatarUrl = await resolveProfileUrl(businessProfile?.logo_url);
         const newData = {
           avatarUrl,
           displayName: businessProfile?.business_name || profile.full_name,

@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { PublicCampaign } from '@/hooks/usePublicCampaigns';
+import { getSignedProfileUrl } from '@/hooks/useSignedUrl';
 import { useCreateApplication } from '@/hooks/useCreateApplication';
 import { formatBudget } from '@/lib/campaignUtils';
 import type { DeliveryTier } from '@/types/campaignMedia';
@@ -90,13 +91,7 @@ export const CampaignApplyForm: React.FC<CampaignApplyFormProps> = ({
       const urls = await Promise.all(
         profile.portfolio_urls.map(async (path: string) => {
           if (!path) return null;
-          if (path.startsWith('http://') || path.startsWith('https://')) {
-            return path;
-          }
-          const { data } = supabase.storage
-            .from('profile-assets')
-            .getPublicUrl(path);
-          return data.publicUrl;
+          return await getSignedProfileUrl(path);
         })
       );
       return urls.filter((u): u is string => u !== null);

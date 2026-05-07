@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { getSignedProfileUrl } from '@/hooks/useSignedUrl';
 import {
   Dialog,
   DialogContent,
@@ -93,24 +94,10 @@ const toThumbnailUrl = (url: string, width = 540): string => {
   return `${SUPABASE_URL}/storage/v1/render/image/public/${storagePath}?width=${width}&quality=75`;
 };
 
-/**
- * Resolve a raw avatar storage path or full URL into a displayable image-transform URL.
- * Returns undefined if the input is falsy.
- */
-const resolveAvatarUrl = (raw: string | null | undefined, width = 160): string | undefined => {
+const resolveAvatarUrl = (raw: string | null | undefined): string | undefined => {
   if (!raw) return undefined;
-  if (raw.startsWith('http://') || raw.startsWith('https://')) {
-    // Already a full URL — route through image transform if it's a Supabase storage URL
-    const marker = '/storage/v1/object/public/';
-    const idx = raw.indexOf(marker);
-    if (idx !== -1) {
-      const storagePath = raw.substring(idx + marker.length);
-      return `${SUPABASE_URL}/storage/v1/render/image/public/${storagePath}?width=${width}&height=${width}&resize=cover&quality=75`;
-    }
-    return raw;
-  }
-  // Relative storage path — build image transform URL directly
-  return `${SUPABASE_URL}/storage/v1/render/image/public/profile-assets/${raw}?width=${width}&height=${width}&resize=cover&quality=75`;
+  if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
+  return undefined;
 };
 
 export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
@@ -123,6 +110,20 @@ export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
+  const [avatarUrl, setAvatarUrl] = useState<string | undefined>();
+
+  useEffect(() => {
+    const profile = fullProfile;
+    if (profile?.avatar_url) {
+      if (profile.avatar_url.startsWith('http')) {
+        setAvatarUrl(profile.avatar_url);
+      } else {
+        getSignedProfileUrl(profile.avatar_url).then(setAvatarUrl);
+      }
+    } else {
+      setAvatarUrl(undefined);
+    }
+  }, [fullProfile?.avatar_url]);
 
   useEffect(() => {
     if (!isOpen || !creator) return;
@@ -149,13 +150,10 @@ export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
                 if (url.startsWith('http://') || url.startsWith('https://')) {
                   return url;
                 }
-                const { data: urlData } = supabase.storage
-                  .from('profile-assets')
-                  .getPublicUrl(url);
-                return urlData.publicUrl;
+                return await getSignedProfileUrl(url);
               })
             );
-            setPortfolioUrls(urls.filter((u): u is string => u !== null));
+            setPortfolioUrls(urls.filter((u): u is string => !!u));
           }
         }
       } catch (error) {
@@ -228,7 +226,7 @@ export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
             {/* Header Section */}
             <div className="flex items-start gap-4">
               <Avatar className="h-20 w-20">
-                <AvatarImage src={resolveAvatarUrl(profile.avatar_url)} alt={profile.creator_name ?? "Creator avatar"} />
+                <AvatarImage src={avatarUrl} alt={profile.creator_name ?? "Creator avatar"} />
                 <AvatarFallback>
                   <User className="h-10 w-10" />
                 </AvatarFallback>

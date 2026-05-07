@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { getSignedProfileUrl } from '@/hooks/useSignedUrl';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -70,18 +71,10 @@ const toThumbnailUrl = (url: string, width = 540): string => {
   return `${SUPABASE_URL}/storage/v1/render/image/public/${storagePath}?width=${width}&quality=75`;
 };
 
-const resolveAvatarUrl = (raw: string | null | undefined, width = 160): string | undefined => {
+const resolveAvatarUrl = (raw: string | null | undefined): string | undefined => {
   if (!raw) return undefined;
-  if (raw.startsWith('http://') || raw.startsWith('https://')) {
-    const marker = '/storage/v1/object/public/';
-    const idx = raw.indexOf(marker);
-    if (idx !== -1) {
-      const storagePath = raw.substring(idx + marker.length);
-      return `${SUPABASE_URL}/storage/v1/render/image/public/${storagePath}?width=${width}&height=${width}&resize=cover&quality=75`;
-    }
-    return raw;
-  }
-  return `${SUPABASE_URL}/storage/v1/render/image/public/profile-assets/${raw}?width=${width}&height=${width}&resize=cover&quality=75`;
+  if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
+  return undefined;
 };
 
 const PublicCreatorProfile = () => {
@@ -96,6 +89,19 @@ const PublicCreatorProfile = () => {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | undefined>();
+
+  useEffect(() => {
+    if (profile?.avatar_url) {
+      if (profile.avatar_url.startsWith('http')) {
+        setAvatarUrl(profile.avatar_url);
+      } else {
+        getSignedProfileUrl(profile.avatar_url).then(setAvatarUrl);
+      }
+    } else {
+      setAvatarUrl(undefined);
+    }
+  }, [profile?.avatar_url]);
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -209,16 +215,10 @@ const PublicCreatorProfile = () => {
         profile.portfolio_urls.map(async (path) => {
           if (!path) return null;
           try {
-            if (path.startsWith('http://') || path.startsWith('https://')) {
-              return path;
-            }
-            const { data } = supabase.storage
-              .from('profile-assets')
-              .getPublicUrl(path);
-            return data.publicUrl;
+            return await getSignedProfileUrl(path);
           } catch (error) {
             console.error('Error converting portfolio URL:', error);
-            return path;
+            return null;
           }
         })
       );
@@ -263,7 +263,7 @@ const PublicCreatorProfile = () => {
     );
   }
 
-  const heroImage = portfolioUrls[0] || resolveAvatarUrl(profile.avatar_url, 800);
+  const heroImage = portfolioUrls[0] || avatarUrl;
 
   return (
     <div className="bg-white min-h-screen">
@@ -307,7 +307,7 @@ const PublicCreatorProfile = () => {
       {/* White Profile Card — overlaps hero */}
       <div className="bg-white rounded-3xl -mt-6 relative z-10 mx-4 px-4 py-3 flex items-center gap-3 shadow-md">
         <Avatar className="w-16 h-16 ring-2 ring-dc-teal flex-shrink-0">
-          <AvatarImage src={resolveAvatarUrl(profile.avatar_url)} />
+          <AvatarImage src={avatarUrl} />
           <AvatarFallback className="bg-dc-teal/20">
             <User className="h-8 w-8 text-dc-teal" />
           </AvatarFallback>

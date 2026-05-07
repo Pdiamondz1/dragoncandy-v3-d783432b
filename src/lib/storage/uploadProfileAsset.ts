@@ -83,11 +83,5 @@ export async function uploadProfileAsset({
     throw new UploadError(uploadError.message);
   }
 
-  const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(path);
-
-  if (!urlData?.publicUrl) {
-    throw new UploadError('Failed to resolve public URL.');
-  }
-
-  return { url: urlData.publicUrl, path };
+  return { url: '', path };
 }
