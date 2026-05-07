@@ -138,7 +138,7 @@ export default function Index() {
           path="/"
         />
         <div className="text-center space-y-4">
-          <Spinner className="h-32 w-32 border-pink-600 mx-auto" label="Loading DragonCandy..." />
+          <Spinner className="h-32 w-32 border-pink-600" label="Loading DragonCandy..." />
           <div className="text-lg font-medium text-foreground">Loading DragonCandy...</div>
           {isDevelopment && (
             <div className="mt-8 p-4 bg-muted rounded-lg text-sm text-muted-foreground max-w-md">

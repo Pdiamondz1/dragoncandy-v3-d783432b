@@ -315,7 +315,7 @@ const FeedCard: React.FC<FeedCardProps> = ({ item, onItemClick }) => {
       <div className="relative aspect-square overflow-hidden">
         {!loaded && !error && (
           <div className="absolute inset-0 bg-muted animate-pulse flex items-center justify-center">
-            <Spinner className="border-primary border-t-transparent" label="Loading image..." />
+            <Spinner className="border-2 border-primary border-t-transparent" label="Loading image..." />
           </div>
         )}
         
