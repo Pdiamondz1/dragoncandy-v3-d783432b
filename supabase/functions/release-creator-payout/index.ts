@@ -89,7 +89,12 @@ serve(async (req) => {
     }
 
     const campaign = collaboration.campaign;
-    
+
+    // Escrow must be held before releasing payout
+    if (campaign.escrow_status !== 'held') {
+      throw new Error(`Cannot release payout: escrow status is '${campaign.escrow_status}', expected 'held'`);
+    }
+
     // Calculate payout amount
     let payoutAmount = 0;
     if (campaign.pricing_type === 'fixed' && campaign.fixed_price) {

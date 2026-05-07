@@ -35,6 +35,9 @@ serve(async (req) => {
 
     const { post_id, amount_cents, tier_label } = await req.json();
     if (!post_id || !amount_cents || !tier_label) throw new Error("Missing required fields");
+    if (typeof amount_cents !== 'number' || amount_cents < 500 || amount_cents > 50000) {
+      throw new Error("Boost amount must be between $5 and $500");
+    }
 
     logStep("Boost requested", { post_id, amount_cents, tier_label, userId });
 

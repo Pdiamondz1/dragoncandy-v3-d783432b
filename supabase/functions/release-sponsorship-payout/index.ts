@@ -54,7 +54,12 @@ serve(async (req) => {
       throw new Error(`Failed to fetch sponsorship: ${sponsorshipError?.message}`);
     }
 
-    logStep("Sponsorship found", { 
+    // Only the campaign owner can release sponsorship payouts
+    if (sponsorship.campaigns?.user_id !== user.id) {
+      throw new Error("Only the campaign owner can release sponsorship payouts");
+    }
+
+    logStep("Sponsorship found", {
       sponsorshipId,
       restaurantId: sponsorship.restaurant_id,
       amount: sponsorship.sponsorship_amount,
