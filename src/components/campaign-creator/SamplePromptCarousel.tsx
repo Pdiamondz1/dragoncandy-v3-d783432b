@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { useReducedMotion } from '@/lib/motion';
 
 interface SamplePromptCarouselProps {
   onSelect: (text: string) => void;
@@ -36,13 +37,16 @@ export function SamplePromptCarousel({ onSelect, disabled }: SamplePromptCarouse
   const { profile } = useAuth();
 
   const businessName = profile?.business_name ?? undefined;
+  const [paused, setPaused] = useState(false);
+  const reducedMotion = useReducedMotion();
 
   useEffect(() => {
-    const interval = setInterval(() => {
+    if (reducedMotion || paused) return;
+    const id = setInterval(() => {
       setActiveIndex((i) => (i + 1) % TEMPLATES.length);
     }, 5000);
-    return () => clearInterval(interval);
-  }, []);
+    return () => clearInterval(id);
+  }, [reducedMotion, paused]);
 
   const handleTap = useCallback(() => {
     if (disabled) return;
@@ -60,8 +64,22 @@ export function SamplePromptCarousel({ onSelect, disabled }: SamplePromptCarouse
       type="button"
       onClick={handleTap}
       disabled={disabled}
-      className="w-full bg-teal-50 border border-teal-200 rounded-2xl p-4 text-left transition-opacity hover:opacity-90 disabled:opacity-50 mt-4"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+      onFocusCapture={() => setPaused(true)}
+      onBlurCapture={() => setPaused(false)}
+      className="relative w-full bg-teal-50 border border-teal-200 rounded-2xl p-4 text-left transition-opacity hover:opacity-90 disabled:opacity-50 mt-4"
     >
+      <span
+        role="button"
+        tabIndex={0}
+        aria-label={paused ? "Resume carousel" : "Pause carousel"}
+        onClick={(e) => { e.stopPropagation(); setPaused(p => !p); }}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); e.preventDefault(); setPaused(p => !p); } }}
+        className="absolute top-2 right-2 p-1 rounded-full bg-dc-dark/50 text-white text-xs z-10"
+      >
+        {paused ? "▶" : "⏸"}
+      </span>
       <div className="flex items-center justify-between mb-2">
         <span className="text-teal-500 font-semibold text-[11px] uppercase tracking-wide">
           Try this example

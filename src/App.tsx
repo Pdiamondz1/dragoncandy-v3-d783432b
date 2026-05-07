@@ -1,5 +1,5 @@
 
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -118,6 +118,15 @@ function DashboardRedirect() {
 
 function AnimatedRoutes() {
   const location = useLocation();
+
+  useEffect(() => {
+    const main = document.getElementById("main-content");
+    if (main) {
+      main.setAttribute("tabindex", "-1");
+      main.focus({ preventScroll: false });
+    }
+  }, [location.pathname]);
+
   return (
     <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><Spinner /></div>}>
       <PageTransition locationKey={location.pathname}>
