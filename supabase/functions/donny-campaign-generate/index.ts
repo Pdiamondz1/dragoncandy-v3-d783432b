@@ -17,7 +17,30 @@ interface FetchedContent {
   bodyText: string;
 }
 
+function isBlockedUrl(urlStr: string): boolean {
+  try {
+    const u = new URL(urlStr);
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return true;
+    const h = u.hostname.toLowerCase();
+    if (h === 'localhost' || h === '127.0.0.1' || h === '::1' || h === '0.0.0.0') return true;
+    if (h === '169.254.169.254' || h === 'metadata.google.internal') return true;
+    const parts = h.split('.').map(Number);
+    if (parts.length === 4 && parts.every(p => !isNaN(p))) {
+      if (parts[0] === 10) return true;
+      if (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) return true;
+      if (parts[0] === 192 && parts[1] === 168) return true;
+    }
+    return false;
+  } catch {
+    return true;
+  }
+}
+
 async function fetchAndExtract(url: string): Promise<FetchedContent> {
+  if (isBlockedUrl(url)) {
+    throw new Error("URL targets a blocked address range");
+  }
+
   const response = await fetch(url, {
     headers: { "User-Agent": "DragonCandy-Bot/1.0" },
     redirect: "follow",

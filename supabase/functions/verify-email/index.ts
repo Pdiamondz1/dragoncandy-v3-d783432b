@@ -25,11 +25,26 @@ const handler = async (req: Request): Promise<Response> => {
       token = body?.token ?? null;
     }
 
-    const redirectBase = url.searchParams.get('redirect')
+    const ALLOWED_ORIGINS = new Set([
+      'https://dragoncandy.io',
+      'https://www.dragoncandy.io',
+      'https://dragoncandy-v3.lovable.app',
+      'https://dragoncandy-preview.lovable.app',
+    ]);
+    const rawRedirect = url.searchParams.get('redirect')
       || req.headers.get('origin')
       || req.headers.get('referer')
       || Deno.env.get('APP_URL')
       || '';
+    let redirectBase = '';
+    try {
+      const rUrl = new URL(rawRedirect);
+      if (ALLOWED_ORIGINS.has(rUrl.origin)) redirectBase = rUrl.origin;
+    } catch {
+      // rawRedirect may be just an origin string
+      if (ALLOWED_ORIGINS.has(rawRedirect)) redirectBase = rawRedirect;
+    }
+    if (!redirectBase) redirectBase = Deno.env.get('APP_URL') || 'https://dragoncandy.io';
 
     console.log('verify-email: request received', {
       method: req.method,

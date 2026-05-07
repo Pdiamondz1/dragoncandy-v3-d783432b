@@ -65,13 +65,18 @@ export const useUserPresence = () => {
   useEffect(() => {
     if (!user) return;
 
+    let cachedToken = '';
+    supabase.auth.getSession().then(({ data }) => {
+      cachedToken = data.session?.access_token ?? '';
+    });
+
     const goOffline = () => {
       fetch(`${SUPABASE_URL}/rest/v1/rpc/set_user_offline`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'apikey': SUPABASE_PUBLISHABLE_KEY,
-          'Authorization': `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+          'Authorization': `Bearer ${cachedToken || SUPABASE_PUBLISHABLE_KEY}`,
         },
         body: JSON.stringify({ p_user_id: user.id }),
         keepalive: true,

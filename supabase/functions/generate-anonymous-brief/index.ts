@@ -20,6 +20,25 @@ serve(async (req) => {
       );
     }
 
+    // SSRF protection: block private/internal URLs
+    try {
+      const parsed = new URL(url);
+      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') throw new Error('blocked');
+      const h = parsed.hostname.toLowerCase();
+      if (h === 'localhost' || h === '127.0.0.1' || h === '::1' || h === '0.0.0.0' ||
+          h === '169.254.169.254' || h === 'metadata.google.internal') throw new Error('blocked');
+      const parts = h.split('.').map(Number);
+      if (parts.length === 4 && parts.every(p => !isNaN(p))) {
+        if (parts[0] === 10 || (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) ||
+            (parts[0] === 192 && parts[1] === 168)) throw new Error('blocked');
+      }
+    } catch {
+      return new Response(
+        JSON.stringify({ error: 'URL is not allowed' }),
+        { status: 400, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } },
+      );
+    }
+
     // Extract client IP from x-forwarded-for (first IP, trimmed)
     const forwarded = req.headers.get('x-forwarded-for') ?? '';
     const clientIp = forwarded.split(',')[0].trim() || '0.0.0.0';
