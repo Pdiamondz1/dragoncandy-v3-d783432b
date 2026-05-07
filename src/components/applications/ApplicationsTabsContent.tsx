@@ -26,7 +26,7 @@ export const ApplicationsTabsContent: React.FC<ApplicationsTabsContentProps> = (
 
   return (
     <Tabs defaultValue="all" className="space-y-6">
-      <div className="overflow-x-auto -mx-1 px-1">
+      <div className="overflow-x-auto -mx-1 px-1 md:overflow-x-visible">
       <TabsList className={`grid w-full min-w-max whitespace-nowrap ${hasCounterOffers ? 'grid-cols-5' : 'grid-cols-4'}`}>
         <TabsTrigger value="all">All ({filteredApplications.length})</TabsTrigger>
         <TabsTrigger value="pending">Pending ({pendingApplications.length})</TabsTrigger>
