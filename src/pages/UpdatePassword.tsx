@@ -10,18 +10,22 @@ const UpdatePassword: React.FC = () => {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (password.length < 8) {
+      setErrorMessage("Use at least 8 characters.");
       toast({ title: "Password too short", description: "Use at least 8 characters." });
       return;
     }
     if (password !== confirm) {
+      setErrorMessage("Passwords do not match. Please re-enter matching passwords.");
       toast({ title: "Passwords do not match", description: "Please re-enter matching passwords." });
       return;
     }
+    setErrorMessage("");
 
     setLoading(true);
     try {
@@ -87,6 +91,9 @@ const UpdatePassword: React.FC = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
+                  aria-required="true"
+                  aria-invalid={!!errorMessage}
+                  aria-describedby={errorMessage ? "password-error" : undefined}
                   className="rounded-full h-12 px-5 text-base border-gray-200"
                 />
               </div>
@@ -103,9 +110,18 @@ const UpdatePassword: React.FC = () => {
                   value={confirm}
                   onChange={(e) => setConfirm(e.target.value)}
                   required
+                  aria-required="true"
+                  aria-invalid={!!errorMessage}
+                  aria-describedby={errorMessage ? "password-error" : undefined}
                   className="rounded-full h-12 px-5 text-base border-gray-200"
                 />
               </div>
+
+              {errorMessage && (
+                <p id="password-error" role="alert" className="text-sm text-dc-pink-accent">
+                  {errorMessage}
+                </p>
+              )}
 
               <button
                 type="submit"

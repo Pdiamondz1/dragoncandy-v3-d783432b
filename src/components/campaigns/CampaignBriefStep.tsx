@@ -2,6 +2,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 import { Lightbulb, Sparkles, Loader2, ArrowRight } from 'lucide-react';
 import { ContentSourceSelector } from './ContentSourceSelector';
 import { MediaUploader } from './MediaUploader';
@@ -47,7 +48,9 @@ export const CampaignBriefStep: React.FC<CampaignBriefStepProps> = ({
           <p className="text-gray-600 text-sm">Tell DragonCandy AI about your restaurant's content needs</p>
         </CardHeader>
         <CardContent className="space-y-4">
+          <Label htmlFor="campaign-goal" className="sr-only">Campaign goal</Label>
           <Textarea
+            id="campaign-goal"
             placeholder="Example: We just launched a new weekend brunch menu at our downtown cafe and want to drive foot traffic. We need mouth-watering food photos and short-form video reels showcasing our signature dishes — think close-up shots of our avocado toast, latte art, and the cozy interior vibe. Target local foodies and brunch lovers on Instagram and TikTok within a 15-mile radius. Budget is around $200-500 and we'd love content ready by this weekend."
             value={campaignGoal}
             onChange={(e) => setCampaignGoal(e.target.value)}

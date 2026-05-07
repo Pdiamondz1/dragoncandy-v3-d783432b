@@ -1,5 +1,6 @@
 import { motion } from '@/lib/motion';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Camera } from 'lucide-react';
 
 interface IdentityStepProps {
@@ -73,7 +74,9 @@ export function IdentityStep({ name, onNameChange, avatarPreview, onAvatarChange
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.15 }}
       >
+        <Label htmlFor="creator-name" className="sr-only">Creator name</Label>
         <Input
+          id="creator-name"
           value={name}
           onChange={e => onNameChange(e.target.value)}
           placeholder={config.placeholder}

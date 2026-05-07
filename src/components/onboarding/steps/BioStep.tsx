@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { motion } from '@/lib/motion';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Sparkles } from 'lucide-react';
 
 interface BioStepProps {
@@ -26,7 +27,9 @@ export function BioStep({ bio, onBioChange }: BioStepProps) {
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
       >
+        <Label htmlFor="creator-bio" className="sr-only">Bio</Label>
         <Input
+          id="creator-bio"
           value={bio}
           onChange={e => {
             onBioChange(e.target.value);

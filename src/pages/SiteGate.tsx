@@ -1,6 +1,7 @@
 import { useState, FormEvent } from 'react';
 import dragonCandyLogo from '@/assets/Transparent_DragonCandy_logo.webp';
 import { SITE_GATE_KEY, ONE_HOUR_MS } from '@/lib/siteGate';
+import { Label } from '@/components/ui/label';
 
 const SITE_PASSWORD = 'dragoncandy2026';
 
@@ -52,8 +53,12 @@ export default function SiteGate() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          <Label htmlFor="site-password" className="sr-only">Site access password</Label>
           <input
+            id="site-password"
+            name="password"
             type="password"
+            autoComplete="current-password"
             autoFocus
             value={password}
             onChange={(e) => {
@@ -62,11 +67,12 @@ export default function SiteGate() {
             }}
             placeholder="Password"
             className="w-full h-12 rounded-full border-2 border-teal-300 bg-white px-5 text-base text-dc-text placeholder:text-gray-400 focus:outline-none focus:border-dc-pink-accent focus:ring-2 focus:ring-dc-pink-accent/30 transition"
-            aria-label="Site access password"
+            aria-invalid={!!error}
+            aria-describedby={error ? "site-password-error" : undefined}
           />
 
           {error && (
-            <p className="text-sm text-dc-pink-accent font-semibold text-center">
+            <p id="site-password-error" role="alert" className="text-sm text-dc-pink-accent font-semibold text-center">
               {error}
             </p>
           )}

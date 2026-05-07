@@ -57,7 +57,7 @@ export const BusinessProfileForm = ({ formData, onInputChange }: BusinessProfile
       <div>
         <Label htmlFor="industry">Industry *</Label>
         <Select value={formData.industry} onValueChange={(value) => onInputChange('industry', value)}>
-          <SelectTrigger>
+          <SelectTrigger id="industry">
             <SelectValue placeholder="Select your industry" />
           </SelectTrigger>
           <SelectContent>

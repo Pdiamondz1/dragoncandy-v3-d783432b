@@ -5,6 +5,7 @@ import { toast } from "@/hooks/use-toast";
 import { toast as sonnerToast } from "sonner";
 import { Eye, EyeOff, Store, Camera, Megaphone } from "lucide-react";
 import type { UserRole as Role } from "@/types/user";
+import { Label } from "@/components/ui/label";
 
 interface AuthFormProps {
   mode: "login" | "signup";
@@ -177,13 +178,16 @@ export const AuthForm = ({ mode, onError, preSelectedRole, onChangeRole }: AuthF
         <form className="space-y-4" onSubmit={handleSubmit}>
           {/* Full name (signup only) */}
           {mode === "signup" && (
-            <div>
+            <div className="space-y-1">
+              <Label htmlFor="fullName" className="text-sm font-medium text-dc-text">Full Name</Label>
               <input
                 id="fullName"
+                name="fullName"
                 type="text"
                 value={fullName}
                 autoComplete="name"
                 required
+                aria-required="true"
                 onChange={e => setFullName(e.target.value)}
                 placeholder="Full Name"
                 disabled={loading}
@@ -193,13 +197,15 @@ export const AuthForm = ({ mode, onError, preSelectedRole, onChangeRole }: AuthF
           )}
 
           {/* Email */}
-          <div>
+          <div className="space-y-1">
+            <Label htmlFor="email" className="text-sm font-medium text-dc-text">Email</Label>
             <input
               id="email"
               type="email"
               value={email}
               autoComplete="email"
               required
+              aria-required="true"
               onChange={e => setEmail(e.target.value)}
               placeholder="Email"
               disabled={loading}
@@ -208,6 +214,8 @@ export const AuthForm = ({ mode, onError, preSelectedRole, onChangeRole }: AuthF
           </div>
 
           {/* Password */}
+          <div className="space-y-1">
+            <Label htmlFor="password" className="text-sm font-medium text-dc-text">Password</Label>
           <div className="relative">
             <input
               id="password"
@@ -215,6 +223,7 @@ export const AuthForm = ({ mode, onError, preSelectedRole, onChangeRole }: AuthF
               value={password}
               autoComplete={mode === "signup" ? "new-password" : "current-password"}
               required
+              aria-required="true"
               onChange={e => setPassword(e.target.value)}
               placeholder="Password"
               disabled={loading}
@@ -228,6 +237,7 @@ export const AuthForm = ({ mode, onError, preSelectedRole, onChangeRole }: AuthF
             >
               {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
             </button>
+          </div>
           </div>
 
           {/* Forgot password (login only) */}
