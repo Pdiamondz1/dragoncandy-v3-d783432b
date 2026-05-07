@@ -363,9 +363,25 @@ serve(async (req: Request) => {
       const separator = redirectUri.includes("?") ? "&" : "?";
       const redirectUrl = `${redirectUri}${separator}code=${encodeURIComponent(rawCode)}&state=${encodeURIComponent(state)}`;
 
+      // If the access_token came in via the URL, return an HTML page that strips
+      // it from browser history before navigating to the redirect target. This
+      // prevents the token leaking via history, server logs, or Referer headers.
+      const tokenFromUrl = !!url.searchParams.get("access_token");
+      if (tokenFromUrl) {
+        const safeRedirect = redirectUrl.replace(/</g, "&lt;").replace(/"/g, "&quot;");
+        const html = `<!DOCTYPE html><html><head><meta name="referrer" content="no-referrer"><title>Redirecting…</title></head><body><script>
+          try { history.replaceState(null, '', location.pathname); } catch (e) {}
+          location.replace(${JSON.stringify(redirectUrl)});
+        </script><noscript><a href="${safeRedirect}">Continue</a></noscript></body></html>`;
+        return new Response(html, {
+          status: 200,
+          headers: { "Content-Type": "text/html; charset=utf-8", "Referrer-Policy": "no-referrer", ...corsHeaders(req) },
+        });
+      }
+
       return new Response(null, {
         status: 302,
-        headers: { Location: redirectUrl, ...corsHeaders(req) },
+        headers: { Location: redirectUrl, "Referrer-Policy": "no-referrer", ...corsHeaders(req) },
       });
     }
 

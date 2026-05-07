@@ -211,6 +211,13 @@ export type Database = {
             foreignKeyName: "brand_shortlists_brand_id_fkey"
             columns: ["brand_id"]
             isOneToOne: false
+            referencedRelation: "message_participant_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "brand_shortlists_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -219,6 +226,13 @@ export type Database = {
             columns: ["brand_id"]
             isOneToOne: false
             referencedRelation: "safe_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "brand_shortlists_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "message_participant_profiles"
             referencedColumns: ["id"]
           },
           {
@@ -266,6 +280,13 @@ export type Database = {
           source_url?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "business_contexts_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "message_participant_profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "business_contexts_profile_id_fkey"
             columns: ["profile_id"]
@@ -526,6 +547,13 @@ export type Database = {
             foreignKeyName: "campaign_applications_creator_id_fkey"
             columns: ["creator_id"]
             isOneToOne: false
+            referencedRelation: "message_participant_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_applications_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -677,6 +705,13 @@ export type Database = {
             foreignKeyName: "campaign_collaborations_creator_id_fkey"
             columns: ["creator_id"]
             isOneToOne: false
+            referencedRelation: "message_participant_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_collaborations_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -782,6 +817,13 @@ export type Database = {
             foreignKeyName: "campaign_invitations_creator_id_fkey"
             columns: ["creator_id"]
             isOneToOne: false
+            referencedRelation: "message_participant_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_invitations_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -790,6 +832,13 @@ export type Database = {
             columns: ["creator_id"]
             isOneToOne: false
             referencedRelation: "safe_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_invitations_invited_by_fkey"
+            columns: ["invited_by"]
+            isOneToOne: false
+            referencedRelation: "message_participant_profiles"
             referencedColumns: ["id"]
           },
           {
@@ -842,6 +891,13 @@ export type Database = {
             columns: ["campaign_id"]
             isOneToOne: false
             referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_matches_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "message_participant_profiles"
             referencedColumns: ["id"]
           },
           {
@@ -915,6 +971,13 @@ export type Database = {
             columns: ["campaign_id"]
             isOneToOne: false
             referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_media_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "message_participant_profiles"
             referencedColumns: ["id"]
           },
           {
@@ -1194,6 +1257,13 @@ export type Database = {
             foreignKeyName: "campaigns_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
+            referencedRelation: "message_participant_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaigns_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -1308,6 +1378,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "creator_automation_preferences_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "message_participant_profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "creator_automation_preferences_user_id_fkey"
             columns: ["user_id"]
@@ -1615,6 +1692,13 @@ export type Database = {
             foreignKeyName: "donny_campaign_previews_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
+            referencedRelation: "message_participant_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "donny_campaign_previews_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -1662,6 +1746,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "donny_conversations_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "message_participant_profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "donny_conversations_user_id_fkey"
             columns: ["user_id"]
@@ -1854,6 +1945,13 @@ export type Database = {
             foreignKeyName: "donny_nudges_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
+            referencedRelation: "message_participant_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "donny_nudges_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -2027,6 +2125,13 @@ export type Database = {
             columns: ["message_id"]
             isOneToOne: false
             referencedRelation: "donny_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "donny_tool_executions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "message_participant_profiles"
             referencedColumns: ["id"]
           },
           {
@@ -2259,6 +2364,13 @@ export type Database = {
             foreignKeyName: "dragonshare_payouts_creator_id_fkey"
             columns: ["creator_id"]
             isOneToOne: false
+            referencedRelation: "message_participant_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dragonshare_payouts_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -2354,6 +2466,13 @@ export type Database = {
           verified_by?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "dragonshare_posts_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "message_participant_profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "dragonshare_posts_creator_id_fkey"
             columns: ["creator_id"]
@@ -2504,6 +2623,13 @@ export type Database = {
             foreignKeyName: "file_comments_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
+            referencedRelation: "message_participant_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "file_comments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -2556,6 +2682,13 @@ export type Database = {
             foreignKeyName: "file_permissions_granted_by_fkey"
             columns: ["granted_by"]
             isOneToOne: false
+            referencedRelation: "message_participant_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "file_permissions_granted_by_fkey"
+            columns: ["granted_by"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -2564,6 +2697,13 @@ export type Database = {
             columns: ["granted_by"]
             isOneToOne: false
             referencedRelation: "safe_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "file_permissions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "message_participant_profiles"
             referencedColumns: ["id"]
           },
           {
@@ -2605,6 +2745,13 @@ export type Database = {
           tag_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "file_tag_assignments_assigned_by_fkey"
+            columns: ["assigned_by"]
+            isOneToOne: false
+            referencedRelation: "message_participant_profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "file_tag_assignments_assigned_by_fkey"
             columns: ["assigned_by"]
@@ -2658,6 +2805,13 @@ export type Database = {
           name?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "file_tags_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "message_participant_profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "file_tags_created_by_fkey"
             columns: ["created_by"]
@@ -2747,6 +2901,13 @@ export type Database = {
             foreignKeyName: "file_uploads_uploaded_by_fkey"
             columns: ["uploaded_by"]
             isOneToOne: false
+            referencedRelation: "message_participant_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "file_uploads_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -2791,6 +2952,13 @@ export type Database = {
           version_number?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "file_versions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "message_participant_profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "file_versions_created_by_fkey"
             columns: ["created_by"]
@@ -3029,6 +3197,13 @@ export type Database = {
             foreignKeyName: "messages_recipient_id_fkey"
             columns: ["recipient_id"]
             isOneToOne: false
+            referencedRelation: "message_participant_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -3037,6 +3212,13 @@ export type Database = {
             columns: ["recipient_id"]
             isOneToOne: false
             referencedRelation: "safe_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "message_participant_profiles"
             referencedColumns: ["id"]
           },
           {
@@ -3339,6 +3521,13 @@ export type Database = {
           stripe_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "payment_events_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "message_participant_profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "payment_events_actor_id_fkey"
             columns: ["actor_id"]
@@ -3869,6 +4058,27 @@ export type Database = {
       }
     }
     Views: {
+      message_participant_profiles: {
+        Row: {
+          avatar_url: string | null
+          full_name: string | null
+          id: string | null
+          role: Database["public"]["Enums"]["user_role"] | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          full_name?: string | null
+          id?: string | null
+          role?: Database["public"]["Enums"]["user_role"] | null
+        }
+        Update: {
+          avatar_url?: string | null
+          full_name?: string | null
+          id?: string | null
+          role?: Database["public"]["Enums"]["user_role"] | null
+        }
+        Relationships: []
+      }
       messages_with_profiles: {
         Row: {
           attachment_name: string | null
@@ -3889,7 +4099,6 @@ export type Database = {
           read_at: string | null
           recipient_id: string | null
           sender_avatar_url: string | null
-          sender_email: string | null
           sender_full_name: string | null
           sender_id: string | null
           thread_id: string | null
@@ -3941,6 +4150,13 @@ export type Database = {
             foreignKeyName: "messages_recipient_id_fkey"
             columns: ["recipient_id"]
             isOneToOne: false
+            referencedRelation: "message_participant_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -3949,6 +4165,13 @@ export type Database = {
             columns: ["recipient_id"]
             isOneToOne: false
             referencedRelation: "safe_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "message_participant_profiles"
             referencedColumns: ["id"]
           },
           {
