@@ -161,7 +161,7 @@ export const BrandCreatorCard: React.FC<BrandCreatorCardProps> = ({
               e.stopPropagation();
               onInvite(creator.user_id);
             }}
-            className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-dc-teal text-white rounded-full text-sm font-semibold hover:bg-dc-teal/90 transition-colors"
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-dc-teal-btn text-white rounded-full text-sm font-semibold hover:bg-dc-teal-btn-hover transition-colors"
           >
             <Send className="h-4 w-4" />
             Invite

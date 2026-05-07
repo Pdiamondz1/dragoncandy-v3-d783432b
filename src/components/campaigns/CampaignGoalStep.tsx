@@ -97,7 +97,7 @@ export const CampaignGoalStep: React.FC<CampaignGoalStepProps> = ({
         <Button 
           onClick={onGenerateWithAI}
           disabled={!campaignGoal.trim() || isGenerating}
-          className="w-full bg-pink-500 hover:bg-pink-600 text-white"
+          className="w-full bg-pink-500 hover:bg-dc-pink-accent-btn-hover text-white"
         >
           {isGenerating ? (
             <Loader2 className="h-4 w-4 mr-2 animate-spin" />

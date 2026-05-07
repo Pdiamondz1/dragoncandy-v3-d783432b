@@ -181,7 +181,7 @@ export function DeliverableBuilder({
                       }
                       className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
                         deliverable.aspect_ratio === ratio
-                          ? 'bg-dc-teal text-white'
+                          ? 'bg-dc-teal-btn text-white'
                           : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                       }`}
                     >

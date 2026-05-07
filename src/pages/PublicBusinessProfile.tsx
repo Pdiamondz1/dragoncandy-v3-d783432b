@@ -116,7 +116,7 @@ const PublicBusinessProfile = () => {
           </p>
           <Button
             onClick={() => navigate('/')}
-            className="w-full bg-dc-teal text-white rounded-full h-12 font-bold"
+            className="w-full bg-dc-teal-btn text-white rounded-full h-12 font-bold"
           >
             Go Home
           </Button>
@@ -257,7 +257,7 @@ const PublicBusinessProfile = () => {
       <div className="px-4 pb-8">
         <Button
           onClick={handleContactBusiness}
-          className="w-full bg-dc-teal text-white rounded-full h-14 font-bold uppercase tracking-wide text-base hover:bg-dc-teal/90"
+          className="w-full bg-dc-teal-btn text-white rounded-full h-14 font-bold uppercase tracking-wide text-base hover:bg-dc-teal-btn-hover"
         >
           <MessageSquare className="h-5 w-5 mr-2" />
           Get In Touch

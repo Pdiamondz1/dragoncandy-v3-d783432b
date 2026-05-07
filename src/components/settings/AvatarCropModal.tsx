@@ -102,7 +102,7 @@ export function AvatarCropModal({
             Cancel
           </Button>
           <Button
-            className="flex-1 rounded-full bg-teal-400 hover:bg-teal-500 text-white"
+            className="flex-1 rounded-full bg-teal-400 hover:bg-dc-teal-btn-hover text-white"
             onClick={handleSave}
           >
             Save

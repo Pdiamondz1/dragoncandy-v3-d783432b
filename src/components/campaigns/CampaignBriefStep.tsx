@@ -63,7 +63,7 @@ export const CampaignBriefStep: React.FC<CampaignBriefStepProps> = ({
           <Button
             onClick={onGenerateWithAI}
             disabled={!campaignGoal.trim() || isGenerating}
-            className="w-full bg-pink-500 hover:bg-pink-600 text-white"
+            className="w-full bg-pink-500 hover:bg-dc-pink-accent-btn-hover text-white"
           >
             {isGenerating ? (
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -124,7 +124,7 @@ export const CampaignBriefStep: React.FC<CampaignBriefStepProps> = ({
       {hasAnalysis && (
         <Button
           onClick={onNext}
-          className="w-full bg-dc-teal hover:bg-dc-teal/90 text-white rounded-full"
+          className="w-full bg-dc-teal-btn hover:bg-dc-teal-btn-hover text-white rounded-full"
         >
           Next
           <ArrowRight className="h-4 w-4 ml-2" />

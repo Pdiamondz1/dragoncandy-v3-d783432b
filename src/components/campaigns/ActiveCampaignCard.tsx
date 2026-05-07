@@ -126,7 +126,7 @@ export const ActiveCampaignCard: React.FC<ActiveCampaignCardProps> = ({ collabor
       {/* Upload button */}
       <button
         onClick={() => navigate(`/campaigns/${campaign.id}`)}
-        className="w-full bg-dc-teal text-white rounded-full py-2.5 font-bold text-sm mt-4 hover:bg-dc-teal-dark transition-colors active:scale-95 flex items-center justify-center gap-2"
+        className="w-full bg-dc-teal-btn text-white rounded-full py-2.5 font-bold text-sm mt-4 hover:bg-dc-teal-btn-hover transition-colors active:scale-95 flex items-center justify-center gap-2"
       >
         <Upload className="w-4 h-4" />
         Upload Content

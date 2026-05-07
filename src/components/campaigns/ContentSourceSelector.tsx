@@ -54,7 +54,7 @@ export const ContentSourceSelector = ({ value, onChange }: ContentSourceSelector
             <span
               className={[
                 'flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full',
-                isSelected ? 'bg-dc-teal text-white' : 'bg-gray-100 text-gray-500',
+                isSelected ? 'bg-dc-teal-btn text-white' : 'bg-gray-100 text-gray-500',
               ].join(' ')}
             >
               <Icon className="h-5 w-5" />

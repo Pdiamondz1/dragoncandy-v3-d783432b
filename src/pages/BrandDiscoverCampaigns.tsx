@@ -230,7 +230,7 @@ const BrandDiscoverCampaigns = () => {
               <Button
                 onClick={handleSubmitSponsorship}
                 disabled={isSubmitting || !sponsorshipAmount || !proposalMessage}
-                className="w-full rounded-full bg-dc-teal text-white font-bold py-3"
+                className="w-full rounded-full bg-dc-teal-btn text-white font-bold py-3"
               >
                 {isSubmitting ? 'Submitting…' : 'Submit Proposal'}
               </Button>

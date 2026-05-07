@@ -161,7 +161,7 @@ export function AddEditUnitModal({
           <Button
             onClick={handleSave}
             disabled={!canSave}
-            className="rounded-full bg-teal-400 text-white hover:bg-teal-500 disabled:opacity-50"
+            className="rounded-full bg-teal-400 text-white hover:bg-dc-teal-btn-hover disabled:opacity-50"
           >
             {isSaving ? 'Saving…' : 'Save'}
           </Button>

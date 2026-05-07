@@ -88,7 +88,7 @@ const PricingPage = () => {
           </p>
           <a
             href="mailto:sales@dragoncandy.io"
-            className="inline-flex items-center justify-center rounded-full bg-pink-500 px-8 py-2.5 font-semibold text-white hover:bg-pink-600"
+            className="inline-flex items-center justify-center rounded-full bg-pink-500 px-8 py-2.5 font-semibold text-white hover:bg-dc-pink-accent-btn-hover"
           >
             Talk to Sales
           </a>

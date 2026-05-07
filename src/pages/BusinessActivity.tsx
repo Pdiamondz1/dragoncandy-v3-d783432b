@@ -133,7 +133,7 @@ const BusinessActivity = () => {
               </p>
               <Button
                 onClick={() => navigate('/dashboard/business/dragon-feed')}
-                className="rounded-full bg-dc-teal text-white font-bold px-6"
+                className="rounded-full bg-dc-teal-btn text-white font-bold px-6"
               >
                 Explore Dragon Feed
               </Button>

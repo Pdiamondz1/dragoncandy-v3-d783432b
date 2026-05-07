@@ -105,7 +105,7 @@ export function InviteToCampaignModal({
           <Button
             onClick={handleSend}
             disabled={!selectedCampaignId || inviteCreator.isPending}
-            className="w-full rounded-full bg-dc-teal text-white font-bold"
+            className="w-full rounded-full bg-dc-teal-btn text-white font-bold"
           >
             <Send className="h-4 w-4 mr-2" />
             {inviteCreator.isPending ? 'Sending…' : 'Send Invitation'}

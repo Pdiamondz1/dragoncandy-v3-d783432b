@@ -29,7 +29,7 @@ export const HelpTooltip: React.FC<HelpTooltipProps> = ({
         onClick={() => setOpen(!open)}
         onBlur={() => setTimeout(() => setOpen(false), 150)}
         aria-label="Help"
-        className="w-5 h-5 rounded-full bg-dc-teal text-white flex items-center justify-center text-[11px] font-bold hover:bg-dc-teal/80 transition-colors focus:outline-none focus:ring-2 focus:ring-dc-teal/40 focus:ring-offset-1"
+        className="w-5 h-5 rounded-full bg-dc-teal-btn text-white flex items-center justify-center text-[11px] font-bold hover:bg-dc-teal-btn/80 transition-colors focus:outline-none focus:ring-2 focus:ring-dc-teal/40 focus:ring-offset-1"
       >
         <HelpCircle className="w-3.5 h-3.5" />
       </button>

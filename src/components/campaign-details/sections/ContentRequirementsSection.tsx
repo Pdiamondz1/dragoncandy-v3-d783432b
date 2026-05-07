@@ -53,7 +53,7 @@ export function ContentRequirementsSection({ campaign, campaignId }: ContentRequ
             {hasStructured
               ? structuredDeliverables.map((d, i) => (
                   <div key={d.id} className="flex gap-3 items-start">
-                    <div className="w-6 h-6 rounded-full bg-dc-teal text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
+                    <div className="w-6 h-6 rounded-full bg-dc-teal-btn text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
                       {i + 1}
                     </div>
                     <div>
@@ -71,7 +71,7 @@ export function ContentRequirementsSection({ campaign, campaignId }: ContentRequ
                 ))
               : campaign.deliverables?.map((d, i) => (
                   <div key={i} className="flex gap-3 items-start">
-                    <div className="w-6 h-6 rounded-full bg-dc-teal text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
+                    <div className="w-6 h-6 rounded-full bg-dc-teal-btn text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
                       {i + 1}
                     </div>
                     <p className="text-sm text-gray-800">{d}</p>

@@ -176,7 +176,7 @@ const BusinessSponsorships = () => {
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <h2 className="font-sans text-base font-bold text-gray-900 uppercase tracking-wide">Accepted</h2>
-                <Badge className="bg-dc-teal text-white rounded-full">
+                <Badge className="bg-dc-teal-btn text-white rounded-full">
                   {acceptedProposals.length} Active
                 </Badge>
               </div>
@@ -241,7 +241,7 @@ const BusinessSponsorships = () => {
                         <Button
                           size="sm"
                           onClick={() => handleLeaveReview(proposal)}
-                          className="rounded-full bg-dc-pink-accent text-white hover:bg-dc-pink-accent/90"
+                          className="rounded-full bg-dc-pink-accent-btn text-white hover:bg-dc-pink-accent-btn-hover"
                         >
                           <Star className="h-3 w-3 mr-1" />
                           Leave Review
@@ -284,7 +284,7 @@ const BusinessSponsorships = () => {
               </p>
               <Button
                 onClick={() => navigate('/dashboard/business/campaigns')}
-                className="rounded-full bg-dc-teal text-white font-bold hover:bg-dc-teal/90"
+                className="rounded-full bg-dc-teal-btn text-white font-bold hover:bg-dc-teal-btn-hover"
               >
                 View My Campaigns
               </Button>

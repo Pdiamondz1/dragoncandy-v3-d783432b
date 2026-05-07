@@ -361,7 +361,7 @@ export const BrandCampaignReviewStep = ({
           <Button
             onClick={() => handleSubmit('published')}
             disabled={isSubmitting || !deadline}
-            className="bg-dc-teal hover:bg-dc-teal/90 text-white rounded-full"
+            className="bg-dc-teal-btn hover:bg-dc-teal-btn-hover text-white rounded-full"
           >
             <Rocket className="h-4 w-4 mr-1" /> Publish Campaign
           </Button>

@@ -249,7 +249,7 @@ const PublicCreatorProfile = () => {
           </p>
           <Button
             onClick={() => navigate('/')}
-            className="w-full bg-dc-teal text-white rounded-full h-12 font-bold"
+            className="w-full bg-dc-teal-btn text-white rounded-full h-12 font-bold"
           >
             Go Home
           </Button>
@@ -375,7 +375,7 @@ const PublicCreatorProfile = () => {
               {profile.skills.map((skill) => (
                 <span
                   key={skill}
-                  className="bg-dc-teal text-white rounded-full px-3 py-1 text-xs font-semibold"
+                  className="bg-dc-teal-btn text-white rounded-full px-3 py-1 text-xs font-semibold"
                 >
                   {formatSkillLabel(skill)}
                 </span>
@@ -517,7 +517,7 @@ const PublicCreatorProfile = () => {
             <ContactCreatorModal
               creator={creatorForModal}
               trigger={
-                <Button className="w-full bg-dc-teal text-white rounded-full h-14 font-bold uppercase tracking-wide text-base hover:bg-dc-teal/90">
+                <Button className="w-full bg-dc-teal-btn text-white rounded-full h-14 font-bold uppercase tracking-wide text-base hover:bg-dc-teal-btn-hover">
                   Hire This Creator
                 </Button>
               }
@@ -525,7 +525,7 @@ const PublicCreatorProfile = () => {
             {isBusinessUser && (
               <Button
                 onClick={() => setShowInviteModal(true)}
-                className="w-full rounded-full bg-dc-teal text-white font-bold h-14 text-base uppercase tracking-wide hover:bg-dc-teal/90"
+                className="w-full rounded-full bg-dc-teal-btn text-white font-bold h-14 text-base uppercase tracking-wide hover:bg-dc-teal-btn-hover"
               >
                 Invite to Campaign
               </Button>

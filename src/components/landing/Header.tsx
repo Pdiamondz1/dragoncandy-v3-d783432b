@@ -64,7 +64,7 @@ export const Header: React.FC = () => {
           Login
         </Button>
         <Button
-          className="rounded-full bg-dc-teal text-white font-semibold px-6 hover:bg-dc-teal-dark hover:shadow-glow-teal transition-all duration-300"
+          className="rounded-full bg-dc-teal-btn text-white font-semibold px-6 hover:bg-dc-teal-btn-hover hover:shadow-glow-teal transition-all duration-300"
           onClick={() => navigate('/auth?mode=signup')}
         >
           Get Started
@@ -102,7 +102,7 @@ export const Header: React.FC = () => {
                 Login
               </Button>
               <Button
-                className="w-full rounded-full bg-dc-teal text-white font-bold hover:bg-dc-teal-dark"
+                className="w-full rounded-full bg-dc-teal-btn text-white font-bold hover:bg-dc-teal-btn-hover"
                 onClick={() => handleNavigate('/auth?mode=signup')}
               >
                 Get Started

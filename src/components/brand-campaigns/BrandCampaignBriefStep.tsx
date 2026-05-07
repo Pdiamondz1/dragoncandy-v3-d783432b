@@ -129,7 +129,7 @@ export const BrandCampaignBriefStep = ({
                 onClick={() => updateField('brandGoal', value)}
                 className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
                   briefData.brandGoal === value
-                    ? 'bg-dc-teal text-white'
+                    ? 'bg-dc-teal-btn text-white'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >
@@ -154,7 +154,7 @@ export const BrandCampaignBriefStep = ({
                 onClick={() => togglePersona(value)}
                 className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
                   briefData.targetPersonas.includes(value)
-                    ? 'bg-dc-teal text-white'
+                    ? 'bg-dc-teal-btn text-white'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >
@@ -179,7 +179,7 @@ export const BrandCampaignBriefStep = ({
                 onClick={() => togglePlatform(value)}
                 className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
                   briefData.platforms.includes(value)
-                    ? 'bg-dc-teal text-white'
+                    ? 'bg-dc-teal-btn text-white'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >
@@ -204,7 +204,7 @@ export const BrandCampaignBriefStep = ({
                 onClick={() => updateField('geographicScope', value)}
                 className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
                   briefData.geographicScope === value
-                    ? 'bg-dc-teal text-white'
+                    ? 'bg-dc-teal-btn text-white'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >
@@ -240,7 +240,7 @@ export const BrandCampaignBriefStep = ({
       <Button
         onClick={onGenerateAnalysis}
         disabled={isGenerating || !isVisionValid}
-        className="w-full rounded-full bg-dc-teal hover:bg-dc-teal/90 text-white font-semibold"
+        className="w-full rounded-full bg-dc-teal-btn hover:bg-dc-teal-btn-hover text-white font-semibold"
       >
         {isGenerating ? (
           <>

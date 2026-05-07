@@ -91,7 +91,7 @@ export function OneTapApplySheet({
             <div className="space-y-2 pt-2">
               <button
                 onClick={() => onSend(pitch)}
-                className="w-full rounded-full bg-dc-teal text-white font-bold py-3.5 h-14 active:scale-[0.98] transition-transform"
+                className="w-full rounded-full bg-dc-teal-btn text-white font-bold py-3.5 h-14 active:scale-[0.98] transition-transform"
               >
                 Looks good — Send
               </button>

@@ -39,7 +39,7 @@ export const HowItWorks: React.FC = () => {
           >
             {/* Mobile: inline number + title */}
             <div className="flex items-center gap-3 mb-3 md:flex-col md:items-center md:text-center md:gap-4">
-              <div className="w-9 h-9 md:w-12 md:h-12 rounded-full bg-dc-teal text-white font-extrabold text-sm md:text-lg flex items-center justify-center flex-shrink-0">
+              <div className="w-9 h-9 md:w-12 md:h-12 rounded-full bg-dc-teal-btn text-white font-extrabold text-sm md:text-lg flex items-center justify-center flex-shrink-0">
                 {step.number}
               </div>
               <h3 className="text-base md:text-lg font-bold text-dc-text">

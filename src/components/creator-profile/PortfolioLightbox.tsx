@@ -147,7 +147,7 @@ export const PortfolioLightbox: React.FC<PortfolioLightboxProps> = ({
               <ContactCreatorModal
                 creator={creator}
                 trigger={
-                  <Button className="w-full bg-dc-teal text-white rounded-full h-11 font-bold text-sm hover:bg-dc-teal/90">
+                  <Button className="w-full bg-dc-teal-btn text-white rounded-full h-11 font-bold text-sm hover:bg-dc-teal-btn-hover">
                     Hire This Creator
                   </Button>
                 }
