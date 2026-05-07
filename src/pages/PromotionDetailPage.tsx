@@ -401,7 +401,7 @@ const PromotionDetailPage: React.FC = () => {
             <div className="flex items-center gap-2 mb-3">
               <h2 className="font-semibold text-base">Submissions</h2>
               {pendingCount > 0 && (
-                <span className="bg-dc-teal-btn text-white text-xs px-2 py-0.5 rounded-full">
+                <span className="bg-dc-teal text-white text-xs px-2 py-0.5 rounded-full">
                   {pendingCount} pending
                 </span>
               )}
@@ -420,7 +420,7 @@ const PromotionDetailPage: React.FC = () => {
                   onClick={() => setTab(key)}
                   className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
                     tab === key
-                      ? 'bg-dc-teal-btn text-white'
+                      ? 'bg-dc-teal text-white'
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                   }`}
                 >

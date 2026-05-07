@@ -15,7 +15,7 @@ const toThumbnailUrl = (url: string, width = 320): string => {
     // Strip query string (signed token) from the path
     const qIdx = storagePath.indexOf('?');
     if (qIdx !== -1) storagePath = storagePath.substring(0, qIdx);
-    return `${SUPABASE_URL}/storage/v1/render/image/public/${storagePath}?width=${width}&quality=60`;
+    return `${SUPABASE_URL}/storage/v1/render/image/public/${storagePath}?width=${width}&quality=75`;
   }
   return url;
 };
@@ -41,8 +41,6 @@ function MarqueeItem({ item }: { item: { id: string; url?: string; type?: string
             loop
             playsInline
             preload="none"
-            width={160}
-            height={160}
           />
         ) : (
           <img
@@ -50,8 +48,6 @@ function MarqueeItem({ item }: { item: { id: string; url?: string; type?: string
             alt={`Portfolio work by ${item.creatorName}`}
             className="w-full h-full object-cover"
             loading="lazy"
-            width={160}
-            height={160}
           />
         )}
       </div>
