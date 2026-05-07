@@ -1,12 +1,8 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { corsHeaders } from "../_shared/cors.ts";
 
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
 
 const getSystemPromptForRole = (role: string): string => {
   const baseContext = `You are a helpful AI assistant for DragonCandy, an AI-powered marketplace connecting small businesses with content creators. Be friendly, concise, and guide users through platform features.`;
@@ -154,7 +150,7 @@ Help brands discover sponsorship opportunities and manage their marketing partne
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { headers: corsHeaders(req) });
   }
 
   try {
@@ -197,7 +193,7 @@ serve(async (req) => {
       if (response.status === 429) {
         return new Response(JSON.stringify({ error: 'Rate limit exceeded. Please try again later.' }), {
           status: 429,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
         });
       }
       
@@ -205,13 +201,13 @@ serve(async (req) => {
     }
 
     return new Response(response.body, {
-      headers: { ...corsHeaders, 'Content-Type': 'text/event-stream' },
+      headers: { ...corsHeaders(req), 'Content-Type': 'text/event-stream' },
     });
   } catch (error) {
     console.error('Chat assistant error:', error);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
     });
   }
 });

@@ -2,13 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { validateDonnyToken, requireScope } from "../_shared/auth.ts";
 import { checkHourlyRateLimit } from "../_shared/usage-tracker.ts";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
+import { corsHeaders } from "../_shared/cors.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -39,7 +33,7 @@ function jsonResponse(
 ): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
+    headers: { ...corsHeaders(req), "Content-Type": "application/json" },
   });
 }
 
@@ -100,23 +94,20 @@ async function handleCreate(
   };
 
   if (!platform || !VALID_PLATFORMS.includes(platform as typeof VALID_PLATFORMS[number])) {
-    return jsonResponse(
-      { success: false, error: `Invalid platform. Must be one of: ${VALID_PLATFORMS.join(", ")}` },
+    return jsonResponse(req, { success: false, error: `Invalid platform. Must be one of: ${VALID_PLATFORMS.join(", ")}` },
       400,
     );
   }
   if (!content_type || !VALID_CONTENT_TYPES.includes(content_type as typeof VALID_CONTENT_TYPES[number])) {
-    return jsonResponse(
-      { success: false, error: `Invalid content_type. Must be one of: ${VALID_CONTENT_TYPES.join(", ")}` },
+    return jsonResponse(req, { success: false, error: `Invalid content_type. Must be one of: ${VALID_CONTENT_TYPES.join(", ")}` },
       400,
     );
   }
   if (!scheduled_at) {
-    return jsonResponse({ success: false, error: "scheduled_at is required" }, 400);
+    return jsonResponse(req, { success: false, error: "scheduled_at is required" }, 400);
   }
   if (new Date(scheduled_at) <= new Date()) {
-    return jsonResponse(
-      { success: false, error: "scheduled_at must be in the future" },
+    return jsonResponse(req, { success: false, error: "scheduled_at must be in the future" },
       400,
     );
   }
@@ -138,9 +129,9 @@ async function handleCreate(
     .single();
 
   if (error) {
-    return jsonResponse({ success: false, error: error.message }, 500);
+    return jsonResponse(req, { success: false, error: error.message }, 500);
   }
-  return jsonResponse({ success: true, data });
+  return jsonResponse(req, { success: true, data });
 }
 
 async function handleUpdate(
@@ -159,10 +150,10 @@ async function handleUpdate(
   };
 
   if (!post_id) {
-    return jsonResponse({ success: false, error: "post_id is required" }, 400);
+    return jsonResponse(req, { success: false, error: "post_id is required" }, 400);
   }
   if (!updates || Object.keys(updates).length === 0) {
-    return jsonResponse({ success: false, error: "updates object is required" }, 400);
+    return jsonResponse(req, { success: false, error: "updates object is required" }, 400);
   }
 
   // Verify ownership
@@ -173,15 +164,14 @@ async function handleUpdate(
     .single();
 
   if (fetchErr || !existing) {
-    return jsonResponse({ success: false, error: "Post not found" }, 404);
+    return jsonResponse(req, { success: false, error: "Post not found" }, 404);
   }
   if (existing.user_id !== userId) {
-    return jsonResponse({ success: false, error: "Unauthorized: you do not own this post" }, 403);
+    return jsonResponse(req, { success: false, error: "Unauthorized: you do not own this post" }, 403);
   }
 
   if (updates.scheduled_at && new Date(updates.scheduled_at) <= new Date()) {
-    return jsonResponse(
-      { success: false, error: "scheduled_at must be in the future" },
+    return jsonResponse(req, { success: false, error: "scheduled_at must be in the future" },
       400,
     );
   }
@@ -194,9 +184,9 @@ async function handleUpdate(
     .single();
 
   if (error) {
-    return jsonResponse({ success: false, error: error.message }, 500);
+    return jsonResponse(req, { success: false, error: error.message }, 500);
   }
-  return jsonResponse({ success: true, data });
+  return jsonResponse(req, { success: true, data });
 }
 
 async function handleDelete(
@@ -207,7 +197,7 @@ async function handleDelete(
   const { post_id } = body as { post_id: string };
 
   if (!post_id) {
-    return jsonResponse({ success: false, error: "post_id is required" }, 400);
+    return jsonResponse(req, { success: false, error: "post_id is required" }, 400);
   }
 
   // Verify ownership
@@ -218,10 +208,10 @@ async function handleDelete(
     .single();
 
   if (fetchErr || !existing) {
-    return jsonResponse({ success: false, error: "Post not found" }, 404);
+    return jsonResponse(req, { success: false, error: "Post not found" }, 404);
   }
   if (existing.user_id !== userId) {
-    return jsonResponse({ success: false, error: "Unauthorized: you do not own this post" }, 403);
+    return jsonResponse(req, { success: false, error: "Unauthorized: you do not own this post" }, 403);
   }
 
   const { data, error } = await supabaseAdmin
@@ -232,9 +222,9 @@ async function handleDelete(
     .single();
 
   if (error) {
-    return jsonResponse({ success: false, error: error.message }, 500);
+    return jsonResponse(req, { success: false, error: error.message }, 500);
   }
-  return jsonResponse({ success: true, data });
+  return jsonResponse(req, { success: true, data });
 }
 
 async function handleList(
@@ -250,8 +240,7 @@ async function handleList(
   };
 
   if (!start_date || !end_date) {
-    return jsonResponse(
-      { success: false, error: "start_date and end_date are required" },
+    return jsonResponse(req, { success: false, error: "start_date and end_date are required" },
       400,
     );
   }
@@ -274,7 +263,7 @@ async function handleList(
   const { data, error } = await query;
 
   if (error) {
-    return jsonResponse({ success: false, error: error.message }, 500);
+    return jsonResponse(req, { success: false, error: error.message }, 500);
   }
 
   // Group by date
@@ -287,7 +276,7 @@ async function handleList(
     grouped[dateKey].push(post);
   }
 
-  return jsonResponse({ success: true, data: grouped });
+  return jsonResponse(req, { success: true, data: grouped });
 }
 
 async function handleSuggestTimes(
@@ -300,8 +289,7 @@ async function handleSuggestTimes(
   };
 
   if (!platform || !content_type) {
-    return jsonResponse(
-      { success: false, error: "platform and content_type are required" },
+    return jsonResponse(req, { success: false, error: "platform and content_type are required" },
       400,
     );
   }
@@ -346,14 +334,13 @@ async function handleSuggestTimes(
   // Extract JSON from response (may be wrapped in markdown code fences)
   const jsonMatch = raw.match(/\{[\s\S]*\}/);
   if (!jsonMatch) {
-    return jsonResponse(
-      { success: false, error: "Failed to parse AI suggestion" },
+    return jsonResponse(req, { success: false, error: "Failed to parse AI suggestion" },
       500,
     );
   }
 
   const slots = JSON.parse(jsonMatch[0]);
-  return jsonResponse({ success: true, data: slots });
+  return jsonResponse(req, { success: true, data: slots });
 }
 
 // ---------------------------------------------------------------------------
@@ -362,12 +349,12 @@ async function handleSuggestTimes(
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { headers: corsHeaders(req) });
   }
 
   try {
     if (req.method !== "POST") {
-      return jsonResponse({ success: false, error: "Method not allowed" }, 405);
+      return jsonResponse(req, { success: false, error: "Method not allowed" }, 405);
     }
 
     const userId = await authenticateRequest(req);
@@ -375,7 +362,7 @@ serve(async (req) => {
 
     const hourlyCheck = await checkHourlyRateLimit(supabaseAdmin, userId);
     if (!hourlyCheck.allowed) {
-      return jsonResponse({ error: "rate_limited", retry_after: hourlyCheck.retryAfterSeconds }, 429);
+      return jsonResponse(req, { error: "rate_limited", retry_after: hourlyCheck.retryAfterSeconds }, 429);
     }
 
     const body = await req.json();
@@ -383,18 +370,17 @@ serve(async (req) => {
 
     switch (action) {
       case "create":
-        return await handleCreate(userId, body, supabaseAdmin);
+        return await handleCreate(req, userId, body, supabaseAdmin);
       case "update":
-        return await handleUpdate(userId, body, supabaseAdmin);
+        return await handleUpdate(req, userId, body, supabaseAdmin);
       case "delete":
-        return await handleDelete(userId, body, supabaseAdmin);
+        return await handleDelete(req, userId, body, supabaseAdmin);
       case "list":
-        return await handleList(userId, body, supabaseAdmin);
+        return await handleList(req, userId, body, supabaseAdmin);
       case "suggest_times":
-        return await handleSuggestTimes(body);
+        return await handleSuggestTimes(req, body);
       default:
-        return jsonResponse(
-          {
+        return jsonResponse(req, {
             success: false,
             error: `Unknown action: ${action}. Valid actions: create, update, delete, list, suggest_times`,
           },
@@ -407,8 +393,7 @@ serve(async (req) => {
       msg.includes("Unauthorized") ||
       msg.includes("authorization") ||
       msg.includes("scope");
-    return jsonResponse(
-      { success: false, error: msg },
+    return jsonResponse(req, { success: false, error: msg },
       isAuthError ? 401 : 500,
     );
   }

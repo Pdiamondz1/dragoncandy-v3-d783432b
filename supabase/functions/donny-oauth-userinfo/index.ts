@@ -1,11 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "GET, OPTIONS",
-};
+import { corsHeaders } from "../_shared/cors.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -20,14 +15,14 @@ async function sha256Hash(input: string): Promise<string> {
 
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { headers: corsHeaders(req) });
   }
 
   try {
   if (req.method !== "GET") {
     return new Response(
       JSON.stringify({ error: "method_not_allowed" }),
-      { status: 405, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      { status: 405, headers: { "Content-Type": "application/json", ...corsHeaders(req) } }
     );
   }
 
@@ -40,7 +35,7 @@ serve(async (req: Request) => {
   if (!rawToken) {
     return new Response(
       JSON.stringify({ error: "unauthorized", error_description: "Missing Bearer token" }),
-      { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders(req) } }
     );
   }
 
@@ -56,7 +51,7 @@ serve(async (req: Request) => {
   if (tokenError || !tokenRow) {
     return new Response(
       JSON.stringify({ error: "unauthorized", error_description: "Invalid access token" }),
-      { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders(req) } }
     );
   }
 
@@ -64,7 +59,7 @@ serve(async (req: Request) => {
   if (new Date(tokenRow.expires_at) < new Date()) {
     return new Response(
       JSON.stringify({ error: "unauthorized", error_description: "Access token has expired" }),
-      { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders(req) } }
     );
   }
 
@@ -78,7 +73,7 @@ serve(async (req: Request) => {
   if (clientError || !client || !client.is_active) {
     return new Response(
       JSON.stringify({ error: "unauthorized", error_description: "Client application has been deactivated" }),
-      { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders(req) } }
     );
   }
 
@@ -95,7 +90,7 @@ serve(async (req: Request) => {
     if (userError || !user) {
       return new Response(
         JSON.stringify({ error: "server_error", error_description: "Failed to fetch user data" }),
-        { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders(req) } }
       );
     }
 
@@ -128,14 +123,14 @@ serve(async (req: Request) => {
 
   return new Response(
     JSON.stringify(response),
-    { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+    { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders(req) } }
   );
 
   } catch (error: unknown) {
     console.error("donny-oauth-userinfo: unexpected error", error);
     return new Response(
       JSON.stringify({ error: "server_error", error_description: (error as Error)?.message || "Unexpected error" }),
-      { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders(req) } }
     );
   }
 });

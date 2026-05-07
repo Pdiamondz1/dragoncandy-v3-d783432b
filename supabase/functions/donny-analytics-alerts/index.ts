@@ -1,11 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { validateDonnyToken, requireScope } from "../_shared/auth.ts";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { corsHeaders } from "../_shared/cors.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -31,7 +27,7 @@ const VALID_ALERT_TYPES = [
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { headers: corsHeaders(req) });
   }
 
   try {
@@ -39,7 +35,7 @@ serve(async (req) => {
     if (!authHeader) {
       return new Response(
         JSON.stringify({ success: false, error: "Missing authorization header" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 401, headers: { ...corsHeaders(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -59,13 +55,13 @@ serve(async (req) => {
       if (!oauthResult) {
         return new Response(
           JSON.stringify({ success: false, error: "Unauthorized" }),
-          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          { status: 401, headers: { ...corsHeaders(req), "Content-Type": "application/json" } }
         );
       }
       if (!requireScope(oauthResult.scopes, "analytics:read")) {
         return new Response(
           JSON.stringify({ success: false, error: "Insufficient scope: analytics:read required" }),
-          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          { status: 403, headers: { ...corsHeaders(req), "Content-Type": "application/json" } }
         );
       }
       userId = oauthResult.user_id;
@@ -91,7 +87,7 @@ serve(async (req) => {
     if (profileError || !profileData) {
       return new Response(
         JSON.stringify({ success: false, error: "Profile not found" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 401, headers: { ...corsHeaders(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -358,12 +354,12 @@ serve(async (req) => {
           },
         },
       }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { headers: { ...corsHeaders(req), "Content-Type": "application/json" } }
     );
   } catch (err: any) {
     return new Response(
       JSON.stringify({ success: false, error: err.message }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 500, headers: { ...corsHeaders(req), "Content-Type": "application/json" } }
     );
   }
 });

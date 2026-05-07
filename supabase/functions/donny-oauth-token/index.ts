@@ -1,11 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
+import { corsHeaders } from "../_shared/cors.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -55,7 +50,7 @@ async function parseBody(req: Request): Promise<Record<string, string>> {
 function oauthError(error: string, description: string, status = 400): Response {
   return new Response(
     JSON.stringify({ error, error_description: description }),
-    { status, headers: { "Content-Type": "application/json", ...corsHeaders } }
+    { status, headers: { "Content-Type": "application/json", ...corsHeaders(req) } }
   );
 }
 
@@ -65,7 +60,7 @@ function oauthError(error: string, description: string, status = 400): Response 
 
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { headers: corsHeaders(req) });
   }
 
   if (req.method !== "POST") {
@@ -182,7 +177,7 @@ serve(async (req: Request) => {
           refresh_token: refreshToken,
           scope: (codeRow.scopes as string[]).join(" "),
         }),
-        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders(req) } }
       );
     }
 
@@ -277,7 +272,7 @@ serve(async (req: Request) => {
           refresh_token: newRefreshToken,
           scope: (tokenRow.scopes as string[]).join(" "),
         }),
-        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders(req) } }
       );
     }
 

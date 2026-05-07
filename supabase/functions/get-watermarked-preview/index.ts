@@ -1,15 +1,11 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { writePaymentEvent } from "../_shared/payment-events.ts";
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { corsHeaders } from "../_shared/cors.ts";
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { headers: corsHeaders(req) });
   }
 
   try {
@@ -20,7 +16,7 @@ serve(async (req) => {
     const authHeader = req.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 401, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
       });
     }
 
@@ -32,7 +28,7 @@ serve(async (req) => {
     const { data: claimsData, error: claimsError } = await userClient.auth.getClaims(token);
     if (claimsError || !claimsData?.claims) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 401, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
       });
     }
     const userId = claimsData.claims.sub;
@@ -40,7 +36,7 @@ serve(async (req) => {
     const { file_path, bucket_name, collaboration_id } = await req.json();
     if (!file_path || !bucket_name || !collaboration_id) {
       return new Response(JSON.stringify({ error: 'Missing required fields' }), {
-        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
       });
     }
 
@@ -56,7 +52,7 @@ serve(async (req) => {
 
     if (collabError || !collab) {
       return new Response(JSON.stringify({ error: 'Collaboration not found' }), {
-        status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 404, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
       });
     }
 
@@ -83,7 +79,7 @@ serve(async (req) => {
 
     if (!isCreator && !isBusiness && !isBrand) {
       return new Response(JSON.stringify({ error: 'Access denied' }), {
-        status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 403, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
       });
     }
 
@@ -165,7 +161,7 @@ serve(async (req) => {
 
     if (accessDenied) {
       return new Response(JSON.stringify({ error: message }), {
-        status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 403, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
       });
     }
 
@@ -178,7 +174,7 @@ serve(async (req) => {
 
     if (signError) {
       return new Response(JSON.stringify({ error: 'Failed to generate URL' }), {
-        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 500, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
       });
     }
 
@@ -188,11 +184,11 @@ serve(async (req) => {
       content_status: collab.content_status,
       message,
     }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
     });
   } catch (err) {
     return new Response(JSON.stringify({ error: err.message }), {
-      status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 500, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
     });
   }
 });

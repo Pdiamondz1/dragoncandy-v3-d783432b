@@ -1,11 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-};
+import { corsHeaders } from "../_shared/cors.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -249,7 +244,7 @@ async function parseFormBody(req: Request): Promise<Record<string, string>> {
 
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { headers: corsHeaders(req) });
   }
 
   try {
@@ -276,7 +271,7 @@ serve(async (req: Request) => {
       if (!clientId || !redirectUri || !codeChallenge || !state) {
         return new Response(
           JSON.stringify({ error: "invalid_request", error_description: "Missing required parameters: client_id, redirect_uri, code_challenge, state" }),
-          { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+          { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders(req) } }
         );
       }
 
@@ -284,7 +279,7 @@ serve(async (req: Request) => {
       if (codeChallengeMethod !== "S256") {
         return new Response(
           JSON.stringify({ error: "invalid_request", error_description: "code_challenge_method must be S256" }),
-          { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+          { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders(req) } }
         );
       }
 
@@ -299,7 +294,7 @@ serve(async (req: Request) => {
       if (clientError || !client) {
         return new Response(
           JSON.stringify({ error: "invalid_client", error_description: "Unknown or inactive client" }),
-          { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+          { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders(req) } }
         );
       }
 
@@ -307,7 +302,7 @@ serve(async (req: Request) => {
       if (!client.redirect_uris.includes(redirectUri)) {
         return new Response(
           JSON.stringify({ error: "invalid_request", error_description: "redirect_uri not allowed for this client" }),
-          { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+          { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders(req) } }
         );
       }
 
@@ -316,7 +311,7 @@ serve(async (req: Request) => {
       if (!scopeResult.valid) {
         return new Response(
           JSON.stringify({ error: "invalid_scope", error_description: scopeResult.error }),
-          { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+          { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders(req) } }
         );
       }
 
@@ -328,7 +323,7 @@ serve(async (req: Request) => {
         const returnTo = encodeURIComponent(publicUrl.toString());
         return new Response(null, {
           status: 302,
-          headers: { Location: `https://dragoncandy.io/auth?returnTo=${returnTo}`, ...corsHeaders },
+          headers: { Location: `https://dragoncandy.io/auth?returnTo=${returnTo}`, ...corsHeaders(req) },
         });
       }
 
@@ -337,7 +332,7 @@ serve(async (req: Request) => {
         const returnTo = encodeURIComponent(publicUrl.toString());
         return new Response(null, {
           status: 302,
-          headers: { Location: `https://dragoncandy.io/auth?returnTo=${returnTo}`, ...corsHeaders },
+          headers: { Location: `https://dragoncandy.io/auth?returnTo=${returnTo}`, ...corsHeaders(req) },
         });
       }
 
@@ -361,7 +356,7 @@ serve(async (req: Request) => {
         console.error("donny-oauth-authorize: failed to insert auth code", insertError);
         return new Response(
           JSON.stringify({ error: "server_error", error_description: "Failed to generate authorization code" }),
-          { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
+          { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders(req) } }
         );
       }
 
@@ -370,7 +365,7 @@ serve(async (req: Request) => {
 
       return new Response(null, {
         status: 302,
-        headers: { Location: redirectUrl, ...corsHeaders },
+        headers: { Location: redirectUrl, ...corsHeaders(req) },
       });
     }
 
@@ -393,7 +388,7 @@ serve(async (req: Request) => {
       if (!csrfToken || !clientId || !redirectUri || !state || !codeChallenge || !accessToken) {
         return new Response(
           JSON.stringify({ error: "invalid_request", error_description: "Missing required form fields" }),
-          { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+          { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders(req) } }
         );
       }
 
@@ -401,7 +396,7 @@ serve(async (req: Request) => {
       if (codeChallengeMethod !== "S256") {
         return new Response(
           JSON.stringify({ error: "invalid_request", error_description: "Only S256 code_challenge_method is supported" }),
-          { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+          { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders(req) } }
         );
       }
 
@@ -410,7 +405,7 @@ serve(async (req: Request) => {
       if (!csrfValid) {
         return new Response(
           JSON.stringify({ error: "invalid_request", error_description: "Invalid CSRF token" }),
-          { status: 403, headers: { "Content-Type": "application/json", ...corsHeaders } }
+          { status: 403, headers: { "Content-Type": "application/json", ...corsHeaders(req) } }
         );
       }
 
@@ -419,7 +414,7 @@ serve(async (req: Request) => {
       if (authError || !user) {
         return new Response(
           JSON.stringify({ error: "access_denied", error_description: "Authentication required" }),
-          { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
+          { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders(req) } }
         );
       }
 
@@ -434,7 +429,7 @@ serve(async (req: Request) => {
       if (clientError || !client) {
         return new Response(
           JSON.stringify({ error: "invalid_client", error_description: "Unknown or inactive client" }),
-          { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+          { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders(req) } }
         );
       }
 
@@ -442,7 +437,7 @@ serve(async (req: Request) => {
       if (!client.redirect_uris.includes(redirectUri)) {
         return new Response(
           JSON.stringify({ error: "invalid_request", error_description: "redirect_uri not allowed for this client" }),
-          { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+          { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders(req) } }
         );
       }
 
@@ -451,7 +446,7 @@ serve(async (req: Request) => {
       if (!scopeResult.valid) {
         return new Response(
           JSON.stringify({ error: "invalid_scope", error_description: scopeResult.error }),
-          { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+          { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders(req) } }
         );
       }
 
@@ -476,7 +471,7 @@ serve(async (req: Request) => {
         console.error("donny-oauth-authorize: failed to insert auth code", insertError);
         return new Response(
           JSON.stringify({ error: "server_error", error_description: "Failed to generate authorization code" }),
-          { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
+          { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders(req) } }
         );
       }
 
@@ -486,20 +481,20 @@ serve(async (req: Request) => {
 
       return new Response(null, {
         status: 302,
-        headers: { Location: redirectUrl, ...corsHeaders },
+        headers: { Location: redirectUrl, ...corsHeaders(req) },
       });
     }
 
     // Method not allowed
     return new Response(
       JSON.stringify({ error: "method_not_allowed" }),
-      { status: 405, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      { status: 405, headers: { "Content-Type": "application/json", ...corsHeaders(req) } }
     );
   } catch (error: unknown) {
     console.error("donny-oauth-authorize: unexpected error", error);
     return new Response(
       JSON.stringify({ error: "server_error", error_description: (error as Error)?.message || "Unexpected error" }),
-      { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders(req) } }
     );
   }
 });

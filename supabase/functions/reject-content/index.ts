@@ -1,11 +1,7 @@
 // supabase/functions/reject-content/index.ts
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { writePaymentEvent } from "../_shared/payment-events.ts";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { corsHeaders } from "../_shared/cors.ts";
 
 function logStep(step: string, details?: Record<string, unknown>) {
   console.log(`[REJECT-CONTENT] ${step}`, details ? JSON.stringify(details) : "");
@@ -13,7 +9,7 @@ function logStep(step: string, details?: Record<string, unknown>) {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { headers: corsHeaders(req) });
   }
 
   try {
@@ -21,7 +17,7 @@ Deno.serve(async (req) => {
     if (!authHeader) {
       return new Response(
         JSON.stringify({ error: "Missing authorization" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 401 }
+        { headers: { ...corsHeaders(req), "Content-Type": "application/json" }, status: 401 }
       );
     }
 
@@ -41,7 +37,7 @@ Deno.serve(async (req) => {
     if (authError || !user) {
       return new Response(
         JSON.stringify({ error: "Unauthorized" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 401 }
+        { headers: { ...corsHeaders(req), "Content-Type": "application/json" }, status: 401 }
       );
     }
 
@@ -49,7 +45,7 @@ Deno.serve(async (req) => {
     if (!collaborationId || !reason || reason.length < 20) {
       return new Response(
         JSON.stringify({ error: "collaborationId and reason (min 20 chars) required" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+        { headers: { ...corsHeaders(req), "Content-Type": "application/json" }, status: 400 }
       );
     }
 
@@ -65,14 +61,14 @@ Deno.serve(async (req) => {
     if (collabError || !collab) {
       return new Response(
         JSON.stringify({ error: "Collaboration not found" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 404 }
+        { headers: { ...corsHeaders(req), "Content-Type": "application/json" }, status: 404 }
       );
     }
 
     if ((collab as any).campaigns?.user_id !== user.id) {
       return new Response(
         JSON.stringify({ error: "Only the campaign owner can reject content" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 403 }
+        { headers: { ...corsHeaders(req), "Content-Type": "application/json" }, status: 403 }
       );
     }
 
@@ -89,7 +85,7 @@ Deno.serve(async (req) => {
       logStep("Transition failed", { error: transitionError.message });
       return new Response(
         JSON.stringify({ error: transitionError.message }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+        { headers: { ...corsHeaders(req), "Content-Type": "application/json" }, status: 400 }
       );
     }
 
@@ -107,7 +103,7 @@ Deno.serve(async (req) => {
       logStep("Dispute creation failed", { error: disputeError.message });
       return new Response(
         JSON.stringify({ error: "Content rejected but failed to create dispute record. Please contact support." }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+        { headers: { ...corsHeaders(req), "Content-Type": "application/json" }, status: 500 }
       );
     }
 
@@ -169,13 +165,13 @@ Deno.serve(async (req) => {
 
     return new Response(
       JSON.stringify({ success: true, status: 'disputed' }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+      { headers: { ...corsHeaders(req), "Content-Type": "application/json" }, status: 200 }
     );
   } catch (error) {
     logStep("Error", { message: (error as Error).message });
     return new Response(
       JSON.stringify({ error: (error as Error).message }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+      { headers: { ...corsHeaders(req), "Content-Type": "application/json" }, status: 500 }
     );
   }
 });

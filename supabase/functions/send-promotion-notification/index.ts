@@ -1,10 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "npm:resend@2.0.0";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { corsHeaders } from "../_shared/cors.ts";
 
 interface PromotionNotificationRequest {
   type: 'video_approved' | 'video_rejected';
@@ -22,7 +18,7 @@ interface PromotionNotificationRequest {
 const handler = async (req: Request): Promise<Response> => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { headers: corsHeaders(req) });
   }
 
   try {
@@ -230,7 +226,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     return new Response(JSON.stringify(results), {
       status: 200,
-      headers: { "Content-Type": "application/json", ...corsHeaders },
+      headers: { "Content-Type": "application/json", ...corsHeaders(req) },
     });
   } catch (error: any) {
     console.error("Error in send-promotion-notification:", error);
@@ -238,7 +234,7 @@ const handler = async (req: Request): Promise<Response> => {
       JSON.stringify({ error: error.message }),
       {
         status: 500,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
+        headers: { "Content-Type": "application/json", ...corsHeaders(req) },
       }
     );
   }

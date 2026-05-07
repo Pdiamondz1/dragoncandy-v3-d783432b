@@ -1,11 +1,7 @@
 import { serve } from 'https://deno.land/std@0.190.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import Stripe from 'https://esm.sh/stripe@14.21.0?target=deno';
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { corsHeaders } from "../_shared/cors.ts";
 
 // Base price IDs per tier and billing period
 const BASE_PRICES: Record<string, Record<string, string>> = {
@@ -23,7 +19,7 @@ const SEAT_PRICES: Record<string, string> = {
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+    return new Response('ok', { headers: corsHeaders(req) });
   }
 
   try {
@@ -39,7 +35,7 @@ serve(async (req) => {
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 401, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
       });
     }
     const { data: { user }, error: authError } = await supabase.auth.getUser(
@@ -47,7 +43,7 @@ serve(async (req) => {
     );
     if (authError || !user) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 401, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
       });
     }
 
@@ -55,13 +51,13 @@ serve(async (req) => {
 
     if (!tier || !billing_period || !org_id) {
       return new Response(JSON.stringify({ error: 'tier, billing_period, and org_id are required' }), {
-        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
       });
     }
 
     if (!BASE_PRICES[tier] || !BASE_PRICES[tier][billing_period]) {
       return new Response(JSON.stringify({ error: 'Invalid tier or billing_period' }), {
-        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
       });
     }
 
@@ -76,7 +72,7 @@ serve(async (req) => {
 
     if (membership?.role !== 'owner') {
       return new Response(JSON.stringify({ error: 'Only org owners can manage billing' }), {
-        status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 403, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
       });
     }
 
@@ -89,7 +85,7 @@ serve(async (req) => {
 
     if (orgError || !org) {
       return new Response(JSON.stringify({ error: 'Organization not found' }), {
-        status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 404, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
       });
     }
 
@@ -110,7 +106,7 @@ serve(async (req) => {
       if (custError) {
         console.error('[create-checkout-session] Failed to store customer ID:', custError.message);
         return new Response(JSON.stringify({ error: 'Failed to link payment account' }), {
-          status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 500, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
         });
       }
     }
@@ -136,12 +132,12 @@ serve(async (req) => {
     });
 
     return new Response(JSON.stringify({ checkout_url: session.url }), {
-      status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 200, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
     });
   } catch (err) {
     console.error('[create-checkout-session]', err);
     return new Response(JSON.stringify({ error: 'Internal server error' }), {
-      status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 500, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
     });
   }
 });

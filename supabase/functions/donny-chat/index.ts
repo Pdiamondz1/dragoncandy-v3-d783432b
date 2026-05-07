@@ -4,11 +4,7 @@ import { validateDonnyToken, requireScope } from "../_shared/auth.ts";
 import { getModelConfig } from "../_shared/model-routing.ts";
 import { logCost } from "../_shared/cost-ledger.ts";
 import { getUserUsageStage, incrementUsage, getUserSubscriptionTier, checkQuotaOrBlock, checkHourlyRateLimit } from "../_shared/usage-tracker.ts";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { corsHeaders } from "../_shared/cors.ts";
 
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
 if (!ANTHROPIC_API_KEY) {
@@ -1401,7 +1397,7 @@ async function executeTool(
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { headers: corsHeaders(req) });
   }
 
   try {
@@ -1444,7 +1440,7 @@ serve(async (req) => {
           tier: quotaCheck.tier,
           upgrade_url: "/settings/billing",
         }),
-        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 429, headers: { ...corsHeaders(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -1452,7 +1448,7 @@ serve(async (req) => {
     if (!hourlyCheck.allowed) {
       return new Response(
         JSON.stringify({ error: "rate_limited", retry_after: hourlyCheck.retryAfterSeconds }),
-        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": String(hourlyCheck.retryAfterSeconds) } }
+        { status: 429, headers: { ...corsHeaders(req), "Content-Type": "application/json", "Retry-After": String(hourlyCheck.retryAfterSeconds) } }
       );
     }
 
@@ -1461,7 +1457,7 @@ serve(async (req) => {
     if (message && message.length > MAX_INPUT_LENGTH) {
       return new Response(
         JSON.stringify({ error: `Message too long (${message.length} chars). Maximum is ${MAX_INPUT_LENGTH}.` }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 400, headers: { ...corsHeaders(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -1474,7 +1470,7 @@ serve(async (req) => {
         JSON.stringify({
           error: "You've sent too many messages. Please wait a bit before trying again.",
         }),
-        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 429, headers: { ...corsHeaders(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -1760,14 +1756,14 @@ serve(async (req) => {
 
     return new Response(
       JSON.stringify({ success: true, content: displayContent, rich_card: richCard }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { headers: { ...corsHeaders(req), "Content-Type": "application/json" } }
     );
   } catch (err: any) {
     const msg = err.message || "Internal error";
     const isAuthError = msg.includes("Unauthorized") || msg.includes("authorization") || msg.includes("scope");
     return new Response(
       JSON.stringify({ error: msg }),
-      { status: isAuthError ? 401 : 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: isAuthError ? 401 : 500, headers: { ...corsHeaders(req), "Content-Type": "application/json" } }
     );
   }
 });

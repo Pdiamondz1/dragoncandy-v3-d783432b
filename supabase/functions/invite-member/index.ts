@@ -1,14 +1,10 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { corsHeaders } from "../_shared/cors.ts";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return new Response("ok", { headers: corsHeaders(req) });
   }
 
   try {
@@ -23,7 +19,7 @@ serve(async (req) => {
     if (authError || !caller) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...corsHeaders(req), "Content-Type": "application/json" },
       });
     }
 
@@ -32,7 +28,7 @@ serve(async (req) => {
     if (!org_id || !email || !role) {
       return new Response(
         JSON.stringify({ error: "Missing required fields: org_id, email, role" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        { status: 400, headers: { ...corsHeaders(req), "Content-Type": "application/json" } },
       );
     }
 
@@ -48,7 +44,7 @@ serve(async (req) => {
     if (!callerMembership || !["owner", "admin"].includes(callerMembership.role)) {
       return new Response(JSON.stringify({ error: "Insufficient permissions" }), {
         status: 403,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...corsHeaders(req), "Content-Type": "application/json" },
       });
     }
 
@@ -56,7 +52,7 @@ serve(async (req) => {
     if (callerMembership.role === "admin" && role === "owner") {
       return new Response(JSON.stringify({ error: "Admins cannot assign owner role" }), {
         status: 403,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...corsHeaders(req), "Content-Type": "application/json" },
       });
     }
 
@@ -78,7 +74,7 @@ serve(async (req) => {
       if (existingMember?.invitation_status === "active") {
         return new Response(JSON.stringify({ status: "already_member" }), {
           status: 200,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          headers: { ...corsHeaders(req), "Content-Type": "application/json" },
         });
       }
 
@@ -124,7 +120,7 @@ serve(async (req) => {
 
       return new Response(JSON.stringify({ status: "sent" }), {
         status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...corsHeaders(req), "Content-Type": "application/json" },
       });
     } else {
       // New user: send magic link with org context
@@ -135,20 +131,20 @@ serve(async (req) => {
       if (inviteError) {
         return new Response(
           JSON.stringify({ status: "failed", error: inviteError.message }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          { status: 500, headers: { ...corsHeaders(req), "Content-Type": "application/json" } },
         );
       }
 
       return new Response(JSON.stringify({ status: "sent" }), {
         status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...corsHeaders(req), "Content-Type": "application/json" },
       });
     }
   } catch (err) {
     console.error("invite-member error:", err);
     return new Response(JSON.stringify({ error: (err as Error).message }), {
       status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...corsHeaders(req), "Content-Type": "application/json" },
     });
   }
 });

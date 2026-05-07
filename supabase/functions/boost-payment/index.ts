@@ -4,11 +4,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { calculateDragonShareFee } from "../_shared/dragonshare-fee.ts";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { corsHeaders } from "../_shared/cors.ts";
 
 const logStep = (step: string, details?: unknown) => {
   console.log(`[BOOST-PAYMENT] ${step}${details ? ' - ' + JSON.stringify(details) : ''}`);
@@ -16,7 +12,7 @@ const logStep = (step: string, details?: unknown) => {
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { headers: corsHeaders(req) });
   }
 
   const supabase = createClient(
@@ -86,7 +82,7 @@ serve(async (req) => {
         boost_id: boostId,
         message: "Creator hasn't finished payout setup. Boost is queued.",
       }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...corsHeaders(req), "Content-Type": "application/json" },
         status: 202,
       });
     }
@@ -179,14 +175,14 @@ serve(async (req) => {
       transfer_id: transfer.id,
       creator_payout_cents: creatorPayoutCents,
     }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...corsHeaders(req), "Content-Type": "application/json" },
       status: 200,
     });
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
     logStep("ERROR", { message: msg });
     return new Response(JSON.stringify({ error: msg }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...corsHeaders(req), "Content-Type": "application/json" },
       status: 500,
     });
   }

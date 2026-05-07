@@ -1,10 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { corsHeaders } from "../_shared/cors.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -18,7 +14,7 @@ interface InvitationRequest {
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return new Response("ok", { headers: corsHeaders(req) });
   }
 
   try {
@@ -30,14 +26,14 @@ serve(async (req) => {
     if (!campaign_id || !creator_id || !invited_by) {
       return new Response(
         JSON.stringify({ error: "campaign_id, creator_id, and invited_by are required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        { status: 400, headers: { ...corsHeaders(req), "Content-Type": "application/json" } },
       );
     }
 
     if (creator_id === invited_by) {
       return new Response(
         JSON.stringify({ error: "Cannot invite yourself" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        { status: 400, headers: { ...corsHeaders(req), "Content-Type": "application/json" } },
       );
     }
 
@@ -51,21 +47,21 @@ serve(async (req) => {
     if (campaignError || !campaign) {
       return new Response(
         JSON.stringify({ error: "Campaign not found" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        { status: 400, headers: { ...corsHeaders(req), "Content-Type": "application/json" } },
       );
     }
 
     if (campaign.status !== "published") {
       return new Response(
         JSON.stringify({ error: "Campaign is not published" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        { status: 400, headers: { ...corsHeaders(req), "Content-Type": "application/json" } },
       );
     }
 
     if (campaign.user_id !== invited_by) {
       return new Response(
         JSON.stringify({ error: "Only the campaign owner can send invitations" }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        { status: 403, headers: { ...corsHeaders(req), "Content-Type": "application/json" } },
       );
     }
 
@@ -79,7 +75,7 @@ serve(async (req) => {
     if (creatorError || !creator) {
       return new Response(
         JSON.stringify({ error: "Creator not found" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        { status: 400, headers: { ...corsHeaders(req), "Content-Type": "application/json" } },
       );
     }
 
@@ -95,7 +91,7 @@ serve(async (req) => {
     if (existing) {
       return new Response(
         JSON.stringify({ invitation: existing, already_invited: true }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        { status: 200, headers: { ...corsHeaders(req), "Content-Type": "application/json" } },
       );
     }
 
@@ -116,7 +112,7 @@ serve(async (req) => {
       console.error("Error inserting invitation:", insertError);
       return new Response(
         JSON.stringify({ error: "Failed to create invitation" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        { status: 500, headers: { ...corsHeaders(req), "Content-Type": "application/json" } },
       );
     }
 
@@ -219,13 +215,13 @@ serve(async (req) => {
 
     return new Response(
       JSON.stringify({ invitation, already_invited: false }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      { status: 200, headers: { ...corsHeaders(req), "Content-Type": "application/json" } },
     );
   } catch (err) {
     console.error("send-campaign-invitation error:", err);
     return new Response(
       JSON.stringify({ error: "Internal server error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      { status: 500, headers: { ...corsHeaders(req), "Content-Type": "application/json" } },
     );
   }
 });

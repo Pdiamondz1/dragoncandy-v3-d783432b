@@ -14,13 +14,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-};
+import { corsHeaders } from "../_shared/cors.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -61,7 +55,7 @@ async function signState(payload: string): Promise<string> {
 
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { headers: corsHeaders(req) });
   }
 
   // --- Guard: check Toast env vars ---
@@ -75,7 +69,7 @@ serve(async (req: Request) => {
         error: "toast_not_configured",
         message: "Toast API credentials are not configured yet.",
       }),
-      { status: 503, headers: { "Content-Type": "application/json", ...corsHeaders } },
+      { status: 503, headers: { "Content-Type": "application/json", ...corsHeaders(req) } },
     );
   }
 
@@ -85,7 +79,7 @@ serve(async (req: Request) => {
     if (!authHeader?.startsWith("Bearer ")) {
       return new Response(
         JSON.stringify({ error: "Missing authorization header" }),
-        { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } },
+        { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders(req) } },
       );
     }
 
@@ -99,7 +93,7 @@ serve(async (req: Request) => {
     if (authError || !user) {
       return new Response(
         JSON.stringify({ error: "Invalid or expired token" }),
-        { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } },
+        { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders(req) } },
       );
     }
 
@@ -111,7 +105,7 @@ serve(async (req: Request) => {
     if (!businessId) {
       return new Response(
         JSON.stringify({ error: "business_id is required" }),
-        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } },
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders(req) } },
       );
     }
 
@@ -126,7 +120,7 @@ serve(async (req: Request) => {
     if (bizError || !biz) {
       return new Response(
         JSON.stringify({ error: "Business profile not found or access denied" }),
-        { status: 403, headers: { "Content-Type": "application/json", ...corsHeaders } },
+        { status: 403, headers: { "Content-Type": "application/json", ...corsHeaders(req) } },
       );
     }
 
@@ -162,7 +156,7 @@ serve(async (req: Request) => {
         headers: {
           "Content-Type": "application/json",
           "Set-Cookie": setCookie,
-          ...corsHeaders,
+          ...corsHeaders(req),
         },
       },
     );
@@ -173,7 +167,7 @@ serve(async (req: Request) => {
         error: "server_error",
         message: (error as Error)?.message || "Unexpected error",
       }),
-      { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } },
+      { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders(req) } },
     );
   }
 });

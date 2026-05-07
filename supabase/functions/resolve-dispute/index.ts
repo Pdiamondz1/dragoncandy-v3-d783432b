@@ -3,11 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { writePaymentEvent } from "../_shared/payment-events.ts";
 import { calculatePlatformFee, getOrgTakeRate } from "../_shared/platform-fee.ts";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { corsHeaders } from "../_shared/cors.ts";
 
 const stripeKey = Deno.env.get("STRIPE_SECRET_KEY") ?? "";
 
@@ -17,7 +13,7 @@ function logStep(step: string, details?: Record<string, unknown>) {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { headers: corsHeaders(req) });
   }
 
   try {
@@ -25,7 +21,7 @@ Deno.serve(async (req) => {
     if (!authHeader) {
       return new Response(
         JSON.stringify({ error: "Missing authorization" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 401 }
+        { headers: { ...corsHeaders(req), "Content-Type": "application/json" }, status: 401 }
       );
     }
 
@@ -42,7 +38,7 @@ Deno.serve(async (req) => {
     if (!isServiceRole) {
       return new Response(
         JSON.stringify({ error: "Admin access required" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 403 }
+        { headers: { ...corsHeaders(req), "Content-Type": "application/json" }, status: 403 }
       );
     }
 
@@ -50,14 +46,14 @@ Deno.serve(async (req) => {
     if (!disputeId || !outcome) {
       return new Response(
         JSON.stringify({ error: "disputeId and outcome required" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+        { headers: { ...corsHeaders(req), "Content-Type": "application/json" }, status: 400 }
       );
     }
 
     if (!['refund', 'partial_payment', 'approved'].includes(outcome)) {
       return new Response(
         JSON.stringify({ error: "outcome must be refund, partial_payment, or approved" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+        { headers: { ...corsHeaders(req), "Content-Type": "application/json" }, status: 400 }
       );
     }
 
@@ -65,7 +61,7 @@ Deno.serve(async (req) => {
       if (splitPercentage < 1 || splitPercentage > 99) {
         return new Response(
           JSON.stringify({ error: "splitPercentage must be between 1 and 99" }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+          { headers: { ...corsHeaders(req), "Content-Type": "application/json" }, status: 400 }
         );
       }
     }
@@ -73,7 +69,7 @@ Deno.serve(async (req) => {
     if (!stripeKey) {
       return new Response(
         JSON.stringify({ error: "STRIPE_SECRET_KEY is not set" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+        { headers: { ...corsHeaders(req), "Content-Type": "application/json" }, status: 500 }
       );
     }
 
@@ -90,7 +86,7 @@ Deno.serve(async (req) => {
     if (!dispute) {
       return new Response(
         JSON.stringify({ error: "Open dispute not found" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 404 }
+        { headers: { ...corsHeaders(req), "Content-Type": "application/json" }, status: 404 }
       );
     }
 
@@ -103,7 +99,7 @@ Deno.serve(async (req) => {
     if (!collab) {
       return new Response(
         JSON.stringify({ error: "Collaboration not found" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 404 }
+        { headers: { ...corsHeaders(req), "Content-Type": "application/json" }, status: 404 }
       );
     }
 
@@ -258,13 +254,13 @@ Deno.serve(async (req) => {
 
     return new Response(
       JSON.stringify({ success: true, outcome }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+      { headers: { ...corsHeaders(req), "Content-Type": "application/json" }, status: 200 }
     );
   } catch (error) {
     logStep("Error", { message: (error as Error).message });
     return new Response(
       JSON.stringify({ error: (error as Error).message }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+      { headers: { ...corsHeaders(req), "Content-Type": "application/json" }, status: 500 }
     );
   }
 });

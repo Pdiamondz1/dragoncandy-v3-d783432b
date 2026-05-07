@@ -1,14 +1,10 @@
 import { serve } from 'https://deno.land/std@0.190.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { corsHeaders } from "../_shared/cors.ts";
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+    return new Response('ok', { headers: corsHeaders(req) });
   }
 
   try {
@@ -20,7 +16,7 @@ serve(async (req) => {
     if (!url || typeof url !== 'string') {
       return new Response(
         JSON.stringify({ error: 'A valid URL is required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        { status: 400, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } },
       );
     }
 
@@ -43,14 +39,14 @@ serve(async (req) => {
       console.error('Rate-limit check failed:', countError);
       return new Response(
         JSON.stringify({ error: 'Internal server error' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        { status: 500, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } },
       );
     }
 
     if ((count ?? 0) > 0) {
       return new Response(
         JSON.stringify({ error: 'rate_limited', message: 'One free brief per day' }),
-        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        { status: 429, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } },
       );
     }
 
@@ -72,7 +68,7 @@ serve(async (req) => {
       console.error('donny-campaign-generate error:', generateResponse.status, errBody);
       return new Response(
         JSON.stringify({ error: 'Internal server error' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        { status: 500, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } },
       );
     }
 
@@ -96,13 +92,13 @@ serve(async (req) => {
 
     return new Response(
       JSON.stringify(briefData),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      { status: 200, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } },
     );
   } catch (err) {
     console.error('generate-anonymous-brief error:', err);
     return new Response(
       JSON.stringify({ error: 'Internal server error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      { status: 500, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } },
     );
   }
 });

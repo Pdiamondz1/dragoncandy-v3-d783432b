@@ -12,12 +12,7 @@ import * as dragonshareAgent from "./agents/dragonshare.ts";
 import * as billingAgent from "./agents/billing.ts";
 import * as guidanceAgent from "./agents/guidance.ts";
 import * as generalAgent from "./agents/general.ts";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
+import { corsHeaders } from "../_shared/cors.ts";
 
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -191,7 +186,7 @@ function parseSuggestedActions(
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { headers: corsHeaders(req) });
   }
 
   try {
@@ -234,7 +229,7 @@ serve(async (req) => {
           tier: quotaCheck.tier,
           upgrade_url: "/settings/billing",
         }),
-        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 429, headers: { ...corsHeaders(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -242,7 +237,7 @@ serve(async (req) => {
     if (!hourlyCheck.allowed) {
       return new Response(
         JSON.stringify({ error: "rate_limited", retry_after: hourlyCheck.retryAfterSeconds }),
-        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": String(hourlyCheck.retryAfterSeconds) } }
+        { status: 429, headers: { ...corsHeaders(req), "Content-Type": "application/json", "Retry-After": String(hourlyCheck.retryAfterSeconds) } }
       );
     }
 
@@ -255,7 +250,7 @@ serve(async (req) => {
         JSON.stringify({ error: "query and page_path are required" }),
         {
           status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          headers: { ...corsHeaders(req), "Content-Type": "application/json" },
         }
       );
     }
@@ -409,7 +404,7 @@ serve(async (req) => {
 
     return new Response(sseBody, {
       headers: {
-        ...corsHeaders,
+        ...corsHeaders(req),
         "Content-Type": "text/event-stream",
         "Cache-Control": "no-cache",
       },
@@ -423,7 +418,7 @@ serve(async (req) => {
 
     return new Response(JSON.stringify({ error: msg }), {
       status: isAuthError ? 401 : 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...corsHeaders(req), "Content-Type": "application/json" },
     });
   }
 });

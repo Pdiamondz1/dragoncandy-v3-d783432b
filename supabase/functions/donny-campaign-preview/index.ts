@@ -4,13 +4,7 @@ import { validateDonnyToken, requireScope } from "../_shared/auth.ts";
 import { getModelConfig } from "../_shared/model-routing.ts";
 import { logCost } from "../_shared/cost-ledger.ts";
 import { getUserUsageStage, incrementUsage, checkHourlyRateLimit } from "../_shared/usage-tracker.ts";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
+import { corsHeaders } from "../_shared/cors.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -33,7 +27,7 @@ function jsonResponse(
 ): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
+    headers: { ...corsHeaders(req), "Content-Type": "application/json" },
   });
 }
 
@@ -233,18 +227,17 @@ async function handleGenerate(
   };
 
   if (!campaign_id) {
-    return jsonResponse({ success: false, error: "campaign_id is required" }, 400);
+    return jsonResponse(req, { success: false, error: "campaign_id is required" }, 400);
   }
   if (!preview_types || !Array.isArray(preview_types) || preview_types.length === 0) {
-    return jsonResponse({ success: false, error: "preview_types array is required" }, 400);
+    return jsonResponse(req, { success: false, error: "preview_types array is required" }, 400);
   }
 
   const invalidTypes = preview_types.filter(
     (t) => !VALID_PREVIEW_TYPES.includes(t as PreviewType),
   );
   if (invalidTypes.length > 0) {
-    return jsonResponse(
-      {
+    return jsonResponse(req, {
         success: false,
         error: `Invalid preview types: ${invalidTypes.join(", ")}. Valid: ${VALID_PREVIEW_TYPES.join(", ")}`,
       },
@@ -260,7 +253,7 @@ async function handleGenerate(
     .single();
 
   if (campaignErr || !campaign) {
-    return jsonResponse({ success: false, error: "Campaign not found" }, 404);
+    return jsonResponse(req, { success: false, error: "Campaign not found" }, 404);
   }
 
   const usageStage = await getUserUsageStage(supabaseAdmin, userId);
@@ -326,13 +319,13 @@ async function handleGenerate(
       .single();
 
     if (insertErr) {
-      return jsonResponse({ success: false, error: insertErr.message }, 500);
+      return jsonResponse(req, { success: false, error: insertErr.message }, 500);
     }
 
     previews.push(inserted);
   }
 
-  return jsonResponse({ success: true, data: { previews } });
+  return jsonResponse(req, { success: true, data: { previews } });
 }
 
 async function handleRegenerate(
@@ -346,7 +339,7 @@ async function handleRegenerate(
   };
 
   if (!preview_id) {
-    return jsonResponse({ success: false, error: "preview_id is required" }, 400);
+    return jsonResponse(req, { success: false, error: "preview_id is required" }, 400);
   }
 
   // Fetch original preview
@@ -357,7 +350,7 @@ async function handleRegenerate(
     .single();
 
   if (fetchErr || !original) {
-    return jsonResponse({ success: false, error: "Preview not found" }, 404);
+    return jsonResponse(req, { success: false, error: "Preview not found" }, 404);
   }
 
   // Build new prompt from original + style notes
@@ -422,10 +415,10 @@ async function handleRegenerate(
     .single();
 
   if (updateErr) {
-    return jsonResponse({ success: false, error: updateErr.message }, 500);
+    return jsonResponse(req, { success: false, error: updateErr.message }, 500);
   }
 
-  return jsonResponse({ success: true, data: updated });
+  return jsonResponse(req, { success: true, data: updated });
 }
 
 async function handleList(
@@ -436,7 +429,7 @@ async function handleList(
   const { campaign_id } = body as { campaign_id: string };
 
   if (!campaign_id) {
-    return jsonResponse({ success: false, error: "campaign_id is required" }, 400);
+    return jsonResponse(req, { success: false, error: "campaign_id is required" }, 400);
   }
 
   const { data, error } = await supabaseAdmin
@@ -447,10 +440,10 @@ async function handleList(
     .order("sort_order", { ascending: true });
 
   if (error) {
-    return jsonResponse({ success: false, error: error.message }, 500);
+    return jsonResponse(req, { success: false, error: error.message }, 500);
   }
 
-  return jsonResponse({ success: true, data: { previews: data } });
+  return jsonResponse(req, { success: true, data: { previews: data } });
 }
 
 async function handleApprove(
@@ -464,10 +457,10 @@ async function handleApprove(
   };
 
   if (!preview_id) {
-    return jsonResponse({ success: false, error: "preview_id is required" }, 400);
+    return jsonResponse(req, { success: false, error: "preview_id is required" }, 400);
   }
   if (typeof is_approved !== "boolean") {
-    return jsonResponse({ success: false, error: "is_approved (boolean) is required" }, 400);
+    return jsonResponse(req, { success: false, error: "is_approved (boolean) is required" }, 400);
   }
 
   // Verify user owns the preview
@@ -478,10 +471,10 @@ async function handleApprove(
     .single();
 
   if (fetchErr || !existing) {
-    return jsonResponse({ success: false, error: "Preview not found" }, 404);
+    return jsonResponse(req, { success: false, error: "Preview not found" }, 404);
   }
   if (existing.user_id !== userId) {
-    return jsonResponse({ success: false, error: "Unauthorized" }, 403);
+    return jsonResponse(req, { success: false, error: "Unauthorized" }, 403);
   }
 
   const { data, error } = await supabaseAdmin
@@ -492,10 +485,10 @@ async function handleApprove(
     .single();
 
   if (error) {
-    return jsonResponse({ success: false, error: error.message }, 500);
+    return jsonResponse(req, { success: false, error: error.message }, 500);
   }
 
-  return jsonResponse({ success: true, data });
+  return jsonResponse(req, { success: true, data });
 }
 
 // ---------------------------------------------------------------------------
@@ -504,12 +497,12 @@ async function handleApprove(
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { headers: corsHeaders(req) });
   }
 
   try {
     if (req.method !== "POST") {
-      return jsonResponse({ success: false, error: "Method not allowed" }, 405);
+      return jsonResponse(req, { success: false, error: "Method not allowed" }, 405);
     }
 
     const userId = await authenticateRequest(req);
@@ -517,7 +510,7 @@ serve(async (req) => {
 
     const hourlyCheck = await checkHourlyRateLimit(supabaseAdmin, userId);
     if (!hourlyCheck.allowed) {
-      return jsonResponse({ error: "rate_limited", retry_after: hourlyCheck.retryAfterSeconds }, 429);
+      return jsonResponse(req, { error: "rate_limited", retry_after: hourlyCheck.retryAfterSeconds }, 429);
     }
 
     const body = await req.json();
@@ -525,16 +518,15 @@ serve(async (req) => {
 
     switch (action) {
       case "generate":
-        return await handleGenerate(userId, body, supabaseAdmin);
+        return await handleGenerate(req, userId, body, supabaseAdmin);
       case "regenerate":
-        return await handleRegenerate(userId, body, supabaseAdmin);
+        return await handleRegenerate(req, userId, body, supabaseAdmin);
       case "list":
         return await handleList(userId, body, supabaseAdmin);
       case "approve":
         return await handleApprove(userId, body, supabaseAdmin);
       default:
-        return jsonResponse(
-          {
+        return jsonResponse(req, {
             success: false,
             error: `Unknown action: ${action}. Valid actions: generate, regenerate, list, approve`,
           },
@@ -547,8 +539,7 @@ serve(async (req) => {
       msg.includes("Unauthorized") ||
       msg.includes("authorization") ||
       msg.includes("scope");
-    return jsonResponse(
-      { success: false, error: msg },
+    return jsonResponse(req, { success: false, error: msg },
       isAuthError ? 401 : 500,
     );
   }

@@ -4,11 +4,7 @@ import { validateDonnyToken, requireScope } from "../_shared/auth.ts";
 import { getModelConfig, type ModelConfig } from "../_shared/model-routing.ts";
 import { logCost } from "../_shared/cost-ledger.ts";
 import { getUserUsageStage, incrementUsage, checkHourlyRateLimit } from "../_shared/usage-tracker.ts";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { corsHeaders } from "../_shared/cors.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -158,7 +154,7 @@ Generate 3 diverse campaign ideas based on this business.`;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { headers: corsHeaders(req) });
   }
 
   try {
@@ -166,7 +162,7 @@ serve(async (req) => {
     if (!authHeader) {
       return new Response(
         JSON.stringify({ success: false, error: "No authorization header" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 401, headers: { ...corsHeaders(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -185,13 +181,13 @@ serve(async (req) => {
       if (!oauthResult) {
         return new Response(
           JSON.stringify({ success: false, error: "Unauthorized" }),
-          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          { status: 401, headers: { ...corsHeaders(req), "Content-Type": "application/json" } }
         );
       }
       if (!requireScope(oauthResult.scopes, "campaigns:write")) {
         return new Response(
           JSON.stringify({ success: false, error: "Insufficient scope: campaigns:write required" }),
-          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          { status: 403, headers: { ...corsHeaders(req), "Content-Type": "application/json" } }
         );
       }
       userId = oauthResult.user_id;
@@ -201,7 +197,7 @@ serve(async (req) => {
     if (!hourlyCheck.allowed) {
       return new Response(
         JSON.stringify({ error: "rate_limited", retry_after: hourlyCheck.retryAfterSeconds }),
-        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": String(hourlyCheck.retryAfterSeconds) } }
+        { status: 429, headers: { ...corsHeaders(req), "Content-Type": "application/json", "Retry-After": String(hourlyCheck.retryAfterSeconds) } }
       );
     }
 
@@ -240,7 +236,7 @@ serve(async (req) => {
       await incrementUsage(supabaseAdmin, userId, modelConfig.actionCost);
 
       return new Response(JSON.stringify(ideasResponse), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...corsHeaders(req), "Content-Type": "application/json" },
       });
     }
 
@@ -282,7 +278,7 @@ serve(async (req) => {
           success: false,
           error: "At least one of source_url, page_content, or text_brief is required",
         }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 400, headers: { ...corsHeaders(req), "Content-Type": "application/json" } }
       );
     }
 
@@ -423,12 +419,12 @@ Respond with valid JSON only — no markdown fences, no additional text, just ra
 
     return new Response(
       JSON.stringify({ success: true, data: campaignData }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { headers: { ...corsHeaders(req), "Content-Type": "application/json" } }
     );
   } catch (err) {
     return new Response(
       JSON.stringify({ success: false, error: err.message }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 500, headers: { ...corsHeaders(req), "Content-Type": "application/json" } }
     );
   }
 });

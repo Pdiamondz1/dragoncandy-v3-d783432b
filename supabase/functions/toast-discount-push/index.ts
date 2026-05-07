@@ -15,20 +15,14 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
+import { corsHeaders } from "../_shared/cors.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { headers: corsHeaders(req) });
   }
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
@@ -44,7 +38,7 @@ serve(async (req: Request) => {
     if (!promotion_id || !action) {
       return new Response(
         JSON.stringify({ error: "promotion_id and action are required" }),
-        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } },
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders(req) } },
       );
     }
 
@@ -59,7 +53,7 @@ serve(async (req: Request) => {
     if (promoError || !promotion) {
       return new Response(
         JSON.stringify({ error: "Promotion not found" }),
-        { status: 404, headers: { "Content-Type": "application/json", ...corsHeaders } },
+        { status: 404, headers: { "Content-Type": "application/json", ...corsHeaders(req) } },
       );
     }
 
@@ -77,7 +71,7 @@ serve(async (req: Request) => {
           sync_status: "not_connected",
           message: "No active Toast connection for this business",
         }),
-        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } },
+        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders(req) } },
       );
     }
 
@@ -124,7 +118,7 @@ serve(async (req: Request) => {
         promotion_id,
         action,
       }),
-      { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } },
+      { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders(req) } },
     );
   } catch (error: unknown) {
     console.error("toast-discount-push: unexpected error", error);
@@ -133,7 +127,7 @@ serve(async (req: Request) => {
         error: "server_error",
         message: (error as Error)?.message || "Unexpected error",
       }),
-      { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } },
+      { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders(req) } },
     );
   }
 });
