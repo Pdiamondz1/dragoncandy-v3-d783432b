@@ -3170,6 +3170,7 @@ export type Database = {
       }
       organizations: {
         Row: {
+          active_campaign_limit: number
           billing_email: string | null
           created_at: string
           deleted_at: string | null
@@ -3183,9 +3184,11 @@ export type Database = {
           stripe_customer_id: string | null
           stripe_subscription_id: string | null
           subscription_tier: string
+          take_rate: number
           updated_at: string
         }
         Insert: {
+          active_campaign_limit?: number
           billing_email?: string | null
           created_at?: string
           deleted_at?: string | null
@@ -3199,9 +3202,11 @@ export type Database = {
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
           subscription_tier?: string
+          take_rate?: number
           updated_at?: string
         }
         Update: {
+          active_campaign_limit?: number
           billing_email?: string | null
           created_at?: string
           deleted_at?: string | null
@@ -3215,6 +3220,7 @@ export type Database = {
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
           subscription_tier?: string
+          take_rate?: number
           updated_at?: string
         }
         Relationships: []
