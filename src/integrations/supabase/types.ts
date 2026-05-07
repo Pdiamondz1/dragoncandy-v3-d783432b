@@ -330,6 +330,13 @@ export type Database = {
             referencedRelation: "business_profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "business_outstand_accounts_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "public_business_profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
       business_profiles: {
@@ -536,6 +543,13 @@ export type Database = {
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "campaign_applications_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "public_organizations"
+            referencedColumns: ["id"]
+          },
         ]
       }
       campaign_brief_generations: {
@@ -572,6 +586,13 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_brief_generations_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "public_organizations"
             referencedColumns: ["id"]
           },
         ]
@@ -982,6 +1003,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "campaign_sponsorships_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "public_business_profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "campaign_sponsorships_campaign_id_fkey"
             columns: ["campaign_id"]
             isOneToOne: false
@@ -993,6 +1021,13 @@ export type Database = {
             columns: ["restaurant_id"]
             isOneToOne: false
             referencedRelation: "business_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_sponsorships_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "public_business_profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -1139,6 +1174,13 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaigns_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "public_organizations"
             referencedColumns: ["id"]
           },
           {
@@ -2061,6 +2103,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "dragonshare_boosts_boosting_org_id_fkey"
+            columns: ["boosting_org_id"]
+            isOneToOne: false
+            referencedRelation: "public_organizations"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "dragonshare_boosts_post_id_fkey"
             columns: ["post_id"]
             isOneToOne: false
@@ -2324,6 +2373,13 @@ export type Database = {
             columns: ["target_org_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dragonshare_posts_target_org_id_fkey"
+            columns: ["target_org_id"]
+            isOneToOne: false
+            referencedRelation: "public_organizations"
             referencedColumns: ["id"]
           },
           {
@@ -3110,6 +3166,13 @@ export type Database = {
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "org_members_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "public_organizations"
+            referencedColumns: ["id"]
+          },
         ]
       }
       org_units: {
@@ -3164,6 +3227,13 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "org_units_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "public_organizations"
             referencedColumns: ["id"]
           },
         ]
@@ -3331,6 +3401,13 @@ export type Database = {
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "pricing_funnel_events_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "public_organizations"
+            referencedColumns: ["id"]
+          },
         ]
       }
       profile_views: {
@@ -3416,6 +3493,13 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "public_organizations"
             referencedColumns: ["id"]
           },
         ]
@@ -3618,6 +3702,13 @@ export type Database = {
             columns: ["business_id"]
             isOneToOne: false
             referencedRelation: "business_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "promotions_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "public_business_profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -3875,6 +3966,270 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      public_business_profiles: {
+        Row: {
+          account_type: string | null
+          average_rating: number | null
+          brand_category: string | null
+          budget_range: string | null
+          business_name: string | null
+          city: string | null
+          company_size: string | null
+          country: string | null
+          created_at: string | null
+          description: string | null
+          employee_count_range: string | null
+          facebook_url: string | null
+          founded_year: number | null
+          id: string | null
+          industry: Database["public"]["Enums"]["industry_type"] | null
+          instagram_url: string | null
+          is_completed: boolean | null
+          linkedin_url: string | null
+          location: string | null
+          logo_url: string | null
+          marketing_objectives: string | null
+          other_social_url: string | null
+          postal_code: string | null
+          preferred_collaboration_style: string | null
+          profile_slug: string | null
+          profile_visibility: string | null
+          sample_content_urls: string[] | null
+          sponsorship_budget: number | null
+          tiktok_url: string | null
+          timezone: string | null
+          total_reviews: number | null
+          updated_at: string | null
+          user_id: string | null
+          website_url: string | null
+          x_url: string | null
+          youtube_url: string | null
+        }
+        Insert: {
+          account_type?: string | null
+          average_rating?: number | null
+          brand_category?: string | null
+          budget_range?: string | null
+          business_name?: string | null
+          city?: string | null
+          company_size?: string | null
+          country?: string | null
+          created_at?: string | null
+          description?: string | null
+          employee_count_range?: string | null
+          facebook_url?: string | null
+          founded_year?: number | null
+          id?: string | null
+          industry?: Database["public"]["Enums"]["industry_type"] | null
+          instagram_url?: string | null
+          is_completed?: boolean | null
+          linkedin_url?: string | null
+          location?: string | null
+          logo_url?: string | null
+          marketing_objectives?: string | null
+          other_social_url?: string | null
+          postal_code?: string | null
+          preferred_collaboration_style?: string | null
+          profile_slug?: string | null
+          profile_visibility?: string | null
+          sample_content_urls?: string[] | null
+          sponsorship_budget?: number | null
+          tiktok_url?: string | null
+          timezone?: string | null
+          total_reviews?: number | null
+          updated_at?: string | null
+          user_id?: string | null
+          website_url?: string | null
+          x_url?: string | null
+          youtube_url?: string | null
+        }
+        Update: {
+          account_type?: string | null
+          average_rating?: number | null
+          brand_category?: string | null
+          budget_range?: string | null
+          business_name?: string | null
+          city?: string | null
+          company_size?: string | null
+          country?: string | null
+          created_at?: string | null
+          description?: string | null
+          employee_count_range?: string | null
+          facebook_url?: string | null
+          founded_year?: number | null
+          id?: string | null
+          industry?: Database["public"]["Enums"]["industry_type"] | null
+          instagram_url?: string | null
+          is_completed?: boolean | null
+          linkedin_url?: string | null
+          location?: string | null
+          logo_url?: string | null
+          marketing_objectives?: string | null
+          other_social_url?: string | null
+          postal_code?: string | null
+          preferred_collaboration_style?: string | null
+          profile_slug?: string | null
+          profile_visibility?: string | null
+          sample_content_urls?: string[] | null
+          sponsorship_budget?: number | null
+          tiktok_url?: string | null
+          timezone?: string | null
+          total_reviews?: number | null
+          updated_at?: string | null
+          user_id?: string | null
+          website_url?: string | null
+          x_url?: string | null
+          youtube_url?: string | null
+        }
+        Relationships: []
+      }
+      public_creator_profiles: {
+        Row: {
+          allow_portfolio_in_feed: boolean | null
+          availability: string | null
+          avatar_url: string | null
+          average_rating: number | null
+          base_rate_per_hour: number | null
+          bio: string | null
+          city: string | null
+          collaboration_preferences: string | null
+          country: string | null
+          created_at: string | null
+          creator_name: string | null
+          facebook_url: string | null
+          id: string | null
+          instagram_url: string | null
+          is_completed: boolean | null
+          languages_spoken: string[] | null
+          linkedin_url: string | null
+          location: string | null
+          max_projects_per_month: number | null
+          min_project_budget: number | null
+          other_social_url: string | null
+          portfolio_urls: string[] | null
+          postal_code: string | null
+          preferred_project_duration: string | null
+          profile_slug: string | null
+          profile_visibility: string | null
+          response_time: string | null
+          skills: Database["public"]["Enums"]["creator_skill"][] | null
+          tiktok_url: string | null
+          timezone: string | null
+          total_reviews: number | null
+          updated_at: string | null
+          user_id: string | null
+          website_url: string | null
+          x_url: string | null
+          years_of_experience: number | null
+          youtube_url: string | null
+        }
+        Insert: {
+          allow_portfolio_in_feed?: boolean | null
+          availability?: string | null
+          avatar_url?: string | null
+          average_rating?: number | null
+          base_rate_per_hour?: number | null
+          bio?: string | null
+          city?: string | null
+          collaboration_preferences?: string | null
+          country?: string | null
+          created_at?: string | null
+          creator_name?: string | null
+          facebook_url?: string | null
+          id?: string | null
+          instagram_url?: string | null
+          is_completed?: boolean | null
+          languages_spoken?: string[] | null
+          linkedin_url?: string | null
+          location?: string | null
+          max_projects_per_month?: number | null
+          min_project_budget?: number | null
+          other_social_url?: string | null
+          portfolio_urls?: string[] | null
+          postal_code?: string | null
+          preferred_project_duration?: string | null
+          profile_slug?: string | null
+          profile_visibility?: string | null
+          response_time?: string | null
+          skills?: Database["public"]["Enums"]["creator_skill"][] | null
+          tiktok_url?: string | null
+          timezone?: string | null
+          total_reviews?: number | null
+          updated_at?: string | null
+          user_id?: string | null
+          website_url?: string | null
+          x_url?: string | null
+          years_of_experience?: number | null
+          youtube_url?: string | null
+        }
+        Update: {
+          allow_portfolio_in_feed?: boolean | null
+          availability?: string | null
+          avatar_url?: string | null
+          average_rating?: number | null
+          base_rate_per_hour?: number | null
+          bio?: string | null
+          city?: string | null
+          collaboration_preferences?: string | null
+          country?: string | null
+          created_at?: string | null
+          creator_name?: string | null
+          facebook_url?: string | null
+          id?: string | null
+          instagram_url?: string | null
+          is_completed?: boolean | null
+          languages_spoken?: string[] | null
+          linkedin_url?: string | null
+          location?: string | null
+          max_projects_per_month?: number | null
+          min_project_budget?: number | null
+          other_social_url?: string | null
+          portfolio_urls?: string[] | null
+          postal_code?: string | null
+          preferred_project_duration?: string | null
+          profile_slug?: string | null
+          profile_visibility?: string | null
+          response_time?: string | null
+          skills?: Database["public"]["Enums"]["creator_skill"][] | null
+          tiktok_url?: string | null
+          timezone?: string | null
+          total_reviews?: number | null
+          updated_at?: string | null
+          user_id?: string | null
+          website_url?: string | null
+          x_url?: string | null
+          years_of_experience?: number | null
+          youtube_url?: string | null
+        }
+        Relationships: []
+      }
+      public_organizations: {
+        Row: {
+          created_at: string | null
+          id: string | null
+          logo_url: string | null
+          name: string | null
+          org_type: string | null
+          slug: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string | null
+          logo_url?: string | null
+          name?: string | null
+          org_type?: string | null
+          slug?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string | null
+          logo_url?: string | null
+          name?: string | null
+          org_type?: string | null
+          slug?: string | null
+        }
+        Relationships: []
       }
       safe_profiles: {
         Row: {

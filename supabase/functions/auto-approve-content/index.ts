@@ -21,7 +21,11 @@ const EXTENSION_HOURS: Record<string, number> = {
   dragonrush: 2,
 };
 
-serve(async (_req) => {
+serve(async (req) => {
+  const expected = `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""}`;
+  if (req.headers.get("Authorization") !== expected) {
+    return new Response("Unauthorized", { status: 401 });
+  }
   const supabaseClient = createClient(
     Deno.env.get("SUPABASE_URL") ?? "",
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
