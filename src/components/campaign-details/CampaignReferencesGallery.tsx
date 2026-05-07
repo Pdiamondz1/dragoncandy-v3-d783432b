@@ -15,7 +15,7 @@ export function CampaignReferencesGallery({ referenceMedia }: CampaignReferences
   return (
     <>
       <CampaignDetailSection title="Visual References">
-        <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+        <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 md:overflow-x-visible md:flex-wrap">
           {referenceMedia.map((item, i) => (
             <button
               key={item.id}
