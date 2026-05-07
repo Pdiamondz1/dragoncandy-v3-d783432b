@@ -136,7 +136,7 @@ export const BusinessDashboardSideFeed: React.FC<BusinessDashboardSideFeedProps>
       
       <div
         ref={containerRef}
-        className="flex-1 min-h-0 overflow-y-auto scrollbar-hide"
+        className="flex-1 min-h-0 overflow-y-auto scrollbar-hide md:overflow-y-visible"
         onMouseEnter={() => setIsPaused(true)}
         onMouseLeave={() => setIsPaused(false)}
         style={{
