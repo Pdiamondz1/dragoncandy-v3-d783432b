@@ -40,7 +40,7 @@ const AdminDragonShareQueue: React.FC = () => {
 
   return (
     <DashboardLayout userRole={userRole}>
-      <div className="space-y-6">
+      <div className="space-y-6 max-w-4xl mx-auto">
         <div>
           <h1 className="text-2xl font-bold">DragonShare Verification Queue</h1>
           <p className="text-sm text-muted-foreground">

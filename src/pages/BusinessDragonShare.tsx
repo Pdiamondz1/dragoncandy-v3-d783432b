@@ -42,7 +42,7 @@ export function BusinessDragonSharePage({ userRole }: { userRole: UserRole }) {
 
   return (
     <DashboardLayout userRole={userRole}>
-      <div className="space-y-6">
+      <div className="space-y-6 max-w-4xl mx-auto">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Sparkles className="h-6 w-6 text-teal-500" />

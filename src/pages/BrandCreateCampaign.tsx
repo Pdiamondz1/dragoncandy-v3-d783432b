@@ -54,7 +54,7 @@ const BrandCreateCampaign: React.FC = () => {
         </div>
 
         {/* Content */}
-        <div className="px-4 py-6 pb-28 space-y-6 md:max-w-3xl md:mx-auto">
+        <div className="px-4 py-6 pb-28 md:pb-6 space-y-6 md:max-w-3xl md:mx-auto">
           <CampaignWizardHeader currentStep={currentStep} steps={steps} />
 
           {/* Step 1: Brief */}

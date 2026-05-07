@@ -242,7 +242,7 @@ const PromotionDetailPage: React.FC = () => {
   if (!promotion) {
     return (
       <DashboardLayout userRole="business_client">
-        <div className="min-h-screen flex flex-col items-center justify-center gap-4 pb-24">
+        <div className="min-h-screen flex flex-col items-center justify-center gap-4 pb-24 md:pb-0">
           <AlertTriangle className="w-10 h-10 text-muted-foreground" />
           <p className="text-muted-foreground">Promotion not found</p>
           <Button variant="outline" onClick={() => navigate('/dashboard/business/promotions')}>

@@ -85,7 +85,7 @@ const BrandCampaignDetails = () => {
 
   return (
     <DashboardLayout userRole="brand">
-      <div className="min-h-screen bg-white overflow-x-hidden">
+      <div className="min-h-screen bg-white overflow-x-hidden md:max-w-5xl md:mx-auto">
         {/* Hero area — Template D */}
         <div className="relative h-40 bg-gradient-to-br from-dc-teal to-dc-teal-dark">
           {/* Header overlay */}
@@ -110,7 +110,7 @@ const BrandCampaignDetails = () => {
         </div>
 
         {/* White card overlay — Template D */}
-        <div className="bg-white rounded-t-3xl -mt-4 relative z-10 px-4 pt-6 pb-28 space-y-6">
+        <div className="bg-white rounded-t-3xl -mt-4 relative z-10 px-4 pt-6 pb-28 md:pb-6 space-y-6">
           {/* Title + subtitle */}
           <div>
             <h2 className="text-xl font-bold text-gray-900">{campaign.title}</h2>

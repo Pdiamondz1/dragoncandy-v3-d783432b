@@ -166,7 +166,7 @@ const CampaignDetailsPage: React.FC = () => {
   if (isCreatorView) {
     return (
       <DashboardLayout userRole={userRole}>
-        <div className="min-h-screen bg-white overflow-x-hidden pb-24">
+        <div className="min-h-screen bg-white overflow-x-hidden pb-24 md:pb-0">
           <div className="md:max-w-2xl md:mx-auto md:mt-6">
             <CreatorCampaignDetails
               campaign={campaign}

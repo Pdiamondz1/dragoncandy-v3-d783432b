@@ -129,7 +129,7 @@ const PublicBusinessProfile = () => {
   const sampleImages = profile.sample_content_urls ?? [];
 
   return (
-    <div className="bg-white min-h-screen">
+    <div className="bg-white min-h-screen md:max-w-3xl md:mx-auto">
       <SEO
         title={`${profile.business_name} - DragonCandy`}
         description={`View ${profile.business_name}'s profile, active campaigns, and creator collaborations on DragonCandy.`}

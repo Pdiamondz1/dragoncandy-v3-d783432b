@@ -261,7 +261,7 @@ const PublicCreatorProfile = () => {
   const heroImage = portfolioUrls[0] || avatarUrl;
 
   return (
-    <div className="bg-white min-h-screen">
+    <div className="bg-white min-h-screen md:max-w-3xl md:mx-auto">
       <SEO
         title={`${profile.creator_name} - Content Creator on DragonCandy`}
         description={profile.bio?.slice(0, 155) ?? `Browse the portfolio, reviews, and rates for ${profile.creator_name} on DragonCandy.`}

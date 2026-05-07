@@ -35,7 +35,7 @@ const CreatorDragonShare: React.FC = () => {
 
   return (
     <DashboardLayout userRole="content_creator">
-      <div className="space-y-6 pt-4">
+      <div className="space-y-6 pt-4 max-w-3xl mx-auto">
         <div className="rounded-2xl bg-gradient-to-br from-dc-teal/10 to-pink-50 border border-dc-teal/15 p-5 space-y-4">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">DragonShare</h1>
