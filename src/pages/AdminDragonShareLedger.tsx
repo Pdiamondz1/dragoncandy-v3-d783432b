@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Download, Sparkles } from 'lucide-react';
+import { csvCell } from '@/lib/csvEscape';
 import type { UserRole } from '@/types/user';
 
 interface DragonShareBoostRow {
@@ -69,7 +70,7 @@ const AdminDragonShareLedger: React.FC = () => {
         b.status,
       ]);
     });
-    const csv = rows.map((r) => r.join(',')).join('\n');
+    const csv = rows.map((r) => r.map(csvCell).join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
