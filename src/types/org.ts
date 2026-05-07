@@ -8,6 +8,8 @@ export interface Organization {
   stripe_customer_id: string | null;
   stripe_subscription_id: string | null;
   subscription_tier: 'free' | 'starter' | 'growth' | 'pro' | 'enterprise';
+  take_rate: number;
+  active_campaign_limit: number;
   seat_count: number;
   created_at: string;
   updated_at: string;

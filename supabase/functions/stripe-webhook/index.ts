@@ -463,6 +463,13 @@ serve(async (req) => {
         };
         const VALID_TIERS = new Set(['starter', 'growth', 'pro']);
 
+        const TIER_TAKE_RATES: Record<string, number> = {
+          free: 0.10, starter: 0.07, growth: 0.05, pro: 0.03, enterprise: 0.02,
+        };
+        const TIER_CAMPAIGN_LIMITS: Record<string, number> = {
+          free: 1, starter: 3, growth: 10, pro: 2147483647, enterprise: 2147483647,
+        };
+
         let tier = 'free';
         if (subscription.status === 'active' && subscription.items?.data?.length) {
           const basePriceId = subscription.items.data[0].price.id;
@@ -477,6 +484,8 @@ serve(async (req) => {
           .update({
             stripe_subscription_id: subscriptionId,
             subscription_tier: tier,
+            take_rate: TIER_TAKE_RATES[tier] ?? 0.10,
+            active_campaign_limit: TIER_CAMPAIGN_LIMITS[tier] ?? 1,
           })
           .eq("stripe_customer_id", customerId);
 
@@ -499,6 +508,8 @@ serve(async (req) => {
           .update({
             stripe_subscription_id: null,
             subscription_tier: 'free',
+            take_rate: 0.10,
+            active_campaign_limit: 1,
           })
           .eq("stripe_customer_id", customerId);
 
