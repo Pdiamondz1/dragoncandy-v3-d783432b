@@ -45,18 +45,15 @@ serve(async (req) => {
     if (!user?.email) throw new Error("User not authenticated or email not available");
     logStep("User authenticated", { userId: user.id, email: user.email });
 
-    const { campaignId, amount, deliveryFee, campaignTitle, deliveryType } = await req.json();
-    if (!campaignId || !amount) {
-      throw new Error("Missing required fields: campaignId and amount");
+    const { campaignId } = await req.json();
+    if (!campaignId) {
+      throw new Error("Missing required field: campaignId");
     }
-    
-    const totalAmount = amount + (deliveryFee || 0);
-    logStep("Request payload", { campaignId, amount, deliveryFee, totalAmount, campaignTitle, deliveryType });
 
-    // Verify campaign ownership
+    // Verify campaign ownership and load authoritative pricing from DB
     const { data: campaign, error: campaignError } = await supabaseClient
       .from('campaigns')
-      .select('id, user_id, escrow_status')
+      .select('id, user_id, escrow_status, budget_max, fixed_price, pricing_type, delivery_fee, delivery_type, title')
       .eq('id', campaignId)
       .single();
 
@@ -67,6 +64,22 @@ serve(async (req) => {
     if (campaign.user_id !== user.id) {
       throw new Error("You are not authorized to pay for this campaign");
     }
+
+    // Derive all pricing from DB — never trust client-supplied amounts
+    const amount = campaign.pricing_type === 'fixed'
+      ? campaign.fixed_price
+      : campaign.budget_max;
+    if (!amount || amount <= 0) {
+      return new Response(JSON.stringify({ error: 'Campaign has no valid budget set' }), {
+        status: 400,
+        headers: { ...corsHeaders(req), "Content-Type": "application/json" },
+      });
+    }
+    const deliveryFee = campaign.delivery_fee || 0;
+    const campaignTitle = campaign.title || 'Content Campaign';
+    const deliveryType = campaign.delivery_type || 'standard';
+    const totalAmount = amount + deliveryFee;
+    logStep("Pricing from DB", { campaignId, amount, deliveryFee, totalAmount, campaignTitle, deliveryType });
 
     // If already paid, don't create new session
     if (campaign.escrow_status === 'held' || campaign.escrow_status === 'released') {

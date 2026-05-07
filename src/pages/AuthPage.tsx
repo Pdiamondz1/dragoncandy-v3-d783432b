@@ -11,6 +11,13 @@ import dragonCandyLogo from '@/assets/Transparent_DragonCandy_logo.webp';
 
 type SignupStep = "role-selection" | "signup-form";
 
+const ALLOWED_REDIRECT_ORIGINS = new Set([
+  'https://dragoncandy.io',
+  'https://www.dragoncandy.io',
+  'https://dragoncandy-v3.lovable.app',
+  'https://dragoncandy-preview.lovable.app',
+]);
+
 const AuthPage = () => {
   const [searchParams] = useSearchParams();
   const initialMode = searchParams.get('mode') === 'login' ? 'login' : 'signup';
@@ -33,11 +40,15 @@ const AuthPage = () => {
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      // If returnTo is set (e.g. from Donny OAuth flow), redirect back with access token
       const returnTo = searchParams.get('returnTo');
       if (returnTo) {
-        handleOAuthReturn(returnTo);
-        return;
+        try {
+          const url = new URL(returnTo, window.location.origin);
+          if (ALLOWED_REDIRECT_ORIGINS.has(url.origin)) {
+            handleOAuthReturn(returnTo);
+            return;
+          }
+        } catch { /* invalid URL — fall through to normal flow */ }
       }
       checkProfileCompletion();
     }
@@ -45,15 +56,19 @@ const AuthPage = () => {
 
   const handleOAuthReturn = async (returnTo: string) => {
     try {
+      const returnUrl = new URL(returnTo, window.location.origin);
+      if (!ALLOWED_REDIRECT_ORIGINS.has(returnUrl.origin)) {
+        navigate('/', { replace: true });
+        return;
+      }
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.access_token) return;
 
-      // Append access_token to the returnTo URL so the authorize endpoint can read it
-      const returnUrl = new URL(returnTo);
       returnUrl.searchParams.set('access_token', session.access_token);
       window.location.href = returnUrl.toString();
     } catch (err) {
       console.error('OAuth return redirect failed:', err);
+      navigate('/', { replace: true });
     }
   };
 
