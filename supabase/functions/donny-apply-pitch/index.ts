@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { checkHourlyRateLimit } from "../_shared/usage-tracker.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -83,6 +84,14 @@ serve(async (req) => {
           status: 401,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         }
+      );
+    }
+
+    const hourlyCheck = await checkHourlyRateLimit(supabaseAdmin, user.id);
+    if (!hourlyCheck.allowed) {
+      return new Response(
+        JSON.stringify({ error: "rate_limited", retry_after: hourlyCheck.retryAfterSeconds }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": String(hourlyCheck.retryAfterSeconds) } }
       );
     }
 

@@ -139,3 +139,47 @@ export async function checkQuotaOrBlock(
   }
   return { allowed: true };
 }
+
+const HOURLY_LIMITS: Record<string, number> = {
+  free: 20,
+  starter: 50,
+  growth: 200,
+  pro: 500,
+  enterprise: 2000,
+};
+
+function getCurrentHourBucket(): string {
+  const now = new Date();
+  now.setMinutes(0, 0, 0);
+  return now.toISOString();
+}
+
+export async function checkHourlyRateLimit(
+  supabaseAdmin: SupabaseClient,
+  userId: string
+): Promise<{ allowed: true } | { allowed: false; retryAfterSeconds: number }> {
+  const hourBucket = getCurrentHourBucket();
+  const tier = await getUserSubscriptionTier(supabaseAdmin, userId);
+  const limit = HOURLY_LIMITS[tier] ?? HOURLY_LIMITS.free;
+
+  const { data } = await supabaseAdmin
+    .from("llm_hourly_usage")
+    .select("call_count")
+    .eq("user_id", userId)
+    .eq("hour_bucket", hourBucket)
+    .maybeSingle();
+
+  if (data && data.call_count >= limit) {
+    const now = new Date();
+    const nextHour = new Date(hourBucket);
+    nextHour.setHours(nextHour.getHours() + 1);
+    return { allowed: false, retryAfterSeconds: Math.ceil((nextHour.getTime() - now.getTime()) / 1000) };
+  }
+
+  await supabaseAdmin.rpc("increment_llm_hourly_usage", {
+    p_user_id: userId,
+    p_hour_bucket: hourBucket,
+  });
+
+  return { allowed: true };
+}

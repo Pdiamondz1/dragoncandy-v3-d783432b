@@ -3,7 +3,7 @@ import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-
 import { validateDonnyToken, requireScope } from "../_shared/auth.ts";
 import { getModelConfig, type ModelConfig } from "../_shared/model-routing.ts";
 import { logCost } from "../_shared/cost-ledger.ts";
-import { getUserUsageStage, incrementUsage, checkQuotaOrBlock } from "../_shared/usage-tracker.ts";
+import { getUserUsageStage, incrementUsage, checkQuotaOrBlock, checkHourlyRateLimit } from "../_shared/usage-tracker.ts";
 import { embedQuery, retrieveContext } from "./rag.ts";
 import { SUB_AGENT_TOOLS } from "./tools.ts";
 import type { OrchestratorInput, UserContext } from "./types.ts";
@@ -235,6 +235,14 @@ serve(async (req) => {
           upgrade_url: "/settings/billing",
         }),
         { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const hourlyCheck = await checkHourlyRateLimit(supabase, userId);
+    if (!hourlyCheck.allowed) {
+      return new Response(
+        JSON.stringify({ error: "rate_limited", retry_after: hourlyCheck.retryAfterSeconds }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": String(hourlyCheck.retryAfterSeconds) } }
       );
     }
 

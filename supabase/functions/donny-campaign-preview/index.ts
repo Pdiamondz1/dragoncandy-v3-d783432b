@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { validateDonnyToken, requireScope } from "../_shared/auth.ts";
 import { getModelConfig } from "../_shared/model-routing.ts";
 import { logCost } from "../_shared/cost-ledger.ts";
-import { getUserUsageStage, incrementUsage } from "../_shared/usage-tracker.ts";
+import { getUserUsageStage, incrementUsage, checkHourlyRateLimit } from "../_shared/usage-tracker.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -513,10 +513,15 @@ serve(async (req) => {
     }
 
     const userId = await authenticateRequest(req);
+    const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    const hourlyCheck = await checkHourlyRateLimit(supabaseAdmin, userId);
+    if (!hourlyCheck.allowed) {
+      return jsonResponse({ error: "rate_limited", retry_after: hourlyCheck.retryAfterSeconds }, 429);
+    }
+
     const body = await req.json();
     const { action } = body as { action: string };
-
-    const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     switch (action) {
       case "generate":
