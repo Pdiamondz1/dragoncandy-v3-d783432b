@@ -11,6 +11,7 @@ const TIER_FEATURES: Record<
     monthly_price: 0,
     features: [
       "1 active campaign",
+      "10% take rate",
       "Campaign brief generation (1/week)",
       "Creator match report (1/month)",
       "Campaign templates",
@@ -18,8 +19,10 @@ const TIER_FEATURES: Record<
   },
   starter: {
     name: "Starter",
-    monthly_price: 199,
+    monthly_price: 149,
     features: [
+      "3 active campaigns",
+      "7% take rate",
       "Creator delivery",
       "Basic analytics",
       "1 seat included, up to 3 additional (+$29/seat)",
@@ -27,8 +30,10 @@ const TIER_FEATURES: Record<
   },
   growth: {
     name: "Growth",
-    monthly_price: 499,
+    monthly_price: 449,
     features: [
+      "10 active campaigns",
+      "5% take rate",
       "DragonDash (same-day delivery)",
       "Advanced analytics & audience insights",
       "Multi-unit management",
@@ -37,8 +42,10 @@ const TIER_FEATURES: Record<
   },
   pro: {
     name: "Pro",
-    monthly_price: 999,
+    monthly_price: 899,
     features: [
+      "Unlimited campaigns",
+      "3% take rate",
       "API access",
       "Custom branding / white-label",
       "Priority support",

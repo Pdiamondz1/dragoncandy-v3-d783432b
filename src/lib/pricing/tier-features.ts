@@ -29,9 +29,9 @@ export const TIER_ORDER: TierName[] = ['free', 'starter', 'growth', 'pro', 'ente
 
 export const TIER_PRICES: Record<TierName, { monthly: number; annual: number }> = {
   free: { monthly: 0, annual: 0 },
-  starter: { monthly: 199, annual: 159 },
-  growth: { monthly: 499, annual: 399 },
-  pro: { monthly: 999, annual: 799 },
+  starter: { monthly: 149, annual: 119 },
+  growth: { monthly: 449, annual: 359 },
+  pro: { monthly: 899, annual: 719 },
   enterprise: { monthly: 0, annual: 0 },
 };
 

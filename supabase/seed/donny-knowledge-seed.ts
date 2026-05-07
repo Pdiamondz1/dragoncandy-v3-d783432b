@@ -351,7 +351,7 @@ const chunks: KnowledgeChunk[] = [
   {
     source_type: 'pricing',
     content:
-      'Free plan details: the Free plan allows one active campaign at a time, one team seat (owner only), and access to the basic creator marketplace. DragonShare inbox is limited to 5 posts per month. Campaign brief generator is available once per week at no charge. Donny AI chat is available but limited to 20 messages per day. Upgrading to Starter or higher removes all these limits. Free plan users do not have access to DragonDash, advanced analytics, or multi-unit features.',
+      'Free plan details: the Free plan ($0/month) allows one active campaign at a time, one team seat (owner only), and access to the basic creator marketplace at a 10% platform take rate. DragonShare inbox is limited to 5 posts per month. Campaign brief generator is available once per week at no charge. Donny AI chat is available but limited to 20 messages per day. Upgrading to Starter or higher removes all these limits and lowers your take rate. Free plan users do not have access to DragonDash, advanced analytics, or multi-unit features.',
     metadata: {
       source_type: 'pricing',
       source_id: 'free-plan-details',
@@ -363,7 +363,7 @@ const chunks: KnowledgeChunk[] = [
   {
     source_type: 'pricing',
     content:
-      'Starter plan details: Starter gives you multiple simultaneous campaigns, up to 4 seats (1 owner + up to 3 additional at $29/seat/month), basic analytics, and unlimited DragonShare inbox access. The campaign brief generator is unlimited. Donny AI chat is unlimited. Starter does not include DragonDash, multi-unit management, or API access. Starter is best for single-location restaurants or small brands running 2–5 campaigns per month.',
+      'Starter plan details: Starter ($149/month) gives you up to 3 active campaigns at a reduced 7% take rate, up to 4 seats (1 owner + up to 3 additional at $29/seat/month), basic analytics, and unlimited DragonShare inbox access. The campaign brief generator is unlimited. Donny AI chat is unlimited with 500 actions/month. Starter does not include DragonDash, multi-unit management, or API access. Starter is best for single-location restaurants or small brands running 2–3 campaigns per month.',
     metadata: {
       source_type: 'pricing',
       source_id: 'starter-plan-details',
@@ -375,7 +375,7 @@ const chunks: KnowledgeChunk[] = [
   {
     source_type: 'pricing',
     content:
-      'Growth plan details: Growth includes DragonDash (same-day/next-day content delivery), up to 20 seats (5 included, extras at $39/seat/mo), advanced analytics with ROI tracking, and multi-unit account management (manage multiple restaurant locations or storefronts from one dashboard). Growth is the recommended plan for restaurant groups, franchise brands, and businesses running more than 5 simultaneous campaigns.',
+      'Growth plan details: Growth ($449/month) includes up to 10 active campaigns at a 5% take rate, DragonDash (same-day/next-day content delivery), up to 20 seats (5 included, extras at $39/seat/mo), advanced analytics with ROI tracking, Donny AI with 2,000 actions/month, and multi-unit account management (manage multiple restaurant locations or storefronts from one dashboard). Growth is the recommended plan for restaurant groups, franchise brands, and businesses running more than 3 simultaneous campaigns.',
     metadata: {
       source_type: 'pricing',
       source_id: 'growth-plan-details',
@@ -387,7 +387,7 @@ const chunks: KnowledgeChunk[] = [
   {
     source_type: 'pricing',
     content:
-      'Pro plan details: Pro is the top self-serve tier. It includes unlimited seats (15 included, extras at $49/seat/mo), API access for integration with your own systems, custom branding (white-label creator portal), priority support (response within 4 hours), and all Growth features. Pro is best for agencies managing multiple brand accounts or large enterprise brands with complex workflows.',
+      'Pro plan details: Pro ($899/month) is the top self-serve tier with unlimited campaigns at just 3% take rate. It includes unlimited seats (15 included, extras at $49/seat/mo), unlimited Donny AI actions, API access for integration with your own systems, custom branding (white-label creator portal), priority support (response within 4 hours), and all Growth features. Pro is best for agencies managing multiple brand accounts or large enterprise brands with complex workflows.',
     metadata: {
       source_type: 'pricing',
       source_id: 'pro-plan-details',

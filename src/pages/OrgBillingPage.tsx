@@ -11,6 +11,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useMyOrgRole } from '@/hooks/useOrgData';
 import { useOrgMembers } from '@/hooks/useOrgMembers';
 import { SEAT_LIMITS } from '@/types/org';
+import { TIER_PRICES } from '@/lib/pricing/tier-features';
 import type { UserRole } from '@/types/user';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -23,13 +24,6 @@ const TIER_COLORS: Record<string, string> = {
   enterprise: 'bg-amber-100 text-amber-700',
 };
 
-const TIER_PRICES: Record<string, number> = {
-  free: 0,
-  starter: 199,
-  growth: 499,
-  pro: 999,
-  enterprise: 0,
-};
 
 export default function OrgBillingPage() {
   const { profile, activeOrg } = useAuth();
@@ -45,7 +39,7 @@ export default function OrgBillingPage() {
   const seatCount = activeOrg?.seat_count ?? 1;
   const additionalSeats = Math.max(0, seatCount - limits.included);
   const additionalCost = additionalSeats * limits.additionalPriceMonthly;
-  const baseCost = TIER_PRICES[tier];
+  const baseCost = TIER_PRICES[tier as keyof typeof TIER_PRICES]?.monthly ?? 0;
   const totalCost = baseCost + additionalCost;
   const isOwner = myRole?.role === 'owner';
   const activeMembers = members.filter((m) => m.invitation_status === 'active');
@@ -119,7 +113,7 @@ export default function OrgBillingPage() {
                 <div>
                   <p className="text-sm font-medium text-teal-800">Upgrade to add teammates</p>
                   <p className="text-xs text-teal-700 mt-1">
-                    The free plan includes 1 seat. Upgrade to Starter ($199/mo) to invite up to 3 additional team members.
+                    The free plan includes 1 seat. Upgrade to Starter ($149/mo) to invite up to 3 additional team members.
                   </p>
                   <Button
                     size="sm"
@@ -199,7 +193,7 @@ export default function OrgBillingPage() {
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="font-bold">{TIER_PRICES[t] === 0 ? 'Free' : `$${TIER_PRICES[t]}/mo`}</p>
+                    <p className="font-bold">{TIER_PRICES[t as keyof typeof TIER_PRICES]?.monthly === 0 ? 'Free' : `$${TIER_PRICES[t as keyof typeof TIER_PRICES]?.monthly}/mo`}</p>
                     {l.additionalPriceMonthly > 0 && (
                       <p className="text-xs text-muted-foreground flex items-center">
                         +${l.additionalPriceMonthly}/seat
