@@ -12,12 +12,8 @@ export const useLogout = () => {
   const logout = async () => {
     try {
       await clearChat();
-      queryClient.removeQueries({
-        predicate: (query) =>
-          typeof query.queryKey[0] === 'string' &&
-          query.queryKey[0].startsWith('donny'),
-      });
       await signOut();
+      queryClient.clear();
       navigate('/landing');
     } catch (error) {
       console.error('Logout failed:', error);
