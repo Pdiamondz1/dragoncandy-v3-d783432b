@@ -33,23 +33,6 @@
     }
   }
 
-  /* Fixed sidebar positioning for landing page portfolio columns */
-  .fixed-sidebar {
-    position: fixed !important;
-    top: 76px !important;
-    height: calc(100vh - 76px) !important;
-    z-index: 0 !important;
-    transform: none !important;
-  }
-
-  .fixed-sidebar-left {
-    left: 0 !important;
-  }
-
-  .fixed-sidebar-right {
-    right: 0 !important;
-  }
-
   /* ── Light mode tokens ─────────────────────────────────────────────────── */
   :root {
     --background: 0 0% 100%;
@@ -168,6 +151,22 @@
 /* ── Component utilities ───────────────────────────────────────────────────── */
 
 @layer utilities {
+  .fixed-sidebar {
+    position: fixed !important;
+    top: 76px !important;
+    height: calc(100vh - 76px) !important;
+    z-index: 0 !important;
+    transform: none !important;
+  }
+
+  .fixed-sidebar-left {
+    left: 0 !important;
+  }
+
+  .fixed-sidebar-right {
+    right: 0 !important;
+  }
+
   .scrollbar-hide {
     -ms-overflow-style: none;
     scrollbar-width: none;
