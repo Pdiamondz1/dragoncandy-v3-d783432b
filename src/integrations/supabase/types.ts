@@ -282,6 +282,56 @@ export type Database = {
           },
         ]
       }
+      business_outstand_accounts: {
+        Row: {
+          business_id: string | null
+          connected_at: string
+          created_at: string
+          id: string
+          last_seen_at: string | null
+          outstand_social_account_id: string
+          platform: string
+          platform_handle: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          business_id?: string | null
+          connected_at?: string
+          created_at?: string
+          id?: string
+          last_seen_at?: string | null
+          outstand_social_account_id: string
+          platform: string
+          platform_handle?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          business_id?: string | null
+          connected_at?: string
+          created_at?: string
+          id?: string
+          last_seen_at?: string | null
+          outstand_social_account_id?: string
+          platform?: string
+          platform_handle?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_outstand_accounts_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "business_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       business_profiles: {
         Row: {
           account_type: string | null
@@ -3960,6 +4010,7 @@ export type Database = {
       }
       request_org_deletion: { Args: { p_org_id: string }; Returns: undefined }
       restore_org: { Args: { p_org_id: string }; Returns: undefined }
+      set_user_offline: { Args: { p_user_id: string }; Returns: undefined }
       user_in_conversation: {
         Args: { conversation_uuid: string; user_uuid: string }
         Returns: boolean
