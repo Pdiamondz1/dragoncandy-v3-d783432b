@@ -63,9 +63,9 @@ export const AnonymousCampaignLayout: React.FC<AnonymousCampaignLayoutProps> = (
         </header>
 
         {/* Main Content */}
-        <main className="flex-1 px-4 sm:px-6 lg:px-8 max-w-full overflow-x-hidden">
+        <div className="flex-1 px-4 sm:px-6 lg:px-8 max-w-full overflow-x-hidden">
           {children}
-        </main>
+        </div>
 
         {/* Footer */}
         <footer className="bg-card/95 backdrop-blur-sm border-t border-border mt-12 rounded-t-2xl shadow-lg">

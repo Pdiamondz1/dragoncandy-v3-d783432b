@@ -34,14 +34,14 @@ export default function LandingPage() {
       <div className="relative z-10 max-w-md md:max-w-2xl lg:max-w-5xl xl:max-w-6xl mx-auto px-4 md:px-8 lg:px-12">
         <Header />
 
-        <main className="py-6 md:py-10 lg:py-12">
+        <section className="py-6 md:py-10 lg:py-12">
           <HeroSection />
           <BriefGeneratorPreview />
           <HowItWorks />
           <FeatureSection />
           <BrandSection />
           <BottomCTA />
-        </main>
+        </section>
       </div>
 
       {/* Portfolio image strip — edge-to-edge at the bottom */}

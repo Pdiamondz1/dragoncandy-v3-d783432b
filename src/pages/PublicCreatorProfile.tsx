@@ -246,9 +246,9 @@ const PublicCreatorProfile = () => {
       <div className="min-h-screen bg-white flex items-center justify-center px-4">
         <div className="bg-white rounded-3xl p-8 max-w-md w-full text-center shadow-md">
           <User className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-bold text-gray-900 mb-2">
+          <h1 className="text-lg font-bold text-gray-900 mb-2">
             Creator Profile Not Found
-          </h3>
+          </h1>
           <p className="text-gray-500 text-sm mb-6">
             The creator profile you're looking for doesn't exist or is set to private.
           </p>

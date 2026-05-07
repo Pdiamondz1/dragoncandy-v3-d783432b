@@ -53,7 +53,7 @@ export const MobileTopNav: React.FC<MobileTopNavProps> = ({
           </button>
         </SheetTrigger>
         <SheetContent side="right" className="w-72 pt-8 flex flex-col h-full">
-          <nav className="flex-1 overflow-y-auto">
+          <nav aria-label="Mobile" className="flex-1 overflow-y-auto">
             {sections.map((section) => (
               <div key={section.heading} className="mb-4">
                 <h3 className="px-4 mb-1 text-xs font-bold uppercase tracking-wide text-dc-teal">
