@@ -227,7 +227,7 @@ export const CampaignApplyForm: React.FC<CampaignApplyFormProps> = ({
         {/* Thumbnail selector from existing portfolio */}
         {portfolioThumbnails.length > 0 && (
           <>
-            <div className="flex gap-2 overflow-x-auto pb-2">
+            <div className="flex gap-2 overflow-x-auto pb-2 md:overflow-x-visible md:flex-wrap">
               {portfolioThumbnails.map((url, i) => (
                 <button
                   key={i}
@@ -282,7 +282,7 @@ export const CampaignApplyForm: React.FC<CampaignApplyFormProps> = ({
       <button
         type="submit"
         disabled={createApplication.isPending || (!isFixedPrice && (!proposedRate || Number(proposedRate) <= 0))}
-        className="w-full bg-dc-teal text-white rounded-full py-3.5 font-bold text-sm hover:bg-dc-teal-dark transition-colors active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        className="w-full bg-dc-teal-btn text-white rounded-full py-3.5 font-bold text-sm hover:bg-dc-teal-btn-btn-hover transition-colors active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
       >
         {createApplication.isPending ? (
           <>
