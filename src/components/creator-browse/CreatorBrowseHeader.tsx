@@ -91,7 +91,7 @@ export const CreatorBrowseHeader: React.FC<CreatorBrowseHeaderProps> = ({
       </div>
 
       {/* Content-Type Pills */}
-      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide md:overflow-x-visible md:flex-wrap">
         <button
           onClick={() => onContentTypeChange([])}
           className={`flex-shrink-0 px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
