@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Building2, MapPin, Star, ExternalLink, Globe, Instagram } from 'lucide-react';
 import { RestaurantProfile } from '@/hooks/useRestaurantProfile';
 import { Skeleton } from '@/components/ui/skeleton';
+import { safeUrl } from '@/lib/safeUrl';
 
 interface RestaurantProfileCardProps {
   restaurant: RestaurantProfile | null;
@@ -92,18 +93,18 @@ export const RestaurantProfileCard = ({ restaurant, isLoading }: RestaurantProfi
         )}
 
         <div className="flex gap-2">
-          {restaurant.website_url && (
+          {restaurant.website_url && safeUrl(restaurant.website_url) && (
             <Button variant="outline" size="sm" asChild>
-              <a href={restaurant.website_url} target="_blank" rel="noopener noreferrer">
+              <a href={safeUrl(restaurant.website_url)} target="_blank" rel="noopener noreferrer">
                 <Globe className="h-4 w-4 mr-2" />
                 Website
                 <ExternalLink className="h-3 w-3 ml-1" />
               </a>
             </Button>
           )}
-          {restaurant.instagram_url && (
+          {restaurant.instagram_url && safeUrl(restaurant.instagram_url) && (
             <Button variant="outline" size="sm" asChild>
-              <a href={restaurant.instagram_url} target="_blank" rel="noopener noreferrer">
+              <a href={safeUrl(restaurant.instagram_url)} target="_blank" rel="noopener noreferrer">
                 <Instagram className="h-4 w-4 mr-2" />
                 Instagram
                 <ExternalLink className="h-3 w-3 ml-1" />

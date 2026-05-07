@@ -33,6 +33,7 @@ import {
 import { ContactCreatorModal } from '@/components/creator-profile/ContactCreatorModal';
 import { PortfolioLightbox } from '@/components/creator-profile/PortfolioLightbox';
 import { PublicProfileReviews } from '@/components/profiles/PublicProfileReviews';
+import { safeUrl } from '@/lib/safeUrl';
 
 interface CreatorProfile {
   id: string;
@@ -172,24 +173,24 @@ export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
   if (!profile) return null;
 
   const getSocialLinks = () => {
-    const links = [];
+    const links: Array<{ icon: typeof Instagram; url: string | undefined; label: string }> = [];
     if (profile.instagram_url) {
-      links.push({ icon: Instagram, url: profile.instagram_url, label: 'Instagram' });
+      links.push({ icon: Instagram, url: safeUrl(profile.instagram_url), label: 'Instagram' });
     }
     if (profile.tiktok_url) {
-      links.push({ icon: TrendingUp, url: profile.tiktok_url, label: 'TikTok' });
+      links.push({ icon: TrendingUp, url: safeUrl(profile.tiktok_url), label: 'TikTok' });
     }
     if (profile.youtube_url) {
-      links.push({ icon: Youtube, url: profile.youtube_url, label: 'YouTube' });
+      links.push({ icon: Youtube, url: safeUrl(profile.youtube_url), label: 'YouTube' });
     }
     if (profile.facebook_url) {
-      links.push({ icon: Facebook, url: profile.facebook_url, label: 'Facebook' });
+      links.push({ icon: Facebook, url: safeUrl(profile.facebook_url), label: 'Facebook' });
     }
     if (profile.linkedin_url) {
-      links.push({ icon: Linkedin, url: profile.linkedin_url, label: 'LinkedIn' });
+      links.push({ icon: Linkedin, url: safeUrl(profile.linkedin_url), label: 'LinkedIn' });
     }
     if (profile.x_url) {
-      links.push({ icon: Twitter, url: profile.x_url, label: 'X' });
+      links.push({ icon: Twitter, url: safeUrl(profile.x_url), label: 'X' });
     }
     return links;
   };
@@ -265,9 +266,9 @@ export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
                       response_time: profile.response_time,
                     }}
                   />
-                  {profile.website_url && (
+                  {profile.website_url && safeUrl(profile.website_url) && (
                     <Button variant="outline" size="sm" asChild>
-                      <a href={profile.website_url} target="_blank" rel="noopener noreferrer">
+                      <a href={safeUrl(profile.website_url)} target="_blank" rel="noopener noreferrer">
                         <Globe className="h-4 w-4 mr-2" />
                         Website
                         <ExternalLink className="h-3 w-3 ml-1" />
@@ -427,7 +428,7 @@ export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
               <div>
                 <h3 className="text-lg font-semibold mb-3">Social Media</h3>
                 <div className="flex flex-wrap gap-2">
-                  {getSocialLinks().map(({ icon: Icon, url, label }) => (
+                  {getSocialLinks().filter(l => l.url).map(({ icon: Icon, url, label }) => (
                     <Button
                       key={label}
                       variant="outline"
