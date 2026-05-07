@@ -23,7 +23,7 @@ export const DonnyPicksRow: React.FC<DonnyPicksRowProps> = ({ picks, onViewDetai
           <p className="text-[11px] text-gray-500">Matched based on your skills, location, and ratings</p>
         </div>
       </div>
-      <div className="flex gap-4 overflow-x-auto scrollbar-hide pb-2">
+      <div className="flex gap-4 overflow-x-auto scrollbar-hide pb-2 md:overflow-x-visible md:grid md:grid-cols-2 lg:grid-cols-3 md:pb-0">
         {picks.map((pick) => (
           <Card
             key={pick.campaign.id}
