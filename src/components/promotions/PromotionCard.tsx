@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -34,7 +34,6 @@ export const PromotionCard: React.FC<PromotionCardProps> = ({
   onEdit,
   onDelete,
 }) => {
-  const navigate = useNavigate();
   const [showQRModal, setShowQRModal] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -101,9 +100,9 @@ export const PromotionCard: React.FC<PromotionCardProps> = ({
 
   return (
     <>
+      <Link to={`/dashboard/business/promotions/${promotion.id}`} className="block">
       <Card
         className="hover:shadow-md transition-shadow cursor-pointer"
-        onClick={() => navigate(`/dashboard/business/promotions/${promotion.id}`)}
       >
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between">
@@ -190,14 +189,15 @@ export const PromotionCard: React.FC<PromotionCardProps> = ({
               </Button>
             )}
           </div>
-          <button
+          <Link
+            to={`/dashboard/business/promotions/${promotion.id}`}
             className="flex items-center gap-1 text-xs font-medium text-dc-teal hover:underline pt-1"
-            onClick={() => navigate(`/dashboard/business/promotions/${promotion.id}`)}
           >
             View details <ChevronRight className="w-3 h-3" />
-          </button>
+          </Link>
         </CardContent>
       </Card>
+      </Link>
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>

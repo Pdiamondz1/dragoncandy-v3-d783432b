@@ -17,7 +17,7 @@ export const HeroSection: React.FC = () => {
 
       <div className="flex flex-col gap-3 w-full max-w-sm mx-auto animate-fade-in-up-delay-3">
         <Button
-          className="w-full h-12 rounded-full bg-dc-teal text-white font-bold text-base hover:bg-dc-teal-dark hover:shadow-glow-teal transition-all duration-300"
+          className="w-full h-12 rounded-full bg-dc-teal text-dc-text font-bold text-base hover:bg-dc-teal-dark hover:shadow-glow-teal transition-all duration-300"
           onClick={() => navigate('/auth?mode=signup')}
         >
           I'm a Restaurant — Get Started

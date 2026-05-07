@@ -76,7 +76,7 @@ const config: Record<
     tooltip: 'Connect Toast in Settings to enable sync',
     dot: 'bg-gray-300',
     ring: '',
-    text: 'text-gray-400',
+    text: 'text-dc-text-muted',
     bg: 'bg-transparent',
     border: 'border-dashed border-gray-200',
     pulse: false,

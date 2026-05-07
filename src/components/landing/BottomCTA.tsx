@@ -15,7 +15,7 @@ export const BottomCTA = () => {
       </p>
       <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
         <Button
-          className="w-full sm:w-auto sm:px-8 rounded-full bg-dc-teal text-white font-bold py-3 text-base lg:text-lg hover:bg-dc-teal-dark hover:shadow-glow-teal transition-all duration-300 group"
+          className="w-full sm:w-auto sm:px-8 rounded-full bg-dc-teal text-dc-text font-bold py-3 text-base lg:text-lg hover:bg-dc-teal-dark hover:shadow-glow-teal transition-all duration-300 group"
           onClick={() => navigate('/auth?mode=signup')}
         >
           I'm a Restaurant — Get Started

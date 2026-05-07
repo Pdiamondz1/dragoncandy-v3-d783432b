@@ -71,17 +71,17 @@ class ErrorBoundary extends Component<Props, State> {
             <div className="space-y-2">
               <button
                 onClick={this.handleRetry}
-                className="block w-full px-6 py-2.5 bg-dc-teal text-white rounded-full font-bold hover:bg-dc-teal-hover transition-colors"
+                className="block w-full px-6 py-2.5 bg-dc-teal text-dc-text rounded-full font-bold hover:bg-dc-teal-hover transition-colors"
               >
                 Try Again
               </button>
               {isPage && (
-                <button
-                  onClick={() => { window.location.href = '/dashboard'; }}
-                  className="block w-full text-sm text-gray-400 hover:text-gray-600 underline"
+                <a
+                  href="/dashboard"
+                  className="block w-full text-sm text-dc-text-muted hover:text-dc-text underline"
                 >
                   Go to Dashboard
-                </button>
+                </a>
               )}
             </div>
           </div>
