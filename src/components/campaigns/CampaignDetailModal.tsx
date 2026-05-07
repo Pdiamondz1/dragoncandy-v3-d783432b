@@ -6,6 +6,7 @@ import { X, Download } from 'lucide-react';
 import { safeUrl } from '@/lib/safeUrl';
 import { PublicCampaign } from '@/hooks/usePublicCampaigns';
 import { useCampaignDetail } from '@/hooks/useCampaignDetail';
+import { useAuth } from '@/hooks/useAuth';
 import { DeliveryBadge } from './DeliveryBadge';
 import { CampaignApplyForm } from './CampaignApplyForm';
 import { mapDeliveryType, getRelativeTime, formatBudget, getTierConfig } from '@/lib/campaignUtils';
@@ -30,7 +31,9 @@ export const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
   const [showApplyForm, setShowApplyForm] = useState(false);
   const formRef = useRef<HTMLDivElement>(null);
   const { data: detail } = useCampaignDetail(isOpen ? campaign.id : null);
+  const { profile } = useAuth();
 
+  const rolePrefix = profile?.role === 'brand' ? '/dashboard/brand' : profile?.role === 'business_client' ? '/dashboard/business' : '/dashboard/creator';
   const deliveryTier = mapDeliveryType(campaign.delivery_type);
   const tierConfig = getTierConfig(deliveryTier);
   const businessName = campaign.business_profile?.business_name ?? 'Unknown Business';
@@ -272,7 +275,7 @@ export const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
             {/* View Full Details link */}
             <div className="px-4 py-3 border-b border-gray-100">
               <Link
-                to={`/campaigns/${campaign.id}`}
+                to={`${rolePrefix}/campaigns/${campaign.id}`}
                 className="w-full flex items-center justify-center rounded-full border-2 border-dc-teal text-dc-teal font-bold py-2.5 text-sm hover:bg-teal-50 transition-colors"
                 onClick={(e) => e.stopPropagation()}
               >
