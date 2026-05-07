@@ -18,9 +18,27 @@ serve(async (req) => {
   }
 
   try {
+    // Require authentication
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders(req), "Content-Type": "application/json" },
+      });
+    }
+    const token = authHeader.replace("Bearer ", "");
+    const supabaseAnon = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_ANON_KEY")!);
+    const { data: { user: caller }, error: authError } = await supabaseAnon.auth.getUser(token);
+    if (authError || !caller) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders(req), "Content-Type": "application/json" },
+      });
+    }
+
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-    const { campaign_id, creator_id, invited_by, invitation_message } =
+    const { campaign_id, creator_id, invitation_message } =
       (await req.json()) as InvitationRequest;
+    // Use authenticated user's ID — never trust client-supplied invited_by
+    const invited_by = caller.id;
 
     // --- Validation ---
     if (!campaign_id || !creator_id || !invited_by) {
