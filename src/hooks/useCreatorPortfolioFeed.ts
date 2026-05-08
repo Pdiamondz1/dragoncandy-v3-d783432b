@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://zocahiffooqdybdhguqv.supabase.co';
+
 interface PortfolioMedia {
   id: string;
   url: string;
@@ -107,8 +109,7 @@ export const useCreatorPortfolioFeed = () => {
             .filter((url: unknown) => typeof url === 'string' && url.length > 0)
             .map(async (url: string) => {
               const isExternal = url.startsWith('http');
-              const finalUrl = isExternal ? url : await getSignedUrl(url);
-              if (!finalUrl) return null;
+              const finalUrl = isExternal ? url : `${SUPABASE_URL}/storage/v1/object/public/profile-assets/${url}`;
               const isVideo = /\.(mp4|webm|mov|avi)$/i.test(url);
               return {
                 id: `${creator.id}-${url}`,
