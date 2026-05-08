@@ -76,7 +76,7 @@ export function SamplePromptCarousel({ onSelect, disabled }: SamplePromptCarouse
         aria-label={paused ? "Resume carousel" : "Pause carousel"}
         onClick={(e) => { e.stopPropagation(); setPaused(p => !p); }}
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); e.preventDefault(); setPaused(p => !p); } }}
-        className="absolute top-2 right-2 p-1 rounded-full bg-dc-dark/50 text-white text-xs z-10"
+        className="absolute -top-3 -right-3 p-1.5 rounded-full bg-dc-dark/50 text-white text-xs z-10 shadow-sm"
       >
         {paused ? "▶" : "⏸"}
       </span>
