@@ -1,0 +1,35 @@
+name: Lighthouse CI
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  lighthouse:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run build
+
+      - name: Lighthouse CI — Desktop
+        uses: treosh/lighthouse-ci-action@v12
+        with:
+          configPath: ./lighthouserc.js
+          uploadArtifacts: true
+
+      - name: Lighthouse CI — Mobile
+        uses: treosh/lighthouse-ci-action@v12
+        with:
+          configPath: ./lighthouserc.js
+          uploadArtifacts: true
+        env:
+          LHCI_COLLECT__SETTINGS__PRESET: mobile
+          LHCI_ASSERT__ASSERTIONS__CATEGORIES_PERFORMANCE: 'error,minScore,0.85'
