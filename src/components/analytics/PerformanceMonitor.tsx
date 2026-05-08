@@ -32,8 +32,15 @@ export const PerformanceMonitor: React.FC = () => {
       }
     };
 
-    // Check memory every 30 seconds
-    const memoryInterval = setInterval(checkMemoryUsage, 30000);
+    let memoryInterval: ReturnType<typeof setInterval> | undefined;
+    const startMemoryMonitoring = () => {
+      memoryInterval = setInterval(checkMemoryUsage, 30000);
+    };
+    if ('requestIdleCallback' in window) {
+      (window as Window).requestIdleCallback(startMemoryMonitoring);
+    } else {
+      setTimeout(startMemoryMonitoring, 2000);
+    }
 
     // Monitor errors
     const errorHandler = (event: ErrorEvent) => {
@@ -58,7 +65,7 @@ export const PerformanceMonitor: React.FC = () => {
 
     return () => {
       observer?.disconnect();
-      clearInterval(memoryInterval);
+      if (memoryInterval) clearInterval(memoryInterval);
       window.removeEventListener('error', errorHandler);
       window.removeEventListener('unhandledrejection', unhandledRejectionHandler);
     };

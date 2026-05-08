@@ -7,7 +7,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { DonnyProvider } from "@/contexts/DonnyProvider";
-import { DonnyDesktopPanel } from "@/components/donny/DonnyDesktopPanel";
+const DonnyDesktopPanel = lazy(() => import("@/components/donny/DonnyDesktopPanel").then(m => ({ default: m.DonnyDesktopPanel })));
 import { AnalyticsProvider } from "@/components/analytics/AnalyticsProvider";
 import { PerformanceMonitor } from "@/components/analytics/PerformanceMonitor";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -310,7 +310,7 @@ const App = () => {
                   </SiteGateGuard>
                   <ErrorBoundary level="widget" fallback={null}><Suspense fallback={null}><HelpBriefDrawer /></Suspense></ErrorBoundary>
                 </main>
-                <ErrorBoundary level="widget" fallback={null}><DonnyDesktopPanel /></ErrorBoundary>
+                <ErrorBoundary level="widget" fallback={null}><Suspense fallback={null}><DonnyDesktopPanel /></Suspense></ErrorBoundary>
                 </div>
                 </DonnyProviderWithAuth>
                 </BrowserRouter>

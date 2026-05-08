@@ -229,6 +229,10 @@
     background-size: 200% 100%;
     animation: shimmer 2s infinite;
   }
+
+  .animate-marquee {
+    will-change: transform;
+  }
 }
 
 /* ── Keyframes ─────────────────────────────────────────────────────────────── */
