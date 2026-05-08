@@ -18,7 +18,7 @@ import { VerifiedRoute } from '@/components/VerifiedRoute';
 import { BusinessRoute } from "@/components/BusinessRoute";
 import { BrandRoute } from "@/components/BrandRoute";
 import { Spinner } from "@/components/ui/spinner";
-const Index = lazy(() => import("./pages/Index"));
+
 import { SiteGateGuard } from "@/components/SiteGateGuard";
 import { Navigate } from "react-router-dom";
 const NotFound = lazy(() => import("./pages/NotFound"));
@@ -28,7 +28,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { PageTransition } from "@/components/PageTransition";
 import type { UserRole } from "@/types/user";
 
-const LandingPage = lazy(() => import("./pages/LandingPage"));
+import LandingPage from "./pages/LandingPage";
 const ProfileSetup = lazy(() => import("./pages/ProfileSetup"));
 const BusinessDashboard = lazy(() => import("./pages/BusinessDashboard"));
 const BrandDashboard = lazy(() => import("./pages/BrandDashboard"));
@@ -135,8 +135,8 @@ function AnimatedRoutes() {
     <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><Spinner /></div>}>
       <PageTransition locationKey={location.pathname}>
         <Routes location={location}>
-          <Route path="/" element={<Index />} />
-          <Route path="/home" element={<Index />} />
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/home" element={<LandingPage />} />
           <Route path="/landing" element={<LandingPage />} />
           <Route path="/auth" element={<AuthPage />} />
           <Route path="/verify-email" element={<VerifyEmail />} />

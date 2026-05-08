@@ -19,7 +19,7 @@ export default function LandingPage() {
   // Redirect authenticated users to their dashboard
   useEffect(() => {
     if (!loading && user) {
-      navigate('/', { replace: true });
+      navigate('/dashboard', { replace: true });
     }
   }, [user, loading, navigate]);
 
