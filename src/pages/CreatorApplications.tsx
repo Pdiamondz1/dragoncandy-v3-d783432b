@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { useCreatorApplications } from '@/hooks/useFetchApplications';
 import { DCSkeleton } from '@/components/ui/dc-skeleton';
 import { ErrorState } from '@/components/ui/error-state';
+import { PageHeader } from '@/components/ui/PageHeader';
 import { ApplicationsStats } from '@/components/applications/ApplicationsStats';
 import { ApplicationsSearch } from '@/components/applications/ApplicationsSearch';
 import { ApplicationsTabsContent } from '@/components/applications/ApplicationsTabsContent';
@@ -29,10 +30,12 @@ const CreatorApplications: React.FC = () => {
     return (
       <DashboardLayout userRole="content_creator">
         <div className="min-h-screen bg-white overflow-x-hidden">
-          <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
-            <span className="h-5 w-5 bg-gray-200 rounded-full animate-pulse mr-2" />
-            <span className="flex-1 h-4 bg-gray-200 rounded-full animate-pulse mx-8" />
-          </div>
+          <PageHeader>
+            <div className="flex items-center">
+              <span className="h-5 w-5 bg-gray-200 rounded-full animate-pulse mr-2" />
+              <span className="flex-1 h-4 bg-gray-200 rounded-full animate-pulse mx-8" />
+            </div>
+          </PageHeader>
           <div className="px-4 pt-4 pb-24 md:pb-0 space-y-3">
             <DCSkeleton variant="list-row" count={4} />
           </div>
@@ -52,22 +55,23 @@ const CreatorApplications: React.FC = () => {
   return (
     <DashboardLayout userRole="content_creator">
       <div className="min-h-screen bg-white overflow-x-hidden md:max-w-4xl md:mx-auto">
-        {/* Template B Header */}
-        <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
-          <button
-            onClick={() => navigate('/dashboard/creator')}
-            className="text-dc-pink-accent mr-2"
-            aria-label="Back"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </button>
-          <h1 className="flex-1 text-center font-sans text-base font-bold text-gray-900 uppercase tracking-wide">
-            My Applications
-          </h1>
-          <span className="text-xs text-gray-400 font-semibold">
-            {applications.length}
-          </span>
-        </div>
+        <PageHeader>
+          <div className="flex items-center">
+            <button
+              onClick={() => navigate('/dashboard/creator')}
+              className="text-dc-pink-accent mr-2"
+              aria-label="Back"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </button>
+            <h1 className="flex-1 text-center font-sans text-base font-bold text-gray-900 uppercase tracking-wide">
+              My Applications
+            </h1>
+            <span className="text-xs text-gray-400 font-semibold">
+              {applications.length}
+            </span>
+          </div>
+        </PageHeader>
 
         {/* Content */}
         <div className="px-4 pt-4 pb-24 md:pb-0 space-y-4">

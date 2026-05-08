@@ -20,6 +20,7 @@ import { cn } from '@/lib/utils';
 import { RatingModal } from '@/components/reviews/RatingModal';
 import { QuickApprovalCard } from '@/components/projects/QuickApprovalCard';
 import { useToast } from '@/hooks/use-toast';
+import { PageHeader } from '@/components/ui/PageHeader';
 
 interface ProjectCollaboration {
   id: string;
@@ -302,10 +303,12 @@ const BusinessProjects: React.FC = () => {
     return (
       <DashboardLayout userRole="business_client">
         <div className="min-h-screen bg-white overflow-x-hidden">
-          <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
-            <span className="h-5 w-5 bg-gray-200 rounded-full animate-pulse mr-2" />
-            <span className="flex-1 h-4 bg-gray-200 rounded-full animate-pulse mx-8" />
-          </div>
+          <PageHeader>
+            <div className="flex items-center">
+              <span className="h-5 w-5 bg-gray-200 rounded-full animate-pulse mr-2" />
+              <span className="flex-1 h-4 bg-gray-200 rounded-full animate-pulse mx-8" />
+            </div>
+          </PageHeader>
           <div className="px-4 pt-4 pb-24 md:pb-0 space-y-3">
             {[1, 2, 3].map(i => (
               <div key={i} className="border-2 border-gray-100 rounded-2xl p-4 h-24 animate-pulse bg-gray-50" />
@@ -334,20 +337,22 @@ const BusinessProjects: React.FC = () => {
     <DashboardLayout userRole="business_client">
       <div className="min-h-screen bg-white overflow-x-hidden md:max-w-4xl md:mx-auto">
         {/* Template B Header */}
-        <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
-          <button
-            onClick={() => navigate(-1)}
-            className="text-dc-pink-accent text-lg mr-2 flex items-center"
-          >
-            <ChevronLeft className="h-5 w-5" />
-          </button>
-          <h1 className="flex-1 font-sans text-base font-bold text-gray-900 uppercase tracking-wide text-center">
-            My Projects
-          </h1>
-          <span className="text-xs text-gray-500 whitespace-nowrap">
-            {projects?.length || 0} project{projects?.length !== 1 ? 's' : ''}
-          </span>
-        </div>
+        <PageHeader>
+          <div className="flex items-center">
+            <button
+              onClick={() => navigate(-1)}
+              className="text-dc-pink-accent text-lg mr-2 flex items-center"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+            <h1 className="flex-1 font-sans text-base font-bold text-gray-900 uppercase tracking-wide text-center">
+              My Projects
+            </h1>
+            <span className="text-xs text-gray-500 whitespace-nowrap">
+              {projects?.length || 0} project{projects?.length !== 1 ? 's' : ''}
+            </span>
+          </div>
+        </PageHeader>
 
         {/* Body */}
         <div className="px-4 pt-4 pb-24 md:pb-0 space-y-4">

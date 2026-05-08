@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/DashboardLayout';
+import { PageHeader } from '@/components/ui/PageHeader';
 import { useBusinessActivity } from '@/hooks/useBusinessActivity';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -79,10 +80,12 @@ const BusinessActivity = () => {
     return (
       <DashboardLayout userRole="business_client">
         <div className="min-h-screen bg-white overflow-x-hidden">
-          <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
-            <span className="h-5 w-5 bg-gray-200 rounded-full animate-pulse mr-2" />
-            <span className="flex-1 h-4 bg-gray-200 rounded-full animate-pulse mx-8" />
-          </div>
+          <PageHeader>
+            <div className="flex items-center">
+              <span className="h-5 w-5 bg-gray-200 rounded-full animate-pulse mr-2" />
+              <span className="flex-1 h-4 bg-gray-200 rounded-full animate-pulse mx-8" />
+            </div>
+          </PageHeader>
           <div className="px-4 pt-4 pb-24 md:pb-0 flex items-center justify-center min-h-[300px]">
             <Loader2 className="h-10 w-10 animate-spin text-dc-teal" />
           </div>
@@ -107,20 +110,22 @@ const BusinessActivity = () => {
     <DashboardLayout userRole="business_client">
       <div className="min-h-screen bg-white overflow-x-hidden md:max-w-4xl md:mx-auto">
         {/* Template B Header */}
-        <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
-          <button
-            onClick={() => navigate(-1)}
-            className="text-dc-pink-accent text-lg mr-2 flex items-center"
-          >
-            <ChevronLeft className="h-5 w-5" />
-          </button>
-          <h1 className="flex-1 font-sans text-base font-bold text-gray-900 uppercase tracking-wide text-center">
-            Inspiration
-          </h1>
-          <Badge variant="secondary" className="rounded-full text-xs shrink-0">
-            {localLikedItems.length} saved
-          </Badge>
-        </div>
+        <PageHeader>
+          <div className="flex items-center">
+            <button
+              onClick={() => navigate(-1)}
+              className="text-dc-pink-accent text-lg mr-2 flex items-center"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+            <h1 className="flex-1 font-sans text-base font-bold text-gray-900 uppercase tracking-wide text-center">
+              Inspiration
+            </h1>
+            <Badge variant="secondary" className="rounded-full text-xs shrink-0">
+              {localLikedItems.length} saved
+            </Badge>
+          </div>
+        </PageHeader>
 
         {/* Body */}
         <div className="px-4 pt-4 pb-24 md:pb-0">

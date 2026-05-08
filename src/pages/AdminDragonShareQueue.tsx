@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { safeUrl } from '@/lib/safeUrl';
 import { DashboardLayout } from '@/components/DashboardLayout';
+import { PageHeader } from '@/components/ui/PageHeader';
 import { useAdminDragonShareQueue, useVerifyDragonSharePost } from '@/hooks/useDragonShare';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
@@ -41,13 +42,15 @@ const AdminDragonShareQueue: React.FC = () => {
   return (
     <DashboardLayout userRole={userRole}>
       <div className="space-y-6 max-w-4xl mx-auto">
-        <div>
-          <h1 className="text-2xl font-bold">DragonShare Verification Queue</h1>
-          <p className="text-sm text-muted-foreground">
-            {posts?.length ?? 0} posts awaiting verification
-          </p>
-        </div>
-
+        <PageHeader>
+          <div>
+            <h1 className="text-2xl font-bold">DragonShare Verification Queue</h1>
+            <p className="text-sm text-muted-foreground">
+              {posts?.length ?? 0} posts awaiting verification
+            </p>
+          </div>
+        </PageHeader>
+        <div className="px-4 space-y-6">
         {isLoading ? (
           <div className="space-y-4">
             {[1, 2, 3].map((i) => (
@@ -147,6 +150,7 @@ const AdminDragonShareQueue: React.FC = () => {
             ))}
           </div>
         )}
+        </div>
       </div>
     </DashboardLayout>
   );

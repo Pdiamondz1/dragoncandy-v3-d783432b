@@ -19,6 +19,7 @@ import { LeaveOrgSheet } from '@/components/org/LeaveOrgSheet';
 import { DeleteUserSheet } from '@/components/org/DeleteUserSheet';
 import { Coachmark } from '@/components/guidance/Coachmark';
 import { WhyExpander } from '@/components/guidance/WhyExpander';
+import { PageHeader } from '@/components/ui/PageHeader';
 
 const BusinessSettings = () => {
   const { user, activeOrg } = useAuth();
@@ -107,16 +108,20 @@ const BusinessSettings = () => {
 
   return (
     <DashboardLayout userRole="business_client">
-      <div className="min-h-screen bg-white p-4">
-        <div className="max-w-lg mx-auto">
-          <ProfileCompletionBar
-            avatarUrl={formData.logo_url || null}
-            displayName={displayName}
-            roleLabel={roleLabel}
-            completion={completion}
-            isCreator={false}
-            onNudgeClick={handleNudgeClick}
-          />
+      <div className="min-h-screen bg-white overflow-x-hidden">
+        <PageHeader>
+          <div className="max-w-lg mx-auto">
+            <ProfileCompletionBar
+              avatarUrl={formData.logo_url || null}
+              displayName={displayName}
+              roleLabel={roleLabel}
+              completion={completion}
+              isCreator={false}
+              onNudgeClick={handleNudgeClick}
+            />
+          </div>
+        </PageHeader>
+        <div className="max-w-lg mx-auto p-4">
           <BusinessSettingsSections
             formData={formData}
             logoFile={logoFile}

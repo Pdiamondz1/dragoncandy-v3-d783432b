@@ -9,6 +9,7 @@ import { useCampaigns } from '@/hooks/useCampaigns';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
+import { PageHeader } from '@/components/ui/PageHeader';
 
 const CampaignsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -102,25 +103,27 @@ const CampaignsPage: React.FC = () => {
     <DashboardLayout userRole="business_client">
       <div className="min-h-screen bg-white overflow-x-hidden w-full max-w-full md:max-w-4xl md:mx-auto">
         {/* Template B Header */}
-        <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
-          <button
-            onClick={() => navigate('/dashboard/business')}
-            className="text-dc-pink-accent mr-2"
-            aria-label="Back"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </button>
-          <h1 className="flex-1 text-center font-sans text-base font-bold text-gray-900 uppercase tracking-wide">
-            Campaigns
-          </h1>
-          <button
-            onClick={() => navigate('/dashboard/business/campaigns/create')}
-            className="text-dc-teal"
-            aria-label="Create campaign"
-          >
-            <Plus className="h-5 w-5" />
-          </button>
-        </div>
+        <PageHeader>
+          <div className="flex items-center">
+            <button
+              onClick={() => navigate('/dashboard/business')}
+              className="text-dc-pink-accent mr-2"
+              aria-label="Back"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </button>
+            <h1 className="flex-1 text-center font-sans text-base font-bold text-gray-900 uppercase tracking-wide">
+              Campaigns
+            </h1>
+            <button
+              onClick={() => navigate('/dashboard/business/campaigns/create')}
+              className="text-dc-teal"
+              aria-label="Create campaign"
+            >
+              <Plus className="h-5 w-5" />
+            </button>
+          </div>
+        </PageHeader>
 
         {/* Status filter tabs — horizontal scroll */}
         <div className="bg-white border-b border-gray-100">

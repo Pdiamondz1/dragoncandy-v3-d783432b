@@ -23,6 +23,7 @@ import { MapPin, Target, FileText, Briefcase, CheckCircle } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { DCSkeleton } from '@/components/ui/dc-skeleton';
 import { DCEmptyState } from '@/components/ui/dc-empty-state';
+import { PageHeader } from '@/components/ui/PageHeader';
 import { formatBudget } from '@/lib/campaignUtils';
 
 
@@ -152,23 +153,24 @@ const CreatorCampaignMarketplace = () => {
   return (
     <DashboardLayout userRole="content_creator">
       <div className="flex flex-col min-h-screen bg-white">
-        {/* Page Header */}
-        <div className="flex items-center justify-between px-4 pt-4 pb-2">
-          <div className="flex-1">
-            <h1 className="text-xl font-bold text-gray-900 leading-tight">Campaigns</h1>
-            <div className="flex items-center gap-1 mt-0.5">
-              <MapPin className="w-3.5 h-3.5 text-dc-pink-accent flex-shrink-0" aria-hidden="true" />
-              <span className="text-xs text-gray-600">
-                {availableFilteredCount} campaign{availableFilteredCount !== 1 ? 's' : ''} available
+        <PageHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <h1 className="text-xl font-bold text-gray-900 leading-tight">Campaigns</h1>
+              <div className="flex items-center gap-1 mt-0.5">
+                <MapPin className="w-3.5 h-3.5 text-dc-pink-accent flex-shrink-0" aria-hidden="true" />
+                <span className="text-xs text-gray-600">
+                  {availableFilteredCount} campaign{availableFilteredCount !== 1 ? 's' : ''} available
+                </span>
+              </div>
+            </div>
+            <div className="w-10 h-10 rounded-full ring-2 ring-dc-teal overflow-hidden bg-dc-pink-bg flex items-center justify-center flex-shrink-0">
+              <span className="text-sm font-bold text-dc-teal-dark">
+                {user?.email?.charAt(0).toUpperCase() ?? 'C'}
               </span>
             </div>
           </div>
-          <div className="w-10 h-10 rounded-full ring-2 ring-dc-teal overflow-hidden bg-dc-pink-bg flex items-center justify-center flex-shrink-0">
-            <span className="text-sm font-bold text-dc-teal-dark">
-              {user?.email?.charAt(0).toUpperCase() ?? 'C'}
-            </span>
-          </div>
-        </div>
+        </PageHeader>
 
         {/* Tab Bar */}
         <div className="flex bg-white border-b-2 border-gray-100 px-4">

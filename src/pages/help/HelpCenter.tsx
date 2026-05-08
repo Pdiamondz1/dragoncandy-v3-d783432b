@@ -6,6 +6,7 @@ import { Search, BookOpen, Megaphone, Zap, CreditCard, Shield, ChevronDown, Arro
 import { DCSkeleton } from "@/components/ui/dc-skeleton";
 import { Button } from "@/components/ui/button";
 import { SEO } from "@/components/SEO";
+import { PageHeader } from "@/components/ui/PageHeader";
 
 interface HelpArticle {
   id: string;
@@ -72,24 +73,24 @@ export default function HelpCenter() {
         description="Guides, FAQs, and tutorials for DragonCandy creators, restaurants, and brands."
         path="/help"
       />
+      <PageHeader>
+        <div className="max-w-2xl lg:max-w-3xl mx-auto">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate('/')}
+            className="mb-4 -ml-2 text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft className="mr-1 h-4 w-4" />
+            Back to Dashboard
+          </Button>
+          <h1 className="text-2xl lg:text-3xl font-bold text-dc-dark mb-2">
+            Help Center
+          </h1>
+          <p className="text-sm text-gray-500">Find answers or ask Donny for help</p>
+        </div>
+      </PageHeader>
       <div className="max-w-2xl lg:max-w-3xl mx-auto px-4 py-8 lg:py-12">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => navigate('/')}
-          className="mb-4 -ml-2 text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="mr-1 h-4 w-4" />
-          Back to Dashboard
-        </Button>
-
-        <h1 className="text-2xl lg:text-3xl font-bold text-dc-dark mb-2">
-          Help Center
-        </h1>
-        <p className="text-sm text-gray-500 mb-6">
-          Find answers or ask Donny for help
-        </p>
-
         {/* Search */}
         <div className="relative mb-8">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />

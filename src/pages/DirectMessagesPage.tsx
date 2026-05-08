@@ -9,6 +9,7 @@ import { ErrorState } from '@/components/ui/error-state';
 import { useConversations, type Conversation } from '@/hooks/useConversations';
 import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { PageHeader } from '@/components/ui/PageHeader';
 
 const DirectMessagesPage: React.FC = () => {
   const { user } = useAuth();
@@ -60,39 +61,41 @@ const DirectMessagesPage: React.FC = () => {
     <DashboardLayout userRole={userRole as 'business_client' | 'content_creator' | 'brand'}>
       <div className="min-h-screen overflow-x-hidden bg-teal-50 w-full max-w-full md:max-w-4xl md:mx-auto">
         {/* Template B header */}
-        <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
-          {selectedConversationId ? (
-            <button
-              onClick={() => setSelectedConversationId(null)}
-              className="text-dc-pink-accent text-lg mr-2"
-              aria-label="Back to messages"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </button>
-          ) : (
-            <div className="w-7" />
-          )}
-          <div className="flex-1 text-center">
-            <h1 className="font-sans text-base font-bold text-gray-900 uppercase tracking-wide">
-              {selectedConversationId
-                ? (selectedConversation?.other_participant_name || 'Conversation')
-                : 'Messages'}
-            </h1>
-            {selectedConversationId && (
-              <p className="text-xs text-gray-500">Recently Active</p>
+        <PageHeader>
+          <div className="flex items-center">
+            {selectedConversationId ? (
+              <button
+                onClick={() => setSelectedConversationId(null)}
+                className="text-dc-pink-accent text-lg mr-2"
+                aria-label="Back to messages"
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </button>
+            ) : (
+              <div className="w-7" />
+            )}
+            <div className="flex-1 text-center">
+              <h1 className="font-sans text-base font-bold text-gray-900 uppercase tracking-wide">
+                {selectedConversationId
+                  ? (selectedConversation?.other_participant_name || 'Conversation')
+                  : 'Messages'}
+              </h1>
+              {selectedConversationId && (
+                <p className="text-xs text-gray-500">Recently Active</p>
+              )}
+            </div>
+            {selectedConversationId && recipientId ? (
+              <Link
+                to={`/profile/${recipientId}`}
+                className="text-xs font-medium text-dc-teal hover:underline"
+              >
+                View Profile
+              </Link>
+            ) : (
+              <div className="w-7" />
             )}
           </div>
-          {selectedConversationId && recipientId ? (
-            <Link
-              to={`/profile/${recipientId}`}
-              className="text-xs font-medium text-dc-teal hover:underline"
-            >
-              View Profile
-            </Link>
-          ) : (
-            <div className="w-7" />
-          )}
-        </div>
+        </PageHeader>
 
         {selectedConversationId ? (
           /* Message thread fills remaining screen */

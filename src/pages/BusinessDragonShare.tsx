@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import type { UserRole } from '@/types/user';
 import { Coachmark } from '@/components/guidance/Coachmark';
+import { PageHeader } from '@/components/ui/PageHeader';
 
 type Tab = 'available' | 'boosted' | 'all';
 
@@ -43,7 +44,7 @@ export function BusinessDragonSharePage({ userRole }: { userRole: UserRole }) {
   return (
     <DashboardLayout userRole={userRole}>
       <div className="space-y-6 max-w-4xl mx-auto">
-        <div>
+        <PageHeader>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Sparkles className="h-6 w-6 text-teal-500" />
             DragonShare
@@ -51,7 +52,7 @@ export function BusinessDragonSharePage({ userRole }: { userRole: UserRole }) {
           <p className="text-sm text-muted-foreground">
             Creators talking about you. Tap to boost a creator's organic post.
           </p>
-        </div>
+        </PageHeader>
 
         <div className="flex gap-2">
           {tabs.map((tab) => (

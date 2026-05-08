@@ -4,6 +4,7 @@ import { DashboardLayout } from '@/components/DashboardLayout';
 import { AlertCircle } from 'lucide-react';
 import { useCampaigns } from '@/hooks/useCampaigns';
 import { ApplicationsListFixed } from '@/components/campaigns/ApplicationsListFixed';
+import { PageHeader } from '@/components/ui/PageHeader';
 
 const BusinessProposals = () => {
   const { campaignId } = useParams<{ campaignId: string }>();
@@ -15,11 +16,11 @@ const BusinessProposals = () => {
     return (
       <DashboardLayout userRole="business_client">
         <div className="min-h-screen bg-white overflow-x-hidden pb-24 md:pb-0">
-          <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
+          <PageHeader>
             <div className="flex-1 text-center">
               <h1 className="font-sans text-base font-bold text-gray-900 uppercase tracking-wide">Proposals</h1>
             </div>
-          </div>
+          </PageHeader>
           <div className="p-4">
             <div className="animate-pulse space-y-4">
               <div className="h-6 bg-gray-200 rounded-full w-1/3"></div>
@@ -37,11 +38,11 @@ const BusinessProposals = () => {
     return (
       <DashboardLayout userRole="business_client">
         <div className="min-h-screen bg-white overflow-x-hidden pb-24 md:pb-0">
-          <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
+          <PageHeader>
             <div className="flex-1 text-center">
               <h1 className="font-sans text-base font-bold text-gray-900 uppercase tracking-wide">Proposals</h1>
             </div>
-          </div>
+          </PageHeader>
           <div className="p-4">
             <div className="border-2 border-dc-teal rounded-2xl p-6 text-center">
               <AlertCircle className="h-12 w-12 text-dc-pink-accent mx-auto mb-3" />
@@ -58,11 +59,11 @@ const BusinessProposals = () => {
     return (
       <DashboardLayout userRole="business_client">
         <div className="min-h-screen bg-white overflow-x-hidden pb-24 md:pb-0">
-          <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
+          <PageHeader>
             <div className="flex-1 text-center">
               <h1 className="font-sans text-base font-bold text-gray-900 uppercase tracking-wide">Proposals</h1>
             </div>
-          </div>
+          </PageHeader>
           <div className="p-4">
             <div className="border-2 border-dc-teal rounded-2xl p-6 text-center">
               <AlertCircle className="h-12 w-12 text-dc-yellow mx-auto mb-3" />

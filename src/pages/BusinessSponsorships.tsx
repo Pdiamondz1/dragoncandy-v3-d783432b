@@ -12,6 +12,7 @@ import { SponsorshipProposalCard } from '@/components/campaigns/SponsorshipPropo
 import { MarketplaceLoadingState } from '@/components/campaigns/MarketplaceLoadingState';
 import { SponsorshipRatingPromptManager } from '@/components/reviews/SponsorshipRatingPromptManager';
 import { ResponsiveRatingModal } from '@/components/reviews/ResponsiveRatingModal';
+import { PageHeader } from '@/components/ui/PageHeader';
 
 const BusinessSponsorships = () => {
   useAuth();
@@ -129,11 +130,11 @@ const BusinessSponsorships = () => {
     <DashboardLayout userRole="business_client">
       <div className="min-h-screen overflow-x-hidden pb-24 md:pb-0 md:max-w-4xl md:mx-auto">
         {/* Template B header */}
-        <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
+        <PageHeader>
           <div className="flex-1 text-center">
             <h1 className="font-sans text-base font-bold text-gray-900 uppercase tracking-wide">Sponsorship Proposals</h1>
           </div>
-        </div>
+        </PageHeader>
         <div className="p-4 space-y-4">
           <div>
 

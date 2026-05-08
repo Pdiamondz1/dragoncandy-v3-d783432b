@@ -2,6 +2,7 @@ import React from 'react';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { PageHeader } from '@/components/ui/PageHeader';
 import { CampaignCustomizeForm } from '@/components/campaigns/CampaignCustomizeForm';
 import { CampaignWizardHeader } from '@/components/campaigns/CampaignWizardHeader';
 import { CampaignTimelineBudgetStep } from '@/components/campaigns/CampaignTimelineBudgetStep';
@@ -52,21 +53,23 @@ const CampaignWizard: React.FC = () => {
     <DashboardLayout userRole="business_client">
       <div className="min-h-screen bg-white overflow-x-hidden w-full max-w-full">
         {/* Template C Header */}
-        <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
-          <button
-            onClick={() => currentStep > 1 ? handleBack() : navigate('/dashboard/business/campaigns')}
-            className="text-dc-pink-accent mr-2"
-            aria-label="Back"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </button>
-          <h1 className="flex-1 text-center font-sans text-base font-bold text-gray-900 uppercase tracking-wide">
-            Create Campaign
-          </h1>
-          <span className="text-xs text-gray-400 font-semibold">
-            {currentStep}/{steps.length}
-          </span>
-        </div>
+        <PageHeader>
+          <div className="flex items-center">
+            <button
+              onClick={() => currentStep > 1 ? handleBack() : navigate('/dashboard/business/campaigns')}
+              className="text-dc-pink-accent mr-2"
+              aria-label="Back"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </button>
+            <h1 className="flex-1 text-center font-sans text-base font-bold text-gray-900 uppercase tracking-wide">
+              Create Campaign
+            </h1>
+            <span className="text-xs text-gray-400 font-semibold">
+              {currentStep}/{steps.length}
+            </span>
+          </div>
+        </PageHeader>
 
         {/* Content */}
         <div className="px-4 py-6 pb-28 md:pb-6 space-y-6 md:max-w-3xl md:mx-auto">

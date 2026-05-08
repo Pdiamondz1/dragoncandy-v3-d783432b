@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { UserPlus, Search, Shield, ShieldCheck, User, MoreVertical } from 'lucide-react';
 import { DashboardLayout } from '@/components/DashboardLayout';
+import { PageHeader } from '@/components/ui/PageHeader';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -99,20 +100,22 @@ export default function TeamPage() {
 
   return (
     <DashboardLayout userRole={userRole as UserRole}>
-      <div className="mx-auto max-w-2xl space-y-6 p-4 lg:p-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold">Team</h1>
-            {activeOrg && <p className="text-sm text-muted-foreground">{activeOrg.name}</p>}
+      <div className="mx-auto max-w-2xl space-y-6">
+        <PageHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold">Team</h1>
+              {activeOrg && <p className="text-sm text-muted-foreground">{activeOrg.name}</p>}
+            </div>
+            {canInvite && (
+              <Button onClick={() => setInviteOpen(true)} className="gap-2 rounded-full bg-teal-500 hover:bg-teal-600 text-white">
+                <UserPlus className="h-4 w-4" />
+                Invite
+              </Button>
+            )}
           </div>
-          {canInvite && (
-            <Button onClick={() => setInviteOpen(true)} className="gap-2 rounded-full bg-teal-500 hover:bg-teal-600 text-white">
-              <UserPlus className="h-4 w-4" />
-              Invite
-            </Button>
-          )}
-        </div>
-
+        </PageHeader>
+        <div className="p-4 lg:p-6 space-y-6">
         <div className="flex flex-wrap gap-2">
           {FILTERS.map((f) => (
             <Button
@@ -219,6 +222,7 @@ export default function TeamPage() {
             )}
           </div>
         )}
+        </div>
       </div>
 
       {activeOrg && (

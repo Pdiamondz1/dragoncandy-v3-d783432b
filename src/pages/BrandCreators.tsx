@@ -153,7 +153,7 @@ const BrandCreators: React.FC = () => {
     <DashboardLayout userRole="brand">
       <div className="min-h-screen bg-white overflow-x-hidden pb-32 md:pb-0 md:max-w-6xl md:mx-auto">
         {/* Sticky header */}
-        <div className="sticky top-0 z-30 bg-white border-b border-gray-100 px-4 py-3">
+        <div className="sticky top-0 z-30 bg-gradient-to-b from-dc-pink-bg to-pink-50 px-4 pt-6 pb-4">
           <div className="flex items-center justify-between">
             <h1 className="font-sans text-base font-bold text-gray-900 uppercase tracking-wide">
               Browse & Sponsor

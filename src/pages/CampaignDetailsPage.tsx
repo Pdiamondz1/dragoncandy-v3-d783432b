@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { PageHeader } from '@/components/ui/PageHeader';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { DashboardLayout } from '@/components/DashboardLayout';
@@ -167,6 +168,15 @@ const CampaignDetailsPage: React.FC = () => {
     return (
       <DashboardLayout userRole={userRole}>
         <div className="min-h-screen bg-white overflow-x-hidden pb-24 md:pb-0">
+          <PageHeader>
+            <div className="flex items-center">
+              <button onClick={() => navigate(-1)} className="text-dc-pink-accent mr-2" aria-label="Back">
+                <ArrowLeft className="h-5 w-5" />
+              </button>
+              <h1 className="flex-1 text-center font-sans text-base font-bold text-gray-900 uppercase tracking-wide">Campaign Details</h1>
+              <div className="w-7" />
+            </div>
+          </PageHeader>
           <div className="md:max-w-2xl md:mx-auto md:mt-6">
             <CreatorCampaignDetails
               campaign={campaign}
@@ -223,24 +233,24 @@ const CampaignDetailsPage: React.FC = () => {
   return (
     <DashboardLayout userRole={userRole}>
       <div className="min-h-screen bg-white overflow-x-hidden">
-        <div className="relative h-40 bg-gradient-to-br from-dc-teal to-dc-teal-dark">
-          <div className="absolute top-0 left-0 right-0 px-4 py-3 flex items-center">
-            <button onClick={() => navigate(backHref)} className="text-white mr-2" aria-label="Back">
+        <PageHeader>
+          <div className="flex items-center">
+            <button onClick={() => navigate(backHref)} className="text-dc-pink-accent mr-2" aria-label="Back">
               <ArrowLeft className="h-5 w-5" aria-hidden="true" />
             </button>
-            <h1 className="flex-1 text-center font-sans text-base font-bold text-white uppercase tracking-wide truncate px-2">
+            <h1 className="flex-1 text-center font-sans text-base font-bold text-gray-900 uppercase tracking-wide truncate px-2">
               {campaign.title}
             </h1>
             {isOwnCampaign && (
-              <button onClick={() => navigate(`/dashboard/business/campaigns/${campaign.id}/edit`)} className="text-white" aria-label="Edit campaign">
+              <button onClick={() => navigate(`/dashboard/business/campaigns/${campaign.id}/edit`)} className="text-dc-pink-accent" aria-label="Edit campaign">
                 <Edit className="h-5 w-5" aria-hidden="true" />
               </button>
             )}
             {!isOwnCampaign && <span className="w-5" />}
           </div>
-        </div>
+        </PageHeader>
 
-        <div className="bg-white rounded-t-3xl -mt-4 relative z-10 px-4 pt-6 pb-28 overflow-hidden md:max-w-5xl md:mx-auto md:rounded-3xl md:mt-6 md:shadow-lg">
+        <div className="bg-white px-4 pt-6 pb-28 overflow-hidden md:max-w-5xl md:mx-auto md:rounded-3xl md:mt-6 md:shadow-lg">
           <div className="mb-4">
             <h2 className="text-xl font-bold text-gray-900 break-words">{campaign.title}</h2>
             <p className="text-gray-500 text-sm mt-0.5">Campaign Details & Management</p>

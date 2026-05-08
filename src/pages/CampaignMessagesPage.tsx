@@ -8,6 +8,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { MessageThread } from '@/components/messages/MessageThread';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useCampaignApplications } from '@/hooks/useFetchApplications';
+import { PageHeader } from '@/components/ui/PageHeader';
 
 const CampaignMessagesPage: React.FC = () => {
   const { campaignId } = useParams<{ campaignId: string }>();
@@ -46,13 +47,15 @@ const CampaignMessagesPage: React.FC = () => {
     return (
       <DashboardLayout userRole={userRole as 'business_client' | 'content_creator'}>
         <div className="min-h-screen overflow-x-hidden bg-teal-50">
-          <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
-            <div className="w-7" />
-            <h1 className="flex-1 text-center font-sans text-base font-bold text-gray-900 uppercase tracking-wide">
-              Campaign Messages
-            </h1>
-            <div className="w-7" />
-          </div>
+          <PageHeader>
+            <div className="flex items-center">
+              <div className="w-7" />
+              <h1 className="flex-1 text-center font-sans text-base font-bold text-gray-900 uppercase tracking-wide">
+                Campaign Messages
+              </h1>
+              <div className="w-7" />
+            </div>
+          </PageHeader>
           <div className="px-4 pt-4 pb-24 md:pb-0 space-y-4">
             <Skeleton className="h-10 w-full rounded-2xl" />
             <Skeleton className="h-96 w-full rounded-2xl" />
@@ -66,19 +69,21 @@ const CampaignMessagesPage: React.FC = () => {
     return (
       <DashboardLayout userRole={userRole as 'business_client' | 'content_creator'}>
         <div className="min-h-screen overflow-x-hidden bg-teal-50">
-          <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
-            <button
-              onClick={handleBack}
-              className="text-dc-pink-accent text-lg mr-2"
-              aria-label="Go back"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </button>
-            <h1 className="flex-1 text-center font-sans text-base font-bold text-gray-900 uppercase tracking-wide">
-              Campaign Messages
-            </h1>
-            <div className="w-7" />
-          </div>
+          <PageHeader>
+            <div className="flex items-center">
+              <button
+                onClick={handleBack}
+                className="text-dc-pink-accent text-lg mr-2"
+                aria-label="Go back"
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </button>
+              <h1 className="flex-1 text-center font-sans text-base font-bold text-gray-900 uppercase tracking-wide">
+                Campaign Messages
+              </h1>
+              <div className="w-7" />
+            </div>
+          </PageHeader>
           <div className="px-4 pt-4 pb-24 md:pb-0">
             <div className="border-2 border-dc-teal rounded-2xl p-4 bg-white flex flex-col items-center py-12">
               <h3 className="text-base font-bold text-gray-900 mb-2">Campaign not found</h3>
@@ -102,19 +107,21 @@ const CampaignMessagesPage: React.FC = () => {
     return (
       <DashboardLayout userRole={userRole as 'business_client' | 'content_creator'}>
         <div className="min-h-screen overflow-x-hidden bg-teal-50">
-          <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
-            <button
-              onClick={handleBack}
-              className="text-dc-pink-accent text-lg mr-2"
-              aria-label="Go back"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </button>
-            <h1 className="flex-1 text-center font-sans text-base font-bold text-gray-900 uppercase tracking-wide">
-              {campaign.title}
-            </h1>
-            <div className="w-7" />
-          </div>
+          <PageHeader>
+            <div className="flex items-center">
+              <button
+                onClick={handleBack}
+                className="text-dc-pink-accent text-lg mr-2"
+                aria-label="Go back"
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </button>
+              <h1 className="flex-1 text-center font-sans text-base font-bold text-gray-900 uppercase tracking-wide">
+                {campaign.title}
+              </h1>
+              <div className="w-7" />
+            </div>
+          </PageHeader>
           <div className="px-4 pt-4 pb-24 md:pb-0">
             <div className="border-2 border-dc-teal rounded-2xl p-4 bg-white flex flex-col items-center py-12">
               <h3 className="text-base font-bold text-gray-900 mb-2">No conversation available</h3>
@@ -140,19 +147,21 @@ const CampaignMessagesPage: React.FC = () => {
     <DashboardLayout userRole={userRole as 'business_client' | 'content_creator'}>
       <div className="min-h-screen overflow-x-hidden bg-teal-50 md:max-w-4xl md:mx-auto">
         {/* Template B header */}
-        <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
-          <button
-            onClick={handleBack}
-            className="text-dc-pink-accent text-lg mr-2"
-            aria-label="Go back"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </button>
-          <h1 className="flex-1 text-center font-sans text-base font-bold text-gray-900 uppercase tracking-wide">
-            {campaign.title}
-          </h1>
-          <div className="w-7" />
-        </div>
+        <PageHeader>
+          <div className="flex items-center">
+            <button
+              onClick={handleBack}
+              className="text-dc-pink-accent text-lg mr-2"
+              aria-label="Go back"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </button>
+            <h1 className="flex-1 text-center font-sans text-base font-bold text-gray-900 uppercase tracking-wide">
+              {campaign.title}
+            </h1>
+            <div className="w-7" />
+          </div>
+        </PageHeader>
 
         {/* Message thread inside teal-bordered card */}
         <div className="px-4 pt-4 pb-24 md:pb-0">

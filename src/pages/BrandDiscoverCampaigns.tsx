@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { PageHeader } from '@/components/ui/PageHeader';
 import { useAuth } from '@/hooks/useAuth';
 import { useSponsorshipCampaigns, SponsorshipCampaign } from '@/hooks/useSponsorshipCampaigns';
 import { useBrandCampaignFilters } from '@/hooks/useBrandCampaignFilters';
@@ -122,22 +123,24 @@ const BrandDiscoverCampaigns = () => {
     <DashboardLayout userRole="brand">
       <div className="min-h-screen bg-white overflow-x-hidden md:max-w-6xl md:mx-auto">
         {/* Template B Header */}
-        <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
-          <button
-            onClick={() => navigate('/dashboard/brand')}
-            className="text-dc-pink-accent mr-2"
-            aria-label="Back"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </button>
-          <h1 className="flex-1 text-center font-sans text-base font-bold text-gray-900 uppercase tracking-wide">
-            Discover Campaigns
-          </h1>
-          <div className="flex items-center gap-1 text-xs text-gray-400 font-semibold">
-            <Search className="h-3.5 w-3.5" />
-            <span>{campaigns.length}</span>
+        <PageHeader>
+          <div className="flex items-center">
+            <button
+              onClick={() => navigate('/dashboard/brand')}
+              className="text-dc-pink-accent mr-2"
+              aria-label="Back"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </button>
+            <h1 className="flex-1 text-center font-sans text-base font-bold text-gray-900 uppercase tracking-wide">
+              Discover Campaigns
+            </h1>
+            <div className="flex items-center gap-1 text-xs text-gray-400 font-semibold">
+              <Search className="h-3.5 w-3.5" />
+              <span>{campaigns.length}</span>
+            </div>
           </div>
-        </div>
+        </PageHeader>
 
         {/* Content */}
         <div className="px-4 pt-4 pb-24 md:pb-0 space-y-4">

@@ -1,4 +1,5 @@
 import { DashboardLayout } from '@/components/DashboardLayout';
+import { PageHeader } from '@/components/ui/PageHeader';
 import { useAuth } from '@/hooks/useAuth';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -83,20 +84,22 @@ const AdminDragonShareLedger: React.FC = () => {
   return (
     <DashboardLayout userRole={userRole}>
       <div className="space-y-6 max-w-5xl mx-auto">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold flex items-center gap-2">
-              <Sparkles className="h-6 w-6 text-teal-500" />
-              DragonShare Ledger
-            </h1>
-            <p className="text-sm text-muted-foreground">Reconciliation report</p>
+        <PageHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold flex items-center gap-2">
+                <Sparkles className="h-6 w-6 text-teal-500" />
+                DragonShare Ledger
+              </h1>
+              <p className="text-sm text-muted-foreground">Reconciliation report</p>
+            </div>
+            <Button variant="outline" size="sm" onClick={exportCsv}>
+              <Download className="mr-2 h-4 w-4" />
+              Export CSV
+            </Button>
           </div>
-          <Button variant="outline" size="sm" onClick={exportCsv}>
-            <Download className="mr-2 h-4 w-4" />
-            Export CSV
-          </Button>
-        </div>
-
+        </PageHeader>
+        <div className="px-4 space-y-6">
         {/* Stats summary */}
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
           {[
@@ -155,6 +158,7 @@ const AdminDragonShareLedger: React.FC = () => {
             </table>
           </div>
         )}
+        </div>
       </div>
     </DashboardLayout>
   );

@@ -3,6 +3,7 @@ import { CreditCard, Users, ArrowUpRight, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { WhyExpander } from '@/components/guidance/WhyExpander';
+import { PageHeader } from '@/components/ui/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -63,20 +64,22 @@ export default function OrgBillingPage() {
 
   return (
     <DashboardLayout userRole={userRole as UserRole}>
-      <div className="mx-auto max-w-2xl space-y-6 p-4 lg:p-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold">Billing</h1>
-            {activeOrg && <p className="text-sm text-muted-foreground">{activeOrg.name}</p>}
+      <div className="mx-auto max-w-2xl space-y-6">
+        <PageHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold">Billing</h1>
+              {activeOrg && <p className="text-sm text-muted-foreground">{activeOrg.name}</p>}
+            </div>
+            {isOwner && tier !== 'free' && (
+              <Button onClick={handleManageBilling} variant="outline" className="gap-2 rounded-full">
+                Manage billing
+                <ArrowUpRight className="h-4 w-4" />
+              </Button>
+            )}
           </div>
-          {isOwner && tier !== 'free' && (
-            <Button onClick={handleManageBilling} variant="outline" className="gap-2 rounded-full">
-              Manage billing
-              <ArrowUpRight className="h-4 w-4" />
-            </Button>
-          )}
-        </div>
-
+        </PageHeader>
+        <div className="p-4 lg:p-6 space-y-6">
         <Card>
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
@@ -206,6 +209,7 @@ export default function OrgBillingPage() {
             </div>
           </CardContent>
         </Card>
+        </div>
       </div>
     </DashboardLayout>
   );

@@ -8,6 +8,7 @@ import { ArrowLeft, ThumbsUp, ThumbsDown, Sparkles, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DCSkeleton } from "@/components/ui/dc-skeleton";
 import { SEO } from "@/components/SEO";
+import { PageHeader } from "@/components/ui/PageHeader";
 
 export default function HelpArticlePage() {
   const { slug } = useParams<{ slug: string }>();
@@ -82,21 +83,21 @@ export default function HelpArticlePage() {
           "url": `https://dragoncandy.io/help/${slug}`,
         }}
       />
+      <PageHeader>
+        <div className="max-w-2xl mx-auto">
+          <Link
+            to="/help"
+            className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-dc-teal mb-3"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            Help Center
+          </Link>
+          <h1 className="text-xl lg:text-2xl font-bold text-dc-dark">{article.title}</h1>
+        </div>
+      </PageHeader>
       <div className="max-w-2xl mx-auto px-4 py-8 lg:py-12">
-        {/* Back link */}
-        <Link
-          to="/help"
-          className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-dc-teal mb-6"
-        >
-          <ArrowLeft className="w-3.5 h-3.5" />
-          Help Center
-        </Link>
-
         {/* Article content */}
         <article>
-          <h1 className="text-xl lg:text-2xl font-bold text-dc-dark mb-4">
-            {article.title}
-          </h1>
           <div className="prose prose-sm max-w-none text-gray-700 leading-relaxed whitespace-pre-line">
             {article.body}
           </div>

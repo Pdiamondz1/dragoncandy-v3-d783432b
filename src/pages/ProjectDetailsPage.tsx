@@ -1,5 +1,6 @@
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { PageHeader } from '@/components/ui/PageHeader';
 import { PaymentTimeline } from "@/components/payments/PaymentTimeline";
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Button } from '@/components/ui/button';
@@ -62,10 +63,10 @@ const ProjectDetailsPage: React.FC = () => {
     return (
       <DashboardLayout userRole={isBusinessClient ? 'business_client' : 'content_creator'}>
         <div className="min-h-screen bg-white overflow-x-hidden">
-          {/* Hero skeleton */}
-          <div className="h-48 bg-gray-400 animate-pulse" />
-          {/* White card overlay */}
-          <div className="bg-white rounded-t-3xl -mt-4 relative z-10 px-4 pt-6 pb-24 md:pb-0 space-y-4">
+          {/* Header skeleton */}
+          <div className="h-16 bg-pink-50 animate-pulse" />
+          {/* Body */}
+          <div className="bg-white px-4 pt-6 pb-24 md:pb-0 space-y-4">
             <Skeleton className="h-7 w-2/3" />
             <Skeleton className="h-5 w-1/2" />
             <Skeleton className="h-40 w-full rounded-2xl" />
@@ -101,17 +102,16 @@ const ProjectDetailsPage: React.FC = () => {
   return (
     <DashboardLayout userRole={isBusinessClient ? 'business_client' : 'content_creator'}>
       <div className="min-h-screen bg-white overflow-x-hidden md:max-w-4xl md:mx-auto">
-        {/* Template D — Hero image area */}
-        <div className="relative h-44 bg-gradient-to-br from-dc-teal to-dc-teal-dark overflow-hidden">
-          {/* Header overlay on hero */}
-          <div className="absolute top-0 left-0 right-0 px-4 py-3 flex items-center z-10">
+        {/* Pink gradient header */}
+        <PageHeader>
+          <div className="flex items-center mb-3">
             <button
               onClick={() => navigate(isBusinessClient ? '/dashboard/business/projects' : '/dashboard/creator/projects')}
-              className="text-white flex items-center mr-3"
+              className="text-dc-pink-accent flex items-center mr-3"
             >
               <ArrowLeft className="h-5 w-5" />
             </button>
-            <span className="flex-1 font-sans text-sm font-bold text-white uppercase tracking-wide text-center">
+            <span className="flex-1 font-sans text-sm font-bold text-gray-900 uppercase tracking-wide text-center">
               Project Details
             </span>
             <div className="flex items-center gap-2">
@@ -129,23 +129,19 @@ const ProjectDetailsPage: React.FC = () => {
               </Badge>
             </div>
           </div>
+          <h1 className="text-xl font-extrabold text-gray-900 leading-tight line-clamp-2">
+            {collaboration.campaign.title}
+          </h1>
+          <p className="text-gray-500 text-sm mt-1">
+            {isBusinessClient
+              ? `Working with ${collaboration.creator_profile?.creator_name || 'Creator'}`
+              : `Project for ${collaboration.business_profile?.business_name || 'Client'}`
+            }
+          </p>
+        </PageHeader>
 
-          {/* Hero title area */}
-          <div className="absolute bottom-8 left-0 right-0 px-4">
-            <h1 className="text-xl font-extrabold text-white leading-tight line-clamp-2">
-              {collaboration.campaign.title}
-            </h1>
-            <p className="text-white/80 text-sm mt-1">
-              {isBusinessClient
-                ? `Working with ${collaboration.creator_profile?.creator_name || 'Creator'}`
-                : `Project for ${collaboration.business_profile?.business_name || 'Client'}`
-              }
-            </p>
-          </div>
-        </div>
-
-        {/* White card overlay — Template D body */}
-        <div className="bg-white rounded-t-3xl -mt-4 relative z-10 px-4 pt-6 pb-24 md:pb-0 space-y-4">
+        {/* Body */}
+        <div className="bg-white px-4 pt-6 pb-24 md:pb-0 space-y-4">
 
           {/* Stats row with pink dividers */}
           <div className="flex divide-x divide-dc-pink py-2">

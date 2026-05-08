@@ -4,6 +4,7 @@ import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { CreatorBrowseHeader } from '@/components/creator-browse/CreatorBrowseHeader';
 import { CreatorBrowseContent } from '@/components/creator-browse/CreatorBrowseContent';
 import { useCreatorBrowse } from '@/hooks/useCreatorBrowse';
+import { PageHeader } from '@/components/ui/PageHeader';
 
 const CreatorBrowseInner: React.FC = () => {
   const {
@@ -37,20 +38,24 @@ const CreatorBrowseInner: React.FC = () => {
 
   return (
     <DashboardLayout userRole="business_client">
-      <div className="flex-1 p-4 sm:p-6 lg:p-8 bg-white min-h-screen overflow-x-hidden">
-        <div className="max-w-7xl mx-auto space-y-4">
-          <CreatorBrowseHeader
-            resultCount={filteredCreators.length}
-            searchTerm={filters.searchTerm}
-            onSearchChange={(value) => handleFilterChange('searchTerm', value)}
-            contentTypeFilter={contentTypeFilter}
-            onContentTypeChange={setContentTypeFilter}
-            sortBy={sortBy}
-            onSortChange={setSortBy}
-            onOpenFilters={() => setIsFiltersOpen(true)}
-            onOpenMap={() => setIsMapOpen(true)}
-            activeFilterCount={activeFilterCount}
-          />
+      <div className="flex-1 bg-white min-h-screen overflow-x-hidden">
+        <PageHeader>
+          <div className="max-w-7xl mx-auto">
+            <CreatorBrowseHeader
+              resultCount={filteredCreators.length}
+              searchTerm={filters.searchTerm}
+              onSearchChange={(value) => handleFilterChange('searchTerm', value)}
+              contentTypeFilter={contentTypeFilter}
+              onContentTypeChange={setContentTypeFilter}
+              sortBy={sortBy}
+              onSortChange={setSortBy}
+              onOpenFilters={() => setIsFiltersOpen(true)}
+              onOpenMap={() => setIsMapOpen(true)}
+              activeFilterCount={activeFilterCount}
+            />
+          </div>
+        </PageHeader>
+        <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 space-y-4">
           <CreatorBrowseContent
             filteredCreators={filteredCreators}
             filters={filters}

@@ -10,6 +10,7 @@ import { ReviewsList } from '@/components/reviews/ReviewsList';
 import { RatingStats } from '@/components/reviews/RatingStats';
 import { ReviewsErrorBoundary } from '@/components/reviews/ReviewsErrorBoundary';
 import { Search, Download } from 'lucide-react';
+import { PageHeader } from '@/components/ui/PageHeader';
 
 const ReviewsManagement = () => {
   const { user, profile } = useAuth();
@@ -29,14 +30,16 @@ const ReviewsManagement = () => {
       <ReviewsErrorBoundary>
       <div className="min-h-screen bg-white overflow-x-hidden pb-24 md:pb-0 md:max-w-4xl md:mx-auto">
         {/* Template B header */}
-        <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
-          <div className="flex-1 text-center">
-            <h1 className="font-sans text-base font-bold text-gray-900 uppercase tracking-wide">Reviews & Ratings</h1>
+        <PageHeader>
+          <div className="flex items-center">
+            <div className="flex-1 text-center">
+              <h1 className="font-sans text-base font-bold text-gray-900 uppercase tracking-wide">Reviews & Ratings</h1>
+            </div>
+            <Button variant="ghost" size="sm" className="text-dc-pink-accent">
+              <Download className="h-4 w-4" />
+            </Button>
           </div>
-          <Button variant="ghost" size="sm" className="text-dc-pink-accent">
-            <Download className="h-4 w-4" />
-          </Button>
-        </div>
+        </PageHeader>
 
         <div className="p-4 space-y-4">
           {/* Rating Overview */}

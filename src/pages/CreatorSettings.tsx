@@ -13,6 +13,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { DeleteUserSheet } from '@/components/org/DeleteUserSheet';
 import { Coachmark } from '@/components/guidance/Coachmark';
 import { WhyExpander } from '@/components/guidance/WhyExpander';
+import { PageHeader } from '@/components/ui/PageHeader';
 
 const CreatorSettings = () => {
   const { submitProfile } = useCreatorProfileSubmit();
@@ -80,16 +81,20 @@ const CreatorSettings = () => {
 
   return (
     <DashboardLayout userRole="content_creator">
-      <div className="min-h-screen bg-white p-4">
-        <div className="max-w-lg mx-auto">
-          <ProfileCompletionBar
-            avatarUrl={formData.avatar_url || null}
-            displayName={formData.creator_name || 'Creator'}
-            roleLabel="Content Creator"
-            completion={completion}
-            isCreator={true}
-            onNudgeClick={handleNudgeClick}
-          />
+      <div className="min-h-screen bg-white overflow-x-hidden">
+        <PageHeader>
+          <div className="max-w-lg mx-auto">
+            <ProfileCompletionBar
+              avatarUrl={formData.avatar_url || null}
+              displayName={formData.creator_name || 'Creator'}
+              roleLabel="Content Creator"
+              completion={completion}
+              isCreator={true}
+              onNudgeClick={handleNudgeClick}
+            />
+          </div>
+        </PageHeader>
+        <div className="max-w-lg mx-auto p-4">
           <CreatorSettingsSections
             formData={formData}
             selectedSkills={selectedSkills}

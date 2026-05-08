@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { PageHeader } from '@/components/ui/PageHeader';
 import { useAuth } from '@/hooks/useAuth';
 import { useCampaign } from '@/hooks/useCampaigns';
 import { useBrandSponsorshipStatus } from '@/hooks/useBrandSponsorshipStatus';
@@ -87,17 +88,16 @@ const BrandCampaignDetails = () => {
     <DashboardLayout userRole="brand">
       <div className="min-h-screen bg-white overflow-x-hidden md:max-w-5xl md:mx-auto">
         {/* Hero area — Template D */}
-        <div className="relative h-40 bg-gradient-to-br from-dc-teal to-dc-teal-dark">
-          {/* Header overlay */}
-          <div className="absolute top-0 left-0 right-0 px-4 py-3 flex items-center">
+        <PageHeader>
+          <div className="flex items-center">
             <button
               onClick={() => navigate('/dashboard/brand/discover-campaigns')}
-              className="text-white mr-2"
+              className="text-dc-pink-accent mr-2"
               aria-label="Back to Discovery"
             >
               <ArrowLeft className="h-5 w-5" aria-hidden="true" />
             </button>
-            <h1 className="flex-1 text-center font-sans text-base font-bold text-white uppercase tracking-wide truncate px-2">
+            <h1 className="flex-1 text-center font-sans text-base font-bold text-gray-900 uppercase tracking-wide truncate px-2">
               {campaign.title}
             </h1>
             <Badge
@@ -107,10 +107,10 @@ const BrandCampaignDetails = () => {
               {campaign.open_for_sponsorship ? 'Open' : 'Closed'}
             </Badge>
           </div>
-        </div>
+        </PageHeader>
 
-        {/* White card overlay — Template D */}
-        <div className="bg-white rounded-t-3xl -mt-4 relative z-10 px-4 pt-6 pb-28 md:pb-6 space-y-6">
+        {/* Body */}
+        <div className="bg-white px-4 pt-6 pb-28 md:pb-6 space-y-6">
           {/* Title + subtitle */}
           <div>
             <h2 className="text-xl font-bold text-gray-900">{campaign.title}</h2>

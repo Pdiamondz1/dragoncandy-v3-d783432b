@@ -4,6 +4,7 @@ import { Wallet } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { DashboardLayout } from '@/components/DashboardLayout';
+import { PageHeader } from '@/components/ui/PageHeader';
 import { PaymentTimeline } from "@/components/payments/PaymentTimeline";
 import { PaymentSummaryCards } from "@/components/payments/PaymentSummaryCards";
 import { usePaymentNotifications } from "@/hooks/usePaymentNotifications";
@@ -70,11 +71,12 @@ export default function PaymentsPage() {
 
   return (
     <DashboardLayout userRole={(profile?.role ?? 'business_client') as AppUserRole}>
-      <div className="space-y-6 p-4 max-w-2xl mx-auto">
-        <div>
+      <div className="space-y-6 max-w-2xl mx-auto">
+        <PageHeader>
           <h1 className="text-2xl font-bold text-gray-900 uppercase tracking-wide">Your Payments</h1>
           <p className="text-sm text-gray-500 mt-1">See where your money is across all projects</p>
-        </div>
+        </PageHeader>
+        <div className="px-4">
 
         {isLoading ? (
           <div className="space-y-3">
@@ -135,6 +137,7 @@ export default function PaymentsPage() {
             )}
           </>
         )}
+        </div>
       </div>
     </DashboardLayout>
   );

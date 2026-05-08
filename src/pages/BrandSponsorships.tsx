@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { PaymentTimeline } from "@/components/payments/PaymentTimeline";
+import { PageHeader } from '@/components/ui/PageHeader';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -49,11 +50,13 @@ const BrandSponsorships = () => {
     return (
       <DashboardLayout userRole="brand">
         <div className="min-h-screen overflow-x-hidden pb-24 md:pb-0 md:max-w-4xl md:mx-auto">
-          <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
-            <div className="flex-1 text-center">
-              <DCSkeleton variant="text-block" className="h-5 w-40 mx-auto" />
+          <PageHeader>
+            <div className="flex items-center">
+              <div className="flex-1 text-center">
+                <DCSkeleton variant="text-block" className="h-5 w-40 mx-auto" />
+              </div>
             </div>
-          </div>
+          </PageHeader>
           <div className="p-4 space-y-3">
             <DCSkeleton variant="list-row" count={4} className="h-32" />
           </div>
@@ -236,11 +239,13 @@ const BrandSponsorships = () => {
     <DashboardLayout userRole="brand">
       <div className="min-h-screen overflow-x-hidden pb-24 md:pb-0 md:max-w-4xl md:mx-auto">
         {/* Template B header */}
-        <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
-          <div className="flex-1 text-center">
-            <h1 className="font-sans text-base font-bold text-gray-900 uppercase tracking-wide">Brand Sponsorships</h1>
+        <PageHeader>
+          <div className="flex items-center">
+            <div className="flex-1 text-center">
+              <h1 className="font-sans text-base font-bold text-gray-900 uppercase tracking-wide">Brand Sponsorships</h1>
+            </div>
           </div>
-        </div>
+        </PageHeader>
 
         <div className="p-4 space-y-4">
           <SponsorshipRatingPromptManager />

@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '@/components/DashboardLayout';
+import { PageHeader } from '@/components/ui/PageHeader';
 import { useCampaign } from '@/hooks/useCampaigns';
 import { useCampaignEditForm } from '@/hooks/useCampaignEditForm';
 import { useCampaignDeliverables } from '@/hooks/useCampaignDeliverables';
@@ -207,25 +208,27 @@ const CampaignEditPage: React.FC = () => {
       <div className="min-h-screen bg-white overflow-x-hidden">
 
         {/* Header */}
-        <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
-          <button
-            onClick={() => navigate(`/dashboard/business/campaigns/${campaign.id}`)}
-            className="text-dc-pink-accent mr-2"
-            aria-label="Back"
-          >
-            <ArrowLeft className="h-5 w-5" aria-hidden="true" />
-          </button>
-          <h1 className="flex-1 text-center font-sans text-base font-bold text-gray-900 uppercase tracking-wide">
-            Edit Campaign
-          </h1>
-          <button
-            onClick={() => navigate(`/dashboard/business/campaigns/${campaign.id}`)}
-            className="text-dc-teal"
-            aria-label="Preview"
-          >
-            <Eye className="h-5 w-5" aria-hidden="true" />
-          </button>
-        </div>
+        <PageHeader>
+          <div className="flex items-center">
+            <button
+              onClick={() => navigate(`/dashboard/business/campaigns/${campaign.id}`)}
+              className="text-dc-pink-accent mr-2"
+              aria-label="Back"
+            >
+              <ArrowLeft className="h-5 w-5" aria-hidden="true" />
+            </button>
+            <h1 className="flex-1 text-center font-sans text-base font-bold text-gray-900 uppercase tracking-wide">
+              Edit Campaign
+            </h1>
+            <button
+              onClick={() => navigate(`/dashboard/business/campaigns/${campaign.id}`)}
+              className="text-dc-teal"
+              aria-label="Preview"
+            >
+              <Eye className="h-5 w-5" aria-hidden="true" />
+            </button>
+          </div>
+        </PageHeader>
 
         {/* Form sections */}
         <div className="px-4 py-6 pb-28 md:pb-6 space-y-4 md:max-w-3xl md:mx-auto">

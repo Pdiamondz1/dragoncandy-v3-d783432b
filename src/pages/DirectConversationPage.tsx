@@ -66,7 +66,7 @@ const DirectConversationPage: React.FC = () => {
     <DashboardLayout userRole={userRole as 'business_client' | 'content_creator'}>
       <div className="flex flex-col h-full bg-teal-50">
         {/* Chat header */}
-        <div className="bg-white px-4 py-3 flex items-center justify-between flex-shrink-0 shadow-sm">
+        <div className="bg-gradient-to-b from-dc-pink-bg to-pink-50 px-4 pt-6 pb-4 flex items-center justify-between flex-shrink-0">
           {/* Left: back arrow */}
           <button
             onClick={() => {

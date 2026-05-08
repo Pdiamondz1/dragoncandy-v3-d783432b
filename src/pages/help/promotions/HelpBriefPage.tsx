@@ -48,7 +48,7 @@ export default function HelpBriefPage() {
         path={`/help/promotions/${slug}`}
       />
       {/* Sticky header */}
-      <header className="sticky top-0 z-30 bg-white border-b border-gray-100 px-4 py-3 flex items-center gap-3">
+      <header className="sticky top-0 z-30 bg-gradient-to-b from-dc-pink-bg to-pink-50 px-4 pt-6 pb-4 flex items-center gap-3">
         <Link
           to="/dashboard/business/promotions"
           className="text-dc-teal hover:text-dc-teal/80 transition-colors"

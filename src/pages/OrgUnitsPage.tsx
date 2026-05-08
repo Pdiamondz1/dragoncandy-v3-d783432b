@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { MapPin, Tag, MoreVertical, Plus, Building2 } from 'lucide-react';
 import { DashboardLayout } from '@/components/DashboardLayout';
+import { PageHeader } from '@/components/ui/PageHeader';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -172,26 +173,28 @@ export default function OrgUnitsPage() {
 
   return (
     <DashboardLayout userRole={userRole}>
-      <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">{headingTitle}</h1>
-            {activeOrg?.name && (
-              <p className="text-sm text-gray-500 mt-0.5">{activeOrg.name}</p>
+      <div className="max-w-2xl mx-auto space-y-6">
+        <PageHeader>
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">{headingTitle}</h1>
+              {activeOrg?.name && (
+                <p className="text-sm text-gray-500 mt-0.5">{activeOrg.name}</p>
+              )}
+            </div>
+            {canManage && (
+              <Button
+                onClick={openAdd}
+                className="rounded-full bg-teal-500 text-white hover:bg-teal-600 gap-1.5"
+              >
+                <Plus className="h-4 w-4" />
+                Add
+              </Button>
             )}
           </div>
-          {canManage && (
-            <Button
-              onClick={openAdd}
-              className="rounded-full bg-teal-500 text-white hover:bg-teal-600 gap-1.5"
-            >
-              <Plus className="h-4 w-4" />
-              Add
-            </Button>
-          )}
-        </div>
-
+        </PageHeader>
+        <div className="px-4 py-6 space-y-6">
         {/* Loading skeletons */}
         {isLoading && (
           <div className="space-y-3">
@@ -244,6 +247,7 @@ export default function OrgUnitsPage() {
             )}
           </div>
         )}
+        </div>
       </div>
 
       {/* Add / Edit modal */}

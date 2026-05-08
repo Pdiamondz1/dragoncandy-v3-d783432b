@@ -8,6 +8,7 @@ import { usePromotionSubmission } from '@/hooks/usePromotionSubmission';
 import { Gift, Video, User, CheckCircle, AlertCircle, ArrowRight, ArrowLeft, Loader2 } from 'lucide-react';
 import { SocialHandleFields, useSocialHandles } from '@/features/promotions/submission/SubmissionForm';
 import { SEO } from '@/components/SEO';
+import { PageHeader } from '@/components/ui/PageHeader';
 
 type Step = 'welcome' | 'video' | 'info' | 'success' | 'error';
 
@@ -176,11 +177,11 @@ export default function PromotionSubmissionPage() {
         path={`/promo/${promotionId}`}
       />
       {/* Template C header */}
-      <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
+      <PageHeader>
         <div className="flex-1 text-center">
           <h1 className="font-sans text-base font-bold text-gray-900 uppercase tracking-wide">Promotion</h1>
         </div>
-      </div>
+      </PageHeader>
 
       <div className="max-w-md mx-auto p-4">
         {/* Business identity */}
