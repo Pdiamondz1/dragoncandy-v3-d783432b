@@ -7,10 +7,11 @@ import { HowItWorks } from "@/components/landing/HowItWorks";
 import { FeatureSection } from "@/components/landing/FeatureSection";
 import { BrandSection } from "@/components/landing/BrandSection";
 import { BottomCTA } from "@/components/landing/BottomCTA";
-import { PortfolioStrip } from "@/components/landing/PortfolioStrip";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
-import { useEffect } from "react";
+import { lazy, Suspense, useEffect } from "react";
+
+const PortfolioStrip = lazy(() => import("@/components/landing/PortfolioStrip").then(m => ({ default: m.PortfolioStrip })));
 
 export default function LandingPage() {
   const { user, loading } = useAuth();
@@ -45,7 +46,7 @@ export default function LandingPage() {
       </div>
 
       {/* Portfolio image strip — edge-to-edge at the bottom */}
-      <PortfolioStrip />
+      <Suspense fallback={null}><PortfolioStrip /></Suspense>
     </div>
   );
 }

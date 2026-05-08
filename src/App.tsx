@@ -286,6 +286,26 @@ function AnimatedRoutes() {
   );
 }
 
+const PUBLIC_PATHS = new Set(['/', '/home', '/landing']);
+
+function AppLayout() {
+  const { pathname } = useLocation();
+  const showDonny = !PUBLIC_PATHS.has(pathname);
+
+  return (
+    <div className="flex h-screen">
+      <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:p-4 focus:bg-white focus:text-black focus:underline">Skip to main content</a>
+      <main id="main-content" className="flex-1 overflow-auto">
+        <SiteGateGuard>
+          <AnimatedRoutes />
+        </SiteGateGuard>
+        {showDonny && <ErrorBoundary level="widget" fallback={null}><Suspense fallback={null}><HelpBriefDrawer /></Suspense></ErrorBoundary>}
+      </main>
+      {showDonny && <ErrorBoundary level="widget" fallback={null}><Suspense fallback={null}><DonnyDesktopPanel /></Suspense></ErrorBoundary>}
+    </div>
+  );
+}
+
 const App = () => {
   return (
     <ErrorBoundary>
@@ -302,16 +322,7 @@ const App = () => {
                 <Sonner />
                 <BrowserRouter>
                 <DonnyProviderWithAuth>
-                <div className="flex h-screen">
-                <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:p-4 focus:bg-white focus:text-black focus:underline">Skip to main content</a>
-                <main id="main-content" className="flex-1 overflow-auto">
-                  <SiteGateGuard>
-                  <AnimatedRoutes />
-                  </SiteGateGuard>
-                  <ErrorBoundary level="widget" fallback={null}><Suspense fallback={null}><HelpBriefDrawer /></Suspense></ErrorBoundary>
-                </main>
-                <ErrorBoundary level="widget" fallback={null}><Suspense fallback={null}><DonnyDesktopPanel /></Suspense></ErrorBoundary>
-                </div>
+                  <AppLayout />
                 </DonnyProviderWithAuth>
                 </BrowserRouter>
               </TooltipProvider>
