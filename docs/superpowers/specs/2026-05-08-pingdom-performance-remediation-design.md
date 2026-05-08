@@ -37,23 +37,23 @@ Two preconnect hints exist for these origins (lines 16–17).
 
 **Change**:
 
-1. Download 6 WOFF2 files and place in `public/fonts/`:
-   - `outfit-400.woff2` (Outfit Regular)
-   - `outfit-500.woff2` (Outfit Medium)
-   - `outfit-600.woff2` (Outfit SemiBold)
-   - `outfit-700.woff2` (Outfit Bold)
-   - `outfit-800.woff2` (Outfit ExtraBold)
-   - `pacifico-400.woff2` (Pacifico Regular)
+1. Download 6 WOFF2 latin-subset files and place in `public/fonts/`:
+   - `outfit-latin-400.woff2` (Outfit Regular)
+   - `outfit-latin-500.woff2` (Outfit Medium)
+   - `outfit-latin-600.woff2` (Outfit SemiBold)
+   - `outfit-latin-700.woff2` (Outfit Bold)
+   - `outfit-latin-800.woff2` (Outfit ExtraBold)
+   - `pacifico-latin-400.woff2` (Pacifico Regular)
 
 2. Add `@font-face` declarations to the existing inline `<style>` block in `index.html`:
 
 ```css
-@font-face{font-family:'Outfit';font-style:normal;font-weight:400;font-display:swap;src:url(/fonts/outfit-400.woff2) format('woff2')}
-@font-face{font-family:'Outfit';font-style:normal;font-weight:500;font-display:swap;src:url(/fonts/outfit-500.woff2) format('woff2')}
-@font-face{font-family:'Outfit';font-style:normal;font-weight:600;font-display:swap;src:url(/fonts/outfit-600.woff2) format('woff2')}
-@font-face{font-family:'Outfit';font-style:normal;font-weight:700;font-display:swap;src:url(/fonts/outfit-700.woff2) format('woff2')}
-@font-face{font-family:'Outfit';font-style:normal;font-weight:800;font-display:swap;src:url(/fonts/outfit-800.woff2) format('woff2')}
-@font-face{font-family:'Pacifico';font-style:normal;font-weight:400;font-display:swap;src:url(/fonts/pacifico-400.woff2) format('woff2')}
+@font-face{font-family:'Outfit';font-style:normal;font-weight:400;font-display:swap;src:url(/fonts/outfit-latin-400.woff2) format('woff2')}
+@font-face{font-family:'Outfit';font-style:normal;font-weight:500;font-display:swap;src:url(/fonts/outfit-latin-500.woff2) format('woff2')}
+@font-face{font-family:'Outfit';font-style:normal;font-weight:600;font-display:swap;src:url(/fonts/outfit-latin-600.woff2) format('woff2')}
+@font-face{font-family:'Outfit';font-style:normal;font-weight:700;font-display:swap;src:url(/fonts/outfit-latin-700.woff2) format('woff2')}
+@font-face{font-family:'Outfit';font-style:normal;font-weight:800;font-display:swap;src:url(/fonts/outfit-latin-800.woff2) format('woff2')}
+@font-face{font-family:'Pacifico';font-style:normal;font-weight:400;font-display:swap;src:url(/fonts/pacifico-latin-400.woff2) format('woff2')}
 ```
 
 3. Remove the 3 Google Fonts `<link>` tags (lines 20, 36, 37).
@@ -120,7 +120,7 @@ The `_headers` file has cache rules for `/assets/*`, `/logo.webp`, and `/index.h
 |------|--------|
 | `index.html` | Add `@font-face` to inline CSS; inline favicon + icon-16 as data URIs; remove Google Fonts `<link>` tags and preconnects; tighten CSP |
 | `public/_headers` | Add `/fonts/*` cache rule |
-| `public/fonts/` (new) | 6 WOFF2 files: outfit-400 through 800, pacifico-400 |
+| `public/fonts/` (new) | 6 WOFF2 latin-subset files: outfit-latin-400 through 800, pacifico-latin-400 |
 
 ## Impact Summary
 
