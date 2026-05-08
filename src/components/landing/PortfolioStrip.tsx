@@ -37,6 +37,8 @@ function MarqueeItem({ item }: { item: { id: string; url?: string; type?: string
           <video
             src={item.url}
             className="w-full h-full object-cover"
+            width={160}
+            height={160}
             muted
             loop
             playsInline
@@ -47,6 +49,8 @@ function MarqueeItem({ item }: { item: { id: string; url?: string; type?: string
             src={toThumbnailUrl(item.url)}
             alt={`Portfolio work by ${item.creatorName}`}
             className="w-full h-full object-cover"
+            width={160}
+            height={160}
             loading="lazy"
           />
         )}
