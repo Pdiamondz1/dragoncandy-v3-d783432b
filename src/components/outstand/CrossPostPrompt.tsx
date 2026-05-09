@@ -6,6 +6,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { useAccounts } from '@outstand-so/ui';
 import { useOutstandConfig } from '@/integrations/outstand/Provider';
 import { useCrossPost } from '@/hooks/outstand/useCrossPost';
+import { DonnyCaptionRewriter } from './DonnyCaptionRewriter';
+import { useAuth } from '@/hooks/useAuth';
 
 interface CrossPostPromptProps {
   open: boolean;
@@ -29,6 +31,7 @@ export const CrossPostPrompt: React.FC<CrossPostPromptProps> = ({
   const { apiKey, baseUrl } = useOutstandConfig();
   const { accounts } = useAccounts({ apiKey, baseUrl, limit: 100 });
   const crossPost = useCrossPost();
+  const { user } = useAuth();
   const [caption, setCaption] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([]);
@@ -123,6 +126,15 @@ export const CrossPostPrompt: React.FC<CrossPostPromptProps> = ({
               <p className="text-sm text-gray-700 whitespace-pre-wrap">{caption}</p>
             )}
           </div>
+
+          {user?.id && (
+            <DonnyCaptionRewriter
+              originalCaption={caption}
+              platform={selectedAccountIds[0] ?? 'social'}
+              creatorId={user.id}
+              onAccept={(rewritten) => setCaption(rewritten)}
+            />
+          )}
 
           <DragonDashRushButton
             platformCount={selectedAccountIds.length}
