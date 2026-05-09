@@ -1,61 +1,76 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { corsHeaders } from '../_shared/cors.ts';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
 serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders(req) });
+  }
 
-  const supabase = createClient(
-    Deno.env.get('SUPABASE_URL')!,
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-  );
+  try {
+    const authHeader = req.headers.get('Authorization');
+    if (authHeader !== `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
+      });
+    }
 
-  // Expire hooks older than 72 hours that are still pending
-  const cutoff = new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString();
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-  const { data: expiredHooks, error: hookErr } = await supabase
-    .from('campaign_social_hooks')
-    .update({ status: 'expired' })
-    .eq('status', 'pending')
-    .lt('created_at', cutoff)
-    .select('id');
+    const cutoff = new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString();
 
-  // Revoke delegated permissions for completed/cancelled campaigns
-  const { data: revokedPerms, error: permErr } = await supabase.rpc('revoke_expired_permissions');
+    const { data: expiredHooks, error: hookErr } = await supabase
+      .from('campaign_social_hooks')
+      .update({ status: 'expired' })
+      .eq('status', 'pending')
+      .lt('created_at', cutoff)
+      .select('id');
 
-  // If the RPC doesn't exist yet, do it inline
-  if (permErr) {
+    if (hookErr) throw hookErr;
+
+    let revokedCount = 0;
+
     const { data: completedCampaigns } = await supabase
       .from('campaigns')
       .select('id')
       .in('status', ['completed', 'cancelled']);
 
     if (completedCampaigns?.length) {
-      await supabase
+      const { data: revoked } = await supabase
         .from('delegated_posting_permissions')
         .update({ status: 'revoked' })
         .eq('status', 'active')
-        .in('campaign_id', completedCampaigns.map((c) => c.id));
+        .in('campaign_id', completedCampaigns.map((c) => c.id))
+        .select('id');
+
+      revokedCount += revoked?.length ?? 0;
     }
 
-    // Also expire by expires_at timestamp
-    await supabase
+    const { data: expiredPerms } = await supabase
       .from('delegated_posting_permissions')
       .update({ status: 'revoked' })
       .eq('status', 'active')
-      .lt('expires_at', new Date().toISOString());
-  }
+      .lt('expires_at', new Date().toISOString())
+      .select('id');
 
-  return new Response(
-    JSON.stringify({
-      ok: true,
-      expired_hooks: expiredHooks?.length ?? 0,
-      revoked_permissions: revokedPerms?.length ?? 0,
-    }),
-    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-  );
+    revokedCount += expiredPerms?.length ?? 0;
+
+    return new Response(
+      JSON.stringify({
+        ok: true,
+        expired_hooks: expiredHooks?.length ?? 0,
+        revoked_permissions: revokedCount,
+      }),
+      { headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } },
+    );
+  } catch (error) {
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { status: 500, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } },
+    );
+  }
 });
