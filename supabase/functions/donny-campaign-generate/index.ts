@@ -232,7 +232,7 @@ serve(async (req) => {
     const isNewFormat = 'source_type' in body;
 
     if (isNewFormat) {
-      const { source_url, source_type, photo_url, manual_text, role } = body;
+      const { source_url, source_type, photo_url, manual_text, role, inspiration_refs } = body;
 
       let pageContent = '';
 
@@ -245,9 +245,18 @@ serve(async (req) => {
         pageContent = `Title: ${extracted.title}\nDescription: ${extracted.description}\nContent: ${extracted.bodyText}`;
       }
 
+      let inspirationContext = '';
+      if (inspiration_refs?.length) {
+        const lines = inspiration_refs.map(
+          (ref: { content_label: string; creator_name: string; media_type: string; media_url: string }) =>
+            `- ${ref.content_label} by @${ref.creator_name} (${ref.media_type}): ${ref.media_url}`
+        );
+        inspirationContext = `\n\nStyle references the user selected:\n${lines.join('\n')}\n\nGenerate campaign ideas that match these content styles and formats.`;
+      }
+
       const usageStage = await getUserUsageStage(supabaseAdmin, userId);
       const modelConfig = getModelConfig("donny-campaign-generate", usageStage);
-      const { result: ideasResponse, usage } = await generateCampaignIdeas(pageContent, source_type, role, modelConfig);
+      const { result: ideasResponse, usage } = await generateCampaignIdeas(pageContent + inspirationContext, source_type, role, modelConfig);
 
       await logCost(supabaseAdmin, {
         userId,
