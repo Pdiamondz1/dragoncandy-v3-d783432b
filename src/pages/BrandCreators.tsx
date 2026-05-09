@@ -7,6 +7,7 @@ import { BrandCreatorCard } from '@/components/brand-browse/BrandCreatorCard';
 import { ShortlistDrawer } from '@/components/brand-browse/ShortlistDrawer';
 import { CampaignContextSelector } from '@/components/brand-browse/CampaignContextSelector';
 import { EmptyStateNoCampaigns } from '@/components/brand-browse/EmptyStateNoCampaigns';
+import { CreatorMetricFilters, type MetricFilters } from '@/components/outstand/CreatorMetricFilters';
 import { useCreatorBrowse } from '@/hooks/useCreatorBrowse';
 import { useBrandShortlist } from '@/hooks/useBrandShortlist';
 import { useBulkInvite } from '@/hooks/useBulkInvite';
@@ -92,6 +93,12 @@ const BrandCreators: React.FC = () => {
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [isMapOpen, setIsMapOpen] = useState(false);
   const [isShortlistOpen, setIsShortlistOpen] = useState(false);
+  const [metricFilters, setMetricFilters] = useState<MetricFilters>({
+    platforms: [],
+    minFollowers: 0,
+    minEngagement: 0,
+    sortBy: 'engagement',
+  });
 
   // Count active advanced filters
   const activeFilterCount = [
@@ -186,6 +193,9 @@ const BrandCreators: React.FC = () => {
                 onOpenMap={() => setIsMapOpen(true)}
                 activeFilterCount={activeFilterCount}
               />
+
+              {/* Verified metric filters */}
+              <CreatorMetricFilters filters={metricFilters} onChange={setMetricFilters} />
 
               {/* Creator grid */}
               {isLoading ? (
