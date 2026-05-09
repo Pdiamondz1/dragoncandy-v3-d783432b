@@ -542,6 +542,51 @@ serve(async (req) => {
             logStep("No org found for subscription — invoice ignored", { subscriptionId });
           }
         }
+
+        // Reconcile rush surcharges via metadata on invoice line items
+        const lineItems = (invoice as any).lines?.data as Array<{ metadata?: Record<string, string> }> | undefined;
+        if (lineItems) {
+          const rushIds = lineItems
+            .map((li) => li.metadata?.rush_surcharge_log_id)
+            .filter((id): id is string => !!id);
+
+          if (rushIds.length > 0) {
+            logStep("Reconciling rush surcharges", { count: rushIds.length, rushIds });
+
+            const { data: rushRows, error: rushError } = await supabase
+              .from("rush_surcharge_log")
+              .select("id, surcharge_cents, campaign_id")
+              .in("id", rushIds)
+              .eq("status", "invoiced");
+
+            if (rushError) {
+              logStep("ERROR: Failed to fetch rush rows for reconciliation", { error: rushError.message });
+            } else if (rushRows && rushRows.length > 0) {
+              const { error: updateError } = await supabase
+                .from("rush_surcharge_log")
+                .update({ status: "paid", paid_at: new Date().toISOString() })
+                .in("id", rushRows.map((r) => r.id));
+
+              if (updateError) {
+                logStep("ERROR: Failed to mark rush rows as paid", { error: updateError.message });
+              }
+
+              for (const row of rushRows) {
+                await writePaymentEvent(supabase, {
+                  event_type: "rush_surcharge_paid",
+                  entity_type: "rush",
+                  entity_id: row.id,
+                  campaign_id: row.campaign_id,
+                  actor_role: "stripe",
+                  amount_cents: row.surcharge_cents,
+                  stripe_id: invoice.id,
+                }, "[STRIPE-WEBHOOK]");
+              }
+
+              logStep("Rush surcharges reconciled", { paid: rushRows.length });
+            }
+          }
+        }
         break;
       }
 
