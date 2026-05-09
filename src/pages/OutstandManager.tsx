@@ -8,6 +8,7 @@ import { useAccounts, usePosts, type Post } from '@outstand-so/ui';
 import { ComposeTab } from '@/components/outstand/ComposeTab';
 import { CalendarTab } from '@/components/outstand/CalendarTab';
 import { PublishedTab } from '@/components/outstand/PublishedTab';
+import { EngagementTab } from '@/components/outstand/EngagementTab';
 import { AccountsTab } from '@/components/outstand/AccountsTab';
 import { useSanitizeFileInputs } from '@/hooks/outstand/useSanitizeFileInputs';
 import { useAuth } from '@/hooks/useAuth';
@@ -78,6 +79,10 @@ const OutstandManagerInner: React.FC = () => {
   });
 
   const connectedCount = accounts?.length ?? 0;
+  const ownAccountIds = useMemo(
+    () => (accounts ?? []).map((a) => a.id),
+    [accounts],
+  );
   const scheduledCount = useMemo(
     () => (posts ?? []).filter((p) => isScheduled(p)).length,
     [posts],
@@ -183,7 +188,7 @@ const OutstandManagerInner: React.FC = () => {
             <PublishedTab posts={posts ?? []} isLoading={postsLoading} onChanged={refetchPosts} />
           </TabsContent>
           <TabsContent value="engagement">
-            <EngagementTabStub />
+            <EngagementTab posts={posts ?? []} ownAccountIds={ownAccountIds} />
           </TabsContent>
           <TabsContent value="analytics">
             <AnalyticsTabStub />
@@ -196,9 +201,6 @@ const OutstandManagerInner: React.FC = () => {
     </div>
   );
 };
-
-const EngagementTabStub: React.FC = () =>
-  <div className="p-8 text-center text-gray-400">Engagement — coming soon</div>;
 
 const AnalyticsTabStub: React.FC = () =>
   <div className="p-8 text-center text-gray-400">Analytics — coming soon</div>;
