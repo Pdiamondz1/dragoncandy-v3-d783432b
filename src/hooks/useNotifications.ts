@@ -182,6 +182,24 @@ export const useNotifications = () => {
 
     init();
 
+    const lookupCache = new Map<string, { data: unknown; expiresAt: number }>();
+    const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+    const cachedLookup = async <T>(
+      key: string,
+      fetcher: () => Promise<T>
+    ): Promise<T | null> => {
+      const cached = lookupCache.get(key);
+      if (cached && cached.expiresAt > Date.now()) {
+        return cached.data as T;
+      }
+      const result = await fetcher();
+      if (result) {
+        lookupCache.set(key, { data: result, expiresAt: Date.now() + CACHE_TTL });
+      }
+      return result;
+    };
+
     // Single consolidated channel for all notification events
     const notificationChannel = supabase
       .channel(`notifications-${user.id}`)
@@ -259,22 +277,17 @@ export const useNotifications = () => {
           table: 'campaign_sponsorships',
         },
         async (payload) => {
-          // Fetch campaign and brand details for context
-          const { data: campaign } = await supabase
-            .from('campaigns')
-            .select('title, user_id')
-            .eq('id', payload.new.campaign_id)
-            .single();
+          // Fetch campaign and brand details for context (cached)
+          const campaign = await cachedLookup(`campaign-${payload.new.campaign_id}`, async () => {
+            const { data } = await supabase.from('campaigns').select('title, user_id').eq('id', payload.new.campaign_id).single();
+            return data;
+          });
+          if (!campaign) return;
 
-          if (!campaign) {
-            return;
-          }
-
-          const { data: brandProfile } = await supabase
-            .from('business_profiles')
-            .select('business_name')
-            .eq('id', payload.new.brand_id)
-            .single();
+          const brandProfile = await cachedLookup(`brand-${payload.new.brand_id}`, async () => {
+            const { data } = await supabase.from('business_profiles').select('business_name').eq('id', payload.new.brand_id).single();
+            return data;
+          });
 
           // Only notify the restaurant owner (campaign creator)
           if (campaign.user_id === user.id) {
@@ -312,18 +325,16 @@ export const useNotifications = () => {
         async (payload) => {
           // Check if status changed
           if (payload.old.status !== payload.new.status) {
-            // Fetch campaign and brand details
-            const { data: campaign } = await supabase
-              .from('campaigns')
-              .select('title')
-              .eq('id', payload.new.campaign_id)
-              .single();
+            // Fetch campaign and brand details (cached)
+            const campaign = await cachedLookup(`campaign-${payload.new.campaign_id}`, async () => {
+              const { data } = await supabase.from('campaigns').select('title').eq('id', payload.new.campaign_id).single();
+              return data;
+            });
 
-            const { data: brandProfile } = await supabase
-              .from('business_profiles')
-              .select('user_id')
-              .eq('id', payload.new.brand_id)
-              .single();
+            const brandProfile = await cachedLookup(`brand-user-${payload.new.brand_id}`, async () => {
+              const { data } = await supabase.from('business_profiles').select('user_id').eq('id', payload.new.brand_id).single();
+              return data;
+            });
 
             // Only notify the brand who submitted the proposal
             if (brandProfile && brandProfile.user_id === user.id) {
@@ -376,22 +387,20 @@ export const useNotifications = () => {
           // Only notify if this is a 'like' action (not 'unlike')
           if (eventData?.action !== 'like') return;
 
-          // Fetch creator profile to check if current user is the creator
-          const { data: creatorProfile } = await supabase
-            .from('creator_profiles')
-            .select('id, user_id, creator_name')
-            .eq('id', eventData.creator_id)
-            .single();
+          // Fetch creator profile to check if current user is the creator (cached)
+          const creatorProfile = await cachedLookup(`creator-${eventData.creator_id}`, async () => {
+            const { data } = await supabase.from('creator_profiles').select('id, user_id, creator_name').eq('id', eventData.creator_id as string).single();
+            return data;
+          });
 
           // Only notify if current user owns this content
           if (creatorProfile?.user_id !== user.id) return;
 
-          // Fetch the liker's profile for display name
-          const { data: likerProfile } = await supabase
-            .from('profiles')
-            .select('full_name, email')
-            .eq('id', payload.new.user_id)
-            .single();
+          // Fetch the liker's profile for display name (cached)
+          const likerProfile = await cachedLookup(`profile-${payload.new.user_id}`, async () => {
+            const { data } = await supabase.from('profiles').select('full_name, email').eq('id', payload.new.user_id).single();
+            return data;
+          });
 
           const likerName = likerProfile?.full_name ||
                             likerProfile?.email?.split('@')[0] ||
@@ -433,11 +442,10 @@ export const useNotifications = () => {
         async (payload) => {
           let campaignTitle = 'a campaign';
           try {
-            const { data: campaign } = await supabase
-              .from('campaigns')
-              .select('title')
-              .eq('id', payload.new.campaign_id)
-              .single();
+            const campaign = await cachedLookup(`campaign-title-${payload.new.campaign_id}`, async () => {
+              const { data } = await supabase.from('campaigns').select('title').eq('id', payload.new.campaign_id).single();
+              return data;
+            });
             if (campaign) campaignTitle = campaign.title;
           } catch {}
 
