@@ -1,4 +1,4 @@
-CREATE TABLE social_post_log (
+CREATE TABLE IF NOT EXISTS social_post_log (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES auth.users(id),
   campaign_id UUID REFERENCES campaigns(id),
@@ -10,13 +10,15 @@ CREATE TABLE social_post_log (
 
 ALTER TABLE social_post_log ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can read own post log" ON social_post_log;
 CREATE POLICY "Users can read own post log"
   ON social_post_log FOR SELECT
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert own post log" ON social_post_log;
 CREATE POLICY "Users can insert own post log"
   ON social_post_log FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
-CREATE INDEX idx_social_post_log_user ON social_post_log(user_id);
-CREATE INDEX idx_social_post_log_campaign ON social_post_log(campaign_id);
+CREATE INDEX IF NOT EXISTS idx_social_post_log_user ON social_post_log(user_id);
+CREATE INDEX IF NOT EXISTS idx_social_post_log_campaign ON social_post_log(campaign_id);

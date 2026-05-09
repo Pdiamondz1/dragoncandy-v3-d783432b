@@ -10,11 +10,14 @@ CREATE TABLE IF NOT EXISTS brand_shortlists (
 
 ALTER TABLE brand_shortlists ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "brand_shortlists_select" ON brand_shortlists;
 CREATE POLICY "brand_shortlists_select" ON brand_shortlists
   FOR SELECT USING (brand_id = auth.uid());
 
+DROP POLICY IF EXISTS "brand_shortlists_insert" ON brand_shortlists;
 CREATE POLICY "brand_shortlists_insert" ON brand_shortlists
   FOR INSERT WITH CHECK (brand_id = auth.uid());
 
+DROP POLICY IF EXISTS "brand_shortlists_delete" ON brand_shortlists;
 CREATE POLICY "brand_shortlists_delete" ON brand_shortlists
   FOR DELETE USING (brand_id = auth.uid());

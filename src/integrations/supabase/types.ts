@@ -999,6 +999,53 @@ export type Database = {
           },
         ]
       }
+      campaign_social_hooks: {
+        Row: {
+          acted_at: string | null
+          campaign_id: string
+          content_template: string | null
+          created_at: string | null
+          id: string
+          party_role: string
+          prompted_at: string | null
+          stage: number
+          status: string
+          user_id: string
+        }
+        Insert: {
+          acted_at?: string | null
+          campaign_id: string
+          content_template?: string | null
+          created_at?: string | null
+          id?: string
+          party_role: string
+          prompted_at?: string | null
+          stage: number
+          status?: string
+          user_id: string
+        }
+        Update: {
+          acted_at?: string | null
+          campaign_id?: string
+          content_template?: string | null
+          created_at?: string | null
+          id?: string
+          party_role?: string
+          prompted_at?: string | null
+          stage?: number
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_social_hooks_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       campaign_sponsorships: {
         Row: {
           brand_completion_status: string | null
@@ -1532,6 +1579,47 @@ export type Database = {
           youtube_url?: string | null
         }
         Relationships: []
+      }
+      delegated_posting_permissions: {
+        Row: {
+          campaign_id: string
+          created_at: string | null
+          expires_at: string | null
+          grantee_id: string
+          grantor_id: string
+          id: string
+          platforms: string[]
+          status: string
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string | null
+          expires_at?: string | null
+          grantee_id: string
+          grantor_id: string
+          id?: string
+          platforms: string[]
+          status?: string
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string | null
+          expires_at?: string | null
+          grantee_id?: string
+          grantor_id?: string
+          id?: string
+          platforms?: string[]
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delegated_posting_permissions_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       discount_codes: {
         Row: {
@@ -3973,6 +4061,44 @@ export type Database = {
           },
         ]
       }
+      rush_surcharge_log: {
+        Row: {
+          campaign_id: string | null
+          created_at: string | null
+          id: string
+          platform_count: number
+          status: string
+          surcharge_cents: number
+          user_id: string
+        }
+        Insert: {
+          campaign_id?: string | null
+          created_at?: string | null
+          id?: string
+          platform_count: number
+          status?: string
+          surcharge_cents?: number
+          user_id: string
+        }
+        Update: {
+          campaign_id?: string | null
+          created_at?: string | null
+          id?: string
+          platform_count?: number
+          status?: string
+          surcharge_cents?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rush_surcharge_log_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       social_post_log: {
         Row: {
           campaign_id: string | null
@@ -4034,6 +4160,50 @@ export type Database = {
           status?: string
         }
         Relationships: []
+      }
+      triple_post_sessions: {
+        Row: {
+          brand_id: string | null
+          brand_status: string
+          campaign_id: string
+          created_at: string | null
+          creator_id: string
+          creator_status: string
+          id: string
+          restaurant_id: string
+          restaurant_status: string
+        }
+        Insert: {
+          brand_id?: string | null
+          brand_status?: string
+          campaign_id: string
+          created_at?: string | null
+          creator_id: string
+          creator_status?: string
+          id?: string
+          restaurant_id: string
+          restaurant_status?: string
+        }
+        Update: {
+          brand_id?: string | null
+          brand_status?: string
+          campaign_id?: string
+          created_at?: string | null
+          creator_id?: string
+          creator_status?: string
+          id?: string
+          restaurant_id?: string
+          restaurant_status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "triple_post_sessions_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_onboarding_progress: {
         Row: {
