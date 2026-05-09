@@ -17,6 +17,7 @@ import { DashboardHero } from '@/components/dashboard/DashboardHero';
 import { DashboardStatsGrid, type StatItem } from '@/components/dashboard/DashboardStatsGrid';
 import { QuickActionButtons, type QuickAction } from '@/components/dashboard/QuickActionButtons';
 import { DragonShareStatTile } from '@/components/dragonshare/DragonShareStatTile';
+import { SocialMediaManagerTile } from '@/components/dashboard/SocialMediaManagerTile';
 import { useCreatorDragonShareEarnings } from '@/hooks/useDragonShare';
 
 const CreatorDashboard = () => {
@@ -117,6 +118,9 @@ const CreatorDashboard = () => {
               href="/dashboard/creator/dragonshare"
             />
           </div>
+
+          {/* Social Media Manager tile */}
+          <SocialMediaManagerTile href="/dashboard/creator/social" />
 
           {/* Quick Actions */}
           <div data-tour="browse-campaigns">
