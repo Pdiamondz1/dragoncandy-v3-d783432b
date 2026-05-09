@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { TrendingUp } from 'lucide-react';
 import type { Post, SocialAccount } from '@outstand-so/ui';
 import { DCEmptyState } from '@/components/ui/dc-empty-state';
@@ -12,6 +12,15 @@ import { FollowerChart } from './analytics/FollowerChart';
 
 type TimeRange = '7d' | '30d' | '90d';
 
+const PLATFORM_FILTERS = [
+  { key: 'all', label: 'All' },
+  { key: 'instagram', label: 'IG' },
+  { key: 'tiktok', label: 'TT' },
+  { key: 'facebook', label: 'FB' },
+  { key: 'x', label: 'X' },
+  { key: 'youtube', label: 'YT' },
+] as const;
+
 interface AnalyticsTabProps {
   accounts: SocialAccount[];
   posts: Post[];
@@ -20,7 +29,21 @@ interface AnalyticsTabProps {
 
 export const AnalyticsTab: React.FC<AnalyticsTabProps> = ({ accounts, posts, accountsLoading }) => {
   const [timeRange, setTimeRange] = useState<TimeRange>('30d');
-  const { data: metrics, isLoading: metricsLoading } = useAccountMetrics(accounts, timeRange);
+  const [platformFilter, setPlatformFilter] = useState<string>('all');
+
+  const filteredAccounts = useMemo(() => {
+    if (platformFilter === 'all') return accounts;
+    return accounts.filter((a) => a.network === platformFilter);
+  }, [accounts, platformFilter]);
+
+  const filteredPosts = useMemo(() => {
+    if (platformFilter === 'all') return posts;
+    return posts.filter((p) =>
+      (p.socialAccounts ?? []).some((sa) => sa.network === platformFilter),
+    );
+  }, [posts, platformFilter]);
+
+  const { data: metrics, isLoading: metricsLoading } = useAccountMetrics(filteredAccounts, timeRange);
 
   const isLoading = accountsLoading || metricsLoading;
 
@@ -70,17 +93,31 @@ export const AnalyticsTab: React.FC<AnalyticsTabProps> = ({ accounts, posts, acc
             </button>
           ))}
         </div>
+        <div className="flex gap-1 overflow-x-auto">
+          {PLATFORM_FILTERS.map((f) => (
+            <button
+              key={f.key}
+              type="button"
+              onClick={() => setPlatformFilter(f.key)}
+              className={`text-[10px] font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${
+                platformFilter === f.key ? 'bg-dc-teal text-white' : 'bg-gray-100 text-gray-600'
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <KpiCards metrics={safeMetrics} />
 
       <div className="hidden md:grid md:grid-cols-2 gap-4">
-        <PostingHeatmap posts={posts} />
-        <TopPosts posts={posts} />
+        <PostingHeatmap posts={filteredPosts} />
+        <TopPosts posts={filteredPosts} />
       </div>
 
       <div className="md:hidden">
-        <TopPosts posts={posts} />
+        <TopPosts posts={filteredPosts} />
       </div>
 
       <FollowerChart platforms={safeMetrics.platformBreakdown} />
