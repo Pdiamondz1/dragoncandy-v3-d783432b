@@ -23,29 +23,36 @@ export const useBrandDashboardStats = () => {
     queryFn: async () => {
       if (!user) throw new Error('User not authenticated');
 
-      const [profileResult, campaignsResult, conversationsResult] = await Promise.all([
+      // Get dashboard summary in one call (replaces 4+ queries)
+      const [summaryResult, profileResult] = await Promise.all([
+        supabase.rpc('get_dashboard_summary', { p_user_id: user.id }),
         supabase
           .from('business_profiles')
           .select('id, sponsorship_budget')
           .eq('user_id', user.id)
           .eq('account_type', 'brand')
           .maybeSingle(),
-        supabase
-          .from('campaigns')
-          .select('*', { count: 'exact', head: true })
-          .eq('user_id', user.id)
-          .in('status', ['active', 'published']),
-        supabase
-          .rpc('get_user_conversations', { user_uuid: user.id }),
       ]);
 
+      if (summaryResult.error) throw summaryResult.error;
       if (profileResult.error) throw profileResult.error;
       if (!profileResult.data) throw new Error('Brand profile not found');
-      if (campaignsResult.error) throw campaignsResult.error;
-      if (conversationsResult.error) throw conversationsResult.error;
+
+      const summary = summaryResult.data as {
+        campaign_count: number;
+        active_campaigns: number;
+        active_collaborations: number;
+        completed_collaborations: number;
+        pending_applications: number;
+        total_applications: number;
+        avg_review_score: number;
+        total_spent: number;
+        monthly_data: Array<{ month: string; collaborations: number }>;
+      };
 
       const brandProfile = profileResult.data;
 
+      // Sponsorship stats still need brand_id
       const { data: sponsorships, error: sponsorshipsError } = await supabase
         .from('campaign_sponsorships')
         .select('sponsorship_amount, status, payment_status')
@@ -53,14 +60,11 @@ export const useBrandDashboardStats = () => {
 
       if (sponsorshipsError) throw sponsorshipsError;
 
-      const ownCampaignsCount = campaignsResult.count;
-      const conversations = conversationsResult.data;
-
       const activeSponsorships = sponsorships?.filter(
         s => s.status === 'accepted' && s.payment_status === 'paid'
       ).length || 0;
 
-      const activeCampaigns = (ownCampaignsCount || 0) + activeSponsorships;
+      const activeCampaigns = summary.active_campaigns + activeSponsorships;
 
       const totalSpend = sponsorships?.filter(
         s => s.payment_status === 'paid'
@@ -70,16 +74,19 @@ export const useBrandDashboardStats = () => {
         s => s.status === 'accepted' || s.status === 'pending'
       ).reduce((sum, s) => sum + (Number(s.sponsorship_amount) || 0), 0) || 0;
 
-      const creatorsConnected = conversations?.filter(
-        (c: { conversation_type: string }) => c.conversation_type === 'direct'
-      ).length || 0;
-
-      // Calculate budget stats
       const monthlyBudget = Number(brandProfile.sponsorship_budget) || 0;
       const availableBudget = monthlyBudget - allocatedBudget;
       const budgetPercentage = monthlyBudget > 0
         ? Math.round((allocatedBudget / monthlyBudget) * 100)
         : 0;
+
+      // Conversations count
+      const { data: conversations } = await supabase
+        .rpc('get_user_conversations', { user_uuid: user.id });
+
+      const creatorsConnected = conversations?.filter(
+        (c: { conversation_type: string }) => c.conversation_type === 'direct'
+      ).length || 0;
 
       const stats: BrandDashboardStats = {
         activeCampaigns,

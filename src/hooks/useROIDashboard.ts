@@ -55,83 +55,50 @@ const buildMonthlyBuckets = (): Map<string, MonthlyDataPoint> => {
 };
 
 async function fetchBusinessROI(userId: string): Promise<ROIMetrics> {
+  const { data: summary, error } = await supabase
+    .rpc('get_dashboard_summary', { p_user_id: userId });
+
+  if (error) throw error;
+
+  const s = summary as {
+    campaign_count: number;
+    active_campaigns: number;
+    active_collaborations: number;
+    completed_collaborations: number;
+    pending_applications: number;
+    total_applications: number;
+    avg_review_score: number;
+    total_spent: number;
+    monthly_data: Array<{ month: string; collaborations: number }>;
+  };
+
+  const totalSpent = s.total_spent;
+  const conversionRate = s.total_applications > 0
+    ? Math.round((s.completed_collaborations / s.total_applications) * 100)
+    : 0;
+
+  const monthlyData: MonthlyDataPoint[] = s.monthly_data.map(m => ({
+    month: getMonthLabel(new Date(m.month)),
+    revenue: 0,
+    projects: m.collaborations || 0,
+  }));
+
+  // Pad to 6 months if RPC returned fewer
   const buckets = buildMonthlyBuckets();
-
-  // Campaigns created by this business
-  const { data: campaigns } = await supabase
-    .from('campaigns')
-    .select('id, status, budget_min, budget_max, fixed_price, created_at')
-    .eq('user_id', userId);
-
-  // Collaborations on those campaigns
-  const campaignIds = campaigns?.map(c => c.id) || [];
-  let collaborations: Array<{
-    id: string;
-    status: string;
-    created_at: string;
-    completed_at: string | null;
-  }> = [];
-
-  if (campaignIds.length > 0) {
-    const { data } = await supabase
-      .from('campaign_collaborations')
-      .select('id, status, created_at, completed_at')
-      .in('campaign_id', campaignIds);
-    collaborations = data || [];
+  for (const point of monthlyData) {
+    buckets.set(point.month, point);
   }
-
-  // Applications for those campaigns
-  let applicationCount = 0;
-  if (campaignIds.length > 0) {
-    const { count } = await supabase
-      .from('campaign_applications')
-      .select('*', { count: 'exact', head: true })
-      .in('campaign_id', campaignIds);
-    applicationCount = count || 0;
-  }
-
-  // Reviews received
-  const { data: reviews } = await supabase
-    .from('project_reviews')
-    .select('rating')
-    .eq('reviewee_id', userId);
-
-  const avgRating = reviews && reviews.length > 0
-    ? reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / reviews.length
-    : 0;
-
-  const activeProjects = collaborations.filter(c => c.status === 'active').length;
-  const completedProjects = collaborations.filter(c => c.status === 'completed').length;
-
-  // Calculate total spent from campaign budgets (completed campaigns)
-  const totalSpent = campaigns
-    ?.filter(c => c.status === 'completed' || c.status === 'published')
-    .reduce((sum, c) => sum + (c.fixed_price || c.budget_min || 0), 0) || 0;
-
-  // Build monthly data
-  collaborations.forEach(collab => {
-    const date = new Date(collab.completed_at || collab.created_at);
-    const label = getMonthLabel(date);
-    const bucket = buckets.get(label);
-    if (bucket) {
-      bucket.projects += 1;
-    }
-  });
-
-  const conversionRate = applicationCount > 0
-    ? Math.round((completedProjects / applicationCount) * 100)
-    : 0;
 
   return {
     totalRevenue: totalSpent,
-    activeProjects,
-    completedProjects,
-    averageRating: Math.round(avgRating * 10) / 10,
+    activeProjects: s.active_collaborations,
+    completedProjects: s.completed_collaborations,
+    averageRating: Math.round(s.avg_review_score * 10) / 10,
     conversionRate,
-    campaignsCreated: campaigns?.length || 0,
+    campaignsCreated: s.campaign_count,
     totalSpent,
-    avgCostPerContent: completedProjects > 0 ? Math.round(totalSpent / completedProjects) : 0,
-    contentDelivered: completedProjects,
+    avgCostPerContent: s.completed_collaborations > 0 ? Math.round(totalSpent / s.completed_collaborations) : 0,
+    contentDelivered: s.completed_collaborations,
     monthlyData: Array.from(buckets.values()),
   };
 }
