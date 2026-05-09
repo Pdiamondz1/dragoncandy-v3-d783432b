@@ -14,6 +14,8 @@ import { useBusinessActiveCampaigns } from '@/hooks/useBusinessActiveCampaigns';
 import { DragonShareStatTile } from '@/components/dragonshare/DragonShareStatTile';
 import { useOrgBoostStats } from '@/hooks/useDragonShare';
 import { useOrg } from '@/hooks/useOrgData';
+import { useFirstRunMissions } from '@/hooks/useFirstRunMissions';
+import { FirstRunDashboard } from '@/components/first-run/FirstRunDashboard';
 
 
 function formatDate(dateStr: string | null): string {
@@ -29,6 +31,18 @@ const BusinessDashboard = () => {
   const { data: org } = useOrg();
   const { data: dsBoosts } = useOrgBoostStats(org?.id);
   const { showTour, tourSteps, completeTour, skipTour } = useTour('/dashboard/business');
+  const { missions, isFirstRun, completeMission, skipMissions } = useFirstRunMissions();
+
+  if (isFirstRun && missions) {
+    return (
+      <FirstRunDashboard
+        role="business_client"
+        missions={missions}
+        onCompleteMission={completeMission}
+        onSkip={skipMissions}
+      />
+    );
+  }
 
   if (!profile) {
     return (

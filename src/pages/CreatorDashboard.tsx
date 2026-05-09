@@ -1,6 +1,8 @@
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { DCTour } from '@/components/guidance/DCTour';
 import { useTour } from '@/hooks/useTour';
+import { useFirstRunMissions } from '@/hooks/useFirstRunMissions';
+import { FirstRunDashboard } from '@/components/first-run/FirstRunDashboard';
 import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -27,6 +29,18 @@ const CreatorDashboard = () => {
   const { data: deadlines, isLoading: deadlinesLoading } = useCreatorUpcomingDeadlines();
   const { data: dsEarnings } = useCreatorDragonShareEarnings();
   const { showTour, tourSteps, completeTour, skipTour } = useTour('/dashboard/creator');
+  const { missions, isFirstRun, completeMission, skipMissions } = useFirstRunMissions();
+
+  if (isFirstRun && missions) {
+    return (
+      <FirstRunDashboard
+        role="content_creator"
+        missions={missions}
+        onCompleteMission={completeMission}
+        onSkip={skipMissions}
+      />
+    );
+  }
 
   if (statsError) {
     return (

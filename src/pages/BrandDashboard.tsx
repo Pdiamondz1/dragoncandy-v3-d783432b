@@ -5,6 +5,8 @@ import { useBrandActiveCampaigns } from '@/hooks/useBrandActiveCampaigns';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { DCTour } from '@/components/guidance/DCTour';
 import { useTour } from '@/hooks/useTour';
+import { useFirstRunMissions } from '@/hooks/useFirstRunMissions';
+import { FirstRunDashboard } from '@/components/first-run/FirstRunDashboard';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { DashboardHero } from '@/components/dashboard/DashboardHero';
 import { DashboardStatsGrid, type StatItem } from '@/components/dashboard/DashboardStatsGrid';
@@ -32,7 +34,19 @@ const BrandDashboard = () => {
   const { data: org } = useOrg();
   const { data: dsBoosts } = useOrgBoostStats(org?.id);
   const { showTour, tourSteps, completeTour, skipTour } = useTour('/dashboard/brand');
+  const { missions, isFirstRun, completeMission, skipMissions } = useFirstRunMissions();
   useDashboardLoadTime(!statsLoading && !!stats);
+
+  if (isFirstRun && missions) {
+    return (
+      <FirstRunDashboard
+        role="brand"
+        missions={missions}
+        onCompleteMission={completeMission}
+        onSkip={skipMissions}
+      />
+    );
+  }
 
   if (statsError) {
     return (
