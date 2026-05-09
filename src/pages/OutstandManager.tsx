@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Send, CalendarDays, BarChart3, Share2, MessageCircle, TrendingUp, Link as LinkIcon, RefreshCw } from 'lucide-react';
+import { Send, CalendarDays, BarChart3, Share2, MessageCircle, TrendingUp, Link as LinkIcon, RefreshCw, Handshake } from 'lucide-react';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DragonCandyOutstandProvider, useOutstandConfig } from '@/integrations/outstand/Provider';
@@ -11,6 +11,7 @@ import { PublishedTab } from '@/components/outstand/PublishedTab';
 import { EngagementTab } from '@/components/outstand/EngagementTab';
 import { AccountsTab } from '@/components/outstand/AccountsTab';
 import { AnalyticsTab } from '@/components/outstand/AnalyticsTab';
+import { CrossPartyAnalytics } from '@/components/outstand/CrossPartyAnalytics';
 import { useSanitizeFileInputs } from '@/hooks/outstand/useSanitizeFileInputs';
 import { useAuth } from '@/hooks/useAuth';
 import type { UserRole } from '@/types/user';
@@ -18,7 +19,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { CampaignDeadline } from '@/components/outstand/CalendarTab';
 
-const VALID_TABS = ['compose', 'calendar', 'published', 'engagement', 'analytics', 'accounts'] as const;
+const VALID_TABS = ['compose', 'calendar', 'published', 'engagement', 'analytics', 'sponsorships', 'accounts'] as const;
 type TabValue = (typeof VALID_TABS)[number];
 
 // A post is "scheduled" if it has a scheduledAt and no account has finished
@@ -75,7 +76,8 @@ const OutstandManagerInner: React.FC = () => {
     setSearchParams(next, { replace: true });
   };
 
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
+  const isBrand = profile?.role === 'brand';
 
   const { accounts, isLoading: accountsLoading, refetch: refetchAccounts } = useAccounts({
     apiKey, baseUrl, limit: ACCOUNTS_PAGE_LIMIT,
@@ -168,7 +170,7 @@ const OutstandManagerInner: React.FC = () => {
 
       <div className="bg-white p-4">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="grid w-full grid-cols-6">
+          <TabsList className={`grid w-full ${isBrand ? 'grid-cols-7 overflow-x-auto' : 'grid-cols-6'}`}>
             <TabsTrigger value="compose" className="flex items-center gap-1 text-xs">
               <Send className="h-3 w-3" />
               <span className="hidden sm:inline">Compose</span>
@@ -193,6 +195,13 @@ const OutstandManagerInner: React.FC = () => {
               <span className="hidden sm:inline">Analytics</span>
               <span className="sm:hidden">Stats</span>
             </TabsTrigger>
+            {isBrand && (
+              <TabsTrigger value="sponsorships" className="flex items-center gap-1 text-xs">
+                <Handshake className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Sponsorships</span>
+                <span className="sm:hidden">Deals</span>
+              </TabsTrigger>
+            )}
             <TabsTrigger value="accounts" className="flex items-center gap-1 text-xs">
               <LinkIcon className="h-3 w-3" />
               Accounts
@@ -232,6 +241,11 @@ const OutstandManagerInner: React.FC = () => {
           <TabsContent value="analytics">
             <AnalyticsTab accounts={accounts ?? []} posts={posts ?? []} accountsLoading={accountsLoading} />
           </TabsContent>
+          {isBrand && (
+            <TabsContent value="sponsorships">
+              <CrossPartyAnalytics />
+            </TabsContent>
+          )}
           <TabsContent value="accounts">
             <AccountsTab />
           </TabsContent>
