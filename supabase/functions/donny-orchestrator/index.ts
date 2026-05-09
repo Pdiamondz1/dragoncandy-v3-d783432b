@@ -6,6 +6,8 @@ import { logCost } from "../_shared/cost-ledger.ts";
 import { getUserUsageStage, incrementUsage, checkQuotaOrBlock, checkHourlyRateLimit } from "../_shared/usage-tracker.ts";
 import { embedQuery, retrieveContext } from "./rag.ts";
 import { SUB_AGENT_TOOLS } from "./tools.ts";
+import { mergeToolsWithMcp, detectSocialIntent, isSocialTool } from "./tools.ts";
+import { createOutstandMcpBridge, type OutstandMcpBridge } from "../_shared/outstand-mcp.ts";
 import type { OrchestratorInput, UserContext } from "./types.ts";
 import * as campaignAgent from "./agents/campaign.ts";
 import * as dragonshareAgent from "./agents/dragonshare.ts";
@@ -50,6 +52,7 @@ Rules:
 - If an action is available, include it in suggested_actions as a JSON array in your response
 - Use the appropriate agent tool when you need specific data
 - Never describe features that don't exist
+- When the user asks about social media posting, analytics, or content scheduling, use the social_ tools
 - If unsure, say so honestly
 - Format suggested_actions as: [{"label":"Action text","route":"/path"}]`;
 }
@@ -116,7 +119,8 @@ interface ClaudeResponse {
 async function callClaude(
   systemPrompt: string,
   messages: ClaudeMessage[],
-  modelConfig: ModelConfig
+  modelConfig: ModelConfig,
+  allTools: Array<Record<string, unknown>>
 ): Promise<ClaudeResponse> {
   const response = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
@@ -129,7 +133,7 @@ async function callClaude(
       model: modelConfig.model,
       max_tokens: modelConfig.maxTokens,
       system: systemPrompt,
-      tools: SUB_AGENT_TOOLS,
+      tools: allTools,
       messages,
     }),
   });
@@ -188,6 +192,8 @@ serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders(req) });
   }
+
+  let mcpBridge: OutstandMcpBridge | null = null;
 
   try {
     const authHeader = req.headers.get("Authorization");
@@ -274,10 +280,10 @@ serve(async (req) => {
     if (resolvedOrgId) {
       const { data: org } = await supabase
         .from("organizations")
-        .select("tier")
+        .select("subscription_tier")
         .eq("id", resolvedOrgId)
         .maybeSingle();
-      orgTier = org?.tier ?? undefined;
+      orgTier = org?.subscription_tier ?? undefined;
     }
 
     const userContext: UserContext = {
@@ -287,6 +293,18 @@ serve(async (req) => {
       org_tier: orgTier,
       full_name: profile?.full_name ?? undefined,
     };
+
+    // --- MCP bridge ---
+    try {
+      mcpBridge = await createOutstandMcpBridge({
+        userId,
+        userRole: userContext.user_role,
+        orgTier: userContext.org_tier,
+        supabase,
+      });
+    } catch (mcpErr) {
+      console.log("[donny-orchestrator] MCP bridge init failed:", mcpErr);
+    }
 
     // --- RAG: embed + retrieve ---
     const embedding = await embedQuery(query);
@@ -308,10 +326,15 @@ serve(async (req) => {
 
     // --- Model routing ---
     const usageStage = await getUserUsageStage(supabase, userId);
-    const modelConfig = getModelConfig("donny-orchestrator", usageStage);
+    const socialIntent = detectSocialIntent(query);
+    const routingKey = socialIntent ?? "donny-orchestrator";
+    const modelConfig = getModelConfig(routingKey, usageStage);
+
+    // --- Merged tool list ---
+    const allTools = mcpBridge ? mergeToolsWithMcp(mcpBridge.tools) : SUB_AGENT_TOOLS;
 
     // --- Tool use loop (max 3 iterations) ---
-    let claudeResult = await callClaude(systemPrompt, messages, modelConfig);
+    let claudeResult = await callClaude(systemPrompt, messages, modelConfig, allTools);
     await logCost(supabase, {
       userId,
       edgeFunction: "donny-orchestrator",
@@ -332,24 +355,33 @@ serve(async (req) => {
       for (const toolUse of toolUseBlocks) {
         const toolName = toolUse.name ?? "general_agent";
         const toolInput = (toolUse.input ?? {}) as Record<string, unknown>;
-
-        // Inject page context and user role into tool input
-        const enrichedInput: Record<string, unknown> = {
-          ...toolInput,
-          page_path,
-          page_context: page_context ?? {},
-          user_role: userContext.user_role,
-          org_id: userContext.org_id,
-          rag_context: ragChunks.join("\n"),
-        };
-
         lastToolUsed = toolName;
-        const agentResult = await dispatchAgent(
-          toolName,
-          enrichedInput,
-          supabase,
-          userContext
-        );
+
+        let agentResult: string;
+
+        if (isSocialTool(toolName) && mcpBridge) {
+          const mcpResult = await mcpBridge.callTool(toolName, toolInput);
+          agentResult = JSON.stringify(mcpResult);
+
+          // Audit log — all MCP tool calls logged to donny_tool_executions
+          await supabase.from("donny_tool_executions").insert({
+            user_id: userId,
+            tool_name: toolName,
+            tool_input: toolInput,
+            tool_output: mcpResult,
+            is_error: mcpResult.isError ?? false,
+          }).then(() => {}, (err: unknown) => console.error("[donny-orchestrator] tool exec log failed:", err));
+        } else {
+          const enrichedInput: Record<string, unknown> = {
+            ...toolInput,
+            page_path,
+            page_context: page_context ?? {},
+            user_role: userContext.user_role,
+            org_id: userContext.org_id,
+            rag_context: ragChunks.join("\n"),
+          };
+          agentResult = await dispatchAgent(toolName, enrichedInput, supabase, userContext);
+        }
 
         toolResultBlocks.push({
           type: "tool_result",
@@ -362,7 +394,7 @@ serve(async (req) => {
       messages.push({ role: "assistant", content: claudeResult.content });
       messages.push({ role: "user", content: toolResultBlocks });
 
-      claudeResult = await callClaude(systemPrompt, messages, modelConfig);
+      claudeResult = await callClaude(systemPrompt, messages, modelConfig, allTools);
       await logCost(supabase, {
         userId,
         edgeFunction: "donny-orchestrator",
@@ -402,6 +434,8 @@ serve(async (req) => {
     });
     const sseBody = `event: text_delta\ndata: ${textChunk}\n\nevent: done\ndata: ${doneChunk}\n\n`;
 
+    mcpBridge?.disconnect();
+
     return new Response(sseBody, {
       headers: {
         ...corsHeaders(req),
@@ -415,6 +449,8 @@ serve(async (req) => {
       msg.includes("Unauthorized") ||
       msg.includes("authorization") ||
       msg.includes("scope");
+
+    mcpBridge?.disconnect();
 
     return new Response(JSON.stringify({ error: msg }), {
       status: isAuthError ? 401 : 500,
