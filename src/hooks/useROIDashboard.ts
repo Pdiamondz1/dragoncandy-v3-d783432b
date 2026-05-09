@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import type { UserRole } from '@/types/user';
+import type { DashboardSummary } from '@/types/dashboard';
 
 export interface ROIMetrics {
   // Shared across all roles
@@ -60,17 +61,7 @@ async function fetchBusinessROI(userId: string): Promise<ROIMetrics> {
 
   if (error) throw error;
 
-  const s = summary as {
-    campaign_count: number;
-    active_campaigns: number;
-    active_collaborations: number;
-    completed_collaborations: number;
-    pending_applications: number;
-    total_applications: number;
-    avg_review_score: number;
-    total_spent: number;
-    monthly_data: Array<{ month: string; collaborations: number }>;
-  };
+  const s = summary as DashboardSummary;
 
   const totalSpent = s.total_spent;
   const conversionRate = s.total_applications > 0

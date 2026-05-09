@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import type { DashboardSummary } from '@/types/dashboard';
 
 export interface BrandDashboardStats {
   // Hybrid stats for DashboardStatsGrid
@@ -38,17 +39,7 @@ export const useBrandDashboardStats = () => {
       if (profileResult.error) throw profileResult.error;
       if (!profileResult.data) throw new Error('Brand profile not found');
 
-      const summary = summaryResult.data as {
-        campaign_count: number;
-        active_campaigns: number;
-        active_collaborations: number;
-        completed_collaborations: number;
-        pending_applications: number;
-        total_applications: number;
-        avg_review_score: number;
-        total_spent: number;
-        monthly_data: Array<{ month: string; collaborations: number }>;
-      };
+      const summary = summaryResult.data as DashboardSummary;
 
       const brandProfile = profileResult.data;
 

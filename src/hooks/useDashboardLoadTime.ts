@@ -18,6 +18,6 @@ export const useDashboardLoadTime = (isDataReady: boolean) => {
       user_id: user.id,
       event_data: { load_time_ms: loadTimeMs },
       page_url: window.location.pathname,
-    });
+    }).then(null, () => {});
   }, [isDataReady, user]);
 };
