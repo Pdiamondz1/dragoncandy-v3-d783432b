@@ -4,6 +4,7 @@ import { useOutstandConfig } from '@/integrations/outstand/Provider';
 import { useOutstandPaths } from '@/hooks/outstand/useOutstandPaths';
 import { toast } from 'sonner';
 import { BrandGuidelinesEditor } from './BrandGuidelinesEditor';
+import { DelegatedPostingPermissions } from './DelegatedPostingPermissions';
 import { useAuth } from '@/hooks/useAuth';
 
 const SUPPORTED_NETWORKS: SocialNetwork[] = ['facebook', 'instagram', 'tiktok', 'x', 'youtube'];
@@ -65,6 +66,12 @@ export const AccountsTab: React.FC = () => {
           <BrandGuidelinesEditor />
         </div>
       )}
+
+      <div className="bg-white rounded-2xl p-4 border border-gray-200">
+        <h2 className="text-base font-bold text-gray-900 mb-3">Posting Permissions</h2>
+        <p className="text-xs text-gray-500 mb-4">Manage who can post on behalf of your accounts.</p>
+        <DelegatedPostingPermissions />
+      </div>
     </div>
   );
 };
