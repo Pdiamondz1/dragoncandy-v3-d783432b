@@ -6,7 +6,7 @@ import { useMyOrgRole } from '@/hooks/useOrgData';
 import { useAuth } from '@/hooks/useAuth';
 import { DragonSharePostCard } from '@/components/dragonshare/DragonSharePostCard';
 import { DragonShareExplainer } from '@/components/dragonshare/DragonShareExplainer';
-import { Sparkles, Users } from 'lucide-react';
+import { Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import type { UserRole } from '@/types/user';
@@ -45,8 +45,7 @@ export function BusinessDragonSharePage({ userRole }: { userRole: UserRole }) {
     <DashboardLayout userRole={userRole}>
       <div className="space-y-6 max-w-4xl mx-auto">
         <PageHeader>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Sparkles className="h-6 w-6 text-teal-500" />
+          <h1 className="text-2xl font-bold">
             DragonShare
           </h1>
           <p className="text-sm text-muted-foreground">

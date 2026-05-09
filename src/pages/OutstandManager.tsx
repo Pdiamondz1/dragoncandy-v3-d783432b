@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Send, CalendarDays, BarChart3, Share2, MessageCircle, TrendingUp, Link as LinkIcon, RefreshCw, Handshake } from 'lucide-react';
+import { Send, CalendarDays, BarChart3, MessageCircle, TrendingUp, Link as LinkIcon, RefreshCw, Handshake } from 'lucide-react';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DragonCandyOutstandProvider, useOutstandConfig } from '@/integrations/outstand/Provider';
@@ -138,8 +138,7 @@ const OutstandManagerInner: React.FC = () => {
       <div className="bg-gradient-to-b from-dc-pink-bg to-pink-50 px-4 pt-6 pb-4">
         <div className="flex items-start justify-between gap-2">
           <div>
-            <h1 className="font-sans text-sm font-bold uppercase tracking-wide text-dc-teal inline-flex items-center gap-2">
-              <Share2 className="h-4 w-4" />
+            <h1 className="font-sans text-sm font-bold uppercase tracking-wide text-gray-900">
               Social Media Manager
             </h1>
             <p className="text-xs text-gray-500 mt-1">
