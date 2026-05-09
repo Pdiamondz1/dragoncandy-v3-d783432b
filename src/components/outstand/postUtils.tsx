@@ -37,7 +37,7 @@ export interface PostMedia {
 export function getMedia(post: Post): PostMedia[] {
   const out: PostMedia[] = [];
   for (const container of post.containers ?? []) {
-    const fields = container as Record<string, unknown>;
+    const fields = container as unknown as Record<string, unknown>;
     const media = (fields.media ?? fields.attachments) as
       | Array<Record<string, unknown>>
       | undefined;
