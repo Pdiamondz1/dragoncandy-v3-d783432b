@@ -12,6 +12,7 @@ import { EngagementTab } from '@/components/outstand/EngagementTab';
 import { AccountsTab } from '@/components/outstand/AccountsTab';
 import { AnalyticsTab } from '@/components/outstand/AnalyticsTab';
 import { CrossPartyAnalytics } from '@/components/outstand/CrossPartyAnalytics';
+import { DonnyAutoPilotStub } from '@/components/outstand/DonnyAutoPilotStub';
 import { useSanitizeFileInputs } from '@/hooks/outstand/useSanitizeFileInputs';
 import { useAuth } from '@/hooks/useAuth';
 import type { UserRole } from '@/types/user';
@@ -183,15 +184,18 @@ const OutstandManagerInner: React.FC = () => {
               Compose, schedule, and engage across Facebook, Instagram, TikTok, X, and YouTube.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={refreshAll}
-            disabled={postsLoading || accountsLoading}
-            className="rounded-full border border-dc-teal text-dc-teal text-xs font-semibold px-3 py-1.5 inline-flex items-center gap-1 hover:bg-dc-teal/10 disabled:opacity-50"
-          >
-            <RefreshCw className={`h-3 w-3 ${postsLoading || accountsLoading ? 'animate-spin' : ''}`} />
-            Refresh
-          </button>
+          <div className="flex items-center gap-2">
+            <DonnyAutoPilotStub />
+            <button
+              type="button"
+              onClick={refreshAll}
+              disabled={postsLoading || accountsLoading}
+              className="rounded-full border border-dc-teal text-dc-teal text-xs font-semibold px-3 py-1.5 inline-flex items-center gap-1 hover:bg-dc-teal/10 disabled:opacity-50"
+            >
+              <RefreshCw className={`h-3 w-3 ${postsLoading || accountsLoading ? 'animate-spin' : ''}`} />
+              Refresh
+            </button>
+          </div>
         </div>
         <div className="grid grid-cols-2 gap-3 mt-4">
           <div className="bg-white rounded-2xl p-4 border-2 border-dc-teal">

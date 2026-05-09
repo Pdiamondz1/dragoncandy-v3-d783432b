@@ -9,6 +9,7 @@ import { PlatformBreakdown } from './analytics/PlatformBreakdown';
 import { TopPosts } from './analytics/TopPosts';
 import { PostingHeatmap } from './analytics/PostingHeatmap';
 import { FollowerChart } from './analytics/FollowerChart';
+import { DonnyPerformanceStub } from './DonnyPerformanceStub';
 
 type TimeRange = '7d' | '30d' | '90d';
 
@@ -123,6 +124,8 @@ export const AnalyticsTab: React.FC<AnalyticsTabProps> = ({ accounts, posts, acc
       <FollowerChart platforms={safeMetrics.platformBreakdown} />
 
       <PlatformBreakdown platforms={safeMetrics.platformBreakdown} />
+
+      <DonnyPerformanceStub />
     </div>
   );
 };
