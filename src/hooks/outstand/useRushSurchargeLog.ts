@@ -47,6 +47,11 @@ export function useRushSurchargeLog(campaignId?: string) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['rush-surcharge-log'] });
       toast.success('Rush surcharge logged');
+      supabase.functions.invoke('invoice-rush-surcharges', {
+        body: { userId: user!.id },
+      }).catch((err) => {
+        console.error('[useRushSurchargeLog] invoice call failed:', err);
+      });
     },
     onError: (err: Error) => toast.error(`Failed to log surcharge: ${err.message}`),
   });
