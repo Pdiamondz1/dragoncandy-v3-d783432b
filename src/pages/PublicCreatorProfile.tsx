@@ -12,6 +12,9 @@ import { PortfolioLightbox } from '@/components/creator-profile/PortfolioLightbo
 import { InviteToCampaignModal } from '@/components/campaigns/InviteToCampaignModal';
 import logo from '@/assets/Transparent_DragonCandy_logo.webp';
 import { SEO } from '@/components/SEO';
+import { VerifiedBadge } from '@/components/outstand/VerifiedBadge';
+import { VerifiedSocialStats } from '@/components/outstand/VerifiedSocialStats';
+import { useVerifiedStatus } from '@/hooks/outstand/useVerifiedStatus';
 
 interface CreatorProfile {
   id: string;
@@ -85,6 +88,7 @@ const PublicCreatorProfile = () => {
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | undefined>();
+  const { isVerified } = useVerifiedStatus(profile?.user_id);
 
   useEffect(() => {
     if (profile?.avatar_url) {
@@ -310,6 +314,7 @@ const PublicCreatorProfile = () => {
         <div className="min-w-0 flex-1">
           <h1 className="text-lg font-bold text-gray-900 truncate">
             {profile.creator_name}
+            {isVerified && <VerifiedBadge className="ml-1" />}
           </h1>
           <div className="flex items-center gap-1 text-sm text-dc-pink-accent">
             <Star className="h-3.5 w-3.5 fill-dc-pink-accent" />
@@ -362,6 +367,8 @@ const PublicCreatorProfile = () => {
           </div>
         </div>
       )}
+
+      {profile.user_id && <VerifiedSocialStats userId={profile.user_id} />}
 
       {/* About Card */}
       {(profile.bio || (profile.skills && profile.skills.length > 0) || profile.base_rate_per_hour) && (

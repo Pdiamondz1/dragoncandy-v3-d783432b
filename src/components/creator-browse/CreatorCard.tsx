@@ -4,6 +4,8 @@ import { CreatorPortfolioModal } from '@/components/creator-profile/CreatorPortf
 import { Heart } from 'lucide-react';
 import type { CreatorProfile } from '@/hooks/useCreatorBrowse';
 import { getSignedProfileUrl } from '@/hooks/useSignedUrl';
+import { VerifiedBadge } from '@/components/outstand/VerifiedBadge';
+import { useVerifiedStatus } from '@/hooks/outstand/useVerifiedStatus';
 
 interface CreatorCardProps {
   creator: CreatorProfile;
@@ -40,6 +42,7 @@ export const CreatorCard: React.FC<CreatorCardProps> = React.memo(({ creator }) 
   const [portfolioImgFailed, setPortfolioImgFailed] = useState(false);
   const [avatarImgFailed, setAvatarImgFailed] = useState(false);
   const [isFavorite, setIsFavorite] = useState(() => getFavorites().includes(creator.id));
+  const { isVerified } = useVerifiedStatus(creator.user_id);
 
   const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
   const [resolvedPortfolioUrls, setResolvedPortfolioUrls] = useState<string[]>([]);
@@ -152,6 +155,7 @@ export const CreatorCard: React.FC<CreatorCardProps> = React.memo(({ creator }) 
           {/* Name + Rating */}
           <div className="flex items-center gap-1.5 mb-0.5 pr-8">
             <span className="font-bold text-gray-900 text-sm truncate">{creator.creator_name || 'Unknown Creator'}</span>
+            {isVerified && <VerifiedBadge />}
             {creator.average_rating != null && (
               <span className="text-yellow-400 text-xs flex-shrink-0">★ {creator.average_rating.toFixed(1)}</span>
             )}
