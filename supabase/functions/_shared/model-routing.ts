@@ -55,6 +55,8 @@ const FUNCTION_ROUTING: Record<string, FunctionRouting> = {
   "donny-campaign-generate": { config: SONNET, canDowngrade: false },
   "donny-orchestrator": { config: SONNET, canDowngrade: false },
   "donny-chat": { config: SONNET_EXTENDED, canDowngrade: false },
+  "social-caption": { config: HAIKU, canDowngrade: false },
+  "social-analysis": { config: SONNET, canDowngrade: true },
 };
 
 export function getModelConfig(
