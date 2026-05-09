@@ -30,11 +30,13 @@ const DEFAULT_QUICK_CHIPS: Record<string, DonnyQuickChip[]> = {
 
 interface UseDonnyOptions {
   campaignContext?: { campaign_id: string; title: string; status: string } | null;
+  enabled?: boolean;
 }
 
 export function useDonny(options?: UseDonnyOptions) {
   const { user, profile, activeOrg } = useAuth();
   const queryClient = useQueryClient();
+  const isEnabled = options?.enabled !== false;
   const [streamingContent, setStreamingContent] = useState('');
   const [avatarState, setAvatarState] = useState<DonnyAvatarState>('idle');
   const [isStreaming, setIsStreaming] = useState(false);
@@ -69,7 +71,7 @@ export function useDonny(options?: UseDonnyOptions) {
       if (createError) throw createError;
       return created as unknown as DonnyConversation;
     },
-    enabled: !!user,
+    enabled: !!user && isEnabled,
   });
 
   // Load messages
@@ -87,12 +89,12 @@ export function useDonny(options?: UseDonnyOptions) {
       if (fetchError) throw fetchError;
       return (data ?? []) as DonnyMessage[];
     },
-    enabled: !!conversation,
+    enabled: !!conversation && isEnabled,
   });
 
   // Subscribe to Realtime for new messages (streamed from edge function)
   useEffect(() => {
-    if (!conversation) return;
+    if (!conversation || !isEnabled) return;
 
     const channel = supabase
       .channel(`donny-messages-${conversation.id}`)
@@ -115,7 +117,7 @@ export function useDonny(options?: UseDonnyOptions) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [conversation, queryClient]);
+  }, [conversation, isEnabled, queryClient]);
 
   // Send message mutation
   const sendMessageMutation = useMutation({

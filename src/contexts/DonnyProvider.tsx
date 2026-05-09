@@ -92,8 +92,8 @@ export function DonnyProvider({ children, userRole }: DonnyProviderProps) {
     fetchCampaign();
   }, [campaignIdFromUrl]);
 
-  // Existing chat hook
-  const donny = useDonny({ campaignContext });
+  // Existing chat hook — only fires queries when the panel is open
+  const donny = useDonny({ campaignContext, enabled: stage !== 'closed' });
 
   // Nudges
   const {
