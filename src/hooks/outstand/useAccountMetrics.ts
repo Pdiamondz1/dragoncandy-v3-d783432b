@@ -169,42 +169,23 @@ export function useAccountMetrics(accounts: SocialAccount[], timeRange: TimeRang
       const avgEngagement = accounts.length > 0 ? totalEngagement / accounts.length : 0;
 
       let priorFollowers: number | null = null;
-      let priorReach: number | null = null;
-      let priorEngagement: number | null = null;
-      let priorPosts: number | null = null;
 
-      let pFollowers = 0;
-      let pReach = 0;
-      let pEngagement = 0;
-      let pPosts = 0;
-      let priorFetched = false;
+      const priorStartIso = priorRange.start.toISOString();
+      const priorEndIso = priorRange.end.toISOString();
 
-      void priorRange; // used for structural completeness — Outstand API returns current snapshots
+      const { data: priorCached } = await supabase
+        .from('social_analytics_cache')
+        .select('outstand_account_id, metric_type, metric_value')
+        .eq('period_start', priorStartIso)
+        .eq('period_end', priorEndIso);
 
-      await mapWithConcurrency(
-        accounts,
-        async (account) => {
-          try {
-            const res = await api.get(`/social-accounts/${account.id}/metrics`);
-            if (!res.success || !res.data) return;
-            const m = res.data as Record<string, number>;
-            pFollowers += m.followers ?? m.followerCount ?? 0;
-            pReach += m.reach ?? m.impressions ?? 0;
-            pEngagement += m.engagementRate ?? 0;
-            pPosts += m.postsCount ?? 0;
-            priorFetched = true;
-          } catch {
-            // Skip
+      if (priorCached && priorCached.length > 0) {
+        priorFollowers = 0;
+        for (const row of priorCached) {
+          if (row.metric_type === 'followers') {
+            priorFollowers += Number(row.metric_value) || 0;
           }
-        },
-        CONCURRENCY,
-      );
-
-      if (priorFetched) {
-        priorFollowers = pFollowers;
-        priorReach = pReach;
-        priorEngagement = accounts.length > 0 ? pEngagement / accounts.length : 0;
-        priorPosts = pPosts;
+        }
       }
 
       return {
@@ -213,9 +194,9 @@ export function useAccountMetrics(accounts: SocialAccount[], timeRange: TimeRang
         totalReach,
         postsPublished,
         followersDelta: computeDelta(totalFollowers, priorFollowers),
-        engagementDelta: computeDelta(avgEngagement, priorEngagement),
-        reachDelta: computeDelta(totalReach, priorReach),
-        postsDelta: computeDelta(postsPublished, priorPosts),
+        engagementDelta: null,
+        reachDelta: null,
+        postsDelta: null,
         platformBreakdown: platformMetrics,
       };
     },
