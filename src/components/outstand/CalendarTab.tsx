@@ -11,7 +11,7 @@ import { DayStrip } from './calendar/DayStrip';
 import { isScheduled } from '@/pages/OutstandManager';
 import { toast } from 'sonner';
 import { type SponsorshipEvent } from '@/components/outstand/SponsorshipMarker';
-import { DonnyWeeklyPlannerStub } from './DonnyWeeklyPlannerStub';
+import { DonnyWeeklyPlanner } from './DonnyWeeklyPlanner';
 
 type CalendarView = 'week' | 'month';
 
@@ -237,7 +237,7 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ posts, isLoading, onCh
         <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-pink-400" /> Deadline</span>
       </div>
 
-      <DonnyWeeklyPlannerStub />
+      <DonnyWeeklyPlanner />
     </div>
   );
 };
