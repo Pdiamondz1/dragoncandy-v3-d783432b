@@ -33,24 +33,31 @@ serve(async (req) => {
       });
     }
 
-    const { customer_id } = await req.json();
+    const body = await req.json().catch(() => ({}));
+    const org_id: string | undefined = body?.org_id;
+    const legacy_customer_id: string | undefined = body?.customer_id;
 
-    if (!customer_id) {
-      return new Response(JSON.stringify({ error: 'customer_id is required' }), {
+    if (!org_id && !legacy_customer_id) {
+      return new Response(JSON.stringify({ error: 'org_id is required' }), {
         status: 400, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
       });
     }
 
-    // Verify customer_id belongs to user's org (prevent IDOR)
-    const { data: org } = await supabase
-      .from('organizations')
-      .select('id')
-      .eq('stripe_customer_id', customer_id)
-      .single();
+    // Resolve org by org_id (preferred) or by legacy customer_id (backward compat)
+    const orgQuery = supabase.from('organizations').select('id, stripe_customer_id');
+    const { data: org } = org_id
+      ? await orgQuery.eq('id', org_id).single()
+      : await orgQuery.eq('stripe_customer_id', legacy_customer_id!).single();
 
     if (!org) {
-      return new Response(JSON.stringify({ error: 'Organization not found for this customer' }), {
+      return new Response(JSON.stringify({ error: 'Organization not found' }), {
         status: 404, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
+      });
+    }
+    const customer_id = org.stripe_customer_id;
+    if (!customer_id) {
+      return new Response(JSON.stringify({ error: 'No Stripe customer for this organization' }), {
+        status: 400, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
       });
     }
 
