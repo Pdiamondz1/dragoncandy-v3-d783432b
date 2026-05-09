@@ -20,20 +20,16 @@ export const TopPosts: React.FC<TopPostsProps> = ({ posts }) => {
     () =>
       posts
         .filter(isInPublishedFeed)
-        .sort((a, b) => {
-          const aPublished = (a.socialAccounts ?? []).filter((sa) => sa.status === 'published').length;
-          const bPublished = (b.socialAccounts ?? []).filter((sa) => sa.status === 'published').length;
-          if (bPublished !== aPublished) return bPublished - aPublished;
-          const aTotal = (a.socialAccounts ?? []).length;
-          const bTotal = (b.socialAccounts ?? []).length;
-          if (bTotal !== aTotal) return bTotal - aTotal;
-          return new Date(b.publishedAt ?? b.createdAt ?? 0).getTime() - new Date(a.publishedAt ?? a.createdAt ?? 0).getTime();
-        })
+        .sort((a, b) =>
+          new Date(b.publishedAt ?? b.createdAt ?? 0).getTime() -
+          new Date(a.publishedAt ?? a.createdAt ?? 0).getTime(),
+        )
         .slice(0, 5)
         .map((post) => ({
           post,
           caption: getCaption(post),
           networks: getUniqueNetworks(post),
+          publishedCount: (post.socialAccounts ?? []).filter((sa) => sa.status === 'published').length,
         })),
     [posts],
   );
@@ -44,15 +40,16 @@ export const TopPosts: React.FC<TopPostsProps> = ({ posts }) => {
     <div>
       <div className="text-sm font-bold text-gray-900 mb-3">Top Posts</div>
       <div className="space-y-2">
-        {topPosts.map(({ post, caption, networks }, i) => (
+        {topPosts.map(({ post, caption, networks, publishedCount }, i) => (
           <div key={post.id} className="flex items-center gap-2.5 py-1.5 border-b border-gray-50 last:border-0">
             <div className="text-sm font-extrabold text-dc-teal w-4">{i + 1}</div>
             <div className="w-9 h-9 bg-gray-100 rounded-lg shrink-0" />
             <div className="flex-1 min-w-0">
               <div className="text-[11px] font-semibold text-gray-900 truncate">{caption || 'Untitled'}</div>
               <div className="text-[10px] text-gray-400">
-                {(post.socialAccounts ?? []).filter((sa) => sa.status === 'published').length} of{' '}
-                {(post.socialAccounts ?? []).length} published
+                {new Date(post.publishedAt ?? post.createdAt ?? 0).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                {' · '}
+                {publishedCount} platform{publishedCount !== 1 ? 's' : ''}
               </div>
             </div>
             {networks[0] && (

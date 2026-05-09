@@ -112,13 +112,19 @@ export function useAccountMetrics(accounts: SocialAccount[], timeRange: TimeRang
 
           if (cachedRow) {
             const followers = Number(cachedRow.metric_value) || 0;
+            const engRow = cachedByKey.get(`${account.id}:engagement`);
+            const reachRow = cachedByKey.get(`${account.id}:reach`);
+            const postsRow = cachedByKey.get(`${account.id}:posts`);
             totalFollowers += followers;
+            totalEngagement += Number(engRow?.metric_value) || 0;
+            totalReach += Number(reachRow?.metric_value) || 0;
+            postsPublished += Number(postsRow?.metric_value) || 0;
             platformMetrics.push({
               platform: account.network ?? 'unknown',
               accountId: account.id,
               followers,
               followersDelta: null,
-              engagementRate: 0,
+              engagementRate: Number(engRow?.metric_value) || 0,
             });
             return;
           }
@@ -145,17 +151,21 @@ export function useAccountMetrics(accounts: SocialAccount[], timeRange: TimeRang
             });
 
             if (userId) {
+              const cacheBase = {
+                user_id: userId,
+                outstand_account_id: account.id,
+                platform: account.network ?? 'unknown',
+                period_start: periodStartIso,
+                period_end: periodEndIso,
+                fetched_at: new Date().toISOString(),
+              };
               await supabase.from('social_analytics_cache').upsert(
-                {
-                  user_id: userId,
-                  outstand_account_id: account.id,
-                  platform: account.network ?? 'unknown',
-                  metric_type: 'followers',
-                  metric_value: followers,
-                  period_start: periodStartIso,
-                  period_end: periodEndIso,
-                  fetched_at: new Date().toISOString(),
-                },
+                [
+                  { ...cacheBase, metric_type: 'followers', metric_value: followers },
+                  { ...cacheBase, metric_type: 'engagement', metric_value: engagement },
+                  { ...cacheBase, metric_type: 'reach', metric_value: reach },
+                  { ...cacheBase, metric_type: 'posts', metric_value: m.postsCount ?? 0 },
+                ],
                 { onConflict: 'user_id,outstand_account_id,metric_type,period_start,period_end' },
               );
             }
@@ -169,6 +179,9 @@ export function useAccountMetrics(accounts: SocialAccount[], timeRange: TimeRang
       const avgEngagement = accounts.length > 0 ? totalEngagement / accounts.length : 0;
 
       let priorFollowers: number | null = null;
+      let priorEngagement: number | null = null;
+      let priorReach: number | null = null;
+      let priorPosts: number | null = null;
 
       const priorStartIso = priorRange.start.toISOString();
       const priorEndIso = priorRange.end.toISOString();
@@ -179,12 +192,29 @@ export function useAccountMetrics(accounts: SocialAccount[], timeRange: TimeRang
         .eq('period_start', priorStartIso)
         .eq('period_end', priorEndIso);
 
+      const priorFollowersByAccount = new Map<string, number>();
+
       if (priorCached && priorCached.length > 0) {
-        priorFollowers = 0;
+        const sums: Record<string, { total: number; count: number }> = {};
         for (const row of priorCached) {
+          const val = Number(row.metric_value) || 0;
+          if (!sums[row.metric_type]) sums[row.metric_type] = { total: 0, count: 0 };
+          sums[row.metric_type].total += val;
+          sums[row.metric_type].count++;
           if (row.metric_type === 'followers') {
-            priorFollowers += Number(row.metric_value) || 0;
+            priorFollowersByAccount.set(row.outstand_account_id, val);
           }
+        }
+        if (sums.followers) priorFollowers = sums.followers.total;
+        if (sums.engagement && sums.engagement.count > 0) priorEngagement = sums.engagement.total / sums.engagement.count;
+        if (sums.reach) priorReach = sums.reach.total;
+        if (sums.posts) priorPosts = sums.posts.total;
+      }
+
+      for (const pm of platformMetrics) {
+        const priorVal = priorFollowersByAccount.get(pm.accountId);
+        if (priorVal !== undefined) {
+          pm.followersDelta = computeDelta(pm.followers, priorVal);
         }
       }
 
@@ -194,9 +224,9 @@ export function useAccountMetrics(accounts: SocialAccount[], timeRange: TimeRang
         totalReach,
         postsPublished,
         followersDelta: computeDelta(totalFollowers, priorFollowers),
-        engagementDelta: null,
-        reachDelta: null,
-        postsDelta: null,
+        engagementDelta: computeDelta(avgEngagement, priorEngagement),
+        reachDelta: computeDelta(totalReach, priorReach),
+        postsDelta: computeDelta(postsPublished, priorPosts),
         platformBreakdown: platformMetrics,
       };
     },

@@ -1,6 +1,7 @@
 import React from 'react';
 import { BadgeCheck } from 'lucide-react';
 import { useCreatorSocialStats } from '@/hooks/outstand/useCreatorSocialStats';
+import { formatCompactNumber } from '@/lib/utils';
 
 const PLATFORM_LABELS: Record<string, string> = {
   instagram: 'IG',
@@ -17,12 +18,6 @@ const PLATFORM_COLORS: Record<string, string> = {
   x: 'bg-gray-800',
   youtube: 'bg-red-600',
 };
-
-function formatFollowers(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
-  return String(n);
-}
 
 interface VerifiedSocialStatsProps {
   userId: string;
@@ -52,7 +47,7 @@ export const VerifiedSocialStats: React.FC<VerifiedSocialStatsProps> = ({ userId
             </div>
             <div>
               <p className="text-sm font-extrabold text-gray-900 leading-none">
-                {formatFollowers(followers)}
+                {formatCompactNumber(followers)}
               </p>
               <p className="text-[9px] text-gray-400">followers</p>
             </div>
@@ -61,7 +56,7 @@ export const VerifiedSocialStats: React.FC<VerifiedSocialStatsProps> = ({ userId
       </div>
       {data.totalFollowers > 0 && (
         <p className="text-[10px] text-gray-400 mt-2">
-          {formatFollowers(data.totalFollowers)} total followers · Verified by DragonCandy
+          {formatCompactNumber(data.totalFollowers)} total followers · Verified by DragonCandy
         </p>
       )}
     </div>

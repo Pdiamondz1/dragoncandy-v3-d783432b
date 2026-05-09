@@ -1,5 +1,6 @@
 import React from 'react';
 import type { PlatformMetrics } from '@/hooks/outstand/useAccountMetrics';
+import { DeltaBadge } from './DeltaBadge';
 
 const PLATFORM_STYLES: Record<string, { bg: string; icon: string; iconBg: string }> = {
   instagram: { bg: 'bg-pink-50', icon: 'IG', iconBg: 'bg-[#E1306C]' },
@@ -29,11 +30,7 @@ export const PlatformBreakdown: React.FC<PlatformBreakdownProps> = ({ platforms 
               </div>
               <div className="text-base font-extrabold text-gray-900">{p.followers.toLocaleString()}</div>
               <div className="text-[9px] text-gray-400">followers</div>
-              {p.followersDelta !== null && (
-                <div className={`text-[10px] font-semibold mt-1 ${p.followersDelta >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                  {p.followersDelta >= 0 ? '▲' : '▼'} {Math.abs(p.followersDelta).toFixed(1)}%
-                </div>
-              )}
+              <div className="mt-1"><DeltaBadge delta={p.followersDelta} /></div>
             </div>
           );
         })}
