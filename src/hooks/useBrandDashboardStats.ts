@@ -95,6 +95,6 @@ export const useBrandDashboardStats = () => {
       return stats;
     },
     enabled: !!user,
-    staleTime: 60000, // Cache for 1 minute
+    staleTime: 300_000,
   });
 };

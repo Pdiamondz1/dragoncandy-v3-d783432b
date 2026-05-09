@@ -66,7 +66,7 @@ export const useCampaignApplications = (campaignId: string) => {
     },
     enabled: !!campaignId && !!user,
     refetchOnWindowFocus: true,
-    refetchInterval: 120_000,
+    staleTime: 300_000,
   });
 };
 

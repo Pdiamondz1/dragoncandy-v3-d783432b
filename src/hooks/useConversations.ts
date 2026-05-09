@@ -36,7 +36,7 @@ export const useConversations = () => {
       return data as Conversation[];
     },
     enabled: !!user,
-    staleTime: 30_000,
+    staleTime: 120_000,
     refetchOnWindowFocus: 'always',
   });
 
