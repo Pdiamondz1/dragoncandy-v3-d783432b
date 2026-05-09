@@ -3,10 +3,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 
-function calculateSurcharge(platformCount: number): number {
-  if (platformCount >= 5) return 5000;
-  if (platformCount >= 4) return 3000;
-  return 2500;
+function calculateSurcharge(platformCount: number, tier?: string): number {
+  let base: number;
+  if (platformCount >= 5) base = 5000;
+  else if (platformCount >= 4) base = 3000;
+  else base = 2500;
+  if (tier === 'pro') return Math.round(base * 0.8);
+  return base;
 }
 
 export function useRushSurchargeLog(campaignId?: string) {
@@ -31,12 +34,12 @@ export function useRushSurchargeLog(campaignId?: string) {
   });
 
   const logRush = useMutation({
-    mutationFn: async ({ platformCount, campaignId: cId }: { platformCount: number; campaignId?: string }) => {
+    mutationFn: async ({ platformCount, campaignId: cId, tier }: { platformCount: number; campaignId?: string; tier?: string }) => {
       const { error } = await supabase.from('rush_surcharge_log').insert({
         user_id: user!.id,
         campaign_id: cId ?? null,
         platform_count: platformCount,
-        surcharge_cents: calculateSurcharge(platformCount),
+        surcharge_cents: calculateSurcharge(platformCount, tier),
         status: 'pending',
       });
       if (error) throw error;
