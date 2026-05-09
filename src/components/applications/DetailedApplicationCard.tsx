@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Clock, DollarSign, Building, MessageSquare, X, Check, ArrowRightLeft } from 'lucide-react';
+import { Clock, DollarSign, Building, MessageSquare, X, Check, ArrowRightLeft, Share2 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
@@ -23,6 +23,8 @@ import { useWithdrawApplication } from '@/hooks/useWithdrawApplication';
 import { useCounterOffers, useRespondToCounterOffer } from '@/hooks/useCounterOffers';
 import { useAuth } from '@/hooks/useAuth';
 import { JointApprovalStatus } from './JointApprovalStatus';
+import { DragonCandyOutstandProvider } from '@/integrations/outstand/Provider';
+import { CrossPostPrompt } from '@/components/outstand/CrossPostPrompt';
 
 interface DetailedApplicationCardProps {
   application: CampaignApplication;
@@ -31,6 +33,7 @@ interface DetailedApplicationCardProps {
 export const DetailedApplicationCard: React.FC<DetailedApplicationCardProps> = ({ application }) => {
   const [showWithdrawDialog, setShowWithdrawDialog] = useState(false);
   const [showCounterModal, setShowCounterModal] = useState(false);
+  const [showCrossPost, setShowCrossPost] = useState(false);
   const withdrawApplication = useWithdrawApplication();
   const { data: counterOffers = [] } = useCounterOffers(application.id);
   const respondToOffer = useRespondToCounterOffer();
@@ -220,6 +223,23 @@ export const DetailedApplicationCard: React.FC<DetailedApplicationCardProps> = (
                 The restaurant will pay escrow to finalize the project. You'll see the project in your dashboard once payment is confirmed.
               </p>
             </div>
+            <DragonCandyOutstandProvider>
+              <Button
+                onClick={() => setShowCrossPost(true)}
+                className="w-full bg-dc-teal text-white rounded-full font-bold hover:bg-teal-500"
+              >
+                <Share2 className="h-4 w-4 mr-2" />
+                Cross-Post to Your Socials
+              </Button>
+              <CrossPostPrompt
+                open={showCrossPost}
+                onOpenChange={setShowCrossPost}
+                campaignTitle={application.campaign?.title ?? 'Campaign'}
+                creatorName={application.creator_profile?.creator_name ?? 'Creator'}
+                mediaUrls={[]}
+                originalCaption={application.campaign?.description ?? ''}
+              />
+            </DragonCandyOutstandProvider>
             <ContactRestaurantModal
               restaurant={{
                 user_id: application.campaign.business_profile.user_id,
