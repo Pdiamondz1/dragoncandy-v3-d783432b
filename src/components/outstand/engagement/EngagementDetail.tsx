@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Send } from 'lucide-react';
-import { useOutstandApi } from '@outstand-so/ui';
+import { useOutstandApi, usePostMetrics } from '@outstand-so/ui';
 import { useOutstandConfig } from '@/integrations/outstand/Provider';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -13,6 +13,11 @@ interface EngagementDetailProps {
 export const EngagementDetail: React.FC<EngagementDetailProps> = ({ comment }) => {
   const { apiKey, baseUrl } = useOutstandConfig();
   const api = useOutstandApi({ apiKey, baseUrl });
+  const { analytics: postAnalytics } = usePostMetrics({
+    apiKey,
+    baseUrl,
+    postId: comment.postId,
+  });
   const qc = useQueryClient();
   const [replyText, setReplyText] = useState('');
   const [sending, setSending] = useState(false);
@@ -46,6 +51,13 @@ export const EngagementDetail: React.FC<EngagementDetailProps> = ({ comment }) =
           {' · '}
           {comment.platform}
         </div>
+        {postAnalytics?.aggregated_metrics && (
+          <div className="flex gap-3 mt-2 text-[10px] text-gray-500">
+            <span>{postAnalytics.aggregated_metrics.total_likes} likes</span>
+            <span>{postAnalytics.aggregated_metrics.total_comments} comments</span>
+            <span>{postAnalytics.aggregated_metrics.total_shares} shares</span>
+          </div>
+        )}
       </div>
       <div className="flex-1 px-5 py-4 overflow-y-auto">
         <div className="flex gap-2.5">
