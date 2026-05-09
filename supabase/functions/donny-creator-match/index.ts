@@ -5,6 +5,7 @@ import { getModelConfig } from "../_shared/model-routing.ts";
 import { logCost } from "../_shared/cost-ledger.ts";
 import { getUserUsageStage, incrementUsage, checkHourlyRateLimit } from "../_shared/usage-tracker.ts";
 import { corsHeaders } from "../_shared/cors.ts";
+import { anthropicFetch } from "../_shared/anthropic-fetch.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -169,7 +170,7 @@ Return ONLY a valid JSON array, no other text.`;
     const usageStage = await getUserUsageStage(supabaseAdmin, userId);
     const modelConfig = getModelConfig("donny-creator-match", usageStage);
 
-    const aiResponse = await fetch("https://api.anthropic.com/v1/messages", {
+    const aiResponse = await anthropicFetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

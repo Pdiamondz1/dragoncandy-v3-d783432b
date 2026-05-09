@@ -5,6 +5,7 @@ import { getModelConfig, type ModelConfig } from "../_shared/model-routing.ts";
 import { logCost } from "../_shared/cost-ledger.ts";
 import { getUserUsageStage, incrementUsage, checkHourlyRateLimit } from "../_shared/usage-tracker.ts";
 import { corsHeaders } from "../_shared/cors.ts";
+import { anthropicFetch } from "../_shared/anthropic-fetch.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -144,7 +145,7 @@ ${pageContent}
 
 Generate 3 diverse campaign ideas based on this business.`;
 
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
+  const response = await anthropicFetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -396,7 +397,7 @@ Respond with valid JSON only — no markdown fences, no additional text, just ra
   }
 }`;
 
-    const anthropicResponse = await fetch("https://api.anthropic.com/v1/messages", {
+    const anthropicResponse = await anthropicFetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { checkHourlyRateLimit } from "../_shared/usage-tracker.ts";
 import { corsHeaders } from "../_shared/cors.ts";
+import { anthropicFetch } from "../_shared/anthropic-fetch.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -174,7 +175,7 @@ Campaign: "${campaign.title}" — ${campaign.description || "No description"}. G
       const timeout = setTimeout(() => controller.abort(), 5000);
 
       try {
-        const response = await fetch("https://api.anthropic.com/v1/messages", {
+        const response = await anthropicFetch("https://api.anthropic.com/v1/messages", {
           method: "POST",
           headers: {
             "x-api-key": ANTHROPIC_API_KEY,

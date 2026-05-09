@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { createOutstandMcpBridge } from "../_shared/outstand-mcp.ts";
 import { getModelConfig } from "../_shared/model-routing.ts";
 import { logCost } from "../_shared/cost-ledger.ts";
+import { anthropicFetch } from "../_shared/anthropic-fetch.ts";
 
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -57,7 +58,7 @@ serve(async (_req) => {
 
       const modelConfig = getModelConfig("social-analysis", "full_power");
 
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
+      const response = await anthropicFetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: {
           "x-api-key": ANTHROPIC_API_KEY!,

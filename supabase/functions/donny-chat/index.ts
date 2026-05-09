@@ -5,6 +5,7 @@ import { getModelConfig } from "../_shared/model-routing.ts";
 import { logCost } from "../_shared/cost-ledger.ts";
 import { getUserUsageStage, incrementUsage, getUserSubscriptionTier, checkQuotaOrBlock, checkHourlyRateLimit } from "../_shared/usage-tracker.ts";
 import { corsHeaders } from "../_shared/cors.ts";
+import { anthropicFetch } from "../_shared/anthropic-fetch.ts";
 
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
 if (!ANTHROPIC_API_KEY) {
@@ -1566,7 +1567,7 @@ serve(async (req) => {
     if (!ANTHROPIC_API_KEY) {
       throw new Error("ANTHROPIC_API_KEY is not configured — please set it in Supabase Edge Function secrets");
     }
-    let response = await fetch("https://api.anthropic.com/v1/messages", {
+    let response = await anthropicFetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
         "x-api-key": ANTHROPIC_API_KEY!,
@@ -1685,7 +1686,7 @@ serve(async (req) => {
       claudeMessages.push({ role: "user", content: toolResultBlocks });
 
       // Call Claude again with tool results
-      response = await fetch("https://api.anthropic.com/v1/messages", {
+      response = await anthropicFetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: {
           "x-api-key": ANTHROPIC_API_KEY!,

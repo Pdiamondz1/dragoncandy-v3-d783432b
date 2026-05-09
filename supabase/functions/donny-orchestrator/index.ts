@@ -14,6 +14,7 @@ import * as billingAgent from "./agents/billing.ts";
 import * as guidanceAgent from "./agents/guidance.ts";
 import * as generalAgent from "./agents/general.ts";
 import { corsHeaders } from "../_shared/cors.ts";
+import { anthropicFetch } from "../_shared/anthropic-fetch.ts";
 
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -121,7 +122,7 @@ async function callClaude(
   modelConfig: ModelConfig,
   allTools: Array<Record<string, unknown>>
 ): Promise<ClaudeResponse> {
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
+  const response = await anthropicFetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
       "x-api-key": ANTHROPIC_API_KEY!,

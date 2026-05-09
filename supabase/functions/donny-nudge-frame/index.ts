@@ -4,6 +4,7 @@ import { getModelConfig } from "../_shared/model-routing.ts";
 import { logCost } from "../_shared/cost-ledger.ts";
 import { getUserUsageStage, incrementUsage, checkHourlyRateLimit } from "../_shared/usage-tracker.ts";
 import { corsHeaders } from "../_shared/cors.ts";
+import { anthropicFetch } from "../_shared/anthropic-fetch.ts";
 
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -62,7 +63,7 @@ serve(async (req) => {
     const modelConfig = getModelConfig("donny-nudge-frame", usageStage);
 
     // Generate AI summary and priority
-    const aiResponse = await fetch("https://api.anthropic.com/v1/messages", {
+    const aiResponse = await anthropicFetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
