@@ -13,6 +13,7 @@ import { Switch } from '@/components/ui/switch';
 import { SettingsSection } from './SettingsSection';
 import { SkillsSelection } from '@/components/creator-profile/SkillsSelection';
 import { CreatorSocialMediaLinks } from '@/components/creator-profile/CreatorSocialMediaLinks';
+import { ConnectedAccountsList } from '@/components/outstand/ConnectedAccountsList';
 import { PortfolioUpload } from '@/components/creator-profile/PortfolioUpload';
 import { AvatarUpload } from '@/components/creator-profile/AvatarUpload';
 import type { CreatorProfileFormData } from '@/hooks/useCreatorProfileForm';
@@ -224,17 +225,28 @@ export function CreatorSettingsSections({
         />
       </SettingsSection>
 
-      {/* 4. Social Links */}
+      {/* 4. Social Media */}
       <SettingsSection
         value="social"
-        icon="🔗"
-        title="Social Links"
-        subtitle="Connect your social accounts"
+        icon="📡"
+        title="Social Media"
+        subtitle="Manage connected accounts & posting"
       >
-        <CreatorSocialMediaLinks
-          formData={socialFormData}
-          onInputChange={handleSocialChange}
-        />
+        <ConnectedAccountsList role="creator" />
+
+        <div className="border-t border-gray-100 pt-4 mt-4">
+          <details className="group">
+            <summary className="text-xs font-semibold text-gray-400 cursor-pointer hover:text-gray-600">
+              Profile Links (for public profile display)
+            </summary>
+            <div className="mt-3">
+              <CreatorSocialMediaLinks
+                formData={socialFormData}
+                onInputChange={handleSocialChange}
+              />
+            </div>
+          </details>
+        </div>
       </SettingsSection>
 
       {/* 5. Payments */}

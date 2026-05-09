@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/select';
 import { SettingsSection } from './SettingsSection';
 import { SocialMediaLinks } from '@/components/business-profile/SocialMediaLinks';
+import { ConnectedAccountsList } from '@/components/outstand/ConnectedAccountsList';
 import { FileUploadSection } from '@/components/business-profile/FileUploadSection';
 import { ToastConnectionCard } from '@/features/settings/ToastConnectionCard';
 import type { BusinessProfileFormData } from '@/hooks/useBusinessProfileForm';
@@ -253,17 +254,28 @@ export function BusinessSettingsSections({
         />
       </SettingsSection>
 
-      {/* 4. Social Links */}
+      {/* 4. Social Media */}
       <SettingsSection
         value="social"
-        icon="🔗"
-        title="Social Links"
-        subtitle="Connect your brand's social accounts"
+        icon="📡"
+        title="Social Media"
+        subtitle="Manage connected accounts & posting"
       >
-        <SocialMediaLinks
-          formData={socialFormData}
-          onInputChange={onInputChange}
-        />
+        <ConnectedAccountsList role="business" />
+
+        <div className="border-t border-gray-100 pt-4 mt-4">
+          <details className="group">
+            <summary className="text-xs font-semibold text-gray-400 cursor-pointer hover:text-gray-600">
+              Profile Links (for public profile display)
+            </summary>
+            <div className="mt-3">
+              <SocialMediaLinks
+                formData={socialFormData}
+                onInputChange={onInputChange}
+              />
+            </div>
+          </details>
+        </div>
       </SettingsSection>
 
       {/* 5. Payments */}
