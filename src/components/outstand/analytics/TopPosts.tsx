@@ -20,6 +20,15 @@ export const TopPosts: React.FC<TopPostsProps> = ({ posts }) => {
     () =>
       posts
         .filter(isInPublishedFeed)
+        .sort((a, b) => {
+          const aPublished = (a.socialAccounts ?? []).filter((sa) => sa.status === 'published').length;
+          const bPublished = (b.socialAccounts ?? []).filter((sa) => sa.status === 'published').length;
+          if (bPublished !== aPublished) return bPublished - aPublished;
+          const aTotal = (a.socialAccounts ?? []).length;
+          const bTotal = (b.socialAccounts ?? []).length;
+          if (bTotal !== aTotal) return bTotal - aTotal;
+          return new Date(b.publishedAt ?? b.createdAt ?? 0).getTime() - new Date(a.publishedAt ?? a.createdAt ?? 0).getTime();
+        })
         .slice(0, 5)
         .map((post) => ({
           post,
@@ -41,7 +50,10 @@ export const TopPosts: React.FC<TopPostsProps> = ({ posts }) => {
             <div className="w-9 h-9 bg-gray-100 rounded-lg shrink-0" />
             <div className="flex-1 min-w-0">
               <div className="text-[11px] font-semibold text-gray-900 truncate">{caption || 'Untitled'}</div>
-              <div className="text-[10px] text-gray-400">Published</div>
+              <div className="text-[10px] text-gray-400">
+                {(post.socialAccounts ?? []).filter((sa) => sa.status === 'published').length} of{' '}
+                {(post.socialAccounts ?? []).length} published
+              </div>
             </div>
             {networks[0] && (
               <span className={`text-[8px] ${NETWORK_COLORS[networks[0]]?.bg ?? 'bg-gray-400'} text-white px-1.5 py-0.5 rounded font-semibold`}>
