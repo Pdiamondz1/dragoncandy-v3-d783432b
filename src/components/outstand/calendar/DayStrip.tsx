@@ -55,7 +55,8 @@ export const DayStrip: React.FC<DayStripProps> = ({
             return stamp ? isSameDay(new Date(stamp), day) : false;
           });
           const hasDeadline = campaignDeadlines.some((d) => isSameDay(d.deadline, day));
-          const hasSponsorship = sponsorshipEvents.some((s) => isSameDay(s.date, day));
+          const daySponsorships = sponsorshipEvents.filter((s) => isSameDay(s.date, day));
+          const uniqueSponsorshipTypes = Array.from(new Set(daySponsorships.map((s) => s.type)));
 
           return (
             <button
@@ -73,7 +74,9 @@ export const DayStrip: React.FC<DayStripProps> = ({
               <div className="flex gap-0.5 justify-center mt-0.5">
                 {hasPosts && <div className="w-1.5 h-1.5 rounded-full bg-dc-teal" />}
                 {hasDeadline && <div className="w-1.5 h-1.5 rounded-full bg-pink-400" />}
-                {hasSponsorship && <SponsorshipMarkerDot type="start" />}
+                {uniqueSponsorshipTypes.map((type) => (
+                  <SponsorshipMarkerDot key={type} type={type} />
+                ))}
               </div>
             </button>
           );
