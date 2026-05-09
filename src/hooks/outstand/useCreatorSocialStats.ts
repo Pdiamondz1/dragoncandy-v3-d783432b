@@ -11,6 +11,8 @@ export interface CreatorSocialStats {
   totalFollowers: number;
 }
 
+const MIN_DISPLAY_FOLLOWERS = 100;
+
 export function useCreatorSocialStats(userId: string | undefined) {
   return useQuery({
     queryKey: ['creator-social-stats', userId],
@@ -36,6 +38,7 @@ export function useCreatorSocialStats(userId: string | undefined) {
         if (seen.has(row.platform)) continue;
         seen.add(row.platform);
         const followers = Number(row.metric_value) || 0;
+        if (followers < MIN_DISPLAY_FOLLOWERS) continue;
         platforms.push({ platform: row.platform, followers });
         totalFollowers += followers;
       }
