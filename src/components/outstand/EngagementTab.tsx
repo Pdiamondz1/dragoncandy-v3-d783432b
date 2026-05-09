@@ -23,10 +23,18 @@ export const EngagementTab: React.FC<EngagementTabProps> = ({ posts, ownAccountI
 
   const filteredComments = useMemo(() => {
     if (!comments) return [];
-    if (filter === 'all') return comments;
-    if (filter === 'comment') return comments.filter((c) => !c.isReply);
-    return comments.filter((c) => c.isReply);
-  }, [comments, filter]);
+    const filtered = filter === 'all'
+      ? comments
+      : filter === 'comment'
+        ? comments.filter((c) => !c.isReply)
+        : comments.filter((c) => c.isReply);
+    return [...filtered].sort((a, b) => {
+      const aReplied = ownAccountIds.includes(a.authorId) || a.isReply;
+      const bReplied = ownAccountIds.includes(b.authorId) || b.isReply;
+      if (aReplied !== bReplied) return aReplied ? 1 : -1;
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+  }, [comments, filter, ownAccountIds]);
 
   const selectedComment = useMemo(
     () => filteredComments.find((c) => c.id === selectedId) ?? null,
