@@ -304,7 +304,7 @@ Before we project future costs, here's exactly what DragonCandy costs to run rig
 | Claude AI (Max plan) | $200 | Powers Donny AI assistant, campaign brief generation, creator matching, and all AI development |
 | OpenAI subscription | $20 | Supplementary AI for specific tasks |
 | Lovable.dev hosting | $50 | Hosts the dragoncandy.io website and app |
-| Supabase (Pro plan) | $25 | Database, authentication, file storage, real-time messaging, edge functions (42 serverless functions) |
+| Supabase (Pro plan) | $25 | Database, authentication, file storage, real-time messaging, edge functions (56 serverless functions) |
 | **TOTAL** | **$295/month** | **Entire platform operating cost** |
 
 That's $3,540 per year to run a platform with campaign management, AI matching, real-time messaging, escrow payments, Toast POS integration, file management with watermarks, team management, and 42 backend functions.
@@ -317,8 +317,8 @@ Once a customer signs up, here's what it actually costs us to keep them on the p
 
 | Cost Component | Per Customer / Month | How We Calculated This |
 |---------------|---------------------|----------------------|
-| Infrastructure (Supabase) | ~$0.05-$0.25 | $25/month spread across users. Scales to ~$0.10 at 250 users. |
-| AI (Donny interactions) | $0.30-$5.00 | Depends on usage. Light users: $0.30. Power users: $5.00. Average: ~$1.50. |
+| Infrastructure (Supabase) | ~$0.10-$0.30 | $74/month (Pro + SMALL compute) spread across users. Scales to ~$0.07 at 1,000 users. |
+| AI (Donny interactions) | $0.80-$1.60 | Depends on usage. Light users: $0.30. Power users: $5.00. Average: ~$1.20. Based on production model routing data (May 2026). |
 | Stripe processing | 2.9% + $0.30 per transaction | Passthrough — we don't absorb this; it's built into the take rate. |
 | Hosting (Lovable) | ~$0.10-$0.50 | $50/month spread across users. |
 | **Total cost to serve** | **~$0.75-$6.00** | **Per customer per month at current scale** |
@@ -377,17 +377,19 @@ Brand sponsors are the slowest to sign up but most valuable when they do. Averag
 
 ### Side-by-Side: What We Spend Today vs. What We'll Spend at Scale
 
-| | Today (Pre-Launch) | At 100 Customers | At 1,000 Customers |
+| | Today (Pre-Launch) | At 250 Users | At 1,000 Customers |
 |-|-------------------|-----------------|-------------------|
-| **Infrastructure** | $295/mo | $500-$800/mo | $2,000-$5,000/mo |
+| **Infrastructure** | $295/mo | $544-$764/mo | $1,269-$2,089/mo |
 | **Marketing** | $0 | $2,000-$4,000/mo | $7,000-$15,000/mo |
 | **Payroll** | $0 | $0-$15,000/mo (1 hire) | $45,000-$75,000/mo (3-5 hires) |
-| **AI costs** | Included in Claude sub | $150-$500/mo | $1,500-$5,000/mo |
-| **TOTAL** | **$295/mo** | **$2,650-$20,300/mo** | **$55,500-$100,000/mo** |
-| **Revenue** | $0 | $75,000-$80,000/mo | $750,000-$800,000/mo |
-| **Profit margin** | N/A | 73-97% | 87-93% |
+| **AI costs (Donny)** | Included in Claude sub | $200-$400/mo | $800-$1,600/mo |
+| **TOTAL** | **$295/mo** | **$2,744-$20,164/mo** | **$54,069-$93,689/mo** |
+| **Revenue** | $0 | ~$87,700/mo | $750,000-$800,000/mo |
+| **Profit margin** | N/A | 77-97% | 88-93% |
 
-The key insight: our costs scale slowly while revenue scales fast. That's the SaaS model at its best.
+The key insight: our costs scale slowly while revenue scales fast. Infrastructure costs drop from ~0.9% of revenue at 250 users to ~0.4% at 1,000 users. That's the SaaS model at its best. A detailed infrastructure capacity assessment is available in the companion document: **DragonCandy Infrastructure Capacity Report (May 2026)**.
+
+> **Key infrastructure decision:** Before scaling past 75 users, we must upgrade our database compute from MICRO ($25/mo) to SMALL ($74/mo) — a $49/month increase. This doubles our database memory and increases simultaneous connection capacity by 50%. The upgrade is a 2-click process with zero downtime. See the Infrastructure Capacity Report for the full scaling roadmap.
 
 ### Side-by-Side: Cost to Sign Up Each Customer Type
 
@@ -769,7 +771,7 @@ This is the most important ask, and the hardest. The math only works if we resis
 
 **Escrow:** A payment arrangement where money is held by a third party (Stripe, in our case) until both sides of a transaction confirm the work is done. Protects both the buyer and the seller.
 
-**Edge Function:** A small piece of server code that runs on demand (like a vending machine — put in a request, get back a result). DragonCandy has 42 of these handling everything from AI chat to payment processing.
+**Edge Function:** A small piece of server code that runs on demand (like a vending machine — put in a request, get back a result). DragonCandy has 56 of these handling everything from AI chat to payment processing.
 
 **POS (Point of Sale):** The system a restaurant uses to ring up customers. Toast is a popular POS. Our integration means promotional discount codes created on DragonCandy can be tracked and redeemed at the restaurant's actual cash register.
 
@@ -783,11 +785,12 @@ All financial benchmarks and competitive comparisons in this document are drawn 
 - Scaling DragonCandy to $30M (VC scenario, included for contrast).
 - DragonCandy Moat Playbook (defensibility, legal, compliance).
 - DragonCandy GTM Capital and CAC Playbook (phased budgets, blended CAC formula).
+- DragonCandy Infrastructure Capacity Report (May 2026) — database, AI costs, and scaling roadmap for 250-1,000 users.
 - DragonCandy V2 Improvement Playbook + Detailed SOW (services per role, dashboard structure).
 - Donny Super Agent Roadmap (multi-surface AI strategy).
 - Lovable.dev Pricing Analysis (current state assessment).
 
-**Codebase verification:** All feature status labels (LIVE / IN DEV / PLANNED) were verified against the DragonCandy codebase (C:\GIT\dragoncandy-v3-d783432b) on April 28, 2026. The codebase contains 63 page components, 140+ custom hooks, 42 Supabase edge functions, and integrations with Stripe, Toast POS, and Claude AI.
+**Codebase verification:** All feature status labels (LIVE / IN DEV / PLANNED) were verified against the DragonCandy codebase (C:\GIT\dragoncandy-v3-d783432b). The codebase contains 63 page components, 140+ custom hooks, 56 Supabase edge functions, and integrations with Stripe, Toast POS, Claude AI, and Outstand.so (social media management). Infrastructure capacity verified against live Supabase production metrics on May 9, 2026.
 
 *Restaurant marketing data from Deloitte Digital 2025 "State of Social." Take-rate benchmarks from public filings of Fiverr, Upwork, ShopMy, Faire, Agentio. AI cost benchmarks from current Anthropic API pricing.*
 
@@ -797,4 +800,4 @@ All financial benchmarks and competitive comparisons in this document are drawn 
 
 *Confidential — For Internal Use*
 
-*Prepared by the DragonCandy Team — Updated April 2026*
+*Prepared by the DragonCandy Team — Updated May 2026*
