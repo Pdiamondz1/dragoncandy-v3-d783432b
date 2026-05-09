@@ -30,27 +30,33 @@ export const useJointApproval = () => {
       // Check if both approvals are now set
       const { data: application } = await supabase
         .from('campaign_applications')
-        .select('brand_approval_status, restaurant_approval_status')
+        .select('id, brand_approval_status, restaurant_approval_status, final_approval_status, campaign_id')
         .eq('id', applicationId)
         .single();
 
       // Update final status if both parties have approved
-      if (application?.brand_approval_status === 'approved' && 
+      if (application?.brand_approval_status === 'approved' &&
           application?.restaurant_approval_status === 'approved') {
         const { error: finalError } = await supabase
           .from('campaign_applications')
-          .update({ 
+          .update({
             final_approval_status: 'approved',
             status: 'accepted' // Update the main status as well
           })
           .eq('id', applicationId);
 
         if (finalError) throw finalError;
+
+        if (application.campaign_id) {
+          supabase.functions.invoke('fire-campaign-social-hook', {
+            body: { campaign_id: application.campaign_id, stage: 4 },
+          }).catch((err) => console.error('Failed to fire Stage 4 hook:', err));
+        }
       } else if (action === 'rejected') {
         // If either party rejects, final status is rejected
         const { error: finalError } = await supabase
           .from('campaign_applications')
-          .update({ 
+          .update({
             final_approval_status: 'rejected',
             status: 'rejected'
           })
@@ -61,7 +67,7 @@ export const useJointApproval = () => {
     },
     onSuccess: async (_, { applicationId, action }) => {
       queryClient.invalidateQueries({ queryKey: ['campaign-applications'] });
-      
+
       // Send email notifications
       try {
         const { data: application } = await supabase
@@ -72,11 +78,11 @@ export const useJointApproval = () => {
           `)
           .eq('id', applicationId)
           .single();
-        
+
         if (!application) return;
-        
+
         const finalStatus = application.final_approval_status;
-        
+
         // If final decision is made, notify creator
         if (finalStatus === 'approved' || finalStatus === 'rejected') {
           const { data: creatorProfile } = await supabase
@@ -84,7 +90,7 @@ export const useJointApproval = () => {
             .select('email, full_name')
             .eq('id', application.creator_id)
             .single();
-          
+
           if (creatorProfile?.email && application.campaign?.title) {
             await sendNotification(
               'application_status',
@@ -104,7 +110,7 @@ export const useJointApproval = () => {
             .select('email, full_name')
             .eq('id', application.campaign.user_id)
             .single();
-          
+
           if (restaurantProfile?.email && application.campaign?.title) {
             await sendNotification(
               'approval_pending',
@@ -121,7 +127,7 @@ export const useJointApproval = () => {
       } catch (emailError) {
         console.error('Failed to send email notification:', emailError);
       }
-      
+
       toast({
         title: action === 'approved' ? 'Application Approved' : 'Application Rejected',
         description: action === 'approved'
@@ -158,26 +164,32 @@ export const useJointApproval = () => {
       // Check if both approvals are now set
       const { data: application } = await supabase
         .from('campaign_applications')
-        .select('brand_approval_status, restaurant_approval_status')
+        .select('id, brand_approval_status, restaurant_approval_status, final_approval_status, campaign_id')
         .eq('id', applicationId)
         .single();
 
       // Update final status if both parties have approved
-      if (application?.brand_approval_status === 'approved' && 
+      if (application?.brand_approval_status === 'approved' &&
           application?.restaurant_approval_status === 'approved') {
         const { error: finalError } = await supabase
           .from('campaign_applications')
-          .update({ 
+          .update({
             final_approval_status: 'approved',
             status: 'accepted'
           })
           .eq('id', applicationId);
 
         if (finalError) throw finalError;
+
+        if (application.campaign_id) {
+          supabase.functions.invoke('fire-campaign-social-hook', {
+            body: { campaign_id: application.campaign_id, stage: 4 },
+          }).catch((err) => console.error('Failed to fire Stage 4 hook:', err));
+        }
       } else if (action === 'rejected') {
         const { error: finalError } = await supabase
           .from('campaign_applications')
-          .update({ 
+          .update({
             final_approval_status: 'rejected',
             status: 'rejected'
           })
@@ -188,7 +200,7 @@ export const useJointApproval = () => {
     },
     onSuccess: async (_, { applicationId, action }) => {
       queryClient.invalidateQueries({ queryKey: ['campaign-applications'] });
-      
+
       // Send email notifications
       try {
         const { data: application } = await supabase
