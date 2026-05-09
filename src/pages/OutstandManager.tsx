@@ -18,6 +18,7 @@ import type { UserRole } from '@/types/user';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { CampaignDeadline } from '@/components/outstand/CalendarTab';
+import { type SponsorshipEvent } from '@/components/outstand/SponsorshipMarker';
 
 const VALID_TABS = ['compose', 'calendar', 'published', 'engagement', 'analytics', 'sponsorships', 'accounts'] as const;
 type TabValue = (typeof VALID_TABS)[number];
@@ -115,6 +116,43 @@ const OutstandManagerInner: React.FC = () => {
         });
     },
     enabled: !!user?.id,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const { data: sponsorshipEvents } = useQuery<SponsorshipEvent[]>({
+    queryKey: ['brand-sponsorship-events', user?.id],
+    queryFn: async () => {
+      // Two-step lookup: brand_id FK references business_profiles.id, not auth.users.id
+      const { data: brandProfile } = await supabase
+        .from('business_profiles')
+        .select('id')
+        .eq('user_id', user!.id)
+        .eq('account_type', 'brand')
+        .single();
+      if (!brandProfile) return [];
+
+      const { data, error } = await supabase
+        .from('campaign_sponsorships')
+        .select('id, created_at, campaigns!campaign_id(title, deadline)')
+        .eq('brand_id', brandProfile.id);
+      if (error || !data) return [];
+
+      const events: SponsorshipEvent[] = [];
+      for (const s of data) {
+        const campaign = s.campaigns as { title: string; deadline?: string } | null;
+        if (campaign?.title) {
+          events.push({ id: `${s.id}-start`, date: new Date(s.created_at), title: campaign.title, type: 'start' });
+          if (campaign.deadline) {
+            events.push({ id: `${s.id}-deadline`, date: new Date(campaign.deadline), title: campaign.title, type: 'deadline' });
+            const ampDate = new Date(campaign.deadline);
+            ampDate.setDate(ampDate.getDate() + 1);
+            events.push({ id: `${s.id}-amplify`, date: ampDate, title: campaign.title, type: 'amplification' });
+          }
+        }
+      }
+      return events;
+    },
+    enabled: !!user?.id && isBrand,
     staleTime: 5 * 60 * 1000,
   });
 
@@ -229,6 +267,7 @@ const OutstandManagerInner: React.FC = () => {
               onChanged={refetchPosts}
               onSwitchTab={setActiveTab}
               campaignDeadlines={campaignDeadlines ?? []}
+              sponsorshipEvents={sponsorshipEvents ?? []}
             />
           </TabsContent>
           <TabsContent value="published">

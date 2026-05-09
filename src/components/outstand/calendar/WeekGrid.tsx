@@ -4,6 +4,7 @@ import { CalendarPostCard } from './CalendarPostCard';
 import { getWeekDates, isSameDay, postsForDay } from './calendarUtils';
 import { isScheduled } from '@/pages/OutstandManager';
 import type { CampaignDeadline } from '@/components/outstand/CalendarTab';
+import { SponsorshipMarkerLabel, type SponsorshipEvent } from '@/components/outstand/SponsorshipMarker';
 
 const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -13,9 +14,10 @@ interface WeekGridProps {
   onReschedule: (post: Post, newDate: Date) => void;
   onPostClick: (post: Post) => void;
   campaignDeadlines?: CampaignDeadline[];
+  sponsorshipEvents?: SponsorshipEvent[];
 }
 
-export const WeekGrid: React.FC<WeekGridProps> = ({ posts, weekStart, onReschedule, onPostClick, campaignDeadlines = [] }) => {
+export const WeekGrid: React.FC<WeekGridProps> = ({ posts, weekStart, onReschedule, onPostClick, campaignDeadlines = [], sponsorshipEvents = [] }) => {
   const weekDates = useMemo(() => getWeekDates(weekStart), [weekStart]);
   const today = useMemo(() => new Date(), []);
   const [dragOverDay, setDragOverDay] = useState<number | null>(null);
@@ -88,6 +90,11 @@ export const WeekGrid: React.FC<WeekGridProps> = ({ posts, weekStart, onReschedu
                 >
                   {d.title}
                 </div>
+              ))}
+            {sponsorshipEvents
+              .filter((s) => isSameDay(s.date, day))
+              .map((s) => (
+                <SponsorshipMarkerLabel key={s.id} event={s} />
               ))}
           </div>
         );

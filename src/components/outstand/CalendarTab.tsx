@@ -10,6 +10,7 @@ import { MonthGrid } from './calendar/MonthGrid';
 import { DayStrip } from './calendar/DayStrip';
 import { isScheduled } from '@/pages/OutstandManager';
 import { toast } from 'sonner';
+import { type SponsorshipEvent } from '@/components/outstand/SponsorshipMarker';
 
 type CalendarView = 'week' | 'month';
 
@@ -35,9 +36,10 @@ interface CalendarTabProps {
   onChanged?: () => void;
   onSwitchTab?: (tab: string) => void;
   campaignDeadlines?: CampaignDeadline[];
+  sponsorshipEvents?: SponsorshipEvent[];
 }
 
-export const CalendarTab: React.FC<CalendarTabProps> = ({ posts, isLoading, onChanged, onSwitchTab, campaignDeadlines = [] }) => {
+export const CalendarTab: React.FC<CalendarTabProps> = ({ posts, isLoading, onChanged, onSwitchTab, campaignDeadlines = [], sponsorshipEvents = [] }) => {
   const { apiKey, baseUrl } = useOutstandConfig();
   const api = useOutstandApi({ apiKey, baseUrl });
   const qc = useQueryClient();
@@ -201,6 +203,7 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ posts, isLoading, onCh
           onReschedule={handleReschedule}
           onPostClick={handlePostClick}
           campaignDeadlines={campaignDeadlines}
+          sponsorshipEvents={sponsorshipEvents}
         />
       ) : (
         <MonthGrid
@@ -209,6 +212,7 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ posts, isLoading, onCh
           month={currentDate.getMonth()}
           onDayClick={handleDayClick}
           campaignDeadlines={campaignDeadlines}
+          sponsorshipEvents={sponsorshipEvents}
         />
       )}
 
@@ -221,6 +225,7 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ posts, isLoading, onCh
         onPostClick={handlePostClick}
         onScheduleClick={() => onSwitchTab?.('compose')}
         campaignDeadlines={campaignDeadlines}
+        sponsorshipEvents={sponsorshipEvents}
       />
 
       {/* Legend (desktop only) */}

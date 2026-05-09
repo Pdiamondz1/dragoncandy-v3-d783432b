@@ -4,6 +4,7 @@ import { CalendarPostCard } from './CalendarPostCard';
 import { getWeekDates, isSameDay, postsForDay } from './calendarUtils';
 import { Plus } from 'lucide-react';
 import type { CampaignDeadline } from '@/components/outstand/CalendarTab';
+import { SponsorshipMarkerDot, SponsorshipMarkerDetail, type SponsorshipEvent } from '@/components/outstand/SponsorshipMarker';
 
 const DAY_LABELS = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
 
@@ -15,6 +16,7 @@ interface DayStripProps {
   onPostClick: (post: Post) => void;
   onScheduleClick: () => void;
   campaignDeadlines?: CampaignDeadline[];
+  sponsorshipEvents?: SponsorshipEvent[];
 }
 
 export const DayStrip: React.FC<DayStripProps> = ({
@@ -25,6 +27,7 @@ export const DayStrip: React.FC<DayStripProps> = ({
   onPostClick,
   onScheduleClick,
   campaignDeadlines = [],
+  sponsorshipEvents = [],
 }) => {
   const weekDates = useMemo(() => getWeekDates(weekStart), [weekStart]);
   const today = useMemo(() => new Date(), []);
@@ -33,6 +36,11 @@ export const DayStrip: React.FC<DayStripProps> = ({
   const selectedDeadlines = useMemo(
     () => campaignDeadlines.filter((d) => isSameDay(d.deadline, selectedDay)),
     [campaignDeadlines, selectedDay],
+  );
+
+  const selectedSponsorships = useMemo(
+    () => sponsorshipEvents.filter((s) => isSameDay(s.date, selectedDay)),
+    [sponsorshipEvents, selectedDay],
   );
 
   return (
@@ -47,6 +55,7 @@ export const DayStrip: React.FC<DayStripProps> = ({
             return stamp ? isSameDay(new Date(stamp), day) : false;
           });
           const hasDeadline = campaignDeadlines.some((d) => isSameDay(d.deadline, day));
+          const hasSponsorship = sponsorshipEvents.some((s) => isSameDay(s.date, day));
 
           return (
             <button
@@ -64,6 +73,7 @@ export const DayStrip: React.FC<DayStripProps> = ({
               <div className="flex gap-0.5 justify-center mt-0.5">
                 {hasPosts && <div className="w-1.5 h-1.5 rounded-full bg-dc-teal" />}
                 {hasDeadline && <div className="w-1.5 h-1.5 rounded-full bg-pink-400" />}
+                {hasSponsorship && <SponsorshipMarkerDot type="start" />}
               </div>
             </button>
           );
@@ -84,7 +94,10 @@ export const DayStrip: React.FC<DayStripProps> = ({
             <p className="text-sm text-pink-900 font-medium truncate">{d.title}</p>
           </div>
         ))}
-        {selectedPosts.length === 0 && selectedDeadlines.length === 0 ? (
+        {selectedSponsorships.map((s) => (
+          <SponsorshipMarkerDetail key={s.id} event={s} />
+        ))}
+        {selectedPosts.length === 0 && selectedDeadlines.length === 0 && selectedSponsorships.length === 0 ? (
           <div className="text-center py-8 text-gray-400">
             <CalendarDaysIcon className="h-8 w-8 mx-auto mb-2 text-gray-300" />
             <p className="text-xs mb-3">No posts for this day</p>
