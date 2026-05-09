@@ -182,9 +182,9 @@ export const useNotifications = () => {
 
     init();
 
-    // Set up real-time subscription for application status changes
-    const applicationChannel = supabase
-      .channel('application-updates')
+    // Single consolidated channel for all notification events
+    const notificationChannel = supabase
+      .channel(`notifications-${user.id}`)
       .on(
         'postgres_changes',
         {
@@ -251,11 +251,6 @@ export const useNotifications = () => {
           setUnreadCount(prev => prev + 1);
         }
       )
-      .subscribe();
-
-    // Set up real-time subscription for sponsorship proposals
-    const sponsorshipChannel = supabase
-      .channel('sponsorship-updates')
       .on(
         'postgres_changes',
         {
@@ -367,52 +362,47 @@ export const useNotifications = () => {
           }
         }
       )
-      .subscribe();
-
-    // Set up real-time subscription for content likes
-    const likesChannel = supabase
-      .channel('content-likes')
       .on(
         'postgres_changes',
         {
           event: 'INSERT',
           schema: 'public',
           table: 'analytics_events',
-          filter: 'event_type=eq.dragon_feed_like'
+          filter: 'event_type=eq.dragon_feed_like',
         },
         async (payload) => {
           const eventData = payload.new.event_data as Record<string, unknown>;
-          
+
           // Only notify if this is a 'like' action (not 'unlike')
           if (eventData?.action !== 'like') return;
-          
+
           // Fetch creator profile to check if current user is the creator
           const { data: creatorProfile } = await supabase
             .from('creator_profiles')
             .select('id, user_id, creator_name')
             .eq('id', eventData.creator_id)
             .single();
-          
+
           // Only notify if current user owns this content
           if (creatorProfile?.user_id !== user.id) return;
-          
+
           // Fetch the liker's profile for display name
           const { data: likerProfile } = await supabase
             .from('profiles')
             .select('full_name, email')
             .eq('id', payload.new.user_id)
             .single();
-          
-          const likerName = likerProfile?.full_name || 
-                            likerProfile?.email?.split('@')[0] || 
+
+          const likerName = likerProfile?.full_name ||
+                            likerProfile?.email?.split('@')[0] ||
                             'Someone';
-          
+
           // Show toast notification
           toast({
             title: '❤️ Your content got a like!',
             description: `${likerName} liked your content`,
           });
-          
+
           // Add to notifications list
           const notification: Notification = {
             id: `content-like-${payload.new.id}`,
@@ -427,15 +417,11 @@ export const useNotifications = () => {
               liker_name: likerName,
             },
           };
-          
+
           setNotifications(prev => [notification, ...prev]);
           setUnreadCount(prev => prev + 1);
         }
       )
-      .subscribe();
-
-    const invitationChannel = supabase
-      .channel('invitation-updates')
       .on(
         'postgres_changes',
         {
@@ -477,10 +463,7 @@ export const useNotifications = () => {
       .subscribe();
 
     return () => {
-      supabase.removeChannel(applicationChannel);
-      supabase.removeChannel(sponsorshipChannel);
-      supabase.removeChannel(likesChannel);
-      supabase.removeChannel(invitationChannel);
+      supabase.removeChannel(notificationChannel);
     };
   }, [user]);
 
