@@ -6,9 +6,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DragonCandyOutstandProvider, useOutstandConfig } from '@/integrations/outstand/Provider';
 import { useAccounts, usePosts, type Post } from '@outstand-so/ui';
 import { ComposeTab } from '@/components/outstand/ComposeTab';
+import { CalendarTab } from '@/components/outstand/CalendarTab';
 import { PublishedTab } from '@/components/outstand/PublishedTab';
 import { AccountsTab } from '@/components/outstand/AccountsTab';
-import { DCSkeleton } from '@/components/ui/dc-skeleton';
 import { useSanitizeFileInputs } from '@/hooks/outstand/useSanitizeFileInputs';
 import { useAuth } from '@/hooks/useAuth';
 import type { UserRole } from '@/types/user';
@@ -172,7 +172,12 @@ const OutstandManagerInner: React.FC = () => {
             />
           </TabsContent>
           <TabsContent value="calendar">
-            <CalendarTabStub posts={posts ?? []} isLoading={postsLoading} />
+            <CalendarTab
+              posts={posts ?? []}
+              isLoading={postsLoading}
+              onChanged={refetchPosts}
+              onSwitchTab={setActiveTab}
+            />
           </TabsContent>
           <TabsContent value="published">
             <PublishedTab posts={posts ?? []} isLoading={postsLoading} onChanged={refetchPosts} />
@@ -191,9 +196,6 @@ const OutstandManagerInner: React.FC = () => {
     </div>
   );
 };
-
-const CalendarTabStub: React.FC<{ posts: Post[]; isLoading: boolean }> = ({ isLoading }) =>
-  isLoading ? <DCSkeleton variant="card" count={3} /> : <div className="p-8 text-center text-gray-400">Calendar — coming soon</div>;
 
 const EngagementTabStub: React.FC = () =>
   <div className="p-8 text-center text-gray-400">Engagement — coming soon</div>;
