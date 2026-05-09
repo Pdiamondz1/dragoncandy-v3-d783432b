@@ -2,7 +2,7 @@ import { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 
 export interface PaymentEvent {
   event_type: string;
-  entity_type: 'collaboration' | 'sponsorship';
+  entity_type: 'collaboration' | 'sponsorship' | 'rush';
   entity_id: string;
   campaign_id: string | null;
   actor_id?: string;
