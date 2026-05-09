@@ -8,8 +8,13 @@ interface SponsorshipROISummaryProps {
   sponsorship: BrandSponsorshipAnalytics;
 }
 
+const ENGAGEMENT_RECOMMEND_THRESHOLD = 3;
+
 export const SponsorshipROISummary: React.FC<SponsorshipROISummaryProps> = ({ sponsorship }) => {
   const isCompleted = sponsorship.status === 'completed';
+  // Placeholder: real engagement_rate will come from social_analytics_cache once data populates
+  const engagementRate: number | null = null;
+  const isRecommended = engagementRate != null && engagementRate > ENGAGEMENT_RECOMMEND_THRESHOLD;
 
   const handleCopyReport = () => {
     const report = [
@@ -75,8 +80,15 @@ export const SponsorshipROISummary: React.FC<SponsorshipROISummaryProps> = ({ sp
         )}
 
         <div className="flex items-center gap-2 bg-gray-50 rounded-xl p-3 mb-3">
-          <ThumbsUp className="h-4 w-4 text-dc-teal" />
-          <span className="text-xs text-gray-600">Sponsor Again? <span className="font-semibold text-gray-900">Review Performance</span></span>
+          <ThumbsUp className={`h-4 w-4 ${isRecommended ? 'text-dc-teal' : 'text-gray-400'}`} />
+          <span className="text-xs text-gray-600">
+            Sponsor Again?{' '}
+            {isRecommended ? (
+              <span className="font-semibold text-dc-teal">Recommended</span>
+            ) : (
+              <span className="font-semibold text-gray-900">Review Performance</span>
+            )}
+          </span>
         </div>
 
         <div className="flex gap-2">

@@ -146,11 +146,19 @@ export const BrandCreatorCard: React.FC<BrandCreatorCardProps> = ({
         </button>
 
         {/* Social metrics row */}
-        {socialStats && socialStats.platforms.length > 0 && (
+        {socialStats && (socialStats.platforms.length > 0 || socialStats.avgEngagementRate != null) && (
           <div className="flex items-center gap-2 px-4 pb-2 overflow-x-auto">
             {socialStats.platforms.slice(0, 3).map(({ platform, followers }) => (
               <span key={platform} className="text-[10px] text-gray-500 flex items-center gap-1 whitespace-nowrap">
-                <span className="capitalize font-medium">{platform.slice(0, 2).toUpperCase()}</span>
+                {platform === 'instagram' ? (
+                  <Instagram className="h-3 w-3" />
+                ) : platform === 'youtube' ? (
+                  <Youtube className="h-3 w-3" />
+                ) : platform === 'tiktok' ? (
+                  <span className="text-[10px] font-bold">TT</span>
+                ) : (
+                  <span className="text-[10px] font-bold">X</span>
+                )}
                 {followers >= 1000 ? `${(followers / 1000).toFixed(1)}K` : followers}
               </span>
             ))}
@@ -159,6 +167,11 @@ export const BrandCreatorCard: React.FC<BrandCreatorCardProps> = ({
                 {socialStats.totalFollowers >= 1000
                   ? `${(socialStats.totalFollowers / 1000).toFixed(1)}K total`
                   : `${socialStats.totalFollowers} total`}
+              </span>
+            )}
+            {socialStats.avgEngagementRate != null && (
+              <span className="text-[10px] bg-dc-teal text-white font-semibold px-2 py-0.5 rounded-full whitespace-nowrap">
+                {socialStats.avgEngagementRate.toFixed(1)}% eng
               </span>
             )}
           </div>
