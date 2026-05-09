@@ -105,9 +105,11 @@ No drag-and-drop on mobile. Instead, tap a post card → datetime picker bottom 
 Uses HTML5 Drag API (no library dependency):
 - `draggable` attribute on scheduled post cards
 - Drop targets are day columns (week view) or day cells (month view)
-- On drop: call Outstand API to update `scheduledAt` with the new date, preserving the original time
+- On drop: reschedule the post to the new date, preserving the original time
 - Optimistic UI update with rollback on API failure
 - Only scheduled posts are draggable (published/failed are static)
+
+**Reschedule API strategy**: The parent spec's Outstand API reference lists `POST`, `GET`, `GET/{id}`, and `DELETE` for posts but does not document a `PATCH /v1/posts/{id}` endpoint. Implementation must first verify whether Outstand supports `PATCH` with a `scheduledAt` field update. If not, use a **delete-and-recreate** fallback: delete the existing post, then create a new post with the same content/media/platforms but the updated `scheduledAt`. This approach preserves the user experience regardless of API support. The Edge Function proxy already allows both `DELETE` and `POST` on post endpoints.
 
 ### Data Source
 
@@ -170,9 +172,11 @@ Filter bar scrolls horizontally with type pills (All / Comments / Mentions). Pla
 Comments are fetched via Outstand `GET /v1/posts/{id}/comments` for each published post. Since there's no "get all comments across all posts" endpoint, the implementation:
 
 1. Fetches all published posts via `usePosts()`
-2. For each post with `commentCount > 0`, fetches comments via a batch of `GET /v1/posts/{id}/comments` calls
-3. Merges all comments into a single chronological feed
-4. Caches in React Query with a 60-second stale time
+2. Sorts by `publishedAt` descending and takes the **50 most recent** posts with `commentCount > 0` (scalability cap — prevents firing hundreds of parallel requests for accounts with large post histories)
+3. For each qualifying post, fetches comments via `GET /v1/posts/{id}/comments`
+4. Merges all comments into a single chronological feed
+5. Caches in React Query with a 60-second stale time
+6. "Load older comments" button at the bottom fetches the next 50 posts' comments on demand
 
 Replies are sent via `POST /v1/posts/{id}/comments` through the Edge Function proxy (which validates account ownership).
 
@@ -241,7 +245,7 @@ Outstand `GET /v1/social-accounts/{id}/metrics` per connected account. Called th
 
 **Caching strategy** (per parent spec requirement): Metrics are cached in a new `social_analytics_cache` table in Supabase with columns: `user_id`, `platform`, `outstand_account_id`, `metric_type`, `metric_value`, `period_start`, `period_end`, `fetched_at`. Cache TTL: 1 hour. On tab load, serve from cache if fresh; otherwise fetch from Outstand API and upsert cache.
 
-For the "vs prior period" deltas, the cache stores the prior period's values alongside current. If prior period data isn't cached yet, show "—" instead of a delta.
+For the "vs prior period" deltas: the cache uses the `period_start` and `period_end` columns to distinguish time ranges. A 30-day view stores two rows per metric — one for the current 30-day period and one for the prior 30-day period. The `useAccountMetrics` hook queries both ranges and computes the delta client-side. If prior period data isn't cached yet, show "—" instead of a delta.
 
 **Best posting times** are derived from post-level analytics: for each published post, record the day-of-week and hour it was posted, plus its engagement rate. Aggregate into the heatmap grid. This uses data already available from `usePosts()` + per-post metrics — no new API call.
 
@@ -260,6 +264,9 @@ create table social_analytics_cache (
   fetched_at timestamptz not null default now(),
   unique(user_id, outstand_account_id, metric_type, period_start, period_end)
 );
+
+create index idx_social_analytics_cache_freshness
+  on social_analytics_cache (user_id, fetched_at);
 
 alter table social_analytics_cache enable row level security;
 
@@ -357,13 +364,13 @@ All new components follow the existing responsive patterns in OutstandManager:
 - Calendar only fetches posts for the visible date range (not all posts)
 - Engagement comments fetched lazily — only for posts with `commentCount > 0`
 - Analytics cache prevents redundant Outstand API calls (1-hour TTL)
-- Recharts is tree-shakeable — only import `LineChart`, `Area`, `XAxis`, `YAxis`, `Tooltip`
+- Recharts is already in `package.json` (v2.12.7) — no new dependency. Tree-shakeable — only import `LineChart`, `Area`, `XAxis`, `YAxis`, `Tooltip`
 
 ---
 
 ## 7. Files Changed Summary
 
-### New Files (13)
+### New Files (18)
 
 | File | Type |
 |------|------|
