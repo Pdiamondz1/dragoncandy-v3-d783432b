@@ -464,6 +464,34 @@ serve(async (req: Request) => {
   const bodyText =
     req.method === "GET" || req.method === "HEAD" ? "" : await req.text();
 
+  // Delegated posting permission check
+  const delegatedAccountId = req.headers.get('x-delegated-account-id');
+  const delegatedUserId = req.headers.get('x-delegated-user-id');
+
+  if (delegatedAccountId && delegatedUserId) {
+    const { data: permission, error: permError } = await admin
+      .from('delegated_posting_permissions')
+      .select('id, platforms, status, expires_at')
+      .eq('grantor_id', delegatedUserId)
+      .eq('grantee_id', ctx.userId)
+      .eq('status', 'active')
+      .single();
+
+    if (permError || !permission) {
+      return new Response(JSON.stringify({ error: 'No active delegated posting permission' }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (permission.expires_at && new Date(permission.expires_at) < new Date()) {
+      return new Response(JSON.stringify({ error: 'Delegated posting permission has expired' }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+  }
+
   // Internal (non-forwarded) endpoints — handle here and return.
   if (path === "/__internal/record-connection" && req.method === "POST") {
     return await handleRecordConnection(admin, ctx, bodyText);
