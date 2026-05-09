@@ -181,7 +181,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const { data: org, error: orgError } = await supabase
         .from('organizations')
-        .select('id, name, org_type, slug, logo_url, billing_email, stripe_customer_id, stripe_subscription_id, subscription_tier, take_rate, active_campaign_limit, seat_count, created_at, updated_at, deleted_at, hard_purge_at')
+        .select('id, name, org_type, slug, logo_url, subscription_tier, take_rate, active_campaign_limit, seat_count, created_at, updated_at, deleted_at, hard_purge_at')
         .eq('id', orgId)
         .maybeSingle();
       if (orgError) {
