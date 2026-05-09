@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Bookmark, Send, Star, Instagram, Youtube } from 'lucide-react';
 import { CreatorProfileModal } from '@/components/creator-browse/CreatorProfileModal';
+import { VerifiedBadge } from '@/components/outstand/VerifiedBadge';
+import { useVerifiedStatus } from '@/hooks/outstand/useVerifiedStatus';
+import { useCreatorSocialStats } from '@/hooks/outstand/useCreatorSocialStats';
 import type { CreatorProfile } from '@/hooks/useCreatorBrowse';
 
 interface BrandCreatorCardProps {
@@ -21,6 +24,8 @@ export const BrandCreatorCard: React.FC<BrandCreatorCardProps> = ({
 }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const { isVerified } = useVerifiedStatus(creator.user_id);
+  const { data: socialStats } = useCreatorSocialStats(creator.user_id);
 
   useEffect(() => {
     const resolveAvatar = async () => {
@@ -86,6 +91,7 @@ export const BrandCreatorCard: React.FC<BrandCreatorCardProps> = ({
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5">
                 <span className="font-bold text-gray-900 text-sm truncate">{creator.creator_name}</span>
+                {isVerified && <VerifiedBadge size="sm" />}
                 {creator.average_rating != null && (
                   <span className="flex items-center gap-0.5 text-xs text-yellow-500 flex-shrink-0">
                     <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
@@ -138,6 +144,25 @@ export const BrandCreatorCard: React.FC<BrandCreatorCardProps> = ({
             </div>
           </div>
         </button>
+
+        {/* Social metrics row */}
+        {socialStats && socialStats.platforms.length > 0 && (
+          <div className="flex items-center gap-2 px-4 pb-2 overflow-x-auto">
+            {socialStats.platforms.slice(0, 3).map(({ platform, followers }) => (
+              <span key={platform} className="text-[10px] text-gray-500 flex items-center gap-1 whitespace-nowrap">
+                <span className="capitalize font-medium">{platform.slice(0, 2).toUpperCase()}</span>
+                {followers >= 1000 ? `${(followers / 1000).toFixed(1)}K` : followers}
+              </span>
+            ))}
+            {socialStats.totalFollowers > 0 && (
+              <span className="text-[10px] bg-dc-teal/10 text-dc-teal font-semibold px-2 py-0.5 rounded-full whitespace-nowrap">
+                {socialStats.totalFollowers >= 1000
+                  ? `${(socialStats.totalFollowers / 1000).toFixed(1)}K total`
+                  : `${socialStats.totalFollowers} total`}
+              </span>
+            )}
+          </div>
+        )}
 
         {/* Action buttons */}
         <div className="flex gap-2 px-4 pb-3 pt-1">
