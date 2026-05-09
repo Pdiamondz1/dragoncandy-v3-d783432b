@@ -30,7 +30,7 @@ const BusinessDashboard = () => {
   const { data: campaigns, isLoading: campaignsLoading } = useBusinessActiveCampaigns();
   const { data: org } = useOrg();
   const { data: dsBoosts } = useOrgBoostStats(org?.id);
-  const { showTour, tourSteps, completeTour, skipTour } = useTour('/dashboard/business');
+  const { showTour, tourSteps, completeTour, skipTour, triggerTour } = useTour();
   const { missions, isFirstRun, completeMission, skipMissions } = useFirstRunMissions();
 
   if (isFirstRun && missions) {
@@ -109,14 +109,23 @@ const BusinessDashboard = () => {
               <p className="text-sm font-bold uppercase tracking-wide text-dc-teal">
                 Your Active Campaigns
               </p>
-              {hasMore && (
-                <Link
-                  to="/business/campaigns"
-                  className="text-xs font-semibold text-dc-teal hover:underline flex items-center gap-0.5"
+              <div className="flex items-center gap-2">
+                {hasMore && (
+                  <Link
+                    to="/business/campaigns"
+                    className="text-xs font-semibold text-dc-teal hover:underline flex items-center gap-0.5"
+                  >
+                    View all <ChevronRight className="w-3 h-3" />
+                  </Link>
+                )}
+                <button
+                  onClick={triggerTour}
+                  className="w-7 h-7 rounded-full bg-teal-400 flex items-center justify-center text-xs text-white"
+                  aria-label="Show tour"
                 >
-                  View all <ChevronRight className="w-3 h-3" />
-                </Link>
-              )}
+                  ?
+                </button>
+              </div>
             </div>
 
             {campaignsLoading ? (

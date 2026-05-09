@@ -28,7 +28,7 @@ const CreatorDashboard = () => {
   const { data: activities, isLoading: activitiesLoading } = useCreatorRecentActivity();
   const { data: deadlines, isLoading: deadlinesLoading } = useCreatorUpcomingDeadlines();
   const { data: dsEarnings } = useCreatorDragonShareEarnings();
-  const { showTour, tourSteps, completeTour, skipTour } = useTour('/dashboard/creator');
+  const { showTour, tourSteps, completeTour, skipTour, triggerTour } = useTour();
   const { missions, isFirstRun, completeMission, skipMissions } = useFirstRunMissions();
 
   if (isFirstRun && missions) {
@@ -148,10 +148,17 @@ const CreatorDashboard = () => {
 
             {/* Recent Activity */}
             <div className="border-2 border-dc-teal rounded-2xl bg-white overflow-hidden">
-              <div className="px-4 pt-4 pb-2">
+              <div className="px-4 pt-4 pb-2 flex items-center justify-between">
                 <p className="font-sans text-sm font-bold uppercase tracking-wide text-dc-teal">
                   Recent Activity
                 </p>
+                <button
+                  onClick={triggerTour}
+                  className="w-7 h-7 rounded-full bg-teal-400 flex items-center justify-center text-xs text-white"
+                  aria-label="Show tour"
+                >
+                  ?
+                </button>
               </div>
               <div className="px-4 pb-4">
                 {activitiesLoading ? (

@@ -33,7 +33,7 @@ const BrandDashboard = () => {
   const { data: campaigns, isLoading: campaignsLoading } = useBrandActiveCampaigns();
   const { data: org } = useOrg();
   const { data: dsBoosts } = useOrgBoostStats(org?.id);
-  const { showTour, tourSteps, completeTour, skipTour } = useTour('/dashboard/brand');
+  const { showTour, tourSteps, completeTour, skipTour, triggerTour } = useTour();
   const { missions, isFirstRun, completeMission, skipMissions } = useFirstRunMissions();
   useDashboardLoadTime(!statsLoading && !!stats);
 
@@ -139,9 +139,18 @@ const BrandDashboard = () => {
 
             {/* Active Campaigns Feed */}
             <div>
-              <p className="font-sans text-sm font-bold uppercase tracking-wide text-dc-teal mb-2">
-                Active Campaigns
-              </p>
+              <div className="flex items-center justify-between mb-2">
+                <p className="font-sans text-sm font-bold uppercase tracking-wide text-dc-teal">
+                  Active Campaigns
+                </p>
+                <button
+                  onClick={triggerTour}
+                  className="w-7 h-7 rounded-full bg-teal-400 flex items-center justify-center text-xs text-white"
+                  aria-label="Show tour"
+                >
+                  ?
+                </button>
+              </div>
               {campaignsLoading ? (
                 <div className="border-2 border-dc-teal rounded-2xl p-6 bg-white flex items-center justify-center">
                   <Loader2 className="w-5 h-5 text-dc-teal animate-spin" />
