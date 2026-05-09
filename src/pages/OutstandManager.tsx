@@ -12,7 +12,7 @@ import { EngagementTab } from '@/components/outstand/EngagementTab';
 import { AccountsTab } from '@/components/outstand/AccountsTab';
 import { AnalyticsTab } from '@/components/outstand/AnalyticsTab';
 import { CrossPartyAnalytics } from '@/components/outstand/CrossPartyAnalytics';
-import { DonnyAutoPilotStub } from '@/components/outstand/DonnyAutoPilotStub';
+import { DonnyAutoPilot } from '@/components/outstand/DonnyAutoPilot';
 import { useSanitizeFileInputs } from '@/hooks/outstand/useSanitizeFileInputs';
 import { useAuth } from '@/hooks/useAuth';
 import type { UserRole } from '@/types/user';
@@ -185,7 +185,7 @@ const OutstandManagerInner: React.FC = () => {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <DonnyAutoPilotStub />
+            <DonnyAutoPilot />
             <button
               type="button"
               onClick={refreshAll}
