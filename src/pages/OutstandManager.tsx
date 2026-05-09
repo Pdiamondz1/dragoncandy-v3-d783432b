@@ -10,6 +10,7 @@ import { CalendarTab } from '@/components/outstand/CalendarTab';
 import { PublishedTab } from '@/components/outstand/PublishedTab';
 import { EngagementTab } from '@/components/outstand/EngagementTab';
 import { AccountsTab } from '@/components/outstand/AccountsTab';
+import { AnalyticsTab } from '@/components/outstand/AnalyticsTab';
 import { useSanitizeFileInputs } from '@/hooks/outstand/useSanitizeFileInputs';
 import { useAuth } from '@/hooks/useAuth';
 import type { UserRole } from '@/types/user';
@@ -191,7 +192,7 @@ const OutstandManagerInner: React.FC = () => {
             <EngagementTab posts={posts ?? []} ownAccountIds={ownAccountIds} />
           </TabsContent>
           <TabsContent value="analytics">
-            <AnalyticsTabStub />
+            <AnalyticsTab accounts={accounts ?? []} posts={posts ?? []} accountsLoading={accountsLoading} />
           </TabsContent>
           <TabsContent value="accounts">
             <AccountsTab />
@@ -201,9 +202,6 @@ const OutstandManagerInner: React.FC = () => {
     </div>
   );
 };
-
-const AnalyticsTabStub: React.FC = () =>
-  <div className="p-8 text-center text-gray-400">Analytics — coming soon</div>;
 
 const OutstandManager: React.FC = () => {
   const { profile } = useAuth();
