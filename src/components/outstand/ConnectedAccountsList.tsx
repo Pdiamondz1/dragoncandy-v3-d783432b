@@ -85,7 +85,7 @@ const ConnectedAccountsListInner: React.FC<ConnectedAccountsListProps> = ({ role
                   apiKey={apiKey}
                   baseUrl={baseUrl}
                   variant="outline"
-                  layout="list"
+                  layout="vertical"
                   onSuccess={(_network, authUrl) => {
                     sessionStorage.setItem('outstand_pending_network', network);
                     window.location.href = authUrl;

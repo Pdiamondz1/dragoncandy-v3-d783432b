@@ -18,7 +18,7 @@ export function formatPostDate(iso: string | null): string {
 export function getCaption(post: Post): string {
   const container = post.containers?.[0];
   if (!container) return '';
-  const fields = container as Record<string, unknown>;
+  const fields = container as unknown as Record<string, unknown>;
   return (
     (fields.content as string) ||
     (fields.text as string) ||
@@ -37,7 +37,7 @@ export interface PostMedia {
 export function getMedia(post: Post): PostMedia[] {
   const out: PostMedia[] = [];
   for (const container of post.containers ?? []) {
-    const fields = container as Record<string, unknown>;
+    const fields = container as unknown as Record<string, unknown>;
     const media = (fields.media ?? fields.attachments) as
       | Array<Record<string, unknown>>
       | undefined;

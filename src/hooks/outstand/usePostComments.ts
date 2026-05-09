@@ -60,7 +60,7 @@ export function usePostComments(posts: Post[], enabled: boolean) {
     queryFn: async (): Promise<Comment[]> => {
       const allComments: Comment[] = [];
       const postCaption = (post: Post): string => {
-        const container = post.containers?.[0] as Record<string, unknown> | undefined;
+        const container = post.containers?.[0] as unknown as Record<string, unknown> | undefined;
         return ((container?.content ?? container?.text ?? container?.caption ?? '') as string).slice(0, 60);
       };
 

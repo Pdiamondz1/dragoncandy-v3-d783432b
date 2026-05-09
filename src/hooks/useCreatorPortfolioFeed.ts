@@ -10,25 +10,6 @@ interface PortfolioMedia {
   creatorName: string;
 }
 
-// Simple signed URL cache (1 hour TTL)
-const signedUrlCache = new Map<string, { url: string; expiresAt: number }>();
-
-const getSignedUrl = async (path: string): Promise<string | null> => {
-  const cached = signedUrlCache.get(path);
-  const now = Date.now();
-  if (cached && cached.expiresAt > now) return cached.url;
-  const { data, error } = await supabase.storage
-    .from('profile-assets')
-    .createSignedUrl(path, 3600);
-  if (error || !data?.signedUrl) {
-    if (import.meta.env.DEV) console.error('❌ DragonFeed: Signed URL error for', path, error);
-    return null;
-  }
-  const url = data.signedUrl;
-  // Refresh a bit earlier than expiry to avoid edge cases
-  signedUrlCache.set(path, { url, expiresAt: now + 55 * 60 * 1000 });
-  return url;
-};
 
 // Smart content distribution algorithm
 const createSmartFeed = (mediaItems: PortfolioMedia[]): PortfolioMedia[] => {
@@ -122,9 +103,8 @@ export const useCreatorPortfolioFeed = () => {
 
         const settled = await Promise.allSettled(mediaPromises);
         const mediaItems: PortfolioMedia[] = settled
-          .filter((r): r is PromiseFulfilledResult<PortfolioMedia | null> => r.status === 'fulfilled')
-          .map(r => r.value)
-          .filter((v): v is PortfolioMedia => !!v);
+          .filter((r): r is PromiseFulfilledResult<PortfolioMedia> => r.status === 'fulfilled')
+          .map(r => r.value);
 
         // Smart content distribution algorithm
         const processedMedia = createSmartFeed(mediaItems);

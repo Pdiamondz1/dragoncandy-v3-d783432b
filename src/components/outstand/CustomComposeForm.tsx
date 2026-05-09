@@ -174,7 +174,7 @@ export const CustomComposeForm: React.FC<CustomComposeFormProps> = ({ accounts, 
         }
       }
 
-      const response = (await createPost(postData)) as Record<string, unknown>;
+      const response = (await createPost(postData as unknown as Parameters<typeof createPost>[0])) as unknown as Record<string, unknown>;
       if (!response.success) {
         const error = response.error;
         const message = typeof error === 'string' ? error : 'Failed to create post';

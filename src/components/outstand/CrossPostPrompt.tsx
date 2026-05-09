@@ -19,7 +19,7 @@ export const CrossPostPrompt: React.FC<CrossPostPromptProps> = ({
   open,
   onOpenChange,
   campaignTitle,
-  creatorName,
+  creatorName: _creatorName,
   mediaUrls,
   originalCaption,
 }) => {
