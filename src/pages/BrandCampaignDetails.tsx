@@ -12,6 +12,7 @@ import { SponsorshipProposalModal } from '@/components/campaigns/SponsorshipProp
 import { RestaurantProfileCard } from '@/components/campaigns/RestaurantProfileCard';
 import { SponsorshipStatusCard } from '@/components/campaigns/SponsorshipStatusCard';
 import { CreatorApplicationsCard } from '@/components/campaigns/CreatorApplicationsCard';
+import { SponsorshipAmplificationPrompt } from '@/components/outstand/SponsorshipAmplificationPrompt';
 import {
   ArrowLeft,
   Calendar,
@@ -39,6 +40,7 @@ const BrandCampaignDetails = () => {
   const createConversation = useCreateDirectConversation();
 
   const [isProposalModalOpen, setIsProposalModalOpen] = useState(false);
+  const [showAmplify, setShowAmplify] = useState(false);
 
   if (!profile) {
     return (
@@ -321,6 +323,16 @@ const BrandCampaignDetails = () => {
             )}
             Contact Restaurant
           </button>
+
+          {/* Amplify CTA — only shown when brand's sponsorship is accepted */}
+          {sponsorshipStatus?.status === 'accepted' && (
+            <button
+              onClick={() => setShowAmplify(true)}
+              className="w-full rounded-full bg-dc-teal-btn text-white font-bold py-3 flex items-center justify-center gap-2"
+            >
+              Amplify to Your Channels
+            </button>
+          )}
         </div>
       </div>
 
@@ -332,6 +344,20 @@ const BrandCampaignDetails = () => {
           campaignId={campaign.id}
           campaignTitle={campaign.title}
           restaurantUserId={campaign.user_id}
+        />
+      )}
+
+      {/* Amplification Prompt — available once sponsorship is accepted */}
+      {sponsorshipStatus?.status === 'accepted' && (
+        <SponsorshipAmplificationPrompt
+          open={showAmplify}
+          onOpenChange={setShowAmplify}
+          campaignId={campaign.id}
+          campaignTitle={campaign.title}
+          restaurantName={restaurantProfile?.business_name ?? ''}
+          creatorName={null}
+          mediaUrls={[]}
+          originalCaption=""
         />
       )}
     </DashboardLayout>
