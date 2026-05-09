@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { type CampaignSocialHook } from '@/hooks/outstand/useCampaignSocialHooks';
 import { Button } from '@/components/ui/button';
 import { Send, CalendarDays, Edit3, SkipForward, X } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from 'sonner';
 
 interface CampaignHookPromptProps {
@@ -23,12 +24,15 @@ export const CampaignHookPrompt: React.FC<CampaignHookPromptProps> = ({
   hook, onDismiss, onPost, onTriplePost,
 }) => {
   const [visible, setVisible] = useState(true);
+  const isMobile = useIsMobile();
 
   if (!visible) return null;
 
+  const stickyClass = isMobile ? 'sticky top-0 z-10' : '';
+
   if (hook.stage === 4 && onTriplePost) {
     return (
-      <div className="bg-gradient-to-r from-[#4DD9C0]/10 to-[#00E5CC]/10 border-2 border-dc-teal rounded-2xl p-4 mb-4">
+      <div className={`bg-gradient-to-r from-[#4DD9C0]/10 to-[#00E5CC]/10 border-2 border-dc-teal rounded-2xl p-4 mb-4 ${stickyClass}`}>
         <div className="flex items-center justify-between mb-2">
           <span className="text-[10px] font-bold text-dc-teal uppercase tracking-wider">{STAGE_LABELS[4]}</span>
           <button type="button" onClick={() => { setVisible(false); onDismiss(hook.id); }} className="text-gray-400 hover:text-gray-600">
@@ -44,7 +48,7 @@ export const CampaignHookPrompt: React.FC<CampaignHookPromptProps> = ({
   }
 
   return (
-    <div className="bg-white border border-gray-200 rounded-2xl p-4 mb-4 shadow-sm">
+    <div className={`bg-white border border-gray-200 rounded-2xl p-4 mb-4 shadow-sm ${stickyClass}`}>
       <div className="flex items-center justify-between mb-2">
         <span className="text-[10px] font-bold text-dc-teal uppercase tracking-wider">{STAGE_LABELS[hook.stage] ?? `Stage ${hook.stage}`}</span>
         <button type="button" onClick={() => { setVisible(false); onDismiss(hook.id); }} className="text-gray-400 hover:text-gray-600">

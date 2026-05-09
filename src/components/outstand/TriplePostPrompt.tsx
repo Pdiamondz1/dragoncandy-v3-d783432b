@@ -12,6 +12,7 @@ import { useBrandGuidelines } from '@/hooks/outstand/useBrandGuidelines';
 import { useAccounts } from '@outstand-so/ui';
 import { useOutstandConfig, DragonCandyOutstandProvider } from '@/integrations/outstand/Provider';
 import { useDelegatedPermissions } from '@/hooks/outstand/useDelegatedPermissions';
+import { useProfileNames } from '@/hooks/outstand/useProfileNames';
 import { useAuth } from '@/hooks/useAuth';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from 'sonner';
@@ -50,6 +51,8 @@ function TriplePostPromptInner({
   const { session } = useTriplePostState(campaignId);
   const { guidelines } = useBrandGuidelines();
   const { myReceived } = useDelegatedPermissions(campaignId);
+  const activeReceived = myReceived.filter((p) => p.status === 'active');
+  const { data: profileNames } = useProfileNames(activeReceived.map((p) => p.grantor_id));
   const isMobile = useIsMobile();
 
   const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([]);
@@ -157,13 +160,13 @@ function TriplePostPromptInner({
         </div>
       </div>
 
-      {myReceived.filter((p) => p.status === 'active').length > 0 && (
+      {activeReceived.length > 0 && (
         <div>
           <p className="text-xs font-semibold text-gray-500 uppercase mb-1.5">Posting on behalf of others</p>
           <div className="space-y-1.5">
-            {myReceived.filter((p) => p.status === 'active').map((perm) => (
+            {activeReceived.map((perm) => (
               <div key={perm.id} className="bg-dc-teal/5 border border-dc-teal/20 rounded-lg p-2">
-                <p className="text-xs text-gray-600">On behalf of <span className="font-semibold">User {perm.grantor_id.slice(0, 8)}...</span></p>
+                <p className="text-xs text-gray-600">On behalf of <span className="font-semibold">{profileNames?.[perm.grantor_id] ?? perm.grantor_id.slice(0, 8)}</span></p>
                 <div className="flex gap-1 mt-1">
                   {perm.platforms.map((pl) => (
                     <span key={pl} className="text-[10px] bg-dc-teal/10 text-dc-teal px-1.5 py-0.5 rounded-full capitalize">{pl}</span>
@@ -208,7 +211,9 @@ function TriplePostPromptInner({
   );
 }
 
-export const TriplePostPrompt: React.FC<TriplePostPromptProps> = (props) => (
+export const TriplePostPrompt: React.FC<TriplePostPromptProps> = TriplePostPromptInner;
+
+export const TriplePostPromptWrapped: React.FC<TriplePostPromptProps> = (props) => (
   <DragonCandyOutstandProvider>
     <TriplePostPromptInner {...props} />
   </DragonCandyOutstandProvider>

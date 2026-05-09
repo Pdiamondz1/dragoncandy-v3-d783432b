@@ -478,17 +478,29 @@ serve(async (req: Request) => {
       .single();
 
     if (permError || !permission) {
-      return new Response(JSON.stringify({ error: 'No active delegated posting permission' }), {
-        status: 403,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return jsonResponse(403, { error: 'No active delegated posting permission' });
     }
 
     if (permission.expires_at && new Date(permission.expires_at) < new Date()) {
-      return new Response(JSON.stringify({ error: 'Delegated posting permission has expired' }), {
-        status: 403,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return jsonResponse(403, { error: 'Delegated posting permission has expired' });
+    }
+
+    const permittedPlatforms = Array.isArray(permission.platforms) ? permission.platforms : [];
+    if (bodyText && req.method === 'POST') {
+      try {
+        const body = JSON.parse(bodyText);
+        const targetPlatforms: string[] = [];
+        if (body?.platform) targetPlatforms.push(String(body.platform).toLowerCase());
+        if (body?.network) targetPlatforms.push(String(body.network).toLowerCase());
+        if (Array.isArray(body?.platforms)) targetPlatforms.push(...body.platforms.map((p: string) => String(p).toLowerCase()));
+        for (const tp of targetPlatforms) {
+          if (!permittedPlatforms.includes(tp)) {
+            return jsonResponse(403, { error: 'Platform not authorized in delegated permission', platform: tp });
+          }
+        }
+      } catch {
+        // Non-JSON body — skip platform check (enforceScope will handle validation)
+      }
     }
   }
 

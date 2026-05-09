@@ -3,10 +3,19 @@ import { type BrandSponsorshipAnalytics } from '@/hooks/outstand/useBrandSponsor
 import { TrendingUp, Users, BarChart3 } from 'lucide-react';
 
 interface CampaignImpactSummaryProps {
-  sponsorship: BrandSponsorshipAnalytics;
+  sponsorship?: BrandSponsorshipAnalytics;
 }
 
 export const CampaignImpactSummary: React.FC<CampaignImpactSummaryProps> = ({ sponsorship }) => {
+  if (!sponsorship) {
+    return (
+      <div className="bg-white rounded-2xl p-4 border border-gray-200 mb-4 text-center">
+        <h3 className="text-xs font-bold text-dc-teal uppercase tracking-wider mb-2">Campaign Impact</h3>
+        <p className="text-sm text-gray-400">Select a sponsorship to view impact metrics.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-white rounded-2xl p-4 border border-gray-200 mb-4">
       <h3 className="text-xs font-bold text-dc-teal uppercase tracking-wider mb-3">Campaign Impact</h3>

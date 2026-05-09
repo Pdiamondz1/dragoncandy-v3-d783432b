@@ -56,7 +56,6 @@ export const CrossPartyAnalytics: React.FC = () => {
           <AIPerformanceInsights />
         </div>
       </div>
-      <AIPerformanceInsights />
     </div>
   );
 };

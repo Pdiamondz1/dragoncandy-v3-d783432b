@@ -1,5 +1,6 @@
 import React from 'react';
 import { useDelegatedPermissions } from '@/hooks/outstand/useDelegatedPermissions';
+import { useProfileNames } from '@/hooks/outstand/useProfileNames';
 import { Button } from '@/components/ui/button';
 import { ShieldCheck, X, Loader2 } from 'lucide-react';
 
@@ -12,6 +13,11 @@ export const DelegatedPostingPermissions: React.FC = () => {
 
   const activeGranted = myGranted.filter((p) => p.status === 'active');
   const activeReceived = myReceived.filter((p) => p.status === 'active');
+  const allUserIds = [
+    ...activeGranted.map((p) => p.grantee_id),
+    ...activeReceived.map((p) => p.grantor_id),
+  ];
+  const { data: profileNames } = useProfileNames(allUserIds);
 
   if (activeGranted.length === 0 && activeReceived.length === 0) {
     return (
@@ -32,7 +38,7 @@ export const DelegatedPostingPermissions: React.FC = () => {
             {activeGranted.map((p) => (
               <div key={p.id} className="flex items-center justify-between bg-gray-50 rounded-xl p-3">
                 <div className="flex-1">
-                  <p className="text-sm font-medium text-gray-700">User {p.grantee_id.slice(0, 8)}...</p>
+                  <p className="text-sm font-medium text-gray-700">{profileNames?.[p.grantee_id] ?? p.grantee_id.slice(0, 8)}</p>
                   <div className="flex gap-1 mt-1">
                     {p.platforms.map((pl) => (
                       <span key={pl} className="text-[10px] bg-dc-teal/10 text-dc-teal px-1.5 py-0.5 rounded-full capitalize">{pl}</span>
@@ -55,7 +61,7 @@ export const DelegatedPostingPermissions: React.FC = () => {
             {activeReceived.map((p) => (
               <div key={p.id} className="flex items-center bg-dc-teal/5 border border-dc-teal/20 rounded-xl p-3">
                 <div className="flex-1">
-                  <p className="text-sm font-medium text-gray-700">User {p.grantor_id.slice(0, 8)}...</p>
+                  <p className="text-sm font-medium text-gray-700">{profileNames?.[p.grantor_id] ?? p.grantor_id.slice(0, 8)}</p>
                   <div className="flex gap-1 mt-1">
                     {p.platforms.map((pl) => (
                       <span key={pl} className="text-[10px] bg-dc-teal/10 text-dc-teal px-1.5 py-0.5 rounded-full capitalize">{pl}</span>
