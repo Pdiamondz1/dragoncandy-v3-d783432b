@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useBrandDashboardStats } from '@/hooks/useBrandDashboardStats';
 import { useBrandActiveCampaigns } from '@/hooks/useBrandActiveCampaigns';
@@ -11,7 +11,7 @@ import { DashboardStatsGrid, type StatItem } from '@/components/dashboard/Dashbo
 import { QuickActionButtons, type QuickAction } from '@/components/dashboard/QuickActionButtons';
 import { ActivityFeedCard } from '@/components/dashboard/ActivityFeedCard';
 import { ErrorState } from '@/components/ui/error-state';
-import { Rocket, DollarSign, Users, TrendingUp, Loader2, AlertCircle } from 'lucide-react';
+import { Rocket, DollarSign, Users, TrendingUp, Loader2, AlertCircle, Share2, ChevronRight } from 'lucide-react';
 import { DCSkeleton, DCSkeletonGrid } from '@/components/ui/dc-skeleton';
 import { DragonShareStatTile } from '@/components/dragonshare/DragonShareStatTile';
 import { useOrgBoostStats } from '@/hooks/useDragonShare';
@@ -105,6 +105,23 @@ const BrandDashboard = () => {
         {/* White body content */}
         <div className="px-4 py-6 pb-24 md:pb-0">
           <div className="max-w-2xl lg:max-w-4xl mx-auto space-y-6">
+
+            {/* Social Media Quick Action */}
+            <Link
+              to="/dashboard/brand/social"
+              className="block bg-white rounded-2xl p-4 border-2 border-dc-teal hover:shadow-md transition-shadow"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-dc-teal/10 rounded-xl flex items-center justify-center">
+                  <Share2 className="h-5 w-5 text-dc-teal" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-gray-900 text-sm">Social Media</h3>
+                  <p className="text-xs text-gray-500">Manage your brand's social presence, amplify sponsored content</p>
+                </div>
+                <ChevronRight className="h-4 w-4 text-gray-400 ml-auto" />
+              </div>
+            </Link>
 
             {/* Active Campaigns Feed */}
             <div>
