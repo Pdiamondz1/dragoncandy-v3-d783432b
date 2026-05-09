@@ -3,6 +3,7 @@ import type { Post } from '@outstand-so/ui';
 import { CalendarPostCard } from './CalendarPostCard';
 import { getWeekDates, isSameDay, postsForDay } from './calendarUtils';
 import { Plus } from 'lucide-react';
+import type { CampaignDeadline } from '@/components/outstand/CalendarTab';
 
 const DAY_LABELS = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
 
@@ -13,6 +14,7 @@ interface DayStripProps {
   onDaySelect: (day: Date) => void;
   onPostClick: (post: Post) => void;
   onScheduleClick: () => void;
+  campaignDeadlines?: CampaignDeadline[];
 }
 
 export const DayStrip: React.FC<DayStripProps> = ({
@@ -22,11 +24,16 @@ export const DayStrip: React.FC<DayStripProps> = ({
   onDaySelect,
   onPostClick,
   onScheduleClick,
+  campaignDeadlines = [],
 }) => {
   const weekDates = useMemo(() => getWeekDates(weekStart), [weekStart]);
   const today = useMemo(() => new Date(), []);
 
   const selectedPosts = useMemo(() => postsForDay(posts, selectedDay), [posts, selectedDay]);
+  const selectedDeadlines = useMemo(
+    () => campaignDeadlines.filter((d) => isSameDay(d.deadline, selectedDay)),
+    [campaignDeadlines, selectedDay],
+  );
 
   return (
     <div className="md:hidden">
@@ -39,6 +46,7 @@ export const DayStrip: React.FC<DayStripProps> = ({
             const stamp = p.scheduledAt ?? p.publishedAt;
             return stamp ? isSameDay(new Date(stamp), day) : false;
           });
+          const hasDeadline = campaignDeadlines.some((d) => isSameDay(d.deadline, day));
 
           return (
             <button
@@ -53,7 +61,10 @@ export const DayStrip: React.FC<DayStripProps> = ({
               <div className={`text-base font-bold ${isToday ? 'text-dc-teal' : 'text-gray-900'}`}>
                 {day.getDate()}
               </div>
-              {hasPosts && <div className="w-1.5 h-1.5 rounded-full bg-dc-teal mx-auto mt-0.5" />}
+              <div className="flex gap-0.5 justify-center mt-0.5">
+                {hasPosts && <div className="w-1.5 h-1.5 rounded-full bg-dc-teal" />}
+                {hasDeadline && <div className="w-1.5 h-1.5 rounded-full bg-pink-400" />}
+              </div>
             </button>
           );
         })}
@@ -64,7 +75,16 @@ export const DayStrip: React.FC<DayStripProps> = ({
         <div className="text-xs font-semibold text-gray-900 mb-3">
           {selectedDay.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
         </div>
-        {selectedPosts.length === 0 ? (
+        {selectedDeadlines.map((d) => (
+          <div
+            key={d.id}
+            className="bg-pink-50 border border-pink-200 rounded-xl p-3 mb-2"
+          >
+            <p className="text-[10px] text-pink-600 font-semibold uppercase">Campaign Deadline</p>
+            <p className="text-sm text-pink-900 font-medium truncate">{d.title}</p>
+          </div>
+        ))}
+        {selectedPosts.length === 0 && selectedDeadlines.length === 0 ? (
           <div className="text-center py-8 text-gray-400">
             <CalendarDaysIcon className="h-8 w-8 mx-auto mb-2 text-gray-300" />
             <p className="text-xs mb-3">No posts for this day</p>

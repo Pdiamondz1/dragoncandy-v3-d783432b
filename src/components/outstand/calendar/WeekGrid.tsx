@@ -3,6 +3,7 @@ import type { Post } from '@outstand-so/ui';
 import { CalendarPostCard } from './CalendarPostCard';
 import { getWeekDates, isSameDay, postsForDay } from './calendarUtils';
 import { isScheduled } from '@/pages/OutstandManager';
+import type { CampaignDeadline } from '@/components/outstand/CalendarTab';
 
 const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -11,9 +12,10 @@ interface WeekGridProps {
   weekStart: Date;
   onReschedule: (post: Post, newDate: Date) => void;
   onPostClick: (post: Post) => void;
+  campaignDeadlines?: CampaignDeadline[];
 }
 
-export const WeekGrid: React.FC<WeekGridProps> = ({ posts, weekStart, onReschedule, onPostClick }) => {
+export const WeekGrid: React.FC<WeekGridProps> = ({ posts, weekStart, onReschedule, onPostClick, campaignDeadlines = [] }) => {
   const weekDates = useMemo(() => getWeekDates(weekStart), [weekStart]);
   const today = useMemo(() => new Date(), []);
   const [dragOverDay, setDragOverDay] = useState<number | null>(null);
@@ -76,6 +78,17 @@ export const WeekGrid: React.FC<WeekGridProps> = ({ posts, weekStart, onReschedu
                 onReschedule={onPostClick}
               />
             ))}
+            {campaignDeadlines
+              .filter((d) => isSameDay(d.deadline, day))
+              .map((d) => (
+                <div
+                  key={d.id}
+                  className="text-[9px] bg-pink-100 text-pink-700 border border-pink-200 rounded px-1.5 py-0.5 truncate"
+                  title={`Campaign deadline: ${d.title}`}
+                >
+                  {d.title}
+                </div>
+              ))}
           </div>
         );
       })}

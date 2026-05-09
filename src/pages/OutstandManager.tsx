@@ -14,6 +14,9 @@ import { AnalyticsTab } from '@/components/outstand/AnalyticsTab';
 import { useSanitizeFileInputs } from '@/hooks/outstand/useSanitizeFileInputs';
 import { useAuth } from '@/hooks/useAuth';
 import type { UserRole } from '@/types/user';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import type { CampaignDeadline } from '@/components/outstand/CalendarTab';
 
 const VALID_TABS = ['compose', 'calendar', 'published', 'engagement', 'analytics', 'accounts'] as const;
 type TabValue = (typeof VALID_TABS)[number];
@@ -72,11 +75,45 @@ const OutstandManagerInner: React.FC = () => {
     setSearchParams(next, { replace: true });
   };
 
+  const { user } = useAuth();
+
   const { accounts, isLoading: accountsLoading, refetch: refetchAccounts } = useAccounts({
     apiKey, baseUrl, limit: ACCOUNTS_PAGE_LIMIT,
   });
   const { posts, isLoading: postsLoading, refetch: refetchPosts } = usePosts({
     apiKey, baseUrl, limit: POSTS_PAGE_LIMIT,
+  });
+
+  const { data: campaignDeadlines } = useQuery<CampaignDeadline[]>({
+    queryKey: ['creator-campaign-deadlines', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      const { data, error } = await supabase
+        .from('campaign_applications')
+        .select('id, campaign_id, campaigns!campaign_id(title, deadline)')
+        .eq('creator_id', user.id)
+        .eq('status', 'accepted');
+      if (error || !data) return [];
+
+      type Row = typeof data[number];
+      return data
+        .filter((row: Row) => {
+          const c = Array.isArray(row.campaigns) ? row.campaigns[0] : row.campaigns;
+          return c?.deadline;
+        })
+        .map((row: Row) => {
+          const c = Array.isArray(row.campaigns) ? row.campaigns[0] : row.campaigns;
+          const [y, m, d] = c!.deadline!.split('-').map(Number);
+          return {
+            id: row.id,
+            title: c!.title,
+            deadline: new Date(y, m - 1, d),
+            campaignId: row.campaign_id,
+          } satisfies CampaignDeadline;
+        });
+    },
+    enabled: !!user?.id,
+    staleTime: 5 * 60 * 1000,
   });
 
   const connectedCount = accounts?.length ?? 0;
@@ -183,6 +220,7 @@ const OutstandManagerInner: React.FC = () => {
               isLoading={postsLoading}
               onChanged={refetchPosts}
               onSwitchTab={setActiveTab}
+              campaignDeadlines={campaignDeadlines ?? []}
             />
           </TabsContent>
           <TabsContent value="published">

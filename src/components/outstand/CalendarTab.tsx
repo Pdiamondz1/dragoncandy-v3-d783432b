@@ -13,6 +13,13 @@ import { toast } from 'sonner';
 
 type CalendarView = 'week' | 'month';
 
+export interface CampaignDeadline {
+  id: string;
+  title: string;
+  deadline: Date;
+  campaignId: string;
+}
+
 const PLATFORM_FILTERS = [
   { key: 'all', label: 'All' },
   { key: 'instagram', label: 'Instagram' },
@@ -27,9 +34,10 @@ interface CalendarTabProps {
   isLoading: boolean;
   onChanged?: () => void;
   onSwitchTab?: (tab: string) => void;
+  campaignDeadlines?: CampaignDeadline[];
 }
 
-export const CalendarTab: React.FC<CalendarTabProps> = ({ posts, isLoading, onChanged, onSwitchTab }) => {
+export const CalendarTab: React.FC<CalendarTabProps> = ({ posts, isLoading, onChanged, onSwitchTab, campaignDeadlines = [] }) => {
   const { apiKey, baseUrl } = useOutstandConfig();
   const api = useOutstandApi({ apiKey, baseUrl });
   const qc = useQueryClient();
@@ -192,6 +200,7 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ posts, isLoading, onCh
           weekStart={currentDate}
           onReschedule={handleReschedule}
           onPostClick={handlePostClick}
+          campaignDeadlines={campaignDeadlines}
         />
       ) : (
         <MonthGrid
@@ -199,6 +208,7 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ posts, isLoading, onCh
           year={currentDate.getFullYear()}
           month={currentDate.getMonth()}
           onDayClick={handleDayClick}
+          campaignDeadlines={campaignDeadlines}
         />
       )}
 
@@ -210,6 +220,7 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ posts, isLoading, onCh
         onDaySelect={setSelectedDay}
         onPostClick={handlePostClick}
         onScheduleClick={() => onSwitchTab?.('compose')}
+        campaignDeadlines={campaignDeadlines}
       />
 
       {/* Legend (desktop only) */}
@@ -217,6 +228,7 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ posts, isLoading, onCh
         <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-dc-teal" /> Scheduled</span>
         <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-amber-400" /> Published</span>
         <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-red-400" /> Failed</span>
+        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-pink-400" /> Deadline</span>
       </div>
     </div>
   );
