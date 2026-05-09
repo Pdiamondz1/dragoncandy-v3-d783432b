@@ -25,6 +25,25 @@ export interface PlatformMetrics {
 
 type TimeRange = '7d' | '30d' | '90d';
 
+const CONCURRENCY = 5;
+
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  fn: (item: T) => Promise<R>,
+  limit: number,
+): Promise<R[]> {
+  const results: R[] = [];
+  let i = 0;
+  async function next(): Promise<void> {
+    const idx = i++;
+    if (idx >= items.length) return;
+    results[idx] = await fn(items[idx]);
+    return next();
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, () => next()));
+  return results;
+}
+
 export function useAccountMetrics(accounts: SocialAccount[], timeRange: TimeRange) {
   const { apiKey, baseUrl } = useOutstandConfig();
   const api = useOutstandApi({ apiKey, baseUrl });
@@ -32,14 +51,17 @@ export function useAccountMetrics(accounts: SocialAccount[], timeRange: TimeRang
   return useQuery({
     queryKey: ['outstand', 'metrics', accounts.map((a) => a.id).join(','), timeRange],
     queryFn: async (): Promise<AccountMetrics> => {
-      // Check Supabase cache for data fresher than 1 hour
+      const { data: { user } } = await supabase.auth.getUser();
+      const userId = user?.id;
+
       const { data: cached } = await supabase
         .from('social_analytics_cache')
-        .select('*')
+        .select('outstand_account_id, metric_type, metric_value, period_start, fetched_at')
+        .eq('period_start', timeRange)
         .gte('fetched_at', new Date(Date.now() - 60 * 60 * 1000).toISOString());
 
       const cachedByKey = new Map(
-        (cached ?? []).map((row: Record<string, unknown>) => [
+        (cached ?? []).map((row) => [
           `${row.outstand_account_id}:${row.metric_type}:${row.period_start}`,
           row,
         ]),
@@ -51,9 +73,10 @@ export function useAccountMetrics(accounts: SocialAccount[], timeRange: TimeRang
       let totalEngagement = 0;
       let postsPublished = 0;
 
-      await Promise.all(
-        accounts.map(async (account) => {
-          const cacheKey = `${account.id}:followers:current`;
+      await mapWithConcurrency(
+        accounts,
+        async (account) => {
+          const cacheKey = `${account.id}:followers:${timeRange}`;
           const cachedRow = cachedByKey.get(cacheKey);
 
           if (cachedRow) {
@@ -90,23 +113,26 @@ export function useAccountMetrics(accounts: SocialAccount[], timeRange: TimeRang
               engagementRate: engagement,
             });
 
-            // Upsert fresh data into cache
-            await supabase.from('social_analytics_cache').upsert(
-              {
-                outstand_account_id: account.id,
-                platform: account.network ?? 'unknown',
-                metric_type: 'followers',
-                metric_value: followers,
-                period_start: 'current',
-                period_end: 'current',
-                fetched_at: new Date().toISOString(),
-              },
-              { onConflict: 'user_id,outstand_account_id,metric_type,period_start,period_end' },
-            );
+            if (userId) {
+              await supabase.from('social_analytics_cache').upsert(
+                {
+                  user_id: userId,
+                  outstand_account_id: account.id,
+                  platform: account.network ?? 'unknown',
+                  metric_type: 'followers',
+                  metric_value: followers,
+                  period_start: timeRange,
+                  period_end: timeRange,
+                  fetched_at: new Date().toISOString(),
+                },
+                { onConflict: 'user_id,outstand_account_id,metric_type,period_start,period_end' },
+              );
+            }
           } catch {
             // Skip accounts whose metrics can't be fetched
           }
-        }),
+        },
+        CONCURRENCY,
       );
 
       const avgEngagement = accounts.length > 0 ? totalEngagement / accounts.length : 0;

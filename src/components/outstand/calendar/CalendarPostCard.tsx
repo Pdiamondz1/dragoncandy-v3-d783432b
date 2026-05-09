@@ -47,12 +47,13 @@ export const CalendarPostCard: React.FC<CalendarPostCardProps> = ({
 
   return (
     <div
-      className={`border-l-3 ${borderColor} rounded bg-white/80 p-1.5 mb-1.5 cursor-pointer hover:bg-white transition-colors ${draggable ? 'cursor-grab active:cursor-grabbing' : ''}`}
+      className={`border-l-2 ${borderColor} rounded bg-white/80 p-1.5 mb-1.5 cursor-pointer hover:bg-white transition-colors ${draggable ? 'cursor-grab active:cursor-grabbing' : ''}`}
       draggable={draggable}
       onDragStart={draggable && onDragStart ? (e) => onDragStart(e, post) : undefined}
       onClick={() => onReschedule?.(post)}
       role="button"
       tabIndex={0}
+      aria-label={`${caption || 'Untitled post'}${time ? ` at ${time}` : ''}`}
       onKeyDown={(e) => e.key === 'Enter' && onReschedule?.(post)}
     >
       {time && (

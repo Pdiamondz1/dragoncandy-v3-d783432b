@@ -19,6 +19,12 @@ export const ReplySheet: React.FC<ReplySheetProps> = ({ comment, open, onOpenCha
   const qc = useQueryClient();
   const [replyText, setReplyText] = useState('');
   const [sending, setSending] = useState(false);
+  const [lastCommentId, setLastCommentId] = useState<string | null>(null);
+
+  if (comment && comment.id !== lastCommentId) {
+    setLastCommentId(comment.id);
+    setReplyText('');
+  }
 
   const handleReply = async () => {
     if (!comment || !replyText.trim()) return;
@@ -63,6 +69,7 @@ export const ReplySheet: React.FC<ReplySheetProps> = ({ comment, open, onOpenCha
               />
               <button
                 type="button"
+                aria-label="Send reply"
                 onClick={handleReply}
                 disabled={sending || !replyText.trim()}
                 className="w-9 h-9 bg-dc-teal text-white rounded-full flex items-center justify-center shrink-0 disabled:opacity-50"

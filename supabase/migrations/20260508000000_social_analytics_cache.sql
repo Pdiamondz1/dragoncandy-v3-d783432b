@@ -5,8 +5,8 @@ create table social_analytics_cache (
   platform text not null,
   metric_type text not null,
   metric_value numeric not null,
-  period_start timestamptz not null,
-  period_end timestamptz not null,
+  period_start text not null,
+  period_end text not null,
   fetched_at timestamptz not null default now(),
   unique(user_id, outstand_account_id, metric_type, period_start, period_end)
 );

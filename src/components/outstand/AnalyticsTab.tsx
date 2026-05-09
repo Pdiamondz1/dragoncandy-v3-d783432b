@@ -60,6 +60,7 @@ export const AnalyticsTab: React.FC<AnalyticsTabProps> = ({ accounts, posts, acc
             <button
               key={r}
               type="button"
+              aria-pressed={timeRange === r}
               onClick={() => setTimeRange(r)}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${
                 timeRange === r ? 'bg-dc-teal text-white' : 'bg-gray-100 text-gray-600'

@@ -75,6 +75,7 @@ export const EngagementDetail: React.FC<EngagementDetailProps> = ({ comment }) =
         />
         <button
           type="button"
+          aria-label="Send reply"
           onClick={handleReply}
           disabled={sending || !replyText.trim()}
           className="w-9 h-9 bg-dc-teal text-white rounded-full flex items-center justify-center shrink-0 disabled:opacity-50"

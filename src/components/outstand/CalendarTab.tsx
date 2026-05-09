@@ -128,6 +128,7 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ posts, isLoading, onCh
         <div className="flex items-center gap-2">
           <button
             type="button"
+            aria-label={view === 'week' ? 'Previous week' : 'Previous month'}
             onClick={() => (view === 'week' ? navigateWeek(-1) : navigateMonth(-1))}
             className="p-1.5 rounded-lg border border-gray-200 hover:bg-gray-50"
           >
@@ -136,6 +137,7 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ posts, isLoading, onCh
           <span className="text-sm font-bold text-gray-900 min-w-[160px] text-center">{headerLabel}</span>
           <button
             type="button"
+            aria-label={view === 'week' ? 'Next week' : 'Next month'}
             onClick={() => (view === 'week' ? navigateWeek(1) : navigateMonth(1))}
             className="p-1.5 rounded-lg border border-gray-200 hover:bg-gray-50"
           >
