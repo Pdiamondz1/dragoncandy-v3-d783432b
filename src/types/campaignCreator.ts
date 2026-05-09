@@ -1,4 +1,5 @@
 import type { ContentType, Platform, AspectRatio, DeliveryTier, Deliverable } from './campaignMedia';
+import type { InspirationRef } from '@/types/firstRun';
 
 export interface BusinessContext {
   source_url: string;
@@ -86,6 +87,7 @@ export interface DonnyGenerateRequest {
   photo_url?: string;
   manual_text?: string;
   role: 'business_client' | 'brand' | null;
+  inspiration_refs?: InspirationRef[];
 }
 
 export interface DonnyGenerateResponse {

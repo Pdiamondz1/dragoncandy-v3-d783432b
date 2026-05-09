@@ -17,6 +17,7 @@ import type {
   DonnyGenerateRequest,
 } from '@/types/campaignCreator';
 import type { Deliverable } from '@/types/campaignMedia';
+import type { InspirationRef } from '@/types/firstRun';
 import { TIER_LIMITS } from '@/types/campaignMedia';
 
 type Screen = 'drop' | 'launchpad';
@@ -101,6 +102,9 @@ export function useCampaignCreator() {
   const [isExpanded, setIsExpanded] = useState(false);
   const [brandFields, setBrandFields] = useState<BrandFields | null>(null);
 
+  // Inspiration refs (from InspirationStrip on DropScreen)
+  const [inspirationRefs, setInspirationRefs] = useState<InspirationRef[]>([]);
+
   // Persistence
   const [draftId, setDraftId] = useState<string | null>(null);
   const isAuthenticated = !!user;
@@ -177,6 +181,7 @@ export function useCampaignCreator() {
       const request: DonnyGenerateRequest = {
         source_type: mode === 'url' ? detectUrlType(value) : mode === 'photo' ? 'photo' : 'manual',
         role: userRole,
+        inspiration_refs: inspirationRefs.length > 0 ? inspirationRefs : undefined,
       };
 
       if (mode === 'url') request.source_url = value;
@@ -423,6 +428,8 @@ export function useCampaignCreator() {
     draftId,
     isAuthenticated,
     isLaunching: launchMutation.isPending,
+    inspirationRefs,
+    setInspirationRefs,
     submitInput,
     selectIdea,
     regenerateIdeas,

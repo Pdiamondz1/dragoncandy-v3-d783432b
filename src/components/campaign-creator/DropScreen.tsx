@@ -3,14 +3,18 @@ import { SmartInput } from './SmartInput';
 import { DonnyGreeting } from './DonnyGreeting';
 import { ExtractionFeed } from './ExtractionFeed';
 import { SamplePromptCarousel } from './SamplePromptCarousel';
+import { InspirationStrip } from './InspirationStrip';
+import type { InspirationRef } from '@/types/firstRun';
 
 interface DropScreenProps {
   onSubmit: (value: string, mode: 'url' | 'photo' | 'text') => void;
   isExtracting: boolean;
   extractionMessages: string[];
+  onInspirationChange?: (refs: InspirationRef[]) => void;
+  onInspirationScrolled?: () => void;
 }
 
-export function DropScreen({ onSubmit, isExtracting, extractionMessages }: DropScreenProps) {
+export function DropScreen({ onSubmit, isExtracting, extractionMessages, onInspirationChange, onInspirationScrolled }: DropScreenProps) {
   const [externalValue, setExternalValue] = useState<string | undefined>(undefined);
 
   return (
@@ -20,6 +24,10 @@ export function DropScreen({ onSubmit, isExtracting, extractionMessages }: DropS
         <SmartInput onSubmit={onSubmit} isExtracting={isExtracting} externalValue={externalValue} />
         <SamplePromptCarousel onSelect={setExternalValue} disabled={isExtracting} />
         <ExtractionFeed messages={extractionMessages} isExtracting={isExtracting} />
+        <InspirationStrip
+          onSelectionChange={onInspirationChange ?? (() => {})}
+          onScrolled={onInspirationScrolled}
+        />
       </div>
     </div>
   );
