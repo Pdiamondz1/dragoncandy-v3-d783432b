@@ -103,9 +103,8 @@ export const useCreatorPortfolioFeed = () => {
 
         const settled = await Promise.allSettled(mediaPromises);
         const mediaItems: PortfolioMedia[] = settled
-          .filter((r): r is PromiseFulfilledResult<PortfolioMedia | null> => r.status === 'fulfilled')
-          .map(r => r.value)
-          .filter((v): v is PortfolioMedia => !!v);
+          .filter((r): r is PromiseFulfilledResult<PortfolioMedia> => r.status === 'fulfilled')
+          .map(r => r.value);
 
         // Smart content distribution algorithm
         const processedMedia = createSmartFeed(mediaItems);
