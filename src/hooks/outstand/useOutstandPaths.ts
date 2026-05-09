@@ -11,7 +11,7 @@ interface OutstandPaths {
 // (creator) without each subcomponent needing to know which.
 export function useOutstandPaths(): OutstandPaths {
   const location = useLocation();
-  const match = location.pathname.match(/^(\/dashboard\/(?:business|creator)\/social)/);
+  const match = location.pathname.match(/^(\/dashboard\/(?:business|creator|brand)\/social)/);
   const base = match?.[1] ?? '/dashboard/business/social';
   return {
     base,

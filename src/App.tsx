@@ -203,6 +203,10 @@ function AnimatedRoutes() {
           <Route path="/dashboard/creator/social" element={<ProtectedRoute><OutstandManager /></ProtectedRoute>} />
           <Route path="/dashboard/creator/social/oauth-callback" element={<ProtectedRoute><OutstandOAuthCallbackPage /></ProtectedRoute>} />
 
+          {/* Social Media (Outstand) Routes — brand */}
+          <Route path="/dashboard/brand/social" element={<ProtectedRoute><BrandRoute><OutstandManager /></BrandRoute></ProtectedRoute>} />
+          <Route path="/dashboard/brand/social/oauth-callback" element={<ProtectedRoute><BrandRoute><OutstandOAuthCallbackPage /></BrandRoute></ProtectedRoute>} />
+
           {/* Business Org Routes */}
           <Route path="/dashboard/business/locations" element={<ProtectedRoute><BusinessRoute><OrgUnitsPage /></BusinessRoute></ProtectedRoute>} />
           <Route path="/dashboard/business/team" element={<ProtectedRoute><BusinessRoute><TeamPage /></BusinessRoute></ProtectedRoute>} />
