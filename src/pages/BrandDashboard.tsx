@@ -17,6 +17,7 @@ import { DragonShareStatTile } from '@/components/dragonshare/DragonShareStatTil
 import { useOrgBoostStats } from '@/hooks/useDragonShare';
 import { useOrg } from '@/hooks/useOrgData';
 import { BrandFreeTrioHero } from '@/components/dashboard/BrandFreeTrioHero';
+import { useDashboardLoadTime } from '@/hooks/useDashboardLoadTime';
 
 function formatSpend(amount: number): string {
   if (amount === 0) return '$0';
@@ -31,6 +32,7 @@ const BrandDashboard = () => {
   const { data: org } = useOrg();
   const { data: dsBoosts } = useOrgBoostStats(org?.id);
   const { showTour, tourSteps, completeTour, skipTour } = useTour('/dashboard/brand');
+  useDashboardLoadTime(!statsLoading && !!stats);
 
   if (statsError) {
     return (
