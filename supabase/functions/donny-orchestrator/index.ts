@@ -5,8 +5,7 @@ import { getModelConfig, type ModelConfig } from "../_shared/model-routing.ts";
 import { logCost } from "../_shared/cost-ledger.ts";
 import { getUserUsageStage, incrementUsage, checkQuotaOrBlock, checkHourlyRateLimit } from "../_shared/usage-tracker.ts";
 import { embedQuery, retrieveContext } from "./rag.ts";
-import { SUB_AGENT_TOOLS } from "./tools.ts";
-import { mergeToolsWithMcp, detectSocialIntent, isSocialTool } from "./tools.ts";
+import { SUB_AGENT_TOOLS, mergeToolsWithMcp, detectSocialIntent, isSocialTool } from "./tools.ts";
 import { createOutstandMcpBridge, type OutstandMcpBridge } from "../_shared/outstand-mcp.ts";
 import type { OrchestratorInput, UserContext } from "./types.ts";
 import * as campaignAgent from "./agents/campaign.ts";
@@ -303,7 +302,7 @@ serve(async (req) => {
         supabase,
       });
     } catch (mcpErr) {
-      console.log("[donny-orchestrator] MCP bridge init failed:", mcpErr);
+      console.warn("[donny-orchestrator] MCP bridge init failed:", mcpErr);
     }
 
     // --- RAG: embed + retrieve ---
@@ -371,6 +370,8 @@ serve(async (req) => {
             tool_output: mcpResult,
             is_error: mcpResult.isError ?? false,
           }).then(() => {}, (err: unknown) => console.error("[donny-orchestrator] tool exec log failed:", err));
+        } else if (isSocialTool(toolName)) {
+          agentResult = JSON.stringify({ error: "No social accounts connected. Connect a social account in the Social Media Manager to use this feature." });
         } else {
           const enrichedInput: Record<string, unknown> = {
             ...toolInput,
