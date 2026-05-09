@@ -1,19 +1,21 @@
 import React, { useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Send, CalendarClock, BarChart3, Share2, RefreshCw } from 'lucide-react';
+import { Send, CalendarDays, BarChart3, Share2, MessageCircle, TrendingUp, Link as LinkIcon, RefreshCw } from 'lucide-react';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DragonCandyOutstandProvider, useOutstandConfig } from '@/integrations/outstand/Provider';
 import { useAccounts, usePosts, type Post } from '@outstand-so/ui';
 import { ComposeTab } from '@/components/outstand/ComposeTab';
-import { ScheduledTab } from '@/components/outstand/ScheduledTab';
+import { CalendarTab } from '@/components/outstand/CalendarTab';
 import { PublishedTab } from '@/components/outstand/PublishedTab';
+import { EngagementTab } from '@/components/outstand/EngagementTab';
 import { AccountsTab } from '@/components/outstand/AccountsTab';
+import { AnalyticsTab } from '@/components/outstand/AnalyticsTab';
 import { useSanitizeFileInputs } from '@/hooks/outstand/useSanitizeFileInputs';
 import { useAuth } from '@/hooks/useAuth';
 import type { UserRole } from '@/types/user';
 
-const VALID_TABS = ['compose', 'scheduled', 'published', 'accounts'] as const;
+const VALID_TABS = ['compose', 'calendar', 'published', 'engagement', 'analytics', 'accounts'] as const;
 type TabValue = (typeof VALID_TABS)[number];
 
 // A post is "scheduled" if it has a scheduledAt and no account has finished
@@ -78,6 +80,10 @@ const OutstandManagerInner: React.FC = () => {
   });
 
   const connectedCount = accounts?.length ?? 0;
+  const ownAccountIds = useMemo(
+    () => (accounts ?? []).map((a) => a.id),
+    [accounts],
+  );
   const scheduledCount = useMemo(
     () => (posts ?? []).filter((p) => isScheduled(p)).length,
     [posts],
@@ -125,28 +131,33 @@ const OutstandManagerInner: React.FC = () => {
 
       <div className="bg-white p-4">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="compose" className="flex items-center gap-1 text-xs">
               <Send className="h-3 w-3" />
               <span className="hidden sm:inline">Compose</span>
               <span className="sm:hidden">New</span>
             </TabsTrigger>
-            <TabsTrigger value="scheduled" className="flex items-center gap-1 text-xs">
-              <CalendarClock className="h-3 w-3" />
-              Scheduled
-              {scheduledCount > 0 && (
-                <span className="ml-1 bg-dc-teal text-white text-xs px-1.5 py-0.5 rounded-full">
-                  {scheduledCount}
-                </span>
-              )}
+            <TabsTrigger value="calendar" className="flex items-center gap-1 text-xs">
+              <CalendarDays className="h-3 w-3" />
+              Calendar
             </TabsTrigger>
             <TabsTrigger value="published" className="flex items-center gap-1 text-xs">
               <BarChart3 className="h-3 w-3" />
               <span className="hidden sm:inline">Published</span>
               <span className="sm:hidden">Posts</span>
             </TabsTrigger>
+            <TabsTrigger value="engagement" className="flex items-center gap-1 text-xs">
+              <MessageCircle className="h-3 w-3" />
+              <span className="hidden sm:inline">Engagement</span>
+              <span className="sm:hidden">Engage</span>
+            </TabsTrigger>
+            <TabsTrigger value="analytics" className="flex items-center gap-1 text-xs">
+              <TrendingUp className="h-3 w-3" />
+              <span className="hidden sm:inline">Analytics</span>
+              <span className="sm:hidden">Stats</span>
+            </TabsTrigger>
             <TabsTrigger value="accounts" className="flex items-center gap-1 text-xs">
-              <Share2 className="h-3 w-3" />
+              <LinkIcon className="h-3 w-3" />
               Accounts
               {connectedCount > 0 && (
                 <span className="ml-1 bg-dc-teal text-white text-xs px-1.5 py-0.5 rounded-full">
@@ -162,15 +173,26 @@ const OutstandManagerInner: React.FC = () => {
               accountsLoading={accountsLoading}
               onPosted={(wasScheduled) => {
                 refetchPosts();
-                setActiveTab(wasScheduled ? 'scheduled' : 'published');
+                setActiveTab(wasScheduled ? 'calendar' : 'published');
               }}
             />
           </TabsContent>
-          <TabsContent value="scheduled">
-            <ScheduledTab posts={posts ?? []} isLoading={postsLoading} onChanged={refetchPosts} />
+          <TabsContent value="calendar">
+            <CalendarTab
+              posts={posts ?? []}
+              isLoading={postsLoading}
+              onChanged={refetchPosts}
+              onSwitchTab={setActiveTab}
+            />
           </TabsContent>
           <TabsContent value="published">
             <PublishedTab posts={posts ?? []} isLoading={postsLoading} onChanged={refetchPosts} />
+          </TabsContent>
+          <TabsContent value="engagement">
+            <EngagementTab posts={posts ?? []} ownAccountIds={ownAccountIds} />
+          </TabsContent>
+          <TabsContent value="analytics">
+            <AnalyticsTab accounts={accounts ?? []} posts={posts ?? []} accountsLoading={accountsLoading} />
           </TabsContent>
           <TabsContent value="accounts">
             <AccountsTab />
