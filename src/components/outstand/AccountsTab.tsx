@@ -3,6 +3,8 @@ import { ConnectAccountButtonGroup, AccountsList, type SocialNetwork } from '@ou
 import { useOutstandConfig } from '@/integrations/outstand/Provider';
 import { useOutstandPaths } from '@/hooks/outstand/useOutstandPaths';
 import { toast } from 'sonner';
+import { BrandGuidelinesEditor } from './BrandGuidelinesEditor';
+import { useAuth } from '@/hooks/useAuth';
 
 const SUPPORTED_NETWORKS: SocialNetwork[] = ['facebook', 'instagram', 'tiktok', 'x', 'youtube'];
 
@@ -10,6 +12,8 @@ export const AccountsTab: React.FC = () => {
   const { apiKey, baseUrl } = useOutstandConfig();
   const { oauthCallback } = useOutstandPaths();
   const redirectUri = `${window.location.origin}${oauthCallback}`;
+  const { profile } = useAuth();
+  const isBrand = profile?.role === 'brand';
 
   return (
     <div className="space-y-4">
@@ -51,6 +55,16 @@ export const AccountsTab: React.FC = () => {
           }}
         />
       </div>
+
+      {isBrand && (
+        <div className="bg-white rounded-2xl p-4 border-2 border-dc-teal">
+          <h2 className="text-base font-bold text-gray-900 mb-3">Brand Guidelines</h2>
+          <p className="text-xs text-gray-500 mb-4">
+            These guidelines are auto-applied when amplifying sponsored content.
+          </p>
+          <BrandGuidelinesEditor />
+        </div>
+      )}
     </div>
   );
 };
