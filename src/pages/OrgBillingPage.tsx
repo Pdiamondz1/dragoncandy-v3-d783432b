@@ -46,13 +46,14 @@ export default function OrgBillingPage() {
   const activeMembers = members.filter((m) => m.invitation_status === 'active');
 
   const handleManageBilling = async () => {
-    if (!activeOrg?.stripe_customer_id) {
+    if (!activeOrg?.id) return;
+    if (tier === 'free') {
       toast({ title: 'No billing account', description: 'Upgrade to a paid plan first.', variant: 'destructive' });
       return;
     }
     try {
       const { data, error } = await supabase.functions.invoke('create-billing-portal-session', {
-        body: { customer_id: activeOrg.stripe_customer_id },
+        body: { org_id: activeOrg.id },
       });
       if (error) throw error;
       if (data?.url) window.location.href = data.url;
