@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, Component, type ReactNode } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, Component, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { DashboardLayout } from '@/components/DashboardLayout';
@@ -22,6 +22,7 @@ import { AlertCircle, RefreshCw, Users } from 'lucide-react';
 import { DCSkeleton } from '@/components/ui/dc-skeleton';
 import { DCEmptyState } from '@/components/ui/dc-empty-state';
 import { toast } from '@/hooks/use-toast';
+import { useFirstRunMissions } from '@/hooks/useFirstRunMissions';
 
 /** Maps creator_profiles URL fields to social_analytics_cache platform names */
 const URL_FIELD_TO_PLATFORM: Record<string, string> = {
@@ -79,6 +80,11 @@ class BrowseCreatorsErrorBoundary extends Component<
 }
 
 const BrandCreators: React.FC = () => {
+  const { completeMission } = useFirstRunMissions();
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { completeMission('browse_creators'); }, []);
+
   const {
     creators,
     filteredCreators,

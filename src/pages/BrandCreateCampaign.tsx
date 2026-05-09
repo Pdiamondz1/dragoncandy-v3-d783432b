@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { ArrowLeft } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -9,9 +9,15 @@ import { BrandCampaignDetailsStep } from '@/components/brand-campaigns/BrandCamp
 import { BrandCampaignPreviewStep } from '@/components/brand-campaigns/BrandCampaignPreviewStep';
 import { BrandCampaignReviewStep } from '@/components/brand-campaigns/BrandCampaignReviewStep';
 import { useBrandCampaignWizard } from '@/hooks/useBrandCampaignWizard';
+import { useFirstRunMissions } from '@/hooks/useFirstRunMissions';
 
 const BrandCreateCampaign: React.FC = () => {
   const navigate = useNavigate();
+  const { completeMission } = useFirstRunMissions();
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { completeMission('create_sponsorship'); }, []);
+
   const {
     currentStep,
     setCurrentStep,

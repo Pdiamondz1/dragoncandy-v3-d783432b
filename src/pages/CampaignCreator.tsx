@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { useCampaignCreator } from '@/hooks/useCampaignCreator';
+import { useFirstRunMissions } from '@/hooks/useFirstRunMissions';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { DropScreen } from '@/components/campaign-creator/DropScreen';
 import { LaunchpadScreen } from '@/components/campaign-creator/LaunchpadScreen';
@@ -9,17 +10,37 @@ import { CampaignPreviewCard } from '@/components/campaign-creator/CampaignPrevi
 import { AuthenticationModal } from '@/components/auth/AuthenticationModal';
 import { MobileBottomNav } from '@/components/MobileBottomNav';
 import { DashboardLayout } from '@/components/DashboardLayout';
+import type { InspirationRef } from '@/types/firstRun';
 
 export default function CampaignCreator() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const { completeMission } = useFirstRunMissions();
   const {
     screen, isExtracting, extractionMessages, campaignIdeas, selectedIdeaId,
     editedCampaign, brandFields, userRole, isAuthenticated, isLaunching,
     submitInput, selectIdea, regenerateIdeas, updateField, updateBrandField,
-    launchCampaign, saveDraft,
+    launchCampaign, saveDraft, setInspirationRefs,
   } = useCampaignCreator();
+
+  const handleInspirationChange = (refs: InspirationRef[]) => {
+    setInspirationRefs(refs);
+    if (refs.length > 0) completeMission('browse_inspiration');
+  };
+
+  const handleInspirationScrolled = () => completeMission('browse_inspiration');
+
+  const handleLaunchCampaign = async () => {
+    await launchCampaign();
+    completeMission('launch_campaign');
+  };
+
+  // Trigger create_campaign mission when ideas are generated (screen transitions to launchpad)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (screen === 'launchpad') completeMission('create_campaign');
+  }, [screen]);
 
   const navRole = userRole || 'business_client';
 
@@ -36,14 +57,26 @@ export default function CampaignCreator() {
               <span>Back to Dashboard</span>
             </button>
           </div>
-          <DropScreen onSubmit={submitInput} isExtracting={isExtracting} extractionMessages={extractionMessages} />
+          <DropScreen
+            onSubmit={submitInput}
+            isExtracting={isExtracting}
+            extractionMessages={extractionMessages}
+            onInspirationChange={handleInspirationChange}
+            onInspirationScrolled={handleInspirationScrolled}
+          />
           <MobileBottomNav userRole={navRole} />
         </div>
       );
     }
     return (
       <DashboardLayout userRole={navRole}>
-        <DropScreen onSubmit={submitInput} isExtracting={isExtracting} extractionMessages={extractionMessages} />
+        <DropScreen
+          onSubmit={submitInput}
+          isExtracting={isExtracting}
+          extractionMessages={extractionMessages}
+          onInspirationChange={handleInspirationChange}
+          onInspirationScrolled={handleInspirationScrolled}
+        />
       </DashboardLayout>
     );
   }
@@ -62,7 +95,7 @@ export default function CampaignCreator() {
     onRegenerate: regenerateIdeas,
     updateField,
     updateBrandField,
-    onLaunch: launchCampaign,
+    onLaunch: handleLaunchCampaign,
     onSaveDraft: saveDraft,
     onAuthRequired: () => setShowAuthModal(true),
   };

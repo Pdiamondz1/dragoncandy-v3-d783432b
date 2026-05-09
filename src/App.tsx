@@ -81,6 +81,7 @@ const InviteAcceptPage = lazy(() => import("./pages/InviteAcceptPage"));
 const CreatorDragonShare = lazy(() => import("./pages/CreatorDragonShare"));
 const BusinessDragonShare = lazy(() => import("./pages/BusinessDragonShare").then(m => ({ default: m.BusinessDragonShare })));
 const BrandDragonShare = lazy(() => import("./pages/BusinessDragonShare").then(m => ({ default: m.BrandDragonShare })));
+const BrandStylePicker = lazy(() => import("./pages/BrandStylePicker"));
 const AdminDragonShareQueue = lazy(() => import("./pages/AdminDragonShareQueue"));
 const AdminDragonShareLedger = lazy(() => import("./pages/AdminDragonShareLedger"));
 const HelpBriefPage = lazy(() => import("./pages/help/promotions/HelpBriefPage"));
@@ -224,6 +225,9 @@ function AnimatedRoutes() {
           <Route path="/dashboard/brand/settings" element={<Navigate to="/dashboard/business/settings" replace />} />
           <Route path="/dashboard/brand/campaigns/create" element={<ProtectedRoute><BrandRoute><CampaignCreator /></BrandRoute></ProtectedRoute>} />
           <Route path="/dashboard/brand/campaigns/:id" element={<ProtectedRoute><BrandRoute><BrandCampaignDetails /></BrandRoute></ProtectedRoute>} />
+
+          {/* Brand Style Picker */}
+          <Route path="/dashboard/brand/style-picker" element={<ProtectedRoute><BrandRoute><BrandStylePicker /></BrandRoute></ProtectedRoute>} />
 
           {/* Brand Org Routes */}
           <Route path="/dashboard/brand/products" element={<ProtectedRoute><BrandRoute><OrgUnitsPage /></BrandRoute></ProtectedRoute>} />

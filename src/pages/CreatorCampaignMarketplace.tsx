@@ -1,6 +1,6 @@
 // src/pages/CreatorCampaignMarketplace.tsx
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { usePublicCampaigns, PublicCampaign } from '@/hooks/usePublicCampaigns';
@@ -25,12 +25,17 @@ import { DCSkeleton } from '@/components/ui/dc-skeleton';
 import { DCEmptyState } from '@/components/ui/dc-empty-state';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { formatBudget } from '@/lib/campaignUtils';
+import { useFirstRunMissions } from '@/hooks/useFirstRunMissions';
 
 
 type Tab = 'available' | 'applied' | 'active' | 'done';
 
 const CreatorCampaignMarketplace = () => {
   const { user } = useAuth();
+  const { completeMission } = useFirstRunMissions();
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { completeMission('view_campaigns'); }, []);
   const queryClient = useQueryClient();
   const { data: campaigns = [], isLoading, error } = usePublicCampaigns(user?.id);
   const { data: applications = [], isLoading: appsLoading } = useCreatorApplications();
