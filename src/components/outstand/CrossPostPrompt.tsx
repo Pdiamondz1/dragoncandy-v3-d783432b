@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Send, CalendarDays, Edit3, SkipForward } from 'lucide-react';
+import { DragonDashRushButton } from './DragonDashRushButton';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useAccounts } from '@outstand-so/ui';
@@ -9,6 +10,7 @@ import { useCrossPost } from '@/hooks/outstand/useCrossPost';
 interface CrossPostPromptProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  campaignId?: string;
   campaignTitle: string;
   creatorName: string;
   mediaUrls: string[];
@@ -18,6 +20,7 @@ interface CrossPostPromptProps {
 export const CrossPostPrompt: React.FC<CrossPostPromptProps> = ({
   open,
   onOpenChange,
+  campaignId,
   campaignTitle,
   creatorName: _creatorName,
   mediaUrls,
@@ -120,6 +123,12 @@ export const CrossPostPrompt: React.FC<CrossPostPromptProps> = ({
               <p className="text-sm text-gray-700 whitespace-pre-wrap">{caption}</p>
             )}
           </div>
+
+          <DragonDashRushButton
+            platformCount={selectedAccountIds.length}
+            campaignId={campaignId}
+            onRushComplete={() => onOpenChange(false)}
+          />
 
           <div className="grid grid-cols-2 gap-2">
             <button

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Send, CalendarDays, Edit3, SkipForward, AlertTriangle } from 'lucide-react';
+import { DragonDashRushButton } from './DragonDashRushButton';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useAccounts } from '@outstand-so/ui';
@@ -154,6 +155,12 @@ function SponsorshipAmplificationPromptInner({
               </p>
             </div>
           )}
+
+          <DragonDashRushButton
+            platformCount={selectedAccountIds.length}
+            campaignId={campaignId}
+            onRushComplete={() => onOpenChange(false)}
+          />
 
           <div className="grid grid-cols-2 gap-2">
             <button
