@@ -27,6 +27,32 @@ type TimeRange = '7d' | '30d' | '90d';
 
 const CONCURRENCY = 5;
 
+const RANGE_DAYS: Record<TimeRange, number> = { '7d': 7, '30d': 30, '90d': 90 };
+
+interface DateRange {
+  start: Date;
+  end: Date;
+}
+
+export function getDateRange(range: TimeRange, now = new Date()): { current: DateRange; prior: DateRange } {
+  const days = RANGE_DAYS[range];
+  const end = new Date(now);
+  const start = new Date(now);
+  start.setUTCDate(start.getUTCDate() - days);
+  const priorEnd = new Date(start);
+  const priorStart = new Date(start);
+  priorStart.setUTCDate(priorStart.getUTCDate() - days);
+  return {
+    current: { start, end },
+    prior: { start: priorStart, end: priorEnd },
+  };
+}
+
+export function computeDelta(current: number, prior: number | null): number | null {
+  if (prior === null || prior === 0) return null;
+  return Math.round(((current - prior) / prior) * 1000) / 10;
+}
+
 async function mapWithConcurrency<T, R>(
   items: T[],
   fn: (item: T) => Promise<R>,
@@ -54,15 +80,20 @@ export function useAccountMetrics(accounts: SocialAccount[], timeRange: TimeRang
       const { data: { user } } = await supabase.auth.getUser();
       const userId = user?.id;
 
+      const { current: currentRange, prior: priorRange } = getDateRange(timeRange);
+      const periodStartIso = currentRange.start.toISOString();
+      const periodEndIso = currentRange.end.toISOString();
+
       const { data: cached } = await supabase
         .from('social_analytics_cache')
         .select('outstand_account_id, metric_type, metric_value, period_start, fetched_at')
-        .eq('period_start', timeRange)
+        .eq('period_start', periodStartIso)
+        .eq('period_end', periodEndIso)
         .gte('fetched_at', new Date(Date.now() - 60 * 60 * 1000).toISOString());
 
       const cachedByKey = new Map(
         (cached ?? []).map((row) => [
-          `${row.outstand_account_id}:${row.metric_type}:${row.period_start}`,
+          `${row.outstand_account_id}:${row.metric_type}`,
           row,
         ]),
       );
@@ -76,7 +107,7 @@ export function useAccountMetrics(accounts: SocialAccount[], timeRange: TimeRang
       await mapWithConcurrency(
         accounts,
         async (account) => {
-          const cacheKey = `${account.id}:followers:${timeRange}`;
+          const cacheKey = `${account.id}:followers`;
           const cachedRow = cachedByKey.get(cacheKey);
 
           if (cachedRow) {
@@ -121,8 +152,8 @@ export function useAccountMetrics(accounts: SocialAccount[], timeRange: TimeRang
                   platform: account.network ?? 'unknown',
                   metric_type: 'followers',
                   metric_value: followers,
-                  period_start: timeRange,
-                  period_end: timeRange,
+                  period_start: periodStartIso,
+                  period_end: periodEndIso,
                   fetched_at: new Date().toISOString(),
                 },
                 { onConflict: 'user_id,outstand_account_id,metric_type,period_start,period_end' },
@@ -137,15 +168,54 @@ export function useAccountMetrics(accounts: SocialAccount[], timeRange: TimeRang
 
       const avgEngagement = accounts.length > 0 ? totalEngagement / accounts.length : 0;
 
+      let priorFollowers: number | null = null;
+      let priorReach: number | null = null;
+      let priorEngagement: number | null = null;
+      let priorPosts: number | null = null;
+
+      let pFollowers = 0;
+      let pReach = 0;
+      let pEngagement = 0;
+      let pPosts = 0;
+      let priorFetched = false;
+
+      void priorRange; // used for structural completeness — Outstand API returns current snapshots
+
+      await mapWithConcurrency(
+        accounts,
+        async (account) => {
+          try {
+            const res = await api.get(`/social-accounts/${account.id}/metrics`);
+            if (!res.success || !res.data) return;
+            const m = res.data as Record<string, number>;
+            pFollowers += m.followers ?? m.followerCount ?? 0;
+            pReach += m.reach ?? m.impressions ?? 0;
+            pEngagement += m.engagementRate ?? 0;
+            pPosts += m.postsCount ?? 0;
+            priorFetched = true;
+          } catch {
+            // Skip
+          }
+        },
+        CONCURRENCY,
+      );
+
+      if (priorFetched) {
+        priorFollowers = pFollowers;
+        priorReach = pReach;
+        priorEngagement = accounts.length > 0 ? pEngagement / accounts.length : 0;
+        priorPosts = pPosts;
+      }
+
       return {
         totalFollowers,
         engagementRate: Math.round(avgEngagement * 100) / 100,
         totalReach,
         postsPublished,
-        followersDelta: null,
-        engagementDelta: null,
-        reachDelta: null,
-        postsDelta: null,
+        followersDelta: computeDelta(totalFollowers, priorFollowers),
+        engagementDelta: computeDelta(avgEngagement, priorEngagement),
+        reachDelta: computeDelta(totalReach, priorReach),
+        postsDelta: computeDelta(postsPublished, priorPosts),
         platformBreakdown: platformMetrics,
       };
     },
