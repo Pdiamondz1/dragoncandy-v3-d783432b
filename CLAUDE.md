@@ -62,6 +62,10 @@ Run /simplify before presenting code to the user.
 src/
 ├── assets/           # Static assets (images, icons, fonts)
 ├── components/       # Reusable UI components
+│   ├── first-run/          # FirstRunDashboard, MissionChecklist, MissionItem, FirstRunHero
+│   ├── campaign-creator/
+│   │   ├── InspirationStrip.tsx  # Dragon Feed reference in campaign creation
+│   │   └── InspirationBadge.tsx  # "Inspired by" badge on Launchpad
 ├── contexts/         # React context providers (auth, theme, etc.)
 ├── hooks/            # Custom React hooks (React Query hooks live here)
 ├── integrations/     # Third-party service integrations (Supabase, Stripe, etc.)
@@ -83,7 +87,7 @@ src/
 
 |Table|Purpose|
 |-|-|
-|`profiles`|Core user profiles (linked to Supabase auth)|
+|`profiles`|Core user profiles (linked to Supabase auth). Includes `first_run_missions` JSONB for onboarding state.|
 |`creator\_profiles`|Extended profile data for content creators|
 |`business\_profiles`|Extended profile data for brands/businesses|
 |`profile\_views`|Tracks who viewed which profiles|

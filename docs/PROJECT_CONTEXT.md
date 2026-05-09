@@ -68,6 +68,9 @@ matching) migrating to Claude per cost architecture.
   each new market.
 - Donny AI multi-surface architecture (Chrome Extension, Safari iOS, mobile
   widget, SMS, embeddable SDK). Single-agent workflow during launch week.
+- First-Run Experience: Progressive disclosure + mission-based onboarding
+  for all three roles. Dragon Feed integrated as style reference into
+  Campaign Creator. State machine architecture (first_run_missions JSONB).
 
 **Workflow discipline**: Single Claude Code agent, one prompt at a time
 → `npm run build` → verify → push. Session handoffs at plan-phase
@@ -126,6 +129,12 @@ Tailwind classes when targeting mobile-only issues.
 
 **Brand verbification is a distribution moat.** "#DragonDashed" seeded from
 launch. "DragonDash" is significantly more verb-able than "DragonCandy."
+
+**Setup disguised as action.** Every onboarding step should feel like
+progress toward a goal, not homework. Show value first (what's possible),
+then collect what you need (portfolio, preferences), then guide the action
+(create, apply, sponsor). Never ask users to configure before they
+understand why.
 
 ## 8. Pricing Architecture
 
