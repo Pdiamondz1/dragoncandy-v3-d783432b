@@ -365,6 +365,7 @@ export type Database = {
           account_type: string | null
           average_rating: number | null
           brand_category: string | null
+          brand_social_guidelines: Json | null
           budget_range: string | null
           business_name: string
           city: string | null
@@ -406,6 +407,7 @@ export type Database = {
           account_type?: string | null
           average_rating?: number | null
           brand_category?: string | null
+          brand_social_guidelines?: Json | null
           budget_range?: string | null
           business_name: string
           city?: string | null
@@ -447,6 +449,7 @@ export type Database = {
           account_type?: string | null
           average_rating?: number | null
           brand_category?: string | null
+          brand_social_guidelines?: Json | null
           budget_range?: string | null
           business_name?: string
           city?: string | null
@@ -3970,6 +3973,44 @@ export type Database = {
           },
         ]
       }
+      social_post_log: {
+        Row: {
+          campaign_id: string | null
+          created_at: string | null
+          id: string
+          outstand_post_id: string
+          platform: string
+          post_type: string
+          user_id: string
+        }
+        Insert: {
+          campaign_id?: string | null
+          created_at?: string | null
+          id?: string
+          outstand_post_id: string
+          platform: string
+          post_type: string
+          user_id: string
+        }
+        Update: {
+          campaign_id?: string | null
+          created_at?: string | null
+          id?: string
+          outstand_post_id?: string
+          platform?: string
+          post_type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_post_log_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stripe_webhook_events: {
         Row: {
           error_message: string | null
@@ -4541,6 +4582,7 @@ export type Database = {
           youtube_url: string
         }[]
       }
+      get_dashboard_summary: { Args: { p_user_id: string }; Returns: Json }
       get_unread_message_counts: {
         Args: { user_uuid: string }
         Returns: {
@@ -4817,3 +4859,4 @@ export const Constants = {
     },
   },
 } as const
+<claude-code-hint v="1" type="plugin" value="supabase@claude-plugins-official" />
