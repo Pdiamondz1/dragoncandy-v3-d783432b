@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { useBrandSponsorshipAnalytics } from '@/hooks/outstand/useBrandSponsorshipAnalytics';
 import { SponsorshipCard } from './SponsorshipCard';
 import { SponsorshipROISummary } from './SponsorshipROISummary';
+import { CampaignImpactSummary } from './CampaignImpactSummary';
+import { AIPerformanceInsights } from './AIPerformanceInsights';
 import { DonnyIntelligenceStub } from './DonnyIntelligenceStub';
 import { Loader2 } from 'lucide-react';
 
@@ -49,10 +51,12 @@ export const CrossPartyAnalytics: React.FC = () => {
           ))}
         </div>
         <div className="lg:w-2/3">
+          <CampaignImpactSummary sponsorship={selected} />
           <SponsorshipROISummary sponsorship={selected} />
+          <AIPerformanceInsights />
         </div>
       </div>
-      <DonnyIntelligenceStub />
+      <AIPerformanceInsights />
     </div>
   );
 };
