@@ -2,13 +2,14 @@ import React, { useState } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { 
+import {
   Wallet,
   ExternalLink,
   CheckCircle2,
   Loader2,
   DollarSign
 } from 'lucide-react';
+import { StripeTestHelper } from '@/components/payments/StripeTestHelper';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -127,6 +128,7 @@ export const CreatorPayoutBanner: React.FC<CreatorPayoutBannerProps> = ({ creato
             </>
           )}
         </Button>
+        <StripeTestHelper variant="bank" className="mt-3" />
       </Alert>
     );
   }
@@ -162,6 +164,7 @@ export const CreatorPayoutBanner: React.FC<CreatorPayoutBannerProps> = ({ creato
             </>
           )}
         </Button>
+        <StripeTestHelper variant="bank" className="mt-3" />
       </Alert>
     );
   }

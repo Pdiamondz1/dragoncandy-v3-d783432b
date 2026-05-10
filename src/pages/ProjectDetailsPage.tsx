@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { PaymentTimeline } from "@/components/payments/PaymentTimeline";
+import { TestModeBanner } from '@/components/payments/TestModeBanner';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -181,6 +182,9 @@ const ProjectDetailsPage: React.FC = () => {
               <p className="text-xs text-gray-500">Status</p>
             </div>
           </div>
+
+          {/* Test Mode Banner */}
+          <TestModeBanner className="mb-2" />
 
           {/* Payment Timeline */}
           {collaboration?.id && collaboration?.campaign_id && (
