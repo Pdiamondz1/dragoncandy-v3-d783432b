@@ -67,9 +67,10 @@ cards), the strip shows files for that collaboration only. When omitted
 
 ### Visual Specification
 
-- **Container:** Dark background (`bg-gray-900`), rounded-lg, 1px border
-  (`border-gray-700`), padding 8–10px. Sits between the card description
-  and the metrics/buttons section.
+- **Container:** Light background (`bg-gray-50`), rounded-lg, 1px border
+  (`border-gray-200`), padding 8–10px. Sits between the card description
+  and the metrics/buttons section. Consistent with the white-card design
+  system used by all existing card components.
 - **Thumbnails:** Up to 3 tiles, 44×44px on campaign cards, 36×36px on
   project cards. Rounded-lg. Images show actual thumbnails via signed URLs
   from `get-watermarked-preview`. Videos show a play icon overlay. If more
@@ -124,6 +125,15 @@ The strip is added to these existing components:
 4. **`BusinessProjects.tsx` inline cards** — Below the description, above
    the QuickApprovalCard. Uses `collaborationId`.
 
+### Loading and Error States
+
+- **Loading:** Render a skeleton strip — 3 gray shimmer rectangles
+  (44×44px) + a shimmer line for status text. Use the existing
+  `Skeleton` component from shadcn/ui.
+- **Error:** Strip renders nothing (fails silently). Content visibility
+  is supplementary — a failed fetch should not break the card.
+- **No data:** See Empty State section above.
+
 ### Data Hook: useCampaignContentSummary
 
 ```typescript
@@ -131,7 +141,7 @@ interface ContentSummary {
   totalDeliverables: number;
   submitted: number;
   approved: number;
-  pendingReview: number;
+  pendingReview: number;  // maps from 'submitted' in deliverables_status
   revisionRequested: number;
   thumbnailUrls: string[]; // up to 3 signed URLs
 }
@@ -142,12 +152,30 @@ function useCampaignContentSummary(
 ): UseQueryResult<ContentSummary>
 ```
 
-Queries `file_uploads` filtered by `campaign_id` and optionally
-`collaboration_id` (via a join through `campaign_collaborations`), with
-`file_category = 'deliverable'`. Counts are derived from the
-`deliverables_status` JSONB on `campaign_collaborations`. Thumbnail URLs
-are fetched via the existing `get-watermarked-preview` edge function for
-the 3 most recently uploaded files.
+**Query strategy:** The hook takes two paths depending on whether
+`collaborationId` is provided:
+
+- **Campaign-scoped** (no `collaborationId`): Fetches all `file_uploads`
+  where `campaign_id` matches and `file_category = 'deliverable'`. Fetches
+  all `campaign_collaborations` for the campaign to read
+  `deliverables_status` JSONB for status counts.
+- **Collaboration-scoped** (with `collaborationId`): Fetches
+  `file_uploads` where `campaign_id` matches AND `uploaded_by` equals the
+  collaboration's `creator_id`. The `creator_id` is read from
+  `campaign_collaborations` in a single query that fetches the
+  collaboration row alongside its files. This two-column join
+  (`campaign_id` + `uploaded_by`) is the correct path because
+  `file_uploads` has no `collaboration_id` foreign key.
+
+**Status enum mapping:** The `deliverables_status` JSONB on
+`campaign_collaborations` stores values like `'submitted'`, `'approved'`,
+`'revision_requested'`, `'pending'`, `'in_progress'`. The hook maps
+`'submitted'` → `pendingReview` in the summary (content has been
+submitted and is awaiting business review). This mapping is the single
+source of truth for translating database status to display status.
+
+**Thumbnail URLs** are fetched via the existing `get-watermarked-preview`
+edge function for the 3 most recently uploaded files.
 
 React Query config: `staleTime: 30_000` (30 seconds) to avoid
 over-fetching on list pages that may render many cards.
@@ -164,11 +192,14 @@ campaign.
 
 `CampaignDetailsPage` currently renders 3 tabs: Overview, Applications,
 AI Match. A 4th tab — **Content** — is added. The tab grid changes from
-`grid-cols-3` to `grid-cols-4`.
+`grid-cols-3` to `grid-cols-4`. Tab labels are shortened to fit mobile
+(375px): "Overview" → "Info", "Applications" → "Apps", "AI Match" →
+"Match", "Content" stays "Content". Each label is ≤7 characters, fitting
+comfortably in a 4-column pill strip at mobile width.
 
-The Content tab shows an orange notification dot when any content is in
-`pendingReview` status, drawing the business owner's attention to files
-that need their action.
+The Content tab shows an orange notification dot when any content has
+`'submitted'` status in `deliverables_status` (i.e., awaiting business
+review), drawing the business owner's attention to files that need action.
 
 ### Layout
 
@@ -238,20 +269,18 @@ This reuses existing mutation hooks — no new approval logic is written.
 
 ```typescript
 interface GalleryFile {
-  fileId: string;
+  fileId: string | null;       // null for not-submitted placeholders
   filename: string;
   originalFilename: string;
   mimeType: string;
   fileSize: number;
   filePath: string;
   bucketName: string;
-  status: 'approved' | 'pending_review' | 'revision_requested' | 'not_submitted';
+  status: 'approved' | 'submitted' | 'revision_requested' | 'not_submitted';
   creatorId: string;
   creatorHandle: string;
   creatorAvatarUrl: string | null;
   collaborationId: string;
-  deliverableId: string;
-  deliverableType: string;
   thumbnailUrl: string | null;
   uploadedAt: string | null;
 }
@@ -262,15 +291,41 @@ function useCampaignContentGallery(
 ): UseQueryResult<GalleryFile[]>
 ```
 
-Fetches all `file_uploads` for a campaign across all collaborations, joined
-with `campaign_collaborations` (for `deliverables_status`), `profiles`
-(for creator info), and campaign `ai_analysis.deliverables` (for
-deliverable metadata). Also generates placeholder entries for deliverables
-that have no corresponding file upload yet.
+**Status values match the database:** The `status` field uses values
+directly from `deliverables_status` JSONB (`'submitted'`, `'approved'`,
+`'revision_requested'`) plus `'not_submitted'` for placeholders. The UI
+layer maps `'submitted'` to the "Pending Review" display label — this
+translation happens in the component, not the hook.
 
-Thumbnail URLs are fetched via the existing `get-watermarked-preview` edge
-function. For files with `status = 'approved'`, thumbnails are served
-without watermarks.
+**Query strategy:**
+
+1. Fetch all `campaign_collaborations` for the campaign, selecting
+   `id`, `creator_id`, `deliverables_status`, plus the nested `profiles`
+   join for creator name/avatar.
+2. Fetch all `file_uploads` where `campaign_id` matches and
+   `file_category = 'deliverable'`.
+3. Client-side: match files to collaborations via `uploaded_by =
+   creator_id` (same two-column join as `useCampaignContentSummary`).
+   Derive each file's status from the collaboration's
+   `deliverables_status` JSONB.
+4. For collaborations that have fewer files than expected deliverables
+   (based on the count of entries in `deliverables_status`), generate
+   `not_submitted` placeholder entries.
+
+**Deliverable-to-file mapping:** The gallery does **not** attempt to
+map individual files to specific deliverable specs from
+`ai_analysis.deliverables`. Files are displayed as a flat list per
+creator, grouped by collaboration. The deliverable count comes from
+the number of keys in `deliverables_status` JSONB, which the existing
+upload flow already populates per deliverable.
+
+**Thumbnail URLs** are fetched via the existing `get-watermarked-preview`
+edge function. For files with `status = 'approved'`, thumbnails are
+served without watermarks.
+
+**Loading state:** The gallery shows a 2-column skeleton grid (6
+shimmer tiles) while loading. Error state shows a centered message:
+"Couldn't load content — try refreshing."
 
 ### Bulk Download Edge Function: bulk-download-campaign-content
 
@@ -285,9 +340,12 @@ interface BulkDownloadRequest {
 ```
 
 **Security:** Verifies the requesting user owns the campaign (via
-`campaigns.user_id`). Only includes files with `status = 'approved'` in
-the collaboration's `deliverables_status`. Uses Supabase Storage signed
-URLs to fetch files server-side and streams them into a zip response.
+`campaigns.user_id`). When `file_ids` are provided, validates each file
+belongs to the specified `campaign_id` before including it — prevents
+a user from downloading files from other campaigns by passing arbitrary
+IDs. Only includes files with `status = 'approved'` in the
+collaboration's `deliverables_status`. Uses Supabase Storage signed URLs
+to fetch files server-side and streams them into a zip response.
 
 **Progress:** The client shows a toast with indeterminate progress while
 the download streams. For large batches, the edge function sets a
@@ -366,6 +424,12 @@ ContentPreviewStrip                   CampaignContentGallery
 All data already exists in the `file_uploads`, `campaign_collaborations`
 (`deliverables_status` JSONB), and `campaigns` (`ai_analysis.deliverables`
 JSONB) tables. No new tables, columns, or migrations are needed.
+
+The `file_uploads` table has no `collaboration_id` column. Collaboration
+scoping uses a two-column match: `file_uploads.campaign_id` =
+`campaign_collaborations.campaign_id` AND `file_uploads.uploaded_by` =
+`campaign_collaborations.creator_id`. This is sufficient because a
+creator can only have one active collaboration per campaign.
 
 Existing RLS policies on `file_uploads` and `campaign_collaborations`
 already enforce access control. The gallery hook queries through these
