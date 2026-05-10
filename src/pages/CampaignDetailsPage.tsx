@@ -6,11 +6,13 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft, Edit, Users, Target, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Edit, Users, Target, AlertCircle, ImageIcon } from 'lucide-react';
 import { useCampaign } from '@/hooks/useCampaigns';
 import { CampaignDetailsOverview } from '@/components/campaigns/CampaignDetailsOverview';
 import { ApplicationsListFixed } from '@/components/campaigns/ApplicationsListFixed';
 import { CreatorMatchingSection } from '@/components/campaigns/CreatorMatchingSection';
+import { CampaignContentGallery } from '@/components/campaigns/CampaignContentGallery';
+import { useCampaignContentSummary } from '@/hooks/useCampaignContentSummary';
 import { CreatorCampaignDetails } from '@/components/campaign-details/CreatorCampaignDetails';
 import { StickyApplyCTA } from '@/components/campaign-details/StickyApplyCTA';
 import { OneTapApplySheet } from '@/components/campaigns/OneTapApplySheet';
@@ -64,6 +66,9 @@ const CampaignDetailsPage: React.FC = () => {
 
   const canApply = isCreatorView && !isOwnCampaign && campaign?.status === 'published' && !hasApplied;
   const canReapply = isCreatorView && hasApplied && applicationStatus === 'rejected';
+
+  const { data: contentSummary } = useCampaignContentSummary(campaign?.id ?? '');
+  const hasPendingReviews = (contentSummary?.pendingReview ?? 0) > 0;
 
   // One-tap apply flow state
   const [showApplySheet, setShowApplySheet] = useState(false);
@@ -257,15 +262,21 @@ const CampaignDetailsPage: React.FC = () => {
           </div>
 
           <Tabs defaultValue="overview" className="space-y-4">
-            <TabsList className="grid w-full grid-cols-3 rounded-full bg-gray-100">
-              <TabsTrigger value="overview" className="rounded-full flex items-center gap-1.5 text-xs">
-                <Target className="h-3.5 w-3.5" aria-hidden="true" /> Overview
+            <TabsList className="grid w-full grid-cols-4 rounded-full bg-gray-100">
+              <TabsTrigger value="overview" className="rounded-full flex items-center gap-1 text-xs">
+                <Target className="h-3.5 w-3.5" aria-hidden="true" /> Info
               </TabsTrigger>
-              <TabsTrigger value="applications" className="rounded-full flex items-center gap-1.5 text-xs">
-                <Users className="h-3.5 w-3.5" aria-hidden="true" /> Applications
+              <TabsTrigger value="applications" className="rounded-full flex items-center gap-1 text-xs">
+                <Users className="h-3.5 w-3.5" aria-hidden="true" /> Apps
               </TabsTrigger>
-              <TabsTrigger value="matching" className="rounded-full flex items-center gap-1.5 text-xs">
-                <Target className="h-3.5 w-3.5" aria-hidden="true" /> AI Match
+              <TabsTrigger value="matching" className="rounded-full flex items-center gap-1 text-xs">
+                <Target className="h-3.5 w-3.5" aria-hidden="true" /> Match
+              </TabsTrigger>
+              <TabsTrigger value="content" className="rounded-full flex items-center gap-1 text-xs relative">
+                <ImageIcon className="h-3.5 w-3.5" aria-hidden="true" /> Content
+                {hasPendingReviews && (
+                  <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-orange-400" />
+                )}
               </TabsTrigger>
             </TabsList>
 
@@ -277,6 +288,9 @@ const CampaignDetailsPage: React.FC = () => {
             </TabsContent>
             <TabsContent value="matching">
               <CreatorMatchingSection campaignId={campaign.id} />
+            </TabsContent>
+            <TabsContent value="content">
+              <CampaignContentGallery campaignId={campaign.id} />
             </TabsContent>
           </Tabs>
 
