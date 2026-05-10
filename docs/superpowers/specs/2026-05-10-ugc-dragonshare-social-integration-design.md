@@ -88,7 +88,7 @@ One migration required: extend `social_post_log.post_type` CHECK constraint to a
    d. Insert draft into `donny_scheduled_posts`:
       - `user_id`: party's user ID
       - `campaign_id`: null (DragonShare is not campaign-tied)
-      - `media_urls`: Signed URL from creator's `screenshot_url` if available, otherwise `[post_url]` as link reference
+      - `media_urls`: Creator's `screenshot_url` if available (already a full URL), otherwise `[post_url]` as link reference
       - `metadata`: `{ source: 'dragonshare_social_hook', boost_id, post_id }`
       - `status`: 'draft'
       - `ai_suggested_time`: true
@@ -195,8 +195,8 @@ Add a "Drafts" tab to `OutstandManager.tsx` alongside the existing Calendar / Sc
    - Media thumbnail (from `media_urls[0]`)
    - AI-suggested posting time (`scheduled_at`)
    - Two action buttons: "Post Now" (primary, teal) and "Edit" (secondary, outline)
-3. **"Post Now" button** calls the `post_now` action via `useDonnyContext().executeAction()`, reusing the existing handler in DonnyProvider
-4. **"Edit" button** opens the Compose tab pre-filled with the draft's caption, media, and platform selection
+3. **"Post Now" button** calls `publishDraft(draftId)` via `useDonnyContext()`, a standalone function that publishes the draft without requiring a nudge ID
+4. **"Edit" button** switches to the Compose tab (pre-fill with draft content is a follow-up enhancement)
 5. **Empty state**: "No drafts waiting. When you approve customer videos or get boosted, Donny will prepare posts for you here."
 
 ### Source badge component
