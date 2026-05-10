@@ -381,9 +381,10 @@ export function useCampaignCreator() {
         navigate(`/dashboard/business/campaigns/${data.id}`);
       }
     },
-    onError: (err) => {
-      console.error('Campaign launch error:', err);
-      toast.error('Launch failed — please check your campaign details and try again');
+    onError: (err: unknown) => {
+      const detail = (err as { message?: string })?.message ?? String(err);
+      console.error('Campaign launch error:', detail, err);
+      toast.error(`Launch failed: ${detail}`);
     },
   });
 
