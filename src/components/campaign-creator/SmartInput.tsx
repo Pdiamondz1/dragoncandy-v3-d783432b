@@ -134,6 +134,11 @@ export function SmartInput({ onSubmit, isExtracting, externalValue }: SmartInput
           </div>
         )}
       </div>
+      {attachments.some((a) => a.type === 'url') && !value.trim() && (
+        <p className="text-[11px] text-gray-500 text-center">
+          Tip: add a description too — "steak dinner promo" helps Donny even if the link is hard to read
+        </p>
+      )}
       {(value.trim() || attachments.length > 0) && (
         <Button
           className="w-full rounded-full bg-dc-teal-btn hover:bg-dc-teal-btn-hover text-white font-semibold text-base py-6"

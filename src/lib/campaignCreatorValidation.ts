@@ -60,6 +60,9 @@ export const campaignIdeaSchema = z.object({
 export const donnyGenerateResponseSchema = z.object({
   business_context: businessContextSchema,
   campaign_ideas: z.array(campaignIdeaSchema).min(1).max(5),
+  _meta: z.object({
+    url_extracted: z.boolean().optional(),
+  }).optional(),
 });
 
 export const launchValidationSchema = z.object({

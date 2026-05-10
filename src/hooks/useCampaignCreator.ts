@@ -212,7 +212,11 @@ export function useCampaignCreator() {
       setBusinessContext(parsed.business_context as BusinessContext);
       setCampaignIdeas(parsed.campaign_ideas as CampaignIdea[]);
 
-      addMessage(`Found ${parsed.business_context.business_name} — looking good!`);
+      if (sourceUrl && parsed._meta?.url_extracted === false) {
+        addMessage("Couldn't read that link, but your description worked great!");
+      } else {
+        addMessage(`Found ${parsed.business_context.business_name} — looking good!`);
+      }
 
       // Cache business context for authenticated users
       if (user) {
@@ -226,9 +230,14 @@ export function useCampaignCreator() {
 
       setScreen('launchpad');
     } catch (err) {
-      addMessage("I couldn't read that — want to try a different link, or just tell me about your restaurant?");
       console.error('Campaign extraction error:', err);
-      toast.error('Extraction failed — try a different link or describe your restaurant instead');
+      if (mode === 'url' && !manualText) {
+        addMessage("I couldn't read that link. Try adding a description too — like what you serve or want to promote.");
+        toast.error("Couldn't read that link — add a description and try again");
+      } else {
+        addMessage("Something went wrong — give it another try.");
+        toast.error('Generation failed — please try again');
+      }
     } finally {
       setIsExtracting(false);
     }

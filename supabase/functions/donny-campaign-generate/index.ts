@@ -234,15 +234,36 @@ serve(async (req) => {
     if (isNewFormat) {
       const { source_url, source_type, photo_url, manual_text, role, inspiration_refs } = body;
 
-      let pageContent = '';
+      const contentParts: string[] = [];
+      let urlExtracted = false;
 
-      if (source_type === 'manual' && manual_text) {
-        pageContent = manual_text;
-      } else if (source_type === 'photo' && photo_url) {
-        pageContent = `[Photo uploaded: ${photo_url}]`;
-      } else if (source_url) {
-        const extracted = await fetchAndExtract(source_url);
-        pageContent = `Title: ${extracted.title}\nDescription: ${extracted.description}\nContent: ${extracted.bodyText}`;
+      if (source_url) {
+        try {
+          const extracted = await fetchAndExtract(source_url);
+          if (extracted.title || extracted.description || extracted.bodyText) {
+            contentParts.push(`Title: ${extracted.title}\nDescription: ${extracted.description}\nContent: ${extracted.bodyText}`);
+            urlExtracted = true;
+          }
+        } catch {
+          contentParts.push(`Source URL (could not read): ${source_url}`);
+        }
+      }
+
+      if (source_type === 'photo' && photo_url) {
+        contentParts.push(`[Photo uploaded: ${photo_url}]`);
+      }
+
+      if (manual_text) {
+        contentParts.push(manual_text);
+      }
+
+      const pageContent = contentParts.join('\n\n');
+
+      if (!pageContent.trim()) {
+        return new Response(
+          JSON.stringify({ success: false, error: "Please provide a link, photo, or description" }),
+          { status: 400, headers: { ...corsHeaders(req), "Content-Type": "application/json" } }
+        );
       }
 
       let inspirationContext = '';
@@ -268,7 +289,7 @@ serve(async (req) => {
       });
       await incrementUsage(supabaseAdmin, userId, modelConfig.actionCost);
 
-      return new Response(JSON.stringify(ideasResponse), {
+      return new Response(JSON.stringify({ ...ideasResponse, _meta: { url_extracted: urlExtracted } }), {
         headers: { ...corsHeaders(req), "Content-Type": "application/json" },
       });
     }
