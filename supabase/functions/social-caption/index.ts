@@ -16,6 +16,8 @@ interface CaptionRequest {
   party_role: "restaurant" | "creator" | "brand";
   platform: string;
   user_id: string;
+  source?: "campaign" | "promotion" | "dragonshare";
+  context?: Record<string, string>;
 }
 
 const ROLE_PROMPTS: Record<string, string> = {
@@ -27,6 +29,18 @@ const ROLE_PROMPTS: Record<string, string> = {
     "You are writing a social media caption for a brand amplifying campaign content. Use professional amplification tone. Include sponsor messaging and brand hashtags.",
 };
 
+const PROMOTION_PROMPT =
+  "You are writing a social media caption for a restaurant sharing a customer's video review. Celebrate the customer, mention the promotion, keep it authentic and grateful. Include a call-to-action inviting others to participate.";
+
+const DRAGONSHARE_ROLE_PROMPTS: Record<string, string> = {
+  restaurant:
+    "You are writing a caption for a restaurant amplifying a creator's content about their business. Thank the creator, highlight the experience, encourage followers to visit.",
+  creator:
+    "You are writing a caption for a content creator cross-posting their featured content. Reference the restaurant/business, keep it authentic and personal.",
+  brand:
+    "You are writing a caption for a brand amplifying sponsored content from a creator-restaurant collaboration. Professional co-marketing tone with brand hashtags.",
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders(req) });
@@ -34,9 +48,9 @@ serve(async (req) => {
 
   try {
     const body = (await req.json()) as CaptionRequest;
-    const { campaign_title, campaign_description, content_type, party_role, platform, user_id } = body;
+    const { campaign_title, campaign_description, content_type, party_role, platform, user_id, source, context } = body;
 
-    if (!campaign_title || !party_role || !platform || !user_id) {
+    if (!party_role || !platform || !user_id) {
       return new Response(
         JSON.stringify({ error: "Missing required fields" }),
         { status: 400, headers: { ...corsHeaders(req), "Content-Type": "application/json" } },
@@ -44,6 +58,24 @@ serve(async (req) => {
     }
 
     const config = getModelConfig("social-caption");
+
+    const title = campaign_title || context?.title || "Content";
+    const description = campaign_description || context?.description || "";
+
+    let systemPrompt: string;
+    if (source === "promotion") {
+      const customerName = context?.customer_name || "a valued customer";
+      const promoTitle = context?.promotion_title || title;
+      systemPrompt = `${PROMOTION_PROMPT}\n\nCustomer name: ${customerName}\nPromotion: "${promoTitle}"`;
+    } else if (source === "dragonshare") {
+      systemPrompt = DRAGONSHARE_ROLE_PROMPTS[party_role] ?? DRAGONSHARE_ROLE_PROMPTS.restaurant;
+      const creatorName = context?.creator_name || "";
+      const businessName = context?.business_name || "";
+      if (creatorName) systemPrompt += `\nCreator: ${creatorName}`;
+      if (businessName) systemPrompt += `\nBusiness: ${businessName}`;
+    } else {
+      systemPrompt = ROLE_PROMPTS[party_role] ?? ROLE_PROMPTS.restaurant;
+    }
 
     const response = await anthropicFetch(
       "https://api.anthropic.com/v1/messages",
@@ -60,10 +92,10 @@ serve(async (req) => {
           messages: [
             {
               role: "user",
-              content: `${ROLE_PROMPTS[party_role] ?? ROLE_PROMPTS.restaurant}
+              content: `${systemPrompt}
 
-Campaign: "${campaign_title}"
-Description: ${campaign_description || "N/A"}
+Campaign: "${title}"
+Description: ${description || "N/A"}
 Content type: ${content_type}
 Platform: ${platform}
 
