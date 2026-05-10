@@ -6,6 +6,7 @@ export interface RestaurantMissions {
   browse_inspiration: boolean;
   create_campaign: boolean;
   launch_campaign: boolean;
+  setup_payments: boolean;
   completed_at?: string;
 }
 
@@ -13,6 +14,7 @@ export interface CreatorMissions {
   view_campaigns: boolean;
   add_portfolio: boolean;
   apply_campaign: boolean;
+  setup_payouts: boolean;
   completed_at?: string;
 }
 
@@ -42,10 +44,16 @@ export function parseFirstRunMissions(
 
   switch (role) {
     case 'business_client':
-      if ('browse_inspiration' in obj) return obj as unknown as RestaurantMissions;
+      if ('browse_inspiration' in obj) {
+        if (!('setup_payments' in obj)) (obj as Record<string, unknown>).setup_payments = false;
+        return obj as unknown as RestaurantMissions;
+      }
       break;
     case 'content_creator':
-      if ('view_campaigns' in obj) return obj as unknown as CreatorMissions;
+      if ('view_campaigns' in obj) {
+        if (!('setup_payouts' in obj)) (obj as Record<string, unknown>).setup_payouts = false;
+        return obj as unknown as CreatorMissions;
+      }
       break;
     case 'brand':
       if ('select_style' in obj) return obj as unknown as BrandMissions;
@@ -57,9 +65,9 @@ export function parseFirstRunMissions(
 export function getInitialMissions(role: UserRole): RoleMissions {
   switch (role) {
     case 'business_client':
-      return { browse_inspiration: false, create_campaign: false, launch_campaign: false };
+      return { browse_inspiration: false, create_campaign: false, launch_campaign: false, setup_payments: false };
     case 'content_creator':
-      return { view_campaigns: false, add_portfolio: false, apply_campaign: false };
+      return { view_campaigns: false, add_portfolio: false, apply_campaign: false, setup_payouts: false };
     case 'brand':
       return { select_style: false, browse_creators: false, create_sponsorship: false };
   }

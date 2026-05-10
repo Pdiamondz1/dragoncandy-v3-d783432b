@@ -20,11 +20,13 @@ const MISSION_DEFS: Record<UserRole, MissionDef[]> = {
     { key: 'browse_inspiration', emoji: '👀', title: 'Get inspired', subtitle: 'See what creators are making' },
     { key: 'create_campaign', emoji: '🪄', title: 'Create with Donny', subtitle: 'Donny does the work' },
     { key: 'launch_campaign', emoji: '🚀', title: 'Launch & attract creators', subtitle: 'Creators start applying' },
+    { key: 'setup_payments', emoji: '💳', title: 'Set up payments', subtitle: 'Pay creators securely' },
   ],
   content_creator: [
     { key: 'view_campaigns', emoji: '👀', title: "See what's out there", subtitle: 'Campaigns matched to your skills' },
     { key: 'add_portfolio', emoji: '📸', title: 'Show your best work', subtitle: 'Add 1 portfolio piece' },
     { key: 'apply_campaign', emoji: '🚀', title: 'Apply to a campaign', subtitle: 'Your first pitch' },
+    { key: 'setup_payouts', emoji: '💳', title: 'Set up payouts', subtitle: 'Get paid to your bank account' },
   ],
   brand: [
     { key: 'select_style', emoji: '🎨', title: 'Pick your vibe', subtitle: 'What content style fits your brand?' },

@@ -24,6 +24,9 @@ import { ContentApprovalPanel } from '@/components/projects/ContentApprovalPanel
 import { RevisionBanner } from '@/components/projects/RevisionBanner';
 import { CreatorContentSubmit } from '@/components/projects/CreatorContentSubmit';
 import { CreatorPayoutBanner } from '@/components/projects/CreatorPayoutBanner';
+import { PayoutGate } from '@/components/projects/PayoutGate';
+import { useCreatorEarnings } from '@/hooks/useCreatorEarnings';
+import { supabase } from '@/integrations/supabase/client';
 import { TierTimer } from '@/components/projects/TierTimer';
 import { ProjectStepper, getCreatorStep, getBusinessStep } from '@/components/projects/ProjectStepper';
 import { StartContentButton } from '@/components/projects/StartContentButton';
@@ -47,6 +50,8 @@ const ProjectDetailsPage: React.FC = () => {
   usePaymentNotifications(timelineEvents, isCreator ? 'creator' : 'business');
   const isDragonDash = collaboration?.campaign?.delivery_type && collaboration.campaign.delivery_type !== 'standard';
   const [uploadingDeliverableId, setUploadingDeliverableId] = useState<string | null>(null);
+  const [isSettingUpStripe, setIsSettingUpStripe] = useState(false);
+  const { data: earnings } = useCreatorEarnings(user?.id);
 
   // Parse deliverables from campaign ai_analysis JSONB
   const campaignDeliverables = (collaboration?.campaign?.ai_analysis as Record<string, unknown> | null)?.deliverables as Array<{ id: string; content_type: string; platform?: string; description?: string }> | undefined;
@@ -288,6 +293,23 @@ const ProjectDetailsPage: React.FC = () => {
               </div>
             </div>
           </div>
+
+          {/* PayoutGate — approved but no Stripe */}
+          {isCreator && (collaboration.content_status === 'approved' || collaboration.content_status === 'auto_approved') && earnings && !earnings.onboardingComplete && (
+            <PayoutGate
+              payoutAmount={getTotalAmount() * 0.93}
+              onSetup={async () => {
+                setIsSettingUpStripe(true);
+                try {
+                  const { data } = await supabase.functions.invoke('create-creator-connect-account');
+                  if (data?.url) window.location.href = data.url;
+                } finally {
+                  setIsSettingUpStripe(false);
+                }
+              }}
+              isSettingUp={isSettingUpStripe}
+            />
+          )}
 
           {/* Content Approval / Submission Panel */}
           {isBusinessClient ? (
