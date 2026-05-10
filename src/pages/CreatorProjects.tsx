@@ -7,11 +7,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { ProjectStatsCards } from '@/components/projects/ProjectStatsCards';
-import { ProjectList } from '@/components/projects/ProjectList';
-import { CreatorPayoutBanner } from '@/components/projects/CreatorPayoutBanner';
+import { EarningsSummary } from '@/components/projects/EarningsSummary';
+import { ProjectCard } from '@/components/projects/ProjectCard';
+import { useCreatorEarnings } from '@/hooks/useCreatorEarnings';
 import { PageHeader } from '@/components/ui/PageHeader';
-import { useToast } from '@/hooks/use-toast';
 
 interface ProjectCollaboration {
   id: string;
@@ -46,7 +45,6 @@ interface ProjectCollaboration {
 const CreatorProjects: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { toast } = useToast();
 
   const { data: projects = [], isLoading, error } = useQuery({
     queryKey: ['creator-projects', user?.id],
@@ -80,50 +78,10 @@ const CreatorProjects: React.FC = () => {
     enabled: !!user,
   });
 
+  const { data: earnings } = useCreatorEarnings(user?.id);
+
   const activeProjects = projects.filter(project => project.status === 'active');
   const completedProjects = projects.filter(project => project.status === 'completed');
-
-  const handleMessageClick = async (campaignId: string) => {
-    try {
-      const { data: campaignData, error: campaignError } = await supabase
-        .from('campaigns')
-        .select('user_id')
-        .eq('id', campaignId)
-        .single();
-
-      if (campaignError || !campaignData) {
-        throw new Error('Could not find campaign');
-      }
-
-      if (!user) {
-        toast({
-          title: "Authentication required",
-          description: "Please log in to send messages.",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      const { data: conversationId, error: conversationError } = await supabase.rpc(
-        'create_or_get_direct_conversation',
-        {
-          user1_uuid: user.id,
-          user2_uuid: campaignData.user_id
-        }
-      );
-
-      if (conversationError) throw conversationError;
-
-      navigate(`/dashboard/creator/messages/direct/${conversationId}`);
-    } catch (error) {
-      console.error('Failed to open conversation:', error);
-      toast({
-        title: "Error",
-        description: "Failed to open conversation. Please try again.",
-        variant: "destructive"
-      });
-    }
-  };
 
   if (isLoading) {
     return (
@@ -177,14 +135,22 @@ const CreatorProjects: React.FC = () => {
           </div>
         </PageHeader>
 
+        {/* Earnings Summary */}
+        {earnings && (
+          <EarningsSummary
+            totalEarned={earnings.totalEarned}
+            inEscrow={earnings.inEscrow}
+            available={earnings.available}
+            onboardingComplete={earnings.onboardingComplete}
+            onSetupPayouts={async () => {
+              const { data } = await supabase.functions.invoke('create-creator-connect-account');
+              if (data?.url) window.location.href = data.url;
+            }}
+          />
+        )}
+
         {/* Body */}
         <div className="px-4 pt-4 pb-24 md:pb-0 space-y-4">
-          {/* Payout Banner */}
-          {user && <CreatorPayoutBanner creatorId={user.id} />}
-
-          {/* Stats Cards */}
-          <ProjectStatsCards projects={projects} />
-
           {/* Projects Tabs */}
           <Tabs defaultValue="active" className="space-y-4">
             <TabsList className="grid w-full grid-cols-3 rounded-full bg-gray-100">
@@ -200,27 +166,27 @@ const CreatorProjects: React.FC = () => {
             </TabsList>
 
             <TabsContent value="active" className="space-y-3">
-              <ProjectList
-                projects={activeProjects}
-                showProgress={true}
-                onMessageClick={handleMessageClick}
-              />
+              {activeProjects.length > 0 ? (
+                activeProjects.map(p => <ProjectCard key={p.id} project={p} />)
+              ) : (
+                <p className="text-sm text-gray-500 text-center py-8">No active projects</p>
+              )}
             </TabsContent>
 
             <TabsContent value="completed" className="space-y-3">
-              <ProjectList
-                projects={completedProjects}
-                showProgress={false}
-                onMessageClick={handleMessageClick}
-              />
+              {completedProjects.length > 0 ? (
+                completedProjects.map(p => <ProjectCard key={p.id} project={p} />)
+              ) : (
+                <p className="text-sm text-gray-500 text-center py-8">No completed projects</p>
+              )}
             </TabsContent>
 
             <TabsContent value="all" className="space-y-3">
-              <ProjectList
-                projects={projects}
-                showProgress={true}
-                onMessageClick={handleMessageClick}
-              />
+              {projects.length > 0 ? (
+                projects.map(p => <ProjectCard key={p.id} project={p} />)
+              ) : (
+                <p className="text-sm text-gray-500 text-center py-8">No projects yet</p>
+              )}
             </TabsContent>
           </Tabs>
         </div>
