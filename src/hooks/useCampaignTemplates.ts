@@ -37,8 +37,8 @@ export function useCampaignTemplates() {
         .in('duplicated_from', ids);
 
       const countMap = new Map<string, number>();
-      dupes?.forEach((d: any) => {
-        const from = d.duplicated_from;
+      dupes?.forEach((d) => {
+        const from = (d as { duplicated_from: string | null }).duplicated_from;
         if (from) countMap.set(from, (countMap.get(from) ?? 0) + 1);
       });
 

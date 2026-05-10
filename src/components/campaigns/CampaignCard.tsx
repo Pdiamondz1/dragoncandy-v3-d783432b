@@ -407,7 +407,7 @@ const CampaignCardComponent: React.FC<CampaignCardProps> = ({
           <Button
             variant="default"
             size="sm"
-            className="text-xs bg-teal-400 hover:bg-teal-500 text-white"
+            className="text-xs bg-teal-400 hover:bg-teal-500 text-white rounded-full"
             onClick={async () => {
               const result = await duplicateCampaign.mutateAsync(campaign.id);
               navigate(`/dashboard/business/campaigns/${result.id}/edit`);
@@ -419,7 +419,7 @@ const CampaignCardComponent: React.FC<CampaignCardProps> = ({
             ) : (
               <RefreshCw className="h-3 w-3 mr-1" aria-hidden="true" />
             )}
-            Re-Launch
+            Re-Launch Campaign
           </Button>
         )}
         {canDelete && (
