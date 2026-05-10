@@ -166,18 +166,23 @@ Generate 3 diverse campaign ideas based on this business.`;
       "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify(requestBody),
-  }, 1);
+  }, 0);
 
   if (!response.ok) {
     const err = await response.text();
     console.error(`[campaign-generate] Anthropic API failed: status=${response.status}, body=${err}`);
-    throw new Error(`Anthropic API error (${response.status}): ${err}`);
+    throw new Error(`Anthropic ${response.status}: ${err.slice(0, 300)}`);
   }
 
   const data = await response.json();
-  const content = data.content?.[0]?.text ?? "{}";
+  const rawContent = data.content?.[0]?.text ?? "{}";
+  const cleaned = rawContent
+    .replace(/^```json\s*/i, "")
+    .replace(/^```\s*/i, "")
+    .replace(/\s*```$/i, "")
+    .trim();
   return {
-    result: JSON.parse(content),
+    result: JSON.parse(cleaned),
     usage: { input_tokens: data.usage?.input_tokens ?? 0, output_tokens: data.usage?.output_tokens ?? 0 },
   };
 }
@@ -454,12 +459,12 @@ Respond with valid JSON only — no markdown fences, no additional text, just ra
           },
         ],
       }),
-    }, 1);
+    }, 0);
 
     if (!anthropicResponse.ok) {
       const errBody = await anthropicResponse.text();
       console.error(`[campaign-generate-legacy] Anthropic API failed: status=${anthropicResponse.status}, body=${errBody}`);
-      throw new Error(`AI API error (${anthropicResponse.status}): ${errBody}`);
+      throw new Error(`Anthropic ${anthropicResponse.status}: ${errBody.slice(0, 300)}`);
     }
     const anthropicResult = await anthropicResponse.json();
     const rawContent: string = anthropicResult.content?.[0]?.text ?? "";
