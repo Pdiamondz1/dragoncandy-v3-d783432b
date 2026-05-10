@@ -172,6 +172,20 @@ serve(async (req) => {
 
     logStep("Boost complete", { boostId, piId: paymentIntent.id, transferId: transfer.id });
 
+    // Fire social hook for auto-draft (fire-and-forget)
+    try {
+      await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/fire-dragonshare-social-hook`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+        },
+        body: JSON.stringify({ boost_id: boostId, post_id: post_id }),
+      });
+    } catch (socialHookErr) {
+      console.warn('[boost-payment] Social hook failed (non-blocking):', socialHookErr);
+    }
+
     return new Response(JSON.stringify({
       success: true,
       boost_id: boostId,
