@@ -173,13 +173,13 @@ export function useCampaignCreator() {
 
     const addMessage = (msg: string) => setExtractionMessages((prev) => [...prev, msg]);
 
+    let sourceUrl: string | undefined;
+    let manualText: string | undefined;
+
     try {
       if (mode === 'url') addMessage("Checking out your restaurant...");
       else if (mode === 'photo') addMessage("Analyzing your photo...");
       else addMessage("Got it, let me work with that...");
-
-      let sourceUrl: string | undefined;
-      let manualText: string | undefined;
 
       if (mode === 'url') {
         const lines = value.split('\n');

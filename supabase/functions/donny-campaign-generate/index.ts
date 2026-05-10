@@ -146,6 +146,18 @@ ${pageContent}
 
 Generate 3 diverse campaign ideas based on this business.`;
 
+  const requestBody = {
+    model: modelConfig.model,
+    max_tokens: modelConfig.maxTokens,
+    temperature: 0.8,
+    system: systemPrompt,
+    messages: [
+      { role: "user", content: userPrompt },
+    ],
+  };
+
+  console.log(`[campaign-generate] Calling Anthropic: model=${modelConfig.model}, max_tokens=${modelConfig.maxTokens}, prompt_len=${userPrompt.length}`);
+
   const response = await anthropicFetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
@@ -153,20 +165,13 @@ Generate 3 diverse campaign ideas based on this business.`;
       "x-api-key": ANTHROPIC_API_KEY,
       "anthropic-version": "2023-06-01",
     },
-    body: JSON.stringify({
-      model: modelConfig.model,
-      max_tokens: modelConfig.maxTokens,
-      temperature: 0.8,
-      system: systemPrompt,
-      messages: [
-        { role: "user", content: userPrompt },
-      ],
-    }),
-  });
+    body: JSON.stringify(requestBody),
+  }, 1);
 
   if (!response.ok) {
     const err = await response.text();
-    throw new Error(`Anthropic API error: ${err}`);
+    console.error(`[campaign-generate] Anthropic API failed: status=${response.status}, body=${err}`);
+    throw new Error(`Anthropic API error (${response.status}): ${err}`);
   }
 
   const data = await response.json();
@@ -428,6 +433,8 @@ Respond with valid JSON only — no markdown fences, no additional text, just ra
   }
 }`;
 
+    console.log(`[campaign-generate-legacy] Calling Anthropic: model=${legacyModelConfig.model}, max_tokens=${legacyModelConfig.maxTokens}`);
+
     const anthropicResponse = await anthropicFetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
@@ -447,9 +454,13 @@ Respond with valid JSON only — no markdown fences, no additional text, just ra
           },
         ],
       }),
-    });
+    }, 1);
 
-    if (!anthropicResponse.ok) { throw new Error("AI API error: " + anthropicResponse.status); }
+    if (!anthropicResponse.ok) {
+      const errBody = await anthropicResponse.text();
+      console.error(`[campaign-generate-legacy] Anthropic API failed: status=${anthropicResponse.status}, body=${errBody}`);
+      throw new Error(`AI API error (${anthropicResponse.status}): ${errBody}`);
+    }
     const anthropicResult = await anthropicResponse.json();
     const rawContent: string = anthropicResult.content?.[0]?.text ?? "";
 
@@ -477,6 +488,7 @@ Respond with valid JSON only — no markdown fences, no additional text, just ra
       { headers: { ...corsHeaders(req), "Content-Type": "application/json" } }
     );
   } catch (err) {
+    console.error("[campaign-generate] Unhandled error:", err.message ?? err);
     return new Response(
       JSON.stringify({ success: false, error: err.message }),
       { status: 500, headers: { ...corsHeaders(req), "Content-Type": "application/json" } }
