@@ -5,7 +5,7 @@ import { getSignedProfileUrl } from '@/hooks/useSignedUrl';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Star, MapPin, User, Play } from 'lucide-react';
+import { Star, MapPin, User, Play, ChevronLeft } from 'lucide-react';
 import { PublicProfileReviews } from '@/components/profiles/PublicProfileReviews';
 import { ContactCreatorModal } from '@/components/creator-profile/ContactCreatorModal';
 import { PortfolioLightbox } from '@/components/creator-profile/PortfolioLightbox';
@@ -297,8 +297,15 @@ const PublicCreatorProfile = () => {
           <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/40 to-transparent" />
         </div>
 
-        {/* Logo overlay */}
-        <div className="absolute top-4 left-4">
+        {/* Back button + Logo overlay */}
+        <div className="absolute top-4 left-4 flex items-center gap-2">
+          <button
+            onClick={() => window.history.length > 2 ? navigate(-1) : navigate('/')}
+            className="w-8 h-8 rounded-full bg-white/80 backdrop-blur-sm flex items-center justify-center shadow-sm hover:bg-white transition-colors"
+            aria-label="Go back"
+          >
+            <ChevronLeft className="h-5 w-5 text-gray-700" />
+          </button>
           <img src={logo} alt="Dragon Candy" className="h-12 w-12 rounded-full" />
         </div>
       </div>
