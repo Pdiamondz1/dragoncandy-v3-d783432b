@@ -48,8 +48,8 @@ All three roles (Content Creator, Restaurant/Business, Brand) must satisfy these
 | # | Prerequisite | Creator check | Business/Brand check |
 |---|---|---|---|
 | 1 | Complete your profile | `creator_profiles`: `creator_name` + `bio` + `avatar_url` all non-null/non-empty | `business_profiles`: `business_name` + `description` + `logo_url` all non-null/non-empty |
-| 2 | Connect a social media account | At least 1 row in `outstand_social_accounts` for this `user_id` | Same |
-| 3 | Setup Stripe account | `creator_profiles.stripe_onboarding_complete = true` | `business_profiles.stripe_onboarding_complete = true` |
+| 2 | Connect a social media account | At least 1 row in `business_outstand_accounts` for this `user_id` | Same |
+| 3 | Setup Stripe account | Via `check-prerequisite-status` RPC (see 2.3) — `stripe_onboarding_complete` column is not SELECT-able from the client due to column-level security | Same |
 
 ### 2.2 Gated Features
 
@@ -65,9 +65,44 @@ All three roles (Content Creator, Restaurant/Business, Brand) must satisfy these
 
 **File:** `src/hooks/usePrerequisiteStatus.ts`
 
-Queries two data sources via React Query:
-1. User's profile table (creator_profiles or business_profiles, based on role)
-2. `outstand_social_accounts` filtered by `user_id`
+Queries a single `SECURITY DEFINER` RPC function `check_prerequisite_status(p_user_id UUID)` that returns all three statuses in one call. This is necessary because `stripe_onboarding_complete` has had SELECT revoked from `anon` and `authenticated` roles (column-level security). The RPC runs as the function owner, reads the profile table and `business_outstand_accounts`, and returns a JSON object.
+
+**New RPC function** (`check_prerequisite_status`):
+```sql
+CREATE OR REPLACE FUNCTION check_prerequisite_status(p_user_id UUID)
+RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+  result JSONB;
+  v_role TEXT;
+BEGIN
+  -- Determine role from profiles
+  SELECT role INTO v_role FROM profiles WHERE id = p_user_id;
+
+  IF v_role = 'content_creator' THEN
+    SELECT jsonb_build_object(
+      'role', v_role,
+      'profile_complete', (creator_name IS NOT NULL AND creator_name != '' AND bio IS NOT NULL AND bio != '' AND avatar_url IS NOT NULL AND avatar_url != ''),
+      'stripe_complete', COALESCE(stripe_onboarding_complete, false)
+    ) INTO result FROM creator_profiles WHERE id = p_user_id;
+  ELSE
+    SELECT jsonb_build_object(
+      'role', COALESCE(account_type, 'business_client'),
+      'profile_complete', (business_name IS NOT NULL AND business_name != '' AND description IS NOT NULL AND description != '' AND logo_url IS NOT NULL AND logo_url != ''),
+      'stripe_complete', COALESCE(stripe_onboarding_complete, false)
+    ) INTO result FROM business_profiles WHERE id = p_user_id;
+  END IF;
+
+  -- Check Outstand connected accounts
+  result = result || jsonb_build_object(
+    'social_connected', EXISTS(SELECT 1 FROM business_outstand_accounts WHERE user_id = p_user_id)
+  );
+
+  RETURN COALESCE(result, '{"profile_complete":false,"social_connected":false,"stripe_complete":false}'::jsonb);
+END;
+$$;
+```
+
+The hook calls this via `supabase.rpc('check_prerequisite_status', { p_user_id: user.id })`.
 
 ```typescript
 interface PrerequisiteItem {
@@ -141,8 +176,8 @@ When content is approved and `fire-campaign-social-hook` fires for Stage 4 (cont
 
 After creating the `campaign_social_hooks` record for each party:
 
-1. Query `outstand_social_accounts` for the party's `user_id` to get their connected platform(s)
-2. Query approved deliverable media URLs from `campaign_deliverables` / file storage
+1. Query `business_outstand_accounts` for the party's `user_id` to get their connected platform(s)
+2. Query approved deliverable media URLs from `file_uploads` joined with `campaign_deliverables` (deliverables define content specs; `file_uploads` stores the actual submitted media with `storage_path` pointing to Supabase Storage)
 3. Generate an AI caption via Haiku (model routing: `social-caption` at T1) tailored to the party's role:
    - Restaurant: promotional tone, location context, call-to-action
    - Creator: personal/authentic tone, creator credit, branded hashtags
@@ -153,6 +188,7 @@ After creating the `campaign_social_hooks` record for each party:
    - `caption`: AI-generated
    - `media_urls`: approved deliverable URLs
    - `platform`: from Outstand-connected account
+   - `content_type`: derived from the campaign deliverable's `content_type` (e.g., `'photo'`, `'reel'`, `'story'`) — this is a required NOT NULL column
    - `scheduled_at`: AI-suggested optimal time
    - `campaign_id`: linked campaign
    - `ai_suggested_time: true`
@@ -162,18 +198,20 @@ After creating the `campaign_social_hooks` record for each party:
 
 For each party, insert a `donny_nudges` record:
 
-- `type: 'campaign_content_ready'`
+- `type: 'content'` (uses existing CHECK constraint value — `campaign_content_ready` is not in the allowed set)
 - `priority: 'high'`
+- `source_table: 'campaign_social_hooks'`
+- `source_id: <hook_id>` (required NOT NULL, part of dedup unique index)
 - `summary: 'Your campaign content is ready to share!'`
-- `actions`:
-  1. `{ label: 'Post Now', type: 'primary', route: null, action: 'post_now', metadata: { scheduled_post_id, campaign_id } }`
-  2. `{ label: 'Review Draft', type: 'secondary', route: '/dashboard/[role]/content-calendar' }`
+- `actions` (matches existing `NudgeAction` interface in `src/types/donnyNudge.ts`):
+  1. `{ label: 'Post Now', variant: 'primary', action: 'post_now', payload: { scheduled_post_id, campaign_id } }`
+  2. `{ label: 'Review Draft', variant: 'secondary', action: 'navigate', payload: { route: '/dashboard/[role]/content-calendar' } }`
 
-**"Post Now" handler** (client-side, in `DonnyNudgeCard` action handler):
+**"Post Now" handler** (client-side, in `DonnyProvider.tsx` `executeAction` handler — action dispatch is centralized there, not in the presentational `DonnyNudgeCard`):
 1. Read the `donny_scheduled_posts` entry by `scheduled_post_id`
 2. Call `outstand-proxy` with `POST /v1/posts` using the draft's caption, media, and platform
 3. Update `donny_scheduled_posts.status` to `'published'` and set `published_at`
-4. Log to `social_post_log` with `post_type: 'campaign'`
+4. Log to `social_post_log` with `post_type: 'campaign'` and `outstand_post_id` from the Outstand API response (required NOT NULL column)
 5. Mark the nudge as `acted_at`
 6. Show success toast: "Posted to [platform]!"
 
@@ -204,8 +242,9 @@ Because the gate enforces Outstand account connection before any campaign action
 
 | File | Purpose |
 |---|---|
-| `src/hooks/usePrerequisiteStatus.ts` | Hook checking 3 prerequisites for current user |
+| `src/hooks/usePrerequisiteStatus.ts` | Hook checking 3 prerequisites via `check_prerequisite_status` RPC |
 | `src/components/PrerequisiteGate.tsx` | Gate component rendering checklist or children |
+| `supabase/migrations/YYYYMMDD_check_prerequisite_status.sql` | `SECURITY DEFINER` RPC function for prerequisite checks |
 | `supabase/functions/social-caption/index.ts` | AI caption generation edge function (Haiku T1) |
 
 ### Modified Files
@@ -224,8 +263,8 @@ Because the gate enforces Outstand account connection before any campaign action
 | `src/pages/BusinessSponsorships.tsx` | Wrap with `<PrerequisiteGate feature="manage sponsorships">` |
 | `src/pages/BusinessProposals.tsx` | Wrap with `<PrerequisiteGate feature="manage proposals">` |
 | `supabase/functions/fire-campaign-social-hook/index.ts` | Extend Stage 4: auto-draft post + create nudge |
-| `supabase/functions/_shared/model-routing.ts` | Add `social-caption` routing entry (if not present) |
-| `src/components/donny/DonnyNudgeCard.tsx` | Add `post_now` action handler |
+| `supabase/functions/_shared/model-routing.ts` | Verify `social-caption` routing entry exists (already present — no-op) |
+| `src/contexts/DonnyProvider.tsx` | Add `post_now` action handler in `executeAction` (action dispatch is centralized here) |
 
 ### Unchanged (Reference)
 
