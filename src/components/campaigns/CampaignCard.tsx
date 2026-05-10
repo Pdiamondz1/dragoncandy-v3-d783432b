@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Calendar, DollarSign, Eye, Users, FileText, MessageSquare, Edit, UserCheck, CreditCard, Loader2, AlertCircle, RefreshCw, FolderOpen, Trash2 } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { useDeleteCampaign } from '@/hooks/useCampaignMutations';
+import { useDeleteCampaign, useDuplicateCampaign } from '@/hooks/useCampaignMutations';
 import { useNavigate } from 'react-router-dom';
 import { Campaign } from '@/hooks/useCampaigns';
 import { format } from 'date-fns';
@@ -33,6 +33,7 @@ const CampaignCardComponent: React.FC<CampaignCardProps> = ({
   const [isVerifying, setIsVerifying] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const deleteCampaign = useDeleteCampaign();
+  const duplicateCampaign = useDuplicateCampaign();
 
   const handleDelete = async () => {
     try {
@@ -402,10 +403,29 @@ const CampaignCardComponent: React.FC<CampaignCardProps> = ({
             Project Status
           </Button>
         )}
+        {campaign.status === 'completed' && (
+          <Button
+            variant="default"
+            size="sm"
+            className="text-xs bg-teal-400 hover:bg-teal-500 text-white"
+            onClick={async () => {
+              const result = await duplicateCampaign.mutateAsync(campaign.id);
+              navigate(`/dashboard/business/campaigns/${result.id}/edit`);
+            }}
+            disabled={duplicateCampaign.isPending}
+          >
+            {duplicateCampaign.isPending ? (
+              <Loader2 className="h-3 w-3 mr-1 animate-spin" aria-hidden="true" />
+            ) : (
+              <RefreshCw className="h-3 w-3 mr-1" aria-hidden="true" />
+            )}
+            Re-Launch
+          </Button>
+        )}
         {canDelete && (
-          <Button 
-            variant="destructive" 
-            size="sm" 
+          <Button
+            variant="destructive"
+            size="sm"
             className="text-xs"
             onClick={() => setShowDeleteConfirm(true)}
             disabled={deleteCampaign.isPending}

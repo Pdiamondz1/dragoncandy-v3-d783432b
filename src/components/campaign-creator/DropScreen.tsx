@@ -4,6 +4,7 @@ import { DonnyGreeting } from './DonnyGreeting';
 import { ExtractionFeed } from './ExtractionFeed';
 import { SamplePromptCarousel } from './SamplePromptCarousel';
 import { InspirationStrip } from './InspirationStrip';
+import { TemplateStrip } from './TemplateStrip';
 import type { InspirationRef } from '@/types/firstRun';
 
 interface DropScreenProps {
@@ -24,6 +25,7 @@ export function DropScreen({ onSubmit, isExtracting, extractionMessages, onInspi
         <SmartInput onSubmit={onSubmit} isExtracting={isExtracting} externalValue={externalValue} />
         <SamplePromptCarousel onSelect={setExternalValue} disabled={isExtracting} />
         <ExtractionFeed messages={extractionMessages} isExtracting={isExtracting} />
+        <TemplateStrip />
         <InspirationStrip
           onSelectionChange={onInspirationChange ?? (() => {})}
           onScrolled={onInspirationScrolled}

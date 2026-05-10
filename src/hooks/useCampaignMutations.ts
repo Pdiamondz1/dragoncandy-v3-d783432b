@@ -390,3 +390,44 @@ export const useDeleteCampaign = () => {
     },
   });
 };
+
+export const useDuplicateCampaign = () => {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (sourceCampaignId: string) => {
+      const { data: source, error: fetchError } = await supabase
+        .from('campaigns')
+        .select('title, description, goals, deliverables, platforms, budget_min, budget_max, style, tone, open_for_sponsorship, delivery_type, delivery_fee, pricing_type, fixed_price, ai_analysis')
+        .eq('id', sourceCampaignId)
+        .single();
+
+      if (fetchError || !source) throw fetchError ?? new Error('Campaign not found');
+
+      const { data: newCampaign, error: insertError } = await supabase
+        .from('campaigns')
+        .insert({
+          ...source,
+          title: `${source.title} (Copy)`,
+          status: 'draft',
+          escrow_status: 'pending',
+          deadline: null,
+          user_id: user!.id,
+          duplicated_from: sourceCampaignId,
+        } as any)
+        .select('id')
+        .single();
+
+      if (insertError) throw insertError;
+      return newCampaign;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+      toast({ title: 'Campaign duplicated!', description: 'Edit the draft to customize and publish.' });
+    },
+    onError: () => {
+      toast({ title: 'Failed to duplicate campaign', description: 'Please try again.', variant: 'destructive' });
+    },
+  });
+};
