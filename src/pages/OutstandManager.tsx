@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Send, CalendarDays, BarChart3, MessageCircle, TrendingUp, Link as LinkIcon, RefreshCw, Handshake } from 'lucide-react';
+import { Send, CalendarDays, BarChart3, MessageCircle, TrendingUp, Link as LinkIcon, RefreshCw, Handshake, FileText } from 'lucide-react';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DragonCandyOutstandProvider, useOutstandConfig } from '@/integrations/outstand/Provider';
@@ -11,6 +11,8 @@ import { PublishedTab } from '@/components/outstand/PublishedTab';
 import { EngagementTab } from '@/components/outstand/EngagementTab';
 import { AccountsTab } from '@/components/outstand/AccountsTab';
 import { AnalyticsTab } from '@/components/outstand/AnalyticsTab';
+import { DraftsTab } from '@/components/outstand/DraftsTab';
+import { useDraftPosts } from '@/hooks/useDraftPosts';
 import { CrossPartyAnalytics } from '@/components/outstand/CrossPartyAnalytics';
 import { DonnyAutoPilot } from '@/components/outstand/DonnyAutoPilot';
 import { useSanitizeFileInputs } from '@/hooks/outstand/useSanitizeFileInputs';
@@ -21,7 +23,7 @@ import { supabase } from '@/integrations/supabase/client';
 import type { CampaignDeadline } from '@/components/outstand/CalendarTab';
 import { type SponsorshipEvent } from '@/components/outstand/SponsorshipMarker';
 
-const VALID_TABS = ['compose', 'calendar', 'published', 'engagement', 'analytics', 'sponsorships', 'accounts'] as const;
+const VALID_TABS = ['compose', 'drafts', 'calendar', 'published', 'engagement', 'analytics', 'sponsorships', 'accounts'] as const;
 type TabValue = (typeof VALID_TABS)[number];
 
 // A post is "scheduled" if it has a scheduledAt and no account has finished
@@ -65,6 +67,7 @@ const ACCOUNTS_PAGE_LIMIT = 100;
 
 const OutstandManagerInner: React.FC = () => {
   useSanitizeFileInputs();
+  const { draftCount } = useDraftPosts();
   const { apiKey, baseUrl } = useOutstandConfig();
   const [searchParams, setSearchParams] = useSearchParams();
   const tabParam = searchParams.get('tab');
@@ -211,11 +214,21 @@ const OutstandManagerInner: React.FC = () => {
 
       <div className="bg-white p-4">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className={`grid w-full ${isBrand ? 'grid-cols-7 overflow-x-auto' : 'grid-cols-6'}`}>
+          <TabsList className={`grid w-full ${isBrand ? 'grid-cols-8 overflow-x-auto' : 'grid-cols-7'} overflow-x-auto`}>
             <TabsTrigger value="compose" className="flex items-center gap-1 text-xs">
               <Send className="h-3 w-3" />
               <span className="hidden sm:inline">Compose</span>
               <span className="sm:hidden">New</span>
+            </TabsTrigger>
+            <TabsTrigger value="drafts" className="flex items-center gap-1 text-xs">
+              <FileText className="h-3 w-3" />
+              <span className="hidden sm:inline">Drafts</span>
+              <span className="sm:hidden">Drafts</span>
+              {draftCount > 0 && (
+                <span className="ml-1 bg-dc-pink-accent text-white text-xs px-1.5 py-0.5 rounded-full">
+                  {draftCount}
+                </span>
+              )}
             </TabsTrigger>
             <TabsTrigger value="calendar" className="flex items-center gap-1 text-xs">
               <CalendarDays className="h-3 w-3" />
@@ -263,6 +276,9 @@ const OutstandManagerInner: React.FC = () => {
                 setActiveTab(wasScheduled ? 'calendar' : 'published');
               }}
             />
+          </TabsContent>
+          <TabsContent value="drafts">
+            <DraftsTab onSwitchTab={setActiveTab} />
           </TabsContent>
           <TabsContent value="calendar">
             <CalendarTab
