@@ -9,6 +9,7 @@ import { Gift, Video, User, CheckCircle, AlertCircle, ArrowRight, ArrowLeft, Loa
 import { SocialHandleFields, useSocialHandles } from '@/features/promotions/submission/SubmissionForm';
 import { SEO } from '@/components/SEO';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { PrerequisiteGate } from '@/components/PrerequisiteGate';
 
 type Step = 'welcome' | 'video' | 'info' | 'success' | 'error';
 
@@ -170,6 +171,7 @@ export default function PromotionSubmissionPage() {
   const businessName = promotion.business_profiles?.business_name || 'This Business';
 
   return (
+    <PrerequisiteGate feature="submit a promotion">
     <div className="min-h-screen bg-white overflow-x-hidden pb-8">
       <SEO
         title={`${promotion.title} - Submit on DragonCandy`}
@@ -313,5 +315,6 @@ export default function PromotionSubmissionPage() {
         )}
       </div>
     </div>
+    </PrerequisiteGate>
   );
 }

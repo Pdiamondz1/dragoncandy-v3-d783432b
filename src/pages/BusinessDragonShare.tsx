@@ -12,6 +12,7 @@ import { useNavigate } from 'react-router-dom';
 import type { UserRole } from '@/types/user';
 import { Coachmark } from '@/components/guidance/Coachmark';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { PrerequisiteGate } from '@/components/PrerequisiteGate';
 
 type Tab = 'available' | 'boosted' | 'all';
 
@@ -43,6 +44,7 @@ export function BusinessDragonSharePage({ userRole }: { userRole: UserRole }) {
 
   return (
     <DashboardLayout userRole={userRole}>
+      <PrerequisiteGate feature="use DragonShare">
       <div className="space-y-6 max-w-4xl mx-auto">
         <PageHeader>
           <h1 className="text-2xl font-bold">
@@ -108,6 +110,7 @@ export function BusinessDragonSharePage({ userRole }: { userRole: UserRole }) {
           </div>
         )}
       </div>
+      </PrerequisiteGate>
     </DashboardLayout>
   );
 }

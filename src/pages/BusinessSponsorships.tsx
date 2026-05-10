@@ -13,6 +13,7 @@ import { MarketplaceLoadingState } from '@/components/campaigns/MarketplaceLoadi
 import { SponsorshipRatingPromptManager } from '@/components/reviews/SponsorshipRatingPromptManager';
 import { ResponsiveRatingModal } from '@/components/reviews/ResponsiveRatingModal';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { PrerequisiteGate } from '@/components/PrerequisiteGate';
 
 const BusinessSponsorships = () => {
   useAuth();
@@ -128,6 +129,7 @@ const BusinessSponsorships = () => {
 
   return (
     <DashboardLayout userRole="business_client">
+      <PrerequisiteGate feature="manage sponsorships">
       <div className="min-h-screen overflow-x-hidden pb-24 md:pb-0 md:max-w-4xl md:mx-auto">
         {/* Template B header */}
         <PageHeader>
@@ -293,6 +295,7 @@ const BusinessSponsorships = () => {
           )}
         </div>
       </div>
+      </PrerequisiteGate>
 
       {ratingModal && (
         <ResponsiveRatingModal

@@ -17,6 +17,7 @@ import { Target, ExternalLink, Loader2, MessageSquare, CheckCircle, Clock, Star,
 import { DCSkeleton } from '@/components/ui/dc-skeleton';
 import { DCEmptyState } from '@/components/ui/dc-empty-state';
 import { format } from 'date-fns';
+import { PrerequisiteGate } from '@/components/PrerequisiteGate';
 
 const BrandSponsorships = () => {
   const { profile } = useAuth();
@@ -237,6 +238,7 @@ const BrandSponsorships = () => {
 
   return (
     <DashboardLayout userRole="brand">
+      <PrerequisiteGate feature="manage sponsorships">
       <div className="min-h-screen overflow-x-hidden pb-24 md:pb-0 md:max-w-4xl md:mx-auto">
         {/* Template B header */}
         <PageHeader>
@@ -373,6 +375,7 @@ const BrandSponsorships = () => {
           )}
         </div>
       </div>
+      </PrerequisiteGate>
 
       {ratingModal && (
         <ResponsiveRatingModal

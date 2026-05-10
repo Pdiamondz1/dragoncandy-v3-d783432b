@@ -11,6 +11,7 @@ import { CampaignBriefStep } from '@/components/campaigns/CampaignBriefStep';
 import { DeliveryTierStep } from '@/components/campaigns/DeliveryTierStep';
 import { CampaignVisualsStep } from '@/components/campaigns/CampaignVisualsStep';
 import { useCampaignWizard } from '@/hooks/useCampaignWizard';
+import { PrerequisiteGate } from '@/components/PrerequisiteGate';
 
 const CampaignWizard: React.FC = () => {
   const navigate = useNavigate();
@@ -72,6 +73,7 @@ const CampaignWizard: React.FC = () => {
         </PageHeader>
 
         {/* Content */}
+        <PrerequisiteGate feature="create a campaign">
         <div className="px-4 py-6 pb-28 md:pb-6 space-y-6 md:max-w-3xl md:mx-auto">
           <CampaignWizardHeader currentStep={currentStep} steps={steps} />
 
@@ -157,6 +159,7 @@ const CampaignWizard: React.FC = () => {
             />
           )}
         </div>
+        </PrerequisiteGate>
       </div>
     </DashboardLayout>
   );

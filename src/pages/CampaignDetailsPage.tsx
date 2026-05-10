@@ -23,6 +23,7 @@ import { useCreatorApplicationStatus } from '@/hooks/useCreatorApplicationStatus
 import { useCampaignDetailEnriched } from '@/hooks/useCampaignDetailEnriched';
 import { useCreateApplication } from '@/hooks/useCreateApplication';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { PrerequisiteGate } from '@/components/PrerequisiteGate';
 import { ApplicationForm } from '@/components/campaigns/ApplicationForm';
 import type { DonnyPitchResult } from '@/hooks/useDonnyApplyPitch';
 
@@ -191,22 +192,24 @@ const CampaignDetailsPage: React.FC = () => {
             />
           </div>
 
-          <StickyApplyCTA
-            canApply={canApply || canReapply}
-            hasApplied={hasApplied}
-            applicationStatus={applicationStatus}
-            onApply={() => setShowApplySheet(true)}
-            onViewProject={() => navigate('/dashboard/creator/projects')}
-            spotsTotal={campaign.creator_count}
-          />
+          <PrerequisiteGate feature="apply for this campaign" inline>
+            <StickyApplyCTA
+              canApply={canApply || canReapply}
+              hasApplied={hasApplied}
+              applicationStatus={applicationStatus}
+              onApply={() => setShowApplySheet(true)}
+              onViewProject={() => navigate('/dashboard/creator/projects')}
+              spotsTotal={campaign.creator_count}
+            />
 
-          <OneTapApplySheet
-            open={showApplySheet}
-            onOpenChange={setShowApplySheet}
-            campaign={campaign}
-            onSend={handleDonnySend}
-            onEditDetails={handleEditDetails}
-          />
+            <OneTapApplySheet
+              open={showApplySheet}
+              onOpenChange={setShowApplySheet}
+              campaign={campaign}
+              onSend={handleDonnySend}
+              onEditDetails={handleEditDetails}
+            />
+          </PrerequisiteGate>
 
           <Dialog open={showLegacyForm} onOpenChange={setShowLegacyForm}>
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">

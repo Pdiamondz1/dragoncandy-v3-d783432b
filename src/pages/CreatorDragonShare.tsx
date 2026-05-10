@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Sparkles, ExternalLink, Clock, CheckCircle, XCircle } from 'lucide-react';
 import type { DragonSharePostWithRelations, PostStatus } from '@/types/dragonshare';
 import { Coachmark } from '@/components/guidance/Coachmark';
+import { PrerequisiteGate } from '@/components/PrerequisiteGate';
 
 type Tab = 'submitted' | 'boosted' | 'expired';
 
@@ -35,6 +36,7 @@ const CreatorDragonShare: React.FC = () => {
 
   return (
     <DashboardLayout userRole="content_creator">
+      <PrerequisiteGate feature="use DragonShare">
       <div className="space-y-6 pt-4 max-w-3xl mx-auto">
         <div className="rounded-2xl bg-gradient-to-br from-dc-teal/10 to-pink-50 border border-dc-teal/15 p-5 space-y-4">
           <div>
@@ -96,6 +98,7 @@ const CreatorDragonShare: React.FC = () => {
       </div>
 
       <DragonShareSubmitSheet open={submitOpen} onOpenChange={setSubmitOpen} />
+      </PrerequisiteGate>
     </DashboardLayout>
   );
 };

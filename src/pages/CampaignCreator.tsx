@@ -10,6 +10,7 @@ import { CampaignPreviewCard } from '@/components/campaign-creator/CampaignPrevi
 import { AuthenticationModal } from '@/components/auth/AuthenticationModal';
 import { MobileBottomNav } from '@/components/MobileBottomNav';
 import { DashboardLayout } from '@/components/DashboardLayout';
+import { PrerequisiteGate } from '@/components/PrerequisiteGate';
 import type { InspirationRef } from '@/types/firstRun';
 
 export default function CampaignCreator() {
@@ -57,6 +58,22 @@ export default function CampaignCreator() {
               <span>Back to Dashboard</span>
             </button>
           </div>
+          <PrerequisiteGate feature="create a campaign">
+            <DropScreen
+              onSubmit={submitInput}
+              isExtracting={isExtracting}
+              extractionMessages={extractionMessages}
+              onInspirationChange={handleInspirationChange}
+              onInspirationScrolled={handleInspirationScrolled}
+            />
+          </PrerequisiteGate>
+          <MobileBottomNav userRole={navRole} />
+        </div>
+      );
+    }
+    return (
+      <DashboardLayout userRole={navRole}>
+        <PrerequisiteGate feature="create a campaign">
           <DropScreen
             onSubmit={submitInput}
             isExtracting={isExtracting}
@@ -64,19 +81,7 @@ export default function CampaignCreator() {
             onInspirationChange={handleInspirationChange}
             onInspirationScrolled={handleInspirationScrolled}
           />
-          <MobileBottomNav userRole={navRole} />
-        </div>
-      );
-    }
-    return (
-      <DashboardLayout userRole={navRole}>
-        <DropScreen
-          onSubmit={submitInput}
-          isExtracting={isExtracting}
-          extractionMessages={extractionMessages}
-          onInspirationChange={handleInspirationChange}
-          onInspirationScrolled={handleInspirationScrolled}
-        />
+        </PrerequisiteGate>
       </DashboardLayout>
     );
   }
@@ -104,7 +109,9 @@ export default function CampaignCreator() {
   if (isMobile) {
     return (
       <div className="min-h-screen bg-white pt-4 pb-20">
-        <LaunchpadScreen {...launchpadProps} />
+        <PrerequisiteGate feature="create a campaign">
+          <LaunchpadScreen {...launchpadProps} />
+        </PrerequisiteGate>
         <AuthenticationModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
         <MobileBottomNav userRole={navRole} />
       </div>
@@ -114,16 +121,18 @@ export default function CampaignCreator() {
   // Screen 2: Desktop — always wrapped in DashboardLayout
   return (
     <DashboardLayout userRole={navRole}>
-      <div className="flex gap-6 max-w-6xl mx-auto">
-        <div className="flex-1 min-w-0">
-          <LaunchpadScreen {...launchpadProps} />
-        </div>
-        {editedCampaign && (
-          <div className="w-80 flex-shrink-0 hidden md:block">
-            <CampaignPreviewCard campaign={editedCampaign} />
+      <PrerequisiteGate feature="create a campaign">
+        <div className="flex gap-6 max-w-6xl mx-auto">
+          <div className="flex-1 min-w-0">
+            <LaunchpadScreen {...launchpadProps} />
           </div>
-        )}
-      </div>
+          {editedCampaign && (
+            <div className="w-80 flex-shrink-0 hidden md:block">
+              <CampaignPreviewCard campaign={editedCampaign} />
+            </div>
+          )}
+        </div>
+      </PrerequisiteGate>
       <AuthenticationModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
     </DashboardLayout>
   );

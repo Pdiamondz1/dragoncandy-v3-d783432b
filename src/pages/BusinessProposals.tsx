@@ -5,6 +5,7 @@ import { AlertCircle } from 'lucide-react';
 import { useCampaigns } from '@/hooks/useCampaigns';
 import { ApplicationsListFixed } from '@/components/campaigns/ApplicationsListFixed';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { PrerequisiteGate } from '@/components/PrerequisiteGate';
 
 const BusinessProposals = () => {
   const { campaignId } = useParams<{ campaignId: string }>();
@@ -80,6 +81,7 @@ const BusinessProposals = () => {
 
   return (
     <DashboardLayout userRole="business_client">
+      <PrerequisiteGate feature="manage proposals">
       <div className="min-h-screen bg-white overflow-x-hidden pb-24 md:pb-0 md:max-w-4xl md:mx-auto">
         {/* Template B header */}
         <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
@@ -94,6 +96,7 @@ const BusinessProposals = () => {
           <ApplicationsListFixed campaignId={campaignId!} />
         </div>
       </div>
+      </PrerequisiteGate>
     </DashboardLayout>
   );
 };

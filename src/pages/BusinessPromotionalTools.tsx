@@ -8,6 +8,7 @@ import { ApprovedVideosTab } from '@/components/promotions/ApprovedVideosTab';
 import { HelpTooltip } from '@/features/promotions/components/HelpTooltip';
 import { QrCode, Video, Ticket, Film } from 'lucide-react';
 import { usePromotions } from '@/hooks/usePromotions';
+import { PrerequisiteGate } from '@/components/PrerequisiteGate';
 
 const BusinessPromotionalTools: React.FC = () => {
   const { pendingSubmissions, approvedSubmissions, rejectedSubmissions, isLoading } = usePromotions();
@@ -16,6 +17,7 @@ const BusinessPromotionalTools: React.FC = () => {
 
   return (
     <DashboardLayout userRole="business_client">
+      <PrerequisiteGate feature="use Promotions">
       <div className="min-h-screen overflow-x-hidden pb-24 md:pb-0 md:max-w-4xl md:mx-auto">
         {/* Template A: Pink gradient header */}
         <div className="bg-gradient-to-b from-dc-pink-bg to-pink-50 px-4 pt-6 pb-4">
@@ -97,6 +99,7 @@ const BusinessPromotionalTools: React.FC = () => {
           </Tabs>
         </div>
       </div>
+      </PrerequisiteGate>
     </DashboardLayout>
   );
 };
