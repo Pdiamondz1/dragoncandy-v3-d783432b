@@ -248,7 +248,7 @@ export function useCampaignCreator() {
     } finally {
       setIsExtracting(false);
     }
-  }, [userRole, user]);
+  }, [userRole, user, inspirationRefs]);
 
   // Screen 2: Select idea
   const selectIdea = useCallback((ideaId: string) => {

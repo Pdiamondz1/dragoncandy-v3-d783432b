@@ -85,13 +85,22 @@ export function SmartInput({ onSubmit, isExtracting, externalValue }: SmartInput
     setAttachments((prev) => prev.filter((_, i) => i !== index));
   }, []);
 
-  const handleUrlButtonClick = useCallback(() => {
-    handleSubmit();
-  }, [handleSubmit]);
+  const handleUrlButtonClick = useCallback(async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text && (text.startsWith('http://') || text.startsWith('https://'))) {
+        setAttachments((prev) => [...prev, { type: 'url', value: text }]);
+      } else {
+        textareaRef.current?.focus();
+      }
+    } catch {
+      textareaRef.current?.focus();
+    }
+  }, []);
 
   const handleTextButtonClick = useCallback(() => {
-    handleSubmit();
-  }, [handleSubmit]);
+    textareaRef.current?.focus();
+  }, []);
 
   return (
     <div className="w-full space-y-4">
