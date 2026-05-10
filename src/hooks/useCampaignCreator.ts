@@ -236,14 +236,17 @@ export function useCampaignCreator() {
       }
 
       setScreen('launchpad');
-    } catch (err) {
-      console.error('Campaign extraction error:', err);
+    } catch (err: unknown) {
+      const detail = (err as { context?: { error?: string } })?.context?.error
+        ?? (err as Error)?.message
+        ?? 'Unknown error';
+      console.error('Campaign extraction error:', detail, err);
       if (mode === 'url' && !manualText) {
         addMessage("I couldn't read that link. Try adding a description too — like what you serve or want to promote.");
         toast.error("Couldn't read that link — add a description and try again");
       } else {
-        addMessage("Something went wrong — give it another try.");
-        toast.error('Generation failed — please try again');
+        addMessage(`Something went wrong: ${detail}`);
+        toast.error(`Generation failed: ${detail}`);
       }
     } finally {
       setIsExtracting(false);
