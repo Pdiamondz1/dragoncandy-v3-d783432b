@@ -59,7 +59,6 @@ export function InspirationStrip({ onSelectionChange, onScrolled }: InspirationS
   if (!items?.length) {
     return (
       <div className="mt-4 bg-white rounded-2xl border border-dashed border-gray-300 p-5 text-center">
-        <p className="text-2xl mb-2">🐉</p>
         <p className="text-sm text-gray-500">Like content on the DragonFeed to use as style inspiration here</p>
         <button
           onClick={() => navigate('/dashboard/business/dragon-feed')}
