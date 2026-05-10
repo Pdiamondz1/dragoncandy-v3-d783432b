@@ -320,7 +320,7 @@ After implementation, verify:
 - Integration into all 5 gated features (11 files)
 - `social-caption` edge function for AI caption generation
 - Extending `fire-campaign-social-hook` Stage 4 with auto-draft and nudge
-- "Post Now" handler in `DonnyNudgeCard`
+- "Post Now" action handler in `DonnyProvider.tsx`
 
 **Out of scope (deferred):**
 - Donny AI MCP integration for advanced caption rewriting
