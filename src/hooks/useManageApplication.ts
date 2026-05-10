@@ -69,7 +69,48 @@ export const useManageApplication = () => {
     onSuccess: async (data) => {
       queryClient.invalidateQueries({ queryKey: ['campaign-applications'] });
       queryClient.invalidateQueries({ queryKey: ['creator-applications'] });
-      
+
+      // When accepted and escrow already held, create collaboration immediately
+      if (data.status === 'accepted' && data.campaign_id) {
+        try {
+          const { data: campaign } = await supabase
+            .from('campaigns')
+            .select('escrow_status')
+            .eq('id', data.campaign_id)
+            .single();
+
+          if (campaign?.escrow_status === 'held') {
+            const { data: existingCollab } = await supabase
+              .from('campaign_collaborations')
+              .select('id')
+              .eq('campaign_id', data.campaign_id)
+              .eq('creator_id', data.creator_id)
+              .maybeSingle();
+
+            if (!existingCollab) {
+              await supabase
+                .from('campaign_collaborations')
+                .insert({
+                  campaign_id: data.campaign_id,
+                  creator_id: data.creator_id,
+                  application_id: data.id,
+                  status: 'active',
+                });
+
+              await supabase
+                .from('campaigns')
+                .update({ status: 'active' })
+                .eq('id', data.campaign_id);
+
+              queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+              queryClient.invalidateQueries({ queryKey: ['campaign-project'] });
+            }
+          }
+        } catch (collabError) {
+          console.error('Failed to auto-create collaboration:', collabError);
+        }
+      }
+
       // Send email notification to creator
       try {
         const { data: creatorProfile } = await supabase
@@ -77,13 +118,13 @@ export const useManageApplication = () => {
           .select('email, full_name')
           .eq('id', data.creator_id)
           .single();
-        
+
         const { data: campaign } = await supabase
           .from('campaigns')
           .select('title')
           .eq('id', data.campaign_id)
           .single();
-        
+
         if (creatorProfile?.email && campaign?.title) {
           await sendNotification(
             'application_status',
@@ -99,11 +140,11 @@ export const useManageApplication = () => {
       } catch (emailError) {
         console.error('Failed to send email notification:', emailError);
       }
-      
+
       toast({
         title: `Application ${data.status}!`,
-        description: data.status === 'accepted' 
-          ? 'Please proceed with escrow payment to start the project.' 
+        description: data.status === 'accepted'
+          ? 'The project is now active — the creator can start uploading content.'
           : 'The creator has been notified.',
       });
     },
