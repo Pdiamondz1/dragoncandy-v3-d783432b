@@ -21,6 +21,7 @@ import { useCollaboration } from '@/hooks/useCollaboration';
 import { usePaymentTimeline } from '@/hooks/usePaymentTimeline';
 import { usePaymentNotifications } from '@/hooks/usePaymentNotifications';
 import { ContentApprovalPanel } from '@/components/projects/ContentApprovalPanel';
+import { RevisionBanner } from '@/components/projects/RevisionBanner';
 import { CreatorContentSubmit } from '@/components/projects/CreatorContentSubmit';
 import { CreatorPayoutBanner } from '@/components/projects/CreatorPayoutBanner';
 import { TierTimer } from '@/components/projects/TierTimer';
@@ -302,6 +303,7 @@ const ProjectDetailsPage: React.FC = () => {
               deliveryType={collaboration.campaign.delivery_type || 'standard'}
               disputeReason={collaboration.dispute_reason}
               disputeOutcome={collaboration.dispute_outcome}
+              campaignDeliverables={campaignDeliverables}
             />
           ) : (
             <div className="space-y-3">
@@ -324,6 +326,13 @@ const ProjectDetailsPage: React.FC = () => {
                 disputeReason={collaboration.dispute_reason}
                 disputeOutcome={collaboration.dispute_outcome}
               />
+
+              {collaboration.content_status === 'revision_requested' && (
+                <RevisionBanner
+                  revisionCount={collaboration.revision_count}
+                  maxRevisions={2}
+                />
+              )}
             </div>
           )}
 

@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Textarea } from '@/components/ui/textarea';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,7 +20,6 @@ import {
   FileCheck,
   AlertCircle,
   Loader2,
-  Send,
   XCircle
 } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -29,6 +27,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { ReviewCountdownTimer } from './ReviewCountdownTimer';
 import { RejectContentModal } from './RejectContentModal';
+import { RevisionRequestModal } from './RevisionRequestModal';
 import { DisputeStatusBanner } from './DisputeStatusBanner';
 
 interface ContentApprovalPanelProps {
@@ -44,6 +43,7 @@ interface ContentApprovalPanelProps {
   disputeReason: string | null;
   disputeOutcome: string | null;
   onApproved?: () => void;
+  campaignDeliverables?: Array<{ id: string; content_type: string; description?: string }>;
 }
 
 const MAX_REVISIONS = 2;
@@ -60,10 +60,10 @@ export const ContentApprovalPanel: React.FC<ContentApprovalPanelProps> = ({
   deliveryType,
   disputeReason,
   disputeOutcome,
-  onApproved
+  onApproved,
+  campaignDeliverables = []
 }) => {
   const queryClient = useQueryClient();
-  const [revisionFeedback, setRevisionFeedback] = useState('');
   const [showRevisionForm, setShowRevisionForm] = useState(false);
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
 
@@ -197,7 +197,6 @@ export const ContentApprovalPanel: React.FC<ContentApprovalPanelProps> = ({
     },
     onSuccess: () => {
       toast.success('Revision request sent to creator');
-      setRevisionFeedback('');
       setShowRevisionForm(false);
       queryClient.invalidateQueries({ queryKey: ['business-projects'] });
     },
@@ -272,97 +271,69 @@ export const ContentApprovalPanel: React.FC<ContentApprovalPanelProps> = ({
         {/* Action Buttons - Only show when content is submitted */}
         {isSubmitted && (
           <>
-            {!showRevisionForm ? (
-              <div className="flex gap-3">
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button
-                      disabled={approveContent.isPending}
-                      className="flex-1 bg-green-600 hover:bg-green-700"
-                    >
-                      {approveContent.isPending ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Approving...
-                        </>
-                      ) : (
-                        <>
-                          <CheckCircle2 className="h-4 w-4 mr-2" />
-                          Approve & Release Payment
-                        </>
-                      )}
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Approve Content & Release Payment?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This will release payment to the creator immediately. This action cannot be undone. Make sure you're satisfied with the delivered content.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction
-                        className="bg-green-600 hover:bg-green-700"
-                        onClick={() => approveContent.mutate()}
-                        disabled={approveContent.isPending}
-                      >
-                        Yes, Approve & Pay
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-                
-                {canRequestRevision && (
+            <div className="flex gap-3">
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
                   <Button
-                    variant="outline"
-                    onClick={() => setShowRevisionForm(true)}
-                    className="flex-1"
+                    disabled={approveContent.isPending}
+                    className="flex-1 bg-green-600 hover:bg-green-700"
                   >
-                    <RotateCcw className="h-4 w-4 mr-2" />
-                    Request Revision
-                  </Button>
-                )}
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <Textarea
-                  placeholder="Describe the changes you'd like the creator to make..."
-                  value={revisionFeedback}
-                  onChange={(e) => setRevisionFeedback(e.target.value)}
-                  rows={4}
-                />
-                <div className="flex gap-2">
-                  <Button
-                    onClick={() => requestRevision.mutate(revisionFeedback)}
-                    disabled={!revisionFeedback.trim() || requestRevision.isPending}
-                    size="sm"
-                  >
-                    {requestRevision.isPending ? (
+                    {approveContent.isPending ? (
                       <>
                         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Sending…
+                        Approving...
                       </>
                     ) : (
                       <>
-                        <Send className="h-4 w-4 mr-2" />
-                        Send Revision Request
+                        <CheckCircle2 className="h-4 w-4 mr-2" />
+                        Approve & Release Payment
                       </>
                     )}
                   </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setShowRevisionForm(false);
-                      setRevisionFeedback('');
-                    }}
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </div>
-            )}
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Approve Content & Release Payment?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will release payment to the creator immediately. This action cannot be undone. Make sure you're satisfied with the delivered content.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      className="bg-green-600 hover:bg-green-700"
+                      onClick={() => approveContent.mutate()}
+                      disabled={approveContent.isPending}
+                    >
+                      Yes, Approve & Pay
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+
+              {canRequestRevision && (
+                <Button
+                  variant="outline"
+                  onClick={() => setShowRevisionForm(true)}
+                  className="flex-1"
+                >
+                  <RotateCcw className="h-4 w-4 mr-2" />
+                  Request Revision ({revisionCount}/{MAX_REVISIONS})
+                </Button>
+              )}
+            </div>
+
+            <RevisionRequestModal
+              open={showRevisionForm}
+              onOpenChange={setShowRevisionForm}
+              deliverables={campaignDeliverables}
+              revisionCount={revisionCount}
+              maxRevisions={MAX_REVISIONS}
+              onSubmit={async (feedback) => {
+                const combinedFeedback = Object.values(feedback).filter(Boolean).join('\n\n');
+                await requestRevision.mutateAsync(combinedFeedback || 'Revision requested');
+              }}
+            />
 
             {!canRequestRevision && isSubmitted && (
               <Button
