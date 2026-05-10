@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Plus, ArrowLeft } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { CampaignsList } from '@/components/campaigns/CampaignsList';
 import { useCampaigns } from '@/hooks/useCampaigns';
@@ -115,15 +115,19 @@ const CampaignsPage: React.FC = () => {
             <h1 className="flex-1 text-center font-sans text-base font-bold text-gray-900 uppercase tracking-wide">
               Campaigns
             </h1>
-            <button
-              onClick={() => navigate('/dashboard/business/campaigns/create')}
-              className="text-dc-teal"
-              aria-label="Create campaign"
-            >
-              <Plus className="h-5 w-5" />
-            </button>
+            <span className="w-5" />
           </div>
         </PageHeader>
+
+        {/* Create Campaign CTA */}
+        <div className="px-4 pt-3 pb-1">
+          <button
+            onClick={() => navigate('/dashboard/business/campaigns/create')}
+            className="w-full bg-teal-400 text-white font-bold py-3 rounded-full text-[15px] hover:bg-teal-500 transition-colors"
+          >
+            Create a Campaign
+          </button>
+        </div>
 
         {/* Status filter tabs — horizontal scroll */}
         <div className="bg-white border-b border-gray-100">
