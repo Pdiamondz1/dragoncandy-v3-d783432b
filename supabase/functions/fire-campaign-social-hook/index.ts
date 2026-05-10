@@ -114,6 +114,170 @@ serve(async (req) => {
       }
     }
 
+    // --- Stage 4 auto-draft: create scheduled post drafts + nudges ---
+    if (stage === 4) {
+      for (const party of parties) {
+        try {
+          const { data: outstandAccounts } = await supabase
+            .from('business_outstand_accounts')
+            .select('platform, platform_handle')
+            .eq('user_id', party.user_id)
+            .limit(1);
+
+          if (!outstandAccounts?.length) continue;
+
+          const platform = outstandAccounts[0].platform;
+
+          const { data: uploadedFiles } = await supabase
+            .from('file_uploads')
+            .select('file_path, bucket_name, mime_type')
+            .eq('campaign_id', campaign_id)
+            .eq('upload_status', 'complete')
+            .limit(5);
+
+          const mediaUrls: string[] = [];
+          if (uploadedFiles?.length) {
+            for (const f of uploadedFiles) {
+              const { data: signedUrl } = await supabase.storage
+                .from(f.bucket_name)
+                .createSignedUrl(f.file_path, 3600);
+              if (signedUrl?.signedUrl) mediaUrls.push(signedUrl.signedUrl);
+            }
+          }
+
+          const { data: delivSpec } = await supabase
+            .from('campaign_deliverables')
+            .select('content_type')
+            .eq('campaign_id', campaign_id)
+            .limit(1)
+            .single();
+
+          const contentType = delivSpec?.content_type || 'photo';
+
+          let caption = template;
+          let hashtags: string[] = [];
+          try {
+            const captionResp = await fetch(
+              `${SUPABASE_URL}/functions/v1/social-caption`,
+              {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+                },
+                body: JSON.stringify({
+                  campaign_title: campaign.title,
+                  campaign_description: '',
+                  content_type: contentType,
+                  party_role: party.role,
+                  platform,
+                  user_id: party.user_id,
+                }),
+              },
+            );
+            if (captionResp.ok) {
+              const captionData = await captionResp.json();
+              caption = captionData.caption || caption;
+              hashtags = captionData.hashtags || [];
+            }
+          } catch (captionErr) {
+            console.warn('[fire-campaign-social-hook] Caption generation failed, using template:', captionErr.message);
+          }
+
+          let scheduledAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+          try {
+            const scheduleResp = await fetch(
+              `${SUPABASE_URL}/functions/v1/donny-schedule`,
+              {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+                },
+                body: JSON.stringify({
+                  action: 'suggest_times',
+                  platform,
+                  content_type: contentType,
+                }),
+              },
+            );
+            if (scheduleResp.ok) {
+              const scheduleData = await scheduleResp.json();
+              if (scheduleData.suggestions?.[0]?.time) {
+                scheduledAt = scheduleData.suggestions[0].time;
+              }
+            }
+          } catch (schedErr) {
+            console.warn('[fire-campaign-social-hook] Time suggestion failed, using +24h default:', schedErr.message);
+          }
+
+          const { data: scheduledPost } = await supabase
+            .from('donny_scheduled_posts')
+            .insert({
+              user_id: party.user_id,
+              campaign_id,
+              platform,
+              content_type: contentType,
+              caption,
+              media_urls: mediaUrls,
+              hashtags,
+              scheduled_at: scheduledAt,
+              status: 'draft',
+              ai_suggested_time: true,
+              ai_reasoning: 'Auto-drafted by campaign social hook (stage 4)',
+              metadata: { source: 'campaign_social_hook', stage: 4 },
+            })
+            .select('id')
+            .single();
+
+          const { data: hookRow } = await supabase
+            .from('campaign_social_hooks')
+            .select('id')
+            .eq('campaign_id', campaign_id)
+            .eq('stage', 4)
+            .eq('user_id', party.user_id)
+            .single();
+
+          if (hookRow) {
+            await supabase.from('donny_nudges').upsert(
+              {
+                user_id: party.user_id,
+                type: 'content',
+                priority: 'high',
+                source_table: 'campaign_social_hooks',
+                source_id: hookRow.id,
+                summary: 'Your campaign content is ready to share!',
+                actions: [
+                  {
+                    label: 'Post Now',
+                    variant: 'primary',
+                    action: 'post_now',
+                    payload: {
+                      scheduled_post_id: scheduledPost?.id ?? null,
+                      campaign_id,
+                    },
+                  },
+                  {
+                    label: 'Review Draft',
+                    variant: 'secondary',
+                    action: 'navigate',
+                    payload: {
+                      route: party.role === 'creator'
+                        ? '/dashboard/creator/content-calendar'
+                        : '/dashboard/business/content-calendar',
+                    },
+                  },
+                ],
+              },
+              { onConflict: 'user_id,source_table,source_id', ignoreDuplicates: true },
+            );
+          }
+        } catch (autoDraftErr) {
+          console.warn(`[fire-campaign-social-hook] Auto-draft failed for ${party.user_id}:`, autoDraftErr.message);
+        }
+      }
+    }
+
     return new Response(
       JSON.stringify({ ok: true, hooks_created: rows.length, stage }),
       { headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } },
