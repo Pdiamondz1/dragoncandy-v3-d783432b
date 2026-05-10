@@ -19,6 +19,7 @@ import { formatFileSize } from '@/lib/fileUtils';
 import { cn } from '@/lib/utils';
 import { RatingModal } from '@/components/reviews/RatingModal';
 import { QuickApprovalCard } from '@/components/projects/QuickApprovalCard';
+import { ContentPreviewStrip } from '@/components/campaigns/ContentPreviewStrip';
 import { useToast } from '@/hooks/use-toast';
 import { PageHeader } from '@/components/ui/PageHeader';
 
@@ -460,6 +461,12 @@ const BusinessProjects: React.FC = () => {
                         </div>
 
                         <p className="text-sm text-gray-500 line-clamp-2">{project.campaign.description}</p>
+
+                        <ContentPreviewStrip
+                          campaignId={project.campaign_id}
+                          collaborationId={project.id}
+                          role="business"
+                        />
 
                         {/* One-Tap Content Approval */}
                         <QuickApprovalCard

@@ -1,9 +1,11 @@
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
+import { ContentPreviewStrip } from '@/components/campaigns/ContentPreviewStrip';
 
 interface ProjectCardProps {
   project: {
     id: string;
+    campaign_id?: string;
     status: string;
     content_status?: string | null;
     content_started_at?: string | null;
@@ -82,7 +84,15 @@ export function ProjectCard({ project }: ProjectCardProps) {
         )}
       </div>
       <p className="text-sm font-bold text-gray-900 mb-1">{project.campaigns.title}</p>
-      <p className="text-xs text-gray-500">{statusText}</p>
+      {project.campaign_id ? (
+        <ContentPreviewStrip
+          campaignId={project.campaign_id}
+          collaborationId={project.id}
+          role="creator"
+        />
+      ) : (
+        <p className="text-xs text-gray-500">{statusText}</p>
+      )}
     </div>
   );
 }

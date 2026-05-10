@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Calendar, DollarSign, Eye, Users, FileText, MessageSquare, Edit, UserCheck, CreditCard, Loader2, AlertCircle, RefreshCw, FolderOpen, Trash2 } from 'lucide-react';
 import { useDeleteCampaign, useDuplicateCampaign } from '@/hooks/useCampaignMutations';
+import { ContentPreviewStrip } from './ContentPreviewStrip';
 import { DeleteCampaignDialog } from './DeleteCampaignDialog';
 import { useNavigate } from 'react-router-dom';
 import { Campaign } from '@/hooks/useCampaigns';
@@ -372,6 +373,7 @@ const CampaignCardComponent: React.FC<CampaignCardProps> = ({
             </div>
           </div>
         )}
+        <ContentPreviewStrip campaignId={campaign.id} role="business" />
       </CardContent>
 
       <CardFooter className="flex flex-wrap gap-2 pt-4 border-t border-border min-w-0 overflow-hidden">

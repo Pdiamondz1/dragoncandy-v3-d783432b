@@ -6,6 +6,7 @@ import { Upload } from 'lucide-react';
 import { CreatorCollaboration, DeliverableStatus } from '@/hooks/useCreatorCollaborations';
 import { mapDeliveryType } from '@/lib/campaignUtils';
 import { DeliveryBadge } from './DeliveryBadge';
+import { ContentPreviewStrip } from './ContentPreviewStrip';
 
 interface ActiveCampaignCardProps {
   collaboration: CreatorCollaboration;
@@ -122,6 +123,12 @@ export const ActiveCampaignCard: React.FC<ActiveCampaignCardProps> = ({ collabor
           </div>
         </div>
       )}
+
+      <ContentPreviewStrip
+        campaignId={campaign.id}
+        collaborationId={collaboration.id}
+        role="creator"
+      />
 
       {/* Upload button */}
       <button
