@@ -396,7 +396,7 @@ const CampaignCardComponent: React.FC<CampaignCardProps> = ({
             variant="secondary" 
             size="sm" 
             className="text-xs"
-            onClick={() => navigate('/dashboard/business/projects')}
+            onClick={() => navigate(`/dashboard/business/campaigns/${campaign.id}/project`)}
           >
             <FolderOpen className="h-3 w-3 mr-1" aria-hidden="true" />
             Project Status

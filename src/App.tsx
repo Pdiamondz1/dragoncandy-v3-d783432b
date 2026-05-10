@@ -52,6 +52,7 @@ const ProjectDetailsPage = lazy(() => import("./pages/ProjectDetailsPage"));
 const CreatorCampaignMarketplace = lazy(() => import("./pages/CreatorCampaignMarketplace"));
 const BusinessProposals = lazy(() => import("./pages/BusinessProposals"));
 const BusinessProjects = lazy(() => import("./pages/BusinessProjects"));
+const CampaignProjectPage = lazy(() => import("./pages/CampaignProjectPage"));
 const BusinessSponsorships = lazy(() => import("./pages/BusinessSponsorships"));
 const BusinessPromotionalTools = lazy(() => import("./pages/BusinessPromotionalTools"));
 const OutstandManager = lazy(() => import("./pages/OutstandManager"));
@@ -185,6 +186,7 @@ function AnimatedRoutes() {
 
           {/* Business Project and Proposals Routes */}
           <Route path="/dashboard/business/projects" element={<ProtectedRoute><BusinessRoute><BusinessProjects /></BusinessRoute></ProtectedRoute>} />
+          <Route path="/dashboard/business/campaigns/:id/project" element={<ProtectedRoute><BusinessRoute><CampaignProjectPage /></BusinessRoute></ProtectedRoute>} />
           <Route path="/dashboard/business/campaigns/:campaignId/proposals" element={<ProtectedRoute><BusinessRoute><BusinessProposals /></BusinessRoute></ProtectedRoute>} />
           <Route path="/dashboard/business/campaigns/:id/details" element={<ProtectedRoute><BusinessRoute><CampaignDetailsPage /></BusinessRoute></ProtectedRoute>} />
 
