@@ -33,6 +33,7 @@ interface DonnyContextValue {
   sendMessage: (msg: string) => void;
   retry: () => void;
   clearChat: () => Promise<void>;
+  publishDraft: (scheduledPostId: string) => Promise<void>;
 
   // Context
   currentPage: string;
@@ -118,6 +119,69 @@ export function DonnyProvider({ children, userRole }: DonnyProviderProps) {
   const collapse = useCallback(() => setStage('tray'), []);
   const close = useCallback(() => setStage('closed'), []);
 
+  const publishDraft = useCallback(async (scheduledPostId: string) => {
+    try {
+      const postId = scheduledPostId;
+
+      const { data: draft, error: draftErr } = await supabase
+        .from('donny_scheduled_posts')
+        .select('caption, media_urls, platform, content_type, campaign_id, metadata')
+        .eq('id', postId)
+        .single();
+
+      if (draftErr || !draft) throw new Error('Could not load draft post');
+
+      const { data: publishData, error: publishErr } = await supabase.functions.invoke(
+        'outstand-proxy',
+        {
+          body: {
+            path: '/v1/posts',
+            method: 'POST',
+            payload: {
+              caption: draft.caption,
+              media_urls: draft.media_urls,
+              platform: draft.platform,
+              content_type: draft.content_type,
+            },
+          },
+        },
+      );
+
+      if (publishErr) throw publishErr;
+
+      const outstandPostId = publishData?.id ?? publishData?.post_id ?? 'unknown';
+
+      const draftMetadata = (draft as any).metadata as Record<string, unknown> | null;
+      const sourceToPostType: Record<string, string> = {
+        campaign_social_hook: 'campaign',
+        promotion_social_hook: 'ugc_promotion',
+        dragonshare_social_hook: 'dragonshare',
+      };
+      const postType = sourceToPostType[(draftMetadata?.source as string) ?? ''] || 'standalone';
+
+      await supabase
+        .from('donny_scheduled_posts')
+        .update({ status: 'published', published_at: new Date().toISOString() })
+        .eq('id', postId);
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase.from('social_post_log').insert({
+          user_id: user.id,
+          campaign_id: draft.campaign_id,
+          outstand_post_id: String(outstandPostId),
+          platform: draft.platform,
+          post_type: postType,
+        });
+      }
+
+      toast.success(`Posted to ${draft.platform}!`);
+    } catch (err) {
+      console.error('[DonnyProvider] publishDraft failed:', err);
+      toast.error('Failed to publish post. Please try again.');
+    }
+  }, []);
+
   const executeAction = useCallback(
     async (nudgeId: string, action: NudgeAction) => {
       actOnNudge(nudgeId);
@@ -128,65 +192,14 @@ export function DonnyProvider({ children, userRole }: DonnyProviderProps) {
       }
 
       if (action.action === 'post_now' && action.payload?.scheduled_post_id) {
-        try {
-          const postId = action.payload.scheduled_post_id as string;
-
-          const { data: draft, error: draftErr } = await supabase
-            .from('donny_scheduled_posts')
-            .select('caption, media_urls, platform, content_type, campaign_id')
-            .eq('id', postId)
-            .single();
-
-          if (draftErr || !draft) throw new Error('Could not load draft post');
-
-          const { data: publishData, error: publishErr } = await supabase.functions.invoke(
-            'outstand-proxy',
-            {
-              body: {
-                path: '/v1/posts',
-                method: 'POST',
-                payload: {
-                  caption: draft.caption,
-                  media_urls: draft.media_urls,
-                  platform: draft.platform,
-                  content_type: draft.content_type,
-                },
-              },
-            },
-          );
-
-          if (publishErr) throw publishErr;
-
-          const outstandPostId = publishData?.id ?? publishData?.post_id ?? 'unknown';
-
-          await supabase
-            .from('donny_scheduled_posts')
-            .update({ status: 'published', published_at: new Date().toISOString() })
-            .eq('id', postId);
-
-          const { data: { user } } = await supabase.auth.getUser();
-          if (user) {
-            await supabase.from('social_post_log').insert({
-              user_id: user.id,
-              campaign_id: draft.campaign_id,
-              outstand_post_id: String(outstandPostId),
-              platform: draft.platform,
-              post_type: 'campaign',
-            });
-          }
-
-          toast.success(`Posted to ${draft.platform}!`);
-        } catch (err) {
-          console.error('[DonnyProvider] post_now failed:', err);
-          toast.error('Failed to publish post. Please try again.');
-        }
+        await publishDraft(action.payload.scheduled_post_id as string);
         return;
       }
 
       const actionMessage = `Execute action: ${action.action} with ${JSON.stringify(action.payload)}`;
       donny.sendMessage(actionMessage);
     },
-    [actOnNudge, donny],
+    [actOnNudge, donny, publishDraft],
   );
 
   const dismissNudge = useCallback(
@@ -231,6 +244,7 @@ export function DonnyProvider({ children, userRole }: DonnyProviderProps) {
       sendMessage,
       retry: donny.retry,
       clearChat: donny.clearChat,
+      publishDraft,
       currentPage: location.pathname,
       userRole,
       quickChips,
@@ -242,7 +256,7 @@ export function DonnyProvider({ children, userRole }: DonnyProviderProps) {
       nudges, unreadCount, executeAction, dismissNudge,
       donny.messages, donny.conversation, donny.avatarState, donny.isStreaming, donny.error, donny.streamingContent, donny.retry, donny.clearChat,
       sendMessage, location.pathname, userRole, quickChips, campaignContext,
-      openDonnyWithContext,
+      openDonnyWithContext, publishDraft,
     ]
   );
 
