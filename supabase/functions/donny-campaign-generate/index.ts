@@ -45,6 +45,7 @@ async function fetchAndExtract(url: string): Promise<FetchedContent> {
   const response = await fetch(url, {
     headers: { "User-Agent": "DragonCandy-Bot/1.0" },
     redirect: "follow",
+    signal: AbortSignal.timeout(8000),
   });
 
   if (!response.ok) { throw new Error("Failed to fetch URL: " + response.status); }

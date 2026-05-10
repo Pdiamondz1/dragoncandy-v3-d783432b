@@ -75,7 +75,14 @@ export function InspirationStrip({ onSelectionChange, onScrolled }: InspirationS
     <div className="mt-4">
       <div className="flex justify-between items-center mb-1">
         <span className="text-sm font-bold text-gray-900">❤️ Your Liked Content</span>
-        <button className="text-xs font-semibold text-pink-500">See all →</button>
+        {items.length >= 8 && (
+          <button
+            onClick={() => navigate('/dashboard/business/dragon-feed')}
+            className="text-xs font-semibold text-pink-500"
+          >
+            See all →
+          </button>
+        )}
       </div>
       <p className="text-[11px] text-gray-500 mb-2">From your DragonFeed — Donny uses it as a style reference</p>
       <div

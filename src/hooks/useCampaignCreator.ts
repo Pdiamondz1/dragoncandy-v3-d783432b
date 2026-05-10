@@ -208,6 +208,13 @@ export function useCampaignCreator() {
 
       if (error) throw error;
 
+      if (data?.error === 'rate_limited') {
+        const mins = Math.ceil((data.retry_after ?? 60) / 60);
+        addMessage(`You're generating too fast — try again in ${mins} minute${mins > 1 ? 's' : ''}.`);
+        toast.error(`Rate limited — try again in ${mins} min`);
+        return;
+      }
+
       const parsed = donnyGenerateResponseSchema.parse(data);
       setBusinessContext(parsed.business_context as BusinessContext);
       setCampaignIdeas(parsed.campaign_ideas as CampaignIdea[]);
