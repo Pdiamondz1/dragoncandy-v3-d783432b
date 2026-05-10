@@ -263,8 +263,8 @@ serve(async (req) => {
                     action: 'navigate',
                     payload: {
                       route: party.role === 'creator'
-                        ? '/dashboard/creator/content-calendar'
-                        : '/dashboard/business/content-calendar',
+                        ? '/dashboard/creator/social'
+                        : '/dashboard/business/social',
                     },
                   },
                 ],
