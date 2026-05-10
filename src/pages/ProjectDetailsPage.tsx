@@ -23,7 +23,8 @@ import { usePaymentNotifications } from '@/hooks/usePaymentNotifications';
 import { ContentApprovalPanel } from '@/components/projects/ContentApprovalPanel';
 import { CreatorContentSubmit } from '@/components/projects/CreatorContentSubmit';
 import { CreatorPayoutBanner } from '@/components/projects/CreatorPayoutBanner';
-import { DragonDashTimer } from '@/components/projects/DragonDashTimer';
+import { TierTimer } from '@/components/projects/TierTimer';
+import { ProjectStepper, getCreatorStep, getBusinessStep } from '@/components/projects/ProjectStepper';
 import { StartContentButton } from '@/components/projects/StartContentButton';
 import { ProjectFileUpload } from '@/components/projects/ProjectFileUpload';
 import { useFileUploads } from '@/hooks/useFileQuery';
@@ -195,13 +196,32 @@ const ProjectDetailsPage: React.FC = () => {
             </div>
           )}
 
-          {/* DragonDash Timer */}
-          {timerData && timerData.status !== 'not_started' && collaboration.content_status !== 'approved' && (
-            <DragonDashTimer
+          {/* Project Step Progress */}
+          {collaboration.content_status !== 'approved' && collaboration.content_status !== 'auto_approved' && (
+            <ProjectStepper
+              currentStep={isCreator
+                ? getCreatorStep(collaboration.content_status, (files?.length ?? 0) > 0)
+                : getBusinessStep(collaboration.content_status)
+              }
+              role={isCreator ? 'creator' : 'business'}
+              tierColor={
+                collaboration.campaign.delivery_type === 'dragon_rush' || collaboration.campaign.delivery_type === 'dragonrush'
+                  ? '#FF4444'
+                  : collaboration.campaign.delivery_type === 'expedited'
+                  ? '#3B82F6'
+                  : '#4DD9C0'
+              }
+            />
+          )}
+
+          {/* Tier Timer */}
+          {timerData && timerData.status !== 'not_started' && collaboration.content_status !== 'approved' && collaboration.content_status !== 'auto_approved' && (
+            <TierTimer
               formattedTime={timerData.formattedTime}
               percentageRemaining={timerData.percentageRemaining}
               status={timerData.status}
               deliveryType={timerData.deliveryType}
+              deadline={collaboration.content_deadline}
             />
           )}
 
