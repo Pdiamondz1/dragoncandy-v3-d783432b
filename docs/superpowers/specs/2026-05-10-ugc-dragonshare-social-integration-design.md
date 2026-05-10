@@ -41,14 +41,14 @@ One migration required: extend `social_post_log.post_type` CHECK constraint to a
 4. Check business's `business_outstand_accounts` for connected platform — skip entirely if none
 5. Call `social-caption` with `source: 'promotion'`, promotion title, customer name, platform
 6. Call `donny-schedule` for optimal posting time (fallback: +24h)
-7. Generate signed URL for the customer's video from `promotion-videos` storage bucket
+7. Collect media URL from `submission.video_url` (already a full public URL from Supabase storage)
 8. Insert draft into `donny_scheduled_posts`:
    - `user_id`: business user
    - `campaign_id`: null (UGC promotions are not campaign-tied)
    - `platform`: from Outstand account
    - `content_type`: 'video' (customer video) or derived from submission mime type
    - `caption`: AI-generated
-   - `media_urls`: `[signed_video_url]`
+   - `media_urls`: `[submission.video_url]`
    - `hashtags`: AI-generated
    - `status`: 'draft'
    - `ai_suggested_time`: true
