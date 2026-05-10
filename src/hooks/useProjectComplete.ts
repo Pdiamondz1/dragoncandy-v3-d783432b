@@ -187,6 +187,7 @@ export const useProjectComplete = () => {
       queryClient.invalidateQueries({ queryKey: ['business-projects'] });
       queryClient.invalidateQueries({ queryKey: ['project-completion'] });
       queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+      queryClient.invalidateQueries({ queryKey: ['campaign-project'] });
 
       if (data.status === 'completed') {
         toast({

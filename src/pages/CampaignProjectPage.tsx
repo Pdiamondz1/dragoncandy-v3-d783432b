@@ -11,7 +11,7 @@ import { useProjectComplete } from '@/hooks/useProjectComplete';
 import { RatingModal } from '@/components/reviews/RatingModal';
 import { useState } from 'react';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://zocahiffooqdybdhguqv.supabase.co';
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 
 const STEPS = [
   { key: 'hired', label: 'Creator hired & escrow held' },
@@ -167,7 +167,7 @@ export default function CampaignProjectPage() {
             <span className="text-[11px] font-bold text-teal-400 uppercase tracking-widest">Assigned Creator</span>
             <div className="flex items-center gap-3 mt-2">
               {avatarUrl ? (
-                <img src={avatarUrl} alt="" className="w-12 h-12 rounded-full ring-2 ring-teal-400 object-cover" />
+                <img src={avatarUrl} alt={creator.creator_name} className="w-12 h-12 rounded-full ring-2 ring-teal-400 object-cover" />
               ) : (
                 <div className="w-12 h-12 rounded-full ring-2 ring-teal-400 bg-gradient-to-br from-teal-300 to-pink-300 flex items-center justify-center">
                   <User className="h-6 w-6 text-white" />

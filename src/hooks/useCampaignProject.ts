@@ -46,7 +46,7 @@ export function deriveCurrentStep(project: CampaignProject): ProjectStep {
   ) return 'payment';
   if (collaboration.content_status === 'submitted') return 'review';
   if (collaboration.content_status === 'approved') return 'payment';
-  return collaboration.content_status ? 'review' : 'submitted';
+  return collaboration.content_status ? 'review' : 'hired';
 }
 
 export function useCampaignProject(campaignId: string) {
@@ -82,7 +82,7 @@ export function useCampaignProject(campaignId: string) {
         ? collab.campaigns[0]
         : collab.campaigns;
 
-      const [{ data: creatorProfile }, { data: projectCount }] = await Promise.all([
+      const [{ data: creatorProfile }, { data: projectCount }, { data: reviews }] = await Promise.all([
         supabase
           .from('creator_profiles')
           .select('user_id, creator_name, avatar_url, bio')
@@ -93,12 +93,12 @@ export function useCampaignProject(campaignId: string) {
           .select('id')
           .eq('creator_id', collab.creator_id)
           .eq('status', 'completed'),
+        supabase
+          .from('project_reviews')
+          .select('rating')
+          .eq('reviewee_id', collab.creator_id)
+          .eq('review_type', 'business_to_creator'),
       ]);
-
-      const { data: reviews } = await supabase
-        .from('project_reviews')
-        .select('rating')
-        .eq('reviewee_id', collab.creator_id);
 
       const avgRating = reviews?.length
         ? reviews.reduce((sum, r) => sum + (r.rating ?? 0), 0) / reviews.length
