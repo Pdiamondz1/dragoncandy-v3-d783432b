@@ -2,6 +2,8 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://zocahiffooqdybdhguqv.supabase.co';
+
 export interface InspirationItem {
   id: string;
   url: string;
@@ -54,11 +56,13 @@ export function useInspirationStrip() {
         const urls = (creator.portfolio_urls as string[]) ?? [];
         for (const url of urls) {
           const id = `${creator.user_id}-${url}`;
+          const isExternal = url.startsWith('http');
+          const resolvedUrl = isExternal ? url : `${SUPABASE_URL}/storage/v1/object/public/profile-assets/${url}`;
           const isVideo = /\.(mp4|webm|mov|avi)$/i.test(url);
           const label = isVideo ? 'Video content' : 'Photo content';
           items.push({
             id,
-            url,
+            url: resolvedUrl,
             type: isVideo ? 'video' : 'image',
             creatorName: creator.creator_name ?? 'Creator',
             creatorId: creator.user_id,

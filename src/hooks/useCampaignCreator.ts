@@ -178,15 +178,29 @@ export function useCampaignCreator() {
       else if (mode === 'photo') addMessage("Analyzing your photo...");
       else addMessage("Got it, let me work with that...");
 
+      let sourceUrl: string | undefined;
+      let manualText: string | undefined;
+
+      if (mode === 'url') {
+        const lines = value.split('\n');
+        sourceUrl = lines.find(l => /^https?:\/\//i.test(l.trim()))?.trim();
+        const textParts = lines.filter(l => !/^https?:\/\//i.test(l.trim())).join('\n').trim();
+        if (textParts) manualText = textParts;
+      } else if (mode === 'photo') {
+        // photo mode: value is the object URL
+      } else {
+        manualText = value;
+      }
+
       const request: DonnyGenerateRequest = {
-        source_type: mode === 'url' ? detectUrlType(value) : mode === 'photo' ? 'photo' : 'manual',
+        source_type: mode === 'url' && sourceUrl ? detectUrlType(sourceUrl) : mode === 'photo' ? 'photo' : 'manual',
         role: userRole,
         inspiration_refs: inspirationRefs.length > 0 ? inspirationRefs : undefined,
       };
 
-      if (mode === 'url') request.source_url = value;
-      else if (mode === 'photo') request.photo_url = value;
-      else request.manual_text = value;
+      if (sourceUrl) request.source_url = sourceUrl;
+      if (mode === 'photo') request.photo_url = value;
+      if (manualText) request.manual_text = manualText;
 
       const { data, error } = await supabase.functions.invoke('donny-campaign-generate', {
         body: request,
