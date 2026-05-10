@@ -9,6 +9,7 @@ import { type ModelTier } from "./model-routing.ts";
 // Per-token costs in USD (approximate, as of May 2026)
 const MODEL_COSTS: Record<string, { input: number; output: number }> = {
   "claude-haiku-4-5-20251001": { input: 0.00000025, output: 0.00000125 },
+  "claude-sonnet-4-6": { input: 0.000003, output: 0.000015 },
   "claude-sonnet-4-20250514": { input: 0.000003, output: 0.000015 },
 };
 

@@ -22,14 +22,14 @@ const HAIKU: ModelConfig = {
 };
 
 const SONNET: ModelConfig = {
-  model: "claude-sonnet-4-20250514",
+  model: "claude-sonnet-4-6",
   maxTokens: 4096,
   actionCost: 3,
   tier: "T2",
 };
 
 const SONNET_EXTENDED: ModelConfig = {
-  model: "claude-sonnet-4-20250514",
+  model: "claude-sonnet-4-6",
   maxTokens: 8192,
   actionCost: 5,
   tier: "T3",
