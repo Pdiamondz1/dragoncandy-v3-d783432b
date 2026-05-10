@@ -4,8 +4,8 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Calendar, DollarSign, Eye, Users, FileText, MessageSquare, Edit, UserCheck, CreditCard, Loader2, AlertCircle, RefreshCw, FolderOpen, Trash2 } from 'lucide-react';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useDeleteCampaign, useDuplicateCampaign } from '@/hooks/useCampaignMutations';
+import { DeleteCampaignDialog } from './DeleteCampaignDialog';
 import { useNavigate } from 'react-router-dom';
 import { Campaign } from '@/hooks/useCampaigns';
 import { format } from 'date-fns';
@@ -32,6 +32,7 @@ const CampaignCardComponent: React.FC<CampaignCardProps> = ({
   const [isPayingEscrow, setIsPayingEscrow] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [invitationCount, setInvitationCount] = useState(0);
   const deleteCampaign = useDeleteCampaign();
   const duplicateCampaign = useDuplicateCampaign();
 
@@ -44,7 +45,7 @@ const CampaignCardComponent: React.FC<CampaignCardProps> = ({
     }
   };
 
-  const canDelete = !applicationCounts || applicationCounts.accepted === 0;
+  const canDelete = (!applicationCounts || applicationCounts.accepted === 0) && campaign.escrow_status !== 'held';
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -427,7 +428,14 @@ const CampaignCardComponent: React.FC<CampaignCardProps> = ({
             variant="destructive"
             size="sm"
             className="text-xs"
-            onClick={() => setShowDeleteConfirm(true)}
+            onClick={async () => {
+              const { count } = await supabase
+                .from('campaign_invitations')
+                .select('*', { count: 'exact', head: true })
+                .eq('campaign_id', campaign.id);
+              setInvitationCount(count ?? 0);
+              setShowDeleteConfirm(true);
+            }}
             disabled={deleteCampaign.isPending}
           >
             {deleteCampaign.isPending ? (
@@ -451,25 +459,15 @@ const CampaignCardComponent: React.FC<CampaignCardProps> = ({
         )}
       </CardFooter>
 
-      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Campaign</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete "{campaign.title}"? This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={handleDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <DeleteCampaignDialog
+        open={showDeleteConfirm}
+        onOpenChange={setShowDeleteConfirm}
+        campaignTitle={campaign.title}
+        applicationCount={applicationCounts?.total ?? 0}
+        invitationCount={invitationCount}
+        onConfirm={handleDelete}
+        isDeleting={deleteCampaign.isPending}
+      />
     </Card>
   );
 };

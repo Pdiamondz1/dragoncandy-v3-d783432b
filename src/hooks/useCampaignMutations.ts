@@ -361,32 +361,104 @@ export const useDeleteCampaign = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (id: string) => {
+    mutationFn: async (campaignId: string) => {
+      // Fetch campaign title for notifications
+      const { data: campaign } = await supabase
+        .from('campaigns')
+        .select('title, user_id')
+        .eq('id', campaignId)
+        .single();
+      const campaignTitle = campaign?.title ?? 'Untitled Campaign';
+
+      // Fetch owner name for notification context
+      const { data: ownerProfile } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', user!.id)
+        .maybeSingle();
+      const businessName = ownerProfile?.full_name ?? 'A business';
+
+      // Collect affected creator IDs from applications
+      const { data: applications } = await supabase
+        .from('campaign_applications')
+        .select('creator_id')
+        .eq('campaign_id', campaignId);
+      const applicantIds = (applications ?? []).map((a) => a.creator_id).filter(Boolean);
+
+      // Collect affected creator IDs from invitations
+      const { data: invitations } = await supabase
+        .from('campaign_invitations')
+        .select('creator_id')
+        .eq('campaign_id', campaignId);
+      const invitedCreatorIds = (invitations ?? []).map((i) => i.creator_id).filter(Boolean);
+
+      // Delete related records before deleting the campaign
+      await supabase.from('campaign_applications').delete().eq('campaign_id', campaignId);
+      await supabase.from('campaign_invitations').delete().eq('campaign_id', campaignId);
+      await supabase.from('campaign_matches').delete().eq('campaign_id', campaignId);
+      await supabase.from('campaign_sponsorships').delete().eq('campaign_id', campaignId);
+
+      // Delete the campaign itself (RLS-safe: owner check)
       const { error } = await supabase
         .from('campaigns')
         .delete()
-        .eq('id', id)
+        .eq('id', campaignId)
         .eq('user_id', user!.id);
+      if (error) throw error;
 
-      if (error) {
-        console.error('Error deleting campaign:', error);
-        throw error;
+      // Notify applicant creators
+      if (applicantIds.length > 0) {
+        const { data: creatorProfiles } = await supabase
+          .from('profiles')
+          .select('id, email, full_name')
+          .in('id', applicantIds);
+
+        const promises = (creatorProfiles ?? []).map((p) =>
+          supabase.functions.invoke('send-notification-email', {
+            body: {
+              to: p.email,
+              recipientName: p.full_name,
+              type: 'campaign_cancelled',
+              data: { campaignTitle, businessName },
+            },
+          }).catch((err) => console.error(`Failed to notify creator ${p.id}:`, err))
+        );
+        await Promise.allSettled(promises);
       }
 
+      // Notify invited creators
+      if (invitedCreatorIds.length > 0) {
+        // Deduplicate: don't re-notify creators already notified as applicants
+        const alreadyNotified = new Set(applicantIds);
+        const uniqueInvitedIds = invitedCreatorIds.filter((id) => !alreadyNotified.has(id));
+
+        if (uniqueInvitedIds.length > 0) {
+          const { data: invitedProfiles } = await supabase
+            .from('profiles')
+            .select('id, email, full_name')
+            .in('id', uniqueInvitedIds);
+
+          const promises = (invitedProfiles ?? []).map((p) =>
+            supabase.functions.invoke('send-notification-email', {
+              body: {
+                to: p.email,
+                recipientName: p.full_name,
+                type: 'campaign_cancelled',
+                data: { campaignTitle, businessName },
+              },
+            }).catch((err) => console.error(`Failed to notify invited creator ${p.id}:`, err))
+          );
+          await Promise.allSettled(promises);
+        }
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['campaigns'] });
-      toast({
-        title: 'Campaign deleted successfully!',
-      });
+      toast({ title: 'Campaign deleted successfully!' });
     },
     onError: (error) => {
       console.error('Campaign deletion failed:', error);
-      toast({
-        title: 'Failed to delete campaign',
-        description: 'Please try again later.',
-        variant: 'destructive',
-      });
+      toast({ title: 'Failed to delete campaign', description: 'Please try again later.', variant: 'destructive' });
     },
   });
 };
