@@ -19,6 +19,7 @@ export interface CollaborationDetails {
   completed_at: string | null;
   created_at: string;
   updated_at: string;
+  deliverables_status: Record<string, string> | null;
   campaign: {
     id: string;
     title: string;
@@ -33,6 +34,7 @@ export interface CollaborationDetails {
     pricing_type: string | null;
     user_id: string;
     escrow_status: string | null;
+    ai_analysis: Record<string, unknown> | null;
   };
   creator_profile: {
     user_id: string;
@@ -73,6 +75,7 @@ export function useCollaboration(collaborationId: string) {
           completed_at,
           created_at,
           updated_at,
+          deliverables_status,
           campaigns!inner (
             id,
             title,
@@ -86,7 +89,8 @@ export function useCollaboration(collaborationId: string) {
             delivery_fee,
             pricing_type,
             user_id,
-            escrow_status
+            escrow_status,
+            ai_analysis
           )
         `)
         .eq('id', collaborationId)
@@ -129,6 +133,7 @@ export function useCollaboration(collaborationId: string) {
         completed_at: data.completed_at,
         created_at: data.created_at,
         updated_at: data.updated_at,
+        deliverables_status: (data.deliverables_status as Record<string, string>) ?? null,
         campaign: campaignData,
         creator_profile: creatorProfile,
         business_profile: businessProfile

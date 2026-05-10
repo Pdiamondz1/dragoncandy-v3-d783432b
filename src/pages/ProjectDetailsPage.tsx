@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { PaymentTimeline } from "@/components/payments/PaymentTimeline";
@@ -29,6 +29,7 @@ import { StartContentButton } from '@/components/projects/StartContentButton';
 import { ProjectFileUpload } from '@/components/projects/ProjectFileUpload';
 import { useFileUploads } from '@/hooks/useFileQuery';
 import { ProtectedFilePreview } from '@/components/projects/ProtectedFilePreview';
+import { DeliverableCard } from '@/components/projects/DeliverableCard';
 import { useDragonDashTimer } from '@/hooks/useDragonDashTimer';
 import { formatDistanceToNow, format } from 'date-fns';
 
@@ -44,6 +45,13 @@ const ProjectDetailsPage: React.FC = () => {
   const isCreator = profile?.role === 'content_creator';
   usePaymentNotifications(timelineEvents, isCreator ? 'creator' : 'business');
   const isDragonDash = collaboration?.campaign?.delivery_type && collaboration.campaign.delivery_type !== 'standard';
+  const [uploadingDeliverableId, setUploadingDeliverableId] = useState<string | null>(null);
+
+  // Parse deliverables from campaign ai_analysis JSONB
+  const campaignDeliverables = (collaboration?.campaign?.ai_analysis as Record<string, unknown> | null)?.deliverables as Array<{ id: string; content_type: string; platform?: string; description?: string }> | undefined;
+
+  // Parse deliverables_status JSONB
+  const deliverablesStatus = collaboration?.deliverables_status;
 
   const getDeliveryLabel = (type: string | null) => {
     switch (type) {
@@ -331,31 +339,66 @@ const ProjectDetailsPage: React.FC = () => {
               </p>
             </div>
 
-            {isCreator && collaboration.content_status !== 'approved' && (
-              <div>
-                <ProjectFileUpload
-                  campaignId={collaboration.campaign_id}
-                  campaignTitle={collaboration.campaign.title}
-                />
-              </div>
-            )}
+            {campaignDeliverables && campaignDeliverables.length > 0 ? (
+              <div className="space-y-3">
+                {campaignDeliverables.map((d) => {
+                  const status = (deliverablesStatus?.[d.id] as 'pending' | 'in_progress' | 'submitted' | 'revision_requested' | 'approved') || 'pending';
+                  const matchingFile = files?.find(f => f.original_filename?.includes(d.id) || (f.metadata as Record<string, unknown>)?.deliverable_id === d.id);
+                  return (
+                    <DeliverableCard
+                      key={d.id}
+                      deliverable={d}
+                      status={status}
+                      uploadedFile={matchingFile ? { file_name: matchingFile.original_filename, file_size_bytes: matchingFile.file_size } : null}
+                      disabled={collaboration.campaign.escrow_status !== 'held'}
+                      onUpload={() => setUploadingDeliverableId(d.id)}
+                    />
+                  );
+                })}
 
-            {files && files.length > 0 ? (
-              <div className="space-y-2">
-                {files.map((file) => (
-                  <ProtectedFilePreview
-                    key={file.id}
-                    file={file}
-                    contentStatus={collaboration.content_status}
-                    isBusinessClient={isBusinessClient}
-                    collaborationId={collaboration.id}
+                {/* Upload count indicator */}
+                <p className="text-xs text-center text-gray-500">
+                  {campaignDeliverables.filter(d => deliverablesStatus?.[d.id] === 'submitted' || deliverablesStatus?.[d.id] === 'approved').length}/{campaignDeliverables.length} uploaded
+                </p>
+
+                {/* Per-deliverable upload dialog */}
+                {uploadingDeliverableId && (
+                  <ProjectFileUpload
+                    campaignId={collaboration.campaign_id}
+                    campaignTitle={collaboration.campaign.title}
+                    onUploadComplete={() => setUploadingDeliverableId(null)}
                   />
-                ))}
+                )}
               </div>
             ) : (
-              <p className="text-sm text-gray-500 text-center py-4">
-                No files uploaded yet
-              </p>
+              <>
+                {isCreator && collaboration.content_status !== 'approved' && (
+                  <div>
+                    <ProjectFileUpload
+                      campaignId={collaboration.campaign_id}
+                      campaignTitle={collaboration.campaign.title}
+                    />
+                  </div>
+                )}
+
+                {files && files.length > 0 ? (
+                  <div className="space-y-2">
+                    {files.map((file) => (
+                      <ProtectedFilePreview
+                        key={file.id}
+                        file={file}
+                        contentStatus={collaboration.content_status}
+                        isBusinessClient={isBusinessClient}
+                        collaborationId={collaboration.id}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500 text-center py-4">
+                    No files uploaded yet
+                  </p>
+                )}
+              </>
             )}
           </div>
 
