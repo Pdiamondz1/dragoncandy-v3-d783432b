@@ -1,7 +1,8 @@
 
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Clock, DollarSign, Building, MessageSquare, X, Check, ArrowRightLeft, Share2 } from 'lucide-react';
+import { Clock, DollarSign, Building, MessageSquare, X, Check, ArrowRightLeft, Share2, ArrowRight } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
@@ -21,6 +22,7 @@ import { CounterOfferThread } from '@/components/campaigns/CounterOfferThread';
 import { CampaignApplication } from '@/types/applications';
 import { useWithdrawApplication } from '@/hooks/useWithdrawApplication';
 import { useCounterOffers, useRespondToCounterOffer } from '@/hooks/useCounterOffers';
+import { useApplicationCollaboration } from '@/hooks/useApplicationCollaboration';
 import { useAuth } from '@/hooks/useAuth';
 import { JointApprovalStatus } from './JointApprovalStatus';
 import { DragonCandyOutstandProvider } from '@/integrations/outstand/Provider';
@@ -34,8 +36,10 @@ export const DetailedApplicationCard: React.FC<DetailedApplicationCardProps> = (
   const [showWithdrawDialog, setShowWithdrawDialog] = useState(false);
   const [showCounterModal, setShowCounterModal] = useState(false);
   const [showCrossPost, setShowCrossPost] = useState(false);
+  const navigate = useNavigate();
   const withdrawApplication = useWithdrawApplication();
   const { data: counterOffers = [] } = useCounterOffers(application.id);
+  const { data: collaboration } = useApplicationCollaboration(application.id, application.status === 'accepted');
   const respondToOffer = useRespondToCounterOffer();
   const { user } = useAuth();
   
@@ -223,6 +227,20 @@ export const DetailedApplicationCard: React.FC<DetailedApplicationCardProps> = (
                 The restaurant will pay escrow to finalize the project. You'll see the project in your dashboard once payment is confirmed.
               </p>
             </div>
+            {collaboration?.id ? (
+              <Button
+                onClick={() => navigate(`/projects/${collaboration.id}`)}
+                className="w-full rounded-full bg-dc-teal text-white font-bold py-3 hover:bg-teal-500"
+              >
+                <ArrowRight className="h-4 w-4 mr-2" />
+                Go to Project
+              </Button>
+            ) : (
+              <Button disabled className="w-full rounded-full font-bold py-3" variant="outline">
+                <Clock className="h-4 w-4 mr-2" />
+                Awaiting Project Setup
+              </Button>
+            )}
             <DragonCandyOutstandProvider>
               <Button
                 onClick={() => setShowCrossPost(true)}

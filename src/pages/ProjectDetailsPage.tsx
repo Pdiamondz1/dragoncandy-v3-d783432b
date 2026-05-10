@@ -181,6 +181,20 @@ const ProjectDetailsPage: React.FC = () => {
           {/* Creator Payout Banner (for creators only) */}
           {isCreator && <CreatorPayoutBanner creatorId={user!.id} />}
 
+          {/* Escrow Pending Gate */}
+          {isCreator && collaboration.campaign.escrow_status !== 'held' && (
+            <div className="rounded-2xl border-2 border-amber-300 bg-amber-50 p-4 space-y-2">
+              <div className="flex items-center gap-2">
+                <Clock className="h-5 w-5 text-amber-600" />
+                <span className="font-bold text-amber-800 text-sm">Waiting for Escrow Payment</span>
+              </div>
+              <p className="text-xs text-amber-700">
+                The restaurant needs to pay escrow to activate this project.
+                You can review the brief and requirements below while you wait.
+              </p>
+            </div>
+          )}
+
           {/* DragonDash Timer */}
           {timerData && timerData.status !== 'not_started' && collaboration.content_status !== 'approved' && (
             <DragonDashTimer
@@ -268,6 +282,7 @@ const ProjectDetailsPage: React.FC = () => {
                   <StartContentButton
                     deliveryType={collaboration.campaign.delivery_type || 'standard'}
                     onStart={startContentCreation}
+                    disabled={collaboration.campaign.escrow_status !== 'held'}
                   />
                 </div>
               )}

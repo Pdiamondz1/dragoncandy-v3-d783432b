@@ -32,6 +32,7 @@ export interface CollaborationDetails {
     delivery_fee: number | null;
     pricing_type: string | null;
     user_id: string;
+    escrow_status: string | null;
   };
   creator_profile: {
     user_id: string;
@@ -84,7 +85,8 @@ export function useCollaboration(collaborationId: string) {
             delivery_type,
             delivery_fee,
             pricing_type,
-            user_id
+            user_id,
+            escrow_status
           )
         `)
         .eq('id', collaborationId)
