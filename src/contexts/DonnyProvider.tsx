@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, useMemo, type ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 import { useDonny } from '@/hooks/useDonny';
 import { useDonnyNudges } from '@/hooks/useDonnyNudges';
 import { useDonnyQuickChips } from '@/hooks/useDonnyQuickChips';
@@ -19,7 +20,7 @@ interface DonnyContextValue {
   // Nudges
   nudges: DonnyNudge[];
   unreadCount: number;
-  executeAction: (nudgeId: string, action: NudgeAction) => void;
+  executeAction: (nudgeId: string, action: NudgeAction) => void | Promise<void>;
   dismissNudge: (nudgeId: string) => void;
 
   // Chat
@@ -117,18 +118,75 @@ export function DonnyProvider({ children, userRole }: DonnyProviderProps) {
   const collapse = useCallback(() => setStage('tray'), []);
   const close = useCallback(() => setStage('closed'), []);
 
-  // Execute a nudge action
   const executeAction = useCallback(
-    (nudgeId: string, action: NudgeAction) => {
-      // Mark the nudge as acted on
+    async (nudgeId: string, action: NudgeAction) => {
       actOnNudge(nudgeId);
 
-      // Handle the action — for now, send the action as a message to Donny
-      // so the chat edge function can execute it via tool calls
+      if (action.action === 'navigate' && action.payload?.route) {
+        window.location.href = action.payload.route as string;
+        return;
+      }
+
+      if (action.action === 'post_now' && action.payload?.scheduled_post_id) {
+        try {
+          const postId = action.payload.scheduled_post_id as string;
+
+          const { data: draft, error: draftErr } = await supabase
+            .from('donny_scheduled_posts')
+            .select('caption, media_urls, platform, content_type, campaign_id')
+            .eq('id', postId)
+            .single();
+
+          if (draftErr || !draft) throw new Error('Could not load draft post');
+
+          const { data: publishData, error: publishErr } = await supabase.functions.invoke(
+            'outstand-proxy',
+            {
+              body: {
+                path: '/v1/posts',
+                method: 'POST',
+                payload: {
+                  caption: draft.caption,
+                  media_urls: draft.media_urls,
+                  platform: draft.platform,
+                  content_type: draft.content_type,
+                },
+              },
+            },
+          );
+
+          if (publishErr) throw publishErr;
+
+          const outstandPostId = publishData?.id ?? publishData?.post_id ?? 'unknown';
+
+          await supabase
+            .from('donny_scheduled_posts')
+            .update({ status: 'published', published_at: new Date().toISOString() })
+            .eq('id', postId);
+
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            await supabase.from('social_post_log').insert({
+              user_id: user.id,
+              campaign_id: draft.campaign_id,
+              outstand_post_id: String(outstandPostId),
+              platform: draft.platform,
+              post_type: 'campaign',
+            });
+          }
+
+          toast.success(`Posted to ${draft.platform}!`);
+        } catch (err) {
+          console.error('[DonnyProvider] post_now failed:', err);
+          toast.error('Failed to publish post. Please try again.');
+        }
+        return;
+      }
+
       const actionMessage = `Execute action: ${action.action} with ${JSON.stringify(action.payload)}`;
       donny.sendMessage(actionMessage);
     },
-    [actOnNudge, donny]
+    [actOnNudge, donny],
   );
 
   const dismissNudge = useCallback(
