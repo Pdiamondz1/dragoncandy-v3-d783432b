@@ -80,7 +80,7 @@ export default function CampaignProjectPage() {
 
   const getCtaConfig = () => {
     if (collaboration.status === 'completed') {
-      return { label: 'Campaign Complete', disabled: true, onClick: () => {} };
+      return { label: 'Campaign Complete ✓', disabled: true, onClick: () => {} };
     }
     switch (currentStep) {
       case 'hired':
@@ -88,19 +88,19 @@ export default function CampaignProjectPage() {
         return { label: 'Waiting for Creator to Submit', disabled: true, onClick: () => {} };
       case 'review':
         return {
-          label: 'Review & Approve Content',
+          label: 'Review & Approve Content →',
           disabled: false,
           onClick: () => navigate(`/dashboard/business/projects?highlight=${collaboration.id}`),
         };
       case 'payment':
         return {
-          label: 'Mark Complete & Release Payment',
+          label: 'Mark Complete & Release Payment →',
           disabled: requestingId === collaboration.id,
           onClick: () => requestCompletion({ collaborationId: collaboration.id, userRole: 'business_client' }),
         };
       case 'review_left':
         return {
-          label: 'Leave a Review',
+          label: 'Leave a Review →',
           disabled: false,
           onClick: () => setReviewModalOpen(true),
         };
