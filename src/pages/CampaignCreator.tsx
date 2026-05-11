@@ -49,7 +49,7 @@ export default function CampaignCreator() {
     if (isMobile) {
       return (
         <div className="min-h-screen bg-white pb-20">
-          <div className="absolute top-6 left-6 z-10">
+          <div className="px-4 pt-4">
             <button
               onClick={() => navigate(-1)}
               className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 transition-colors"
