@@ -11,20 +11,26 @@ export interface BrandCampaignItem {
   type: 'own' | 'sponsored';
 }
 
-export function useBrandActiveCampaigns() {
+export function useBrandActiveCampaigns(orgUnitId?: string | null) {
   const { user } = useAuth();
 
   return useQuery({
-    queryKey: ['brand_active_campaigns', user?.id],
+    queryKey: ['brand_active_campaigns', user?.id, orgUnitId ?? 'all'],
     queryFn: async (): Promise<BrandCampaignItem[]> => {
       if (!user) throw new Error('User not authenticated');
 
       // 1. Get brand's own campaigns
-      const { data: ownCampaigns, error: ownError } = await supabase
+      let ownQuery = supabase
         .from('campaigns')
         .select('id, title, status, deadline')
         .eq('user_id', user.id)
-        .in('status', ['published', 'active'])
+        .in('status', ['published', 'active']);
+
+      if (orgUnitId) {
+        ownQuery = ownQuery.eq('org_unit_id', orgUnitId);
+      }
+
+      const { data: ownCampaigns, error: ownError } = await ownQuery
         .order('created_at', { ascending: false })
         .limit(5);
 
