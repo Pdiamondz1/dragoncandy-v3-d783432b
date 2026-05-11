@@ -69,7 +69,7 @@ export default function MyCampaignDetailPage() {
 
   if (campaignLoading) {
     return (
-      <div className="min-h-screen bg-gray-300 p-4 space-y-4">
+      <div className="min-h-screen bg-white p-4 space-y-4">
         <Skeleton className="h-32 rounded-2xl" />
         <Skeleton className="h-64 rounded-2xl" />
       </div>
@@ -78,7 +78,7 @@ export default function MyCampaignDetailPage() {
 
   if (!campaign) {
     return (
-      <div className="min-h-screen bg-gray-300 flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <p className="text-gray-600">Campaign not found</p>
       </div>
     );
@@ -89,7 +89,7 @@ export default function MyCampaignDetailPage() {
   const stats = buildStats(phase, campaign, activeCollab, completedCollab);
 
   return (
-    <div className="min-h-screen bg-gray-300">
+    <div className="min-h-screen bg-white">
       <CampaignDetailHeader
         campaign={campaign}
         phase={phase}
