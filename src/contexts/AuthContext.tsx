@@ -30,7 +30,7 @@ interface AuthContextType {
   migrateCampaignData: () => Promise<void>;
   activeOrg: Organization | null;
   activeOrgUnit: OrgUnit | null;
-  switchOrgUnit: (unitId: string) => Promise<void>;
+  switchOrgUnit: (unitId: string | null) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -208,7 +208,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const switchOrgUnit = async (unitId: string) => {
+  const switchOrgUnit = async (unitId: string | null) => {
     if (!user) return;
     const { error } = await supabase
       .from('profiles')
@@ -216,12 +216,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       .eq('id', user.id);
     if (error) throw error;
 
-    const { data: unit } = await supabase
-      .from('org_units')
-      .select('id, org_id, unit_type, name, address, lat, lng, website_url, logo_url, is_primary, deleted_at, created_at, updated_at')
-      .eq('id', unitId)
-      .maybeSingle();
-    setActiveOrgUnit(unit as OrgUnit | null);
+    if (unitId) {
+      const { data: unit } = await supabase
+        .from('org_units')
+        .select('id, org_id, unit_type, name, address, lat, lng, website_url, logo_url, is_primary, deleted_at, created_at, updated_at')
+        .eq('id', unitId)
+        .maybeSingle();
+      setActiveOrgUnit(unit as OrgUnit | null);
+    } else {
+      setActiveOrgUnit(null);
+    }
   };
 
   useEffect(() => {
