@@ -28,7 +28,7 @@ function buildItems(rpc: RpcResult): PrerequisiteItem[] {
   const isCreator = rpc.role === 'content_creator';
   const dashBase = isCreator ? '/dashboard/creator' : '/dashboard/business';
 
-  return [
+  const items: PrerequisiteItem[] = [
     {
       key: 'profile',
       met: rpc.profile_complete,
@@ -40,7 +40,10 @@ function buildItems(rpc: RpcResult): PrerequisiteItem[] {
       actionLabel: 'Complete Profile',
       actionPath: `${dashBase}/settings`,
     },
-    {
+  ];
+
+  if (!isCreator) {
+    items.push({
       key: 'social',
       met: rpc.social_connected,
       label: rpc.social_connected
@@ -48,17 +51,20 @@ function buildItems(rpc: RpcResult): PrerequisiteItem[] {
         : 'Connect at least one social account',
       actionLabel: 'Connect Social',
       actionPath: `${dashBase}/settings?section=social`,
-    },
-    {
-      key: 'stripe',
-      met: rpc.stripe_complete,
-      label: rpc.stripe_complete
-        ? 'Stripe account active'
-        : 'Set up your payment account',
-      actionLabel: 'Setup Stripe',
-      actionPath: `${dashBase}/settings?section=payments`,
-    },
-  ];
+    });
+  }
+
+  items.push({
+    key: 'stripe',
+    met: rpc.stripe_complete,
+    label: rpc.stripe_complete
+      ? 'Stripe account active'
+      : 'Set up your payment account',
+    actionLabel: 'Setup Stripe',
+    actionPath: `${dashBase}/settings?section=payments`,
+  });
+
+  return items;
 }
 
 export function usePrerequisiteStatus(): PrerequisiteStatus {
