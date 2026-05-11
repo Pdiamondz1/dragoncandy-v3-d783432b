@@ -47,7 +47,7 @@ function buildItems(rpc: RpcResult): PrerequisiteItem[] {
         ? 'Social media connected'
         : 'Connect at least one social account',
       actionLabel: 'Connect Social',
-      actionPath: `${dashBase}/outstand`,
+      actionPath: `${dashBase}/social?tab=accounts`,
     },
     {
       key: 'stripe',
@@ -56,7 +56,7 @@ function buildItems(rpc: RpcResult): PrerequisiteItem[] {
         ? 'Stripe account active'
         : 'Set up your payment account',
       actionLabel: 'Setup Stripe',
-      actionPath: `${dashBase}/settings`,
+      actionPath: `${dashBase}/settings?section=payments`,
     },
   ];
 }

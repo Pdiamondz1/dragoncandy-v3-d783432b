@@ -1,6 +1,6 @@
 
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Trash2, LogOut, ShieldAlert } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
@@ -25,7 +25,10 @@ const BusinessSettings = () => {
   const { user, activeOrg } = useAuth();
   const navigate = useNavigate();
   const { submitProfile } = useBusinessProfileSubmit();
-  const [activeSection, setActiveSection] = useState<string | undefined>(undefined);
+  const [searchParams] = useSearchParams();
+  const [activeSection, setActiveSection] = useState<string | undefined>(
+    searchParams.get('section') ?? undefined
+  );
   const { data: myRole } = useMyOrgRole(activeOrg?.id);
   const [deleteOrgOpen, setDeleteOrgOpen] = useState(false);
   const [leaveOrgOpen, setLeaveOrgOpen] = useState(false);

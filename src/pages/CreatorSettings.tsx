@@ -20,7 +20,9 @@ const CreatorSettings = () => {
   const { submitProfile } = useCreatorProfileSubmit();
   const { completeMission } = useFirstRunMissions();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [activeSection, setActiveSection] = useState<string | undefined>(undefined);
+  const [activeSection, setActiveSection] = useState<string | undefined>(
+    searchParams.get('section') ?? undefined
+  );
   const [deleteUserOpen, setDeleteUserOpen] = useState(false);
 
   const {
