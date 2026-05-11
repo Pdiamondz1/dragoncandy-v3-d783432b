@@ -14,6 +14,7 @@ export interface CampaignProject {
     business_completion_status: string | null;
     creator_completion_status: string | null;
     completed_at: string | null;
+    creator_id: string;
   };
   campaign: {
     id: string;
@@ -106,6 +107,7 @@ export function useCampaignProject(campaignId: string) {
           business_completion_status: collab.business_completion_status ?? null,
           creator_completion_status: collab.creator_completion_status ?? null,
           completed_at: collab.completed_at ?? null,
+          creator_id: collab.creator_id,
         },
         campaign: {
           id: campaign.id,

@@ -5,14 +5,10 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { DashboardLayout } from '@/components/DashboardLayout';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft, Edit, Users, Target, AlertCircle, ImageIcon } from 'lucide-react';
+import { ArrowLeft, AlertCircle } from 'lucide-react';
 import { useCampaign } from '@/hooks/useCampaigns';
-import { CampaignDetailsOverview } from '@/components/campaigns/CampaignDetailsOverview';
 import { ApplicationsListFixed } from '@/components/campaigns/ApplicationsListFixed';
 import { CreatorMatchingSection } from '@/components/campaigns/CreatorMatchingSection';
-import { CampaignContentGallery } from '@/components/campaigns/CampaignContentGallery';
-import { useCampaignContentSummary } from '@/hooks/useCampaignContentSummary';
 import { CreatorCampaignDetails } from '@/components/campaign-details/CreatorCampaignDetails';
 import { StickyApplyCTA } from '@/components/campaign-details/StickyApplyCTA';
 import { OneTapApplySheet } from '@/components/campaigns/OneTapApplySheet';
@@ -26,6 +22,19 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { PrerequisiteGate } from '@/components/PrerequisiteGate';
 import { ApplicationForm } from '@/components/campaigns/ApplicationForm';
 import type { DonnyPitchResult } from '@/hooks/useDonnyApplyPitch';
+import { deriveCampaignPhase, deriveCurrentStep } from '@/lib/campaignPhase';
+import { CampaignDetailHeader } from '@/components/campaigns/detail/CampaignDetailHeader';
+import { EscrowPaymentAlert } from '@/components/campaigns/detail/EscrowPaymentAlert';
+import { ProgressTimeline } from '@/components/campaigns/detail/ProgressTimeline';
+import { AssignedCreatorCard } from '@/components/campaigns/detail/AssignedCreatorCard';
+import { ContentReviewSection } from '@/components/campaigns/detail/ContentReviewSection';
+import { DeliverablesArchive } from '@/components/campaigns/detail/DeliverablesArchive';
+import { PaymentSummary } from '@/components/campaigns/detail/PaymentSummary';
+import { CollapsibleCampaignDetails } from '@/components/campaigns/detail/CollapsibleCampaignDetails';
+import { useCampaignProject } from '@/hooks/useCampaignProject';
+import { useProjectComplete } from '@/hooks/useProjectComplete';
+import { useDeleteCampaign, useDuplicateCampaign } from '@/hooks/useCampaignMutations';
+import { RatingModal } from '@/components/reviews/RatingModal';
 
 const CampaignDetailsPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -68,19 +77,41 @@ const CampaignDetailsPage: React.FC = () => {
   const canApply = isCreatorView && !isOwnCampaign && campaign?.status === 'published' && !hasApplied;
   const canReapply = isCreatorView && hasApplied && applicationStatus === 'rejected';
 
-  const { data: contentSummary } = useCampaignContentSummary(campaign?.id ?? '');
-  const hasPendingReviews = (contentSummary?.pendingReview ?? 0) > 0;
-
   // One-tap apply flow state
   const [showApplySheet, setShowApplySheet] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [showLegacyForm, setShowLegacyForm] = useState(false);
+
+  // Business view state
+  const [showRatingModal, setShowRatingModal] = useState(false);
 
   const businessName =
     enrichedDetail?.businessProfile?.business_name ??
     ((campaign?.ai_analysis as Record<string, unknown>)?.business_name as string | undefined);
 
   const backHref = isCreatorView ? '/dashboard/creator/campaigns' : '/dashboard/business/campaigns';
+
+  // Business view hooks
+  const { data: projectData, isLoading: projectLoading } = useCampaignProject(id ?? '');
+  const { requestCompletion } = useProjectComplete();
+  const deleteCampaign = useDeleteCampaign();
+  const duplicateCampaign = useDuplicateCampaign();
+
+  const handleDelete = () => {
+    if (!campaign) return;
+    deleteCampaign.mutate(campaign.id, {
+      onSuccess: () => navigate('/dashboard/business/campaigns'),
+    });
+  };
+
+  const handleRelaunch = () => {
+    if (!campaign) return;
+    duplicateCampaign.mutate(campaign.id, {
+      onSuccess: (newCampaign) => {
+        if (newCampaign?.id) navigate(`/dashboard/business/campaigns/${newCampaign.id}/edit`);
+      },
+    });
+  };
 
   const handleDonnySend = async (pitch: DonnyPitchResult) => {
     if (!campaign) return;
@@ -237,10 +268,28 @@ const CampaignDetailsPage: React.FC = () => {
     );
   }
 
-  // Business/brand owner view — existing tab layout (unchanged)
+  // Business/brand owner view — phase-dependent scroll layout
+  const collaborationData = projectData?.collaboration ?? null;
+  const creatorData = projectData?.creator ?? null;
+  const phase = deriveCampaignPhase(campaign.status, collaborationData);
+  const currentStep = collaborationData ? deriveCurrentStep(collaborationData) : null;
+
+  // Show project loading spinner only when in active/completed phase where we need collaboration data
+  if (projectLoading && (campaign.status === 'active' || campaign.status === 'completed')) {
+    return (
+      <DashboardLayout userRole="business_client">
+        <div className="max-w-2xl mx-auto p-4 space-y-4">
+          <Skeleton className="h-24 w-full rounded-2xl" />
+          <Skeleton className="h-16 w-full rounded-2xl" />
+          <Skeleton className="h-32 w-full rounded-2xl" />
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   return (
-    <DashboardLayout userRole={userRole}>
-      <div className="min-h-screen bg-white overflow-x-hidden">
+    <DashboardLayout userRole="business_client">
+      <div className="max-w-2xl mx-auto p-4 space-y-4 pb-24">
         <PageHeader>
           <div className="flex items-center">
             <button onClick={() => navigate(backHref)} className="text-dc-pink-accent mr-2" aria-label="Back">
@@ -249,64 +298,98 @@ const CampaignDetailsPage: React.FC = () => {
             <h1 className="flex-1 text-center font-sans text-base font-bold text-gray-900 uppercase tracking-wide truncate px-2">
               {campaign.title}
             </h1>
-            {isOwnCampaign && (
-              <button onClick={() => navigate(`/dashboard/business/campaigns/${campaign.id}/edit`)} className="text-dc-pink-accent" aria-label="Edit campaign">
-                <Edit className="h-5 w-5" aria-hidden="true" />
-              </button>
-            )}
-            {!isOwnCampaign && <span className="w-5" />}
+            <div className="w-5" />
           </div>
         </PageHeader>
 
-        <div className="bg-white px-4 pt-6 pb-28 overflow-hidden md:max-w-5xl md:mx-auto md:rounded-3xl md:mt-6 md:shadow-lg">
-          <div className="mb-4">
-            <h2 className="text-xl font-bold text-gray-900 break-words">{campaign.title}</h2>
-            <p className="text-gray-500 text-sm mt-0.5">Campaign Details & Management</p>
-          </div>
+        <CampaignDetailHeader
+          campaign={campaign}
+          phase={phase}
+          currentStep={currentStep}
+          onDelete={handleDelete}
+          onRelaunch={handleRelaunch}
+          onEdit={() => navigate(`/dashboard/business/campaigns/${id}/edit`)}
+        />
 
-          <Tabs defaultValue="overview" className="space-y-4">
-            <TabsList className="grid w-full grid-cols-4 rounded-full bg-gray-100">
-              <TabsTrigger value="overview" className="rounded-full flex items-center gap-1 text-xs">
-                <Target className="h-3.5 w-3.5" aria-hidden="true" /> Info
-              </TabsTrigger>
-              <TabsTrigger value="applications" className="rounded-full flex items-center gap-1 text-xs">
-                <Users className="h-3.5 w-3.5" aria-hidden="true" /> Apps
-              </TabsTrigger>
-              <TabsTrigger value="matching" className="rounded-full flex items-center gap-1 text-xs">
-                <Target className="h-3.5 w-3.5" aria-hidden="true" /> Match
-              </TabsTrigger>
-              <TabsTrigger value="content" className="rounded-full flex items-center gap-1 text-xs relative">
-                <ImageIcon className="h-3.5 w-3.5" aria-hidden="true" /> Content
-                {hasPendingReviews && (
-                  <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-orange-400" />
-                )}
-              </TabsTrigger>
-            </TabsList>
+        {phase === 'pre_hire' && campaign.escrow_status === 'pending' && (
+          <EscrowPaymentAlert
+            campaignId={campaign.id}
+            escrowStatus={campaign.escrow_status ?? 'pending'}
+            escrowPaymentIntentId={campaign.escrow_payment_intent_id ?? null}
+          />
+        )}
 
-            <TabsContent value="overview">
-              <CampaignDetailsOverview campaign={campaign} />
-            </TabsContent>
-            <TabsContent value="applications">
-              <ApplicationsListFixed campaignId={campaign.id} />
-            </TabsContent>
-            <TabsContent value="matching">
-              <CreatorMatchingSection campaignId={campaign.id} />
-            </TabsContent>
-            <TabsContent value="content">
-              <CampaignContentGallery campaignId={campaign.id} />
-            </TabsContent>
-          </Tabs>
+        {phase !== 'cancelled' && currentStep && (
+          <ProgressTimeline
+            currentStep={currentStep}
+            phase={phase}
+            onLeaveReview={() => setShowRatingModal(true)}
+            onMarkComplete={() => {
+              if (collaborationData) {
+                requestCompletion({
+                  collaborationId: collaborationData.id,
+                  userRole: 'business_client',
+                });
+              }
+            }}
+          />
+        )}
 
-          {isOwnCampaign && (
-            <button
-              onClick={() => navigate(`/dashboard/business/campaigns/${campaign.id}/edit`)}
-              className="w-full rounded-full bg-dc-teal-btn text-white font-bold py-3 mt-6 flex items-center justify-center gap-2"
-            >
-              <Edit className="h-4 w-4" aria-hidden="true" /> Edit Campaign
-            </button>
-          )}
-        </div>
+        {phase === 'pre_hire' && (
+          <>
+            <ApplicationsListFixed campaignId={campaign.id} />
+            <CreatorMatchingSection campaignId={campaign.id} />
+          </>
+        )}
+
+        {(phase === 'active_delivery' || phase === 'completed') && creatorData && (
+          <AssignedCreatorCard
+            creatorName={creatorData.creator_name ?? 'Creator'}
+            avatarUrl={creatorData.avatar_url ?? null}
+            projectCount={creatorData.completed_projects ?? 0}
+            campaignId={campaign.id}
+            creatorId={collaborationData?.creator_id ?? ''}
+          />
+        )}
+
+        {phase === 'active_delivery' && collaborationData && (
+          <ContentReviewSection
+            collaborationId={collaborationData.id}
+            campaignId={campaign.id}
+            creatorId={collaborationData.creator_id ?? creatorData?.user_id ?? ''}
+            creatorName={creatorData?.creator_name ?? 'Creator'}
+            contentStatus={collaborationData.content_status ?? null}
+            revisionCount={collaborationData.revision_count ?? null}
+          />
+        )}
+
+        {phase === 'completed' && collaborationData && (
+          <>
+            <DeliverablesArchive
+              campaignId={campaign.id}
+              collaborationId={collaborationData.id}
+            />
+            <PaymentSummary
+              completedAt={collaborationData.completed_at ?? null}
+              budgetMin={campaign.budget_min}
+              budgetMax={campaign.budget_max}
+            />
+          </>
+        )}
+
+        <CollapsibleCampaignDetails campaign={campaign} phase={phase} />
       </div>
+
+      {showRatingModal && collaborationData && creatorData && (
+        <RatingModal
+          isOpen={showRatingModal}
+          onClose={() => setShowRatingModal(false)}
+          collaborationId={collaborationData.id}
+          revieweeId={creatorData.user_id}
+          revieweeName={creatorData.creator_name ?? 'Creator'}
+          reviewType="business_to_creator"
+        />
+      )}
     </DashboardLayout>
   );
 };
