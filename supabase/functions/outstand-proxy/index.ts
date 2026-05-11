@@ -25,7 +25,7 @@ const OUTSTAND_BASE_URL = Deno.env.get("OUTSTAND_BASE_URL") ?? "https://api.outs
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, accept",
+    "authorization, x-client-info, apikey, content-type, accept, x-org-unit-id, x-delegated-account-id, x-delegated-user-id",
   "Access-Control-Allow-Methods": "GET, POST, PATCH, PUT, DELETE, OPTIONS",
 };
 
@@ -44,6 +44,7 @@ const ALLOWED_PLATFORMS: ReadonlySet<string> = new Set([
 interface TenantContext {
   userId: string;
   businessId: string | null;
+  orgUnitId: string | null;
 }
 
 function jsonResponse(status: number, body: unknown): Response {
@@ -95,6 +96,7 @@ function extractOutstandPath(rawUrl: string): { path: string; search: string } {
 async function resolveTenant(
   authHeader: string,
   admin: SupabaseClient,
+  orgUnitId: string | null,
 ): Promise<TenantContext | { error: number; message: string }> {
   const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     global: { headers: { Authorization: authHeader } },
@@ -113,18 +115,26 @@ async function resolveTenant(
   return {
     userId: userData.user.id,
     businessId: (biz?.id as string | undefined) ?? null,
+    orgUnitId,
   };
 }
 
 async function listOwnedAccountIds(
   admin: SupabaseClient,
   userId: string,
+  orgUnitId?: string | null,
 ): Promise<Set<string>> {
-  const { data } = await admin
+  let query = admin
     .from("business_outstand_accounts")
     .select("outstand_social_account_id")
     .eq("user_id", userId)
     .neq("status", "revoked");
+
+  if (orgUnitId) {
+    query = query.eq("org_unit_id", orgUnitId);
+  }
+
+  const { data } = await query;
   const rows = (data ?? []) as Array<{ outstand_social_account_id: string }>;
   return new Set(rows.map((r) => r.outstand_social_account_id));
 }
@@ -356,6 +366,7 @@ async function recordConnectionFromAuthResponse(
           status: "active",
           connected_at: new Date().toISOString(),
           last_seen_at: new Date().toISOString(),
+          org_unit_id: ctx.orgUnitId,
         },
         { onConflict: "user_id,outstand_social_account_id" },
       );
@@ -382,6 +393,7 @@ async function handleRecordConnection(
   const accountId = body?.account_id ? String(body.account_id) : "";
   const network = String(body?.network ?? "").toLowerCase();
   const username = body?.username ? String(body.username) : null;
+  const bodyOrgUnitId = body?.org_unit_id ? String(body.org_unit_id) : null;
   if (!accountId) {
     return jsonResponse(400, { error: "missing_account_id" });
   }
@@ -411,8 +423,9 @@ async function handleRecordConnection(
       status: "active",
       connected_at: new Date().toISOString(),
       last_seen_at: new Date().toISOString(),
+      org_unit_id: bodyOrgUnitId || ctx.orgUnitId,
     },
-    { onConflict: "business_id,outstand_social_account_id" },
+    { onConflict: "user_id,outstand_social_account_id" },
   );
   if (upsertError) {
     console.error("outstand-proxy: upsert failed", upsertError);
@@ -451,16 +464,20 @@ serve(async (req: Request) => {
     return jsonResponse(401, { error: "missing_authorization" });
   }
 
+  const reqUrl = new URL(req.url);
+  const orgUnitId = reqUrl.searchParams.get('org_unit_id') || req.headers.get('x-org-unit-id') || null;
+  reqUrl.searchParams.delete('org_unit_id');
+
   const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-  const ctxOrError = await resolveTenant(authHeader, admin);
+  const ctxOrError = await resolveTenant(authHeader, admin, orgUnitId);
   if ("error" in ctxOrError) {
     return jsonResponse(ctxOrError.error, { error: ctxOrError.message });
   }
   const ctx: TenantContext = ctxOrError;
 
-  const ownedIds = await listOwnedAccountIds(admin, ctx.userId);
+  const ownedIds = await listOwnedAccountIds(admin, ctx.userId, ctx.orgUnitId);
 
-  const { path, search } = extractOutstandPath(req.url);
+  const { path, search } = extractOutstandPath(reqUrl.toString());
   const bodyText =
     req.method === "GET" || req.method === "HEAD" ? "" : await req.text();
 
