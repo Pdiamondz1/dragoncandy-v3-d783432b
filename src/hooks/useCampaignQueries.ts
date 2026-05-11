@@ -34,6 +34,7 @@ export function hydrateCampaignFromAnalysis<T extends Campaign>(campaign: T): T 
 export interface Campaign {
   id: string;
   user_id: string;
+  org_unit_id?: string | null;
   title: string;
   description?: string;
   goals?: string;
@@ -74,21 +75,25 @@ export interface Campaign {
   updated_at: string;
 }
 
-export const useCampaignsList = (filterByOwnership: boolean = true) => {
+export const useCampaignsList = (filterByOwnership: boolean = true, orgUnitId?: string | null) => {
   const { user } = useAuth();
 
   return useQuery({
-    queryKey: ['campaigns', user?.id, filterByOwnership],
+    queryKey: ['campaigns', user?.id, filterByOwnership, orgUnitId ?? 'all'],
     queryFn: async () => {
       let query = supabase
         .from('campaigns')
-        .select('id, user_id, title, description, goals, deliverables, platforms, budget_min, budget_max, deadline, status, style, tone, open_for_sponsorship, delivery_type, delivery_fee, pricing_type, fixed_price, escrow_status, escrow_payment_intent_id, ai_analysis, ai_preview_status, created_at, updated_at');
+        .select('id, user_id, org_unit_id, title, description, goals, deliverables, platforms, budget_min, budget_max, deadline, status, style, tone, open_for_sponsorship, delivery_type, delivery_fee, pricing_type, fixed_price, escrow_status, escrow_payment_intent_id, ai_analysis, ai_preview_status, created_at, updated_at');
 
       // If filtering by ownership, only return user's own campaigns
       if (filterByOwnership && user?.id) {
         query = query.eq('user_id', user.id);
       }
-      
+
+      if (orgUnitId) {
+        query = query.eq('org_unit_id', orgUnitId);
+      }
+
       const { data, error } = await query.order('created_at', { ascending: false });
 
       if (error) {
@@ -108,7 +113,7 @@ export const useCampaignById = (id: string) => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('campaigns')
-        .select('id, user_id, title, description, goals, deliverables, platforms, budget_min, budget_max, deadline, status, style, tone, open_for_sponsorship, delivery_type, delivery_fee, pricing_type, fixed_price, escrow_status, escrow_payment_intent_id, ai_analysis, ai_preview_status, created_at, updated_at')
+        .select('id, user_id, org_unit_id, title, description, goals, deliverables, platforms, budget_min, budget_max, deadline, status, style, tone, open_for_sponsorship, delivery_type, delivery_fee, pricing_type, fixed_price, escrow_status, escrow_payment_intent_id, ai_analysis, ai_preview_status, created_at, updated_at')
         .eq('id', id)
         .single();
 
