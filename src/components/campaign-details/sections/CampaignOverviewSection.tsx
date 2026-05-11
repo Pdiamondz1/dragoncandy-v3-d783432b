@@ -7,9 +7,7 @@ interface CampaignOverviewSectionProps {
 
 export function CampaignOverviewSection({ campaign }: CampaignOverviewSectionProps) {
   return (
-    <div className="space-y-3">
-      <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider">Campaign Overview</h3>
-      <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
+    <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
         <div>
           <span className="text-[11px] text-gray-500 uppercase tracking-wider">Title</span>
           <p className="text-base font-semibold text-gray-900">{campaign.title}</p>
@@ -41,7 +39,6 @@ export function CampaignOverviewSection({ campaign }: CampaignOverviewSectionPro
             </div>
           </div>
         )}
-      </div>
     </div>
   );
 }

@@ -27,9 +27,7 @@ export function LogisticsSection({ campaign }: LogisticsSectionProps) {
     : Package;
 
   return (
-    <div className="space-y-3">
-      <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider">Logistics & Targeting</h3>
-      <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-4">
+    <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-4">
         <div className="flex items-center gap-3">
           <Calendar className="w-4 h-4 text-blue-600 flex-shrink-0" />
           <div>
@@ -99,7 +97,6 @@ export function LogisticsSection({ campaign }: LogisticsSectionProps) {
             </div>
           </div>
         )}
-      </div>
     </div>
   );
 }

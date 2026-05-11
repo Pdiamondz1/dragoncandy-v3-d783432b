@@ -31,9 +31,7 @@ export function ContentRequirementsSection({ campaign, campaignId }: ContentRequ
   const hashtags = campaign.hashtag_requirements?.split(' ').filter(Boolean) ?? [];
 
   return (
-    <div className="space-y-3">
-      <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider">Content Requirements</h3>
-      <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-4">
+    <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-4">
         {campaign.platforms && campaign.platforms.length > 0 && (
           <div>
             <span className="text-[11px] text-gray-500 uppercase tracking-wider">Platforms</span>
@@ -142,7 +140,6 @@ export function ContentRequirementsSection({ campaign, campaignId }: ContentRequ
             </div>
           </div>
         )}
-      </div>
     </div>
   );
 }
