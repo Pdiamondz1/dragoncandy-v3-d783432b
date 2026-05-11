@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import {
   Collapsible,
@@ -14,15 +14,33 @@ interface CollapsibleCampaignDetailsProps {
   phase: CampaignPhase;
 }
 
+function useIsDesktop() {
+  const [isDesktop, setIsDesktop] = useState(
+    typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches
+  );
+  useEffect(() => {
+    const mql = window.matchMedia('(min-width: 1024px)');
+    const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
+    mql.addEventListener('change', handler);
+    return () => mql.removeEventListener('change', handler);
+  }, []);
+  return isDesktop;
+}
+
 export const CollapsibleCampaignDetails: React.FC<CollapsibleCampaignDetailsProps> = ({
   campaign,
   phase,
 }) => {
-  const defaultOpen = phase === 'pre_hire' || phase === 'cancelled';
+  const isDesktop = useIsDesktop();
+  const defaultOpen = isDesktop || phase === 'pre_hire' || phase === 'cancelled';
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
+  useEffect(() => {
+    if (isDesktop) setIsOpen(true);
+  }, [isDesktop]);
+
   return (
-    <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
+    <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden lg:sticky lg:top-4">
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
         <CollapsibleTrigger asChild>
           <button className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors">

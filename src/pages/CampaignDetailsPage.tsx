@@ -278,10 +278,17 @@ const CampaignDetailsPage: React.FC = () => {
   if (projectLoading && (campaign.status === 'active' || campaign.status === 'completed')) {
     return (
       <DashboardLayout userRole="business_client">
-        <div className="max-w-2xl mx-auto p-4 space-y-4">
+        <div className="w-full max-w-full md:max-w-4xl md:mx-auto p-4 space-y-4">
           <Skeleton className="h-24 w-full rounded-2xl" />
-          <Skeleton className="h-16 w-full rounded-2xl" />
-          <Skeleton className="h-32 w-full rounded-2xl" />
+          <div className="lg:grid lg:grid-cols-5 lg:gap-6 space-y-4 lg:space-y-0">
+            <div className="lg:col-span-3 space-y-4">
+              <Skeleton className="h-16 w-full rounded-2xl" />
+              <Skeleton className="h-32 w-full rounded-2xl" />
+            </div>
+            <div className="lg:col-span-2">
+              <Skeleton className="h-48 w-full rounded-2xl" />
+            </div>
+          </div>
         </div>
       </DashboardLayout>
     );
@@ -289,7 +296,7 @@ const CampaignDetailsPage: React.FC = () => {
 
   return (
     <DashboardLayout userRole="business_client">
-      <div className="max-w-2xl mx-auto p-4 space-y-4 pb-24">
+      <div className="w-full max-w-full md:max-w-4xl md:mx-auto p-4 space-y-4 pb-24 md:pb-6">
         <PageHeader>
           <div className="flex items-center">
             <button onClick={() => navigate(backHref)} className="text-dc-pink-accent mr-2" aria-label="Back">
@@ -318,64 +325,73 @@ const CampaignDetailsPage: React.FC = () => {
           />
         )}
 
-        {phase !== 'cancelled' && currentStep && (
-          <ProgressTimeline
-            currentStep={currentStep}
-            phase={phase}
-            onLeaveReview={() => setShowRatingModal(true)}
-            onMarkComplete={() => {
-              if (collaborationData) {
-                requestCompletion({
-                  collaborationId: collaborationData.id,
-                  userRole: 'business_client',
-                });
-              }
-            }}
-          />
-        )}
+        {/* Desktop: 2-column layout for workflow + details; Mobile: stacked */}
+        <div className="lg:grid lg:grid-cols-5 lg:gap-6 space-y-4 lg:space-y-0">
+          {/* Primary column: workflow sections */}
+          <div className="lg:col-span-3 space-y-4">
+            {phase !== 'cancelled' && currentStep && (
+              <ProgressTimeline
+                currentStep={currentStep}
+                phase={phase}
+                onLeaveReview={() => setShowRatingModal(true)}
+                onMarkComplete={() => {
+                  if (collaborationData) {
+                    requestCompletion({
+                      collaborationId: collaborationData.id,
+                      userRole: 'business_client',
+                    });
+                  }
+                }}
+              />
+            )}
 
-        {phase === 'pre_hire' && (
-          <>
-            <ApplicationsListFixed campaignId={campaign.id} />
-            <CreatorMatchingSection campaignId={campaign.id} />
-          </>
-        )}
+            {phase === 'pre_hire' && (
+              <>
+                <ApplicationsListFixed campaignId={campaign.id} />
+                <CreatorMatchingSection campaignId={campaign.id} />
+              </>
+            )}
 
-        {(phase === 'active_delivery' || phase === 'completed') && creatorData && (
-          <AssignedCreatorCard
-            creatorName={creatorData.creator_name ?? 'Creator'}
-            avatarUrl={creatorData.avatar_url ?? null}
-            projectCount={creatorData.completed_projects ?? 0}
-            campaignId={campaign.id}
-            creatorId={collaborationData?.creator_id ?? ''}
-          />
-        )}
+            {(phase === 'active_delivery' || phase === 'completed') && creatorData && (
+              <AssignedCreatorCard
+                creatorName={creatorData.creator_name ?? 'Creator'}
+                avatarUrl={creatorData.avatar_url ?? null}
+                projectCount={creatorData.completed_projects ?? 0}
+                campaignId={campaign.id}
+                creatorId={collaborationData?.creator_id ?? ''}
+              />
+            )}
 
-        {phase === 'active_delivery' && collaborationData && (
-          <ContentReviewSection
-            collaborationId={collaborationData.id}
-            campaignId={campaign.id}
-            creatorId={collaborationData.creator_id ?? creatorData?.user_id ?? ''}
-            creatorName={creatorData?.creator_name ?? 'Creator'}
-            contentStatus={collaborationData.content_status ?? null}
-            revisionCount={collaborationData.revision_count ?? null}
-          />
-        )}
+            {phase === 'active_delivery' && collaborationData && (
+              <ContentReviewSection
+                collaborationId={collaborationData.id}
+                campaignId={campaign.id}
+                creatorId={collaborationData.creator_id ?? creatorData?.user_id ?? ''}
+                creatorName={creatorData?.creator_name ?? 'Creator'}
+                contentStatus={collaborationData.content_status ?? null}
+                revisionCount={collaborationData.revision_count ?? null}
+              />
+            )}
 
-        {phase === 'completed' && collaborationData && (
-          <>
-            <DeliverablesArchive
-              campaignId={campaign.id}
-            />
-            <PaymentSummary
-              completedAt={collaborationData.completed_at ?? null}
-              budgetMin={campaign.budget_min}
-              budgetMax={campaign.budget_max}
-            />
-          </>
-        )}
+            {phase === 'completed' && collaborationData && (
+              <>
+                <DeliverablesArchive
+                  campaignId={campaign.id}
+                />
+                <PaymentSummary
+                  completedAt={collaborationData.completed_at ?? null}
+                  budgetMin={campaign.budget_min}
+                  budgetMax={campaign.budget_max}
+                />
+              </>
+            )}
+          </div>
 
-        <CollapsibleCampaignDetails campaign={campaign} phase={phase} />
+          {/* Secondary column: campaign details */}
+          <div className="lg:col-span-2">
+            <CollapsibleCampaignDetails campaign={campaign} phase={phase} />
+          </div>
+        </div>
       </div>
 
       {showRatingModal && collaborationData && creatorData && (
