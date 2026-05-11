@@ -123,6 +123,14 @@ export default {
 					from: { opacity: '0', transform: 'translateY(8px)' },
 					to: { opacity: '1', transform: 'translateY(0)' },
 				},
+				'collapsible-down': {
+					from: { height: '0' },
+					to: { height: 'var(--radix-collapsible-content-height)' },
+				},
+				'collapsible-up': {
+					from: { height: 'var(--radix-collapsible-content-height)' },
+					to: { height: '0' },
+				},
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
@@ -133,6 +141,8 @@ export default {
 				shake: 'shake 0.3s ease-in-out 2',
 				marquee: 'marquee 30s linear infinite',
 				'slide-up': 'slide-up 0.3s ease-out',
+				'collapsible-down': 'collapsible-down 0.2s ease-out',
+				'collapsible-up': 'collapsible-up 0.2s ease-out',
 			},
 			boxShadow: {
 				'glow-teal': '0 0 20px rgba(77, 217, 192, 0.15), 0 0 60px rgba(77, 217, 192, 0.05)',
