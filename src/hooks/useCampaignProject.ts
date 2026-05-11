@@ -1,6 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { deriveCurrentStep as deriveStep, type ProjectStep } from '@/lib/campaignPhase';
+
+export type { ProjectStep };
 
 export interface CampaignProject {
   collaboration: {
@@ -35,18 +38,8 @@ export interface CampaignProject {
   };
 }
 
-type ProjectStep = 'hired' | 'submitted' | 'review' | 'payment' | 'review_left';
-
 export function deriveCurrentStep(project: CampaignProject): ProjectStep {
-  const { collaboration } = project;
-  if (collaboration.status === 'completed') return 'review_left';
-  if (
-    collaboration.business_completion_status === 'requested' ||
-    collaboration.creator_completion_status === 'requested'
-  ) return 'payment';
-  if (collaboration.content_status === 'submitted') return 'review';
-  if (collaboration.content_status === 'approved') return 'payment';
-  return collaboration.content_status ? 'review' : 'hired';
+  return deriveStep(project.collaboration);
 }
 
 export function useCampaignProject(campaignId: string) {
