@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
 import { ArrowLeft } from 'lucide-react';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { CampaignsList } from '@/components/campaigns/CampaignsList';
@@ -15,7 +16,8 @@ const CampaignsPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [statusFilter, setStatusFilter] = useState<'all' | 'draft' | 'published' | 'active' | 'completed' | 'cancelled'>('all');
-  const { campaigns } = useCampaigns(true);
+  const { activeOrgUnit } = useAuth();
+  const { campaigns } = useCampaigns(true, activeOrgUnit?.id);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isVerifying, setIsVerifying] = useState(false);

@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { useCampaigns, type Campaign } from '@/hooks/useCampaigns';
+import { useAuth } from '@/hooks/useAuth';
 import { CampaignCard } from '@/components/campaigns/CampaignCard';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
@@ -15,7 +16,8 @@ export const CampaignsList: React.FC<CampaignsListProps> = ({
   statusFilter = 'all',
   filterByOwnership = true 
 }) => {
-  const { campaigns, isLoading, error } = useCampaigns(filterByOwnership);
+  const { activeOrgUnit } = useAuth();
+  const { campaigns, isLoading, error } = useCampaigns(filterByOwnership, activeOrgUnit?.id);
   const navigate = useNavigate();
 
   if (isLoading) {

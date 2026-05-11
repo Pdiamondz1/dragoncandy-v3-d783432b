@@ -27,10 +27,10 @@ function formatSpend(amount: number): string {
 }
 
 const BrandDashboard = () => {
-  const { profile } = useAuth();
+  const { profile, activeOrgUnit } = useAuth();
   const navigate = useNavigate();
   const { data: stats, isLoading: statsLoading, isError: statsError, error: statsErrorObj, refetch: refetchStats } = useBrandDashboardStats();
-  const { data: campaigns, isLoading: campaignsLoading } = useBrandActiveCampaigns();
+  const { data: campaigns, isLoading: campaignsLoading } = useBrandActiveCampaigns(activeOrgUnit?.id);
   const { data: org } = useOrg();
   const { data: dsBoosts } = useOrgBoostStats(org?.id);
   const { showTour, tourSteps, completeTour, skipTour, triggerTour } = useTour();

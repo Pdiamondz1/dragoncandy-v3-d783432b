@@ -25,9 +25,9 @@ function formatDate(dateStr: string | null): string {
 }
 
 const BusinessDashboard = () => {
-  const { profile } = useAuth();
+  const { profile, activeOrgUnit } = useAuth();
   const navigate = useNavigate();
-  const { data: campaigns, isLoading: campaignsLoading } = useBusinessActiveCampaigns();
+  const { data: campaigns, isLoading: campaignsLoading } = useBusinessActiveCampaigns(activeOrgUnit?.id);
   const { data: org } = useOrg();
   const { data: dsBoosts } = useOrgBoostStats(org?.id);
   const { showTour, tourSteps, completeTour, skipTour, triggerTour } = useTour();
