@@ -60,28 +60,64 @@ null, render a fallback card (e.g., "Campaign unavailable") instead of
 crashing. Update the `ProjectCollaboration` type in `CreatorProjects.tsx`
 to mark `campaigns` as potentially nullable.
 
-**1c. Revision feedback wiring** — In `ProjectDetailsPage.tsx`, pass
-per-deliverable feedback data from `collaboration.deliverables_status` into
-each `DeliverableCard`'s `feedback` prop. When a business requests
-revisions through `RevisionRequestModal` (which collects per-deliverable
-notes), the creator should see that feedback directly on the corresponding
-deliverable card — not just a generic "Check your messages" alert.
+**1c. Revision feedback wiring** — Currently, when a business requests
+revisions via `RevisionRequestModal`, the per-deliverable feedback is
+collected as a structured map (`{ deliverableId: "feedback text" }`) but
+`ContentApprovalPanel` flattens it into a single combined string and sends
+it as a message. The structured data is lost — `deliverables_status` only
+stores status strings per deliverable (e.g., `'revision_requested'`), not
+feedback text.
+
+To fix this:
+
+1. **New migration**: Add a `revision_feedback JSONB` column to
+   `campaign_collaborations` (nullable, default `null`). Schema:
+   `{ [deliverableId: string]: string }` — maps deliverable IDs to
+   feedback text.
+2. **Update revision request flow**: In `ContentApprovalPanel.tsx`, when
+   calling the revision mutation, also save the structured feedback map to
+   `campaign_collaborations.revision_feedback`. The combined message string
+   continues to be sent as a chat message (for notification/history), but
+   the structured data is now preserved.
+3. **Wire to DeliverableCard**: In `ProjectDetailsPage.tsx`, read
+   `collaboration.revision_feedback` and pass each deliverable's feedback
+   string into `DeliverableCard`'s existing `feedback` prop. The creator
+   sees the specific feedback note directly on the corresponding
+   deliverable card.
+4. **Clear on resubmit**: When the creator resubmits content
+   (`CreatorContentSubmit`), clear `revision_feedback` to `null` so stale
+   feedback doesn't persist after a new submission.
 
 ### Files touched
 
-- New Supabase migration (RLS policy update on `campaigns`)
+- New Supabase migration: RLS policy update on `campaigns`, add composite
+  index on `campaign_collaborations(campaign_id, creator_id)`, add
+  `revision_feedback JSONB` column to `campaign_collaborations`
 - `src/components/projects/ProjectCard.tsx` — null guards
 - `src/pages/CreatorProjects.tsx` — type adjustment for nullable campaigns
 - `src/pages/ProjectDetailsPage.tsx` — wire feedback prop to DeliverableCard
+- `src/components/projects/ContentApprovalPanel.tsx` — save structured
+  feedback to `revision_feedback` column alongside the message
+- `src/components/projects/CreatorContentSubmit.tsx` — clear
+  `revision_feedback` on resubmit
+- `src/pages/CreatorEarnings.tsx` — add null guards (same left join pattern
+  as CreatorProjects)
 
 ### Risks
 
 - The RLS policy adds a subquery with `EXISTS` on `campaign_collaborations`.
-  This table is indexed on `(campaign_id, creator_id)` so the subquery
-  should be fast. Monitor query performance post-deploy.
+  Only separate single-column indexes currently exist on `campaign_id` and
+  `creator_id`. The migration adds a composite index on
+  `(campaign_id, creator_id)` to ensure the subquery is fast. Monitor query
+  performance post-deploy.
 - The null guard is defense-in-depth. After the RLS fix, campaigns should
-  never be null for active collaborations. The guard exists for edge cases
-  (deleted campaigns, race conditions).
+  never be null for active collaborations. The guard covers edge cases
+  including hard-deleted campaigns (the codebase allows campaign deletion
+  via RLS policy).
+- Creators can see campaigns in any status once they have a collaboration,
+  including `cancelled` or `draft`. This is intentional — the collaboration
+  creation flow only fires after acceptance, so draft campaigns with
+  collaborations should not exist in practice.
 
 ---
 
@@ -103,8 +139,9 @@ In `DetailedApplicationCard.tsx`, add a contextual block below the
 
 - **Message**: "Awaiting business review" in muted gray text (`text-sm
   text-gray-500`)
-- **Time indicator**: Relative time since `created_at` — "Applied today",
-  "Applied yesterday", "Applied 3 days ago", "Applied 2 weeks ago"
+- **Time indicator**: Relative time since `created_at` using
+  `formatDistanceToNow` from `date-fns` (already a project dependency) with
+  `addSuffix: true`, prefixed with "Applied" — e.g., "Applied 3 days ago"
 - Positioned directly under the Pending badge, immediately visible without
   scrolling
 
@@ -142,16 +179,24 @@ the `check_prerequisite_status` RPC.
 
 ### Design
 
-**3a. Frontend hook** — In `usePrerequisiteStatus.ts`, when building the
-prerequisite items array, skip the `social` item when the user's role is
-`content_creator`. Businesses and brands continue to see the social
-requirement. The creator gate drops from 3 items to 2: profile complete +
-Stripe setup.
+**3a. Frontend hook** — In `usePrerequisiteStatus.ts`, inside the
+`buildItems` function (which already has access to the role), skip the
+`social` item when the user's role is `content_creator`. Businesses and
+brands continue to see the social requirement. The creator gate drops from
+3 items to 2: profile complete + Stripe setup.
 
-**3b. RPC update** — In the `check_prerequisite_status` SQL function, return
-`social_connected: true` for users with `content_creator` role. This keeps
-the backend consistent with the frontend — any code path reading the RPC
-result for a creator will not falsely report a missing prerequisite.
+**3b. RPC update** — In the `check_prerequisite_status` SQL function, wrap
+the `social_connected` check in a role conditional:
+```sql
+result = result || jsonb_build_object(
+  'social_connected',
+  CASE WHEN v_role = 'content_creator' THEN true
+  ELSE EXISTS(SELECT 1 FROM business_outstand_accounts WHERE user_id = p_user_id)
+  END
+);
+```
+This keeps the backend consistent with the frontend — any code path reading
+the RPC result for a creator will not falsely report a missing prerequisite.
 
 The "Almost there!" card still renders for creators who haven't completed
 profile or Stripe. It just won't include the social media step. Once profile
