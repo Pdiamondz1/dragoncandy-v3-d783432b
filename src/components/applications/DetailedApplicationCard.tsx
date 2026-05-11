@@ -27,6 +27,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { JointApprovalStatus } from './JointApprovalStatus';
 import { DragonCandyOutstandProvider } from '@/integrations/outstand/Provider';
 import { CrossPostPrompt } from '@/components/outstand/CrossPostPrompt';
+import { formatDistanceToNow } from 'date-fns';
 
 interface DetailedApplicationCardProps {
   application: CampaignApplication;
@@ -124,6 +125,14 @@ export const DetailedApplicationCard: React.FC<DetailedApplicationCardProps> = (
           </div>
           <ApplicationStatusBadge status={application.status} />
         </div>
+        {application.status === 'pending' && (
+          <div className="mt-2">
+            <p className="text-sm text-gray-500">Awaiting business review</p>
+            <p className="text-xs text-gray-400">
+              Applied {formatDistanceToNow(new Date(application.created_at), { addSuffix: true })}
+            </p>
+          </div>
+        )}
         {application.brand_approval_status && application.brand_approval_status !== 'pending' && (
           <JointApprovalStatus
             brandApprovalStatus={application.brand_approval_status || 'pending'}
