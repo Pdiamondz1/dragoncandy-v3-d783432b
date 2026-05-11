@@ -78,7 +78,7 @@ export const CampaignFinalizeStep: React.FC<CampaignFinalizeStepProps> = ({
   const { createCampaign } = useCampaigns();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { activeOrg } = useAuth();
+  const { activeOrg, activeOrgUnit } = useAuth();
   const campaignGate = useActiveCampaignGate();
 
   const scopeValidation = useScopeValidation(
@@ -133,6 +133,15 @@ export const CampaignFinalizeStep: React.FC<CampaignFinalizeStepProps> = ({
 
   const handleCreateCampaign = async (data: FinalizeFormData, forceStatus?: 'draft' | 'published') => {
     const wantToPublish = forceStatus === 'published' || (!forceStatus && data.publishImmediately);
+
+    if (!activeOrgUnit) {
+      toast({
+        title: 'Select a location first',
+        description: 'Switch to a specific location before creating a campaign.',
+        variant: 'destructive',
+      });
+      return;
+    }
 
     if (wantToPublish && !campaignGate.allowed) {
       setShowCampaignLimitPaywall(true);
@@ -191,6 +200,7 @@ export const CampaignFinalizeStep: React.FC<CampaignFinalizeStepProps> = ({
         ...(campaignData.aiAnalysis ? { ai_analysis: campaignData.aiAnalysis } : {}),
         // Content source
         ...(campaignData.contentSource ? { content_source: campaignData.contentSource } : {}),
+        org_unit_id: activeOrgUnit.id,
       };
 
       // Create or update the campaign
