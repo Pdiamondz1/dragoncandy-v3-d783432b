@@ -47,7 +47,7 @@ function buildItems(rpc: RpcResult): PrerequisiteItem[] {
         ? 'Social media connected'
         : 'Connect at least one social account',
       actionLabel: 'Connect Social',
-      actionPath: `${dashBase}/social?tab=accounts`,
+      actionPath: `${dashBase}/settings?section=social`,
     },
     {
       key: 'stripe',
