@@ -330,6 +330,10 @@ export const ContentApprovalPanel: React.FC<ContentApprovalPanelProps> = ({
               revisionCount={revisionCount}
               maxRevisions={MAX_REVISIONS}
               onSubmit={async (feedback) => {
+                await supabase
+                  .from('campaign_collaborations')
+                  .update({ revision_feedback: feedback })
+                  .eq('id', collaborationId);
                 const combinedFeedback = Object.values(feedback).filter(Boolean).join('\n\n');
                 await requestRevision.mutateAsync(combinedFeedback || 'Revision requested');
               }}
