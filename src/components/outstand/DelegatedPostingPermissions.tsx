@@ -7,10 +7,6 @@ import { ShieldCheck, X, Loader2 } from 'lucide-react';
 export const DelegatedPostingPermissions: React.FC = () => {
   const { myGranted, myReceived, isLoading, revokePermission } = useDelegatedPermissions();
 
-  if (isLoading) {
-    return <Loader2 className="h-5 w-5 animate-spin text-dc-teal mx-auto" />;
-  }
-
   const activeGranted = myGranted.filter((p) => p.status === 'active');
   const activeReceived = myReceived.filter((p) => p.status === 'active');
   const allUserIds = [
@@ -18,6 +14,10 @@ export const DelegatedPostingPermissions: React.FC = () => {
     ...activeReceived.map((p) => p.grantor_id),
   ];
   const { data: profileNames } = useProfileNames(allUserIds);
+
+  if (isLoading) {
+    return <Loader2 className="h-5 w-5 animate-spin text-dc-teal mx-auto" />;
+  }
 
   if (activeGranted.length === 0 && activeReceived.length === 0) {
     return (
