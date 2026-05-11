@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { Check, ChevronDown, MapPin, Tag, Plus, Search } from 'lucide-react';
+import { Check, ChevronDown, MapPin, Tag, Plus, Search, Globe } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/hooks/useAuth';
-import { useOrgUnits, useUpdateActiveUnit } from '@/hooks/useOrgData';
+import { useOrgUnits } from '@/hooks/useOrgData';
 import type { OrgUnit } from '@/types/org';
 import { Coachmark } from '@/components/guidance/Coachmark';
 
@@ -55,14 +55,13 @@ function UnitListItem({
 }
 
 export function OrgUnitSwitcher({ onAddUnit, canManage }: OrgUnitSwitcherProps) {
-  const { activeOrg, activeOrgUnit } = useAuth();
+  const { activeOrg, activeOrgUnit, switchOrgUnit } = useAuth();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
 
   const { data: units = [] } = useOrgUnits(activeOrg?.id);
-  const updateActive = useUpdateActiveUnit();
 
-  if (!activeOrg || !activeOrgUnit) return null;
+  if (!activeOrg) return null;
 
   const isRestaurant = activeOrg.org_type === 'restaurant';
   const OrgIcon = isRestaurant ? MapPin : Tag;
@@ -73,13 +72,15 @@ export function OrgUnitSwitcher({ onAddUnit, canManage }: OrgUnitSwitcherProps) 
     ? units.filter((u) => u.name.toLowerCase().includes(search.toLowerCase()))
     : units;
 
-  const handleSelect = async (unit: OrgUnit) => {
-    if (unit.id === activeOrgUnit.id) {
+  const handleSelect = async (unit: OrgUnit | null) => {
+    const selectedId = unit?.id ?? null;
+    const currentId = activeOrgUnit?.id ?? null;
+    if (selectedId === currentId) {
       setOpen(false);
       return;
     }
     try {
-      await updateActive.mutateAsync(unit.id);
+      await switchOrgUnit(selectedId);
     } finally {
       setOpen(false);
       setSearch('');
@@ -101,8 +102,14 @@ export function OrgUnitSwitcher({ onAddUnit, canManage }: OrgUnitSwitcherProps) 
           data-tour="org-switcher"
           className="rounded-full border border-teal-300 bg-white text-teal-600 hover:bg-teal-50 hover:text-teal-700 flex items-center gap-1.5 px-3 py-1.5 h-auto"
         >
-          <OrgIcon className="w-3.5 h-3.5 shrink-0" />
-          <span className="text-sm font-medium max-w-[120px] truncate">{activeOrgUnit.name}</span>
+          {activeOrgUnit ? (
+            <OrgIcon className="w-3.5 h-3.5 shrink-0" />
+          ) : (
+            <Globe className="w-3.5 h-3.5 shrink-0" />
+          )}
+          <span className="text-sm font-medium max-w-[120px] truncate">
+            {activeOrgUnit?.name ?? (isRestaurant ? 'All Locations' : 'All Products')}
+          </span>
           <ChevronDown className="w-3.5 h-3.5 shrink-0" />
         </Button>
       </PopoverTrigger>
@@ -121,6 +128,18 @@ export function OrgUnitSwitcher({ onAddUnit, canManage }: OrgUnitSwitcherProps) 
         )}
 
         <div className="max-h-60 overflow-y-auto">
+          <button
+            type="button"
+            onClick={() => handleSelect(null)}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-teal-50 transition-colors text-left"
+          >
+            <Globe className="w-6 h-6 text-teal-500 shrink-0" />
+            <span className="flex-1 text-sm font-medium text-gray-800">
+              {isRestaurant ? 'All Locations' : 'All Products'}
+            </span>
+            {!activeOrgUnit && <Check className="w-4 h-4 text-teal-500 shrink-0" />}
+          </button>
+          <div className="border-b border-gray-100 my-1" />
           {filteredUnits.length === 0 ? (
             <p className="text-center text-xs text-gray-400 py-4">No results</p>
           ) : (
@@ -128,7 +147,7 @@ export function OrgUnitSwitcher({ onAddUnit, canManage }: OrgUnitSwitcherProps) 
               <UnitListItem
                 key={unit.id}
                 unit={unit}
-                isActive={unit.id === activeOrgUnit.id}
+                isActive={unit.id === activeOrgUnit?.id}
                 onSelect={handleSelect}
               />
             ))
