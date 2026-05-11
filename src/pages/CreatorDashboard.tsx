@@ -182,7 +182,7 @@ const CreatorDashboard = () => {
                         </div>
                       );
                       return activity.campaign_id ? (
-                        <Link key={activity.id} to={`/dashboard/creator/campaigns/${activity.campaign_id}`}>
+                        <Link key={activity.id} to={`/dashboard/creator/my-campaigns/${activity.campaign_id}`}>
                           {inner}
                         </Link>
                       ) : (
@@ -228,7 +228,7 @@ const CreatorDashboard = () => {
                         </div>
                       );
                       return deadline.campaign_id ? (
-                        <Link key={deadline.id} to={`/dashboard/creator/campaigns/${deadline.campaign_id}`}>
+                        <Link key={deadline.id} to={`/dashboard/creator/my-campaigns/${deadline.campaign_id}`}>
                           {inner}
                         </Link>
                       ) : (
