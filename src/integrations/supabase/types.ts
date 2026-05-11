@@ -1,4 +1,4 @@
-export type Json =
+﻿export type Json =
   | string
   | number
   | boolean
@@ -310,6 +310,7 @@ export type Database = {
           created_at: string
           id: string
           last_seen_at: string | null
+          org_unit_id: string | null
           outstand_social_account_id: string
           platform: string
           platform_handle: string | null
@@ -323,6 +324,7 @@ export type Database = {
           created_at?: string
           id?: string
           last_seen_at?: string | null
+          org_unit_id?: string | null
           outstand_social_account_id: string
           platform: string
           platform_handle?: string | null
@@ -336,6 +338,7 @@ export type Database = {
           created_at?: string
           id?: string
           last_seen_at?: string | null
+          org_unit_id?: string | null
           outstand_social_account_id?: string
           platform?: string
           platform_handle?: string | null
@@ -356,6 +359,13 @@ export type Database = {
             columns: ["business_id"]
             isOneToOne: false
             referencedRelation: "public_business_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "business_outstand_accounts_org_unit_id_fkey"
+            columns: ["org_unit_id"]
+            isOneToOne: false
+            referencedRelation: "org_units"
             referencedColumns: ["id"]
           },
         ]
@@ -642,11 +652,16 @@ export type Database = {
           creator_completion_status: string | null
           creator_id: string
           deliverables_status: Json | null
+          dispute_outcome: string | null
+          dispute_reason: string | null
           id: string
           milestones: Json | null
+          review_extended: boolean | null
           review_status: string | null
           revision_count: number | null
+          revision_feedback: Json | null
           status: Database["public"]["Enums"]["collaboration_status"]
+          submitted_at: string | null
           updated_at: string
         }
         Insert: {
@@ -662,11 +677,16 @@ export type Database = {
           creator_completion_status?: string | null
           creator_id: string
           deliverables_status?: Json | null
+          dispute_outcome?: string | null
+          dispute_reason?: string | null
           id?: string
           milestones?: Json | null
+          review_extended?: boolean | null
           review_status?: string | null
           revision_count?: number | null
+          revision_feedback?: Json | null
           status?: Database["public"]["Enums"]["collaboration_status"]
+          submitted_at?: string | null
           updated_at?: string
         }
         Update: {
@@ -682,11 +702,16 @@ export type Database = {
           creator_completion_status?: string | null
           creator_id?: string
           deliverables_status?: Json | null
+          dispute_outcome?: string | null
+          dispute_reason?: string | null
           id?: string
           milestones?: Json | null
+          review_extended?: boolean | null
           review_status?: string | null
           revision_count?: number | null
+          revision_feedback?: Json | null
           status?: Database["public"]["Enums"]["collaboration_status"]
+          submitted_at?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -1195,6 +1220,7 @@ export type Database = {
           delivery_tier: string | null
           delivery_type: string | null
           description: string | null
+          duplicated_from: string | null
           escrow_payment_intent_id: string | null
           escrow_status: string | null
           estimated_creation_minutes: number | null
@@ -1229,6 +1255,7 @@ export type Database = {
           delivery_tier?: string | null
           delivery_type?: string | null
           description?: string | null
+          duplicated_from?: string | null
           escrow_payment_intent_id?: string | null
           escrow_status?: string | null
           estimated_creation_minutes?: number | null
@@ -1263,6 +1290,7 @@ export type Database = {
           delivery_tier?: string | null
           delivery_type?: string | null
           description?: string | null
+          duplicated_from?: string | null
           escrow_payment_intent_id?: string | null
           escrow_status?: string | null
           estimated_creation_minutes?: number | null
@@ -1282,6 +1310,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "campaigns_duplicated_from_fkey"
+            columns: ["duplicated_from"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "campaigns_org_id_fkey"
             columns: ["org_id"]
@@ -1940,7 +1975,9 @@ export type Database = {
           content: string | null
           conversation_id: string
           created_at: string
+          expires_at: string | null
           id: string
+          insight_type: string | null
           model: string | null
           quick_actions: Json | null
           rich_card: Json | null
@@ -1948,12 +1985,15 @@ export type Database = {
           tokens_used: number | null
           tool_calls: Json | null
           tool_result: Json | null
+          user_id: string | null
         }
         Insert: {
           content?: string | null
           conversation_id: string
           created_at?: string
+          expires_at?: string | null
           id?: string
+          insight_type?: string | null
           model?: string | null
           quick_actions?: Json | null
           rich_card?: Json | null
@@ -1961,12 +2001,15 @@ export type Database = {
           tokens_used?: number | null
           tool_calls?: Json | null
           tool_result?: Json | null
+          user_id?: string | null
         }
         Update: {
           content?: string | null
           conversation_id?: string
           created_at?: string
+          expires_at?: string | null
           id?: string
+          insight_type?: string | null
           model?: string | null
           quick_actions?: Json | null
           rich_card?: Json | null
@@ -1974,6 +2017,7 @@ export type Database = {
           tokens_used?: number | null
           tool_calls?: Json | null
           tool_result?: Json | null
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -3723,11 +3767,14 @@ export type Database = {
       profiles: {
         Row: {
           active_org_unit_id: string | null
+          auto_pilot_enabled: boolean | null
           avatar_url: string | null
           created_at: string | null
           dismissed_coachmarks: string[] | null
+          donny_system_conversation_id: string | null
           email: string
           email_verified: boolean | null
+          first_run_missions: Json | null
           full_name: string | null
           id: string
           org_id: string | null
@@ -3736,11 +3783,14 @@ export type Database = {
         }
         Insert: {
           active_org_unit_id?: string | null
+          auto_pilot_enabled?: boolean | null
           avatar_url?: string | null
           created_at?: string | null
           dismissed_coachmarks?: string[] | null
+          donny_system_conversation_id?: string | null
           email: string
           email_verified?: boolean | null
+          first_run_missions?: Json | null
           full_name?: string | null
           id: string
           org_id?: string | null
@@ -3749,11 +3799,14 @@ export type Database = {
         }
         Update: {
           active_org_unit_id?: string | null
+          auto_pilot_enabled?: boolean | null
           avatar_url?: string | null
           created_at?: string | null
           dismissed_coachmarks?: string[] | null
+          donny_system_conversation_id?: string | null
           email?: string
           email_verified?: boolean | null
+          first_run_missions?: Json | null
           full_name?: string | null
           id?: string
           org_id?: string | null
@@ -3766,6 +3819,13 @@ export type Database = {
             columns: ["active_org_unit_id"]
             isOneToOne: false
             referencedRelation: "org_units"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_donny_system_conversation_id_fkey"
+            columns: ["donny_system_conversation_id"]
+            isOneToOne: false
+            referencedRelation: "donny_conversations"
             referencedColumns: ["id"]
           },
           {
@@ -4066,8 +4126,11 @@ export type Database = {
           campaign_id: string | null
           created_at: string | null
           id: string
+          invoiced_at: string | null
+          paid_at: string | null
           platform_count: number
           status: string
+          stripe_invoice_item_id: string | null
           surcharge_cents: number
           user_id: string
         }
@@ -4075,8 +4138,11 @@ export type Database = {
           campaign_id?: string | null
           created_at?: string | null
           id?: string
+          invoiced_at?: string | null
+          paid_at?: string | null
           platform_count: number
           status?: string
+          stripe_invoice_item_id?: string | null
           surcharge_cents?: number
           user_id: string
         }
@@ -4084,8 +4150,11 @@ export type Database = {
           campaign_id?: string | null
           created_at?: string | null
           id?: string
+          invoiced_at?: string | null
+          paid_at?: string | null
           platform_count?: number
           status?: string
+          stripe_invoice_item_id?: string | null
           surcharge_cents?: number
           user_id?: string
         }
@@ -4697,6 +4766,7 @@ export type Database = {
       }
     }
     Functions: {
+      check_prerequisite_status: { Args: { p_user_id: string }; Returns: Json }
       cleanup_expired_verification_tokens: { Args: never; Returns: undefined }
       create_boost: {
         Args: {
@@ -4776,6 +4846,10 @@ export type Database = {
       }
       get_user_display_name: { Args: { user_uuid: string }; Returns: string }
       get_user_org_ids: { Args: never; Returns: string[] }
+      has_collaboration_on_campaign: {
+        Args: { p_campaign_id: string; p_user_id: string }
+        Returns: boolean
+      }
       increment_pending_balance: {
         Args: { p_amount: number; p_profile_type: string; p_user_id: string }
         Returns: number
@@ -5029,4 +5103,3 @@ export const Constants = {
     },
   },
 } as const
-<claude-code-hint v="1" type="plugin" value="supabase@claude-plugins-official" />
