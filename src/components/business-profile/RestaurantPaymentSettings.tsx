@@ -6,6 +6,7 @@ import { CreditCard, ExternalLink, AlertCircle, CheckCircle2, Clock, Wallet, Lay
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
+import { useFirstRunMissions } from '@/hooks/useFirstRunMissions';
 
 interface PayoutStatus {
   hasAccount: boolean;
@@ -47,6 +48,7 @@ const ViewStripeDashboardButton = () => {
 
 export const RestaurantPaymentSettings = () => {
   const { user } = useAuth();
+  const { completeMission } = useFirstRunMissions();
   const [payoutStatus, setPayoutStatus] = useState<PayoutStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState(false);
@@ -75,6 +77,7 @@ export const RestaurantPaymentSettings = () => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('stripe_onboarding') === 'complete') {
       toast({ title: 'Stripe setup updated', description: 'Checking your account status…' });
+      completeMission('setup_payments');
       checkPayoutStatus();
       window.history.replaceState({}, '', window.location.pathname);
     } else if (params.get('stripe_refresh') === 'true') {

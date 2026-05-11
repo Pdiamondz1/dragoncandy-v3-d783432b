@@ -41,6 +41,7 @@ const CreatorSettings = () => {
   useEffect(() => {
     if (searchParams.get('stripe_onboarding') === 'complete') {
       toast.success('Stripe Setup Complete! Your payout account is now connected. You can receive payments.');
+      completeMission('setup_payouts');
       setSearchParams({});
     } else if (searchParams.get('stripe_refresh') === 'true') {
       toast.error('Stripe Setup Incomplete. Please complete your Stripe onboarding to receive payouts.');

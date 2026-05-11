@@ -4,11 +4,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
 import { useEmailNotifications } from '@/hooks/useEmailNotifications';
+import { useFirstRunMissions } from '@/hooks/useFirstRunMissions';
 
 export const useCreateApplication = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { sendNotification } = useEmailNotifications();
+  const { completeMission } = useFirstRunMissions();
 
   return useMutation({
     mutationFn: async ({
@@ -47,6 +49,7 @@ export const useCreateApplication = () => {
     onSuccess: async (data) => {
       queryClient.invalidateQueries({ queryKey: ['campaign-applications'] });
       queryClient.invalidateQueries({ queryKey: ['creator-applications'] });
+      completeMission('apply_campaign');
       toast({
         title: 'Application submitted successfully!',
         description: 'The business owner will review your application.',
