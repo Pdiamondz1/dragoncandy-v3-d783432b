@@ -10,10 +10,13 @@ interface DragonCandyOutstandProviderProps {
 }
 
 export function useOutstandConfig() {
-  const { session } = useAuth();
+  const { session, activeOrgUnit } = useAuth();
+  const baseUrl = activeOrgUnit?.id
+    ? `${OUTSTAND_PROXY_BASE_URL}?org_unit_id=${activeOrgUnit.id}`
+    : OUTSTAND_PROXY_BASE_URL;
   return {
     apiKey: session?.access_token ?? '',
-    baseUrl: OUTSTAND_PROXY_BASE_URL,
+    baseUrl,
   };
 }
 
