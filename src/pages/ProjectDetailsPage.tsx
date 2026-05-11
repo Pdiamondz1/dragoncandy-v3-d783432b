@@ -385,6 +385,7 @@ const ProjectDetailsPage: React.FC = () => {
                       deliverable={d}
                       status={status}
                       uploadedFile={matchingFile ? { file_name: matchingFile.original_filename, file_size_bytes: matchingFile.file_size } : null}
+                      feedback={collaboration.revision_feedback?.[d.id] ?? null}
                       disabled={collaboration.campaign.escrow_status !== 'held'}
                       onUpload={() => setUploadingDeliverableId(d.id)}
                     />
