@@ -82,8 +82,7 @@ export const brandSidebarNav: SidebarNavItem[] = [
 export const creatorSidebarNav: SidebarNavItem[] = [
   { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard/creator' },
   { icon: Search, label: 'Browse Campaigns', href: '/dashboard/creator/campaigns' },
-  { icon: Briefcase, label: 'My Applications', href: '/dashboard/creator/applications' },
-  { icon: Target, label: 'My Projects', href: '/dashboard/creator/projects' },
+  { icon: Target, label: 'My Campaigns', href: '/dashboard/creator/my-campaigns' },
   { icon: DollarSign, label: 'Earnings', href: '/dashboard/creator/earnings' },
   { icon: Share2, label: 'Social Media', href: '/dashboard/creator/social' },
   { icon: Sparkles, label: 'DragonShare', href: '/dashboard/creator/dragonshare' },
@@ -210,8 +209,7 @@ const creatorDrawerMenu: DrawerMenuSection[] = [
     items: [
       { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard/creator' },
       { icon: Search, label: 'Browse Campaigns', href: '/dashboard/creator/campaigns' },
-      { icon: Briefcase, label: 'My Applications', href: '/dashboard/creator/applications' },
-      { icon: Target, label: 'My Projects', href: '/dashboard/creator/projects' },
+      { icon: Target, label: 'My Campaigns', href: '/dashboard/creator/my-campaigns' },
       { icon: DollarSign, label: 'Earnings', href: '/dashboard/creator/earnings' },
       { icon: Image, label: 'Dragon Feed', href: '/dashboard/creator/dragon-feed' },
       { icon: Share2, label: 'Social Media', href: '/dashboard/creator/social' },
