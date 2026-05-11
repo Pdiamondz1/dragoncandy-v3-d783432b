@@ -130,6 +130,7 @@ The Creator Dashboard's existing widgets get updated navigation targets:
 |------|---------|
 | `src/pages/MyCampaignsPage.tsx` | Unified list page with Applied/Active/Done tabs |
 | `src/pages/MyCampaignDetailPage.tsx` | Phase-dependent detail view |
+| `src/components/CollaborationRedirect.tsx` | Lightweight redirect component for `/projects/:id` — fetches collaboration, extracts campaign_id, redirects to `/dashboard/creator/my-campaigns/:campaignId` |
 
 ### Deleted files
 | File | Replaced by |
@@ -142,7 +143,7 @@ The Creator Dashboard's existing widgets get updated navigation targets:
 | File | Change |
 |------|--------|
 | `src/App.tsx` | Add new routes, add redirects for old routes |
-| `src/lib/navConfig.ts` | Replace 2 sidebar items with 1 "My Campaigns" item |
+| `src/lib/navConfig.ts` | Replace 2 sidebar items with 1 "My Campaigns" item in both `creatorSidebarNav` and `creatorDrawerMenu` arrays |
 | `src/pages/CreatorCampaignMarketplace.tsx` | Remove Applied/Active/Done tabs, rename Available to "All Campaigns", add "Donny Picks" tab |
 | `src/pages/CreatorDashboard.tsx` | Update navigation targets for activity/deadline links |
 
