@@ -45,15 +45,17 @@ Current cards show campaign metadata but no workflow status, no assigned creator
 - **Step label:** "Step N of 5 · [current step name]" or phase-appropriate text ("Awaiting creator · 3 applications", "✓ All steps complete")
 - **Creator row** (when assigned): avatar + name + status. Hidden pre-hire.
 - **Single CTA button:** reflects the next action. Routes to the unified detail page.
+  - Escrow pending: "Pay & Publish →" (amber) — highest priority, blocks all other progress
   - Pre-hire with applications: "Review Applications →" (teal)
   - Pre-hire no applications: "View Campaign" (outline)
   - Active delivery needing action: "Review Content →" (pink)
   - Active delivery waiting: "View Progress" (teal)
   - Completed: "View Deliverables" (outline)
+  - Cancelled: "View Campaign" (outline)
 
 ### Data Requirements
 
-Cards need data from both `campaigns` and `campaign_collaborations` tables to show workflow status and creator info. The existing `useCampaignsList` hook fetches only from `campaigns`. It needs to be enriched with a left join to `campaign_collaborations` (status, content_status, creator_id) and `creator_profiles` (creator_name, avatar_url).
+Cards need data from both `campaigns` and `campaign_collaborations` tables to show workflow status and creator info. The existing `useCampaignsList` hook (`src/hooks/useCampaignQueries.ts::useCampaignsList`) fetches only from `campaigns`. It needs to be enriched with a left join to `campaign_collaborations` (status, content_status, creator_id) and `creator_profiles` (creator_name, avatar_url). The campaign's `escrow_status` field is already available and drives the Pay & Publish CTA.
 
 ## Unified Campaign Detail Page
 
@@ -88,20 +90,24 @@ A campaign's phase is derived from existing data:
 | Pre-Hire | No `campaign_collaboration` exists, or campaign status is `draft`/`published` |
 | Active Delivery | `campaign_collaboration` exists with `status = 'active'` |
 | Completed | `campaign_collaboration` exists with `status = 'completed'` |
+| Cancelled | Campaign status is `cancelled` |
+
+**Assumption:** Each campaign has at most one active collaboration (1:1 campaign-to-creator). The data model allows multiple collaborations, but the product currently operates as one creator per campaign. If a campaign somehow has multiple collaborations, use the most recently updated one to determine phase.
 
 ### Section Map by Phase
 
-| Section | Pre-Hire | Active Delivery | Completed |
-|---------|----------|-----------------|-----------|
-| Campaign Header | ✅ | ✅ | ✅ |
-| Progress Timeline | ✅ | ✅ | ✅ |
-| Applications List | ✅ | — | — |
-| Donny's Suggestions (AI Matching) | ✅ | — | — |
-| Assigned Creator Card | — | ✅ | ✅ |
-| Content Review | — | ✅ | — |
-| Deliverables Archive | — | — | ✅ |
-| Payment Summary | — | — | ✅ |
-| Campaign Details | ✅ (expanded) | ✅ (collapsible) | ✅ (collapsed) |
+| Section | Pre-Hire | Active Delivery | Completed | Cancelled |
+|---------|----------|-----------------|-----------|-----------|
+| Campaign Header | ✅ | ✅ | ✅ | ✅ |
+| Escrow Payment Alert | ✅ (if pending) | — | — | — |
+| Progress Timeline | ✅ | ✅ | ✅ | — |
+| Applications List | ✅ | — | — | — |
+| Donny's Suggestions (AI Matching) | ✅ | — | — | — |
+| Assigned Creator Card | — | ✅ | ✅ | — |
+| Content Review | — | ✅ | — | — |
+| Deliverables Archive | — | — | ✅ | — |
+| Payment Summary | — | — | ✅ | — |
+| Campaign Details | ✅ (expanded) | ✅ (collapsible) | ✅ (collapsed) | ✅ (expanded, read-only) |
 
 ### Campaign Header
 
@@ -109,9 +115,19 @@ Always visible at the top. Pink background consistent with existing design syste
 
 - Campaign title (bold, large)
 - Status badge (top-right): Draft, Published, Active, Completed, Cancelled
+- Escrow status badge (next to status): "Escrow Held", "Paid Out", "Payment Pending" — shown when relevant
 - Stats line: budget range, deadline, platform(s)
 - Action badge (conditional): "⚡ Action Needed" in pink when the current workflow step requires Restaurant user input (content review, mark complete, leave review). Only shown during Active Delivery phase.
 - Edit button (pre-hire only): navigates to `/dashboard/business/campaigns/:id/edit`
+- Overflow menu (⋯): contains secondary actions based on phase:
+  - Pre-hire: "Delete Campaign" (only if no accepted applications and no held escrow)
+  - Completed: "Re-Launch Campaign" (duplicates the campaign via existing `useDuplicateCampaign` hook)
+
+### Escrow Payment Alert (Pre-Hire, when `escrow_status = 'pending'`)
+
+Renders above the Progress Timeline when the campaign needs escrow payment before publishing. Shows a prominent amber alert with "Payment Required to Publish" and a Stripe checkout button. Absorbs the existing payment flow from `CampaignCard.tsx` (lines 90-188).
+
+After successful Stripe checkout, the redirect lands on the campaign detail page with `?payment=success` query parameter. The detail page handles this parameter to show a success toast and refresh campaign data. This absorbs the payment verification logic currently in `BusinessProjects.tsx` (lines 82-140).
 
 ### Progress Timeline
 
@@ -128,7 +144,7 @@ Always visible. Two presentation modes:
 
 Step status icons: ✅ (completed), 🟡 (current/action needed), ○ (pending)
 
-The current step is derived from `campaign_collaboration` fields using the same logic as the existing `useCampaignProject` hook (lines 36-50 of `useCampaignProject.ts`).
+The current step is derived from `campaign_collaboration` fields using the `deriveCurrentStep` function exported from `src/hooks/useCampaignProject.ts`.
 
 ### Applications List (Pre-Hire only)
 
@@ -190,8 +206,26 @@ The campaign brief — description, content requirements, compensation details, 
 - `GET /dashboard/business/projects` → redirects to `/dashboard/business/campaigns`
 - `GET /dashboard/business/campaigns/:id/project` → redirects to `/dashboard/business/campaigns/:id`
 
+### Stripe Redirect URLs
+The `create-campaign-escrow` edge function currently redirects to paths under `/dashboard/business/projects`. These must be updated to redirect to `/dashboard/business/campaigns/:id?payment=success` (or `?payment=cancelled`). The detail page must handle these query parameters (success toast, data refresh).
+
 ### Bottom Navigation
 The "Campaigns" nav icon becomes the single entry point for all campaign management. No separate "Projects" destination.
+
+### Code References to Update
+All hardcoded references to removed routes must be updated:
+
+| File | Reference | Change to |
+|------|-----------|-----------|
+| `src/config/navConfig.ts` (sidebar) | `/dashboard/business/projects` | Remove entry |
+| `src/config/navConfig.ts` (drawer) | `/dashboard/business/projects` | Remove entry |
+| `src/pages/CampaignMessagesPage.tsx` | `/dashboard/business/projects` | `/dashboard/business/campaigns` |
+| `src/pages/CampaignProjectPage.tsx` | `/dashboard/business/projects` | File deleted |
+| `src/pages/ProjectDetailsPage.tsx` | `/dashboard/business/projects` | `/dashboard/business/campaigns` |
+| `src/hooks/useProjectComplete.ts` (notification `actionUrl`) | `/dashboard/business/projects` | `/dashboard/business/campaigns/:id` |
+| `create-campaign-escrow` edge function | Payment redirect URLs | `/dashboard/business/campaigns/:id?payment=...` |
+
+**Note:** `useProjectComplete.ts` generates notification URLs stored in the database. Existing notification records with old URLs will still work because of the route-level redirects, but new notifications should use the updated paths.
 
 ## Components Affected
 
@@ -212,7 +246,7 @@ The "Campaigns" nav icon becomes the single entry point for all campaign managem
 - `CampaignProjectPage.tsx` (~260 lines) — all functionality absorbed into detail page
 
 ### Hooks
-- `useCampaignsList` — needs enrichment: left join to `campaign_collaborations` and `creator_profiles` for card-level workflow data
+- `useCampaignsList` (`src/hooks/useCampaignQueries.ts`) — needs enrichment: left join to `campaign_collaborations` and `creator_profiles` for card-level workflow data
 - `useCampaignProject` — logic absorbed into the detail page's data fetching, hook may be retained or inlined
 - `useProjectComplete` — still needed, called from the Progress section instead of My Projects
 - `useCampaignContentSummary` — still needed for action badge on header
