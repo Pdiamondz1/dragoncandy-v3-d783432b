@@ -4,11 +4,9 @@ import { useState, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { usePublicCampaigns, PublicCampaign } from '@/hooks/usePublicCampaigns';
-import { useCreatorApplications, CreatorApplication } from '@/hooks/useCreatorApplications';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { CampaignSwipeCard } from '@/components/campaigns/CampaignSwipeCard';
 import { CampaignDetailModal } from '@/components/campaigns/CampaignDetailModal';
-import { CreatorApplicationCard } from '@/components/campaigns/CreatorApplicationCard';
 import { MarketplaceLoadingState } from '@/components/campaigns/MarketplaceLoadingState';
 import { MarketplaceErrorState } from '@/components/campaigns/MarketplaceErrorState';
 import { useCampaignFilters } from '@/hooks/useCampaignFilters';
@@ -16,19 +14,14 @@ import { useGeoDistance } from '@/hooks/useGeoDistance';
 import { useDonnyMatches } from '@/hooks/useDonnyMatches';
 import { CampaignSearchFilters } from '@/components/campaigns/CampaignSearchFilters';
 import { DonnyPicksRow } from '@/components/campaigns/DonnyPicksRow';
-import { useCreatorCollaborations } from '@/hooks/useCreatorCollaborations';
-import { ActiveCampaignCard } from '@/components/campaigns/ActiveCampaignCard';
-import { CompletedCampaignCard } from '@/components/campaigns/CompletedCampaignCard';
-import { MapPin, Target, FileText, Briefcase, CheckCircle } from 'lucide-react';
+import { MapPin, Target } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
-import { DCSkeleton } from '@/components/ui/dc-skeleton';
-import { DCEmptyState } from '@/components/ui/dc-empty-state';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { formatBudget } from '@/lib/campaignUtils';
 import { useFirstRunMissions } from '@/hooks/useFirstRunMissions';
 
 
-type Tab = 'available' | 'applied' | 'active' | 'done';
+type Tab = 'all' | 'donny';
 
 const CreatorCampaignMarketplace = () => {
   const { user } = useAuth();
@@ -38,9 +31,6 @@ const CreatorCampaignMarketplace = () => {
   useEffect(() => { completeMission('view_campaigns'); }, []);
   const queryClient = useQueryClient();
   const { data: campaigns = [], isLoading, error } = usePublicCampaigns(user?.id);
-  const { data: applications = [], isLoading: appsLoading } = useCreatorApplications();
-  const { data: activeCollabs = [], isLoading: activeLoading } = useCreatorCollaborations('active');
-  const { data: completedCollabs = [], isLoading: completedLoading } = useCreatorCollaborations('completed');
 
   const { campaigns: geoCampaigns } = useGeoDistance(campaigns);
 
@@ -60,12 +50,10 @@ const CreatorCampaignMarketplace = () => {
 
   const donnyPicks = useDonnyMatches(filteredBySearch);
 
-  const [activeTab, setActiveTab] = useState<Tab>('available');
+  const [activeTab, setActiveTab] = useState<Tab>('all');
   const [detailCampaign, setDetailCampaign] = useState<PublicCampaign | null>(null);
   const [detailReadOnly, setDetailReadOnly] = useState(false);
   const [skippedIds, setSkippedIds] = useState<Set<string>>(new Set());
-
-  const pendingCount = applications.filter(a => a.status === 'pending').length;
 
   if (isLoading) {
     return <MarketplaceLoadingState />;
@@ -115,44 +103,9 @@ const CreatorCampaignMarketplace = () => {
     queryClient.invalidateQueries({ queryKey: ['creator-applications'] });
   };
 
-  const handleViewApplicationDetail = (application: CreatorApplication) => {
-    // Build a PublicCampaign-shaped object from the application data for the modal
-    if (!application.campaign) return;
-    const c = application.campaign;
-    const pseudoCampaign: PublicCampaign = {
-      id: c.id,
-      title: c.title,
-      user_id: c.user_id,
-      description: c.description ?? undefined,
-      goals: c.goals ?? undefined,
-      style: c.style ?? undefined,
-      tone: c.tone ?? undefined,
-      status: 'published' as const,
-      delivery_type: (c.delivery_type ?? undefined) as PublicCampaign['delivery_type'],
-      pricing_type: (c.pricing_type ?? undefined) as PublicCampaign['pricing_type'],
-      fixed_price: c.fixed_price ?? undefined,
-      budget_min: c.budget_min ?? undefined,
-      budget_max: c.budget_max ?? undefined,
-      deliverables: c.deliverables ?? undefined,
-      created_at: application.created_at,
-      updated_at: application.updated_at,
-      business_profile: application.business_profile ? {
-        business_name: application.business_profile.business_name,
-        logo_url: application.business_profile.logo_url ?? undefined,
-        city: application.business_profile.city ?? undefined,
-        country: application.business_profile.country ?? undefined,
-        profile_slug: application.business_profile.profile_slug ?? undefined,
-      } : undefined,
-    };
-    setDetailReadOnly(true);
-    setDetailCampaign(pseudoCampaign);
-  };
-
   const tabs: { id: Tab; label: string; badge?: number; disabled?: boolean }[] = [
-    { id: 'available', label: 'Available' },
-    { id: 'applied', label: 'Applied', badge: pendingCount > 0 ? pendingCount : undefined },
-    { id: 'active', label: 'Active', badge: activeCollabs.length > 0 ? activeCollabs.length : undefined },
-    { id: 'done', label: 'Done' },
+    { id: 'all', label: 'All Campaigns' },
+    { id: 'donny', label: 'Donny Picks' },
   ];
 
   return (
@@ -205,7 +158,7 @@ const CreatorCampaignMarketplace = () => {
         </div>
 
         {/* Tab Content */}
-        {activeTab === 'available' && (
+        {activeTab === 'all' && (
           <>
             {/* Search & Filters */}
             <CampaignSearchFilters
@@ -321,72 +274,35 @@ const CreatorCampaignMarketplace = () => {
           </>
         )}
 
-        {activeTab === 'applied' && (
-          <div className="flex-1 px-4 py-4">
-            {appsLoading ? (
+        {activeTab === 'donny' && (
+          <div className="px-4 py-4">
+            {donnyPicks && donnyPicks.length > 0 ? (
               <div className="space-y-3">
-                <DCSkeleton variant="list-row" count={3} />
-              </div>
-            ) : applications.length === 0 ? (
-              <DCEmptyState
-                icon={FileText}
-                title="No applications yet"
-                subtitle="Browse campaigns and apply with one tap"
-                cta={{ label: "Browse Campaigns", to: "/dashboard/creator/campaigns" }}
-              />
-            ) : (
-              <div className="space-y-3">
-                {applications.map((app) => (
-                  <CreatorApplicationCard
-                    key={app.id}
-                    application={app}
-                    onViewDetails={handleViewApplicationDetail}
-                  />
+                {donnyPicks.map((pick) => (
+                  <div
+                    key={pick.campaign.id}
+                    onClick={() => handleViewDetail(pick.campaign)}
+                    className="bg-white rounded-2xl p-4 cursor-pointer hover:shadow-md transition-shadow border border-teal-200"
+                  >
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <div className="font-bold text-gray-900 text-sm">{pick.campaign.title}</div>
+                        <div className="text-xs text-gray-500">{pick.campaign.business_profile?.business_name || 'Unknown Business'}</div>
+                      </div>
+                      <span className="bg-teal-50 text-teal-700 text-xs font-semibold px-2 py-0.5 rounded-full">
+                        {pick.score || 0}% match
+                      </span>
+                    </div>
+                    {pick.matchReasons?.length > 0 && (
+                      <p className="text-xs text-gray-500">{pick.matchReasons[0]}</p>
+                    )}
+                  </div>
                 ))}
               </div>
-            )}
-          </div>
-        )}
-
-        {activeTab === 'active' && (
-          <div className="flex-1 px-4 py-4">
-            {activeLoading ? (
-              <div className="space-y-3">
-                <DCSkeleton variant="list-row" count={3} />
-              </div>
-            ) : activeCollabs.length === 0 ? (
-              <DCEmptyState
-                icon={Briefcase}
-                title="No active projects"
-                subtitle="Apply to campaigns to start working with brands"
-              />
             ) : (
-              <div className="space-y-3">
-                {activeCollabs.map((collab) => (
-                  <ActiveCampaignCard key={collab.id} collaboration={collab} />
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {activeTab === 'done' && (
-          <div className="flex-1 px-4 py-4">
-            {completedLoading ? (
-              <div className="space-y-3">
-                <DCSkeleton variant="list-row" count={3} />
-              </div>
-            ) : completedCollabs.length === 0 ? (
-              <DCEmptyState
-                icon={CheckCircle}
-                title="No completed projects yet"
-                subtitle="Your finished work will appear here"
-              />
-            ) : (
-              <div className="space-y-3">
-                {completedCollabs.map((collab) => (
-                  <CompletedCampaignCard key={collab.id} collaboration={collab} />
-                ))}
+              <div className="text-center py-12">
+                <p className="text-gray-600 font-semibold">No Donny Picks yet</p>
+                <p className="text-gray-400 text-sm mt-1">Apply to more campaigns so Donny can learn your preferences</p>
               </div>
             )}
           </div>
