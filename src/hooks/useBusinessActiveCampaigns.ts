@@ -11,19 +11,25 @@ export interface ActiveCampaignItem {
   creatorName: string | null;
 }
 
-export function useBusinessActiveCampaigns() {
+export function useBusinessActiveCampaigns(orgUnitId?: string | null) {
   const { user } = useAuth();
 
   return useQuery({
-    queryKey: ['business_active_campaigns', user?.id],
+    queryKey: ['business_active_campaigns', user?.id, orgUnitId ?? 'all'],
     queryFn: async (): Promise<ActiveCampaignItem[]> => {
       if (!user) throw new Error('User not authenticated');
 
-      const { data: campaigns, error } = await supabase
+      let campaignQuery = supabase
         .from('campaigns')
         .select('id, title, status, deadline')
         .eq('user_id', user.id)
-        .in('status', ['draft', 'published', 'active'])
+        .in('status', ['draft', 'published', 'active']);
+
+      if (orgUnitId) {
+        campaignQuery = campaignQuery.eq('org_unit_id', orgUnitId);
+      }
+
+      const { data: campaigns, error } = await campaignQuery
         .order('created_at', { ascending: false })
         .limit(5);
 
