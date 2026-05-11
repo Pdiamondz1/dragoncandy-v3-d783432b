@@ -31,6 +31,8 @@ const OneStepCallback: React.FC<{ accountId: string; username: string | null }> 
 
     const network = sessionStorage.getItem(PENDING_NETWORK_KEY) ?? '';
     sessionStorage.removeItem(PENDING_NETWORK_KEY);
+    const orgUnitId = sessionStorage.getItem('outstand_pending_org_unit_id') ?? '';
+    sessionStorage.removeItem('outstand_pending_org_unit_id');
 
     if (!network) {
       setStatus('error');
@@ -44,7 +46,7 @@ const OneStepCallback: React.FC<{ accountId: string; username: string | null }> 
         Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ account_id: accountId, network, username }),
+      body: JSON.stringify({ account_id: accountId, network, username, org_unit_id: orgUnitId || undefined }),
     })
       .then(async (res) => {
         if (!res.ok) {
