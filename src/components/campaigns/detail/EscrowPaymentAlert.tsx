@@ -9,13 +9,11 @@ import { useToast } from '@/hooks/use-toast';
 interface EscrowPaymentAlertProps {
   campaignId: string;
   escrowStatus: string;
-  escrowPaymentIntentId: string | null;
 }
 
 export const EscrowPaymentAlert: React.FC<EscrowPaymentAlertProps> = ({
   campaignId,
   escrowStatus,
-  escrowPaymentIntentId: _escrowPaymentIntentId,
 }) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -101,11 +99,7 @@ export const EscrowPaymentAlert: React.FC<EscrowPaymentAlertProps> = ({
     const checkoutWindow = window.open('about:blank', '_blank');
     try {
       const { data, error } = await supabase.functions.invoke('create-campaign-escrow', {
-        body: {
-          campaignId,
-          successUrl: `${window.location.origin}${window.location.pathname}?payment=success`,
-          cancelUrl: `${window.location.origin}${window.location.pathname}?payment=cancelled`,
-        },
+        body: { campaignId },
       });
       if (error) throw error;
       if (data?.alreadyPaid) {

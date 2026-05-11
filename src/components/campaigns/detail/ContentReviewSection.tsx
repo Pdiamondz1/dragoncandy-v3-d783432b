@@ -65,7 +65,7 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
       toast({ title: 'Content approved!', description: 'Payment released to creator.' });
       queryClient.invalidateQueries({ queryKey: ['campaigns'] });
       queryClient.invalidateQueries({ queryKey: ['campaign', campaignId] });
-      queryClient.invalidateQueries({ queryKey: ['business-projects'] });
+      queryClient.invalidateQueries({ queryKey: ['campaign-project', campaignId] });
     },
     onError: (err: Error) => {
       toast({ variant: 'destructive', title: 'Approval Failed', description: err.message });
@@ -108,7 +108,7 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
       setShowRevisionInput(false);
       queryClient.invalidateQueries({ queryKey: ['campaigns'] });
       queryClient.invalidateQueries({ queryKey: ['campaign', campaignId] });
-      queryClient.invalidateQueries({ queryKey: ['business-projects'] });
+      queryClient.invalidateQueries({ queryKey: ['campaign-project', campaignId] });
     },
     onError: (err: Error) => {
       toast({ variant: 'destructive', title: 'Request Failed', description: err.message });

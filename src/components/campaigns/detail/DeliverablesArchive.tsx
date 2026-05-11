@@ -8,12 +8,10 @@ import { formatFileSize } from '@/lib/fileUtils';
 
 interface DeliverablesArchiveProps {
   campaignId: string;
-  collaborationId: string | undefined;
 }
 
 export const DeliverablesArchive: React.FC<DeliverablesArchiveProps> = ({
   campaignId,
-  collaborationId: _collaborationId,
 }) => {
   const { toast } = useToast();
   const { data: files, isLoading } = useFileUploads(campaignId, 'deliverable');

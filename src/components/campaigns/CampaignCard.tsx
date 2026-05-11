@@ -17,6 +17,8 @@ import {
   needsBusinessAction,
   PROJECT_STEPS,
   getStepIndex,
+  getStatusBadgeClass,
+  formatBudget,
   type CampaignPhase,
   type ProjectStep,
 } from '@/lib/campaignPhase';
@@ -24,17 +26,6 @@ import { CampaignProgressBar } from './CampaignProgressBar';
 
 interface CampaignCardProps {
   campaign: Campaign;
-}
-
-function getStatusBadgeClass(status: string): string {
-  switch (status) {
-    case 'draft': return 'bg-gray-200 text-gray-700';
-    case 'published': return 'bg-yellow-100 text-yellow-800';
-    case 'active': return 'bg-teal-100 text-teal-800';
-    case 'completed': return 'bg-green-100 text-green-800';
-    case 'cancelled': return 'bg-red-100 text-red-800';
-    default: return 'bg-gray-200 text-gray-700';
-  }
 }
 
 function getCtaLabel(
@@ -58,17 +49,6 @@ function getCtaClass(label: string): string {
   if (label === 'Review Applications →') return 'rounded-full bg-teal-400 hover:bg-teal-500 text-white font-semibold w-full';
   if (label === 'View Progress') return 'rounded-full bg-teal-400 hover:bg-teal-500 text-white font-semibold w-full';
   return 'rounded-full border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 font-semibold w-full';
-}
-
-function formatBudget(campaign: Campaign): string {
-  if (campaign.pricing_type === 'fixed' && campaign.fixed_price) {
-    const total = campaign.fixed_price + (campaign.delivery_fee || 0);
-    return `$${total}`;
-  }
-  if (campaign.budget_min && campaign.budget_max) return `$${campaign.budget_min}–$${campaign.budget_max}`;
-  if (campaign.budget_min) return `From $${campaign.budget_min}`;
-  if (campaign.budget_max) return `Up to $${campaign.budget_max}`;
-  return 'Budget TBD';
 }
 
 function getStepLabel(phase: CampaignPhase, step: ProjectStep | null, applicationCount: number, status: string): string {

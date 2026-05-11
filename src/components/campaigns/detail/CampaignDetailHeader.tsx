@@ -10,7 +10,7 @@ import {
 import { MoreHorizontal } from 'lucide-react';
 import { format } from 'date-fns';
 import type { Campaign } from '@/hooks/useCampaignQueries';
-import { type CampaignPhase, type ProjectStep, needsBusinessAction } from '@/lib/campaignPhase';
+import { type CampaignPhase, type ProjectStep, needsBusinessAction, getStatusBadgeClass, formatBudget } from '@/lib/campaignPhase';
 
 interface CampaignDetailHeaderProps {
   campaign: Pick<
@@ -23,28 +23,6 @@ interface CampaignDetailHeaderProps {
   onDelete: () => void;
   onRelaunch: () => void;
   onEdit: () => void;
-}
-
-function getStatusBadgeClass(status: string): string {
-  switch (status) {
-    case 'draft':     return 'bg-gray-200 text-gray-700';
-    case 'published': return 'bg-yellow-100 text-yellow-800';
-    case 'active':    return 'bg-teal-100 text-teal-800';
-    case 'completed': return 'bg-green-100 text-green-800';
-    case 'cancelled': return 'bg-red-100 text-red-800';
-    default:          return 'bg-gray-200 text-gray-700';
-  }
-}
-
-function formatBudget(campaign: CampaignDetailHeaderProps['campaign']): string {
-  if (campaign.pricing_type === 'fixed' && campaign.fixed_price) {
-    const total = campaign.fixed_price + (campaign.delivery_fee || 0);
-    return `$${total}`;
-  }
-  if (campaign.budget_min && campaign.budget_max) return `$${campaign.budget_min}–$${campaign.budget_max}`;
-  if (campaign.budget_min) return `From $${campaign.budget_min}`;
-  if (campaign.budget_max) return `Up to $${campaign.budget_max}`;
-  return 'Budget TBD';
 }
 
 export const CampaignDetailHeader: React.FC<CampaignDetailHeaderProps> = ({

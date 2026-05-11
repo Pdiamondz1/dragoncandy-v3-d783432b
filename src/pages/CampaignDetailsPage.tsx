@@ -315,7 +315,6 @@ const CampaignDetailsPage: React.FC = () => {
           <EscrowPaymentAlert
             campaignId={campaign.id}
             escrowStatus={campaign.escrow_status ?? 'pending'}
-            escrowPaymentIntentId={campaign.escrow_payment_intent_id ?? null}
           />
         )}
 
@@ -367,7 +366,6 @@ const CampaignDetailsPage: React.FC = () => {
           <>
             <DeliverablesArchive
               campaignId={campaign.id}
-              collaborationId={collaborationData.id}
             />
             <PaymentSummary
               completedAt={collaborationData.completed_at ?? null}
