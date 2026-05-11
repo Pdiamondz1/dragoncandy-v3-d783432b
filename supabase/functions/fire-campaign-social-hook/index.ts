@@ -30,7 +30,7 @@ serve(async (req) => {
 
     const { data: campaign } = await supabase
       .from('campaigns')
-      .select('id, title, user_id, status')
+      .select('id, title, user_id, status, org_unit_id')
       .eq('id', campaign_id)
       .single();
 
@@ -118,11 +118,17 @@ serve(async (req) => {
     if (stage === 4) {
       for (const party of parties) {
         try {
-          const { data: outstandAccounts } = await supabase
+          let accountQuery = supabase
             .from('business_outstand_accounts')
             .select('platform, platform_handle')
             .eq('user_id', party.user_id)
-            .limit(1);
+            .eq('status', 'active');
+
+          if (campaign.org_unit_id) {
+            accountQuery = accountQuery.eq('org_unit_id', campaign.org_unit_id);
+          }
+
+          const { data: outstandAccounts } = await accountQuery.limit(1);
 
           if (!outstandAccounts?.length) continue;
 
