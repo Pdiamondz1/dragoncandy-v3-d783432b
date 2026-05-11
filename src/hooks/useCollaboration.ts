@@ -20,6 +20,7 @@ export interface CollaborationDetails {
   created_at: string;
   updated_at: string;
   deliverables_status: Record<string, string> | null;
+  revision_feedback: Record<string, string> | null;
   campaign: {
     id: string;
     title: string;
@@ -76,6 +77,7 @@ export function useCollaboration(collaborationId: string) {
           created_at,
           updated_at,
           deliverables_status,
+          revision_feedback,
           campaigns!inner (
             id,
             title,
@@ -134,6 +136,7 @@ export function useCollaboration(collaborationId: string) {
         created_at: data.created_at,
         updated_at: data.updated_at,
         deliverables_status: (data.deliverables_status as Record<string, string>) ?? null,
+        revision_feedback: (data.revision_feedback as Record<string, string>) ?? null,
         campaign: campaignData,
         creator_profile: creatorProfile,
         business_profile: businessProfile
