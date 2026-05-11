@@ -5,8 +5,8 @@ import { useCreateCampaign, useUpdateCampaign, useDeleteCampaign } from './useCa
 export type { Campaign } from './useCampaignQueries';
 export type { CreateCampaignData } from './useCampaignMutations';
 
-export const useCampaigns = (filterByOwnership: boolean = true) => {
-  const { data: campaigns, isLoading, error } = useCampaignsList(filterByOwnership);
+export const useCampaigns = (filterByOwnership: boolean = true, orgUnitId?: string | null) => {
+  const { data: campaigns, isLoading, error } = useCampaignsList(filterByOwnership, orgUnitId);
   const createCampaign = useCreateCampaign();
   const updateCampaign = useUpdateCampaign();
   const deleteCampaign = useDeleteCampaign();
