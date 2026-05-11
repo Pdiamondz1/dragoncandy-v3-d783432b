@@ -217,11 +217,12 @@ All hardcoded references to removed routes must be updated:
 
 | File | Reference | Change to |
 |------|-----------|-----------|
-| `src/config/navConfig.ts` (sidebar) | `/dashboard/business/projects` | Remove entry |
-| `src/config/navConfig.ts` (drawer) | `/dashboard/business/projects` | Remove entry |
+| `src/lib/navConfig.ts` (sidebar) | `/dashboard/business/projects` | Remove entry |
+| `src/lib/navConfig.ts` (drawer) | `/dashboard/business/projects` | Remove entry |
 | `src/pages/CampaignMessagesPage.tsx` | `/dashboard/business/projects` | `/dashboard/business/campaigns` |
 | `src/pages/CampaignProjectPage.tsx` | `/dashboard/business/projects` | File deleted |
 | `src/pages/ProjectDetailsPage.tsx` | `/dashboard/business/projects` | `/dashboard/business/campaigns` |
+| `src/App.tsx` (route definition + lazy import) | `/dashboard/business/projects`, `BusinessProjects` import, `CampaignProjectPage` route | Replace with `<Navigate>` redirects, remove old lazy imports |
 | `src/hooks/useProjectComplete.ts` (notification `actionUrl`) | `/dashboard/business/projects` | `/dashboard/business/campaigns/:id` |
 | `create-campaign-escrow` edge function | Payment redirect URLs | `/dashboard/business/campaigns/:id?payment=...` |
 
