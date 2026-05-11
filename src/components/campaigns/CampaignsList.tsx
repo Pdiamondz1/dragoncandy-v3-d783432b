@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { useCampaigns, type Campaign } from '@/hooks/useCampaigns';
+import { useCampaigns } from '@/hooks/useCampaigns';
 import { useAuth } from '@/hooks/useAuth';
 import { CampaignCard } from '@/components/campaigns/CampaignCard';
 import { Button } from '@/components/ui/button';
@@ -70,22 +70,12 @@ export const CampaignsList: React.FC<CampaignsListProps> = ({
     );
   }
 
-  const handleViewDetails = (campaign: Campaign) => {
-    navigate(`/dashboard/business/campaigns/${campaign.id}`);
-  };
-
-  const handleEdit = (campaign: Campaign) => {
-    navigate(`/dashboard/business/campaigns/${campaign.id}/edit`);
-  };
-
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 w-full">
       {filteredCampaigns.map((campaign) => (
         <CampaignCard
           key={campaign.id}
           campaign={campaign}
-          onViewDetails={handleViewDetails}
-          onEdit={handleEdit}
         />
       ))}
     </div>

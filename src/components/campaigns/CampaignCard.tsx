@@ -1,12 +1,9 @@
 
 import React, { useState } from 'react';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Calendar, DollarSign, Eye, Users, FileText, MessageSquare, Edit, UserCheck, CreditCard, Loader2, AlertCircle, RefreshCw, FolderOpen, Trash2 } from 'lucide-react';
-import { useDeleteCampaign, useDuplicateCampaign } from '@/hooks/useCampaignMutations';
-import { ContentPreviewStrip } from './ContentPreviewStrip';
-import { DeleteCampaignDialog } from './DeleteCampaignDialog';
+import { Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Campaign } from '@/hooks/useCampaigns';
 import { format } from 'date-fns';
@@ -14,99 +11,120 @@ import { useCampaignApplicationsCount } from '@/hooks/useCampaignApplicationsCou
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
+import {
+  deriveCampaignPhase,
+  deriveCurrentStep,
+  needsBusinessAction,
+  PROJECT_STEPS,
+  getStepIndex,
+  type CampaignPhase,
+  type ProjectStep,
+} from '@/lib/campaignPhase';
+import { CampaignProgressBar } from './CampaignProgressBar';
 
 interface CampaignCardProps {
   campaign: Campaign;
-  onViewDetails?: (campaign: Campaign) => void;
-  onEdit?: (campaign: Campaign) => void;
 }
 
-const CampaignCardComponent: React.FC<CampaignCardProps> = ({ 
-  campaign, 
-  onViewDetails, 
-  onEdit 
-}) => {
+function getStatusBadgeClass(status: string): string {
+  switch (status) {
+    case 'draft': return 'bg-gray-200 text-gray-700';
+    case 'published': return 'bg-yellow-100 text-yellow-800';
+    case 'active': return 'bg-teal-100 text-teal-800';
+    case 'completed': return 'bg-green-100 text-green-800';
+    case 'cancelled': return 'bg-red-100 text-red-800';
+    default: return 'bg-gray-200 text-gray-700';
+  }
+}
+
+function getCtaLabel(
+  phase: CampaignPhase,
+  step: ProjectStep | null,
+  escrowStatus: string | null | undefined,
+  applicationCount: number
+): string {
+  if (escrowStatus === 'pending') return 'Pay & Publish →';
+  if (phase === 'cancelled') return 'View Campaign';
+  if (phase === 'completed') return 'View Deliverables';
+  if (phase === 'active_delivery' && step && needsBusinessAction(step)) return 'Review Content →';
+  if (phase === 'active_delivery') return 'View Progress';
+  if (applicationCount > 0) return 'Review Applications →';
+  return 'View Campaign';
+}
+
+function getCtaClass(label: string): string {
+  if (label === 'Pay & Publish →') return 'rounded-full bg-amber-400 hover:bg-amber-500 text-white font-semibold w-full';
+  if (label === 'Review Content →') return 'rounded-full bg-pink-400 hover:bg-pink-500 text-white font-semibold w-full';
+  if (label === 'Review Applications →') return 'rounded-full bg-teal-400 hover:bg-teal-500 text-white font-semibold w-full';
+  if (label === 'View Progress') return 'rounded-full bg-teal-400 hover:bg-teal-500 text-white font-semibold w-full';
+  return 'rounded-full border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 font-semibold w-full';
+}
+
+function formatBudget(campaign: Campaign): string {
+  if (campaign.pricing_type === 'fixed' && campaign.fixed_price) {
+    const total = campaign.fixed_price + (campaign.delivery_fee || 0);
+    return `$${total}`;
+  }
+  if (campaign.budget_min && campaign.budget_max) return `$${campaign.budget_min}–$${campaign.budget_max}`;
+  if (campaign.budget_min) return `From $${campaign.budget_min}`;
+  if (campaign.budget_max) return `Up to $${campaign.budget_max}`;
+  return 'Budget TBD';
+}
+
+function getStepLabel(phase: CampaignPhase, step: ProjectStep | null, applicationCount: number, status: string): string {
+  if (phase === 'completed') return '✓ All steps complete';
+  if (phase === 'active_delivery' && step) {
+    const idx = getStepIndex(step);
+    const stepInfo = PROJECT_STEPS[idx];
+    return `Step ${idx + 1} of ${PROJECT_STEPS.length} · ${stepInfo.label}`;
+  }
+  if (applicationCount > 0) return `Awaiting creator · ${applicationCount} application${applicationCount !== 1 ? 's' : ''}`;
+  if (status === 'published') return 'Campaign published';
+  return 'Draft';
+}
+
+const CampaignCardComponent: React.FC<CampaignCardProps> = ({ campaign }) => {
   const { data: applicationCounts } = useCampaignApplicationsCount(campaign.id);
   const { toast } = useToast();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [isPayingEscrow, setIsPayingEscrow] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [invitationCount, setInvitationCount] = useState(0);
-  const deleteCampaign = useDeleteCampaign();
-  const duplicateCampaign = useDuplicateCampaign();
 
-  const handleDelete = async () => {
-    try {
-      await deleteCampaign.mutateAsync(campaign.id);
-      setShowDeleteConfirm(false);
-    } catch (error) {
-      console.error('Failed to delete campaign:', error);
-    }
-  };
+  const collabShape = campaign.collaboration_status
+    ? {
+        status: campaign.collaboration_status,
+        content_status: campaign.collaboration_content_status ?? null,
+        business_completion_status: campaign.collaboration_business_completion_status ?? null,
+        creator_completion_status: campaign.collaboration_creator_completion_status ?? null,
+      }
+    : null;
 
-  const canDelete = (!applicationCounts || applicationCounts.accepted === 0) && campaign.escrow_status !== 'held';
+  const phase = deriveCampaignPhase(campaign.status, collabShape);
+  const step =
+    collabShape && (phase === 'active_delivery' || phase === 'completed')
+      ? deriveCurrentStep(collabShape)
+      : null;
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'draft': return 'bg-muted text-foreground border-border';
-      case 'published': return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'active': return 'bg-green-100 text-green-800 border-green-200';
-      case 'completed': return 'bg-purple-100 text-purple-800 border-purple-200';
-      case 'cancelled': return 'bg-red-100 text-red-800 border-red-200';
-      default: return 'bg-muted text-foreground border-border';
-    }
-  };
+  const applicationCount = applicationCounts?.total ?? 0;
+  const ctaLabel = getCtaLabel(phase, step, campaign.escrow_status, applicationCount);
+  const ctaClass = getCtaClass(ctaLabel);
+  const stepLabel = getStepLabel(phase, step, applicationCount, campaign.status);
 
-  const getEscrowBadge = () => {
-    switch (campaign.escrow_status) {
-      case 'pending':
-        return (
-          <Badge className="bg-amber-100 text-amber-800 border-amber-200 text-xs flex items-center gap-1">
-            <AlertCircle className="h-3 w-3" aria-hidden="true" />
-            Payment Pending
-          </Badge>
-        );
-      case 'held':
-        return (
-          <Badge className="bg-green-100 text-green-800 border-green-200 text-xs flex items-center gap-1">
-            <CreditCard className="h-3 w-3" aria-hidden="true" />
-            Escrow Held
-          </Badge>
-        );
-      case 'released':
-        return (
-          <Badge className="bg-purple-100 text-purple-800 border-purple-200 text-xs flex items-center gap-1">
-            <CreditCard className="h-3 w-3" aria-hidden="true" />
-            Paid Out
-          </Badge>
-        );
-      default:
-        return null;
-    }
-  };
-
-  // Verify payment first before opening checkout
-  const handleVerifyPayment = async () => {
+  const handleVerifyPayment = async (): Promise<boolean> => {
     setIsVerifying(true);
     try {
       const { data, error } = await supabase.functions.invoke('verify-campaign-escrow', {
         body: { campaignId: campaign.id },
       });
-
       if (error) throw error;
-
       if (data?.success && data?.status === 'held') {
-        toast({
-          title: 'Payment Already Verified!',
-          description: 'Your campaign is published and visible to creators.',
-        });
+        toast({ title: 'Payment Already Verified!', description: 'Your campaign is published and visible to creators.' });
         queryClient.invalidateQueries({ queryKey: ['campaigns'] });
         queryClient.invalidateQueries({ queryKey: ['public-campaigns'] });
-        return true; // Payment was already made
+        return true;
       }
-      return false; // Payment not yet made
+      return false;
     } catch (err) {
       console.error('Verification check failed:', err);
       return false;
@@ -117,17 +135,10 @@ const CampaignCardComponent: React.FC<CampaignCardProps> = ({
 
   const handlePayEscrow = async () => {
     setIsPayingEscrow(true);
-    
-    // First, check if already paid (prevents duplicate charges)
     const alreadyPaid = await handleVerifyPayment();
-    if (alreadyPaid) {
-      setIsPayingEscrow(false);
-      return;
-    }
-    
-    // Open blank window immediately to avoid popup blocker
+    if (alreadyPaid) { setIsPayingEscrow(false); return; }
+
     const checkoutWindow = window.open('about:blank', '_blank');
-    
     try {
       const { data, error } = await supabase.functions.invoke('create-campaign-escrow', {
         body: {
@@ -138,338 +149,118 @@ const CampaignCardComponent: React.FC<CampaignCardProps> = ({
           deliveryType: campaign.delivery_type || 'standard',
         },
       });
-      
       if (error) throw error;
-
-      // Check if already paid (edge function returns this)
       if (data?.alreadyPaid) {
         checkoutWindow?.close();
-        toast({
-          title: 'Already Paid',
-          description: 'This campaign has already been paid for.',
-        });
+        toast({ title: 'Already Paid', description: 'This campaign has already been paid for.' });
         queryClient.invalidateQueries({ queryKey: ['campaigns'] });
         return;
       }
-      
       if (data?.url && checkoutWindow) {
         checkoutWindow.location.href = data.url;
-        toast({
-          title: 'Opening Stripe Checkout',
-          description: 'Complete your payment to publish the campaign.',
-        });
+        toast({ title: 'Opening Stripe Checkout', description: 'Complete your payment to publish the campaign.' });
       } else if (data?.url) {
-        // Fallback if popup was blocked
         toast({
           title: 'Popup Blocked',
           description: 'Click below to open payment.',
           action: (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => window.open(data.url, '_blank')}
-            >
+            <Button variant="outline" size="sm" onClick={() => window.open(data.url, '_blank')}>
               Open Payment
             </Button>
           ),
         });
       }
-    } catch (error) {
-      console.error('Escrow payment error:', error);
+    } catch (err) {
+      console.error('Escrow payment error:', err);
       checkoutWindow?.close();
-      toast({
-        variant: 'destructive',
-        title: 'Payment Failed',
-        description: 'Could not initiate payment. Please try again.',
-      });
+      toast({ variant: 'destructive', title: 'Payment Failed', description: 'Could not initiate payment. Please try again.' });
     } finally {
       setIsPayingEscrow(false);
     }
   };
 
-  const formatBudget = () => {
-    // Show fixed price if it's a fixed campaign
-    if (campaign.pricing_type === 'fixed' && campaign.fixed_price) {
-      const total = campaign.fixed_price + (campaign.delivery_fee || 0);
-      return `$${total} (Fixed)`;
-    }
-    if (campaign.budget_min && campaign.budget_max) {
-      return `$${campaign.budget_min} - $${campaign.budget_max}`;
-    }
-    if (campaign.budget_min) {
-      return `From $${campaign.budget_min}`;
-    }
-    if (campaign.budget_max) {
-      return `Up to $${campaign.budget_max}`;
-    }
-    return 'Budget TBD';
+  const handleCta = () => {
+    if (ctaLabel === 'Pay & Publish →') { handlePayEscrow(); return; }
+    navigate(`/dashboard/business/campaigns/${campaign.id}`);
   };
 
-  const getContentItemsCount = () => {
-    return campaign.deliverables ? campaign.deliverables.length : 0;
-  };
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'active':
-        return <MessageSquare className="h-3 w-3" aria-hidden="true" />;
-      case 'completed':
-        return <FileText className="h-3 w-3" aria-hidden="true" />;
-      default:
-        return null;
-    }
-  };
-
-  // Check if campaign needs escrow payment
-  const needsEscrowPayment = campaign.escrow_status === 'pending';
+  const isCtaLoading = (ctaLabel === 'Pay & Publish →') && (isPayingEscrow || isVerifying);
 
   return (
-    <Card className={`relative overflow-hidden hover:shadow-lg transition-[transform,box-shadow] duration-200 border-l-4 max-w-full ${needsEscrowPayment ? 'border-l-amber-500 bg-amber-50/30' : 'border-l-transparent hover:border-l-primary/50'}`}>
-      {/* Application Counter Badge - Top Right Corner */}
-      {applicationCounts && applicationCounts.pending > 0 && (
-        <div className="absolute top-2 right-2 z-10">
-          <Badge className="bg-destructive text-destructive-foreground text-xs px-2 py-1 rounded-full shadow-lg">
-            {applicationCounts.pending}
+    <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-200 border border-gray-200">
+      <CardContent className="p-4 space-y-3">
+        {/* Title + status badge */}
+        <div className="flex items-start justify-between gap-2">
+          <h3 className="text-base font-semibold text-gray-900 line-clamp-2 flex-1">{campaign.title}</h3>
+          <Badge className={`${getStatusBadgeClass(campaign.status)} text-xs font-medium shrink-0`}>
+            {campaign.status.charAt(0).toUpperCase() + campaign.status.slice(1)}
           </Badge>
         </div>
-      )}
-      
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between">
-          <div className="flex-1 min-w-0 pr-4">
-            <CardTitle className="text-base sm:text-lg font-semibold line-clamp-2 mb-2">
-              {campaign.title}
-            </CardTitle>
-            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 flex-wrap">
-              <Badge className={`${getStatusColor(campaign.status)} text-xs font-medium flex items-center gap-1 w-fit`}>
-                {getStatusIcon(campaign.status)}
-                {campaign.status.charAt(0).toUpperCase() + campaign.status.slice(1)}
-              </Badge>
-              {getEscrowBadge()}
-              <span className="text-xs text-muted-foreground">
-                {format(new Date(campaign.created_at), 'MMM dd, yyyy')}
-              </span>
-            </div>
-          </div>
-        </div>
-      </CardHeader>
 
-      <CardContent className="space-y-3 sm:space-y-4 pt-0">
-        {/* Escrow Payment Alert */}
-        {needsEscrowPayment && (
-          <div className="p-3 rounded-lg bg-amber-100 border border-amber-300">
-            <div className="flex items-center gap-2 text-amber-800 text-sm font-medium mb-2">
-              <AlertCircle className="h-4 w-4" aria-hidden="true" />
-              Payment Required to Publish
-            </div>
-            <p className="text-xs text-amber-700 mb-2">
-              Complete escrow payment to make this campaign visible to creators.
-            </p>
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                className="flex-1 bg-amber-600 hover:bg-amber-700 text-white"
-                onClick={handlePayEscrow}
-                disabled={isPayingEscrow || isVerifying}
-              >
-                {isPayingEscrow ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" aria-hidden="true" />
-                    Processing…
-                  </>
-                ) : (
-                  <>
-                    <CreditCard className="h-4 w-4 mr-2" aria-hidden="true" />
-                    Pay (${(campaign.fixed_price || 0) + (campaign.delivery_fee || 0)})
-                  </>
-                )}
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={handleVerifyPayment}
-                disabled={isVerifying || isPayingEscrow}
-                className="border-amber-300 text-amber-700 hover:bg-amber-50"
-              >
-                {isVerifying ? (
-                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-                ) : (
-                  <RefreshCw className="h-4 w-4" aria-hidden="true" />
-                )}
-              </Button>
-            </div>
-          </div>
-        )}
-
-        <p className="text-sm text-muted-foreground line-clamp-2 min-h-[2.5rem]">
-          {campaign.description || 'No description provided'}
+        {/* Stats line */}
+        <p className="text-xs text-gray-500 flex gap-2 flex-wrap">
+          <span>{formatBudget(campaign)}</span>
+          {campaign.deadline && (
+            <>
+              <span>·</span>
+              <span>Due {format(new Date(campaign.deadline), 'MMM d')}</span>
+            </>
+          )}
+          {campaign.platforms && campaign.platforms.length > 0 && (
+            <>
+              <span>·</span>
+              <span>{campaign.platforms.slice(0, 2).join(', ')}{campaign.platforms.length > 2 ? ` +${campaign.platforms.length - 2}` : ''}</span>
+            </>
+          )}
         </p>
 
-        {/* Key Metrics */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
-          <div className="flex items-center gap-2 text-sm">
-            <DollarSign className="h-4 w-4 text-emerald-600" aria-hidden="true" />
-            <span className="text-muted-foreground truncate">{formatBudget()}</span>
-          </div>
-          
-          <div className="flex items-center gap-2 text-sm">
-            <FileText className="h-4 w-4 text-blue-600" aria-hidden="true" />
-            <span className="text-muted-foreground">
-              {getContentItemsCount()} item{getContentItemsCount() !== 1 ? 's' : ''}
-            </span>
-          </div>
-
-          {/* Total Applications Count (subtle) */}
-          <div className="flex items-center gap-2 text-sm">
-            <UserCheck className="h-4 w-4 text-purple-600" aria-hidden="true" />
-            <span className="text-muted-foreground">
-              {applicationCounts?.total || 0} application{(applicationCounts?.total || 0) !== 1 ? 's' : ''}
-            </span>
-          </div>
-
-          {campaign.deadline && (
-            <div className="flex items-center gap-2 text-sm">
-              <Calendar className="h-4 w-4 text-orange-600" aria-hidden="true" />
-              <span className="text-muted-foreground">
-                Due {format(new Date(campaign.deadline), 'MMM dd, yyyy')}
-              </span>
+        {/* Progress bar + step label */}
+        <div className="space-y-1">
+          {step ? (
+            <CampaignProgressBar currentStep={step} />
+          ) : (
+            <div className="flex gap-1">
+              {PROJECT_STEPS.map((s) => (
+                <div key={s.key} className="flex-1 h-1 rounded-full bg-gray-200" />
+              ))}
             </div>
           )}
+          <p className="text-xs text-gray-500">{stepLabel}</p>
         </div>
 
-        {/* Platforms */}
-        {campaign.platforms && campaign.platforms.length > 0 && (
-          <div className="flex items-start gap-2">
-            <Users className="h-4 w-4 text-muted-foreground mt-0.5" aria-hidden="true" />
-            <div className="flex flex-wrap gap-1">
-              {campaign.platforms.slice(0, 2).map((platform) => (
-                <Badge key={platform} variant="outline" className="text-xs">
-                  {platform}
-                </Badge>
-              ))}
-              {campaign.platforms.length > 2 && (
-                <Badge variant="outline" className="text-xs">
-                  +{campaign.platforms.length - 2} more
-                </Badge>
-              )}
-            </div>
+        {/* Creator row */}
+        {campaign.creator_name && (
+          <div className="flex items-center gap-2">
+            {campaign.creator_avatar_url ? (
+              <img
+                src={campaign.creator_avatar_url}
+                alt={campaign.creator_name}
+                className="w-7 h-7 rounded-full object-cover ring-1 ring-teal-400"
+              />
+            ) : (
+              <div className="w-7 h-7 rounded-full bg-teal-400 flex items-center justify-center text-white text-xs font-bold ring-1 ring-teal-400">
+                {campaign.creator_name.charAt(0).toUpperCase()}
+              </div>
+            )}
+            <span className="text-xs text-gray-700 font-medium">{campaign.creator_name} <span className="text-gray-400 font-normal">· assigned</span></span>
           </div>
         )}
 
-        {/* Deliverables Preview */}
-        {campaign.deliverables && campaign.deliverables.length > 0 && (
-          <div>
-            <div className="flex flex-wrap gap-1">
-              {campaign.deliverables.slice(0, 2).map((deliverable, index) => (
-                <Badge key={index} variant="secondary" className="text-xs">
-                  {deliverable}
-                </Badge>
-              ))}
-              {campaign.deliverables.length > 2 && (
-                <Badge variant="secondary" className="text-xs">
-                  +{campaign.deliverables.length - 2} more
-                </Badge>
-              )}
-            </div>
-          </div>
-        )}
-        <ContentPreviewStrip campaignId={campaign.id} role="business" />
-      </CardContent>
-
-      <CardFooter className="flex flex-wrap gap-2 pt-4 border-t border-border min-w-0 overflow-hidden">
-        <Button 
-          variant="outline" 
-          size="sm" 
-          className="text-xs"
-          onClick={() => onViewDetails?.(campaign)}
+        {/* Single CTA */}
+        <Button
+          className={ctaClass}
+          size="sm"
+          onClick={handleCta}
+          disabled={isCtaLoading}
         >
-          {applicationCounts && applicationCounts.pending > 0 ? (
+          {isCtaLoading ? (
             <>
-              <UserCheck className="h-3 w-3 mr-1" aria-hidden="true" />
-              Review Applications
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" aria-hidden="true" />
+              Processing…
             </>
-          ) : (
-            <>
-              <Eye className="h-3 w-3 mr-1" aria-hidden="true" />
-              View Details
-            </>
-          )}
+          ) : ctaLabel}
         </Button>
-        {applicationCounts && applicationCounts.accepted > 0 && (
-          <Button 
-            variant="secondary" 
-            size="sm" 
-            className="text-xs"
-            onClick={() => navigate(`/dashboard/business/campaigns/${campaign.id}/project`)}
-          >
-            <FolderOpen className="h-3 w-3 mr-1" aria-hidden="true" />
-            Project Status
-          </Button>
-        )}
-        {campaign.status === 'completed' && (
-          <Button
-            variant="default"
-            size="sm"
-            className="text-xs bg-teal-400 hover:bg-teal-500 text-white rounded-full"
-            onClick={async () => {
-              const result = await duplicateCampaign.mutateAsync(campaign.id);
-              navigate(`/dashboard/business/campaigns/${result.id}/edit`);
-            }}
-            disabled={duplicateCampaign.isPending}
-          >
-            {duplicateCampaign.isPending ? (
-              <Loader2 className="h-3 w-3 mr-1 animate-spin" aria-hidden="true" />
-            ) : (
-              <RefreshCw className="h-3 w-3 mr-1" aria-hidden="true" />
-            )}
-            Re-Launch Campaign
-          </Button>
-        )}
-        {canDelete && (
-          <Button
-            variant="destructive"
-            size="sm"
-            className="text-xs"
-            onClick={async () => {
-              const { count } = await supabase
-                .from('campaign_invitations')
-                .select('*', { count: 'exact', head: true })
-                .eq('campaign_id', campaign.id);
-              setInvitationCount(count ?? 0);
-              setShowDeleteConfirm(true);
-            }}
-            disabled={deleteCampaign.isPending}
-          >
-            {deleteCampaign.isPending ? (
-              <Loader2 className="h-3 w-3 mr-1 animate-spin" aria-hidden="true" />
-            ) : (
-              <Trash2 className="h-3 w-3 mr-1" aria-hidden="true" />
-            )}
-            Delete
-          </Button>
-        )}
-        {onEdit && (
-          <Button 
-            variant="default" 
-            size="sm" 
-            className="text-xs"
-            onClick={() => onEdit(campaign)}
-          >
-            <Edit className="h-3 w-3 mr-1" aria-hidden="true" />
-            Edit
-          </Button>
-        )}
-      </CardFooter>
-
-      <DeleteCampaignDialog
-        open={showDeleteConfirm}
-        onOpenChange={setShowDeleteConfirm}
-        campaignTitle={campaign.title}
-        applicationCount={applicationCounts?.total ?? 0}
-        invitationCount={invitationCount}
-        onConfirm={handleDelete}
-        isDeleting={deleteCampaign.isPending}
-      />
+      </CardContent>
     </Card>
   );
 };
