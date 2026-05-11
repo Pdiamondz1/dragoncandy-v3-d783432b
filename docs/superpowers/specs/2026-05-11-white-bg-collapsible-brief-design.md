@@ -36,10 +36,20 @@ Create a `CollapsibleBriefSection` wrapper component used in `CreatorCampaignDet
 - Uses existing `Collapsible`, `CollapsibleTrigger`, `CollapsibleContent` from `@/components/ui/collapsible`
 - Props: `title: string`, `defaultOpen?: boolean`, `children: React.ReactNode`
 - The trigger renders the section heading (`text-sm font-bold text-gray-900 uppercase tracking-wider`) matching the existing heading style, plus a `ChevronDown` icon from lucide-react
+- `CollapsibleContent` gets `className="overflow-hidden data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up"` for smooth height animation
+
+**Animation keyframes:** Add to `tailwind.config.ts` keyframes:
+```
+collapsible-down: { from: { height: '0' }, to: { height: 'var(--radix-collapsible-content-height)' } }
+collapsible-up: { from: { height: 'var(--radix-collapsible-content-height)' }, to: { height: '0' } }
+```
+And corresponding `animate-collapsible-down` / `animate-collapsible-up` animation utilities.
 
 **Parent changes in `CreatorCampaignDetails.tsx`:**
 - Wrap each section component in `<CollapsibleBriefSection title="..." defaultOpen={...}>` 
-- Remove the `<h3>` heading from each of the 4 section components since the collapsible trigger becomes the heading
+- Remove the `<h3>` heading and the outer `<div className="space-y-3">` wrapper from each of the 4 section components — each returns only its inner content card. The `CollapsibleBriefSection` provides the heading and spacing.
+
+**Edge case:** All 4 collapsible headers always render, regardless of field population, since the sections are always mounted in `CreatorCampaignDetails`.
 
 ## File Changes
 
@@ -53,10 +63,11 @@ Create a `CollapsibleBriefSection` wrapper component used in `CreatorCampaignDet
 |------|--------|
 | `src/pages/MyCampaignDetailPage.tsx` | Replace 3× `bg-gray-300` with `bg-white` |
 | `src/components/campaign-details/CreatorCampaignDetails.tsx` | Wrap each section in `CollapsibleBriefSection` |
-| `src/components/campaign-details/sections/CampaignOverviewSection.tsx` | Remove `<h3>` heading (moved to collapsible trigger) |
-| `src/components/campaign-details/sections/ContentRequirementsSection.tsx` | Remove `<h3>` heading |
-| `src/components/campaign-details/sections/CompensationSection.tsx` | Remove `<h3>` heading |
-| `src/components/campaign-details/sections/LogisticsSection.tsx` | Remove `<h3>` heading |
+| `src/components/campaign-details/sections/CampaignOverviewSection.tsx` | Remove `<h3>` heading and outer `space-y-3` wrapper |
+| `src/components/campaign-details/sections/ContentRequirementsSection.tsx` | Remove `<h3>` heading and outer `space-y-3` wrapper |
+| `src/components/campaign-details/sections/CompensationSection.tsx` | Remove `<h3>` heading and outer `space-y-3` wrapper |
+| `src/components/campaign-details/sections/LogisticsSection.tsx` | Remove `<h3>` heading and outer `space-y-3` wrapper |
+| `tailwind.config.ts` | Add `collapsible-down` / `collapsible-up` keyframes and animation utilities |
 
 ## Risk Mitigations
 
