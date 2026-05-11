@@ -28,10 +28,11 @@ export interface CreateCampaignData {
   escrow_status?: 'none' | 'pending' | 'held' | 'released' | 'refunded';
   // AI-generated campaign analysis (JSONB)
   ai_analysis?: Record<string, unknown> | null;
+  org_unit_id?: string | null;
 }
 
 export const useCreateCampaign = () => {
-  const { user } = useAuth();
+  const { user, activeOrgUnit } = useAuth();
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -41,6 +42,7 @@ export const useCreateCampaign = () => {
         .insert({
           ...campaignData,
           user_id: user!.id,
+          org_unit_id: campaignData.org_unit_id ?? activeOrgUnit?.id ?? null,
         } as unknown as Database['public']['Tables']['campaigns']['Insert'])
         .select('id, title, description, status, open_for_sponsorship, budget_min, budget_max, platforms, user_id')
         .single();
@@ -471,7 +473,7 @@ export const useDuplicateCampaign = () => {
     mutationFn: async (sourceCampaignId: string) => {
       const { data: source, error: fetchError } = await supabase
         .from('campaigns')
-        .select('title, description, goals, deliverables, platforms, budget_min, budget_max, style, tone, open_for_sponsorship, delivery_type, delivery_fee, pricing_type, fixed_price, ai_analysis')
+        .select('title, description, goals, deliverables, platforms, budget_min, budget_max, style, tone, open_for_sponsorship, delivery_type, delivery_fee, pricing_type, fixed_price, ai_analysis, org_unit_id')
         .eq('id', sourceCampaignId)
         .single();
 
