@@ -73,6 +73,15 @@ export interface Campaign {
   tier_reasoning?: string;
   created_at: string;
   updated_at: string;
+  // Collaboration + creator enrichment (optional, populated by useCampaignsList)
+  collaboration_id?: string | null;
+  collaboration_status?: string | null;
+  collaboration_content_status?: string | null;
+  collaboration_business_completion_status?: string | null;
+  collaboration_creator_completion_status?: string | null;
+  collaboration_creator_id?: string | null;
+  creator_name?: string | null;
+  creator_avatar_url?: string | null;
 }
 
 export const useCampaignsList = (filterByOwnership: boolean = true, orgUnitId?: string | null) => {
@@ -83,7 +92,16 @@ export const useCampaignsList = (filterByOwnership: boolean = true, orgUnitId?: 
     queryFn: async () => {
       let query = supabase
         .from('campaigns')
-        .select('id, user_id, org_unit_id, title, description, goals, deliverables, platforms, budget_min, budget_max, deadline, status, style, tone, open_for_sponsorship, delivery_type, delivery_fee, pricing_type, fixed_price, escrow_status, escrow_payment_intent_id, ai_analysis, ai_preview_status, created_at, updated_at');
+        .select(`
+          id, user_id, org_unit_id, title, description, goals, deliverables, platforms,
+          budget_min, budget_max, deadline, status, style, tone, open_for_sponsorship,
+          delivery_type, delivery_fee, pricing_type, fixed_price, escrow_status,
+          escrow_payment_intent_id, ai_analysis, ai_preview_status, created_at, updated_at,
+          campaign_collaborations (
+            id, status, content_status, creator_id,
+            business_completion_status, creator_completion_status
+          )
+        `);
 
       // If filtering by ownership, only return user's own campaigns
       if (filterByOwnership && user?.id) {
@@ -101,7 +119,46 @@ export const useCampaignsList = (filterByOwnership: boolean = true, orgUnitId?: 
         throw error;
       }
 
-      return (data as unknown as Campaign[]).map(hydrateCampaignFromAnalysis);
+      // Flatten collaboration array to first element
+      const enriched = (data ?? []).map((campaign: any) => {
+        const collab = campaign.campaign_collaborations?.[0] ?? null;
+        return {
+          ...campaign,
+          campaign_collaborations: undefined,
+          collaboration_id: collab?.id ?? null,
+          collaboration_status: collab?.status ?? null,
+          collaboration_content_status: collab?.content_status ?? null,
+          collaboration_business_completion_status: collab?.business_completion_status ?? null,
+          collaboration_creator_completion_status: collab?.creator_completion_status ?? null,
+          collaboration_creator_id: collab?.creator_id ?? null,
+          creator_name: null,
+          creator_avatar_url: null,
+        };
+      });
+
+      // Batch-fetch creator profiles for campaigns with an assigned creator
+      const creatorIds = enriched
+        .map((c: any) => c.collaboration_creator_id)
+        .filter(Boolean);
+
+      if (creatorIds.length > 0) {
+        const { data: creators } = await supabase
+          .from('creator_profiles')
+          .select('user_id, creator_name, avatar_url')
+          .in('user_id', creatorIds);
+
+        const creatorMap = new Map(
+          (creators ?? []).map((c: any) => [c.user_id, c])
+        );
+
+        enriched.forEach((campaign: any) => {
+          const creator = creatorMap.get(campaign.collaboration_creator_id);
+          campaign.creator_name = creator?.creator_name ?? null;
+          campaign.creator_avatar_url = creator?.avatar_url ?? null;
+        });
+      }
+
+      return enriched.map(hydrateCampaignFromAnalysis);
     },
     enabled: !!user,
   });
