@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { SettingsSection } from './SettingsSection';
+import { StripeConnectSetup } from './StripeConnectSetup';
 import { SocialMediaLinks } from '@/components/business-profile/SocialMediaLinks';
 import { ConnectedAccountsList } from '@/components/outstand/ConnectedAccountsList';
 import { FileUploadSection } from '@/components/business-profile/FileUploadSection';
@@ -307,12 +308,7 @@ export function BusinessSettingsSections({
           </Select>
         </div>
 
-        <p className="text-sm text-gray-500">
-          Stripe payment setup lets you pay creators directly through the platform.
-        </p>
-        <p className="text-xs text-gray-400">
-          Stripe Connect for businesses coming soon.
-        </p>
+        <StripeConnectSetup role="business" />
       </SettingsSection>
 
       {/* 6. Integrations */}

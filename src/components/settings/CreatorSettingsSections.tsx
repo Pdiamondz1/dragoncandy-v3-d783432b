@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { SettingsSection } from './SettingsSection';
+import { StripeConnectSetup } from './StripeConnectSetup';
 import { SkillsSelection } from '@/components/creator-profile/SkillsSelection';
 import { CreatorSocialMediaLinks } from '@/components/creator-profile/CreatorSocialMediaLinks';
 import { ConnectedAccountsList } from '@/components/outstand/ConnectedAccountsList';
@@ -256,13 +257,7 @@ export function CreatorSettingsSections({
         title="Payments"
         subtitle="Stripe Connect for payouts"
       >
-        <p className="text-sm text-gray-500">
-          Connect your Stripe account to receive payments directly. Once connected,
-          payouts are processed automatically after project completion.
-        </p>
-        <p className="text-xs text-gray-400 mt-2">
-          Stripe Connect setup coming soon.
-        </p>
+        <StripeConnectSetup role="creator" />
       </SettingsSection>
 
       {/* 6. Privacy */}

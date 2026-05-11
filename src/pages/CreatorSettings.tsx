@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { ShieldAlert } from 'lucide-react';
@@ -19,7 +19,7 @@ import { PageHeader } from '@/components/ui/PageHeader';
 const CreatorSettings = () => {
   const { submitProfile } = useCreatorProfileSubmit();
   const { completeMission } = useFirstRunMissions();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const [activeSection, setActiveSection] = useState<string | undefined>(
     searchParams.get('section') ?? undefined
   );
@@ -38,18 +38,6 @@ const CreatorSettings = () => {
   } = useCreatorProfileForm();
 
   useCreatorProfileLoad(setFormDataFromProfile);
-
-  // Handle Stripe onboarding return
-  useEffect(() => {
-    if (searchParams.get('stripe_onboarding') === 'complete') {
-      toast.success('Stripe Setup Complete! Your payout account is now connected. You can receive payments.');
-      completeMission('setup_payouts');
-      setSearchParams({});
-    } else if (searchParams.get('stripe_refresh') === 'true') {
-      toast.error('Stripe Setup Incomplete. Please complete your Stripe onboarding to receive payouts.');
-      setSearchParams({});
-    }
-  }, [searchParams, setSearchParams]);
 
   const handleFieldBlur = async () => {
     const success = await submitProfile(formData, selectedSkills, avatarFile, portfolioPaths, true);
