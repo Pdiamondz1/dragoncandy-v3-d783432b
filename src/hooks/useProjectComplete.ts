@@ -122,7 +122,7 @@ export const useProjectComplete = () => {
             recipientUserId: campaignData.user_id,
             campaignTitle: campaignData.title,
             projectId: collaborationId,
-            actionUrl: `${window.location.origin}/dashboard/business/projects?highlight=${collaborationId}`,
+            actionUrl: `${window.location.origin}/dashboard/business/campaigns/${campaignData.id}`,
             amount: payoutSuccess ? payoutAmount : undefined,
             paymentMethod: payoutSuccess ? payoutMethod : undefined,
             isRecipient: false, // Business paid, not received
@@ -161,7 +161,7 @@ export const useProjectComplete = () => {
             recipientUserId: collabCampaign.user_id,
             campaignTitle: collabCampaign.title,
             requesterName: creatorProfile?.creator_name ?? '',
-            actionUrl: `${window.location.origin}/dashboard/business/projects?highlight=${collaborationId}`
+            actionUrl: `${window.location.origin}/dashboard/business/campaigns/${collabCampaign.id}`
           }
         );
       } else {

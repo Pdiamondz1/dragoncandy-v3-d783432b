@@ -4,7 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation, useParams } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { DonnyProvider } from "@/contexts/DonnyProvider";
 const DonnyDesktopPanel = lazy(() => import("@/components/donny/DonnyDesktopPanel").then(m => ({ default: m.DonnyDesktopPanel })));
@@ -51,8 +51,6 @@ const CampaignMessagesPage = lazy(() => import("./pages/CampaignMessagesPage"));
 const ProjectDetailsPage = lazy(() => import("./pages/ProjectDetailsPage"));
 const CreatorCampaignMarketplace = lazy(() => import("./pages/CreatorCampaignMarketplace"));
 const BusinessProposals = lazy(() => import("./pages/BusinessProposals"));
-const BusinessProjects = lazy(() => import("./pages/BusinessProjects"));
-const CampaignProjectPage = lazy(() => import("./pages/CampaignProjectPage"));
 const BusinessSponsorships = lazy(() => import("./pages/BusinessSponsorships"));
 const BusinessPromotionalTools = lazy(() => import("./pages/BusinessPromotionalTools"));
 const OutstandManager = lazy(() => import("./pages/OutstandManager"));
@@ -122,6 +120,11 @@ function DashboardRedirect() {
   return <Navigate to="/auth" replace />;
 }
 
+function ProjectRedirect() {
+  const { id } = useParams();
+  return <Navigate to={`/dashboard/business/campaigns/${id}`} replace />;
+}
+
 function AnimatedRoutes() {
   const location = useLocation();
 
@@ -184,9 +187,9 @@ function AnimatedRoutes() {
           <Route path="/dashboard/business/campaigns/:id/edit" element={<ProtectedRoute><BusinessRoute><CampaignEditPage /></BusinessRoute></ProtectedRoute>} />
           <Route path="/dashboard/creator/campaigns/:id" element={<ProtectedRoute><CampaignDetailsPage /></ProtectedRoute>} />
 
-          {/* Business Project and Proposals Routes */}
-          <Route path="/dashboard/business/projects" element={<ProtectedRoute><BusinessRoute><BusinessProjects /></BusinessRoute></ProtectedRoute>} />
-          <Route path="/dashboard/business/campaigns/:id/project" element={<ProtectedRoute><BusinessRoute><CampaignProjectPage /></BusinessRoute></ProtectedRoute>} />
+          {/* Business Project and Proposals Routes — legacy redirects */}
+          <Route path="/dashboard/business/projects" element={<Navigate to="/dashboard/business/campaigns" replace />} />
+          <Route path="/dashboard/business/campaigns/:id/project" element={<ProjectRedirect />} />
           <Route path="/dashboard/business/campaigns/:campaignId/proposals" element={<ProtectedRoute><BusinessRoute><BusinessProposals /></BusinessRoute></ProtectedRoute>} />
           <Route path="/dashboard/business/campaigns/:id/details" element={<ProtectedRoute><BusinessRoute><CampaignDetailsPage /></BusinessRoute></ProtectedRoute>} />
 

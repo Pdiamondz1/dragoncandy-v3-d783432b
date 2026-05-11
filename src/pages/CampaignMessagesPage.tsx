@@ -23,7 +23,7 @@ const CampaignMessagesPage: React.FC = () => {
   const handleBack = () => {
     const from = searchParams.get('from');
     if (from === 'business-projects' && userRole === 'business_client') {
-      navigate('/dashboard/business/projects');
+      navigate('/dashboard/business/campaigns');
     } else {
       navigate('/messages');
     }

@@ -122,7 +122,7 @@ const ProjectDetailsPage: React.FC = () => {
         <PageHeader>
           <div className="flex items-center mb-3">
             <button
-              onClick={() => navigate(isBusinessClient ? '/dashboard/business/projects' : '/dashboard/creator/projects')}
+              onClick={() => navigate(isBusinessClient ? '/dashboard/business/campaigns' : '/dashboard/creator/projects')}
               className="text-dc-pink-accent flex items-center mr-3"
             >
               <ArrowLeft className="h-5 w-5" />

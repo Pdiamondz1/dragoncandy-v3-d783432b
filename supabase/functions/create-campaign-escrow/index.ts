@@ -137,8 +137,8 @@ serve(async (req) => {
       ],
       mode: "payment",
       // Fixed: Use correct dashboard routes with session_id for verification
-      success_url: `${origin}/dashboard/business/campaigns?payment=success&campaign_id=${campaignId}&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${origin}/dashboard/business/campaigns?payment=cancelled&campaign_id=${campaignId}`,
+      success_url: `${origin}/dashboard/business/campaigns/${campaignId}?payment=success&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${origin}/dashboard/business/campaigns/${campaignId}?payment=cancelled`,
       metadata: {
         campaign_id: campaignId,
         platform_fee: platformFee.toString(),
