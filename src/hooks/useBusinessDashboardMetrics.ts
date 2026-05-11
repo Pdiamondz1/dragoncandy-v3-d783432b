@@ -17,38 +17,56 @@ export interface BusinessDashboardMetrics {
   avgEngagement: BusinessMetric;
 }
 
-export function useBusinessDashboardMetrics() {
+export function useBusinessDashboardMetrics(orgUnitId?: string | null) {
   const { user } = useAuth();
 
   return useQuery({
-    queryKey: ['business_dashboard_metrics', user?.id],
+    queryKey: ['business_dashboard_metrics', user?.id, orgUnitId ?? 'all'],
     queryFn: async (): Promise<BusinessDashboardMetrics> => {
       if (!user) throw new Error('User not authenticated');
 
       // Active campaigns count
-      const { count: activeCount, error: activeError } = await supabase
+      let activeQuery = supabase
         .from('campaigns')
         .select('*', { count: 'exact', head: true })
         .eq('user_id', user.id)
         .in('status', ['active', 'published']);
 
+      if (orgUnitId) {
+        activeQuery = activeQuery.eq('org_unit_id', orgUnitId);
+      }
+
+      const { count: activeCount, error: activeError } = await activeQuery;
+
       if (activeError) throw activeError;
 
       // Pending content (collaborations in progress on user's campaigns)
-      const { data: pendingCollabs, error: pendingError } = await supabase
+      let pendingQuery = supabase
         .from('campaign_collaborations')
-        .select('id, campaigns!inner(user_id)')
+        .select('id, campaigns!inner(user_id, org_unit_id)')
         .eq('campaigns.user_id', user.id)
         .eq('status', 'active');
+
+      if (orgUnitId) {
+        pendingQuery = pendingQuery.eq('campaigns.org_unit_id', orgUnitId);
+      }
+
+      const { data: pendingCollabs, error: pendingError } = await pendingQuery;
 
       if (pendingError) throw pendingError;
 
       // Total spend (sum of proposed_rate from accepted applications on user's campaigns)
-      const { data: acceptedApps, error: spendError } = await supabase
+      let spendQuery = supabase
         .from('campaign_applications')
-        .select('proposed_rate, campaigns!inner(user_id)')
+        .select('proposed_rate, campaigns!inner(user_id, org_unit_id)')
         .eq('campaigns.user_id', user.id)
         .eq('status', 'accepted');
+
+      if (orgUnitId) {
+        spendQuery = spendQuery.eq('campaigns.org_unit_id', orgUnitId);
+      }
+
+      const { data: acceptedApps, error: spendError } = await spendQuery;
 
       if (spendError) throw spendError;
 
