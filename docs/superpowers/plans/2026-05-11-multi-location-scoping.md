@@ -784,12 +784,11 @@ git commit -m "feat: pass orgUnitId to brand dashboard campaign hooks"
 
 **Files:**
 - Modify: `src/components/campaigns/CampaignsList.tsx`
+- Modify: `src/pages/CampaignsPage.tsx`
 
-The `CampaignsList` component calls `useCampaigns(filterByOwnership)` which feeds into `useCampaignsList`. It needs the location filter so the "View all campaigns" page respects the active location.
+Both `CampaignsList` (renders the filtered list) and `CampaignsPage` (computes status tab counts) call `useCampaigns`. Both need the location filter so counts and list stay in sync.
 
-- [ ] **Step 1: Add activeOrgUnit and pass orgUnitId**
-
-In `CampaignsList`, add `activeOrgUnit` from auth context and pass it through:
+- [ ] **Step 1: Update CampaignsList**
 
 Add import:
 ```typescript
@@ -806,16 +805,33 @@ const { activeOrgUnit } = useAuth();
 const { campaigns, isLoading, error } = useCampaigns(filterByOwnership, activeOrgUnit?.id);
 ```
 
-- [ ] **Step 2: Verify build**
+- [ ] **Step 2: Update CampaignsPage**
+
+Add import:
+```typescript
+import { useAuth } from '@/hooks/useAuth';
+```
+
+In the component body (line 18), change:
+```typescript
+const { campaigns } = useCampaigns(true);
+```
+to:
+```typescript
+const { activeOrgUnit } = useAuth();
+const { campaigns } = useCampaigns(true, activeOrgUnit?.id);
+```
+
+- [ ] **Step 3: Verify build**
 
 Run: `npm run build`
 Expected: No TypeScript errors.
 
-- [ ] **Step 3: Commit**
+- [ ] **Step 4: Commit**
 
 ```bash
-git add src/components/campaigns/CampaignsList.tsx
-git commit -m "feat: pass orgUnitId to campaigns list page"
+git add src/components/campaigns/CampaignsList.tsx src/pages/CampaignsPage.tsx
+git commit -m "feat: pass orgUnitId to campaigns list page and tab counts"
 ```
 
 ---
