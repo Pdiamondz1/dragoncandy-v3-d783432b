@@ -39,7 +39,7 @@ interface ProjectCollaboration {
     pricing_type?: string;
     delivery_type?: string;
     deliverables?: string[];
-  };
+  } | null;
 }
 
 const CreatorProjects: React.FC = () => {

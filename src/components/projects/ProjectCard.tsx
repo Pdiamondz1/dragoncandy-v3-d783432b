@@ -16,7 +16,7 @@ interface ProjectCardProps {
       fixed_price?: number;
       budget_min?: number;
       budget_max?: number;
-    };
+    } | null;
   };
 }
 
@@ -45,6 +45,15 @@ const formatCurrency = (amount: number) =>
 
 export function ProjectCard({ project }: ProjectCardProps) {
   const navigate = useNavigate();
+
+  if (!project.campaigns) {
+    return (
+      <div className="bg-white rounded-2xl p-4 border-l-4 border-l-gray-300 opacity-70">
+        <p className="text-sm font-bold text-gray-400">Campaign unavailable</p>
+        <p className="text-xs text-gray-400">This project's campaign data could not be loaded</p>
+      </div>
+    );
+  }
 
   const deliveryType = project.campaigns.delivery_type || 'standard';
   const tier = TIER_STYLES[deliveryType] || TIER_STYLES.standard;
