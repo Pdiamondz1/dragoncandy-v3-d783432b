@@ -10,6 +10,7 @@ import { CampaignOverviewSection } from './sections/CampaignOverviewSection';
 import { ContentRequirementsSection } from './sections/ContentRequirementsSection';
 import { CompensationSection } from './sections/CompensationSection';
 import { LogisticsSection } from './sections/LogisticsSection';
+import { CollapsibleBriefSection } from './CollapsibleBriefSection';
 
 interface CreatorCampaignDetailsProps {
   campaign: Campaign;
@@ -48,7 +49,9 @@ export function CreatorCampaignDetails({
       />
 
       <div className="px-5 pt-4 pb-6 space-y-5">
-        <CampaignOverviewSection campaign={campaign} />
+        <CollapsibleBriefSection title="Campaign Overview" defaultOpen>
+          <CampaignOverviewSection campaign={campaign} />
+        </CollapsibleBriefSection>
 
         {enrichedDetail && (
           <CampaignReferencesGallery referenceMedia={enrichedDetail.referenceMedia} />
@@ -61,9 +64,17 @@ export function CreatorCampaignDetails({
           />
         )}
 
-        <ContentRequirementsSection campaign={campaign} campaignId={campaign.id} />
-        <CompensationSection campaign={campaign} campaignId={campaign.id} role="creator" />
-        <LogisticsSection campaign={campaign} />
+        <CollapsibleBriefSection title="Content Requirements">
+          <ContentRequirementsSection campaign={campaign} campaignId={campaign.id} />
+        </CollapsibleBriefSection>
+
+        <CollapsibleBriefSection title="Compensation & Terms">
+          <CompensationSection campaign={campaign} campaignId={campaign.id} role="creator" />
+        </CollapsibleBriefSection>
+
+        <CollapsibleBriefSection title="Logistics & Targeting">
+          <LogisticsSection campaign={campaign} />
+        </CollapsibleBriefSection>
 
         {enrichedDetail?.businessProfile && (
           <div className="mt-3">
