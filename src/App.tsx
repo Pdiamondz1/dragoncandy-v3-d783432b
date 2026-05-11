@@ -21,6 +21,7 @@ import { Spinner } from "@/components/ui/spinner";
 
 import { SiteGateGuard } from "@/components/SiteGateGuard";
 import { Navigate } from "react-router-dom";
+import { CollaborationRedirect } from './components/CollaborationRedirect';
 const NotFound = lazy(() => import("./pages/NotFound"));
 const AuthPage = lazy(() => import("./pages/AuthPage"));
 import { PromotionsErrorBoundary } from "./components/promotions/PromotionsErrorBoundary";
@@ -50,6 +51,8 @@ const DirectConversationPage = lazy(() => import("./pages/DirectConversationPage
 const CampaignMessagesPage = lazy(() => import("./pages/CampaignMessagesPage"));
 const ProjectDetailsPage = lazy(() => import("./pages/ProjectDetailsPage"));
 const CreatorCampaignMarketplace = lazy(() => import("./pages/CreatorCampaignMarketplace"));
+const MyCampaignsPage = lazy(() => import("./pages/MyCampaignsPage"));
+const MyCampaignDetailPage = lazy(() => import("./pages/MyCampaignDetailPage"));
 const BusinessProposals = lazy(() => import("./pages/BusinessProposals"));
 const BusinessSponsorships = lazy(() => import("./pages/BusinessSponsorships"));
 const BusinessPromotionalTools = lazy(() => import("./pages/BusinessPromotionalTools"));
@@ -248,9 +251,13 @@ function AnimatedRoutes() {
           {/* Creator Campaign Routes */}
           <Route path="/dashboard/creator/campaigns" element={<ProtectedRoute><CreatorCampaignMarketplace /></ProtectedRoute>} />
 
-          {/* Creator Application and Project Routes */}
-          <Route path="/dashboard/creator/applications" element={<ProtectedRoute><CreatorApplications /></ProtectedRoute>} />
-          <Route path="/dashboard/creator/projects" element={<ProtectedRoute><CreatorProjects /></ProtectedRoute>} />
+          {/* My Campaigns (unified) */}
+          <Route path="/dashboard/creator/my-campaigns" element={<ProtectedRoute><MyCampaignsPage /></ProtectedRoute>} />
+          <Route path="/dashboard/creator/my-campaigns/:id" element={<ProtectedRoute><MyCampaignDetailPage /></ProtectedRoute>} />
+
+          {/* Legacy redirects */}
+          <Route path="/dashboard/creator/applications" element={<Navigate to="/dashboard/creator/my-campaigns?tab=applied" replace />} />
+          <Route path="/dashboard/creator/projects" element={<Navigate to="/dashboard/creator/my-campaigns?tab=active" replace />} />
           <Route path="/dashboard/creator/earnings" element={<ProtectedRoute><CreatorEarnings /></ProtectedRoute>} />
 
           {/* Creator Dragon Feed Route */}
@@ -267,8 +274,8 @@ function AnimatedRoutes() {
           <Route path="/messages/direct/:conversationId" element={<ProtectedRoute><DirectConversationPage /></ProtectedRoute>} />
           <Route path="/messages/:campaignId" element={<ProtectedRoute><CampaignMessagesPage /></ProtectedRoute>} />
 
-          {/* Project Management Routes */}
-          <Route path="/projects/:id" element={<ProtectedRoute><ProjectDetailsPage /></ProtectedRoute>} />
+          {/* Project Management Routes — legacy redirect */}
+          <Route path="/projects/:id" element={<ProtectedRoute><CollaborationRedirect /></ProtectedRoute>} />
 
           {/* Reviews Management Route */}
           <Route path="/reviews" element={<ProtectedRoute><ReviewsManagement /></ProtectedRoute>} />
