@@ -1,6 +1,7 @@
 // src/pages/CreatorCampaignMarketplace.tsx
 
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { usePublicCampaigns, PublicCampaign } from '@/hooks/usePublicCampaigns';
@@ -20,13 +21,17 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { formatBudget } from '@/lib/campaignUtils';
 import { useFirstRunMissions } from '@/hooks/useFirstRunMissions';
 import { useSkippedCampaignIds, useSkipCampaign, useRestoreCampaign } from '@/hooks/useCampaignSkips';
+import { useCreatorPendingInvitations, useDeclineInvitation } from '@/hooks/useCampaignInvitations';
 import { UndoToast } from '@/components/campaigns/UndoToast';
 
 
-type Tab = 'all' | 'donny';
+type Tab = 'all' | 'donny' | 'invitations';
 
 const CreatorCampaignMarketplace = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const { data: pendingInvitations = [] } = useCreatorPendingInvitations();
+  const declineInvitation = useDeclineInvitation();
   const { completeMission } = useFirstRunMissions();
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -145,6 +150,7 @@ const CreatorCampaignMarketplace = () => {
   const tabs: { id: Tab; label: string; badge?: number; disabled?: boolean }[] = [
     { id: 'all', label: 'All Campaigns' },
     { id: 'donny', label: 'Donny Picks' },
+    { id: 'invitations', label: 'Invitations', badge: pendingInvitations?.length ?? 0 },
   ];
 
   return (
@@ -177,11 +183,11 @@ const CreatorCampaignMarketplace = () => {
               }`}
             >
               {tab.label}
-              {tab.badge && (
-                <span className="ml-1 bg-gray-100 text-gray-600 text-[10px] px-1.5 py-0.5 rounded-full">
+              {tab.badge && tab.badge > 0 ? (
+                <span className="ml-1.5 bg-pink-500 text-white text-[10px] font-bold min-w-[16px] h-4 flex items-center justify-center rounded-full px-1">
                   {tab.badge}
                 </span>
-              )}
+              ) : null}
               {activeTab === tab.id && (
                 <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-dc-teal" />
               )}
@@ -373,6 +379,68 @@ const CreatorCampaignMarketplace = () => {
                 <p className="text-gray-600 font-semibold">No Donny Picks yet</p>
                 <p className="text-gray-400 text-sm mt-1">Apply to more campaigns so Donny can learn your preferences</p>
               </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'invitations' && (
+          <div className="space-y-3 px-4 md:px-0 py-4">
+            {pendingInvitations.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-gray-900 font-semibold text-lg">No pending invitations</p>
+                <p className="text-gray-500 text-sm mt-1">When brands invite you to campaigns, they'll appear here.</p>
+              </div>
+            ) : (
+              pendingInvitations.map((inv: any) => {
+                const campaign = inv.campaigns;
+                const business = campaign?.profiles;
+                return (
+                  <div key={inv.id} className="bg-teal-50 border-2 border-dc-teal rounded-2xl p-4">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-9 h-9 rounded-full bg-dc-teal flex items-center justify-center text-white font-bold text-sm">
+                        {business?.business_name?.[0] ?? business?.full_name?.[0] ?? '?'}
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-semibold text-sm text-gray-900">{business?.business_name ?? business?.full_name}</p>
+                        <p className="text-xs text-gray-500">{new Date(inv.created_at).toLocaleDateString()}</p>
+                      </div>
+                      <span className="text-[10px] font-semibold text-dc-teal bg-white border border-dc-teal px-2 py-0.5 rounded-full">
+                        Invited
+                      </span>
+                    </div>
+                    <p className="font-semibold text-gray-900 mb-1">
+                      {campaign?.emoji ?? ''} {campaign?.title}
+                    </p>
+                    <p className="text-xs text-gray-500 mb-2">
+                      ${campaign?.budget_min} - ${campaign?.budget_max}
+                      {campaign?.deliverable_count ? ` · ${campaign.deliverable_count} deliverables` : ''}
+                      {campaign?.deadline ? ` · Due ${new Date(campaign.deadline).toLocaleDateString()}` : ''}
+                    </p>
+                    {inv.invitation_message && (
+                      <div className="bg-white rounded-lg border-l-[3px] border-dc-teal px-3 py-2 mb-3 italic text-sm text-gray-600">
+                        "{inv.invitation_message}"
+                      </div>
+                    )}
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          navigate(`/dashboard/creator/campaigns/${campaign?.id}?invited=true`);
+                        }}
+                        className="flex-1 bg-dc-teal text-white font-semibold py-2 rounded-full text-sm hover:bg-dc-teal/90 transition-colors"
+                      >
+                        Apply Now
+                      </button>
+                      <button
+                        onClick={() => declineInvitation.mutate(inv.id)}
+                        disabled={declineInvitation.isPending}
+                        className="flex-1 bg-white text-pink-500 font-semibold py-2 rounded-full text-sm border-2 border-gray-200 hover:bg-gray-50 transition-colors"
+                      >
+                        Decline
+                      </button>
+                    </div>
+                  </div>
+                );
+              })
             )}
           </div>
         )}
