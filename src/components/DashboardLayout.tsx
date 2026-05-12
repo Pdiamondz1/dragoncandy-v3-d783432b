@@ -44,6 +44,7 @@ import { useMyOrgRole } from '@/hooks/useOrgData';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import type { UserRole } from '@/types/user';
 import { getSidebarNav, getSettingsHref, getDashboardLabel } from '@/lib/navConfig';
+import { useTotalUnreadCount } from '@/hooks/useUnreadCounts';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -59,6 +60,7 @@ const AppSidebar: React.FC<AppSidebarProps> = ({ userRole }) => {
   const { state } = useSidebar();
   const collapsed = state === 'collapsed';
   const navItems = getSidebarNav(userRole);
+  const unreadCount = useTotalUnreadCount();
 
   const isActiveRoute = (href: string) =>
     location.pathname === href || location.pathname.startsWith(href + '/');
@@ -98,12 +100,24 @@ const AppSidebar: React.FC<AppSidebarProps> = ({ userRole }) => {
                       }
                     >
                       <Link to={item.href} className="flex items-center gap-3 px-3">
-                        <item.icon
-                          className={`h-[18px] w-[18px] transition-colors duration-200 ${
-                            isActive ? 'text-dc-teal' : 'text-muted-foreground'
-                          }`}
-                        />
+                        <span className="relative">
+                          <item.icon
+                            className={`h-[18px] w-[18px] transition-colors duration-200 ${
+                              isActive ? 'text-dc-teal' : 'text-muted-foreground'
+                            }`}
+                          />
+                          {collapsed && item.label === 'Messages' && unreadCount > 0 && (
+                            <span className="absolute -top-1 -right-1 bg-pink-500 text-white text-[8px] font-bold min-w-[14px] h-[14px] flex items-center justify-center rounded-full px-0.5">
+                              {unreadCount > 9 ? '9+' : unreadCount}
+                            </span>
+                          )}
+                        </span>
                         {!collapsed && <span className="text-sm">{item.label}</span>}
+                        {!collapsed && item.label === 'Messages' && unreadCount > 0 && (
+                          <span className="ml-auto bg-pink-500 text-white text-[10px] font-bold min-w-[18px] h-[18px] flex items-center justify-center rounded-full px-1">
+                            {unreadCount > 9 ? '9+' : unreadCount}
+                          </span>
+                        )}
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
