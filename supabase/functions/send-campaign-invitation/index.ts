@@ -69,9 +69,9 @@ serve(async (req) => {
       );
     }
 
-    if (campaign.status !== "published") {
+    if (campaign.status !== "published" && campaign.status !== "active") {
       return new Response(
-        JSON.stringify({ error: "Campaign is not published" }),
+        JSON.stringify({ error: "Campaign is not published or active" }),
         { status: 400, headers: { ...corsHeaders(req), "Content-Type": "application/json" } },
       );
     }
