@@ -103,7 +103,7 @@ const CampaignsPage: React.FC = () => {
 
   return (
     <DashboardLayout userRole="business_client">
-      <div className="min-h-screen bg-white overflow-x-hidden w-full max-w-full md:max-w-4xl md:mx-auto">
+      <div className="min-h-screen bg-white overflow-x-hidden w-full max-w-full lg:max-w-6xl md:mx-auto">
         {/* Template B Header */}
         <PageHeader>
           <div className="flex items-center">
@@ -122,12 +122,15 @@ const CampaignsPage: React.FC = () => {
         </PageHeader>
 
         {/* Create Campaign CTA */}
-        <div className="px-4 pt-3 pb-1">
+        <div className="px-4 pt-3 pb-1 lg:flex lg:justify-between lg:items-center">
+          <h2 className="text-lg font-bold uppercase tracking-wide text-teal-500 hidden lg:block">
+            Campaigns
+          </h2>
           <button
             onClick={() => navigate('/dashboard/business/campaigns/create')}
-            className="w-full bg-teal-400 text-white font-bold py-3 rounded-full text-[15px] hover:bg-teal-500 transition-colors"
+            className="w-full lg:w-auto bg-teal-400 text-white font-bold py-3 px-6 rounded-full text-[15px] hover:bg-teal-500 transition-colors"
           >
-            Create a Campaign
+            + Create Campaign
           </button>
         </div>
 
