@@ -25,6 +25,8 @@ const AuthPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [signupStep, setSignupStep] = useState<SignupStep>("role-selection");
   const [selectedRole, setSelectedRole] = useState<"business_client" | "content_creator" | "brand" | null>(null);
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [needsVerification, setNeedsVerification] = useState(false);
 
   const navigate = useNavigate();
   const { user, isAuthenticated, migrateCampaignData } = useAuth();
@@ -36,6 +38,13 @@ const AuthPage = () => {
       setMode(urlMode);
     }
   }, [searchParams]);
+
+  // Cooldown timer for resend verification button
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = setTimeout(() => setResendCooldown((c) => c - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [resendCooldown]);
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -82,10 +91,10 @@ const AuthPage = () => {
         .eq('id', user.id)
         .single();
 
-      // Check email verification first
+      // Check email verification first — defer signOut so user can resend
       if (profile && profile.email_verified !== true) {
-        await supabase.auth.signOut();
-        setError('Please verify your email before continuing. Check your inbox for the verification link.');
+        setNeedsVerification(true);
+        setError('verify_email');
         return;
       }
 
@@ -169,6 +178,29 @@ const AuthPage = () => {
     }
   };
 
+  const handleResendVerification = async () => {
+    if (!user || resendCooldown > 0) return;
+    setResendCooldown(60);
+    try {
+      await supabase.functions.invoke('send-verification-email', {
+        body: {
+          email: user.email,
+          name: user.user_metadata?.full_name || '',
+          userId: user.id,
+        },
+      });
+      toast.success('Verification email sent! Check your inbox.');
+    } catch {
+      toast.error('Could not send email. Please try again.');
+    }
+  };
+
+  const handleDismissVerification = async () => {
+    setNeedsVerification(false);
+    setError(null);
+    await supabase.auth.signOut();
+  };
+
   const handleModeChange = (newMode: "login" | "signup") => {
     setMode(newMode);
     setError(null);
@@ -215,11 +247,32 @@ const AuthPage = () => {
 
           <AuthForm mode="login" onError={setError} />
 
-          {error && (
+          {error === 'verify_email' ? (
+            <div className="bg-red-50 px-4 py-3 rounded-xl mt-3 max-w-sm md:max-w-md mx-auto text-center space-y-2">
+              <p className="text-sm text-red-600">
+                Please verify your email before continuing. Check your inbox for the verification link.
+              </p>
+              <button
+                onClick={handleResendVerification}
+                disabled={resendCooldown > 0}
+                className="text-sm font-semibold text-dc-teal hover:text-dc-teal-dark disabled:text-gray-400 transition-colors"
+              >
+                {resendCooldown > 0
+                  ? `Resend in ${resendCooldown}s`
+                  : 'Resend verification email'}
+              </button>
+              <button
+                onClick={handleDismissVerification}
+                className="block mx-auto text-xs text-gray-500 hover:text-gray-700 transition-colors"
+              >
+                Back to login
+              </button>
+            </div>
+          ) : error ? (
             <div className="text-sm text-red-600 bg-red-50 px-4 py-2 rounded-xl mt-3 max-w-sm md:max-w-md mx-auto">
               {error}
             </div>
-          )}
+          ) : null}
 
           <div className="max-w-sm md:max-w-md mx-auto w-full">
             <AuthModeToggle mode="login" onModeChange={handleModeChange} loading={false} />
@@ -247,11 +300,32 @@ const AuthPage = () => {
             onChangeRole={handleChangeRole}
           />
 
-          {error && (
+          {error === 'verify_email' ? (
+            <div className="bg-red-50 px-4 py-3 rounded-xl mt-3 max-w-sm md:max-w-md mx-auto text-center space-y-2">
+              <p className="text-sm text-red-600">
+                Please verify your email before continuing. Check your inbox for the verification link.
+              </p>
+              <button
+                onClick={handleResendVerification}
+                disabled={resendCooldown > 0}
+                className="text-sm font-semibold text-dc-teal hover:text-dc-teal-dark disabled:text-gray-400 transition-colors"
+              >
+                {resendCooldown > 0
+                  ? `Resend in ${resendCooldown}s`
+                  : 'Resend verification email'}
+              </button>
+              <button
+                onClick={handleDismissVerification}
+                className="block mx-auto text-xs text-gray-500 hover:text-gray-700 transition-colors"
+              >
+                Back to login
+              </button>
+            </div>
+          ) : error ? (
             <div className="text-sm text-red-600 bg-red-50 px-4 py-2 rounded-xl mt-3 max-w-sm md:max-w-md mx-auto">
               {error}
             </div>
-          )}
+          ) : null}
 
           <div className="max-w-sm md:max-w-md mx-auto w-full">
             <AuthModeToggle mode="signup" onModeChange={handleModeChange} loading={false} />
