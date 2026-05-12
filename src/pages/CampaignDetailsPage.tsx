@@ -454,10 +454,10 @@ const CampaignDetailsPage: React.FC = () => {
             )}
 
             {phase === 'pre_hire' && (
-              <>
+              <div id="applications-section">
                 <ApplicationsListFixed campaignId={campaign.id} />
                 <CreatorMatchingSection campaignId={campaign.id} />
-              </>
+              </div>
             )}
 
             {(phase === 'active_delivery' || phase === 'completed') && creatorData && (
@@ -471,21 +471,25 @@ const CampaignDetailsPage: React.FC = () => {
             )}
 
             {phase === 'active_delivery' && collaborationData && (
-              <ContentReviewSection
-                collaborationId={collaborationData.id}
-                campaignId={campaign.id}
-                creatorId={collaborationData.creator_id ?? creatorData?.user_id ?? ''}
-                creatorName={creatorData?.creator_name ?? 'Creator'}
-                contentStatus={collaborationData.content_status ?? null}
-                revisionCount={collaborationData.revision_count ?? null}
-              />
+              <div id="content-review-section">
+                <ContentReviewSection
+                  collaborationId={collaborationData.id}
+                  campaignId={campaign.id}
+                  creatorId={collaborationData.creator_id ?? creatorData?.user_id ?? ''}
+                  creatorName={creatorData?.creator_name ?? 'Creator'}
+                  contentStatus={collaborationData.content_status ?? null}
+                  revisionCount={collaborationData.revision_count ?? null}
+                />
+              </div>
             )}
 
             {phase === 'completed' && collaborationData && (
               <>
-                <DeliverablesArchive
-                  campaignId={campaign.id}
-                />
+                <div id="deliverables-section">
+                  <DeliverablesArchive
+                    campaignId={campaign.id}
+                  />
+                </div>
                 <PaymentSummary
                   completedAt={collaborationData.completed_at ?? null}
                   budgetMin={campaign.budget_min}
