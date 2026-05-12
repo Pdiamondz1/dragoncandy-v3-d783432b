@@ -32,9 +32,13 @@ const UpdatePassword: React.FC = () => {
       const { error } = await supabase.auth.updateUser({ password });
       if (error) throw error;
 
+      // Auto-verify email — proves ownership via password reset link
+      try {
+        await supabase.functions.invoke('verify-on-password-reset');
+      } catch {}
+
       toast({ title: "Password updated", description: "Please log in with your new password." });
 
-      // Clean up any lingering sessions and force a fresh login
       try {
         cleanupAuthState();
         await supabase.auth.signOut({ scope: 'global' });
