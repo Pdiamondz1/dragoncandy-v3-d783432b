@@ -20,33 +20,39 @@ what remains.
 
 The `ContentReviewSection.tsx` component shows a "Content Ready For Your
 Review" banner with Review & Approve / Request Revision buttons based solely
-on the collaboration status being `content_submitted`. When no actual files
-have been uploaded by the creator, the restaurant user sees approve buttons
-with nothing to approve.
+on the collaboration status being `submitted` (checked at
+`ContentReviewSection.tsx:118` as `contentStatus === 'submitted'`). When no
+actual files have been uploaded by the creator, the restaurant user sees
+approve buttons with nothing to approve.
 
 ### Solution
 
 **A. Guard the "ready for review" state.**
 
-Query `file_uploads` for deliverables linked to the collaboration. If no
-files exist, suppress the "Content Ready" banner and approve/revision
-buttons. Instead display: "Waiting for [Creator Name] to upload content"
-with a subtle progress indicator.
+Query `file_uploads` for deliverables scoped to the collaboration by
+filtering on `campaign_id = collaboration.campaign_id` AND
+`uploaded_by = collaboration.creator_id` with `upload_type = 'deliverable'`.
+This ensures multi-creator campaigns only show the correct creator's files.
+If no matching files exist, suppress the "Content Ready" banner and
+approve/revision buttons. Instead display: "Waiting for [Creator Name] to
+upload content" with a subtle progress indicator.
 
-**B. Add a visible content preview gallery.**
+**B. Enhance the existing content preview to reviewable size.**
 
-When files exist, render them prominently above the approve/revision buttons:
-- Image thumbnails at viewable size (not icon-size)
+The component already renders 56x56px file thumbnails (lines 137-168). These
+are too small for content review. Enhance them to a proper preview gallery:
+- Image thumbnails at reviewable size (~200-300px, not icon-size)
 - Video files with play button overlay
 - Other file types with download links
 - Lightbox for full-size viewing on click
+- Preserve the existing "+N more" overflow indicator for large uploads
 
 ### Files Affected
 
 - `src/components/campaigns/detail/ContentReviewSection.tsx` — guard logic +
-  preview gallery
-- `src/hooks/useFileUploads.ts` — ensure deliverable query covers the
-  collaboration scope
+  enhanced preview gallery
+- `src/hooks/useFileUploads.ts` — ensure deliverable query filters by
+  `campaign_id` AND `uploaded_by` (creator scoping for multi-creator safety)
 
 ### What This Deletes
 
@@ -152,26 +158,44 @@ resets their password before clicking the verification link:
 
 ### Solution
 
-**A. Auto-verify on successful password reset.**
+**A. Auto-verify on successful password reset via edge function.**
 
 In `UpdatePassword.tsx`, after `supabase.auth.updateUser({ password })`
-succeeds, also set `email_verified = true` in the user's profile. Proof of
-email ownership via password reset link is equivalent to clicking the
-verification link — requiring both is a redundant gate.
+succeeds and **before** the existing `signOut()` + redirect logic, call a
+new edge function `verify-on-password-reset` (or extend the existing
+`verify-email` function with a `mode: 'password-reset'` parameter). The
+edge function uses the **service role key** to set `email_verified = true`
+in the `profiles` table — same pattern as the existing `verify-email`
+function. This avoids the RLS issue: client-side updates to
+`email_verified` would either fail silently (if RLS blocks it) or create a
+security bypass (if RLS allows any user to self-verify). The edge function
+approach is safe because it only triggers after Supabase Auth has already
+validated the password reset token, confirming email ownership.
 
-**B. Resend verification link on login failure.**
+**B. Resend verification link on login failure with rate limiting.**
 
 In `AuthPage.tsx`, when the `email_verified` check fails, add a "Resend
 verification email" button below the error message. Triggers the
-`send-verification-email` edge function. Covers edge cases: delayed emails,
-expired tokens, any other scenario where verification gets stuck.
+`send-verification-email` edge function. Add a 60-second client-side
+cooldown with countdown timer to prevent spam-clicking (frustrated
+locked-out users may hammer the button, risking email provider rate limits).
+Covers edge cases: delayed emails, expired tokens, any other scenario where
+verification gets stuck.
+
+Also review `VerifiedRoute.tsx` — a secondary enforcement point that wraps
+`/profile/setup` and redirects unverified users. The auto-verify fix
+prevents most users from hitting this path, but for completeness ensure
+its error messaging is consistent with the new resend option in AuthPage.
 
 ### Files Affected
 
-- `src/pages/UpdatePassword.tsx` — add `email_verified = true` update after
-  successful password change
-- `src/pages/AuthPage.tsx` — add resend verification button in the
-  `email_verified` error branch
+- `src/pages/UpdatePassword.tsx` — call edge function to set
+  `email_verified = true` **before** the existing signOut/redirect logic
+- `supabase/functions/verify-on-password-reset/index.ts` — new edge function
+  (or extend `verify-email` with mode parameter) using service role key
+- `src/pages/AuthPage.tsx` — add resend verification button with 60-second
+  cooldown in the `email_verified` error branch
+- `src/components/VerifiedRoute.tsx` — review and align error messaging
 - `src/components/auth/AuthForm.tsx` — may need to expose the
   send-verification-email trigger as a shared utility
 
@@ -208,8 +232,10 @@ Expand from 5 to 7 categories:
 | Donny AI | Sparkles | **New** — match scores, suggestions, help briefs, insights |
 | Messaging | MessageCircle | **New** — conversations, file sharing, real-time presence |
 
-Update the `help_articles` table's category options and the category icon
-mapping in `HelpCenter.tsx`.
+The `help_articles.category` column is a `text` type (not a Postgres enum),
+so no `ALTER TYPE` migration is needed — just insert new articles with the
+new category strings (`donny_ai`, `messaging`). Update the category icon
+mapping in `HelpCenter.tsx` to include the two new entries.
 
 **B. Full article content rewrite.**
 
