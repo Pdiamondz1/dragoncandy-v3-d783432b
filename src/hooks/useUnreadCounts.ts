@@ -2,6 +2,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useConversations } from './useConversations';
 
 export const useUnreadMessageCounts = () => {
   const { user } = useAuth();
@@ -26,4 +27,15 @@ export const useUnreadMessageCounts = () => {
     staleTime: 60_000,
     refetchOnWindowFocus: 'always',
   });
+};
+
+export const useTotalUnreadCount = () => {
+  const { data: conversations } = useConversations();
+
+  const total = conversations?.reduce(
+    (sum, conv) => sum + (conv.unread_count ?? 0),
+    0
+  ) ?? 0;
+
+  return Math.min(total, 99);
 };
