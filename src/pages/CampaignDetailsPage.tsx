@@ -30,6 +30,7 @@ import { ContentReviewSection } from '@/components/campaigns/detail/ContentRevie
 import { DeliverablesArchive } from '@/components/campaigns/detail/DeliverablesArchive';
 import { PaymentSummary } from '@/components/campaigns/detail/PaymentSummary';
 import { CollapsibleCampaignDetails } from '@/components/campaigns/detail/CollapsibleCampaignDetails';
+import { SponsorshipCard } from '@/components/campaigns/detail/SponsorshipCard';
 import { useCampaignProject } from '@/hooks/useCampaignProject';
 import { useProjectComplete } from '@/hooks/useProjectComplete';
 import { useDeleteCampaign, useDuplicateCampaign } from '@/hooks/useCampaignMutations';
@@ -501,8 +502,11 @@ const CampaignDetailsPage: React.FC = () => {
             )}
           </div>
 
-          {/* Secondary column: campaign details */}
-          <div className="lg:col-span-2">
+          {/* Secondary column: campaign details + sponsorship */}
+          <div className="lg:col-span-2 space-y-4">
+            {campaign.open_for_sponsorship && (
+              <SponsorshipCard campaignId={campaign.id} />
+            )}
             <CollapsibleCampaignDetails campaign={campaign} phase={phase} />
           </div>
         </div>

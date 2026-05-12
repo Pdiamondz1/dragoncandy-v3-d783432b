@@ -1,17 +1,14 @@
 
-import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { DollarSign, MessageSquare, Calendar, TrendingUp, CheckCircle, Clock, Loader2, Star } from 'lucide-react';
-import { useSponsorshipProposals, type SponsorshipProposal } from '@/hooks/useSponsorshipProposals';
-import { useSponsorshipComplete } from '@/hooks/useSponsorshipComplete';
+import { DollarSign, Calendar, TrendingUp } from 'lucide-react';
+import { useSponsorshipProposals } from '@/hooks/useSponsorshipProposals';
 import { SponsorshipProposalCard } from '@/components/campaigns/SponsorshipProposalCard';
 import { MarketplaceLoadingState } from '@/components/campaigns/MarketplaceLoadingState';
 import { SponsorshipRatingPromptManager } from '@/components/reviews/SponsorshipRatingPromptManager';
-import { ResponsiveRatingModal } from '@/components/reviews/ResponsiveRatingModal';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { PrerequisiteGate } from '@/components/PrerequisiteGate';
 
@@ -19,14 +16,6 @@ const BusinessSponsorships = () => {
   useAuth();
   const navigate = useNavigate();
   const { proposals, isLoading, updateProposalStatus } = useSponsorshipProposals();
-  const { requestCompletion, requestingId } = useSponsorshipComplete();
-
-  const [ratingModal, setRatingModal] = useState<{
-    isOpen: boolean;
-    sponsorshipId: string;
-    revieweeId: string;
-    revieweeName: string;
-  } | null>(null);
 
   if (isLoading) {
     return <MarketplaceLoadingState />;
@@ -59,73 +48,6 @@ const BusinessSponsorships = () => {
       bgColor: 'bg-green-100',
     },
   ];
-
-  const handleLeaveReview = (proposal: SponsorshipProposal) => {
-    setRatingModal({
-      isOpen: true,
-      sponsorshipId: proposal.id,
-      revieweeId: proposal.brand_profile?.user_id || '',
-      revieweeName: proposal.brand_profile?.business_name || 'Brand'
-    });
-  };
-
-  const getCompletionButton = (proposal: SponsorshipProposal) => {
-    const brandStatus = proposal.brand_completion_status || 'pending';
-    const businessStatus = proposal.business_completion_status || 'pending';
-    const isCompleted = !!proposal.completed_at;
-
-    if (isCompleted) {
-      return (
-        <Badge className="bg-green-100 text-green-800">
-          <CheckCircle className="h-3 w-3 mr-1" />
-          Completed
-        </Badge>
-      );
-    }
-
-    if (businessStatus === 'requested') {
-      return (
-        <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
-          <Clock className="h-3 w-3 mr-1" />
-          Awaiting Brand Approval
-        </Badge>
-      );
-    }
-
-    if (brandStatus === 'requested' && businessStatus === 'pending') {
-      return (
-        <Button
-          size="sm"
-          onClick={() => requestCompletion({ sponsorshipId: proposal.id, userRole: 'business' })}
-          disabled={requestingId === proposal.id}
-          className="bg-green-600 hover:bg-green-700"
-        >
-          {requestingId === proposal.id ? (
-            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-          ) : (
-            <CheckCircle className="h-4 w-4 mr-2" />
-          )}
-          Approve Completion
-        </Button>
-      );
-    }
-
-    return (
-      <Button
-        size="sm"
-        variant="outline"
-        onClick={() => requestCompletion({ sponsorshipId: proposal.id, userRole: 'business' })}
-        disabled={requestingId === proposal.id}
-      >
-        {requestingId === proposal.id ? (
-          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-        ) : (
-          <CheckCircle className="h-4 w-4 mr-2" />
-        )}
-        Mark Complete
-      </Button>
-    );
-  };
 
   return (
     <DashboardLayout userRole="business_client">
@@ -185,72 +107,32 @@ const BusinessSponsorships = () => {
               </div>
               <div className="space-y-3">
                 {acceptedProposals.map((proposal) => (
-                  <div key={proposal.id} className="border-2 border-dc-teal rounded-2xl p-4 space-y-3">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <p className="font-bold text-gray-900">{proposal.brand_profile?.business_name || 'Unknown Brand'}</p>
-                        <p className="text-xs text-gray-500 mt-0.5">
-                          Campaign: {proposal.campaigns?.title || 'Unknown Campaign'}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2 flex-wrap justify-end">
-                        {(() => {
-                          const ps = proposal.payment_status || 'unpaid';
-                          if (ps === 'paid') return (
-                            <Badge className="bg-dc-teal/20 text-dc-teal text-xs rounded-full">
-                              <DollarSign className="h-3 w-3 mr-1" />
-                              Paid
-                            </Badge>
-                          );
-                          if (ps === 'pending') return (
-                            <Badge className="bg-dc-yellow/30 text-yellow-800 text-xs rounded-full">
-                              <Clock className="h-3 w-3 mr-1" />
-                              Processing
-                            </Badge>
-                          );
-                          return (
-                            <Badge className="bg-dc-yellow/30 text-yellow-800 text-xs rounded-full">
-                              <Clock className="h-3 w-3 mr-1" />
-                              Awaiting Payment
-                            </Badge>
-                          );
-                        })()}
-                        {getCompletionButton(proposal)}
-                      </div>
+                  <div
+                    key={proposal.id}
+                    className="border-2 border-dc-teal rounded-2xl p-4 flex items-center justify-between gap-3 cursor-pointer hover:bg-teal-50/50 transition-colors"
+                    onClick={() => navigate(`/dashboard/business/campaigns/${proposal.campaign_id}`)}
+                  >
+                    <div className="min-w-0">
+                      <p className="font-bold text-gray-900 truncate">
+                        {proposal.brand_profile?.business_name || 'Unknown Brand'}
+                      </p>
+                      <p className="text-xs text-gray-500 truncate">
+                        {proposal.campaigns?.title || 'Unknown Campaign'}
+                      </p>
+                      <p className="text-sm font-semibold text-teal-600 mt-1">
+                        ${proposal.sponsorship_amount?.toLocaleString() || 0}
+                      </p>
                     </div>
-                    <div className="flex items-center gap-2 font-bold text-dc-teal">
-                      <DollarSign className="h-4 w-4" />
-                      ${proposal.sponsorship_amount?.toLocaleString() || 0}
-                    </div>
-                    <div className="flex gap-2 flex-wrap">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="rounded-full border-dc-teal text-dc-teal hover:bg-dc-teal/10"
-                        onClick={() => navigate(`/dashboard/business/campaigns/${proposal.campaign_id}`)}
-                      >
-                        View Campaign
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="rounded-full border-dc-teal text-dc-teal hover:bg-dc-teal/10"
-                        onClick={() => navigate(`/dashboard/business/messages`)}
-                      >
-                        <MessageSquare className="h-3 w-3 mr-1" />
-                        Message Brand
-                      </Button>
-                      {proposal.completed_at && (
-                        <Button
-                          size="sm"
-                          onClick={() => handleLeaveReview(proposal)}
-                          className="rounded-full bg-dc-pink-accent-btn text-white hover:bg-dc-pink-accent-btn-hover"
-                        >
-                          <Star className="h-3 w-3 mr-1" />
-                          Leave Review
-                        </Button>
-                      )}
-                    </div>
+                    <Button
+                      size="sm"
+                      className="rounded-full bg-dc-teal-btn text-white hover:bg-dc-teal-btn-hover shrink-0"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/dashboard/business/campaigns/${proposal.campaign_id}`);
+                      }}
+                    >
+                      Manage Campaign
+                    </Button>
                   </div>
                 ))}
               </div>
