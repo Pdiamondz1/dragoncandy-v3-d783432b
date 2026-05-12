@@ -10,19 +10,29 @@ import { BottomCTA } from "@/components/landing/BottomCTA";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { lazy, Suspense, useEffect } from "react";
-
-const PortfolioStrip = lazy(() => import("@/components/landing/PortfolioStrip").then(m => ({ default: m.PortfolioStrip })));
+import { Spinner } from "@/components/ui/spinner";
 
 export default function LandingPage() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
 
-  // Redirect authenticated users to their dashboard
   useEffect(() => {
     if (!loading && user) {
       navigate('/dashboard', { replace: true });
     }
   }, [user, loading, navigate]);
+
+  // Show splash while auth resolves for returning users (Supabase sets sb- cookies)
+  const hasSessionHint = typeof document !== 'undefined' &&
+    document.cookie.includes('sb-');
+  if (loading && hasSessionHint) {
+    return (
+      <div className="min-h-screen bg-white flex flex-col items-center justify-center">
+        <img src="/logo.webp" alt="DragonCandy" className="h-16 w-auto mb-6" />
+        <Spinner className="h-10 w-10 border-teal-400" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-white relative overflow-x-hidden">
@@ -31,7 +41,6 @@ export default function LandingPage() {
         description="DragonCandy connects restaurants, brands, and content creators for short-form social media campaigns. Powered by Donny AI."
         path="/landing"
       />
-      {/* Main content — mobile-first, scales up elegantly on desktop */}
       <div className="relative z-10 max-w-md md:max-w-2xl lg:max-w-5xl xl:max-w-6xl mx-auto px-4 md:px-8 lg:px-12">
         <Header />
 
@@ -44,9 +53,6 @@ export default function LandingPage() {
           <BottomCTA />
         </section>
       </div>
-
-      {/* Portfolio image strip — edge-to-edge at the bottom */}
-      <Suspense fallback={null}><PortfolioStrip /></Suspense>
     </div>
   );
 }
