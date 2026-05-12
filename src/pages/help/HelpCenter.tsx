@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Search, BookOpen, Megaphone, Zap, CreditCard, Shield, ChevronDown, ArrowLeft } from "lucide-react";
+import { Search, BookOpen, Megaphone, Zap, CreditCard, Shield, Sparkles, MessageCircle, ChevronDown, ArrowLeft } from "lucide-react";
 import { DCSkeleton } from "@/components/ui/dc-skeleton";
 import { Button } from "@/components/ui/button";
 import { SEO } from "@/components/SEO";
@@ -22,6 +22,8 @@ const CATEGORIES = [
   { key: "getting_started", label: "Getting Started", icon: BookOpen },
   { key: "campaigns", label: "Campaigns", icon: Megaphone },
   { key: "dragonshare", label: "DragonShare", icon: Zap },
+  { key: "donny_ai", label: "Donny AI", icon: Sparkles },
+  { key: "messaging", label: "Messaging", icon: MessageCircle },
   { key: "billing", label: "Billing & Plans", icon: CreditCard },
   { key: "account", label: "Account & Privacy", icon: Shield },
 ] as const;
