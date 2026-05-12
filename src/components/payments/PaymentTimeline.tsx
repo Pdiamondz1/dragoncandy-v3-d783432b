@@ -1,9 +1,12 @@
-import { CheckCircle, AlertCircle, AlertTriangle } from "lucide-react";
+import { CheckCircle, AlertCircle, AlertTriangle, ExternalLink } from "lucide-react";
+import { useQuery } from '@tanstack/react-query';
 import { usePaymentTimeline, type PaymentEvent } from "@/hooks/usePaymentTimeline";
 import { getPaymentMessage, type UserRole } from "@/lib/paymentEducation";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
+import { useCampaign } from "@/hooks/useCampaigns";
+import { supabase } from '@/integrations/supabase/client';
 
 interface PaymentTimelineProps {
   entityType: 'collaboration' | 'sponsorship';
@@ -47,8 +50,35 @@ function formatAmount(cents: number | null): string | null {
   return `$${(cents / 100).toFixed(2)}`;
 }
 
-export function PaymentTimeline({ entityType, entityId, userRole, variant }: PaymentTimelineProps) {
+function getStripeUrl(stripeId: string | null): string {
+  if (!stripeId) return 'https://dashboard.stripe.com/test/payments';
+  if (stripeId.startsWith('tr_')) return `https://dashboard.stripe.com/test/connect/transfers/${stripeId}`;
+  if (stripeId.startsWith('pi_') || stripeId.startsWith('ch_')) return `https://dashboard.stripe.com/test/payments/${stripeId}`;
+  return 'https://dashboard.stripe.com/test/payments';
+}
+
+export function PaymentTimeline({ entityType, entityId, campaignId, userRole, variant }: PaymentTimelineProps) {
   const { data: events, isLoading, error } = usePaymentTimeline(entityType, entityId);
+
+  const { campaign } = useCampaign(campaignId);
+
+  // Fetch creator name via collaboration (useCampaign doesn't include it)
+  // FK campaign_collaborations_creator_id_fkey references `profiles` (not creator_profiles)
+  const { data: creatorName } = useQuery({
+    queryKey: ['campaign-creator-name', campaignId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('campaign_collaborations')
+        .select('profiles!campaign_collaborations_creator_id_fkey(full_name)')
+        .eq('campaign_id', campaignId)
+        .limit(1)
+        .maybeSingle();
+      const profile = data?.profiles as unknown as { full_name: string | null } | null;
+      return profile?.full_name ?? null;
+    },
+    enabled: !!campaignId,
+    staleTime: 300_000,
+  });
 
   if (isLoading) {
     return (
@@ -65,9 +95,32 @@ export function PaymentTimeline({ entityType, entityId, userRole, variant }: Pay
   }
 
   const displayEvents = variant === 'compact' ? events.slice(-5) : events;
+  const latestStripeId = [...events].reverse().find(e => e.stripe_id)?.stripe_id ?? null;
 
   return (
     <div className="bg-white rounded-2xl p-4 border border-gray-100">
+      {/* Campaign header card */}
+      {variant === 'full' && campaign && (
+        <div className="flex items-center justify-between p-3 bg-teal-50 border border-teal-200 rounded-xl mb-4">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="text-sm">🎬</span>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-gray-900 truncate">{campaign.title}</p>
+              {creatorName && (
+                <p className="text-xs text-gray-500">with {creatorName}</p>
+              )}
+            </div>
+          </div>
+          <a
+            href={getStripeUrl(latestStripeId)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-teal-600 font-medium hover:underline flex items-center gap-1 shrink-0 ml-2"
+          >
+            View in Stripe <ExternalLink className="h-3 w-3" />
+          </a>
+        </div>
+      )}
       <h3 className="text-sm font-bold text-gray-900 mb-3">
         {variant === 'compact' ? 'Payment Status' : 'Payment Timeline'}
       </h3>
