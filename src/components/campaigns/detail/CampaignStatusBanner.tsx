@@ -231,11 +231,11 @@ export const CampaignStatusBanner: React.FC<CampaignStatusBannerProps> = ({
         );
       case 'action_needed':
         return (
-          <div className="flex gap-2 w-full lg:w-auto">
-            <Button onClick={onReviewContent} className="rounded-full bg-teal-400 hover:bg-teal-500 text-white font-semibold flex-1 lg:flex-none">
+          <div className="flex flex-col sm:flex-row gap-2 w-full lg:w-auto">
+            <Button onClick={onReviewContent} className="rounded-full bg-teal-400 hover:bg-teal-500 text-white font-semibold w-full sm:flex-1 lg:flex-none">
               Review & Approve
             </Button>
-            <Button onClick={onRequestRevision} variant="outline" className="rounded-full border-pink-400 text-pink-600 hover:bg-pink-50 font-semibold flex-1 lg:flex-none">
+            <Button onClick={onRequestRevision} variant="outline" className="rounded-full border-pink-400 text-pink-600 hover:bg-pink-50 font-semibold w-full sm:flex-1 lg:flex-none">
               Request Revision
             </Button>
           </div>
@@ -254,11 +254,11 @@ export const CampaignStatusBanner: React.FC<CampaignStatusBannerProps> = ({
         );
       case 'cancelled':
         return (
-          <div className="flex gap-2 w-full lg:w-auto">
-            <Button onClick={onRelaunch} className="rounded-full bg-teal-400 hover:bg-teal-500 text-white font-semibold flex-1 lg:flex-none">
+          <div className="flex flex-col sm:flex-row gap-2 w-full lg:w-auto">
+            <Button onClick={onRelaunch} className="rounded-full bg-teal-400 hover:bg-teal-500 text-white font-semibold w-full sm:flex-1 lg:flex-none">
               Re-Launch Campaign
             </Button>
-            <Button onClick={() => setShowDeleteConfirm(true)} variant="outline" className="rounded-full border-red-300 text-red-600 hover:bg-red-50 font-semibold flex-1 lg:flex-none">
+            <Button onClick={() => setShowDeleteConfirm(true)} variant="outline" className="rounded-full border-red-300 text-red-600 hover:bg-red-50 font-semibold w-full sm:flex-1 lg:flex-none">
               Delete
             </Button>
           </div>
