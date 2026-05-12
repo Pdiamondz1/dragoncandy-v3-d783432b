@@ -16,6 +16,7 @@ import { useOrgBoostStats } from '@/hooks/useDragonShare';
 import { useOrg } from '@/hooks/useOrgData';
 import { useFirstRunMissions } from '@/hooks/useFirstRunMissions';
 import { FirstRunDashboard } from '@/components/first-run/FirstRunDashboard';
+import { PendingActionBanners } from '@/components/dashboard/PendingActionBanners';
 
 
 function formatDate(dateStr: string | null): string {
@@ -104,6 +105,8 @@ const BusinessDashboard = () => {
         {/* White body content */}
         <div className="px-4 py-6 pb-24 md:pb-0">
           <div className="max-w-2xl lg:max-w-4xl mx-auto space-y-6">
+
+            <PendingActionBanners />
 
             <div className="flex items-center justify-between">
               <p className="text-sm font-bold uppercase tracking-wide text-dc-teal">
