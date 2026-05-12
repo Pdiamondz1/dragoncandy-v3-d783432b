@@ -1,8 +1,8 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { PageHeader } from '@/components/ui/PageHeader';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { ArrowLeft, AlertCircle } from 'lucide-react';
@@ -23,8 +23,7 @@ import { PrerequisiteGate } from '@/components/PrerequisiteGate';
 import { ApplicationForm } from '@/components/campaigns/ApplicationForm';
 import type { DonnyPitchResult } from '@/hooks/useDonnyApplyPitch';
 import { deriveCampaignPhase, deriveCurrentStep } from '@/lib/campaignPhase';
-import { CampaignDetailHeader } from '@/components/campaigns/detail/CampaignDetailHeader';
-import { EscrowPaymentAlert } from '@/components/campaigns/detail/EscrowPaymentAlert';
+import { CampaignStatusBanner } from '@/components/campaigns/detail/CampaignStatusBanner';
 import { ProgressTimeline } from '@/components/campaigns/detail/ProgressTimeline';
 import { AssignedCreatorCard } from '@/components/campaigns/detail/AssignedCreatorCard';
 import { ContentReviewSection } from '@/components/campaigns/detail/ContentReviewSection';
@@ -35,6 +34,9 @@ import { useCampaignProject } from '@/hooks/useCampaignProject';
 import { useProjectComplete } from '@/hooks/useProjectComplete';
 import { useDeleteCampaign, useDuplicateCampaign } from '@/hooks/useCampaignMutations';
 import { RatingModal } from '@/components/reviews/RatingModal';
+import { useCampaignApplicationsCount } from '@/hooks/useCampaignApplicationsCount';
+import { useToast } from '@/hooks/use-toast';
+import { Button } from '@/components/ui/button';
 
 const CampaignDetailsPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -96,6 +98,97 @@ const CampaignDetailsPage: React.FC = () => {
   const { requestCompletion } = useProjectComplete();
   const deleteCampaign = useDeleteCampaign();
   const duplicateCampaign = useDuplicateCampaign();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  // Application count for the status banner
+  const { data: applicationCounts } = useCampaignApplicationsCount(id ?? '');
+  const applicationCount = applicationCounts?.total ?? 0;
+
+  // Escrow payment state
+  const [isPayingEscrow, setIsPayingEscrow] = useState(false);
+
+  useEffect(() => {
+    const paymentParam = searchParams.get('payment');
+    if (!paymentParam || !id) return;
+
+    if (paymentParam === 'success') {
+      const verify = async () => {
+        try {
+          const { data, error } = await supabase.functions.invoke('verify-campaign-escrow', {
+            body: { campaignId: id },
+          });
+          if (error) throw error;
+          if (data?.success) {
+            toast({ title: 'Payment Confirmed!', description: 'Your campaign is now published and visible to creators.' });
+            queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+            queryClient.invalidateQueries({ queryKey: ['campaign', id] });
+          } else {
+            toast({ variant: 'destructive', title: 'Payment Pending', description: 'Payment not yet confirmed. Please refresh.' });
+          }
+        } catch {
+          toast({ variant: 'destructive', title: 'Verification Failed', description: 'Could not verify payment. Please refresh.' });
+        }
+      };
+      void verify();
+    } else if (paymentParam === 'cancelled') {
+      toast({ title: 'Payment Cancelled', description: 'Your campaign was saved as a draft. You can pay escrow later.' });
+    }
+
+    navigate(location.pathname, { replace: true });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handlePayEscrow = async () => {
+    if (!campaign) return;
+    setIsPayingEscrow(true);
+    try {
+      const { data: verifyData } = await supabase.functions.invoke('verify-campaign-escrow', {
+        body: { campaignId: campaign.id },
+      });
+      if (verifyData?.success && verifyData?.status === 'held') {
+        toast({ title: 'Payment Already Verified!', description: 'Your campaign is published.' });
+        queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+        queryClient.invalidateQueries({ queryKey: ['campaign', campaign.id] });
+        setIsPayingEscrow(false);
+        return;
+      }
+    } catch { /* proceed to checkout */ }
+
+    const checkoutWindow = window.open('about:blank', '_blank');
+    try {
+      const { data, error } = await supabase.functions.invoke('create-campaign-escrow', {
+        body: {
+          campaignId: campaign.id,
+          amount: campaign.fixed_price || 0,
+          deliveryFee: campaign.delivery_fee || 0,
+          campaignTitle: campaign.title,
+          deliveryType: campaign.delivery_type || 'standard',
+        },
+      });
+      if (error) throw error;
+      if (data?.alreadyPaid) {
+        checkoutWindow?.close();
+        toast({ title: 'Already Paid', description: 'This campaign has already been paid for.' });
+        queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+        setIsPayingEscrow(false);
+        return;
+      }
+      if (data?.url && checkoutWindow) {
+        checkoutWindow.location.href = data.url;
+      } else if (data?.url) {
+        checkoutWindow?.close();
+        toast({ title: 'Popup Blocked', description: 'Click below to open payment.',
+          action: <Button variant="outline" size="sm" onClick={() => window.open(data.url, '_blank')}>Open Payment</Button>,
+        });
+      }
+    } catch {
+      checkoutWindow?.close();
+      toast({ variant: 'destructive', title: 'Payment Failed', description: 'Could not initiate payment.' });
+    } finally {
+      setIsPayingEscrow(false);
+    }
+  };
 
   const handleDelete = () => {
     if (!campaign) return;
@@ -278,7 +371,7 @@ const CampaignDetailsPage: React.FC = () => {
   if (projectLoading && (campaign.status === 'active' || campaign.status === 'completed')) {
     return (
       <DashboardLayout userRole="business_client">
-        <div className="w-full max-w-full md:max-w-4xl md:mx-auto p-4 space-y-4">
+        <div className="w-full max-w-full lg:max-w-6xl md:mx-auto p-4 space-y-4">
           <Skeleton className="h-24 w-full rounded-2xl" />
           <div className="lg:grid lg:grid-cols-5 lg:gap-6 space-y-4 lg:space-y-0">
             <div className="lg:col-span-3 space-y-4">
@@ -296,7 +389,7 @@ const CampaignDetailsPage: React.FC = () => {
 
   return (
     <DashboardLayout userRole="business_client">
-      <div className="w-full max-w-full md:max-w-4xl md:mx-auto p-4 space-y-4 pb-24 md:pb-6">
+      <div className="w-full max-w-full lg:max-w-6xl md:mx-auto p-4 space-y-4 pb-24 md:pb-6">
         <PageHeader>
           <div className="flex items-center">
             <button onClick={() => navigate(backHref)} className="text-dc-pink-accent mr-2" aria-label="Back">
@@ -309,21 +402,36 @@ const CampaignDetailsPage: React.FC = () => {
           </div>
         </PageHeader>
 
-        <CampaignDetailHeader
+        <CampaignStatusBanner
           campaign={campaign}
           phase={phase}
           currentStep={currentStep}
+          applicationCount={applicationCount}
+          creatorName={creatorData?.creator_name}
+          isLoading={false}
+          onEdit={() => navigate(`/dashboard/business/campaigns/${id}/edit`)}
           onDelete={handleDelete}
           onRelaunch={handleRelaunch}
-          onEdit={() => navigate(`/dashboard/business/campaigns/${id}/edit`)}
+          onPayEscrow={handlePayEscrow}
+          onReviewApplications={() => {
+            const el = document.getElementById('applications-section');
+            el?.scrollIntoView({ behavior: 'smooth' });
+          }}
+          onReviewContent={() => {
+            const el = document.getElementById('content-review-section');
+            el?.scrollIntoView({ behavior: 'smooth' });
+          }}
+          onRequestRevision={() => {
+            const el = document.getElementById('content-review-section');
+            el?.scrollIntoView({ behavior: 'smooth' });
+          }}
+          onViewDeliverables={() => {
+            const el = document.getElementById('deliverables-section');
+            el?.scrollIntoView({ behavior: 'smooth' });
+          }}
+          onLeaveReview={() => setShowRatingModal(true)}
+          isPayingEscrow={isPayingEscrow}
         />
-
-        {phase === 'pre_hire' && campaign.escrow_status === 'pending' && (
-          <EscrowPaymentAlert
-            campaignId={campaign.id}
-            escrowStatus={campaign.escrow_status ?? 'pending'}
-          />
-        )}
 
         {/* Desktop: 2-column layout for workflow + details; Mobile: stacked */}
         <div className="lg:grid lg:grid-cols-5 lg:gap-6 space-y-4 lg:space-y-0">
