@@ -36,6 +36,10 @@ serve(async (req) => {
     if (!user) throw new Error("User not authenticated");
     logStep("User authenticated", { userId: user.id });
 
+    const url = new URL(req.url);
+    const org_unit_id = url.searchParams.get('org_unit_id');
+    logStep("Query params parsed", { org_unit_id: org_unit_id ?? null });
+
     const { data: businessProfile, error: profileError } = await supabaseClient
       .from('business_profiles')
       .select('stripe_account_id, stripe_onboarding_complete, pending_balance')
@@ -47,7 +51,30 @@ serve(async (req) => {
       throw new Error(`Failed to fetch business profile: ${profileError.message}`);
     }
 
-    if (!businessProfile?.stripe_account_id) {
+    // Resolution order: org_units first (when org_unit_id provided), then business_profiles
+    let stripeAccountId: string | null = null;
+
+    if (org_unit_id) {
+      const { data: orgUnit } = await supabaseClient
+        .from('org_units')
+        .select('stripe_account_id, stripe_onboarding_complete, pending_balance')
+        .eq('id', org_unit_id)
+        .single();
+
+      stripeAccountId = orgUnit?.stripe_account_id ?? null;
+      if (stripeAccountId) {
+        logStep("Found Stripe account in org_units", { stripeAccountId });
+      }
+    }
+
+    if (!stripeAccountId) {
+      stripeAccountId = businessProfile?.stripe_account_id ?? null;
+      if (stripeAccountId) {
+        logStep("Found Stripe account in business_profiles", { stripeAccountId });
+      }
+    }
+
+    if (!stripeAccountId) {
       logStep("No Stripe account found for restaurant");
       return new Response(JSON.stringify({ 
         hasAccount: false,
@@ -64,16 +91,26 @@ serve(async (req) => {
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
 
-    const account = await stripe.accounts.retrieve(businessProfile.stripe_account_id);
-    logStep("Retrieved Stripe account", { 
-      accountId: account.id, 
+    const account = await stripe.accounts.retrieve(stripeAccountId);
+    logStep("Retrieved Stripe account", {
+      accountId: account.id,
       chargesEnabled: account.charges_enabled,
       payoutsEnabled: account.payouts_enabled,
     });
 
     const onboardingComplete = account.charges_enabled && account.payouts_enabled;
 
-    if (onboardingComplete !== businessProfile.stripe_onboarding_complete) {
+    // Write onboarding status back to the source table
+    if (org_unit_id) {
+      const { error: updateError } = await supabaseClient
+        .from('org_units')
+        .update({ stripe_onboarding_complete: onboardingComplete })
+        .eq('id', org_unit_id);
+
+      if (updateError) {
+        logStep("Warning: Failed to update onboarding status in org_units", { error: updateError.message });
+      }
+    } else if (onboardingComplete !== businessProfile.stripe_onboarding_complete) {
       const { error: updateError } = await supabaseClient
         .from('business_profiles')
         .update({ stripe_onboarding_complete: onboardingComplete })
@@ -81,19 +118,19 @@ serve(async (req) => {
         .eq('account_type', 'restaurant');
 
       if (updateError) {
-        logStep("Warning: Failed to update onboarding status", { error: updateError.message });
+        logStep("Warning: Failed to update onboarding status in business_profiles", { error: updateError.message });
       }
     }
 
     let availableBalance = 0;
     let pendingStripeBalance = 0;
-    
+
     if (onboardingComplete) {
       try {
         const balance = await stripe.balance.retrieve({
-          stripeAccount: businessProfile.stripe_account_id,
+          stripeAccount: stripeAccountId,
         });
-        
+
         availableBalance = balance.available.reduce((sum, b) => sum + b.amount, 0) / 100;
         pendingStripeBalance = balance.pending.reduce((sum, b) => sum + b.amount, 0) / 100;
         logStep("Balance retrieved", { availableBalance, pendingStripeBalance });
@@ -102,9 +139,9 @@ serve(async (req) => {
       }
     }
 
-    return new Response(JSON.stringify({ 
+    return new Response(JSON.stringify({
       hasAccount: true,
-      accountId: businessProfile.stripe_account_id,
+      accountId: stripeAccountId,
       onboardingComplete,
       chargesEnabled: account.charges_enabled,
       payoutsEnabled: account.payouts_enabled,

@@ -37,6 +37,10 @@ serve(async (req) => {
     if (!user?.email) throw new Error("User not authenticated or email not available");
     logStep("User authenticated", { userId: user.id, email: user.email });
 
+    const body = await req.json().catch(() => ({}));
+    const { org_unit_id } = body;
+    logStep("Request body parsed", { org_unit_id: org_unit_id ?? null });
+
     // Check if business already has a Stripe account
     const { data: businessProfile, error: profileError } = await supabaseClient
       .from('business_profiles')
@@ -51,12 +55,35 @@ serve(async (req) => {
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
     const origin = req.headers.get("origin") || "https://dragoncandy-v3.lovable.app";
-    
-    let accountId = businessProfile?.stripe_account_id;
+
+    // Resolution order: org_units first (when org_unit_id provided), then business_profiles
+    let stripeAccountId: string | null = null;
+
+    if (org_unit_id) {
+      const { data: orgUnit } = await supabaseClient
+        .from('org_units')
+        .select('stripe_account_id, stripe_onboarding_complete')
+        .eq('id', org_unit_id)
+        .single();
+
+      if (orgUnit?.stripe_account_id) {
+        stripeAccountId = orgUnit.stripe_account_id;
+        logStep("Found existing account in org_units", { stripeAccountId });
+      }
+    }
+
+    if (!stripeAccountId) {
+      stripeAccountId = businessProfile?.stripe_account_id ?? null;
+      if (stripeAccountId) {
+        logStep("Found existing account in business_profiles", { stripeAccountId });
+      }
+    }
+
+    let accountId = stripeAccountId;
 
     if (!accountId) {
       logStep("Creating new Express connected account");
-      
+
       const account = await stripe.accounts.create({
         type: 'express',
         email: user.email,
@@ -64,6 +91,7 @@ serve(async (req) => {
           user_id: user.id,
           platform: 'dragoncandy',
           account_type: 'restaurant',
+          org_unit_id: org_unit_id ?? '',
         },
         capabilities: {
           card_payments: { requested: true },
@@ -78,14 +106,25 @@ serve(async (req) => {
       accountId = account.id;
       logStep("Express account created", { accountId });
 
-      const { error: updateError } = await supabaseClient
-        .from('business_profiles')
-        .update({ stripe_account_id: accountId })
-        .eq('user_id', user.id)
-        .eq('account_type', 'restaurant');
+      if (org_unit_id) {
+        const { error: updateError } = await supabaseClient
+          .from('org_units')
+          .update({ stripe_account_id: accountId })
+          .eq('id', org_unit_id);
 
-      if (updateError) {
-        logStep("Warning: Failed to save stripe_account_id", { error: updateError.message });
+        if (updateError) {
+          logStep("Warning: Failed to save stripe_account_id to org_units", { error: updateError.message });
+        }
+      } else {
+        const { error: updateError } = await supabaseClient
+          .from('business_profiles')
+          .update({ stripe_account_id: accountId })
+          .eq('user_id', user.id)
+          .eq('account_type', 'restaurant');
+
+        if (updateError) {
+          logStep("Warning: Failed to save stripe_account_id to business_profiles", { error: updateError.message });
+        }
       }
     } else {
       logStep("Using existing connected account", { accountId });
@@ -100,10 +139,10 @@ serve(async (req) => {
 
     logStep("Account link created", { url: accountLink.url });
 
-    return new Response(JSON.stringify({ 
-      url: accountLink.url, 
+    return new Response(JSON.stringify({
+      url: accountLink.url,
       accountId,
-      isNew: !businessProfile?.stripe_account_id 
+      isNew: !stripeAccountId,
     }), {
       headers: { ...corsHeaders(req), "Content-Type": "application/json" },
       status: 200,
