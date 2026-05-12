@@ -1,63 +1,53 @@
-import React, { useState, useEffect } from 'react';
-import { ChevronDown, ChevronUp } from 'lucide-react';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
-import { CampaignDetailsOverview } from '@/components/campaigns/CampaignDetailsOverview';
+import React from 'react';
+import { CollapsibleBriefSection } from '@/components/campaign-details/CollapsibleBriefSection';
+import { CampaignOverviewSection } from '@/components/campaign-details/sections/CampaignOverviewSection';
+import { ContentRequirementsSection } from '@/components/campaign-details/sections/ContentRequirementsSection';
+import { CompensationSection } from '@/components/campaign-details/sections/CompensationSection';
+import { LogisticsSection } from '@/components/campaign-details/sections/LogisticsSection';
 import type { Campaign } from '@/hooks/useCampaignQueries';
 import type { CampaignPhase } from '@/lib/campaignPhase';
+import { formatBudget } from '@/lib/campaignPhase';
 
 interface CollapsibleCampaignDetailsProps {
   campaign: Campaign;
   phase: CampaignPhase;
 }
 
-function useIsDesktop() {
-  const [isDesktop, setIsDesktop] = useState(
-    typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches
-  );
-  useEffect(() => {
-    const mql = window.matchMedia('(min-width: 1024px)');
-    const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
-    mql.addEventListener('change', handler);
-    return () => mql.removeEventListener('change', handler);
-  }, []);
-  return isDesktop;
+function buildOverviewSubtitle(campaign: Campaign): string {
+  const parts: string[] = [];
+  const budget = formatBudget(campaign);
+  if (budget) parts.push(budget);
+  if (campaign.platforms?.length) parts.push(campaign.platforms.slice(0, 2).join(', '));
+  return parts.join(' · ');
 }
 
 export const CollapsibleCampaignDetails: React.FC<CollapsibleCampaignDetailsProps> = ({
   campaign,
   phase,
 }) => {
-  const isDesktop = useIsDesktop();
-  const defaultOpen = isDesktop || phase === 'pre_hire' || phase === 'cancelled';
-  const [isOpen, setIsOpen] = useState(defaultOpen);
-
-  useEffect(() => {
-    if (isDesktop) setIsOpen(true);
-  }, [isDesktop]);
+  const overviewOpen = phase === 'pre_hire' || phase === 'cancelled';
 
   return (
-    <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden lg:sticky lg:top-4">
-      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-        <CollapsibleTrigger asChild>
-          <button className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors">
-            <span className="font-bold text-gray-900 text-sm">Campaign Details</span>
-            {isOpen
-              ? <ChevronUp className="h-4 w-4 text-gray-500" />
-              : <ChevronDown className="h-4 w-4 text-gray-500" />
-            }
-          </button>
-        </CollapsibleTrigger>
+    <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden lg:sticky lg:top-4 p-4 space-y-1">
+      <CollapsibleBriefSection
+        title="Campaign Overview"
+        subtitle={buildOverviewSubtitle(campaign)}
+        defaultOpen={overviewOpen}
+      >
+        <CampaignOverviewSection campaign={campaign} />
+      </CollapsibleBriefSection>
 
-        <CollapsibleContent>
-          <div className="px-4 pb-4 pt-1 border-t border-gray-100">
-            <CampaignDetailsOverview campaign={campaign} />
-          </div>
-        </CollapsibleContent>
-      </Collapsible>
+      <CollapsibleBriefSection title="Content Requirements">
+        <ContentRequirementsSection campaign={campaign} campaignId={campaign.id} />
+      </CollapsibleBriefSection>
+
+      <CollapsibleBriefSection title="Compensation & Terms">
+        <CompensationSection campaign={campaign} campaignId={campaign.id} role="business" />
+      </CollapsibleBriefSection>
+
+      <CollapsibleBriefSection title="Logistics & Targeting">
+        <LogisticsSection campaign={campaign} />
+      </CollapsibleBriefSection>
     </div>
   );
 };
