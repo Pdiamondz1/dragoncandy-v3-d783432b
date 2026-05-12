@@ -122,7 +122,7 @@ export const useSendMessage = () => {
         try {
           const { data: recipientProfile } = await supabase
             .from('profiles')
-            .select('email, full_name, role')
+            .select('email, full_name')
             .eq('id', variables.recipientId)
             .single();
 
@@ -132,8 +132,7 @@ export const useSendMessage = () => {
             .eq('id', user!.id)
             .single();
 
-          // Only send if recipient is a business_client or brand
-          if (recipientProfile && (recipientProfile.role === 'business_client' || recipientProfile.role === 'brand')) {
+          if (recipientProfile?.email) {
             await supabase.functions.invoke('send-notification-email', {
               body: {
                 to: recipientProfile.email,
