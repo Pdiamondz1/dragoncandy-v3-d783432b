@@ -4,11 +4,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import type { FileUpload } from '@/types/files';
 
-export const useFileUploads = (campaignId?: string, category?: string) => {
+export const useFileUploads = (campaignId?: string, category?: string, uploadedBy?: string) => {
   const { user } = useAuth();
 
   return useQuery({
-    queryKey: ['file-uploads', campaignId, category],
+    queryKey: ['file-uploads', campaignId, category, uploadedBy],
     queryFn: async () => {
       let query = supabase
         .from('file_uploads')
@@ -20,6 +20,9 @@ export const useFileUploads = (campaignId?: string, category?: string) => {
       }
       if (category) {
         query = query.eq('file_category', category);
+      }
+      if (uploadedBy) {
+        query = query.eq('uploaded_by', uploadedBy);
       }
 
       const { data: filesData, error } = await query;

@@ -51,7 +51,7 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
   const [feedback, setFeedback] = useState('');
   const safeRevisionCount = revisionCount ?? 0;
 
-  const { data: files } = useFileUploads(campaignId, 'deliverable');
+  const { data: files, isLoading: filesLoading } = useFileUploads(campaignId, 'deliverable', creatorId);
 
   const approveContent = useMutation({
     mutationFn: async () => {
@@ -116,6 +116,32 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
   });
 
   if (contentStatus !== 'submitted') return null;
+
+  const hasFiles = files && files.length > 0;
+
+  if (!hasFiles && !filesLoading) {
+    return (
+      <div className="bg-white border-2 border-dc-teal rounded-2xl p-4">
+        <div className="flex items-center gap-2">
+          <FileCheck className="h-4 w-4 text-dc-teal" />
+          <span className="text-sm text-gray-600">
+            Waiting for {creatorName} to upload content
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  if (filesLoading) {
+    return (
+      <div className="bg-white border-2 border-dc-teal rounded-2xl p-4">
+        <div className="flex items-center gap-2">
+          <Loader2 className="h-4 w-4 text-dc-teal animate-spin" />
+          <span className="text-sm text-gray-600">Loading content...</span>
+        </div>
+      </div>
+    );
+  }
 
   const canRequestRevision = safeRevisionCount < MAX_REVISIONS;
 
