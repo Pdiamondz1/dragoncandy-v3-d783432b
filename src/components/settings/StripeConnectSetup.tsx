@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { ExternalLink, AlertCircle, CheckCircle2, Clock, Wallet, LayoutDashboard, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useOrgUnits } from '@/hooks/useOrgData';
 import { toast } from 'sonner';
 import { useFirstRunMissions } from '@/hooks/useFirstRunMissions';
 import { StripeTestHelper } from '@/components/payments/StripeTestHelper';
@@ -43,7 +44,9 @@ const ROLE_CONFIG = {
 };
 
 export function StripeConnectSetup({ role }: StripeConnectSetupProps) {
-  const { user } = useAuth();
+  const { user, activeOrgUnit, activeOrg } = useAuth();
+  const { data: orgUnits = [] } = useOrgUnits(activeOrg?.id);
+  const hasMultipleLocations = orgUnits.length > 1;
   const { completeMission } = useFirstRunMissions();
   const [status, setStatus] = useState<PayoutStatus | null>(null);
   const [loading, setLoading] = useState(true);
@@ -56,7 +59,8 @@ export function StripeConnectSetup({ role }: StripeConnectSetupProps) {
     if (!user) return;
     setLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke(config.statusFn);
+      const params = activeOrgUnit ? `?org_unit_id=${activeOrgUnit.id}` : '';
+      const { data, error } = await supabase.functions.invoke(`${config.statusFn}${params}`);
       if (error) throw error;
       setStatus(data);
     } catch (err) {
@@ -64,7 +68,7 @@ export function StripeConnectSetup({ role }: StripeConnectSetupProps) {
     } finally {
       setLoading(false);
     }
-  }, [user, config.statusFn]);
+  }, [user, activeOrgUnit, config.statusFn]);
 
   useEffect(() => {
     checkStatus();
@@ -86,7 +90,9 @@ export function StripeConnectSetup({ role }: StripeConnectSetupProps) {
   const handleConnect = async () => {
     setConnecting(true);
     try {
-      const { data, error } = await supabase.functions.invoke(config.createFn);
+      const { data, error } = await supabase.functions.invoke(config.createFn, {
+        body: { org_unit_id: activeOrgUnit?.id ?? null },
+      });
       if (error) throw error;
       if (data?.url) {
         window.location.href = data.url;
@@ -125,6 +131,16 @@ export function StripeConnectSetup({ role }: StripeConnectSetupProps) {
       setWithdrawing(false);
     }
   };
+
+  if (!activeOrgUnit && hasMultipleLocations) {
+    return (
+      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-center">
+        <p className="text-sm text-amber-800">
+          Switch to a specific location to manage its Stripe account.
+        </p>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
