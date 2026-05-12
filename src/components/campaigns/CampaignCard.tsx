@@ -32,13 +32,15 @@ function getCtaLabel(
   phase: CampaignPhase,
   step: ProjectStep | null,
   escrowStatus: string | null | undefined,
-  applicationCount: number
+  applicationCount: number,
+  campaignStatus: string,
 ): string {
   if (escrowStatus === 'pending') return 'Pay & Publish →';
   if (phase === 'cancelled') return 'View Campaign';
   if (phase === 'completed') return 'View Deliverables';
   if (phase === 'active_delivery' && step && needsBusinessAction(step)) return 'Review Content →';
   if (phase === 'active_delivery') return 'View Progress';
+  if (campaignStatus === 'draft') return 'Edit Draft';
   if (applicationCount > 0) return 'Review Applications →';
   return 'View Campaign';
 }
@@ -48,6 +50,7 @@ function getCtaClass(label: string): string {
   if (label === 'Review Content →') return 'rounded-full bg-pink-400 hover:bg-pink-500 text-white font-semibold w-full';
   if (label === 'Review Applications →') return 'rounded-full bg-teal-400 hover:bg-teal-500 text-white font-semibold w-full';
   if (label === 'View Progress') return 'rounded-full bg-teal-400 hover:bg-teal-500 text-white font-semibold w-full';
+  if (label === 'Edit Draft') return 'rounded-full bg-teal-400 hover:bg-teal-500 text-white font-semibold w-full';
   return 'rounded-full border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 font-semibold w-full';
 }
 
@@ -87,7 +90,7 @@ const CampaignCardComponent: React.FC<CampaignCardProps> = ({ campaign }) => {
       : null;
 
   const applicationCount = applicationCounts?.total ?? 0;
-  const ctaLabel = getCtaLabel(phase, step, campaign.escrow_status, applicationCount);
+  const ctaLabel = getCtaLabel(phase, step, campaign.escrow_status, applicationCount, campaign.status);
   const ctaClass = getCtaClass(ctaLabel);
   const stepLabel = getStepLabel(phase, step, applicationCount, campaign.status);
 
@@ -161,13 +164,21 @@ const CampaignCardComponent: React.FC<CampaignCardProps> = ({ campaign }) => {
 
   const handleCta = () => {
     if (ctaLabel === 'Pay & Publish →') { handlePayEscrow(); return; }
+    if (ctaLabel === 'Edit Draft') {
+      navigate(`/dashboard/business/campaigns/${campaign.id}/edit`);
+      return;
+    }
     navigate(`/dashboard/business/campaigns/${campaign.id}`);
   };
 
   const isCtaLoading = (ctaLabel === 'Pay & Publish →') && (isPayingEscrow || isVerifying);
 
   return (
-    <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-200 border border-gray-200">
+    <Card className={`overflow-hidden hover:shadow-lg transition-shadow duration-200 ${
+      phase === 'active_delivery' && step && needsBusinessAction(step)
+        ? 'border-2 border-pink-400 bg-pink-50/50'
+        : 'border border-gray-200'
+    }`}>
       <CardContent className="p-4 space-y-3">
         {/* Title + status badge */}
         <div className="flex items-start justify-between gap-2">
