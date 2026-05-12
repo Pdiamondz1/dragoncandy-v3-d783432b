@@ -18,7 +18,7 @@ When a user receives a message on DragonCandy, there is no visible notification 
 
 **Unread badge on nav icons.** A pink (#EC4899) circular badge appears on the Messages icon showing the total unread message count, capped at "9+" for display. The badge appears on both the `MobileBottomNav` component and the desktop sidebar in `DashboardLayout`.
 
-**New hook: `useTotalUnreadCount`.** Wraps the existing `useConversations` query (which already returns `unread_count` per conversation via the `get_user_conversations` RPC). Sums all per-conversation `unread_count` values into a single total integer. Refetch triggers: every 30 seconds, on window focus, and when a Supabase realtime INSERT event fires on the `messages` table for the current user.
+**New hook: `useTotalUnreadCount`.** Wraps the existing `useConversations` query (which already returns `unread_count` per conversation via the `get_user_conversations` RPC). Sums all per-conversation `unread_count` values into a single total integer. Refetch triggers: every 30 seconds, on window focus, and when a Supabase realtime INSERT event fires on the `messages` table for the current user. React Query's `queryKey`-based deduplication prevents double-counting when multiple triggers fire simultaneously — no manual dedup logic needed.
 
 **Email notifications for all roles.** Remove the role filter in the `send-notification-email` edge function that currently restricts message emails to `business_client` and `brand` roles. All roles (creator, business_client, brand) receive email notifications for new direct messages.
 
@@ -60,6 +60,8 @@ Restaurant user coalition.joe@gmail.com has multiple locations (e.g., Uncle Rocc
 **Feature gating.** New `useLocationReadiness(orgUnitId)` hook checks if both social media and Stripe are connected for the selected location. Returns `{ isReady: boolean, missingSocial: boolean, missingStripe: boolean }`. Campaign creation, promotions, and DragonShare display a gating banner with "Complete [location name]'s setup to unlock features" and a "Go to Settings" link when the location isn't ready.
 
 **Stripe onboarding UI.** Update `StripeConnectSetup` component to be location-aware: when `activeOrgUnit` is set, show the Stripe status for that specific org unit. When `activeOrgUnit` is null ("All Locations"), show a message directing the user to select a specific location.
+
+**Stripe resolution order.** All payment-related code follows this lookup rule: if `org_unit_id` is present, read `stripe_account_id` from `org_units` first. If null or not found, fall back to `business_profiles.stripe_account_id`. This preserves backward compatibility for existing single-location businesses that already have Stripe connected at the business level. Edge functions (`check-restaurant-payout-status`, payment flows) must implement this resolution order explicitly.
 
 ### Files to modify
 
@@ -110,7 +112,7 @@ Full end-to-end audit and repair of the invitation flow:
 
 #### Phase 2: Restaurant Browse Creators
 
-Add `/dashboard/restaurant/creators` route using the existing `BrandCreators` component. The component is already role-agnostic in its data fetching. Add "Browse Creators" nav link in the restaurant sidebar config in `navConfig.ts`. The invite modal, campaign selector, and invitation sending all work the same as the Brand flow.
+Add `/dashboard/restaurant/creators` route using the existing `BrandCreators` component. Add "Browse Creators" nav link in the restaurant sidebar config in `navConfig.ts`. The invite modal, campaign selector, and invitation sending all work the same as the Brand flow. **Audit item:** verify that `BrandCreators` does not hard-code `brand` role checks in the invite modal, campaign dropdown query, or creator fetch. If it does, refactor to accept the role dynamically from auth context.
 
 #### Phase 3: Creator-facing enhancements
 
@@ -118,7 +120,7 @@ Add `/dashboard/restaurant/creators` route using the existing `BrandCreators` co
 
 **Invitation cards.** Each pending invitation displays: business avatar and name, campaign title with emoji, budget range, deliverable count, deadline, optional personal message from the inviter (in a quote block), and two action buttons: "Apply Now" and "Decline."
 
-**Decline action.** New `useDeclineInvitation` hook updates `campaign_invitations.status` to `'declined'`. On decline, trigger an email notification to the inviter via `send-notification-email` with a `campaign_invitation_declined` template. Also create an in-app notification for the business user.
+**Decline action.** New `useDeclineInvitation` hook updates `campaign_invitations.status` to `'declined'`. On decline, trigger an email notification to the inviter via `send-notification-email` with a `campaign_invitation_declined` template: subject "[Creator Name] declined your campaign invitation", body shows campaign title and a "View Campaign" CTA linking to the business's campaign management page. Also create an in-app notification for the business user. Template follows the same layout as the existing `campaign_invitation` template with status-specific copy.
 
 **Bidirectional notifications.** Both parties receive notifications at every state change:
 - Invite sent: creator gets email + Donny message + in-app notification
@@ -179,7 +181,7 @@ CREATE TABLE campaign_skips (
 
 RLS: users can only read/write their own skips. Skips are written on swipe (after the undo window expires), soft-deleted (set `restored = true`) on undo/restore.
 
-**Cycling.** When the creator reaches the end of fresh campaigns (all unseen campaigns viewed), the "All caught up!" screen shows a "Show Skipped (N)" button. Tapping it loads previously-skipped campaigns back into the swipe stack for a second look. These re-shown campaigns can be skipped again or viewed.
+**Cycling.** When the creator reaches the end of fresh campaigns (all unseen campaigns viewed), the "All caught up!" screen shows a "Show Skipped (N)" button. Tapping it loads previously-skipped campaigns back into the swipe stack for a second look. These re-shown campaigns can be skipped again or viewed. Only campaigns where `campaigns.status = 'published' AND campaigns.deadline > now()` appear in the cycling pool — expired or unpublished campaigns are excluded even if previously skipped.
 
 **Desktop grid: "Previously Skipped" section.** On desktop, skipped campaigns appear in a collapsible section below the main campaign grid. Each card has a "Restore" button that moves the campaign back into the main feed.
 
