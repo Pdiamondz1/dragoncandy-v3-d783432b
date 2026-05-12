@@ -12,7 +12,7 @@ import { AnalyticsProvider } from "@/components/analytics/AnalyticsProvider";
 import { PerformanceMonitor } from "@/components/analytics/PerformanceMonitor";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ThemeProvider } from "@/components/ThemeProvider";
-import { LazyMotion, domAnimation } from "@/lib/motion";
+import { LazyMotion, loadMotionFeatures } from "@/lib/motion";
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { VerifiedRoute } from '@/components/VerifiedRoute';
 import { BusinessRoute } from "@/components/BusinessRoute";
@@ -304,7 +304,7 @@ function AnimatedRoutes() {
 
 const PUBLIC_PATHS = new Set(['/', '/home', '/landing']);
 
-function AppLayout() {
+function AppShell() {
   const { pathname } = useLocation();
   const showDonny = !PUBLIC_PATHS.has(pathname);
 
@@ -322,12 +322,25 @@ function AppLayout() {
   );
 }
 
+function AppLayout() {
+  const { pathname } = useLocation();
+  const isPublic = PUBLIC_PATHS.has(pathname);
+
+  if (isPublic) return <AppShell />;
+
+  return (
+    <DonnyProviderWithAuth>
+      <AppShell />
+    </DonnyProviderWithAuth>
+  );
+}
+
 const App = () => {
   return (
     <ErrorBoundary>
       <ThemeProvider>
       <QueryClientProvider client={queryClient}>
-        <LazyMotion features={domAnimation} strict>
+        <LazyMotion features={loadMotionFeatures} strict>
         <AuthProvider>
             <AnalyticsProvider>
               <ErrorBoundary level="widget" fallback={null}>
@@ -337,9 +350,7 @@ const App = () => {
                 <Toaster />
                 <Sonner />
                 <BrowserRouter>
-                <DonnyProviderWithAuth>
                   <AppLayout />
-                </DonnyProviderWithAuth>
                 </BrowserRouter>
               </TooltipProvider>
             </AnalyticsProvider>
