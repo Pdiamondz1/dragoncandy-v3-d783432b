@@ -30,7 +30,8 @@ type NotificationType =
   | 'counter_offer'
   | 'counter_offer_response'
   | 'sponsorship_payment_confirmed'
-  | 'campaign_invitation';
+  | 'campaign_invitation'
+  | 'campaign_invitation_declined';
 
 interface NotificationEmailRequest {
   to?: string;
@@ -724,6 +725,20 @@ const handler = async (req: Request): Promise<Response> => {
               </div>
             </div>
           </div>
+        `,
+      },
+      campaign_invitation_declined: {
+        subject: `${esc.senderName} declined your campaign invitation`,
+        html: `
+          <p>Hi ${esc.rn},</p>
+          <p><strong>${esc.senderName}</strong> has declined your invitation to <strong>"${esc.campaignTitle}"</strong>.</p>
+          <p>You can invite other creators or wait for organic applications.</p>
+          <p style="margin-top: 30px;">
+            <a href="${baseUrl}/dashboard/business/campaigns/${data.campaignId}"
+               style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block;">
+              View Campaign
+            </a>
+          </p>
         `,
       },
     };
