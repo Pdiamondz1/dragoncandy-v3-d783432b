@@ -1,17 +1,11 @@
 import React from 'react';
 import { Search, SlidersHorizontal, MapPin } from 'lucide-react';
 import type { SortOption } from '@/hooks/useCreatorBrowse';
+import { SKILL_OPTIONS } from '@/lib/skillUtils';
 
-const CONTENT_TYPES = [
-  'Video Editing',
-  'Photography',
-  'UGC Creation',
-  'Social Media Management',
-  'Copywriting',
-  'Graphic Design',
-  'Animation',
-  'Content Strategy',
-];
+const CONTENT_TYPES = SKILL_OPTIONS
+  .filter(s => s.value !== 'other' && s.value !== 'influencer_marketing' && s.value !== 'illustration')
+  .map(s => ({ value: s.value, label: s.label }));
 
 const SORT_OPTIONS: { value: SortOption; label: string }[] = [
   { value: 'relevance', label: 'Relevance' },
@@ -102,17 +96,17 @@ export const CreatorBrowseHeader: React.FC<CreatorBrowseHeaderProps> = ({
         >
           All
         </button>
-        {CONTENT_TYPES.map((type) => (
+        {CONTENT_TYPES.map(({ value, label }) => (
           <button
-            key={type}
-            onClick={() => toggleContentType(type)}
+            key={value}
+            onClick={() => toggleContentType(value)}
             className={`flex-shrink-0 px-4 py-1.5 rounded-full text-sm font-medium transition-colors whitespace-nowrap ${
-              contentTypeFilter.includes(type)
+              contentTypeFilter.includes(value)
                 ? 'bg-teal-400 text-white'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             }`}
           >
-            {type}
+            {label}
           </button>
         ))}
       </div>

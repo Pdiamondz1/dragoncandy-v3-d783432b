@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
+import { SKILL_OPTIONS } from '@/lib/skillUtils';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -92,18 +93,7 @@ export const AdvancedCreatorFilters: React.FC<AdvancedCreatorFiltersProps> = ({
     return () => clearTimeout(debounceTimer);
   }, [filters.postal_code, onFilterChange]);
 
-  const availableSkills = [
-    'Video Editing',
-    'Photography',
-    'Graphic Design',
-    'Copywriting',
-    'Social Media Management',
-    'UGC Creation',
-    'Animation',
-    'Influencer Marketing',
-    'Content Strategy',
-    'Illustration'
-  ];
+  const availableSkills = SKILL_OPTIONS.filter(s => s.value !== 'other');
 
   const availablePlatforms = [
     'Instagram',
@@ -204,14 +194,14 @@ export const AdvancedCreatorFilters: React.FC<AdvancedCreatorFiltersProps> = ({
           Skills & Expertise
         </Label>
         <div className="flex flex-wrap gap-2">
-          {availableSkills.map(skill => (
+          {availableSkills.map(({ value, label }) => (
             <Badge
-              key={skill}
-              variant={filters.skills?.includes(skill) ? "default" : "outline"}
+              key={value}
+              variant={filters.skills?.includes(value) ? "default" : "outline"}
               className="cursor-pointer"
-              onClick={() => toggleSkill(skill)}
+              onClick={() => toggleSkill(value)}
             >
-              {skill}
+              {label}
             </Badge>
           ))}
         </div>
