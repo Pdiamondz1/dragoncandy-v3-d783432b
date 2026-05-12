@@ -155,7 +155,7 @@ export const CompletedCampaignCard: React.FC<CompletedCampaignCardProps> = ({ co
 
       {/* View Details link */}
       <button
-        onClick={() => navigate(`/campaigns/${campaign.id}`)}
+        onClick={() => navigate(`/dashboard/creator/my-campaigns/${campaign.id}`)}
         className="text-xs text-dc-teal font-semibold hover:underline mt-2"
       >
         View Details →

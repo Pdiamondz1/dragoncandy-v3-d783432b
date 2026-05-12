@@ -159,7 +159,7 @@ const BrandDashboard = () => {
                 <div className="border-2 border-dc-teal rounded-2xl p-6 bg-white text-center">
                   <p className="text-sm text-gray-500">No active campaigns yet.</p>
                   <button
-                    onClick={() => navigate('/dashboard/business/campaigns/create')}
+                    onClick={() => navigate('/dashboard/brand/campaigns/create')}
                     className="text-sm font-semibold text-dc-teal hover:underline mt-1"
                   >
                     Let Donny help you create one

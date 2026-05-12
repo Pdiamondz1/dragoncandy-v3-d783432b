@@ -227,7 +227,7 @@ function AnimatedRoutes() {
           <Route path="/dashboard/brand/messages" element={<ProtectedRoute><BrandRoute><BrandMessages /></BrandRoute></ProtectedRoute>} />
           <Route path="/dashboard/brand/messages/direct/:conversationId" element={<ProtectedRoute><BrandRoute><DirectConversationPage /></BrandRoute></ProtectedRoute>} />
           <Route path="/dashboard/brand/messages/campaign/:campaignId" element={<ProtectedRoute><BrandRoute><CampaignMessagesPage /></BrandRoute></ProtectedRoute>} />
-          <Route path="/dashboard/brand/settings" element={<Navigate to="/dashboard/business/settings" replace />} />
+          <Route path="/dashboard/brand/settings" element={<ProtectedRoute><BrandRoute><BusinessSettings /></BrandRoute></ProtectedRoute>} />
           <Route path="/dashboard/brand/campaigns/create" element={<ProtectedRoute><BrandRoute><CampaignCreator /></BrandRoute></ProtectedRoute>} />
           <Route path="/dashboard/brand/campaigns/:id" element={<ProtectedRoute><BrandRoute><BrandCampaignDetails /></BrandRoute></ProtectedRoute>} />
 

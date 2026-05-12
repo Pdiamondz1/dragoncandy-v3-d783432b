@@ -50,7 +50,7 @@ export function ApplyConfirmation({ open, onClose, businessName }: ApplyConfirma
         <button
           onClick={() => {
             onClose();
-            navigate('/dashboard/creator/campaigns?tab=applied');
+            navigate('/dashboard/creator/my-campaigns?tab=applied');
           }}
           className="w-full rounded-full border-2 border-gray-300 text-gray-600 font-semibold py-3"
         >
