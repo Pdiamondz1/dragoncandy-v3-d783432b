@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Users, BarChart3, Settings, Eye, RefreshCw } from 'lucide-react';
+import { Users, BarChart3, Settings, RefreshCw } from 'lucide-react';
 import { useCampaignApplications } from '@/hooks/useFetchApplications';
 import { useApplicationFilters } from '@/hooks/useApplicationFilters';
 import { ApplicationCard } from './ApplicationCard';
@@ -236,30 +236,14 @@ export const ApplicationsListFixed: React.FC<ApplicationsListFixedProps> = ({ ca
 
               {/* Applications Grid */}
               {filteredApplications.map((application) => (
-                <Card key={application.id}>
-                  <CardContent className="p-6">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <ApplicationCard
-                          application={application}
-                          showActions={true}
-                          isSponsored={isSponsored}
-                          userRole={userRole}
-                        />
-                      </div>
-                      <div className="flex flex-col gap-2 ml-4">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleViewProfile(application)}
-                        >
-                          <Eye className="h-4 w-4 mr-1" />
-                          View Profile
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                <ApplicationCard
+                  key={application.id}
+                  application={application}
+                  showActions={true}
+                  isSponsored={isSponsored}
+                  userRole={userRole}
+                  onViewProfile={() => handleViewProfile(application)}
+                />
               ))}
             </div>
           )}

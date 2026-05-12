@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Check, X, Clock, DollarSign, User, ArrowRightLeft, CreditCard, Loader2 } from 'lucide-react';
+import { Check, X, Clock, DollarSign, User, ArrowRightLeft, CreditCard, Loader2, Eye } from 'lucide-react';
 import { useManageApplication } from '@/hooks/useManageApplication';
 import { CampaignApplication } from '@/types/applications';
 import { ApplicationStatusBadge } from './ApplicationStatusBadge';
@@ -21,14 +21,16 @@ interface ApplicationCardProps {
   isSponsored?: boolean;
   userRole?: 'brand' | 'restaurant';
   campaignEscrowStatus?: string | null;
+  onViewProfile?: () => void;
 }
 
-const ApplicationCardComponent: React.FC<ApplicationCardProps> = ({ 
-  application, 
+const ApplicationCardComponent: React.FC<ApplicationCardProps> = ({
+  application,
   showActions = false,
   isSponsored = false,
   userRole,
-  campaignEscrowStatus
+  campaignEscrowStatus,
+  onViewProfile
 }) => {
   const manageApplication = useManageApplication();
   const [showCounterModal, setShowCounterModal] = useState(false);
@@ -118,25 +120,31 @@ const ApplicationCardComponent: React.FC<ApplicationCardProps> = ({
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-start justify-between">
-          <div className="flex items-center gap-3">
-            <Avatar>
-              <AvatarImage src={application.creator_profile?.avatar_url} alt={application.creator_profile?.creator_name || 'Creator avatar'} />
-              <AvatarFallback>
-                <User className="h-4 w-4" aria-hidden="true" />
-              </AvatarFallback>
-            </Avatar>
-            <div>
+        <div className="flex items-center gap-3">
+          <Avatar className="shrink-0">
+            <AvatarImage src={application.creator_profile?.avatar_url} alt={application.creator_profile?.creator_name || 'Creator avatar'} />
+            <AvatarFallback>
+              <User className="h-4 w-4" aria-hidden="true" />
+            </AvatarFallback>
+          </Avatar>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
               <CardTitle className="text-lg">
                 {application.creator_profile?.creator_name || 'Anonymous Creator'}
               </CardTitle>
-              <p className="text-sm text-muted-foreground">
-                Applied on {formatDate(application.created_at)}
-              </p>
+              <ApplicationStatusBadge status={application.status} />
             </div>
+            <p className="text-sm text-muted-foreground">
+              Applied on {formatDate(application.created_at)}
+            </p>
           </div>
-          <ApplicationStatusBadge status={application.status} />
         </div>
+        {onViewProfile && (
+          <Button variant="outline" size="sm" onClick={onViewProfile} className="mt-2 rounded-full w-full sm:w-auto">
+            <Eye className="h-4 w-4 mr-1" />
+            View Profile
+          </Button>
+        )}
       </CardHeader>
 
       <CardContent className="space-y-4">
