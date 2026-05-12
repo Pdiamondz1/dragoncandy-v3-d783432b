@@ -1024,6 +1024,45 @@ export type Database = {
           },
         ]
       }
+      campaign_skips: {
+        Row: {
+          id: string
+          user_id: string
+          campaign_id: string
+          skipped_at: string
+          restored: boolean
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          campaign_id: string
+          skipped_at?: string
+          restored?: boolean
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          campaign_id?: string
+          skipped_at?: string
+          restored?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_skips_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_skips_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       campaign_social_hooks: {
         Row: {
           acted_at: string | null
