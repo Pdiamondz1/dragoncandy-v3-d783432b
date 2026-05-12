@@ -20,7 +20,14 @@ import {
   Send,
   FileCheck,
   AlertCircle,
+  Download,
+  Eye,
 } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -49,6 +56,7 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
   const queryClient = useQueryClient();
   const [showRevisionInput, setShowRevisionInput] = useState(false);
   const [feedback, setFeedback] = useState('');
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const safeRevisionCount = revisionCount ?? 0;
 
   const { data: files, isLoading: filesLoading } = useFileUploads(campaignId, 'deliverable', creatorId);
@@ -160,38 +168,75 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
         )}
       </div>
 
-      {/* File thumbnails */}
-      {files && files.length > 0 && (
-        <div className="flex gap-2 flex-wrap">
-          {files.slice(0, 6).map(file => {
+      {/* File gallery */}
+      {hasFiles && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          {files!.slice(0, 6).map(file => {
             const isImage = file.mime_type?.startsWith('image/');
+            const isVideo = file.mime_type?.startsWith('video/');
+            const publicUrl = supabase.storage.from(file.bucket_name).getPublicUrl(file.file_path).data.publicUrl;
             return (
               <div
                 key={file.id}
-                className="w-14 h-14 rounded-xl border border-gray-200 overflow-hidden bg-gray-50 flex items-center justify-center"
+                className="relative aspect-video rounded-xl border border-gray-200 overflow-hidden bg-gray-50 group"
               >
                 {isImage ? (
-                  <img
-                    src={supabase.storage.from(file.bucket_name).getPublicUrl(file.file_path).data.publicUrl}
-                    alt={file.original_filename}
-                    className="w-full h-full object-cover"
-                    onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                  />
+                  <>
+                    <img
+                      src={publicUrl}
+                      alt={file.original_filename}
+                      className="w-full h-full object-cover"
+                      onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                    />
+                    <button
+                      onClick={() => setLightboxUrl(publicUrl)}
+                      className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center"
+                    >
+                      <Eye className="h-5 w-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </button>
+                  </>
+                ) : isVideo ? (
+                  <div className="w-full h-full flex flex-col items-center justify-center gap-1">
+                    <div className="w-10 h-10 rounded-full bg-dc-teal/10 flex items-center justify-center">
+                      <span className="text-dc-teal text-lg">&#9654;</span>
+                    </div>
+                    <span className="text-xs text-gray-500 truncate max-w-[90%] px-2">
+                      {file.original_filename}
+                    </span>
+                  </div>
                 ) : (
-                  <span className="text-xs text-gray-500 text-center px-1 truncate">
-                    {file.original_filename.split('.').pop()?.toUpperCase()}
-                  </span>
+                  <a
+                    href={publicUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full h-full flex flex-col items-center justify-center gap-1 hover:bg-gray-100 transition-colors"
+                  >
+                    <Download className="h-5 w-5 text-gray-400" />
+                    <span className="text-xs text-gray-500 truncate max-w-[90%] px-2">
+                      {file.original_filename}
+                    </span>
+                  </a>
                 )}
               </div>
             );
           })}
-          {files.length > 6 && (
-            <div className="w-14 h-14 rounded-xl border border-gray-200 bg-gray-50 flex items-center justify-center">
-              <span className="text-xs text-gray-500">+{files.length - 6}</span>
+          {files!.length > 6 && (
+            <div className="aspect-video rounded-xl border border-gray-200 bg-gray-50 flex items-center justify-center">
+              <span className="text-sm text-gray-500 font-semibold">+{files!.length - 6} more</span>
             </div>
           )}
         </div>
       )}
+
+      {/* Lightbox */}
+      <Dialog open={!!lightboxUrl} onOpenChange={() => setLightboxUrl(null)}>
+        <DialogContent className="max-w-3xl p-2">
+          <DialogTitle className="sr-only">Content preview</DialogTitle>
+          {lightboxUrl && (
+            <img src={lightboxUrl} alt="Full size preview" className="w-full h-auto rounded-lg" />
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Actions */}
       {!showRevisionInput ? (
