@@ -297,12 +297,12 @@ export const CreatorMatchingSection: React.FC<CreatorMatchingSectionProps> = ({ 
                 <p className="text-muted-foreground text-center max-w-md mb-4">
                   Click "Find Perfect Creators" above to run our AI matching algorithm across all available creators.
                 </p>
-                <div className="flex gap-2">
-                  <Button onClick={handleGenerateMatches} variant="outline">
+                <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                  <Button onClick={handleGenerateMatches} variant="outline" className="w-full sm:w-auto">
                     <RefreshCw className="h-4 w-4 mr-2" />
                     Generate Matches
                   </Button>
-                  <Button onClick={() => setActiveTab('all-creators')}>
+                  <Button onClick={() => setActiveTab('all-creators')} className="w-full sm:w-auto">
                     <Users className="h-4 w-4 mr-2" />
                     View All Creators
                   </Button>

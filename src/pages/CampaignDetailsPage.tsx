@@ -454,9 +454,11 @@ const CampaignDetailsPage: React.FC = () => {
             )}
 
             {phase === 'pre_hire' && (
-              <div id="applications-section">
+              <div id="applications-section" className="space-y-4">
                 <ApplicationsListFixed campaignId={campaign.id} />
-                <CreatorMatchingSection campaignId={campaign.id} />
+                {(applicationCounts?.accepted ?? 0) === 0 && (
+                  <CreatorMatchingSection campaignId={campaign.id} />
+                )}
               </div>
             )}
 
