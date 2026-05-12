@@ -84,3 +84,91 @@ export const useInviteCreator = () => {
     },
   });
 };
+
+export const useCreatorPendingInvitations = () => {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ['creator-pending-invitations', user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+
+      const { data, error } = await supabase
+        .from('campaign_invitations')
+        .select(`
+          *,
+          campaigns:campaign_id (
+            id, title, emoji, budget_min, budget_max, deadline,
+            deliverable_count, content_types, cover_image_url,
+            profiles:user_id ( full_name, avatar_url, business_name )
+          )
+        `)
+        .eq('creator_id', user.id)
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return data ?? [];
+    },
+    enabled: !!user,
+    staleTime: 60_000,
+    refetchOnWindowFocus: 'always',
+  });
+};
+
+export const useDeclineInvitation = () => {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (invitationId: string) => {
+      if (!user) throw new Error('Not authenticated');
+
+      const { data: invitation, error: fetchError } = await supabase
+        .from('campaign_invitations')
+        .select('campaign_id, invited_by, campaigns:campaign_id ( title )')
+        .eq('id', invitationId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      const { error } = await supabase
+        .from('campaign_invitations')
+        .update({ status: 'declined' })
+        .eq('id', invitationId)
+        .eq('creator_id', user.id);
+
+      if (error) throw error;
+
+      // Send decline notification email to the inviter
+      try {
+        const { data: creatorProfile } = await supabase
+          .from('profiles')
+          .select('full_name')
+          .eq('id', user.id)
+          .single();
+
+        await supabase.functions.invoke('send-notification-email', {
+          body: {
+            type: 'campaign_invitation_declined',
+            data: {
+              recipientUserId: invitation.invited_by,
+              senderName: creatorProfile?.full_name ?? 'A creator',
+              campaignTitle: (invitation.campaigns as any)?.title ?? 'your campaign',
+              campaignId: invitation.campaign_id,
+            },
+          },
+        });
+      } catch (emailErr) {
+        console.error('Failed to send decline notification:', emailErr);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['creator-pending-invitations'] });
+      toast({ title: 'Invitation declined' });
+    },
+    onError: () => {
+      toast({ title: 'Failed to decline invitation', variant: 'destructive' });
+    },
+  });
+};
