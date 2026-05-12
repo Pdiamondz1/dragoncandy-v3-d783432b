@@ -14,7 +14,7 @@ export const VerifiedRoute: React.FC<VerifiedRouteProps> = ({ children }) => {
 
   useEffect(() => {
     if (emailNotVerified) {
-      toast.error('Please verify your email to continue. Check your inbox for the verification link.');
+      toast.error('Please verify your email to continue. You can resend the verification email from the login page.');
     }
   }, [emailNotVerified]);
 
