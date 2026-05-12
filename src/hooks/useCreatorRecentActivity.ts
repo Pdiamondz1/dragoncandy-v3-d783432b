@@ -42,11 +42,12 @@ export const useCreatorRecentActivity = () => {
           applications?.forEach((app) => {
             const campaignArr = app.campaigns as { title: string }[] | null;
             const campaignTitle = campaignArr?.[0]?.title;
+            if (!campaignTitle) return;
             activities.push({
               id: app.id,
               type: 'application',
               status: app.status,
-              description: `Applied to "${campaignTitle || 'Unknown Campaign'}" campaign`,
+              description: `Applied to "${campaignTitle}" campaign`,
               created_at: app.created_at,
               campaign_id: app.campaign_id,
             });
@@ -74,16 +75,17 @@ export const useCreatorRecentActivity = () => {
           collaborations?.forEach((collab) => {
             const collabCampaignArr = collab.campaigns as { title: string }[] | null;
             const campaignTitle = collabCampaignArr?.[0]?.title;
+            if (!campaignTitle) return;
             let description = '';
             switch (collab.status) {
               case 'active':
-                description = `Started working on "${campaignTitle || 'Unknown Campaign'}"`;
+                description = `Started working on "${campaignTitle}"`;
                 break;
               case 'completed':
-                description = `Completed project "${campaignTitle || 'Unknown Campaign'}"`;
+                description = `Completed project "${campaignTitle}"`;
                 break;
               default:
-                description = `Project "${campaignTitle || 'Unknown Campaign'}" status updated`;
+                description = `Project "${campaignTitle}" status updated`;
             }
 
             activities.push({
