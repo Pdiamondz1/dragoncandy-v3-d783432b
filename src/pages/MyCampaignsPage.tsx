@@ -1,6 +1,5 @@
 import { useMemo } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useCreatorApplications } from '@/hooks/useCreatorApplications';
 import { useCreatorCollaborations } from '@/hooks/useCreatorCollaborations';
@@ -9,12 +8,12 @@ import { EarningsSummary } from '@/components/projects/EarningsSummary';
 import { MyCampaignCard } from '@/components/my-campaigns/MyCampaignCard';
 import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
+import { DashboardLayout } from '@/components/DashboardLayout';
 
 type TabId = 'applied' | 'active' | 'done';
 
 export default function MyCampaignsPage() {
   const { user } = useAuth();
-  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const { data: applications = [], isLoading: appsLoading } = useCreatorApplications();
@@ -50,118 +49,115 @@ export default function MyCampaignsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-pink-200 to-pink-100">
-      {/* Header */}
-      <div className="px-4 pt-4 pb-3 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <button onClick={() => navigate('/dashboard/creator')} className="text-gray-700">
-            <ArrowLeft className="h-5 w-5" />
-          </button>
+    <DashboardLayout userRole="content_creator">
+      <div className="bg-white min-h-full">
+        {/* Page title */}
+        <div className="px-4 pt-4 pb-3 flex items-center justify-between">
           <h1 className="text-xl font-bold text-gray-900 tracking-wide">MY CAMPAIGNS</h1>
+          {totalCount > 0 && (
+            <span className="bg-dc-teal text-white text-xs font-semibold px-2.5 py-0.5 rounded-full">
+              {totalCount}
+            </span>
+          )}
         </div>
-        {totalCount > 0 && (
-          <span className="bg-dc-teal text-white text-xs font-semibold px-2.5 py-0.5 rounded-full">
-            {totalCount}
-          </span>
-        )}
-      </div>
 
-      {/* Earnings Summary */}
-      {earnings && (
-        <div className="px-4 pb-3">
-          <EarningsSummary
-            totalEarned={earnings.totalEarned}
-            inEscrow={earnings.inEscrow}
-            available={earnings.available}
-            onboardingComplete={earnings.onboardingComplete}
-            onSetupPayouts={handleSetupPayouts}
-          />
+        {/* Earnings Summary */}
+        {earnings && (
+          <div className="px-4 pb-3">
+            <EarningsSummary
+              totalEarned={earnings.totalEarned}
+              inEscrow={earnings.inEscrow}
+              available={earnings.available}
+              onboardingComplete={earnings.onboardingComplete}
+              onSetupPayouts={handleSetupPayouts}
+            />
+          </div>
+        )}
+
+        {/* Tabs */}
+        <div className="flex px-4 mb-3">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setTab(tab.id)}
+              className={`flex-1 text-center py-2.5 text-sm font-semibold transition-colors ${
+                activeTab === tab.id
+                  ? 'text-gray-900 border-b-[3px] border-dc-teal'
+                  : 'text-gray-400 border-b-[3px] border-transparent'
+              }`}
+            >
+              {tab.label} ({tab.count})
+            </button>
+          ))}
         </div>
-      )}
 
-      {/* Tabs */}
-      <div className="flex px-4 mb-3">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setTab(tab.id)}
-            className={`flex-1 text-center py-2.5 text-sm font-semibold transition-colors ${
-              activeTab === tab.id
-                ? 'text-gray-900 border-b-[3px] border-dc-teal'
-                : 'text-gray-400 border-b-[3px] border-transparent'
-            }`}
-          >
-            {tab.label} ({tab.count})
-          </button>
-        ))}
+        {/* Tab Content */}
+        <div className="px-4 pb-24 space-y-3">
+          {isLoading ? (
+            Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton key={i} className="h-24 rounded-2xl" />
+            ))
+          ) : (
+            <>
+              {activeTab === 'applied' && (
+                pendingApps.length === 0 ? (
+                  <EmptyState message="No pending applications" sub="Browse campaigns to find your next gig" />
+                ) : (
+                  pendingApps.map((app) => (
+                    <MyCampaignCard
+                      key={app.id}
+                      variant={app.status === 'counter_offered' ? 'counter_offered' : 'applied'}
+                      campaignId={app.campaign_id}
+                      title={app.campaign?.title || 'Untitled Campaign'}
+                      businessName={app.business_profile?.business_name || 'Unknown Business'}
+                      businessLocation={app.business_profile?.city}
+                      price={app.proposed_rate ?? app.campaign?.fixed_price ?? null}
+                      application={app}
+                    />
+                  ))
+                )
+              )}
+
+              {activeTab === 'active' && (
+                activeCollabs.length === 0 ? (
+                  <EmptyState message="No active projects" sub="Applied campaigns will appear here once accepted" />
+                ) : (
+                  activeCollabs.map((collab) => (
+                    <MyCampaignCard
+                      key={collab.id}
+                      variant="active"
+                      campaignId={collab.campaign_id}
+                      title={collab.campaign?.title || 'Untitled Campaign'}
+                      businessName={collab.business_profile?.business_name || 'Unknown Business'}
+                      price={collab.campaign?.fixed_price ?? null}
+                      collaboration={collab}
+                    />
+                  ))
+                )
+              )}
+
+              {activeTab === 'done' && (
+                completedCollabs.length === 0 ? (
+                  <EmptyState message="No completed projects yet" sub="Completed work will appear here" />
+                ) : (
+                  completedCollabs.map((collab) => (
+                    <MyCampaignCard
+                      key={collab.id}
+                      variant="completed"
+                      campaignId={collab.campaign_id}
+                      title={collab.campaign?.title || 'Untitled Campaign'}
+                      businessName={collab.business_profile?.business_name || 'Unknown Business'}
+                      price={collab.campaign?.fixed_price ?? null}
+                      collaboration={collab}
+                    />
+                  ))
+                )
+              )}
+            </>
+          )}
+        </div>
       </div>
-
-      {/* Tab Content */}
-      <div className="px-4 pb-24 space-y-3">
-        {isLoading ? (
-          Array.from({ length: 3 }).map((_, i) => (
-            <Skeleton key={i} className="h-24 rounded-2xl" />
-          ))
-        ) : (
-          <>
-            {activeTab === 'applied' && (
-              pendingApps.length === 0 ? (
-                <EmptyState message="No pending applications" sub="Browse campaigns to find your next gig" />
-              ) : (
-                pendingApps.map((app) => (
-                  <MyCampaignCard
-                    key={app.id}
-                    variant={app.status === 'counter_offered' ? 'counter_offered' : 'applied'}
-                    campaignId={app.campaign_id}
-                    title={app.campaign?.title || 'Untitled Campaign'}
-                    businessName={app.business_profile?.business_name || 'Unknown Business'}
-                    businessLocation={app.business_profile?.city}
-                    price={app.proposed_rate ?? app.campaign?.fixed_price ?? null}
-                    application={app}
-                  />
-                ))
-              )
-            )}
-
-            {activeTab === 'active' && (
-              activeCollabs.length === 0 ? (
-                <EmptyState message="No active projects" sub="Applied campaigns will appear here once accepted" />
-              ) : (
-                activeCollabs.map((collab) => (
-                  <MyCampaignCard
-                    key={collab.id}
-                    variant="active"
-                    campaignId={collab.campaign_id}
-                    title={collab.campaign?.title || 'Untitled Campaign'}
-                    businessName={collab.business_profile?.business_name || 'Unknown Business'}
-                    price={collab.campaign?.fixed_price ?? null}
-                    collaboration={collab}
-                  />
-                ))
-              )
-            )}
-
-            {activeTab === 'done' && (
-              completedCollabs.length === 0 ? (
-                <EmptyState message="No completed projects yet" sub="Completed work will appear here" />
-              ) : (
-                completedCollabs.map((collab) => (
-                  <MyCampaignCard
-                    key={collab.id}
-                    variant="completed"
-                    campaignId={collab.campaign_id}
-                    title={collab.campaign?.title || 'Untitled Campaign'}
-                    businessName={collab.business_profile?.business_name || 'Unknown Business'}
-                    price={collab.campaign?.fixed_price ?? null}
-                    collaboration={collab}
-                  />
-                ))
-              )
-            )}
-          </>
-        )}
-      </div>
-    </div>
+    </DashboardLayout>
   );
 }
 
