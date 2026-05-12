@@ -23,6 +23,7 @@ import { ApplicationForm } from './ApplicationForm';
 import { useCampaign } from '@/hooks/useCampaigns';
 import { CreatorMatch, ScoreBreakdown } from '@/hooks/useCampaignMatches';
 import { WhyExpander } from '@/components/guidance/WhyExpander';
+import { formatSkillLabel } from '@/lib/skillUtils';
 
 interface CreatorMatchCardProps {
   match: CreatorMatch;
@@ -158,7 +159,7 @@ export const CreatorMatchCard: React.FC<CreatorMatchCardProps> = ({ match, isInv
         <div className="flex flex-wrap gap-1.5">
           {match.creator_profile.skills.slice(0, 4).map((skill, index) => (
             <Badge key={index} variant="secondary" className="text-xs">
-              {skill}
+              {formatSkillLabel(skill)}
             </Badge>
           ))}
           {match.creator_profile.skills.length > 4 && (

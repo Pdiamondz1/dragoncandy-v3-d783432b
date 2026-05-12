@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { getSignedProfileUrl } from '@/hooks/useSignedUrl';
+import { formatSkillLabel } from '@/lib/skillUtils';
 import {
   Dialog,
   DialogContent,
@@ -289,7 +290,7 @@ export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
                 <div className="flex flex-wrap gap-2">
                   {profile.skills.map((skill, index) => (
                     <Badge key={index} variant="secondary">
-                      {skill}
+                      {formatSkillLabel(skill)}
                     </Badge>
                   ))}
                 </div>

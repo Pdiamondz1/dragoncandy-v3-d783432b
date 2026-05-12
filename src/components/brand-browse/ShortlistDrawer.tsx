@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import type { CreatorProfile } from '@/hooks/useCreatorBrowse';
 import type { ShortlistedCreator } from '@/hooks/useBrandShortlist';
 import type { BrandCampaignItem } from '@/hooks/useBrandActiveCampaigns';
+import { formatSkillLabel } from '@/lib/skillUtils';
 
 interface ShortlistDrawerProps {
   shortlist: ShortlistedCreator[];
@@ -165,7 +166,7 @@ export const ShortlistDrawer: React.FC<ShortlistDrawerProps> = ({
                         {rc.creator.creator_name}
                       </p>
                       <p className="text-xs text-gray-500 truncate">
-                        {(rc.creator.skills ?? []).slice(0, 2).join(', ')}
+                        {(rc.creator.skills ?? []).slice(0, 2).map(formatSkillLabel).join(', ')}
                       </p>
                     </div>
                     <button

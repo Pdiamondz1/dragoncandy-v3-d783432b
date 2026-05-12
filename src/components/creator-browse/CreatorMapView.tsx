@@ -9,6 +9,7 @@ import { useNavigate } from 'react-router-dom';
 import { useCreatorGeocoding } from '@/hooks/useCreatorGeocoding';
 import { geocodingService } from '@/lib/geocoding';
 import type { CreatorFilters } from '@/hooks/useCreatorBrowse';
+import { formatSkillLabel } from '@/lib/skillUtils';
 import {
   GOOGLE_MAPS_API_KEY,
   GOOGLE_MAPS_LIBRARIES,
@@ -243,7 +244,7 @@ export const CreatorMapView: React.FC<CreatorMapViewProps> = ({
                           <div className="flex flex-wrap gap-1 mb-3">
                             {creator.skills.slice(0, 3).map(skill => (
                               <Badge key={skill} variant="secondary" className="text-xs">
-                                {skill}
+                                {formatSkillLabel(skill)}
                               </Badge>
                             ))}
                             {creator.skills.length > 3 && (

@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Clock, DollarSign, User } from 'lucide-react';
 import { CampaignApplication } from '@/types/applications';
+import { formatSkillLabel } from '@/lib/skillUtils';
 
 interface CreatorProfileModalProps {
   application: CampaignApplication | null;
@@ -78,7 +79,7 @@ export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
               <div className="flex flex-wrap gap-2">
                 {creator_profile.skills.map((skill, index) => (
                   <Badge key={index} variant="secondary">
-                    {skill}
+                    {formatSkillLabel(skill)}
                   </Badge>
                 ))}
               </div>

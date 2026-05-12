@@ -14,6 +14,7 @@ import { useCounterOffers } from '@/hooks/useCounterOffers';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { formatSkillLabel } from '@/lib/skillUtils';
 
 interface ApplicationCardProps {
   application: CampaignApplication;
@@ -161,7 +162,7 @@ const ApplicationCardComponent: React.FC<ApplicationCardProps> = ({
             <div className="flex flex-wrap gap-1">
               {application.creator_profile.skills.map((skill, index) => (
                 <Badge key={index} variant="outline" className="text-xs">
-                  {skill}
+                  {formatSkillLabel(skill)}
                 </Badge>
               ))}
             </div>

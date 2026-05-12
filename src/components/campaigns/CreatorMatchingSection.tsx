@@ -25,6 +25,7 @@ import { useInviteCreator, useCampaignInvitations } from '@/hooks/useCampaignInv
 import { CreatorMatchCard } from './CreatorMatchCard';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
+import { formatSkillLabel } from '@/lib/skillUtils';
 
 interface CreatorMatchingSectionProps {
   campaignId: string;
@@ -360,7 +361,7 @@ export const CreatorMatchingSection: React.FC<CreatorMatchingSectionProps> = ({ 
                             <div className="flex flex-wrap gap-1 mt-2">
                               {creator.skills.slice(0, 4).map((skill: string, index: number) => (
                                 <Badge key={index} variant="secondary" className="text-xs">
-                                  {skill}
+                                  {formatSkillLabel(skill)}
                                 </Badge>
                               ))}
                               {creator.skills.length > 4 && (

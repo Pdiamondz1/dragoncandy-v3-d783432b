@@ -6,6 +6,7 @@ import type { CreatorProfile } from '@/hooks/useCreatorBrowse';
 import { getSignedProfileUrl } from '@/hooks/useSignedUrl';
 import { VerifiedBadge } from '@/components/outstand/VerifiedBadge';
 import { useVerifiedStatus } from '@/hooks/outstand/useVerifiedStatus';
+import { formatSkillLabel } from '@/lib/skillUtils';
 
 interface CreatorCardProps {
   creator: CreatorProfile;
@@ -174,7 +175,7 @@ export const CreatorCard: React.FC<CreatorCardProps> = React.memo(({ creator }) 
                   key={skill}
                   className="bg-teal-50 text-teal-700 rounded-full text-[11px] px-2 py-0.5 font-medium"
                 >
-                  {skill}
+                  {formatSkillLabel(skill)}
                 </span>
               ))}
               {overflowCount > 0 && (

@@ -6,6 +6,7 @@ import { VerifiedBadge } from '@/components/outstand/VerifiedBadge';
 import { useVerifiedStatus } from '@/hooks/outstand/useVerifiedStatus';
 import { useCreatorSocialStats } from '@/hooks/outstand/useCreatorSocialStats';
 import type { CreatorProfile } from '@/hooks/useCreatorBrowse';
+import { formatSkillLabel } from '@/lib/skillUtils';
 
 interface BrandCreatorCardProps {
   creator: CreatorProfile;
@@ -113,7 +114,7 @@ export const BrandCreatorCard: React.FC<BrandCreatorCardProps> = ({
                   key={skill}
                   className="bg-teal-50 text-teal-700 rounded-full text-[11px] px-2 py-0.5 font-medium"
                 >
-                  {skill}
+                  {formatSkillLabel(skill)}
                 </span>
               ))}
               {overflowCount > 0 && (
