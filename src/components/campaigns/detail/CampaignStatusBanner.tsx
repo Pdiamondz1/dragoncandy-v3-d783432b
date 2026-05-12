@@ -176,7 +176,10 @@ export const CampaignStatusBanner: React.FC<CampaignStatusBannerProps> = ({
           ? '1 Application Awaiting Your Review'
           : `${applicationCount} Applications Awaiting Your Review`;
       case 'action_needed': return 'Content Ready for Your Review';
-      case 'active': return 'Campaign In Progress';
+      case 'active':
+        return phase === 'active_delivery' && creatorName
+          ? `${creatorName} is working on your content`
+          : 'Campaign In Progress';
       case 'completed': return 'Campaign Completed';
       case 'cancelled': return 'Campaign Cancelled';
     }
@@ -195,6 +198,9 @@ export const CampaignStatusBanner: React.FC<CampaignStatusBannerProps> = ({
       case 'action_needed':
         return `${creatorName ?? 'Creator'} submitted ${deliverableCount ?? 0} deliverable${(deliverableCount ?? 0) !== 1 ? 's' : ''}. Approve to release payment, or request revisions.`;
       case 'active': {
+        if (phase === 'active_delivery') {
+          return 'You\'ll be notified when content is ready for review.';
+        }
         if (currentStep) {
           const idx = getStepIndex(currentStep);
           const stepInfo = PROJECT_STEPS[idx];
@@ -231,7 +237,7 @@ export const CampaignStatusBanner: React.FC<CampaignStatusBannerProps> = ({
         );
       case 'action_needed':
         return (
-          <div className="flex flex-col sm:flex-row gap-2 w-full lg:w-auto">
+          <div className="flex flex-col sm:flex-row flex-wrap gap-2 w-full lg:w-auto">
             <Button onClick={onReviewContent} className="rounded-full bg-teal-400 hover:bg-teal-500 text-white font-semibold w-full sm:flex-1 lg:flex-none">
               Review & Approve
             </Button>
