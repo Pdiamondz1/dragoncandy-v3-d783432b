@@ -19,6 +19,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { formatBudget } from '@/lib/campaignUtils';
 import { useFirstRunMissions } from '@/hooks/useFirstRunMissions';
+import { useSkippedCampaignIds, useSkipCampaign, useRestoreCampaign } from '@/hooks/useCampaignSkips';
+import { UndoToast } from '@/components/campaigns/UndoToast';
 
 
 type Tab = 'all' | 'donny';
@@ -53,7 +55,17 @@ const CreatorCampaignMarketplace = () => {
   const [activeTab, setActiveTab] = useState<Tab>('all');
   const [detailCampaign, setDetailCampaign] = useState<PublicCampaign | null>(null);
   const [detailReadOnly, setDetailReadOnly] = useState(false);
-  const [skippedIds, setSkippedIds] = useState<Set<string>>(new Set());
+
+  const { data: persistedSkips = new Set<string>() } = useSkippedCampaignIds();
+  const [sessionSkips, setSessionSkips] = useState<Set<string>>(new Set());
+  const skippedIds = new Set([...persistedSkips, ...sessionSkips]);
+
+  const skipCampaign = useSkipCampaign();
+  const restoreCampaign = useRestoreCampaign();
+
+  const [undoTarget, setUndoTarget] = useState<string | null>(null);
+  const [showUndo, setShowUndo] = useState(false);
+  const [showCycled, setShowCycled] = useState(false);
 
   if (isLoading) {
     return <MarketplaceLoadingState />;
@@ -66,7 +78,7 @@ const CreatorCampaignMarketplace = () => {
   const donnyPickIds = new Set(donnyPicks.map((p) => p.campaign.id));
 
   const availableCampaigns = filteredBySearch.filter(
-    (c) => !c.user_applied && !skippedIds.has(c.id) && !donnyPickIds.has(c.id)
+    (c) => !c.user_applied && !donnyPickIds.has(c.id) && (showCycled || !skippedIds.has(c.id))
   );
 
   const swipeCampaigns = [
@@ -85,8 +97,35 @@ const CreatorCampaignMarketplace = () => {
       setDetailReadOnly(false);
       setDetailCampaign(campaign);
     } else if (direction === 'left') {
-      setSkippedIds((prev) => new Set(prev).add(campaign.id));
+      setSessionSkips((prev) => new Set(prev).add(campaign.id));
+      setUndoTarget(campaign.id);
+      setShowUndo(true);
     }
+  };
+
+  const handleUndo = () => {
+    if (undoTarget) {
+      setSessionSkips((prev) => {
+        const next = new Set(prev);
+        next.delete(undoTarget);
+        return next;
+      });
+      restoreCampaign.mutate(undoTarget);
+    }
+    setShowUndo(false);
+    setUndoTarget(null);
+  };
+
+  const handleUndoExpire = () => {
+    if (undoTarget) {
+      skipCampaign.mutate(undoTarget);
+    }
+    setShowUndo(false);
+    setUndoTarget(null);
+  };
+
+  const handleShowCycled = () => {
+    setShowCycled(true);
   };
 
   const handleViewDetail = (campaign: PublicCampaign) => {
@@ -96,7 +135,7 @@ const CreatorCampaignMarketplace = () => {
 
   const handleApplicationSubmitted = () => {
     if (detailCampaign) {
-      setSkippedIds((prev) => new Set(prev).add(detailCampaign.id));
+      setSessionSkips((prev) => new Set(prev).add(detailCampaign.id));
     }
     setDetailCampaign(null);
     queryClient.invalidateQueries({ queryKey: ['public-campaigns'] });
@@ -184,6 +223,8 @@ const CreatorCampaignMarketplace = () => {
                   onSwipe={handleSwipe}
                   onViewDetail={handleViewDetail}
                   matchScores={matchScoresMap}
+                  skippedCount={skippedIds.size}
+                  onShowSkipped={handleShowCycled}
                 />
               </div>
               {swipeCampaigns.length > 0 && (
@@ -263,6 +304,41 @@ const CreatorCampaignMarketplace = () => {
                   ))}
                 </div>
               )}
+
+              {/* Desktop: Previously Skipped Section */}
+              {!showCycled && skippedIds.size > 0 && (
+                <div className="mt-8 max-w-6xl mx-auto">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-white">Previously Skipped</h3>
+                    <span className="text-sm text-white/60">{skippedIds.size} campaign{skippedIds.size !== 1 ? 's' : ''}</span>
+                  </div>
+                  <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                    {filteredBySearch
+                      .filter((c) => skippedIds.has(c.id) && !c.user_applied)
+                      .map((campaign) => (
+                        <div key={campaign.id} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+                          <h4 className="font-semibold text-sm text-gray-900 mb-1 truncate">{campaign.title}</h4>
+                          <p className="text-xs text-gray-500 mb-3 truncate">
+                            {campaign.business_profile?.business_name ?? 'Unknown Business'} &bull; {formatBudget(campaign)}
+                          </p>
+                          <button
+                            onClick={() => {
+                              restoreCampaign.mutate(campaign.id);
+                              setSessionSkips((prev) => {
+                                const next = new Set(prev);
+                                next.delete(campaign.id);
+                                return next;
+                              });
+                            }}
+                            className="w-full text-center text-sm font-semibold text-dc-teal border border-dc-teal rounded-full py-1.5 hover:bg-dc-teal/5 transition-colors"
+                          >
+                            Restore
+                          </button>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              )}
             </div>
           </>
         )}
@@ -311,6 +387,8 @@ const CreatorCampaignMarketplace = () => {
             readOnly={detailReadOnly}
           />
         )}
+
+        <UndoToast visible={showUndo} onUndo={handleUndo} onExpire={handleUndoExpire} />
       </div>
     </DashboardLayout>
   );
