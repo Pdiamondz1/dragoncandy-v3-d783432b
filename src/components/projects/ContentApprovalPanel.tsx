@@ -271,7 +271,7 @@ export const ContentApprovalPanel: React.FC<ContentApprovalPanelProps> = ({
         {/* Action Buttons - Only show when content is submitted */}
         {isSubmitted && (
           <>
-            <div className="flex gap-3">
+            <div className="flex flex-col sm:flex-row gap-3">
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button
