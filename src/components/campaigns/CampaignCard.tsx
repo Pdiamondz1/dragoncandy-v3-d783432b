@@ -51,7 +51,7 @@ function getCtaClass(label: string): string {
   if (label === 'Review Applications →') return 'rounded-full bg-teal-400 hover:bg-teal-500 text-white font-semibold w-full';
   if (label === 'View Progress') return 'rounded-full bg-teal-400 hover:bg-teal-500 text-white font-semibold w-full';
   if (label === 'Edit Draft') return 'rounded-full bg-teal-400 hover:bg-teal-500 text-white font-semibold w-full';
-  return 'rounded-full border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 font-semibold w-full';
+  return 'rounded-full border border-teal-200 bg-white text-teal-700 hover:bg-teal-50 font-semibold w-full';
 }
 
 function getStepLabel(phase: CampaignPhase, step: ProjectStep | null, applicationCount: number, status: string): string {
@@ -177,7 +177,7 @@ const CampaignCardComponent: React.FC<CampaignCardProps> = ({ campaign }) => {
     <Card className={`overflow-hidden hover:shadow-lg transition-shadow duration-200 ${
       phase === 'active_delivery' && step && needsBusinessAction(step)
         ? 'border-2 border-pink-400 bg-pink-50/50'
-        : 'border border-gray-200'
+        : 'border border-teal-200'
     }`}>
       <CardContent className="p-4 space-y-3">
         {/* Title + status badge */}
@@ -212,7 +212,7 @@ const CampaignCardComponent: React.FC<CampaignCardProps> = ({ campaign }) => {
           ) : (
             <div className="flex gap-1">
               {PROJECT_STEPS.map((s) => (
-                <div key={s.key} className="flex-1 h-1 rounded-full bg-gray-200" />
+                <div key={s.key} className="flex-1 h-1 rounded-full bg-teal-100" />
               ))}
             </div>
           )}

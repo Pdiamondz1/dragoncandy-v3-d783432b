@@ -98,7 +98,7 @@ export function PaymentTimeline({ entityType, entityId, campaignId, userRole, va
   const latestStripeId = [...events].reverse().find(e => e.stripe_id)?.stripe_id ?? null;
 
   return (
-    <div className="bg-white rounded-2xl p-4 border border-gray-100">
+    <div className="bg-white rounded-2xl p-4 border border-teal-100">
       {/* Campaign header card */}
       {variant === 'full' && campaign && (
         <div className="flex items-center justify-between p-3 bg-teal-50 border border-teal-200 rounded-xl mb-4">

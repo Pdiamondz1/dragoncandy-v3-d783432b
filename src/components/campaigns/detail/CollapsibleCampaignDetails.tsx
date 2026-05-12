@@ -28,7 +28,7 @@ export const CollapsibleCampaignDetails: React.FC<CollapsibleCampaignDetailsProp
   const overviewOpen = phase === 'pre_hire' || phase === 'cancelled';
 
   return (
-    <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden lg:sticky lg:top-4 p-4 space-y-1">
+    <div className="bg-white border border-teal-200 rounded-2xl overflow-hidden lg:sticky lg:top-4 p-4 space-y-1">
       <CollapsibleBriefSection
         title="Campaign Overview"
         subtitle={buildOverviewSubtitle(campaign)}

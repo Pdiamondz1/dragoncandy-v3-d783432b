@@ -135,7 +135,7 @@ const CampaignsPage: React.FC = () => {
         </div>
 
         {/* Status filter tabs — horizontal scroll */}
-        <div className="bg-white border-b border-gray-100">
+        <div className="bg-white border-b border-teal-100">
           <ScrollArea className="w-full">
             <div className="flex px-4 py-2 gap-2 whitespace-nowrap">
               {tabs.map(tab => (
@@ -145,7 +145,7 @@ const CampaignsPage: React.FC = () => {
                   className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors shrink-0 ${
                     statusFilter === tab.key
                       ? 'bg-dc-teal-btn text-white'
-                      : 'bg-gray-100 text-gray-600'
+                      : 'bg-teal-50 text-teal-700'
                   }`}
                 >
                   {tab.label}
