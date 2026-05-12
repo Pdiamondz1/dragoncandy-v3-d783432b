@@ -5,6 +5,7 @@ import { getBottomNav } from '@/lib/navConfig';
 import { DonnyNavButton } from './donny/DonnyNavButton';
 import { DonnyMobileSheet } from './donny/DonnyMobileSheet';
 import { useScrollDirection } from '@/hooks/useScrollDirection';
+import { useTotalUnreadCount } from '@/hooks/useUnreadCounts';
 
 interface MobileBottomNavProps {
   userRole: UserRole;
@@ -18,6 +19,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ userRole }) =>
     location.pathname === href || location.pathname.startsWith(href + '/');
 
   const scrollDirection = useScrollDirection();
+  const unreadCount = useTotalUnreadCount();
 
   return (
     <>
@@ -42,7 +44,14 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ userRole }) =>
                 className="flex flex-col items-center gap-0.5 py-1 min-h-[44px] min-w-[44px]"
                 aria-label={item.label}
               >
-                <Icon className={`h-5 w-5 ${active ? 'text-dc-teal font-bold' : 'text-gray-400'}`} />
+                <span className="relative">
+                  <Icon className={`h-5 w-5 ${active ? 'text-dc-teal font-bold' : 'text-gray-400'}`} />
+                  {item.label === 'Messages' && unreadCount > 0 && (
+                    <span className="absolute -top-1.5 -right-2.5 bg-pink-500 text-white text-[9px] font-bold min-w-[16px] h-4 flex items-center justify-center rounded-full px-1">
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                  )}
+                </span>
                 <span
                   className={`text-[10px] leading-tight truncate ${
                     active ? 'text-dc-teal font-semibold' : 'text-gray-400'
