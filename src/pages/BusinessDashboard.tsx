@@ -17,6 +17,7 @@ import { useOrg } from '@/hooks/useOrgData';
 import { useFirstRunMissions } from '@/hooks/useFirstRunMissions';
 import { FirstRunDashboard } from '@/components/first-run/FirstRunDashboard';
 import { PendingActionBanners } from '@/components/dashboard/PendingActionBanners';
+import { useLocationReadiness } from '@/hooks/useLocationReadiness';
 
 
 function formatDate(dateStr: string | null): string {
@@ -33,6 +34,7 @@ const BusinessDashboard = () => {
   const { data: dsBoosts } = useOrgBoostStats(org?.id);
   const { showTour, tourSteps, completeTour, skipTour, triggerTour } = useTour();
   const { missions, isFirstRun, completeMission, skipMissions } = useFirstRunMissions();
+  const { isReady, missingSocial, missingStripe, locationName, hasActiveLocation } = useLocationReadiness();
 
   if (isFirstRun && missions) {
     return (
@@ -105,6 +107,28 @@ const BusinessDashboard = () => {
         {/* White body content */}
         <div className="px-4 py-6 pb-24 md:pb-0">
           <div className="max-w-2xl lg:max-w-4xl mx-auto space-y-6">
+
+            {hasActiveLocation && !isReady && (
+              <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3 mb-4">
+                <span className="text-2xl shrink-0">⚠️</span>
+                <div className="text-sm text-amber-900">
+                  <p className="font-semibold mb-1">Complete {locationName}'s setup to unlock features</p>
+                  <p>
+                    This location needs
+                    {missingStripe && ' a connected Stripe account'}
+                    {missingStripe && missingSocial && ' and'}
+                    {missingSocial && ' at least one social media account'}
+                    {' '}before you can create campaigns, promotions, or use DragonShare.
+                  </p>
+                  <button
+                    onClick={() => navigate('/dashboard/business/settings')}
+                    className="text-dc-teal font-semibold mt-2 hover:underline"
+                  >
+                    Go to Settings →
+                  </button>
+                </div>
+              </div>
+            )}
 
             <PendingActionBanners />
 
