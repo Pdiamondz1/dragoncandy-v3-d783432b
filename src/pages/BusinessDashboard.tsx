@@ -115,7 +115,7 @@ const BusinessDashboard = () => {
               <div className="flex items-center gap-2">
                 {hasMore && (
                   <Link
-                    to="/business/campaigns"
+                    to="/dashboard/business/campaigns"
                     className="text-xs font-semibold text-dc-teal hover:underline flex items-center gap-0.5"
                   >
                     View all <ChevronRight className="w-3 h-3" />
@@ -158,7 +158,7 @@ const BusinessDashboard = () => {
                 ))}
                 {hasMore && (
                   <Link
-                    to="/business/campaigns"
+                    to="/dashboard/business/campaigns"
                     className="block text-center text-sm font-semibold text-dc-teal hover:underline pt-1"
                   >
                     View all campaigns
