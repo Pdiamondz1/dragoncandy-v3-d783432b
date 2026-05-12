@@ -44,7 +44,9 @@ export const NotificationDropdown: React.FC = () => {
     
     // Navigate based on notification type
     if (notification.type === 'sponsorship_proposal_received') {
-      navigate('/dashboard/business/sponsorships');
+      navigate(notification.data?.campaign_id
+        ? `/dashboard/business/campaigns/${notification.data.campaign_id}`
+        : '/dashboard/business/campaigns');
     } else if (notification.type === 'sponsorship_status_changed') {
       navigate('/dashboard/brand/sponsorships');
     } else if (notification.type === 'application_received') {

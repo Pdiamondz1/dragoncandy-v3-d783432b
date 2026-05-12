@@ -293,7 +293,6 @@ Calculated per-transaction via `getOrgTakeRate()`:
 | Campaign Details | `/dashboard/business/campaigns/:id` | **Primary workspace**: status banner, applications, content review, sponsorship card, payment |
 | Campaign Creator | `/dashboard/business/campaigns/create` | Donny-powered campaign wizard |
 | Edit Campaign | `/dashboard/business/campaigns/:id/edit` | Modify draft campaigns |
-| Sponsorship Inbox | `/dashboard/business/sponsorships` | Accept/reject brand proposals; manage → routes to Campaign Details |
 | Browse Creators | `/dashboard/business/creators` | Find and invite creators |
 | Messages | `/dashboard/business/messages` | All conversations |
 | Settings | `/dashboard/business/settings` | Stripe Connect, profile |

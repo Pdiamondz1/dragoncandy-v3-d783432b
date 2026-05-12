@@ -150,6 +150,7 @@ export const useSubmitSponsorshipProposal = () => {
             sponsorshipAmount: variables.sponsorshipAmount,
             message: variables.proposalMessage,
             recipientUserId: restaurantProfile?.user_id,
+            campaignId: campaign.id,
           }
         );
         

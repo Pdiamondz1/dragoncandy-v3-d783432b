@@ -454,6 +454,10 @@ const CampaignDetailsPage: React.FC = () => {
               />
             )}
 
+            {campaign.open_for_sponsorship && (
+              <SponsorshipCard campaignId={campaign.id} />
+            )}
+
             {phase === 'pre_hire' && (
               <div id="applications-section" className="space-y-4">
                 <ApplicationsListFixed campaignId={campaign.id} />
@@ -502,11 +506,8 @@ const CampaignDetailsPage: React.FC = () => {
             )}
           </div>
 
-          {/* Secondary column: campaign details + sponsorship */}
+          {/* Secondary column: campaign details */}
           <div className="lg:col-span-2 space-y-4">
-            {campaign.open_for_sponsorship && (
-              <SponsorshipCard campaignId={campaign.id} />
-            )}
             <CollapsibleCampaignDetails campaign={campaign} phase={phase} />
           </div>
         </div>

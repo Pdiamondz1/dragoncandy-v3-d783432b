@@ -119,7 +119,7 @@ export const useSponsorshipComplete = () => {
             brandName: brandProfile.business_name,
             businessName: restaurantProfile.business_name,
             sponsorshipId: sponsorshipId,
-            actionUrl: `${window.location.origin}/dashboard/business/sponsorships?highlight=${sponsorshipId}`
+            actionUrl: `${window.location.origin}/dashboard/business/campaigns/${campaignData.id}`
           }
         );
 
@@ -143,7 +143,7 @@ export const useSponsorshipComplete = () => {
             businessName: restaurantProfile.business_name,
             requesterName: brandProfile.business_name,
             sponsorshipId: sponsorshipId,
-            actionUrl: `${window.location.origin}/dashboard/business/sponsorships?highlight=${sponsorshipId}`
+            actionUrl: `${window.location.origin}/dashboard/business/campaigns/${campaignData.id}`
           }
         );
       } else {

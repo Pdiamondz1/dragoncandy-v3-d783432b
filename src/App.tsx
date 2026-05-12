@@ -53,7 +53,6 @@ const CreatorCampaignMarketplace = lazy(() => import("./pages/CreatorCampaignMar
 const MyCampaignsPage = lazy(() => import("./pages/MyCampaignsPage"));
 const MyCampaignDetailPage = lazy(() => import("./pages/MyCampaignDetailPage"));
 const BusinessProposals = lazy(() => import("./pages/BusinessProposals"));
-const BusinessSponsorships = lazy(() => import("./pages/BusinessSponsorships"));
 const BusinessPromotionalTools = lazy(() => import("./pages/BusinessPromotionalTools"));
 const OutstandManager = lazy(() => import("./pages/OutstandManager"));
 const OutstandOAuthCallbackPage = lazy(() => import("./pages/OutstandOAuthCallbackPage"));
@@ -197,7 +196,7 @@ function AnimatedRoutes() {
           <Route path="/dashboard/business/creators" element={<ProtectedRoute><BusinessRoute><CreatorBrowse /></BusinessRoute></ProtectedRoute>} />
           <Route path="/dashboard/business/dragon-feed" element={<ProtectedRoute><BusinessRoute><BusinessDragonFeed /></BusinessRoute></ProtectedRoute>} />
           <Route path="/dashboard/business/activity" element={<ProtectedRoute><BusinessRoute><BusinessActivity /></BusinessRoute></ProtectedRoute>} />
-          <Route path="/dashboard/business/sponsorships" element={<ProtectedRoute><BusinessRoute><BusinessSponsorships /></BusinessRoute></ProtectedRoute>} />
+          <Route path="/dashboard/business/sponsorships" element={<Navigate to="/dashboard/business/campaigns" replace />} />
 
           {/* Business Promotional Tools Route */}
           <Route path="/dashboard/business/promotions" element={<ProtectedRoute><BusinessRoute><PromotionsErrorBoundary><BusinessPromotionalTools /></PromotionsErrorBoundary></BusinessRoute></ProtectedRoute>} />

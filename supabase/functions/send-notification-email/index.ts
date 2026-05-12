@@ -348,7 +348,7 @@ const handler = async (req: Request): Promise<Response> => {
           <p><strong>${esc.brandName}</strong> has submitted a sponsorship proposal of <strong>$${data.sponsorshipAmount}</strong> for your campaign <strong>"${esc.campaignTitle}"</strong>!</p>
           ${data.message ? `<p>Their message:</p><blockquote style="border-left: 4px solid #8B5CF6; padding-left: 16px; margin: 20px 0; color: #374151;">${esc.message}</blockquote>` : ''}
           <p style="margin-top: 30px;">
-            <a href="${baseUrl}/dashboard/business/sponsorships" 
+            <a href="${baseUrl}/dashboard/business/campaigns/${data.campaignId}"
                style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block;">
               Review Proposal
             </a>
