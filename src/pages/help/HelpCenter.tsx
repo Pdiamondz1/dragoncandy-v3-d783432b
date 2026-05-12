@@ -151,7 +151,7 @@ export default function HelpCenter() {
                             {article.title}
                           </p>
                           <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">
-                            {article.body.slice(0, 80)}...
+                            {article.body.replace(/<[^>]*>/g, '').slice(0, 80)}...
                           </p>
                         </Link>
                       ))}

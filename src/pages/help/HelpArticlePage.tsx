@@ -98,9 +98,10 @@ export default function HelpArticlePage() {
       <div className="max-w-2xl mx-auto px-4 py-8 lg:py-12">
         {/* Article content */}
         <article>
-          <div className="prose prose-sm max-w-none text-gray-700 leading-relaxed whitespace-pre-line">
-            {article.body}
-          </div>
+          <div
+            className="prose prose-sm max-w-none text-gray-700 leading-relaxed whitespace-pre-line [&_img]:rounded-xl [&_img]:shadow-md [&_img]:my-4 [&_img]:max-w-full"
+            dangerouslySetInnerHTML={{ __html: article.body }}
+          />
         </article>
 
         {/* Feedback */}
