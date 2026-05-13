@@ -10,11 +10,12 @@ import { useConversations, type Conversation } from '@/hooks/useConversations';
 import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { LocationBadge } from '@/components/org/LocationBadge';
 
 const DirectMessagesPage: React.FC = () => {
-  const { user } = useAuth();
+  const { user, activeOrgUnit } = useAuth();
   const navigate = useNavigate();
-  const { data: conversations = [], error, refetch } = useConversations();
+  const { data: conversations = [], error, refetch } = useConversations(activeOrgUnit?.id);
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [recipientId, setRecipientId] = useState<string>('');
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
@@ -75,11 +76,14 @@ const DirectMessagesPage: React.FC = () => {
               <div className="w-7" />
             )}
             <div className="flex-1 text-center">
-              <h1 className="font-sans text-base font-bold text-gray-900 uppercase tracking-wide">
-                {selectedConversationId
-                  ? (selectedConversation?.other_participant_name || 'Conversation')
-                  : 'Messages'}
-              </h1>
+              <div className="flex items-center justify-center gap-2">
+                <h1 className="font-sans text-base font-bold text-gray-900 uppercase tracking-wide">
+                  {selectedConversationId
+                    ? (selectedConversation?.other_participant_name || 'Conversation')
+                    : 'Messages'}
+                </h1>
+                {!selectedConversationId && <LocationBadge />}
+              </div>
               {selectedConversationId && (
                 <p className="text-xs text-gray-500">Recently Active</p>
               )}

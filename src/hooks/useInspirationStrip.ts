@@ -14,20 +14,25 @@ export interface InspirationItem {
   isLiked: boolean;
 }
 
-export function useInspirationStrip() {
+export function useInspirationStrip(orgUnitId?: string | null) {
   const { user } = useAuth();
 
   return useQuery({
-    queryKey: ['inspiration-strip', user?.id],
+    queryKey: ['inspiration-strip', user?.id, orgUnitId ?? 'all'],
     queryFn: async (): Promise<InspirationItem[]> => {
       if (!user?.id) return [];
 
-      const { data: likeEvents } = await supabase
+      let query = supabase
         .from('analytics_events')
         .select('event_data, created_at')
         .eq('user_id', user.id)
-        .eq('event_type', 'dragon_feed_like')
-        .order('created_at', { ascending: false });
+        .eq('event_type', 'dragon_feed_like');
+
+      if (orgUnitId) {
+        query = query.eq('org_unit_id', orgUnitId);
+      }
+
+      const { data: likeEvents } = await query.order('created_at', { ascending: false });
 
       if (!likeEvents?.length) return [];
 

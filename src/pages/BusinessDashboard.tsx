@@ -18,6 +18,8 @@ import { useFirstRunMissions } from '@/hooks/useFirstRunMissions';
 import { FirstRunDashboard } from '@/components/first-run/FirstRunDashboard';
 import { PendingActionBanners } from '@/components/dashboard/PendingActionBanners';
 import { useLocationReadiness } from '@/hooks/useLocationReadiness';
+import { LocationBadge } from '@/components/org/LocationBadge';
+import { LocationEmptyState } from '@/components/org/LocationEmptyState';
 
 
 function formatDate(dateStr: string | null): string {
@@ -89,6 +91,7 @@ const BusinessDashboard = () => {
         <DashboardHero
           roleLabel="Restaurant Dashboard"
           userName={profile.full_name || 'there'}
+          badge={<LocationBadge />}
         >
           <DashboardStatsGrid stats={businessStats} isLoading={campaignsLoading} />
 
@@ -161,13 +164,11 @@ const BusinessDashboard = () => {
               </div>
             ) : recentCampaigns.length === 0 ? (
               <div className="border-2 border-dc-teal rounded-2xl p-6 bg-white text-center">
-                <p className="text-sm text-gray-500">No active campaigns yet.</p>
-                <button
-                  onClick={() => navigate('/dashboard/business/campaigns/create')}
-                  className="text-sm font-semibold text-dc-teal hover:underline mt-1"
-                >
-                  Let Donny help you create one
-                </button>
+                <LocationEmptyState
+                  icon={Megaphone}
+                  titleTemplate="[Location] is ready for its first campaign"
+                  cta={{ label: 'Create Campaign', to: '/dashboard/business/campaigns/create' }}
+                />
               </div>
             ) : (
               <div className="space-y-3">

@@ -1,4 +1,4 @@
-﻿export type Json =
+export type Json =
   | string
   | number
   | boolean
@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "12.2.3 (519615d)"
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
@@ -65,6 +65,7 @@ export type Database = {
           event_data: Json | null
           event_type: string
           id: string
+          org_unit_id: string | null
           page_url: string | null
           session_id: string | null
           updated_at: string
@@ -76,6 +77,7 @@ export type Database = {
           event_data?: Json | null
           event_type: string
           id?: string
+          org_unit_id?: string | null
           page_url?: string | null
           session_id?: string | null
           updated_at?: string
@@ -87,13 +89,22 @@ export type Database = {
           event_data?: Json | null
           event_type?: string
           id?: string
+          org_unit_id?: string | null
           page_url?: string | null
           session_id?: string | null
           updated_at?: string
           user_agent?: string | null
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "analytics_events_org_unit_id_fkey"
+            columns: ["org_unit_id"]
+            isOneToOne: false
+            referencedRelation: "org_units"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       application_counter_offers: {
         Row: {
@@ -1024,45 +1035,6 @@ export type Database = {
           },
         ]
       }
-      campaign_skips: {
-        Row: {
-          id: string
-          user_id: string
-          campaign_id: string
-          skipped_at: string
-          restored: boolean
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          campaign_id: string
-          skipped_at?: string
-          restored?: boolean
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          campaign_id?: string
-          skipped_at?: string
-          restored?: boolean
-        }
-        Relationships: [
-          {
-            foreignKeyName: "campaign_skips_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "campaign_skips_campaign_id_fkey"
-            columns: ["campaign_id"]
-            isOneToOne: false
-            referencedRelation: "campaigns"
-            referencedColumns: ["id"]
-          }
-        ]
-      }
       campaign_social_hooks: {
         Row: {
           acted_at: string | null
@@ -1442,6 +1414,7 @@ export type Database = {
           id: string
           is_archived: boolean | null
           last_message_at: string | null
+          org_unit_id: string | null
           participant_type: string | null
           title: string | null
           type: string
@@ -1453,6 +1426,7 @@ export type Database = {
           id?: string
           is_archived?: boolean | null
           last_message_at?: string | null
+          org_unit_id?: string | null
           participant_type?: string | null
           title?: string | null
           type?: string
@@ -1464,6 +1438,7 @@ export type Database = {
           id?: string
           is_archived?: boolean | null
           last_message_at?: string | null
+          org_unit_id?: string | null
           participant_type?: string | null
           title?: string | null
           type?: string
@@ -1475,6 +1450,13 @@ export type Database = {
             columns: ["campaign_id"]
             isOneToOne: false
             referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversations_org_unit_id_fkey"
+            columns: ["org_unit_id"]
+            isOneToOne: false
+            referencedRelation: "org_units"
             referencedColumns: ["id"]
           },
         ]
@@ -3018,6 +3000,7 @@ export type Database = {
           is_public: boolean | null
           metadata: Json | null
           mime_type: string
+          org_unit_id: string | null
           original_filename: string
           updated_at: string
           upload_status: string
@@ -3038,6 +3021,7 @@ export type Database = {
           is_public?: boolean | null
           metadata?: Json | null
           mime_type: string
+          org_unit_id?: string | null
           original_filename: string
           updated_at?: string
           upload_status?: string
@@ -3058,6 +3042,7 @@ export type Database = {
           is_public?: boolean | null
           metadata?: Json | null
           mime_type?: string
+          org_unit_id?: string | null
           original_filename?: string
           updated_at?: string
           upload_status?: string
@@ -3069,6 +3054,13 @@ export type Database = {
             columns: ["campaign_id"]
             isOneToOne: false
             referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "file_uploads_org_unit_id_fkey"
+            columns: ["org_unit_id"]
+            isOneToOne: false
+            referencedRelation: "org_units"
             referencedColumns: ["id"]
           },
           {
@@ -3549,11 +3541,8 @@ export type Database = {
           name: string
           org_id: string
           other_social_url: string | null
-          pending_balance: number | null
           sample_content_urls: Json | null
-          show_parent_brand: boolean
-          stripe_account_id: string | null
-          stripe_onboarding_complete: boolean | null
+          show_parent_brand: boolean | null
           tiktok_url: string | null
           unit_type: string
           updated_at: string
@@ -3578,11 +3567,8 @@ export type Database = {
           name: string
           org_id: string
           other_social_url?: string | null
-          pending_balance?: number | null
           sample_content_urls?: Json | null
-          show_parent_brand?: boolean
-          stripe_account_id?: string | null
-          stripe_onboarding_complete?: boolean | null
+          show_parent_brand?: boolean | null
           tiktok_url?: string | null
           unit_type: string
           updated_at?: string
@@ -3607,11 +3593,8 @@ export type Database = {
           name?: string
           org_id?: string
           other_social_url?: string | null
-          pending_balance?: number | null
           sample_content_urls?: Json | null
-          show_parent_brand?: boolean
-          stripe_account_id?: string | null
-          stripe_onboarding_complete?: boolean | null
+          show_parent_brand?: boolean | null
           tiktok_url?: string | null
           unit_type?: string
           updated_at?: string
@@ -4859,7 +4842,7 @@ export type Database = {
         Returns: string
       }
       create_or_get_direct_conversation: {
-        Args: { user1_uuid: string; user2_uuid: string }
+        Args: { p_org_unit_id?: string; user1_uuid: string; user2_uuid: string }
         Returns: string
       }
       cron_hard_purge_expired: { Args: never; Returns: number }
@@ -4912,7 +4895,7 @@ export type Database = {
         }[]
       }
       get_user_conversations: {
-        Args: { user_uuid: string }
+        Args: { p_org_unit_id?: string; user_uuid: string }
         Returns: {
           campaign_id: string
           campaign_status: string

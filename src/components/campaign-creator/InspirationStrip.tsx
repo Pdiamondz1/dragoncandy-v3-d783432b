@@ -2,6 +2,7 @@ import { useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useInspirationStrip, type InspirationItem } from '@/hooks/useInspirationStrip';
 import type { InspirationRef } from '@/types/firstRun';
+import { useAuth } from '@/hooks/useAuth';
 
 interface InspirationStripProps {
   onSelectionChange: (refs: InspirationRef[]) => void;
@@ -9,7 +10,8 @@ interface InspirationStripProps {
 }
 
 export function InspirationStrip({ onSelectionChange, onScrolled }: InspirationStripProps) {
-  const { data: items, isLoading } = useInspirationStrip();
+  const { activeOrgUnit } = useAuth();
+  const { data: items, isLoading } = useInspirationStrip(activeOrgUnit?.id);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const hasScrolled = useRef(false);
   const navigate = useNavigate();

@@ -5,7 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 
 export const useOptimizedAnalytics = () => {
-  const { user, profile } = useAuth();
+  const { user, profile, activeOrgUnit } = useAuth();
   const { addEvent, forceFlush } = useAnalyticsBatch();
   const { getCachedData, invalidateCache } = useAnalyticsCache();
 
@@ -15,23 +15,23 @@ export const useOptimizedAnalytics = () => {
       ...eventData,
       user_role: profile?.role,
       timestamp: new Date().toISOString()
-    });
+    }, activeOrgUnit?.id);
   };
 
   const trackPageViewOptimized = (pageName: string) => {
-    addEvent('page_view', { 
+    addEvent('page_view', {
       page_name: pageName,
       user_role: profile?.role,
       referrer: document.referrer
-    });
+    }, activeOrgUnit?.id);
   };
 
   const trackUserActionOptimized = (action: string, context?: Record<string, unknown>) => {
-    addEvent('user_action', { 
+    addEvent('user_action', {
       action,
       user_role: profile?.role,
-      ...context 
-    });
+      ...context
+    }, activeOrgUnit?.id);
   };
 
   const trackCampaignEventOptimized = (eventType: string, campaignId: string, additionalData?: Record<string, unknown>) => {
@@ -40,7 +40,7 @@ export const useOptimizedAnalytics = () => {
       campaign_id: campaignId,
       user_role: profile?.role,
       ...additionalData
-    });
+    }, activeOrgUnit?.id);
   };
 
   // Cached analytics queries

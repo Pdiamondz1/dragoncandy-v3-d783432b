@@ -12,9 +12,11 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
+import { useAuth } from '@/hooks/useAuth';
 
 const BusinessActivity = () => {
-  const { likedItems, loading, error } = useBusinessActivity();
+  const { activeOrgUnit } = useAuth();
+  const { likedItems, loading, error } = useBusinessActivity(activeOrgUnit?.id);
   const [localLikedItems, setLocalLikedItems] = useState<FeedMediaItem[]>([]);
   const [selectedItem, setSelectedItem] = useState<FeedMediaItem | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);

@@ -30,6 +30,7 @@ export const useUnreadMessageCounts = () => {
 };
 
 export const useTotalUnreadCount = () => {
+  // Always unfiltered — nav badge shows total across all locations
   const { data: conversations } = useConversations();
 
   const total = conversations?.reduce(

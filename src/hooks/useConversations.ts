@@ -16,23 +16,28 @@ export interface Conversation {
   campaign_status: string | null;
 }
 
-export const useConversations = () => {
+export const useConversations = (orgUnitId?: string | null) => {
   const { user } = useAuth();
 
   const query = useQuery({
-    queryKey: ['conversations', user?.id],
+    queryKey: ['conversations', user?.id, orgUnitId ?? 'all'],
     queryFn: async () => {
       if (!user) return [];
-      
-      const { data, error } = await supabase.rpc('get_user_conversations', {
-        user_uuid: user.id
-      });
+
+      const params: { user_uuid: string; p_org_unit_id?: string } = {
+        user_uuid: user.id,
+      };
+      if (orgUnitId) {
+        params.p_org_unit_id = orgUnitId;
+      }
+
+      const { data, error } = await supabase.rpc('get_user_conversations', params);
 
       if (error) {
         console.error('Error fetching conversations:', error);
         throw error;
       }
-      
+
       return data as Conversation[];
     },
     enabled: !!user,
@@ -44,17 +49,22 @@ export const useConversations = () => {
 };
 
 export const useCreateDirectConversation = () => {
-  const { user } = useAuth();
+  const { user, activeOrgUnit } = useAuth();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (otherUserId: string) => {
       if (!user) throw new Error('User not authenticated');
-      
-      const { data, error } = await supabase.rpc('create_or_get_direct_conversation', {
+
+      const params: { user1_uuid: string; user2_uuid: string; p_org_unit_id?: string } = {
         user1_uuid: user.id,
-        user2_uuid: otherUserId
-      });
+        user2_uuid: otherUserId,
+      };
+      if (activeOrgUnit?.id) {
+        params.p_org_unit_id = activeOrgUnit.id;
+      }
+
+      const { data, error } = await supabase.rpc('create_or_get_direct_conversation', params);
 
       if (error) {
         console.error('Error creating conversation:', error);
