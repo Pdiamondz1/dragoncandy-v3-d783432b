@@ -47,6 +47,11 @@ interface TenantContext {
   orgUnitId: string | null;
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function toUuidOrNull(val: string | null | undefined): string | null {
+  return val && UUID_RE.test(val) ? val : null;
+}
+
 function jsonResponse(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -366,7 +371,7 @@ async function recordConnectionFromAuthResponse(
           status: "active",
           connected_at: new Date().toISOString(),
           last_seen_at: new Date().toISOString(),
-          org_unit_id: ctx.orgUnitId,
+          org_unit_id: toUuidOrNull(ctx.orgUnitId),
         },
         { onConflict: "user_id,outstand_social_account_id" },
       );
@@ -413,6 +418,7 @@ async function handleRecordConnection(
     return jsonResponse(409, { error: "account_already_claimed" });
   }
 
+  const safeOrgUnitId = toUuidOrNull(bodyOrgUnitId) ?? toUuidOrNull(ctx.orgUnitId);
   const { error: upsertError } = await admin.from("business_outstand_accounts").upsert(
     {
       business_id: ctx.businessId,
@@ -423,13 +429,13 @@ async function handleRecordConnection(
       status: "active",
       connected_at: new Date().toISOString(),
       last_seen_at: new Date().toISOString(),
-      org_unit_id: bodyOrgUnitId || ctx.orgUnitId,
+      org_unit_id: safeOrgUnitId,
     },
     { onConflict: "user_id,outstand_social_account_id" },
   );
   if (upsertError) {
     console.error("outstand-proxy: upsert failed", upsertError);
-    return jsonResponse(500, { error: "db_error" });
+    return jsonResponse(500, { error: "db_error", detail: upsertError.message });
   }
   return jsonResponse(200, { success: true });
 }
@@ -468,7 +474,9 @@ serve(async (req: Request) => {
   const orgUnitId = reqUrl.searchParams.get('org_unit_id') || req.headers.get('x-org-unit-id') || null;
   reqUrl.searchParams.delete('org_unit_id');
 
-  const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+  const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+    auth: { persistSession: false },
+  });
   const ctxOrError = await resolveTenant(authHeader, admin, orgUnitId);
   if ("error" in ctxOrError) {
     return jsonResponse(ctxOrError.error, { error: ctxOrError.message });

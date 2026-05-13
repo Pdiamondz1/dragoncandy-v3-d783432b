@@ -1,7 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { OAuthCallback } from '@outstand-so/ui';
+import { ArrowLeft } from 'lucide-react';
 import { DashboardLayout } from '@/components/DashboardLayout';
+import { Button } from '@/components/ui/button';
 import {
   DragonCandyOutstandProvider,
   useOutstandConfig,
@@ -14,13 +16,28 @@ import { toast } from 'sonner';
 
 const PENDING_NETWORK_KEY = 'outstand_pending_network';
 
-const OneStepCallback: React.FC<{ accountId: string; username: string | null }> = ({
+const BackToSettings: React.FC<{ to: string }> = ({ to }) => {
+  const navigate = useNavigate();
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      className="mt-4 rounded-full border-teal-300 text-teal-700 hover:bg-teal-50"
+      onClick={() => navigate(to, { replace: true })}
+    >
+      <ArrowLeft className="h-4 w-4 mr-1" />
+      Back to Settings
+    </Button>
+  );
+};
+
+const OneStepCallback: React.FC<{ accountId: string; username: string | null; backPath: string }> = ({
   accountId,
   username,
+  backPath,
 }) => {
   const navigate = useNavigate();
   const { apiKey } = useOutstandConfig();
-  const { accountsTab } = useOutstandPaths();
   const [status, setStatus] = useState<'pending' | 'error'>('pending');
   const [error, setError] = useState<string | null>(null);
   const ranOnce = useRef(false);
@@ -51,10 +68,11 @@ const OneStepCallback: React.FC<{ accountId: string; username: string | null }> 
       .then(async (res) => {
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
-          throw new Error(body?.error || `Request failed (${res.status})`);
+          const detail = body?.detail ? ` (${body.detail})` : '';
+          throw new Error((body?.error || `Request failed (${res.status})`) + detail);
         }
         toast.success(`${network.charAt(0).toUpperCase() + network.slice(1)} connected.`);
-        navigate(accountsTab, { replace: true });
+        navigate(backPath, { replace: true });
       })
       .catch((e) => {
         const message = e instanceof Error ? e.message : 'Connection failed';
@@ -62,13 +80,16 @@ const OneStepCallback: React.FC<{ accountId: string; username: string | null }> 
         setError(message);
         toast.error(`Connection failed: ${message}`);
       });
-  }, [accountId, username, apiKey, navigate, accountsTab]);
+  }, [accountId, username, apiKey, navigate, backPath]);
 
   if (status === 'error') {
     return (
-      <p className="text-sm text-red-600">
-        Could not record connection: {error}
-      </p>
+      <>
+        <p className="text-sm text-red-600">
+          Could not record connection: {error}
+        </p>
+        <BackToSettings to={backPath} />
+      </>
     );
   }
   return <p className="text-sm text-gray-600">Recording your connection…</p>;
@@ -87,7 +108,10 @@ const Inner: React.FC = () => {
 
   if (errorParam) {
     return (
-      <p className="text-sm text-red-600">Connection failed: {errorParam}</p>
+      <>
+        <p className="text-sm text-red-600">Connection failed: {errorParam}</p>
+        <BackToSettings to={accountsTab} />
+      </>
     );
   }
 
@@ -112,13 +136,16 @@ const Inner: React.FC = () => {
   }
 
   if (success === 'true' && accountId) {
-    return <OneStepCallback accountId={accountId} username={username} />;
+    return <OneStepCallback accountId={accountId} username={username} backPath={accountsTab} />;
   }
 
   return (
-    <p className="text-sm text-red-600">
-      Unexpected callback parameters. Please retry from the Accounts tab.
-    </p>
+    <>
+      <p className="text-sm text-red-600">
+        Unexpected callback parameters. Please retry from the Accounts tab.
+      </p>
+      <BackToSettings to={accountsTab} />
+    </>
   );
 };
 

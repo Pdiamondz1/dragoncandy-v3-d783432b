@@ -14,6 +14,9 @@ export function PrerequisiteGate({ feature, children, inline }: PrerequisiteGate
   const { isLoading, items, allMet } = usePrerequisiteStatus();
   const navigate = useNavigate();
 
+  // Temporarily bypass gate while social media + Stripe integrations are being fixed
+  return <>{children}</>;
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-20">
