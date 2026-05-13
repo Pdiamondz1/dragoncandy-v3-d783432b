@@ -22,8 +22,8 @@ export const DirectMessagesList: React.FC<DirectMessagesListProps> = ({
   activeConversationId,
 }) => {
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const { data: conversations = [], isLoading } = useConversations();
+  const { user, activeOrgUnit } = useAuth();
+  const { data: conversations = [], isLoading } = useConversations(activeOrgUnit?.id);
   const archiveConversation = useArchiveConversation();
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearch, setShowSearch] = useState(false);

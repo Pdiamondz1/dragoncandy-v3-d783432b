@@ -13,8 +13,8 @@ const DirectConversationPage: React.FC = () => {
   const { conversationId } = useParams<{ conversationId: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth();
-  const { data: conversations = [] } = useConversations();
+  const { user, activeOrgUnit } = useAuth();
+  const { data: conversations = [] } = useConversations(activeOrgUnit?.id);
   
   // Check if user came from browse creators page
   const navigationState = location.state as { from?: string; backPath?: string } | null;

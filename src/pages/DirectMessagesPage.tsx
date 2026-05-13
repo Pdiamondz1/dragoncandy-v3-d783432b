@@ -12,9 +12,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { PageHeader } from '@/components/ui/PageHeader';
 
 const DirectMessagesPage: React.FC = () => {
-  const { user } = useAuth();
+  const { user, activeOrgUnit } = useAuth();
   const navigate = useNavigate();
-  const { data: conversations = [], error, refetch } = useConversations();
+  const { data: conversations = [], error, refetch } = useConversations(activeOrgUnit?.id);
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [recipientId, setRecipientId] = useState<string>('');
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
