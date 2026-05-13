@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Search } from 'lucide-react';
@@ -8,6 +8,7 @@ import { MessageInputEnhanced } from './MessageInputEnhanced';
 import { MessageSearch } from './MessageSearch';
 import { useMessages, useSendMessage, type Message } from '@/hooks/useMessages';
 import { useAuth } from '@/hooks/useAuth';
+import { useMarkMessagesAsRead } from '@/hooks/useMessageMutations';
 
 interface MessageThreadProps {
   campaignId: string;
@@ -15,19 +16,25 @@ interface MessageThreadProps {
   campaignTitle?: string;
 }
 
-export const MessageThread: React.FC<MessageThreadProps> = ({ 
-  campaignId, 
-  recipientId, 
-  campaignTitle 
+export const MessageThread: React.FC<MessageThreadProps> = ({
+  campaignId,
+  recipientId,
+  campaignTitle
 }) => {
-  useAuth();
+  const { user } = useAuth();
   const { data: messages = [], isLoading } = useMessages(campaignId);
   const sendMessage = useSendMessage();
+  const markAsRead = useMarkMessagesAsRead();
+  const markedRef = useRef<string | null>(null);
   const [showSearch, setShowSearch] = useState(false);
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
 
-  // Mark as read functionality removed to prevent infinite loops
-  // Messages can be marked as read manually if needed
+  useEffect(() => {
+    if (campaignId && user && !isLoading && messages.length > 0 && markedRef.current !== campaignId) {
+      markedRef.current = campaignId;
+      markAsRead.mutate({ campaignId });
+    }
+  }, [campaignId, user, isLoading, messages.length]);
 
   const handleSendMessage = (content: string, options?: {
     attachmentUrl?: string;

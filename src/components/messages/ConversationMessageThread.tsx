@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { MessageList } from './MessageList';
 import { MessageInputEnhanced } from './MessageInputEnhanced';
 import { useMessages, useSendMessage, type Message } from '@/hooks/useMessages';
 import { useAuth } from '@/hooks/useAuth';
+import { useMarkMessagesAsRead } from '@/hooks/useMessageMutations';
 
 interface ConversationMessageThreadProps {
   conversationId: string;
@@ -18,6 +19,15 @@ export const ConversationMessageThread: React.FC<ConversationMessageThreadProps>
   const { user } = useAuth();
   const { data: messages = [], isLoading } = useMessages(undefined, conversationId);
   const sendMessage = useSendMessage();
+  const markAsRead = useMarkMessagesAsRead();
+  const markedRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (conversationId && user && !isLoading && messages.length > 0 && markedRef.current !== conversationId) {
+      markedRef.current = conversationId;
+      markAsRead.mutate({ conversationId });
+    }
+  }, [conversationId, user, isLoading, messages.length]);
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
 
   const handleSendMessage = (content: string, options?: {

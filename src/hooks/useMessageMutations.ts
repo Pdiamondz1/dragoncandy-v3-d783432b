@@ -178,4 +178,42 @@ export const useStarMessage = () => {
   });
 };
 
-// Mark as read functionality completely removed to prevent console flooding and infinite loops
+export const useMarkMessagesAsRead = () => {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      conversationId,
+      campaignId,
+    }: {
+      conversationId?: string;
+      campaignId?: string;
+    }) => {
+      if (!user) return;
+
+      let query = supabase
+        .from('messages')
+        .update({ read_at: new Date().toISOString() })
+        .eq('recipient_id', user.id)
+        .is('read_at', null);
+
+      if (conversationId) {
+        query = query.eq('conversation_id', conversationId);
+      } else if (campaignId) {
+        query = query.eq('campaign_id', campaignId);
+      } else {
+        return;
+      }
+
+      const { error } = await query;
+      if (error) {
+        console.error('Error marking messages as read:', error);
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+    },
+  });
+};

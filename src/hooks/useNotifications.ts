@@ -13,12 +13,15 @@ export interface NotificationData {
   liker_id?: string;
   liker_name?: string;
   invitation_id?: string;
+  conversation_id?: string;
+  sender_id?: string;
+  sender_name?: string;
   [key: string]: unknown;
 }
 
 export interface Notification {
   id: string;
-  type: 'application_received' | 'application_status_changed' | 'milestone_completed' | 'sponsorship_proposal_received' | 'sponsorship_status_changed' | 'content_liked' | 'campaign_invitation';
+  type: 'application_received' | 'application_status_changed' | 'milestone_completed' | 'sponsorship_proposal_received' | 'sponsorship_status_changed' | 'content_liked' | 'campaign_invitation' | 'message_received';
   title: string;
   message: string;
   read: boolean;
@@ -462,6 +465,52 @@ export const useNotifications = () => {
             read: false,
             created_at: new Date().toISOString(),
             data: { campaign_id: payload.new.campaign_id, invitation_id: payload.new.id },
+          };
+
+          setNotifications(prev => [notification, ...prev]);
+          setUnreadCount(prev => prev + 1);
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+          filter: `recipient_id=eq.${user.id}`,
+        },
+        async (payload) => {
+          const msg = payload.new;
+          if (msg.sender_id === user.id) return;
+
+          const senderProfile = await cachedLookup(`profile-${msg.sender_id}`, async () => {
+            const { data } = await supabase.from('profiles').select('full_name, email').eq('id', msg.sender_id).single();
+            return data;
+          });
+
+          const senderName = senderProfile?.full_name || senderProfile?.email?.split('@')[0] || 'Someone';
+          const preview = typeof msg.content === 'string'
+            ? msg.content.substring(0, 60) + (msg.content.length > 60 ? '…' : '')
+            : 'New message';
+
+          toast({
+            title: `Message from ${senderName}`,
+            description: preview,
+          });
+
+          const notification: Notification = {
+            id: `msg-${msg.id}`,
+            type: 'message_received',
+            title: 'New Message',
+            message: `${senderName}: ${preview}`,
+            read: false,
+            created_at: new Date().toISOString(),
+            data: {
+              conversation_id: msg.conversation_id,
+              campaign_id: msg.campaign_id,
+              sender_id: msg.sender_id,
+              sender_name: senderName,
+            },
           };
 
           setNotifications(prev => [notification, ...prev]);

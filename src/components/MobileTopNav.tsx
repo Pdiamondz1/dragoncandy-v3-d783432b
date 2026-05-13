@@ -6,6 +6,7 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useLogout } from '@/hooks/useLogout';
 import type { UserRole } from '@/types/user';
 import { getDrawerMenu } from '@/lib/navConfig';
+import { NotificationDropdown } from '@/components/notifications/NotificationDropdown';
 
 interface MobileTopNavProps {
   bgClass?: string;
@@ -51,15 +52,18 @@ export const MobileTopNav: React.FC<MobileTopNavProps> = ({
         <div className="flex-1" />
       )}
 
-      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-        <SheetTrigger asChild>
-          <button
-            className="p-2 rounded-full hover:bg-muted transition-colors"
-            aria-label="Open menu"
-          >
-            <Menu className="h-6 w-6 text-gray-600" />
-          </button>
-        </SheetTrigger>
+      <div className="flex items-center gap-1">
+        <NotificationDropdown />
+
+        <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+          <SheetTrigger asChild>
+            <button
+              className="p-2 rounded-full hover:bg-muted transition-colors"
+              aria-label="Open menu"
+            >
+              <Menu className="h-6 w-6 text-gray-600" />
+            </button>
+          </SheetTrigger>
         <SheetContent side="right" className="w-72 pt-8 flex flex-col h-full">
           <nav aria-label="Mobile" className="flex-1 overflow-y-auto">
             {sections.map((section) => (
@@ -100,7 +104,8 @@ export const MobileTopNav: React.FC<MobileTopNavProps> = ({
             </button>
           </div>
         </SheetContent>
-      </Sheet>
+        </Sheet>
+      </div>
     </header>
   );
 };

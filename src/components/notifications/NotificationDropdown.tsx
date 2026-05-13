@@ -61,6 +61,12 @@ export const NotificationDropdown: React.FC = () => {
       if (notification.data?.campaign_id) {
         navigate(`/dashboard/creator/campaigns/${notification.data.campaign_id}?invited=true`);
       }
+    } else if (notification.type === 'message_received') {
+      if (notification.data?.conversation_id) {
+        navigate(`/dashboard/messages/${notification.data.conversation_id}`);
+      } else if (notification.data?.campaign_id) {
+        navigate(`/dashboard/messages/campaign/${notification.data.campaign_id}`);
+      }
     }
   };
 
