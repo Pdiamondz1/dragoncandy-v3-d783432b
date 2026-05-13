@@ -57,7 +57,26 @@ serve(async (req) => {
     }
 
     const isCreator = collab.creator_id === userId;
-    const isBusiness = (collab as any).campaigns?.user_id === userId;
+    let isBusiness = (collab as any).campaigns?.user_id === userId;
+
+    // Check org membership — other team members at the same org get business-level access
+    if (!isCreator && !isBusiness) {
+      const { data: campaign } = await adminClient
+        .from('campaigns')
+        .select('org_id')
+        .eq('id', collab.campaign_id)
+        .single();
+      if (campaign?.org_id) {
+        const { data: membership } = await adminClient
+          .from('org_members')
+          .select('id')
+          .eq('org_id', campaign.org_id)
+          .eq('user_id', userId)
+          .eq('invitation_status', 'active')
+          .maybeSingle();
+        isBusiness = !!membership;
+      }
+    }
 
     // Check brand access via campaign sponsorships
     let isBrand = false;

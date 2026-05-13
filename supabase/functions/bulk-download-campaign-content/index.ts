@@ -44,7 +44,26 @@ serve(async (req) => {
       .eq('id', campaign_id)
       .single();
 
-    if (campaignError || !campaign || campaign.user_id !== user.id) {
+    let hasAccess = campaign && campaign.user_id === user.id;
+    if (campaign && !hasAccess) {
+      const { data: fullCampaign } = await adminClient
+        .from('campaigns')
+        .select('org_id')
+        .eq('id', campaign_id)
+        .single();
+      if (fullCampaign?.org_id) {
+        const { data: membership } = await adminClient
+          .from('org_members')
+          .select('id')
+          .eq('org_id', fullCampaign.org_id)
+          .eq('user_id', user.id)
+          .eq('invitation_status', 'active')
+          .maybeSingle();
+        hasAccess = !!membership;
+      }
+    }
+
+    if (campaignError || !campaign || !hasAccess) {
       return new Response(JSON.stringify({ error: 'Access denied' }), {
         status: 403, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
       });
