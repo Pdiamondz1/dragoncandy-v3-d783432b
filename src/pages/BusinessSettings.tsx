@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -8,9 +7,16 @@ import { supabase } from '@/integrations/supabase/client';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { ProfileCompletionBar } from '@/components/settings/ProfileCompletionBar';
 import { BusinessSettingsSections } from '@/components/settings/BusinessSettingsSections';
+import { LocationSettingsSections } from '@/components/settings/LocationSettingsSections';
 import { useBusinessProfileForm } from '@/hooks/useBusinessProfileForm';
 import { useBusinessProfileSubmit } from '@/hooks/useBusinessProfileSubmit';
-import { calculateBusinessCompletion } from '@/hooks/useProfileCompletion';
+import { useLocationProfileForm } from '@/hooks/useLocationProfileForm';
+import { useLocationProfileSubmit } from '@/hooks/useLocationProfileSubmit';
+import {
+  calculateBusinessCompletion,
+  calculateLocationCompletion,
+} from '@/hooks/useProfileCompletion';
+import { useLocationSocialAccounts } from '@/hooks/outstand/useLocationSocialAccounts';
 import { Button } from '@/components/ui/button';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useMyOrgRole } from '@/hooks/useOrgData';
@@ -22,9 +28,10 @@ import { WhyExpander } from '@/components/guidance/WhyExpander';
 import { PageHeader } from '@/components/ui/PageHeader';
 
 const BusinessSettings = () => {
-  const { user, activeOrg } = useAuth();
+  const { user, activeOrg, activeOrgUnit } = useAuth();
   const navigate = useNavigate();
-  const { submitProfile } = useBusinessProfileSubmit();
+  const { submitProfile: submitBusinessProfile } = useBusinessProfileSubmit();
+  const { submitProfile: submitLocationProfile } = useLocationProfileSubmit();
   const [searchParams] = useSearchParams();
   const [activeSection, setActiveSection] = useState<string | undefined>(
     searchParams.get('section') ?? undefined
@@ -36,14 +43,28 @@ const BusinessSettings = () => {
   const isOwner = myRole?.role === 'owner';
 
   const isBrand = user?.user_metadata?.role === 'brand';
+  const isLocationMode = !!activeOrgUnit;
 
   const {
-    formData,
-    logoFile,
-    handleInputChange,
-    setLogoFile,
+    formData: businessFormData,
+    logoFile: businessLogoFile,
+    handleInputChange: handleBusinessInputChange,
+    setLogoFile: setBusinessLogoFile,
     setFormDataFromProfile,
   } = useBusinessProfileForm();
+
+  const {
+    formData: locationFormData,
+    logoFile: locationLogoFile,
+    handleInputChange: handleLocationInputChange,
+    setLogoFile: setLocationLogoFile,
+    isLoading: locationLoading,
+  } = useLocationProfileForm(activeOrgUnit?.id);
+
+  const { data: locationSocialAccounts } = useLocationSocialAccounts(
+    user?.id,
+    activeOrgUnit?.id
+  );
 
   useEffect(() => {
     if (!user) {
@@ -75,30 +96,63 @@ const BusinessSettings = () => {
     loadProfile();
   }, [user?.id, navigate, setFormDataFromProfile]);
 
-  const handleFieldBlur = async () => {
+  const handleBusinessFieldBlur = async () => {
     if (!user) return;
-    const success = await submitProfile(formData, logoFile, user.id, isBrand);
+    const success = await submitBusinessProfile(businessFormData, businessLogoFile, user.id, isBrand);
     if (success) {
-      setLogoFile(null);
+      setBusinessLogoFile(null);
       toast.success('Saved', { duration: 1500 });
     }
   };
 
-  const completion = calculateBusinessCompletion({
-    business_name: formData.business_name || undefined,
-    industry: formData.industry || null,
-    logo_url: formData.logo_url || null,
-    description: formData.description || null,
-    sample_content_urls: null,
-    instagram_url: formData.instagram_url || null,
-    tiktok_url: formData.tiktok_url || null,
-    youtube_url: formData.youtube_url || null,
-    facebook_url: formData.facebook_url || null,
-    linkedin_url: formData.linkedin_url || null,
-    x_url: formData.x_url || null,
-    other_social_url: formData.other_social_url || null,
-    budget_range: formData.budget_range || null,
-  });
+  const handleLocationFieldBlur = async () => {
+    if (!user || !activeOrgUnit) return;
+    const success = await submitLocationProfile(
+      activeOrgUnit.id,
+      locationFormData,
+      locationLogoFile,
+      user.id,
+    );
+    if (success) {
+      setLocationLogoFile(null);
+      toast.success('Saved', { duration: 1500 });
+    }
+  };
+
+  const hasSocialPresence = !!(
+    (locationSocialAccounts && locationSocialAccounts.length > 0) ||
+    locationFormData.instagram_url ||
+    locationFormData.tiktok_url ||
+    locationFormData.youtube_url ||
+    locationFormData.facebook_url ||
+    locationFormData.linkedin_url ||
+    locationFormData.x_url ||
+    locationFormData.other_social_url
+  );
+
+  const completion = isLocationMode
+    ? calculateLocationCompletion({
+        name: locationFormData.name || undefined,
+        logo_url: locationFormData.logo_url || null,
+        description: locationFormData.description || null,
+        has_social_presence: hasSocialPresence,
+        stripe_onboarding_complete: activeOrgUnit?.stripe_onboarding_complete ?? null,
+      })
+    : calculateBusinessCompletion({
+        business_name: businessFormData.business_name || undefined,
+        industry: businessFormData.industry || null,
+        logo_url: businessFormData.logo_url || null,
+        description: businessFormData.description || null,
+        sample_content_urls: null,
+        instagram_url: businessFormData.instagram_url || null,
+        tiktok_url: businessFormData.tiktok_url || null,
+        youtube_url: businessFormData.youtube_url || null,
+        facebook_url: businessFormData.facebook_url || null,
+        linkedin_url: businessFormData.linkedin_url || null,
+        x_url: businessFormData.x_url || null,
+        other_social_url: businessFormData.other_social_url || null,
+        budget_range: businessFormData.budget_range || null,
+      });
 
   const handleNudgeClick = () => {
     if (completion.nextSection) {
@@ -107,7 +161,9 @@ const BusinessSettings = () => {
   };
 
   const roleLabel = isBrand ? 'Brand' : 'Business';
-  const displayName = formData.business_name || roleLabel;
+  const displayName = isLocationMode
+    ? (locationFormData.name || activeOrgUnit?.name || 'Location')
+    : (businessFormData.business_name || roleLabel);
 
   return (
     <DashboardLayout userRole="business_client">
@@ -115,25 +171,69 @@ const BusinessSettings = () => {
         <PageHeader>
           <div className="max-w-lg mx-auto">
             <ProfileCompletionBar
-              avatarUrl={formData.logo_url || null}
+              avatarUrl={isLocationMode ? (locationFormData.logo_url || null) : (businessFormData.logo_url || null)}
               displayName={displayName}
               roleLabel={roleLabel}
               completion={completion}
               isCreator={false}
               onNudgeClick={handleNudgeClick}
+              isLocation={isLocationMode}
+              parentName={activeOrg?.name}
             />
           </div>
         </PageHeader>
         <div className="max-w-lg mx-auto p-4">
-          <BusinessSettingsSections
-            formData={formData}
-            logoFile={logoFile}
-            completion={completion}
-            onInputChange={handleInputChange}
-            onLogoChange={setLogoFile}
-            onFieldBlur={handleFieldBlur}
-            defaultSection={activeSection}
-          />
+          {isLocationMode ? (
+            <>
+              <div className="mb-2">
+                <p className="text-[10px] font-bold text-teal-500 uppercase tracking-wider px-1 mb-2">
+                  📍 {locationFormData.name || activeOrgUnit?.name} Settings
+                </p>
+              </div>
+
+              {locationLoading ? (
+                <div className="text-center py-8 text-gray-400 text-sm">Loading location...</div>
+              ) : (
+                <LocationSettingsSections
+                  formData={locationFormData}
+                  logoFile={locationLogoFile}
+                  onInputChange={handleLocationInputChange}
+                  onLogoChange={setLocationLogoFile}
+                  onFieldBlur={handleLocationFieldBlur}
+                  defaultSection={activeSection}
+                />
+              )}
+
+              <div className="my-6 border-t-2 border-dashed border-gray-200" />
+
+              <div className="mb-2">
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-1 mb-2">
+                  🏢 {activeOrg?.name || roleLabel} · Business-Wide
+                </p>
+              </div>
+
+              <BusinessSettingsSections
+                formData={businessFormData}
+                logoFile={businessLogoFile}
+                completion={completion}
+                onInputChange={handleBusinessInputChange}
+                onLogoChange={setBusinessLogoFile}
+                onFieldBlur={handleBusinessFieldBlur}
+                defaultSection={undefined}
+                locationMode
+              />
+            </>
+          ) : (
+            <BusinessSettingsSections
+              formData={businessFormData}
+              logoFile={businessLogoFile}
+              completion={completion}
+              onInputChange={handleBusinessInputChange}
+              onLogoChange={setBusinessLogoFile}
+              onFieldBlur={handleBusinessFieldBlur}
+              defaultSection={activeSection}
+            />
+          )}
 
           <Accordion type="single" collapsible className="mt-6">
             <AccordionItem value="danger" className="border-red-200">

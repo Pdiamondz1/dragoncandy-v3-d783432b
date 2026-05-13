@@ -61,6 +61,7 @@ interface BusinessSettingsSectionsProps {
   onLogoChange: (file: File | null) => void;
   onFieldBlur: () => void;
   defaultSection?: string;
+  locationMode?: boolean;
 }
 
 export function BusinessSettingsSections({
@@ -71,6 +72,7 @@ export function BusinessSettingsSections({
   onLogoChange,
   onFieldBlur,
   defaultSection,
+  locationMode,
 }: BusinessSettingsSectionsProps) {
   const hasDescription = !!formData.description;
 
@@ -84,9 +86,155 @@ export function BusinessSettingsSections({
     other_social_url: formData.other_social_url,
   };
 
+  if (locationMode) {
+    return (
+      <Accordion type="single" collapsible defaultValue={defaultSection}>
+        <SettingsSection
+          value="business-info"
+          icon="🏢"
+          title="Business Info"
+          subtitle="Industry and collaboration style"
+        >
+          <div>
+            <Label htmlFor="industry">Industry</Label>
+            <Select
+              value={formData.industry}
+              onValueChange={(value) => {
+                onInputChange('industry', value);
+                onFieldBlur();
+              }}
+            >
+              <SelectTrigger id="industry" className="mt-1">
+                <SelectValue placeholder="Select industry" />
+              </SelectTrigger>
+              <SelectContent>
+                {INDUSTRY_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <Label htmlFor="preferred_collaboration_style">Collaboration Style</Label>
+            <Select
+              value={formData.preferred_collaboration_style}
+              onValueChange={(value) => {
+                onInputChange('preferred_collaboration_style', value);
+                onFieldBlur();
+              }}
+            >
+              <SelectTrigger id="preferred_collaboration_style" className="mt-1">
+                <SelectValue placeholder="Select collaboration style" />
+              </SelectTrigger>
+              <SelectContent>
+                {COLLABORATION_STYLES.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <Label htmlFor="budget_range">Budget Range</Label>
+            <Select
+              value={formData.budget_range}
+              onValueChange={(value) => {
+                onInputChange('budget_range', value);
+                onFieldBlur();
+              }}
+            >
+              <SelectTrigger id="budget_range" className="mt-1">
+                <SelectValue placeholder="Select budget range" />
+              </SelectTrigger>
+              <SelectContent>
+                {BUDGET_RANGE_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </SettingsSection>
+
+        <SettingsSection
+          value="about"
+          icon="📝"
+          title="About & Goals"
+          subtitle="Marketing objectives and sponsorship budget"
+        >
+          <div>
+            <Label htmlFor="marketingObjectives">Marketing Objectives</Label>
+            <Textarea
+              id="marketingObjectives"
+              value={formData.marketingObjectives ?? ''}
+              onChange={(e) => onInputChange('marketingObjectives', e.target.value)}
+              onBlur={onFieldBlur}
+              placeholder="What are your key marketing goals?"
+              rows={3}
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="sponsorshipBudget">Sponsorship Budget ($)</Label>
+            <Input
+              id="sponsorshipBudget"
+              type="number"
+              value={formData.sponsorshipBudget ?? ''}
+              onChange={(e) => onInputChange('sponsorshipBudget', e.target.value)}
+              onBlur={onFieldBlur}
+              placeholder="0"
+              min="0"
+            />
+          </div>
+        </SettingsSection>
+
+        <SettingsSection
+          value="integrations"
+          icon="🔌"
+          title="Integrations"
+          subtitle="Connect your POS and third-party tools"
+        >
+          <ToastConnectionCard />
+        </SettingsSection>
+
+        <SettingsSection
+          value="privacy"
+          icon="🔒"
+          title="Privacy"
+          subtitle="Control who sees your business profile"
+        >
+          <div>
+            <Label htmlFor="profile_visibility">Profile Visibility</Label>
+            <Select
+              value={formData.profile_visibility}
+              onValueChange={(value) => {
+                onInputChange('profile_visibility', value);
+                onFieldBlur();
+              }}
+            >
+              <SelectTrigger id="profile_visibility" className="mt-1">
+                <SelectValue placeholder="Select visibility" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="public">Public — visible to all creators</SelectItem>
+                <SelectItem value="private">Private — hidden from search</SelectItem>
+                <SelectItem value="invite_only">Invite Only — you invite creators</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </SettingsSection>
+      </Accordion>
+    );
+  }
+
   return (
     <Accordion type="single" collapsible defaultValue={defaultSection}>
-      {/* 1. Business Info */}
       <SettingsSection
         value="business-info"
         icon="🏢"
@@ -160,7 +308,6 @@ export function BusinessSettingsSections({
 
       </SettingsSection>
 
-      {/* 2. About & Goals */}
       <SettingsSection
         value="about"
         icon="📝"
@@ -239,7 +386,6 @@ export function BusinessSettingsSections({
         </div>
       </SettingsSection>
 
-      {/* 3. Sample Content */}
       <SettingsSection
         value="samples"
         icon="📷"
@@ -255,7 +401,6 @@ export function BusinessSettingsSections({
         />
       </SettingsSection>
 
-      {/* 4. Social Media */}
       <SettingsSection
         value="social"
         icon="📡"
@@ -279,7 +424,6 @@ export function BusinessSettingsSections({
         </div>
       </SettingsSection>
 
-      {/* 5. Payments */}
       <SettingsSection
         value="payments"
         icon="💳"
@@ -311,7 +455,6 @@ export function BusinessSettingsSections({
         <StripeConnectSetup role="business" />
       </SettingsSection>
 
-      {/* 6. Integrations */}
       <SettingsSection
         value="integrations"
         icon="🔌"
@@ -321,7 +464,6 @@ export function BusinessSettingsSections({
         <ToastConnectionCard />
       </SettingsSection>
 
-      {/* 7. Privacy */}
       <SettingsSection
         value="privacy"
         icon="🔒"
