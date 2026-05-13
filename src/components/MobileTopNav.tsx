@@ -12,6 +12,7 @@ interface MobileTopNavProps {
   userRole?: UserRole;
   showWelcome?: boolean;
   displayName?: string;
+  locationSwitcher?: React.ReactNode;
 }
 
 export const MobileTopNav: React.FC<MobileTopNavProps> = ({
@@ -34,13 +35,19 @@ export const MobileTopNav: React.FC<MobileTopNavProps> = ({
         <img src={dragonCandyLogo} alt="DragonCandy" className="w-[64px] md:w-[120px] lg:w-[140px] h-auto" />
       </Link>
 
-      {showWelcome && displayName && (
+      {locationSwitcher ? (
+        <div className="flex-1 flex justify-center px-2">
+          {locationSwitcher}
+        </div>
+      ) : showWelcome && displayName ? (
         <div className="flex-1 min-w-0 text-center px-2">
           <p className="font-semibold text-sm uppercase tracking-wide text-dc-teal leading-tight truncate">
             Welcome Back, {displayName}
           </p>
           <p className="text-xs text-muted-foreground truncate">Create content and drive revenue</p>
         </div>
+      ) : (
+        <div className="flex-1" />
       )}
 
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>

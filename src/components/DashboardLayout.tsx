@@ -188,6 +188,16 @@ const DashboardLayoutInner: React.FC<DashboardLayoutProps> = ({ children, userRo
               bgClass={topNavBgClass}
               showWelcome={showWelcome}
               displayName={displayName}
+              locationSwitcher={userRole !== 'content_creator' ? (
+                <OrgUnitSwitcher
+                  canManage={canManageUnits}
+                  onAddUnit={() => {
+                    window.location.href = activeOrg?.org_type === 'restaurant'
+                      ? '/dashboard/business/locations'
+                      : '/dashboard/brand/products';
+                  }}
+                />
+              ) : undefined}
             />
           )}
 
