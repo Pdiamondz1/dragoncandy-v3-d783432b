@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { LocationBadge } from '@/components/org/LocationBadge';
 
 const CampaignsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -114,9 +115,12 @@ const CampaignsPage: React.FC = () => {
             >
               <ArrowLeft className="h-5 w-5" />
             </button>
-            <h1 className="flex-1 text-center font-sans text-base font-bold text-gray-900 uppercase tracking-wide">
-              Campaigns
-            </h1>
+            <div className="flex-1 flex items-center justify-center gap-2">
+              <h1 className="font-sans text-base font-bold text-gray-900 uppercase tracking-wide">
+                Campaigns
+              </h1>
+              <LocationBadge />
+            </div>
             <span className="w-5" />
           </div>
         </PageHeader>

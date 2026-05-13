@@ -18,6 +18,7 @@ import { useFirstRunMissions } from '@/hooks/useFirstRunMissions';
 import { FirstRunDashboard } from '@/components/first-run/FirstRunDashboard';
 import { PendingActionBanners } from '@/components/dashboard/PendingActionBanners';
 import { useLocationReadiness } from '@/hooks/useLocationReadiness';
+import { LocationBadge } from '@/components/org/LocationBadge';
 
 
 function formatDate(dateStr: string | null): string {
@@ -89,6 +90,7 @@ const BusinessDashboard = () => {
         <DashboardHero
           roleLabel="Restaurant Dashboard"
           userName={profile.full_name || 'there'}
+          badge={<LocationBadge />}
         >
           <DashboardStatsGrid stats={businessStats} isLoading={campaignsLoading} />
 
