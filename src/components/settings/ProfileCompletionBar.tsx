@@ -7,6 +7,8 @@ interface ProfileCompletionBarProps {
   completion: CompletionResult;
   isCreator: boolean;
   onNudgeClick: () => void;
+  isLocation?: boolean;
+  parentName?: string;
 }
 
 export function ProfileCompletionBar({
@@ -16,10 +18,20 @@ export function ProfileCompletionBar({
   completion,
   isCreator,
   onNudgeClick,
+  isLocation,
+  parentName,
 }: ProfileCompletionBarProps) {
-  const gradientClass = isCreator
+  const gradientClass = isLocation
     ? 'from-dc-teal to-dc-teal-dark'
-    : 'from-dc-pink to-dc-pink-accent';
+    : isCreator
+      ? 'from-dc-teal to-dc-teal-dark'
+      : 'from-dc-pink to-dc-pink-accent';
+
+  const subtitle = isLocation && parentName
+    ? `Location · ${parentName}`
+    : roleLabel;
+
+  const completionLabel = isLocation ? 'Location setup' : 'Profile';
 
   return (
     <div className={`bg-gradient-to-br ${gradientClass} p-5 rounded-2xl text-white mb-4`}>
@@ -39,7 +51,7 @@ export function ProfileCompletionBar({
         )}
         <div>
           <div className="font-bold text-base">{displayName}</div>
-          <div className="text-xs opacity-80">{roleLabel}</div>
+          <div className="text-xs opacity-80">{subtitle}</div>
         </div>
       </div>
 
@@ -55,7 +67,7 @@ export function ProfileCompletionBar({
           onClick={onNudgeClick}
           className="text-xs mt-2 opacity-90 hover:opacity-100 underline-offset-2 hover:underline transition-opacity text-left"
         >
-          Profile {completion.percentage}% complete — {completion.nextNudge}
+          {completionLabel} {completion.percentage}% complete — {completion.nextNudge}
         </button>
       )}
     </div>
