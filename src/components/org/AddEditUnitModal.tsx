@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
 import {
   Dialog,
   DialogContent,
@@ -52,6 +54,8 @@ export function AddEditUnitModal({
   editUnit,
 }: AddEditUnitModalProps) {
   const { toast } = useToast();
+  const { switchOrgUnit } = useAuth();
+  const navigate = useNavigate();
   const createUnit = useCreateOrgUnit(orgId);
   const updateUnit = useUpdateOrgUnit();
   const { data: existingUnits } = useOrgUnits(orgId);
@@ -113,17 +117,22 @@ export function AddEditUnitModal({
             }
           : {};
 
-        await createUnit.mutateAsync({
+        const newUnit = await createUnit.mutateAsync({
           name,
           unit_type: unitType,
           is_primary: form.isPrimary,
           ...fieldPayload,
           ...cloneFields,
         });
+        await switchOrgUnit(newUnit.id);
+        toast({ title: 'Location created', description: `"${name}" is now active. Complete your setup in Settings.` });
+        onOpenChange(false);
+        navigate('/dashboard/business/settings');
+        return;
       }
       toast({
-        title: isEditing ? 'Unit updated' : 'Unit created',
-        description: `"${name}" has been ${isEditing ? 'updated' : 'added'} successfully.`,
+        title: 'Unit updated',
+        description: `"${name}" has been updated successfully.`,
       });
       onOpenChange(false);
     } catch (err) {
