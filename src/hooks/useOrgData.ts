@@ -179,28 +179,30 @@ export function useCreateOrgUnit(orgId?: string | null) {
     mutationFn: async (input: CreateOrgUnitInput) => {
       if (!orgId) throw new Error('orgId is required');
 
+      const payload: Partial<CreateOrgUnitInput> & { org_id: string } = {
+        org_id: orgId,
+        unit_type: input.unit_type,
+        name: input.name,
+        is_primary: input.is_primary ?? false,
+        address: input.address ?? null,
+        website_url: input.website_url ?? null,
+      };
+
+      const optionalKeys: (keyof CreateOrgUnitInput)[] = [
+        'description', 'brand_category', 'logo_url', 'sample_content_urls',
+        'show_parent_brand', 'instagram_url', 'tiktok_url', 'youtube_url',
+        'facebook_url', 'linkedin_url', 'x_url', 'other_social_url',
+      ];
+
+      for (const key of optionalKeys) {
+        if (input[key] !== undefined) {
+          (payload as any)[key] = input[key];
+        }
+      }
+
       const { data, error } = await supabase
         .from('org_units')
-        .insert({
-          org_id: orgId,
-          unit_type: input.unit_type,
-          name: input.name,
-          is_primary: input.is_primary ?? false,
-          address: input.address ?? null,
-          website_url: input.website_url ?? null,
-          description: input.description ?? null,
-          brand_category: input.brand_category ?? null,
-          logo_url: input.logo_url ?? null,
-          sample_content_urls: input.sample_content_urls ?? [],
-          show_parent_brand: input.show_parent_brand ?? true,
-          instagram_url: input.instagram_url ?? null,
-          tiktok_url: input.tiktok_url ?? null,
-          youtube_url: input.youtube_url ?? null,
-          facebook_url: input.facebook_url ?? null,
-          linkedin_url: input.linkedin_url ?? null,
-          x_url: input.x_url ?? null,
-          other_social_url: input.other_social_url ?? null,
-        })
+        .insert(payload)
         .select('id, org_id, unit_type, name, address, lat, lng, website_url, logo_url, is_primary, deleted_at, created_at, updated_at, stripe_account_id, stripe_onboarding_complete, pending_balance, description, brand_category, sample_content_urls, show_parent_brand, instagram_url, tiktok_url, youtube_url, facebook_url, linkedin_url, x_url, other_social_url')
         .single();
 

@@ -127,9 +127,10 @@ export function AddEditUnitModal({
       });
       onOpenChange(false);
     } catch (err) {
+      const message = err instanceof Error ? err.message : 'An unexpected error occurred.';
       toast({
-        title: 'Something went wrong',
-        description: err instanceof Error ? err.message : 'Please try again.',
+        title: 'Failed to save location',
+        description: message,
         variant: 'destructive',
       });
     }
