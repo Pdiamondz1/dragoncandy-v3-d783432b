@@ -10,7 +10,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { useCreateOrgUnit, useUpdateOrgUnit } from '@/hooks/useOrgData';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { useCreateOrgUnit, useUpdateOrgUnit, useOrgUnits } from '@/hooks/useOrgData';
 import { useToast } from '@/hooks/use-toast';
 import type { OrgUnit } from '@/types/org';
 
@@ -24,16 +31,17 @@ export interface AddEditUnitModalProps {
 
 interface FormState {
   name: string;
-  secondaryField: string; // address for location, website_url for product
+  secondaryField: string;
   isPrimary: boolean;
+  cloneFromId: string;
 }
 
 function buildInitialForm(editUnit?: OrgUnit | null): FormState {
-  if (!editUnit) return { name: '', secondaryField: '', isPrimary: false };
+  if (!editUnit) return { name: '', secondaryField: '', isPrimary: false, cloneFromId: '' };
   const secondaryField = editUnit.unit_type === 'location'
     ? (editUnit.address ?? '')
     : (editUnit.website_url ?? '');
-  return { name: editUnit.name, secondaryField, isPrimary: editUnit.is_primary };
+  return { name: editUnit.name, secondaryField, isPrimary: editUnit.is_primary, cloneFromId: '' };
 }
 
 export function AddEditUnitModal({
@@ -46,6 +54,7 @@ export function AddEditUnitModal({
   const { toast } = useToast();
   const createUnit = useCreateOrgUnit(orgId);
   const updateUnit = useUpdateOrgUnit();
+  const { data: existingUnits } = useOrgUnits(orgId);
 
   const isLocation = unitType === 'location';
   const [form, setForm] = useState<FormState>(() => buildInitialForm(editUnit));
@@ -83,11 +92,33 @@ export function AddEditUnitModal({
           ...fieldPayload,
         });
       } else {
+        const cloneSource = form.cloneFromId
+          ? existingUnits?.find(u => u.id === form.cloneFromId)
+          : null;
+
+        const cloneFields = cloneSource
+          ? {
+              description: cloneSource.description,
+              brand_category: cloneSource.brand_category,
+              logo_url: cloneSource.logo_url,
+              sample_content_urls: cloneSource.sample_content_urls,
+              show_parent_brand: cloneSource.show_parent_brand,
+              instagram_url: cloneSource.instagram_url,
+              tiktok_url: cloneSource.tiktok_url,
+              youtube_url: cloneSource.youtube_url,
+              facebook_url: cloneSource.facebook_url,
+              linkedin_url: cloneSource.linkedin_url,
+              x_url: cloneSource.x_url,
+              other_social_url: cloneSource.other_social_url,
+            }
+          : {};
+
         await createUnit.mutateAsync({
           name,
           unit_type: unitType,
           is_primary: form.isPrimary,
           ...fieldPayload,
+          ...cloneFields,
         });
       }
       toast({
@@ -105,6 +136,7 @@ export function AddEditUnitModal({
   }
 
   const title = `${isEditing ? 'Edit' : 'Add'} ${unitType === 'location' ? 'Location' : 'Product'}`;
+  const cloneableUnits = existingUnits?.filter(u => u.id !== editUnit?.id) ?? [];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -135,6 +167,31 @@ export function AddEditUnitModal({
               disabled={isSaving}
             />
           </div>
+
+          {!isEditing && cloneableUnits.length > 0 && (
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="clone-from">Clone profile from</Label>
+              <Select
+                value={form.cloneFromId}
+                onValueChange={(value) => handleField('cloneFromId', value === 'none' ? '' : value)}
+              >
+                <SelectTrigger id="clone-from" className="mt-1">
+                  <SelectValue placeholder="Start fresh" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Start fresh</SelectItem>
+                  {cloneableUnits.map((unit) => (
+                    <SelectItem key={unit.id} value={unit.id}>
+                      {unit.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-gray-400">
+                Copies description, logo, social links, and content. Stripe and connected accounts are not cloned.
+              </p>
+            </div>
+          )}
 
           <div className="flex items-center justify-between rounded-xl border border-gray-200 px-4 py-3">
             <Label htmlFor="unit-primary" className="cursor-pointer text-sm font-medium">
