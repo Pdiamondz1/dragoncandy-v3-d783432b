@@ -12,6 +12,7 @@ interface AnalyticsBatchEvent {
   user_id?: string;
   page_url?: string;
   user_agent?: string;
+  org_unit_id?: string | null;
 }
 
 export const useAnalyticsBatch = () => {
@@ -33,13 +34,14 @@ export const useAnalyticsBatch = () => {
     batchQueue.current = [];
 
     try {
-      const insertData: AnalyticsEventInsert[] = eventsToSend.map(event => ({
+      const insertData = eventsToSend.map(event => ({
         event_type: event.event_type,
         event_data: event.event_data || {},
         user_id: event.user_id || null,
         page_url: event.page_url || null,
-        user_agent: event.user_agent || null
-      }));
+        user_agent: event.user_agent || null,
+        org_unit_id: event.org_unit_id || null
+      })) as AnalyticsEventInsert[];
 
       const { error } = await supabase
         .from('analytics_events')
@@ -69,13 +71,14 @@ export const useAnalyticsBatch = () => {
     }, FLUSH_INTERVAL);
   }, [flushBatch]);
 
-  const addEvent = useCallback((eventType: string, eventData?: Record<string, any>) => {
+  const addEvent = useCallback((eventType: string, eventData?: Record<string, any>, orgUnitId?: string | null) => {
     const event: AnalyticsBatchEvent = {
       event_type: eventType,
       event_data: eventData || {},
       user_id: user?.id,
       page_url: window.location.href,
-      user_agent: navigator.userAgent
+      user_agent: navigator.userAgent,
+      org_unit_id: orgUnitId ?? null
     };
 
     batchQueue.current.push(event);

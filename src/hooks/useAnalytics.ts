@@ -11,10 +11,11 @@ interface AnalyticsEvent {
   session_id?: string;
   page_url?: string;
   user_agent?: string;
+  org_unit_id?: string | null;
 }
 
 export const useAnalytics = () => {
-  const { user } = useAuth();
+  const { user, activeOrgUnit } = useAuth();
   const { trackEventOptimized, trackPageViewOptimized, trackUserActionOptimized, trackCampaignEventOptimized } = useOptimizedAnalytics();
 
   // Legacy direct tracking method (kept for backward compatibility)
@@ -25,7 +26,8 @@ export const useAnalytics = () => {
         event_data: eventData || {},
         user_id: user?.id,
         page_url: window.location.href,
-        user_agent: navigator.userAgent
+        user_agent: navigator.userAgent,
+        org_unit_id: activeOrgUnit?.id ?? null
       };
 
       // Store in Supabase for analytics
