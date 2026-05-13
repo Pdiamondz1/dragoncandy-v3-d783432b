@@ -20,6 +20,7 @@ export const MobileTopNav: React.FC<MobileTopNavProps> = ({
   userRole,
   showWelcome = false,
   displayName,
+  locationSwitcher,
 }) => {
   const logout = useLogout();
   const location = useLocation();
