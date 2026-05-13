@@ -3534,48 +3534,90 @@ export type Database = {
       org_units: {
         Row: {
           address: string | null
+          brand_category: string | null
           created_at: string
           deleted_at: string | null
+          description: string | null
+          facebook_url: string | null
           id: string
+          instagram_url: string | null
           is_primary: boolean
           lat: number | null
+          linkedin_url: string | null
           lng: number | null
           logo_url: string | null
           name: string
           org_id: string
+          other_social_url: string | null
+          pending_balance: number | null
+          sample_content_urls: Json | null
+          show_parent_brand: boolean
+          stripe_account_id: string | null
+          stripe_onboarding_complete: boolean | null
+          tiktok_url: string | null
           unit_type: string
           updated_at: string
           website_url: string | null
+          x_url: string | null
+          youtube_url: string | null
         }
         Insert: {
           address?: string | null
+          brand_category?: string | null
           created_at?: string
           deleted_at?: string | null
+          description?: string | null
+          facebook_url?: string | null
           id?: string
+          instagram_url?: string | null
           is_primary?: boolean
           lat?: number | null
+          linkedin_url?: string | null
           lng?: number | null
           logo_url?: string | null
           name: string
           org_id: string
+          other_social_url?: string | null
+          pending_balance?: number | null
+          sample_content_urls?: Json | null
+          show_parent_brand?: boolean
+          stripe_account_id?: string | null
+          stripe_onboarding_complete?: boolean | null
+          tiktok_url?: string | null
           unit_type: string
           updated_at?: string
           website_url?: string | null
+          x_url?: string | null
+          youtube_url?: string | null
         }
         Update: {
           address?: string | null
+          brand_category?: string | null
           created_at?: string
           deleted_at?: string | null
+          description?: string | null
+          facebook_url?: string | null
           id?: string
+          instagram_url?: string | null
           is_primary?: boolean
           lat?: number | null
+          linkedin_url?: string | null
           lng?: number | null
           logo_url?: string | null
           name?: string
           org_id?: string
+          other_social_url?: string | null
+          pending_balance?: number | null
+          sample_content_urls?: Json | null
+          show_parent_brand?: boolean
+          stripe_account_id?: string | null
+          stripe_onboarding_complete?: boolean | null
+          tiktok_url?: string | null
           unit_type?: string
           updated_at?: string
           website_url?: string | null
+          x_url?: string | null
+          youtube_url?: string | null
         }
         Relationships: [
           {

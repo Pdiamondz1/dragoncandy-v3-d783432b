@@ -31,6 +31,20 @@ export interface OrgUnit {
   deleted_at: string | null;
   created_at: string;
   updated_at: string;
+  stripe_account_id: string | null;
+  stripe_onboarding_complete: boolean | null;
+  pending_balance: number | null;
+  description: string | null;
+  brand_category: string | null;
+  sample_content_urls: string[] | null;
+  show_parent_brand: boolean;
+  instagram_url: string | null;
+  tiktok_url: string | null;
+  youtube_url: string | null;
+  facebook_url: string | null;
+  linkedin_url: string | null;
+  x_url: string | null;
+  other_social_url: string | null;
 }
 
 export interface OrgMember {

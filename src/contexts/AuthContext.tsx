@@ -192,7 +192,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (orgUnitId) {
         const { data: unit, error: unitError } = await supabase
           .from('org_units')
-          .select('id, org_id, unit_type, name, address, lat, lng, website_url, logo_url, is_primary, deleted_at, created_at, updated_at')
+          .select('id, org_id, unit_type, name, address, lat, lng, website_url, logo_url, is_primary, deleted_at, created_at, updated_at, stripe_account_id, stripe_onboarding_complete, pending_balance, description, brand_category, sample_content_urls, show_parent_brand, instagram_url, tiktok_url, youtube_url, facebook_url, linkedin_url, x_url, other_social_url')
           .eq('id', orgUnitId)
           .maybeSingle();
         if (unitError) {
@@ -219,7 +219,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     if (unitId) {
       const { data: unit } = await supabase
         .from('org_units')
-        .select('id, org_id, unit_type, name, address, lat, lng, website_url, logo_url, is_primary, deleted_at, created_at, updated_at')
+        .select('id, org_id, unit_type, name, address, lat, lng, website_url, logo_url, is_primary, deleted_at, created_at, updated_at, stripe_account_id, stripe_onboarding_complete, pending_balance, description, brand_category, sample_content_urls, show_parent_brand, instagram_url, tiktok_url, youtube_url, facebook_url, linkedin_url, x_url, other_social_url')
         .eq('id', unitId)
         .maybeSingle();
       setActiveOrgUnit(unit as OrgUnit | null);

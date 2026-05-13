@@ -88,7 +88,7 @@ export function useOrgUnits(orgId?: string | null) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('org_units')
-        .select('id, org_id, unit_type, name, address, website_url, logo_url, is_primary, deleted_at, created_at, updated_at')
+        .select('id, org_id, unit_type, name, address, lat, lng, website_url, logo_url, is_primary, deleted_at, created_at, updated_at, stripe_account_id, stripe_onboarding_complete, pending_balance, description, brand_category, sample_content_urls, show_parent_brand, instagram_url, tiktok_url, youtube_url, facebook_url, linkedin_url, x_url, other_social_url')
         .eq('org_id', orgId!)
         .is('deleted_at', null)
         .order('is_primary', { ascending: false })
@@ -110,7 +110,7 @@ export function useActiveOrgUnit(orgUnitId?: string | null) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('org_units')
-        .select('id, org_id, unit_type, name, address, website_url, logo_url, is_primary, deleted_at, created_at, updated_at')
+        .select('id, org_id, unit_type, name, address, lat, lng, website_url, logo_url, is_primary, deleted_at, created_at, updated_at, stripe_account_id, stripe_onboarding_complete, pending_balance, description, brand_category, sample_content_urls, show_parent_brand, instagram_url, tiktok_url, youtube_url, facebook_url, linkedin_url, x_url, other_social_url')
         .eq('id', orgUnitId!)
         .maybeSingle();
 
@@ -157,6 +157,18 @@ interface CreateOrgUnitInput {
   is_primary?: boolean;
   address?: string | null;
   website_url?: string | null;
+  description?: string | null;
+  brand_category?: string | null;
+  logo_url?: string | null;
+  sample_content_urls?: string[] | null;
+  show_parent_brand?: boolean;
+  instagram_url?: string | null;
+  tiktok_url?: string | null;
+  youtube_url?: string | null;
+  facebook_url?: string | null;
+  linkedin_url?: string | null;
+  x_url?: string | null;
+  other_social_url?: string | null;
 }
 
 /** Mutation to insert a new org_unit */
@@ -176,8 +188,20 @@ export function useCreateOrgUnit(orgId?: string | null) {
           is_primary: input.is_primary ?? false,
           address: input.address ?? null,
           website_url: input.website_url ?? null,
+          description: input.description ?? null,
+          brand_category: input.brand_category ?? null,
+          logo_url: input.logo_url ?? null,
+          sample_content_urls: input.sample_content_urls ?? [],
+          show_parent_brand: input.show_parent_brand ?? true,
+          instagram_url: input.instagram_url ?? null,
+          tiktok_url: input.tiktok_url ?? null,
+          youtube_url: input.youtube_url ?? null,
+          facebook_url: input.facebook_url ?? null,
+          linkedin_url: input.linkedin_url ?? null,
+          x_url: input.x_url ?? null,
+          other_social_url: input.other_social_url ?? null,
         })
-        .select('id, org_id, unit_type, name, address, website_url, logo_url, is_primary, deleted_at, created_at, updated_at')
+        .select('id, org_id, unit_type, name, address, lat, lng, website_url, logo_url, is_primary, deleted_at, created_at, updated_at, stripe_account_id, stripe_onboarding_complete, pending_balance, description, brand_category, sample_content_urls, show_parent_brand, instagram_url, tiktok_url, youtube_url, facebook_url, linkedin_url, x_url, other_social_url')
         .single();
 
       if (error) throw error;
@@ -209,7 +233,7 @@ export function useUpdateOrgUnit() {
         .from('org_units')
         .update({ ...updates, updated_at: new Date().toISOString() })
         .eq('id', id)
-        .select('id, org_id, unit_type, name, address, website_url, logo_url, is_primary, deleted_at, created_at, updated_at')
+        .select('id, org_id, unit_type, name, address, lat, lng, website_url, logo_url, is_primary, deleted_at, created_at, updated_at, stripe_account_id, stripe_onboarding_complete, pending_balance, description, brand_category, sample_content_urls, show_parent_brand, instagram_url, tiktok_url, youtube_url, facebook_url, linkedin_url, x_url, other_social_url')
         .single();
 
       if (error) throw error;
