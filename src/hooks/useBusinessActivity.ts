@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { FeedMediaItem } from './useBusinessDragonFeed';
 
-export const useBusinessActivity = () => {
+export const useBusinessActivity = (orgUnitId?: string | null) => {
   const [likedItems, setLikedItems] = useState<FeedMediaItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -16,12 +16,17 @@ export const useBusinessActivity = () => {
         if (!user) throw new Error('Not authenticated');
 
         // Fetch analytics events for likes
-        const { data: likeEvents, error: eventsError } = await supabase
+        let query = supabase
           .from('analytics_events')
           .select('event_data, created_at')
           .eq('user_id', user.id)
-          .eq('event_type', 'dragon_feed_like')
-          .order('created_at', { ascending: false });
+          .eq('event_type', 'dragon_feed_like');
+
+        if (orgUnitId) {
+          query = query.eq('org_unit_id', orgUnitId);
+        }
+
+        const { data: likeEvents, error: eventsError } = await query.order('created_at', { ascending: false });
 
         if (eventsError) throw eventsError;
 
@@ -108,7 +113,7 @@ export const useBusinessActivity = () => {
     };
 
     fetchLikedContent();
-  }, []);
+  }, [orgUnitId]);
 
   return { likedItems, loading, error };
 };
