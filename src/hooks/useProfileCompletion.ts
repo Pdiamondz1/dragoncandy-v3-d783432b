@@ -156,6 +156,52 @@ const BUSINESS_SECTIONS: Section<BusinessCompletionInput>[] = [
   },
 ];
 
+interface LocationCompletionInput {
+  name?: string;
+  logo_url?: string | null;
+  description?: string | null;
+  has_social_presence: boolean;
+  stripe_onboarding_complete?: boolean | null;
+}
+
+const LOCATION_SECTIONS: Section<LocationCompletionInput>[] = [
+  {
+    key: 'name',
+    weight: 20,
+    section: 'location-profile',
+    nudge: 'Add your location name',
+    check: (p) => !!p.name,
+  },
+  {
+    key: 'logo',
+    weight: 20,
+    section: 'location-profile',
+    nudge: 'Add a logo for this location',
+    check: (p) => !!p.logo_url,
+  },
+  {
+    key: 'description',
+    weight: 20,
+    section: 'location-profile',
+    nudge: 'Describe this location for creators',
+    check: (p) => !!p.description,
+  },
+  {
+    key: 'social',
+    weight: 20,
+    section: 'social',
+    nudge: 'Connect a social account for this location',
+    check: (p) => p.has_social_presence,
+  },
+  {
+    key: 'payments',
+    weight: 20,
+    section: 'payments',
+    nudge: 'Set up Stripe for this location to receive payments',
+    check: (p) => !!p.stripe_onboarding_complete,
+  },
+];
+
 function calculate<T>(sections: Section<T>[], profile: T): CompletionResult {
   let percentage = 0;
   let nextNudge = '';
@@ -181,6 +227,10 @@ export function calculateCreatorCompletion(profile: CreatorCompletionInput): Com
 
 export function calculateBusinessCompletion(profile: BusinessCompletionInput): CompletionResult {
   return calculate(BUSINESS_SECTIONS, profile);
+}
+
+export function calculateLocationCompletion(profile: LocationCompletionInput): CompletionResult {
+  return calculate(LOCATION_SECTIONS, profile);
 }
 
 export function useProfileCompletion(
