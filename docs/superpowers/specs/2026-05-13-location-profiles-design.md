@@ -51,6 +51,35 @@ All nullable. Added via a single migration.
 - `marketing_objectives`, `profile_visibility`, `company_size`,
   `founded_year`
 - `timezone`, `employee_count_range`
+- `instagram_url`, `tiktok_url`, `youtube_url`, `facebook_url`,
+  `linkedin_url`, `x_url`, `other_social_url` — these remain as
+  business-wide defaults. Not removed.
+
+### Social URL ownership
+
+Both `business_profiles` and `org_units` carry social URL columns.
+The ownership rule:
+
+- **`org_units` social URLs** are location-specific overrides, edited
+  in location mode
+- **`business_profiles` social URLs** are business-wide defaults,
+  edited in "All Locations" mode
+- **Creator-facing resolution**: location social URL takes precedence;
+  if empty, fall back to `business_profiles` social URL
+- Editing social URLs in "All Locations" mode does NOT propagate to
+  existing locations — each location's URLs are independent once set
+- OAuth-connected accounts (via Outstand/AccountsTab) are a separate
+  system already scoped by `org_unit_id` and are not affected by
+  manual social URL fields
+
+### TypeScript types
+
+After the migration:
+
+1. Regenerate Supabase types: `npx supabase gen types typescript`
+2. Update the `OrgUnit` interface in `src/types/org.ts` to include
+   all new fields
+3. Both steps are required before any new hooks will compile
 
 ### Fields already on `org_units`
 
@@ -79,17 +108,23 @@ Four accordion sections with teal-tinted borders:
 
 1. **Location Profile** — name, logo upload, description textarea,
    brand_category input, `show_parent_brand` toggle
-2. **Sample Content** — location-specific brand content uploads
-   (stored in `sample_content_urls` JSONB)
+2. **Sample Content** — location-specific brand content uploads.
+   This is a net-new feature (business profile sample content is
+   currently stubbed out). Upload flow: files go to Supabase Storage
+   bucket `brand-content` under path `{org_id}/{org_unit_id}/`.
+   URLs stored in `sample_content_urls` JSONB as a string array.
+   Max 10 files, 10MB each. UI renders as a thumbnail grid with
+   upload and delete actions.
 3. **Social Media** — `ConnectedAccountsList` (already scoped to
    `activeOrgUnit` via `AccountsTab`) plus collapsible manual social
    URL fields reading/writing `org_units` social columns
 4. **Payments** — `StripeConnectSetup` (already location-aware)
 
-**Bottom zone — Business-Wide Settings (dimmed, dashed divider)**
+**Bottom zone — Business-Wide Settings (dashed divider)**
 
-Labeled "Harbormill · Business-Wide". Three accordion sections at
-reduced opacity:
+Labeled "Harbormill · Business-Wide". Three accordion sections, fully
+editable (same auto-save-on-blur behavior), visually separated by
+the dashed divider and section header but not dimmed or disabled:
 
 1. **Business Info** — industry, collaboration style (reads/writes
    `business_profiles`)
@@ -111,13 +146,16 @@ via `useLocationProfileSubmit`. Business-wide fields save to
 
 ### New: `useLocationProfileForm`
 
-Mirrors `useBusinessProfileForm`. Takes `orgUnitId` as parameter.
+Mirrors `useBusinessProfileForm` but includes data fetching via React
+Query (unlike the existing business form which uses a raw `useEffect`
+fetch in the page component — this hook is self-contained).
 
+- React Query key: `['location-profile', orgUnitId]`
 - Queries `org_units` by `id` for: `name`, `description`,
   `brand_category`, `logo_url`, `sample_content_urls`,
   `show_parent_brand`, and all social URL fields
 - Returns `formData`, `logoFile`, `handleInputChange`, `setLogoFile`,
-  `setFormDataFromProfile`
+  `isLoading`
 - Reloads when `orgUnitId` changes (user switches location)
 
 ### New: `useLocationProfileSubmit`
@@ -135,7 +173,9 @@ Checks:
 - `name` (required, always present)
 - `logo_url` (has location logo)
 - `description` (has description)
-- At least one social account connected (via `useLocationSocialAccounts`)
+- At least one social presence — either an OAuth-connected account
+  (via `useLocationSocialAccounts`) OR a manual social URL field
+  populated on `org_units`
 - Stripe connected (`stripe_onboarding_complete === true`)
 
 ### Existing hooks — no changes needed
@@ -156,7 +196,7 @@ Checks:
 const { activeOrgUnit } = useAuth();
 
 if (activeOrgUnit) {
-  // Location mode: location form + business form (read-only bottom section)
+  // Location mode: location form (top) + business form (bottom, editable)
   useLocationProfileForm(activeOrgUnit.id)  → top zone
   useBusinessProfileForm()                  → bottom zone
 } else {
@@ -181,9 +221,11 @@ each location has its own address already via `org_units.address`).
 
 When adding a new location via the `OrgUnitsPage.tsx` modal:
 
-- New optional "Clone from" dropdown listing existing locations
+- "Clone from" dropdown appears only when creating (not editing),
+  populated from `useOrgUnits` for the current org
 - On create, copies from the source `org_unit`: `description`,
-  `brand_category`, `logo_url`, `sample_content_urls`,
+  `brand_category`, `logo_url` (reference to same Storage URL — no
+  file duplication), `sample_content_urls` (same references),
   `show_parent_brand`, and all social URL fields
 - Fields NOT cloned: `id`, `name`, `address`, `is_primary`, `lat`,
   `lng`, `stripe_account_id`, `stripe_onboarding_complete`,
@@ -199,8 +241,11 @@ Campaigns carry `org_unit_id`. Display logic:
 
 - Name: `org_units.name` (location name)
 - Logo: `org_units.logo_url` ?? `business_profiles.logo_url` (fallback)
-- If `show_parent_brand === true`: render as "South Philly · Harbormill"
-- If `false`: render as "South Philly"
+- If `show_parent_brand === true` AND location name differs from
+  business name: render as "South Philly · Harbormill"
+- If `show_parent_brand === true` BUT names match: render as just
+  the name (suppress duplicate, e.g. not "Harbormill · Harbormill")
+- If `false`: render as just the location name
 
 ### Business/location profile page
 
@@ -238,3 +283,12 @@ to the same `org_id`.
   new columns
 - Rollback: drop the new columns (data loss for location profile
   fields only, which are new)
+
+## Known Gaps (not in scope)
+
+- **Realtime sync**: If two team members edit the same location
+  profile simultaneously, changes may overwrite. No realtime
+  subscription for `org_units` profile fields. Acceptable for launch.
+- **Location-level analytics**: Analytics stay business-wide. Per-
+  location analytics is a future enhancement.
+- **Location-level reviews**: Reviews stay at business level.
