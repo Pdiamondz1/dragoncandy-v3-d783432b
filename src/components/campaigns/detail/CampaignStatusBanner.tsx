@@ -29,6 +29,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { EscrowFeeBreakdown } from '@/components/payments/EscrowFeeBreakdown';
 import {
   type CampaignPhase,
   type ProjectStep,
@@ -53,6 +54,10 @@ interface CampaignStatusBannerProps {
     title: string;
     status: string;
     escrow_status?: string | null;
+    fixed_price?: number | null;
+    budget_max?: number | null;
+    delivery_fee?: number | null;
+    delivery_type?: string | null;
   };
   phase: CampaignPhase;
   currentStep: ProjectStep | null;
@@ -161,7 +166,7 @@ export const CampaignStatusBanner: React.FC<CampaignStatusBannerProps> = ({
 
   const state = deriveBannerState(phase, campaign.status, campaign.escrow_status, applicationCount, currentStep);
 
-  const canDelete = phase === 'pre_hire' && campaign.escrow_status !== 'held';
+  const canDelete = (phase === 'pre_hire' || phase === 'cancelled') && campaign.escrow_status !== 'held';
   const canEdit = phase === 'pre_hire';
   const canRelaunch = phase === 'completed' || phase === 'cancelled';
   const showMenu = canEdit || canDelete || canRelaunch;
@@ -223,9 +228,16 @@ export const CampaignStatusBanner: React.FC<CampaignStatusBannerProps> = ({
         );
       case 'payment_pending':
         return (
-          <Button onClick={onPayEscrow} disabled={isPayingEscrow} className="rounded-full bg-amber-500 hover:bg-amber-600 text-white font-semibold w-full lg:w-auto">
-            {isPayingEscrow ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Processing…</> : 'Pay & Publish'}
-          </Button>
+          <div className="space-y-2 w-full lg:w-auto">
+            <EscrowFeeBreakdown
+              baseAmount={campaign.fixed_price || campaign.budget_max || 0}
+              deliveryFee={campaign.delivery_fee || 0}
+              deliveryType={campaign.delivery_type || 'standard'}
+            />
+            <Button onClick={onPayEscrow} disabled={isPayingEscrow} className="rounded-full bg-amber-500 hover:bg-amber-600 text-white font-semibold w-full">
+              {isPayingEscrow ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Processing…</> : 'Pay & Publish'}
+            </Button>
+          </div>
         );
       case 'published':
         return null;
@@ -264,9 +276,11 @@ export const CampaignStatusBanner: React.FC<CampaignStatusBannerProps> = ({
             <Button onClick={onRelaunch} className="rounded-full bg-teal-400 hover:bg-teal-500 text-white font-semibold w-full sm:flex-1 lg:flex-none">
               Re-Launch Campaign
             </Button>
-            <Button onClick={() => setShowDeleteConfirm(true)} variant="outline" className="rounded-full border-red-300 text-red-600 hover:bg-red-50 font-semibold w-full sm:flex-1 lg:flex-none">
-              Delete
-            </Button>
+            {canDelete && (
+              <Button onClick={() => setShowDeleteConfirm(true)} variant="outline" className="rounded-full border-red-300 text-red-600 hover:bg-red-50 font-semibold w-full sm:flex-1 lg:flex-none">
+                Delete
+              </Button>
+            )}
           </div>
         );
     }

@@ -165,19 +165,21 @@ export const useManageApplication = () => {
       }
 
       // Send email notification to creator
+      const { data: creatorProfile } = await supabase
+        .from('profiles')
+        .select('email, full_name')
+        .eq('id', data.creator_id)
+        .single()
+        .then(r => r, () => ({ data: null }));
+
+      const { data: campaign } = await supabase
+        .from('campaigns')
+        .select('title')
+        .eq('id', data.campaign_id)
+        .single()
+        .then(r => r, () => ({ data: null }));
+
       try {
-        const { data: creatorProfile } = await supabase
-          .from('profiles')
-          .select('email, full_name')
-          .eq('id', data.creator_id)
-          .single();
-
-        const { data: campaign } = await supabase
-          .from('campaigns')
-          .select('title')
-          .eq('id', data.campaign_id)
-          .single();
-
         if (creatorProfile?.email && campaign?.title) {
           await sendNotification(
             'application_status',
@@ -192,6 +194,25 @@ export const useManageApplication = () => {
         }
       } catch (emailError) {
         console.error('Failed to send email notification:', emailError);
+      }
+
+      // Send Donny "you're hired" nudge to creator
+      if (data.status === 'accepted') {
+        try {
+          await supabase.from('donny_nudges').insert({
+            user_id: data.creator_id,
+            type: 'campaign_hired',
+            summary: `🎉 You've been hired for "${campaign?.title ?? 'a campaign'}"! Head to your projects to get started.`,
+            priority: 'high',
+            actions: [
+              { label: 'View Project', route: `/dashboard/creator/my-campaigns` },
+              { label: 'Send Message', route: `/messages/${data.campaign_id}` },
+            ],
+            raw_data: { campaign_id: data.campaign_id, application_id: data.id },
+          });
+        } catch (nudgeError) {
+          console.error('Failed to send Donny hired nudge:', nudgeError);
+        }
       }
 
       toast({

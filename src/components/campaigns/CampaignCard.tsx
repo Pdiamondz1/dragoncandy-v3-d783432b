@@ -12,6 +12,7 @@ import { useDuplicateCampaign } from '@/hooks/useCampaignMutations';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
+import { EscrowFeeBreakdown } from '@/components/payments/EscrowFeeBreakdown';
 import {
   deriveCampaignPhase,
   deriveCurrentStep,
@@ -237,6 +238,15 @@ const CampaignCardComponent: React.FC<CampaignCardProps> = ({ campaign }) => {
             )}
             <span className="text-xs text-gray-700 font-medium">{campaign.creator_name} <span className="text-gray-400 font-normal">· assigned</span></span>
           </div>
+        )}
+
+        {/* Fee breakdown before payment */}
+        {ctaLabel === 'Pay & Publish →' && (
+          <EscrowFeeBreakdown
+            baseAmount={campaign.fixed_price || campaign.budget_max || 0}
+            deliveryFee={campaign.delivery_fee || 0}
+            deliveryType={campaign.delivery_type || 'standard'}
+          />
         )}
 
         {/* Single CTA */}

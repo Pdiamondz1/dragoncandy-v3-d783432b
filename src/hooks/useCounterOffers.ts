@@ -212,6 +212,20 @@ export const useRespondToCounterOffer = () => {
           recipientUserId,
           applicationStatus: response,
         });
+
+        if (response === 'accepted') {
+          await supabase.from('donny_nudges').insert({
+            user_id: application.creator_id,
+            type: 'campaign_hired',
+            summary: `🎉 You've been selected for "${campaign.title}"! The restaurant will proceed with payment to start the project.`,
+            priority: 'high',
+            actions: [
+              { label: 'View Project', route: `/dashboard/creator/my-campaigns` },
+              { label: 'Send Message', route: `/messages/${application.campaign_id}` },
+            ],
+            raw_data: { campaign_id: application.campaign_id, application_id: applicationId },
+          });
+        }
       } catch (e) {
         console.error('Failed to send response notification:', e);
       }

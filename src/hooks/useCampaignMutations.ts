@@ -364,12 +364,27 @@ export const useDeleteCampaign = () => {
 
   return useMutation({
     mutationFn: async (campaignId: string) => {
-      // Fetch campaign title for notifications
       const { data: campaign } = await supabase
         .from('campaigns')
-        .select('title, user_id')
+        .select('title, user_id, escrow_status')
         .eq('id', campaignId)
         .single();
+
+      if (campaign?.escrow_status === 'held') {
+        throw new Error('Cannot delete a campaign with held escrow. Refund the escrow first.');
+      }
+
+      const { data: activeCollabs } = await supabase
+        .from('campaign_collaborations')
+        .select('id')
+        .eq('campaign_id', campaignId)
+        .eq('status', 'active')
+        .limit(1);
+
+      if (activeCollabs && activeCollabs.length > 0) {
+        throw new Error('Cannot delete a campaign with an active collaboration.');
+      }
+
       const campaignTitle = campaign?.title ?? 'Untitled Campaign';
 
       // Fetch owner name for notification context
