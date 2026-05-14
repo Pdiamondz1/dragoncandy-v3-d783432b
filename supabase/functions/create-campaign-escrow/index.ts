@@ -65,10 +65,37 @@ serve(async (req) => {
       throw new Error("You are not authorized to pay for this campaign");
     }
 
-    // Derive all pricing from DB — never trust client-supplied amounts
-    const amount = campaign.pricing_type === 'fixed'
-      ? campaign.fixed_price
-      : campaign.budget_max;
+    // Derive pricing from the negotiated agreement, not the original campaign budget.
+    // Priority: accepted counter offer → accepted application rate → campaign budget
+    let amount: number | null = null;
+
+    const { data: acceptedApp } = await supabaseClient
+      .from('campaign_applications')
+      .select('id, proposed_rate')
+      .eq('campaign_id', campaignId)
+      .eq('status', 'accepted')
+      .limit(1)
+      .maybeSingle();
+
+    if (acceptedApp) {
+      const { data: acceptedOffer } = await supabaseClient
+        .from('application_counter_offers')
+        .select('proposed_rate')
+        .eq('application_id', acceptedApp.id)
+        .eq('status', 'accepted')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      amount = acceptedOffer?.proposed_rate ?? acceptedApp.proposed_rate;
+    }
+
+    if (!amount || amount <= 0) {
+      amount = campaign.pricing_type === 'fixed'
+        ? campaign.fixed_price
+        : campaign.budget_max;
+    }
+
     if (!amount || amount <= 0) {
       return new Response(JSON.stringify({ error: 'Campaign has no valid budget set' }), {
         status: 400,

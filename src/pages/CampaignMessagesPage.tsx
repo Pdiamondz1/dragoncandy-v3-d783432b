@@ -29,13 +29,18 @@ const CampaignMessagesPage: React.FC = () => {
     }
   };
 
-  // Find the correct recipient based on user role and campaign applications
+  // Find the correct recipient based on user role and campaign applications.
+  // Prioritize accepted, then counter_offered, then any active application.
   const getRecipientId = () => {
     if (!campaign || !user) return null;
 
     if (userRole === 'business_client') {
-      const acceptedApplication = applications.find(app => app.status === 'accepted');
-      return acceptedApplication?.creator_id || null;
+      const accepted = applications.find(app => app.status === 'accepted');
+      if (accepted) return accepted.creator_id;
+      const counterOffered = applications.find(app => app.status === 'counter_offered');
+      if (counterOffered) return counterOffered.creator_id;
+      const pending = applications.find(app => app.status === 'pending');
+      return pending?.creator_id || null;
     } else {
       return campaign.user_id;
     }

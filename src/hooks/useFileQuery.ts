@@ -1,11 +1,28 @@
 
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import type { FileUpload } from '@/types/files';
 
 export const useFileUploads = (campaignId?: string, category?: string, uploadedBy?: string) => {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (!campaignId) return;
+    const channel = supabase
+      .channel(`file-uploads-${campaignId}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'file_uploads', filter: `campaign_id=eq.${campaignId}` },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['file-uploads', campaignId] });
+        },
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [campaignId, queryClient]);
 
   return useQuery({
     queryKey: ['file-uploads', campaignId, category, uploadedBy],

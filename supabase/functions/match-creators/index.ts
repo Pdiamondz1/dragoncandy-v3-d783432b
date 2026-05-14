@@ -431,11 +431,22 @@ serve(async (req) => {
       .delete()
       .eq('campaign_id', campaignId);
 
-    // Fetch available creators with full profile data
-    const { data: creators, error: creatorsError } = await supabase
+    // Fetch available creators — prefer completed profiles, fall back to any with a name
+    let { data: creators, error: creatorsError } = await supabase
       .from('creator_profiles')
       .select('user_id, creator_name, bio, skills, location, city, country, base_rate_per_hour, min_project_budget, availability, response_time, max_projects_per_month, preferred_project_duration, years_of_experience, average_rating, total_reviews, instagram_url, tiktok_url, youtube_url, facebook_url, linkedin_url, x_url')
       .eq('is_completed', true);
+
+    if ((!creators || creators.length === 0) && !creatorsError) {
+      console.log('No completed profiles found, falling back to all named creators');
+      const fallback = await supabase
+        .from('creator_profiles')
+        .select('user_id, creator_name, bio, skills, location, city, country, base_rate_per_hour, min_project_budget, availability, response_time, max_projects_per_month, preferred_project_duration, years_of_experience, average_rating, total_reviews, instagram_url, tiktok_url, youtube_url, facebook_url, linkedin_url, x_url')
+        .not('creator_name', 'is', null)
+        .neq('creator_name', '');
+      creators = fallback.data;
+      creatorsError = fallback.error;
+    }
 
     if (creatorsError) {
       console.error('Error fetching creators:', creatorsError);

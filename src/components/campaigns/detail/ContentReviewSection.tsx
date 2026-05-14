@@ -69,11 +69,32 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       toast({ title: 'Content approved!', description: 'Payment released to creator.' });
       queryClient.invalidateQueries({ queryKey: ['campaigns'] });
       queryClient.invalidateQueries({ queryKey: ['campaign', campaignId] });
       queryClient.invalidateQueries({ queryKey: ['campaign-project', campaignId] });
+
+      try {
+        const { data: creatorProfile } = await supabase
+          .from('profiles')
+          .select('email, full_name')
+          .eq('id', creatorId)
+          .single();
+
+        if (creatorProfile?.email) {
+          await supabase.functions.invoke('send-notification-email', {
+            body: {
+              to: creatorProfile.email,
+              recipientName: creatorProfile.full_name,
+              type: 'content_approved',
+              data: { campaignId, creatorName: creatorName },
+            },
+          });
+        }
+      } catch (e) {
+        console.error('Failed to send content approval email:', e);
+      }
     },
     onError: (err: Error) => {
       toast({ variant: 'destructive', title: 'Approval Failed', description: err.message });
@@ -110,22 +131,44 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
         p_metadata: { notes: revisionFeedback, revision_number: safeRevisionCount + 1 },
       }).then(() => {}, () => {});
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       toast({ title: 'Revision request sent to creator.' });
       setFeedback('');
       setShowRevisionInput(false);
       queryClient.invalidateQueries({ queryKey: ['campaigns'] });
       queryClient.invalidateQueries({ queryKey: ['campaign', campaignId] });
       queryClient.invalidateQueries({ queryKey: ['campaign-project', campaignId] });
+
+      try {
+        const { data: creatorProfile } = await supabase
+          .from('profiles')
+          .select('email, full_name')
+          .eq('id', creatorId)
+          .single();
+
+        if (creatorProfile?.email) {
+          await supabase.functions.invoke('send-notification-email', {
+            body: {
+              to: creatorProfile.email,
+              recipientName: creatorProfile.full_name,
+              type: 'revision_requested',
+              data: { campaignId, creatorName: creatorName },
+            },
+          });
+        }
+      } catch (e) {
+        console.error('Failed to send revision request email:', e);
+      }
     },
     onError: (err: Error) => {
       toast({ variant: 'destructive', title: 'Request Failed', description: err.message });
     },
   });
 
-  if (contentStatus !== 'submitted') return null;
-
+  const isSubmitted = contentStatus === 'submitted';
   const hasFiles = files && files.length > 0;
+
+  if (!isSubmitted && !hasFiles && !filesLoading) return null;
 
   if (!hasFiles && !filesLoading) {
     return (
@@ -133,7 +176,9 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
         <div className="flex items-center gap-2">
           <FileCheck className="h-4 w-4 text-dc-teal" />
           <span className="text-sm text-gray-600">
-            Waiting for {creatorName} to upload content
+            {contentStatus === 'in_progress'
+              ? `${creatorName} is working on content`
+              : `Waiting for ${creatorName} to upload content`}
           </span>
         </div>
       </div>
@@ -154,12 +199,12 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
   const canRequestRevision = safeRevisionCount < MAX_REVISIONS;
 
   return (
-    <div className="bg-white border-2 border-pink-400 rounded-2xl p-4 space-y-3">
+    <div className={`bg-white border-2 ${isSubmitted ? 'border-pink-400' : 'border-dc-teal'} rounded-2xl p-4 space-y-3`}>
       {/* Header */}
       <div className="flex items-center gap-2 flex-wrap">
-        <FileCheck className="h-4 w-4 text-pink-500" />
+        <FileCheck className={`h-4 w-4 ${isSubmitted ? 'text-pink-500' : 'text-dc-teal'}`} />
         <span className="text-sm font-semibold text-gray-900">
-          Content ready for review from {creatorName}
+          {isSubmitted ? `Content ready for review from ${creatorName}` : `Content uploaded by ${creatorName}`}
         </span>
         {safeRevisionCount > 0 && (
           <Badge variant="outline" className="text-xs rounded-full">
@@ -238,93 +283,100 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
         </DialogContent>
       </Dialog>
 
-      {/* Actions */}
-      {!showRevisionInput ? (
-        <div className="flex gap-2 flex-wrap">
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
+      {/* Actions — only show when content is submitted for review */}
+      {!isSubmitted && hasFiles && (
+        <p className="text-xs text-gray-500">
+          Files uploaded but not yet submitted for review.
+        </p>
+      )}
+      {isSubmitted && (
+        !showRevisionInput ? (
+          <div className="flex gap-2 flex-wrap">
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  disabled={approveContent.isPending}
+                  size="sm"
+                  className="rounded-full bg-teal-400 hover:bg-teal-500 text-white font-semibold"
+                >
+                  {approveContent.isPending ? (
+                    <><Loader2 className="h-3 w-3 mr-1 animate-spin" />Approving…</>
+                  ) : (
+                    <><CheckCircle2 className="h-3 w-3 mr-1" />Approve & Pay</>
+                  )}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Release payment to creator?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will approve the content and release payment immediately. This cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    className="bg-teal-400 hover:bg-teal-500"
+                    onClick={() => approveContent.mutate()}
+                  >
+                    Yes, Approve & Pay
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+
+            {canRequestRevision && (
               <Button
-                disabled={approveContent.isPending}
+                variant="outline"
                 size="sm"
-                className="rounded-full bg-teal-400 hover:bg-teal-500 text-white font-semibold"
+                className="rounded-full"
+                onClick={() => setShowRevisionInput(true)}
               >
-                {approveContent.isPending ? (
-                  <><Loader2 className="h-3 w-3 mr-1 animate-spin" />Approving…</>
+                <RotateCcw className="h-3 w-3 mr-1" />
+                Request Revision
+              </Button>
+            )}
+
+            {!canRequestRevision && (
+              <div className="flex items-center gap-1 text-xs text-gray-500">
+                <AlertCircle className="h-3 w-3" />
+                Max revisions reached
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <Textarea
+              placeholder="Describe the changes you need…"
+              value={feedback}
+              onChange={e => setFeedback(e.target.value)}
+              rows={2}
+              className="text-sm rounded-xl"
+            />
+            <div className="flex gap-2">
+              <Button
+                onClick={() => requestRevision.mutate(feedback)}
+                disabled={!feedback.trim() || requestRevision.isPending}
+                size="sm"
+                className="rounded-full bg-teal-400 hover:bg-teal-500 text-white"
+              >
+                {requestRevision.isPending ? (
+                  <><Loader2 className="h-3 w-3 mr-1 animate-spin" />Sending…</>
                 ) : (
-                  <><CheckCircle2 className="h-3 w-3 mr-1" />Approve & Pay</>
+                  <><Send className="h-3 w-3 mr-1" />Send</>
                 )}
               </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Release payment to creator?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This will approve the content and release payment immediately. This cannot be undone.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction
-                  className="bg-teal-400 hover:bg-teal-500"
-                  onClick={() => approveContent.mutate()}
-                >
-                  Yes, Approve & Pay
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-
-          {canRequestRevision && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="rounded-full"
-              onClick={() => setShowRevisionInput(true)}
-            >
-              <RotateCcw className="h-3 w-3 mr-1" />
-              Request Revision
-            </Button>
-          )}
-
-          {!canRequestRevision && (
-            <div className="flex items-center gap-1 text-xs text-gray-500">
-              <AlertCircle className="h-3 w-3" />
-              Max revisions reached
+              <Button
+                variant="ghost"
+                size="sm"
+                className="rounded-full"
+                onClick={() => { setShowRevisionInput(false); setFeedback(''); }}
+              >
+                Cancel
+              </Button>
             </div>
-          )}
-        </div>
-      ) : (
-        <div className="space-y-2">
-          <Textarea
-            placeholder="Describe the changes you need…"
-            value={feedback}
-            onChange={e => setFeedback(e.target.value)}
-            rows={2}
-            className="text-sm rounded-xl"
-          />
-          <div className="flex gap-2">
-            <Button
-              onClick={() => requestRevision.mutate(feedback)}
-              disabled={!feedback.trim() || requestRevision.isPending}
-              size="sm"
-              className="rounded-full bg-teal-400 hover:bg-teal-500 text-white"
-            >
-              {requestRevision.isPending ? (
-                <><Loader2 className="h-3 w-3 mr-1 animate-spin" />Sending…</>
-              ) : (
-                <><Send className="h-3 w-3 mr-1" />Send</>
-              )}
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="rounded-full"
-              onClick={() => { setShowRevisionInput(false); setFeedback(''); }}
-            >
-              Cancel
-            </Button>
           </div>
-        </div>
+        )
       )}
     </div>
   );

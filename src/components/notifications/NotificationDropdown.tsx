@@ -65,7 +65,7 @@ export const NotificationDropdown: React.FC = () => {
       if (notification.data?.conversation_id) {
         navigate(`/dashboard/messages/${notification.data.conversation_id}`);
       } else if (notification.data?.campaign_id) {
-        navigate(`/dashboard/messages/campaign/${notification.data.campaign_id}`);
+        navigate(`/messages/${notification.data.campaign_id}`);
       }
     }
   };

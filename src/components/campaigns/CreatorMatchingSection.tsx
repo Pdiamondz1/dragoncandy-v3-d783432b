@@ -80,17 +80,29 @@ export const CreatorMatchingSection: React.FC<CreatorMatchingSectionProps> = ({ 
     inviteCreator.mutate({ campaignId, creatorId });
   };
 
-  // Fetch all available creators as fallback
+  const [creatorsPage, setCreatorsPage] = useState(0);
+  const CREATORS_PER_PAGE = 10;
+
+  // Fetch all available creators — prefer completed, fall back to any with a name
   const { data: availableCreators = [], isLoading: creatorsLoading, isError: creatorsError } = useQuery({
     queryKey: ['available-creators'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data: completed, error: completedError } = await supabase
         .from('creator_profiles')
         .select('id, user_id, creator_name, avatar_url, bio, skills, location, base_rate_per_hour, instagram_url, tiktok_url, youtube_url, facebook_url, linkedin_url, x_url')
         .eq('is_completed', true);
 
-      if (error) throw error;
-      return data || [];
+      if (completedError) throw completedError;
+      if (completed && completed.length > 0) return completed;
+
+      const { data: fallback, error: fallbackError } = await supabase
+        .from('creator_profiles')
+        .select('id, user_id, creator_name, avatar_url, bio, skills, location, base_rate_per_hour, instagram_url, tiktok_url, youtube_url, facebook_url, linkedin_url, x_url')
+        .not('creator_name', 'is', null)
+        .neq('creator_name', '');
+
+      if (fallbackError) throw fallbackError;
+      return fallback || [];
     },
   });
 
@@ -335,58 +347,76 @@ export const CreatorMatchingSection: React.FC<CreatorMatchingSectionProps> = ({ 
             </Card>
           ) : hasAvailableCreators ? (
             <div className="grid gap-4">
-              {availableCreators.map((creator) => (
-                <Card key={creator.id} className="border dark:border-border hover:border-teal-300 dark:hover:border-teal-600 transition-colors">
-                  <CardContent className="p-6">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-4">
-                        {creator.avatar_url ? (
-                          <img
-                            src={creator.avatar_url}
-                            alt={creator.creator_name}
-                            className="w-12 h-12 rounded-full object-cover ring-2 ring-teal-400"
-                          />
-                        ) : (
-                          <div className="w-12 h-12 rounded-full bg-teal-100 dark:bg-teal-900 flex items-center justify-center ring-2 ring-teal-400">
-                            <Users className="h-6 w-6 text-teal-600 dark:text-teal-400" />
-                          </div>
-                        )}
-                        <div>
-                          <h3 className="font-semibold text-lg">{creator.creator_name}</h3>
-                          <p className="text-muted-foreground text-sm">{creator.location || 'Location not specified'}</p>
-                          {creator.bio && (
-                            <p className="text-sm mt-2 line-clamp-2">{creator.bio}</p>
-                          )}
-                          {creator.skills && creator.skills.length > 0 && (
-                            <div className="flex flex-wrap gap-1 mt-2">
-                              {creator.skills.slice(0, 4).map((skill: string, index: number) => (
-                                <Badge key={index} variant="secondary" className="text-xs">
-                                  {formatSkillLabel(skill)}
-                                </Badge>
-                              ))}
-                              {creator.skills.length > 4 && (
-                                <Badge variant="outline" className="text-xs">
-                                  +{creator.skills.length - 4} more
-                                </Badge>
-                              )}
+              {availableCreators.slice(0, (creatorsPage + 1) * CREATORS_PER_PAGE).map((creator) => {
+                const isInvited = invitedCreatorIds.has(creator.user_id);
+                return (
+                  <Card key={creator.id} className="border dark:border-border hover:border-teal-300 dark:hover:border-teal-600 transition-colors">
+                    <CardContent className="p-6">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-4 min-w-0">
+                          {creator.avatar_url ? (
+                            <img
+                              src={creator.avatar_url}
+                              alt={creator.creator_name}
+                              className="w-12 h-12 rounded-full object-cover ring-2 ring-teal-400 shrink-0"
+                            />
+                          ) : (
+                            <div className="w-12 h-12 rounded-full bg-teal-100 dark:bg-teal-900 flex items-center justify-center ring-2 ring-teal-400 shrink-0">
+                              <Users className="h-6 w-6 text-teal-600 dark:text-teal-400" />
                             </div>
                           )}
-                          {creator.base_rate_per_hour && (
-                            <p className="text-sm text-muted-foreground mt-1">
-                              Rate: ${creator.base_rate_per_hour}/hour
-                            </p>
-                          )}
+                          <div className="min-w-0">
+                            <h3 className="font-semibold text-lg">{creator.creator_name}</h3>
+                            <p className="text-muted-foreground text-sm">{creator.location || 'Location not specified'}</p>
+                            {creator.bio && (
+                              <p className="text-sm mt-2 line-clamp-2">{creator.bio}</p>
+                            )}
+                            {creator.skills && creator.skills.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mt-2">
+                                {creator.skills.slice(0, 4).map((skill: string, index: number) => (
+                                  <Badge key={index} variant="secondary" className="text-xs">
+                                    {formatSkillLabel(skill)}
+                                  </Badge>
+                                ))}
+                                {creator.skills.length > 4 && (
+                                  <Badge variant="outline" className="text-xs">
+                                    +{creator.skills.length - 4} more
+                                  </Badge>
+                                )}
+                              </div>
+                            )}
+                            {creator.base_rate_per_hour && (
+                              <p className="text-sm text-muted-foreground mt-1">
+                                Rate: ${creator.base_rate_per_hour}/hour
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="shrink-0">
+                          <Button
+                            size="sm"
+                            className="rounded-full"
+                            variant={isInvited ? 'outline' : 'default'}
+                            disabled={isInvited || inviteCreator.isPending}
+                            onClick={() => handleInvite(creator.user_id)}
+                          >
+                            {isInvited ? 'Invited' : 'Invite'}
+                          </Button>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <Badge variant="outline" className="border-green-300 text-green-700 dark:text-green-400 dark:border-green-700">
-                          Available
-                        </Badge>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+              {availableCreators.length > (creatorsPage + 1) * CREATORS_PER_PAGE && (
+                <Button
+                  variant="outline"
+                  className="w-full rounded-full"
+                  onClick={() => setCreatorsPage(p => p + 1)}
+                >
+                  Load More ({availableCreators.length - (creatorsPage + 1) * CREATORS_PER_PAGE} remaining)
+                </Button>
+              )}
             </div>
           ) : (
             <Card>

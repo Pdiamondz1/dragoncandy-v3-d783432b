@@ -15,6 +15,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { formatSkillLabel } from '@/lib/skillUtils';
+import { TestModeBanner } from '@/components/payments/TestModeBanner';
+import { StripeTestHelper } from '@/components/payments/StripeTestHelper';
 
 interface ApplicationCardProps {
   application: CampaignApplication;
@@ -204,8 +206,9 @@ const ApplicationCardComponent: React.FC<ApplicationCardProps> = ({
 
         {/* Accepted: Show Pay Escrow button if escrow not yet held */}
         {application.status === 'accepted' && campaignEscrowStatus !== 'held' && campaignEscrowStatus !== 'released' && (
-          <div className="pt-4 border-t">
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-3">
+          <div className="pt-4 border-t space-y-3">
+            <TestModeBanner />
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
               <p className="text-sm font-medium text-amber-800">
                 💳 Payment required to start the project
               </p>
@@ -213,6 +216,7 @@ const ApplicationCardComponent: React.FC<ApplicationCardProps> = ({
                 Pay the agreed amount of {formatCurrency(agreedAmount || 0)} into escrow. The creator will begin work after payment is confirmed.
               </p>
             </div>
+            <StripeTestHelper variant="cards" />
             <Button
               onClick={handlePayEscrow}
               disabled={isPayingEscrow}
@@ -253,6 +257,12 @@ const ApplicationCardComponent: React.FC<ApplicationCardProps> = ({
                   userRole={userRole}
                 />
               </div>
+            ) : counterOffers.some(o => o.status === 'pending') ? (
+              <div className="pt-4 border-t">
+                <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3 text-center">
+                  Counter offer pending — waiting for response
+                </p>
+              </div>
             ) : (
               <div className="flex gap-2 pt-4 border-t">
                 <Button
@@ -262,7 +272,7 @@ const ApplicationCardComponent: React.FC<ApplicationCardProps> = ({
                   size="sm"
                 >
                   <Check className="h-4 w-4 mr-2" aria-hidden="true" />
-                  Accept
+                  Accept {acceptedOffer ? `(${formatCurrency(acceptedOffer.proposed_rate)})` : ''}
                 </Button>
                 <Button
                   onClick={() => setShowCounterModal(true)}
