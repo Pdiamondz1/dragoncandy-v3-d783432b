@@ -81,13 +81,9 @@ export const BrandCampaignReviewStep = ({
         tagline: briefData.tagline || null,
         target_creator_personas: briefData.targetPersonas,
         geographic_scope: briefData.geographicScope || null,
-        budget_min: detailsData.budgetMin || null,
+        budget_min: detailsData.budgetMax || null,
         budget_max: detailsData.budgetMax || null,
-        per_creator_cap: detailsData.perCreatorCap || null,
-        creator_count: detailsData.creatorCount || null,
         hashtag_requirements: detailsData.hashtagRequirements || null,
-        usage_rights_days: detailsData.usageRightsDays,
-        exclusivity_days: detailsData.exclusivityDays || null,
         deadline: deadline ? format(deadline, 'yyyy-MM-dd') : null,
         status: status,
         ai_preview_status: 'none',
@@ -151,11 +147,6 @@ export const BrandCampaignReviewStep = ({
       setIsSubmitting(false);
     }
   };
-
-  const usageRightsLabel =
-    detailsData.usageRightsDays === 0
-      ? 'Perpetual'
-      : `${detailsData.usageRightsDays} days`;
 
   return (
     <div className="space-y-4">
@@ -236,40 +227,16 @@ export const BrandCampaignReviewStep = ({
           </Button>
         </CardHeader>
         <CardContent className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <p className="text-sm text-gray-500">Budget Range</p>
-              <p className="font-semibold">
-                ${detailsData.budgetMin.toLocaleString()} – ${detailsData.budgetMax.toLocaleString()}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Per-Creator Cap</p>
-              <p className="font-semibold">
-                {detailsData.perCreatorCap
-                  ? `$${detailsData.perCreatorCap.toLocaleString()}`
-                  : '—'}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Creator Count</p>
-              <p className="font-semibold">{detailsData.creatorCount || '—'}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Usage Rights</p>
-              <p className="font-semibold">{usageRightsLabel}</p>
-            </div>
+          <div>
+            <p className="text-sm text-gray-500">Proposed Budget</p>
+            <p className="font-semibold">
+              ${detailsData.budgetMax.toLocaleString()}
+            </p>
           </div>
           {detailsData.hashtagRequirements && (
             <div>
               <p className="text-sm text-gray-500">Hashtag Requirements</p>
               <p className="text-gray-700">{detailsData.hashtagRequirements}</p>
-            </div>
-          )}
-          {detailsData.exclusivityDays > 0 && (
-            <div>
-              <p className="text-sm text-gray-500">Exclusivity Period</p>
-              <p className="font-semibold">{detailsData.exclusivityDays} days</p>
             </div>
           )}
         </CardContent>

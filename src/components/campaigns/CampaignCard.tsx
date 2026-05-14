@@ -3,11 +3,12 @@ import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Loader2 } from 'lucide-react';
+import { Loader2, RefreshCw, UserPlus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Campaign } from '@/hooks/useCampaigns';
 import { format } from 'date-fns';
 import { useCampaignApplicationsCount } from '@/hooks/useCampaignApplicationsCount';
+import { useDuplicateCampaign } from '@/hooks/useCampaignMutations';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
@@ -68,6 +69,7 @@ function getStepLabel(phase: CampaignPhase, step: ProjectStep | null, applicatio
 
 const CampaignCardComponent: React.FC<CampaignCardProps> = ({ campaign }) => {
   const { data: applicationCounts } = useCampaignApplicationsCount(campaign.id);
+  const duplicateCampaign = useDuplicateCampaign();
   const { toast } = useToast();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -251,6 +253,40 @@ const CampaignCardComponent: React.FC<CampaignCardProps> = ({ campaign }) => {
             </>
           ) : ctaLabel}
         </Button>
+
+        {/* Reuse actions for completed campaigns */}
+        {phase === 'completed' && (
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex-1 rounded-full text-xs"
+              disabled={duplicateCampaign.isPending}
+              onClick={async () => {
+                const result = await duplicateCampaign.mutateAsync(campaign.id);
+                if (result?.id) navigate(`/dashboard/business/campaigns/${result.id}/edit`);
+              }}
+            >
+              <RefreshCw className="h-3 w-3 mr-1" />
+              Re-Launch
+            </Button>
+            {campaign.creator_name && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1 rounded-full text-xs"
+                disabled={duplicateCampaign.isPending}
+                onClick={async () => {
+                  const result = await duplicateCampaign.mutateAsync(campaign.id);
+                  if (result?.id) navigate(`/dashboard/business/campaigns/${result.id}/edit`);
+                }}
+              >
+                <UserPlus className="h-3 w-3 mr-1" />
+                Re-Hire Creator
+              </Button>
+            )}
+          </div>
+        )}
       </CardContent>
     </Card>
   );

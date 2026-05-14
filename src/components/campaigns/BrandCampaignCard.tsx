@@ -44,12 +44,10 @@ export const BrandCampaignCard: React.FC<BrandCampaignCardProps> = ({
   };
 
   const getBudgetRange = () => {
-    if (campaign.budget_min && campaign.budget_max) {
-      return `${formatCurrency(campaign.budget_min)} - ${formatCurrency(campaign.budget_max)}`;
+    if (campaign.budget_max) {
+      return formatCurrency(campaign.budget_max);
     } else if (campaign.budget_min) {
-      return `From ${formatCurrency(campaign.budget_min)}`;
-    } else if (campaign.budget_max) {
-      return `Up to ${formatCurrency(campaign.budget_max)}`;
+      return formatCurrency(campaign.budget_min);
     }
     return 'Budget not specified';
   };

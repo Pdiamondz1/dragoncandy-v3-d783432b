@@ -69,8 +69,11 @@ export function formatBudget(campaign: {
     const total = campaign.fixed_price + (campaign.delivery_fee || 0);
     return `$${total}`;
   }
-  if (campaign.budget_min && campaign.budget_max) return `$${campaign.budget_min}–$${campaign.budget_max}`;
-  if (campaign.budget_min) return `From $${campaign.budget_min}`;
-  if (campaign.budget_max) return `Up to $${campaign.budget_max}`;
+  if (campaign.budget_min && campaign.budget_max) {
+    if (campaign.budget_min === campaign.budget_max) return `$${campaign.budget_max}`;
+    return `$${campaign.budget_min}–$${campaign.budget_max}`;
+  }
+  if (campaign.budget_min) return `$${campaign.budget_min}`;
+  if (campaign.budget_max) return `$${campaign.budget_max}`;
   return 'Budget TBD';
 }

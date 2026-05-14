@@ -151,16 +151,10 @@ export const CampaignMapView: React.FC<CampaignMapViewProps> = ({ campaigns, onV
                   </div>
                 </div>
 
-                {(selectedCampaign.budget_min || selectedCampaign.budget_max) && (
+                {selectedCampaign.budget_max && (
                   <div className="flex items-center gap-2 text-sm">
                     <DollarSign className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-                    <span>
-                      {selectedCampaign.budget_min && selectedCampaign.budget_max
-                        ? `$${selectedCampaign.budget_min.toLocaleString()} - $${selectedCampaign.budget_max.toLocaleString()}`
-                        : selectedCampaign.budget_max
-                        ? `Up to $${selectedCampaign.budget_max.toLocaleString()}`
-                        : `From $${selectedCampaign.budget_min?.toLocaleString()}`}
-                    </span>
+                    <span>${selectedCampaign.budget_max.toLocaleString()}</span>
                   </div>
                 )}
 

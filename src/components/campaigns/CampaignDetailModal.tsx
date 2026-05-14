@@ -187,13 +187,6 @@ export const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
                 </div>
               )}
 
-              {/* Budget + per-creator */}
-              {campaign.per_creator_cap != null && (
-                <div className="text-sm text-gray-600">
-                  Per creator: up to <strong className="text-gray-800">${campaign.per_creator_cap}</strong>
-                </div>
-              )}
-
               {/* Delivery tier + deadline */}
               <div className="flex flex-wrap gap-2 items-center">
                 {tierConfig && deliveryTier && (
@@ -206,15 +199,12 @@ export const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
                 )}
               </div>
 
-              {/* Geographic scope + creator count */}
-              <div className="flex flex-wrap gap-3 text-xs text-gray-600">
-                {campaign.geographic_scope && (
+              {/* Geographic scope */}
+              {campaign.geographic_scope && (
+                <div className="flex flex-wrap gap-3 text-xs text-gray-600">
                   <span className="capitalize">{campaign.geographic_scope} scope</span>
-                )}
-                {campaign.creator_count != null && (
-                  <span>{campaign.creator_count} creator{campaign.creator_count !== 1 ? 's' : ''} wanted</span>
-                )}
-              </div>
+                </div>
+              )}
 
               {/* Target personas */}
               {campaign.target_creator_personas && campaign.target_creator_personas.length > 0 && (
@@ -261,15 +251,6 @@ export const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
                 </p>
               )}
 
-              {/* Usage rights + exclusivity */}
-              <div className="flex flex-wrap gap-3 text-xs text-gray-600">
-                {campaign.usage_rights_days != null && (
-                  <span>Usage: {campaign.usage_rights_days} days</span>
-                )}
-                {campaign.exclusivity_days != null && (
-                  <span>Exclusivity: {campaign.exclusivity_days} days</span>
-                )}
-              </div>
             </div>
 
             {/* View Full Details link */}
@@ -418,7 +399,7 @@ export const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
               <div className="text-xs text-gray-500 mt-1">
                 {campaign.pricing_type === 'fixed'
                   ? 'Fixed price'
-                  : 'Bid range · You\'ll propose your rate when applying'
+                  : 'Proposed budget · You can counter-offer when applying'
                 }
               </div>
               <div className="text-xs text-gray-500 mt-0.5">Payment via Stripe upon approval</div>
@@ -479,7 +460,7 @@ export const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
           </div>
 
           {/* Sticky Apply Button */}
-          {!showApplyForm && !readOnly && (
+          {!showApplyForm && !readOnly && campaign.status !== 'active' && (
             <div className="flex-shrink-0 px-4 py-3 border-t border-gray-100 bg-white shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
               <button
                 onClick={() => setShowApplyForm(true)}
@@ -487,6 +468,13 @@ export const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
               >
                 Apply for This Campaign
               </button>
+            </div>
+          )}
+          {!readOnly && campaign.status === 'active' && (
+            <div className="flex-shrink-0 px-4 py-3 border-t border-gray-100 bg-white">
+              <div className="w-full bg-gray-100 text-gray-500 rounded-full py-3.5 font-bold text-sm text-center">
+                Position Filled
+              </div>
             </div>
           )}
         </div>

@@ -358,12 +358,12 @@ export const CampaignFinalizeStep: React.FC<CampaignFinalizeStepProps> = ({
             <div className="p-3 rounded-lg bg-background/50 min-w-0">
               <div className="flex items-center gap-1 text-muted-foreground text-xs mb-1">
                 <DollarSign className="h-3.5 w-3.5 shrink-0" />
-                <span className="truncate">{campaignData.pricingType === 'fixed' ? 'Creator Payout' : 'Budget Range'}</span>
+                <span className="truncate">{campaignData.pricingType === 'fixed' ? 'Creator Payout' : 'Proposed Budget'}</span>
               </div>
               <p className="font-semibold text-sm truncate">
                 {campaignData.pricingType === 'fixed'
                   ? `$${campaignData.fixedPrice}`
-                  : `$${campaignData.budgetMin} - $${campaignData.budgetMax}`
+                  : `$${campaignData.budgetMax}`
                 }
               </p>
             </div>
@@ -488,7 +488,7 @@ export const CampaignFinalizeStep: React.FC<CampaignFinalizeStepProps> = ({
           <span className="font-medium">
             {campaignData.pricingType === 'fixed'
               ? `$${campaignData.fixedPrice?.toFixed(2)}`
-              : `$${campaignData.budgetMin}–$${campaignData.budgetMax}`}
+              : `$${campaignData.budgetMax}`}
           </span>
         </div>
         {campaignData.deliveryFee > 0 && (

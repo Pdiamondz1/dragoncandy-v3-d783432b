@@ -95,6 +95,15 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
       } catch (e) {
         console.error('Failed to send content approval email:', e);
       }
+
+      // Trigger social hook to auto-draft scheduled posts for all parties
+      try {
+        await supabase.functions.invoke('fire-campaign-social-hook', {
+          body: { campaign_id: campaignId, stage: 4 },
+        });
+      } catch (e) {
+        console.error('Failed to trigger social hook:', e);
+      }
     },
     onError: (err: Error) => {
       toast({ variant: 'destructive', title: 'Approval Failed', description: err.message });

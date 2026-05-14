@@ -109,6 +109,59 @@ export const useManageApplication = () => {
         } catch (collabError) {
           console.error('Failed to auto-create collaboration:', collabError);
         }
+
+        // Auto-decline all other pending/counter_offered applications for this campaign
+        try {
+          const { data: otherApps } = await supabase
+            .from('campaign_applications')
+            .select('id, creator_id')
+            .eq('campaign_id', data.campaign_id)
+            .neq('id', data.id)
+            .in('status', ['pending', 'counter_offered']);
+
+          if (otherApps && otherApps.length > 0) {
+            await supabase
+              .from('campaign_applications')
+              .update({ status: 'rejected' })
+              .eq('campaign_id', data.campaign_id)
+              .neq('id', data.id)
+              .in('status', ['pending', 'counter_offered']);
+
+            // Notify declined creators
+            const { data: campaignInfo } = await supabase
+              .from('campaigns')
+              .select('title')
+              .eq('id', data.campaign_id)
+              .single();
+
+            for (const app of otherApps) {
+              try {
+                const { data: profile } = await supabase
+                  .from('profiles')
+                  .select('email, full_name')
+                  .eq('id', app.creator_id)
+                  .single();
+
+                if (profile?.email && campaignInfo?.title) {
+                  await sendNotification(
+                    'application_status',
+                    profile.email,
+                    profile.full_name,
+                    {
+                      campaignTitle: campaignInfo.title,
+                      applicationStatus: 'rejected',
+                      campaignId: data.campaign_id,
+                    }
+                  );
+                }
+              } catch {
+                // Best-effort notification
+              }
+            }
+          }
+        } catch (declineError) {
+          console.error('Failed to auto-decline other applications:', declineError);
+        }
       }
 
       // Send email notification to creator

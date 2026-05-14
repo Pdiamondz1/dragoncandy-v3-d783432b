@@ -81,29 +81,6 @@ export function CampaignEditor({
       <EditorSection title="Compensation & Terms" id="section-compensation">
         <BudgetSlider min={campaign.budget_min} max={campaign.budget_max}
           onChangeMin={(v) => updateField('budget_min', v)} onChangeMax={(v) => updateField('budget_max', v)} />
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="text-xs font-medium text-gray-500">Per-Creator Cap</label>
-            <div className="flex items-center gap-1 mt-1">
-              <span className="text-sm text-gray-500">$</span>
-              <Input type="text" inputMode="numeric" pattern="[0-9]*" value={campaign.per_creator_cap || ''}
-                onChange={(e) => { const clean = sanitizeNumericInput(e.target.value); updateField('per_creator_cap', Number(clean) || 0); }} className="text-sm" />
-            </div>
-          </div>
-          <div />
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="text-xs font-medium text-gray-500">Usage Rights (days)</label>
-            <Input type="text" inputMode="numeric" pattern="[0-9]*" value={campaign.usage_rights_days || ''}
-              onChange={(e) => { const clean = sanitizeNumericInput(e.target.value); updateField('usage_rights_days', Number(clean) || 0); }} className="mt-1 text-sm" />
-          </div>
-          <div>
-            <label className="text-xs font-medium text-gray-500">Exclusivity (days)</label>
-            <Input type="text" inputMode="numeric" pattern="[0-9]*" value={campaign.exclusivity_days || ''}
-              onChange={(e) => { const clean = sanitizeNumericInput(e.target.value); updateField('exclusivity_days', Number(clean) || 0); }} className="mt-1 text-sm" />
-          </div>
-        </div>
         <CostBreakdown
           deliverableCount={campaign.deliverables.length}
           budgetTotal={campaign.budget_max + tierConfig.fee}
@@ -129,11 +106,6 @@ export function CampaignEditor({
               </button>
             ))}
           </div>
-        </div>
-        <div>
-          <label className="text-xs font-medium text-gray-500">Target Creator Count</label>
-          <Input type="text" inputMode="numeric" pattern="[0-9]*" value={campaign.target_creator_count || ''}
-            onChange={(e) => { const clean = sanitizeNumericInput(e.target.value); updateField('target_creator_count', Number(clean) || 0); }} className="mt-1 text-sm w-24" />
         </div>
         <div>
           <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Target Creators</label>

@@ -44,8 +44,7 @@ export function TemplateStrip() {
                 <p className="font-bold text-sm text-gray-900 line-clamp-1">{t.title}</p>
                 <p className="text-[11px] text-gray-500 mt-1">
                   {t.deliverables?.length ?? 0} item{(t.deliverables?.length ?? 0) !== 1 ? 's' : ''}
-                  {t.budget_min ? ` · $${t.budget_min}` : ''}
-                  {t.budget_max ? `–$${t.budget_max}` : ''}
+                  {t.budget_max ? ` · $${t.budget_max}` : t.budget_min ? ` · $${t.budget_min}` : ''}
                 </p>
                 <p className="text-[11px] text-teal-500 mt-1">
                   {t.use_count > 0 ? `Used ${t.use_count} time${t.use_count !== 1 ? 's' : ''}` : 'New'}

@@ -343,60 +343,6 @@ const CampaignEditPage: React.FC = () => {
               onChangeMax={val => handleInputChange('budget_max', val.toString())}
             />
 
-            {/* Per creator cap */}
-            <div>
-              <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Per Creator Cap ($)
-              </label>
-              <Input
-                type="text"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                value={formData.per_creator_cap}
-                onChange={e =>
-                  handleInputChange('per_creator_cap', sanitizeNumericInput(e.target.value))
-                }
-                placeholder="0"
-                className="mt-2 text-sm h-10 w-32"
-              />
-            </div>
-
-            {/* Usage rights */}
-            <div>
-              <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Usage Rights (days)
-              </label>
-              <Input
-                type="text"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                value={formData.usage_rights_days}
-                onChange={e =>
-                  handleInputChange('usage_rights_days', sanitizeNumericInput(e.target.value))
-                }
-                placeholder="0"
-                className="mt-2 text-sm h-10 w-32"
-              />
-            </div>
-
-            {/* Exclusivity */}
-            <div>
-              <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Exclusivity (days)
-              </label>
-              <Input
-                type="text"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                value={formData.exclusivity_days}
-                onChange={e =>
-                  handleInputChange('exclusivity_days', sanitizeNumericInput(e.target.value))
-                }
-                placeholder="0"
-                className="mt-2 text-sm h-10 w-32"
-              />
-            </div>
-
             <CostBreakdown
               deliverableCount={deliverableCount}
               budgetTotal={budgetMax}
@@ -448,27 +394,6 @@ const CampaignEditPage: React.FC = () => {
                   </button>
                 ))}
               </div>
-            </div>
-
-            {/* Target creator count */}
-            <div>
-              <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Target Creator Count
-              </label>
-              <Input
-                type="text"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                value={formData.target_creator_count}
-                onChange={e =>
-                  handleInputChange(
-                    'target_creator_count',
-                    sanitizeNumericInput(e.target.value),
-                  )
-                }
-                placeholder="0"
-                className="mt-2 text-sm h-10 w-32"
-              />
             </div>
 
             {/* Creator personas */}

@@ -132,14 +132,14 @@ const BrandCampaignDetails = () => {
           )}
 
           {/* Stats row with pink dividers */}
-          {(campaign.budget_min || campaign.budget_max || campaign.deadline) && (
+          {(campaign.budget_max || campaign.deadline) && (
             <div className="flex items-stretch rounded-2xl overflow-hidden border border-gray-100">
-              {campaign.budget_min && campaign.budget_max && (
+              {campaign.budget_max && (
                 <div className="flex-1 flex flex-col items-center py-4 px-2 border-r border-dc-pink">
                   <DollarSign className="h-4 w-4 text-dc-teal mb-1" aria-hidden="true" />
-                  <span className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-0.5">Budget</span>
+                  <span className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-0.5">Proposed Budget</span>
                   <span className="text-sm font-bold text-gray-900 text-center leading-tight">
-                    ${campaign.budget_min.toLocaleString()}–${campaign.budget_max.toLocaleString()}
+                    ${campaign.budget_max.toLocaleString()}
                   </span>
                 </div>
               )}
@@ -215,50 +215,14 @@ const BrandCampaignDetails = () => {
             </div>
           )}
 
-          {/* Budget Terms */}
-          {(campaign.per_creator_cap || campaign.usage_rights_days || campaign.exclusivity_days) && (
+          {/* Scope: Geographic */}
+          {campaign.geographic_scope && (
             <div className="flex items-stretch rounded-2xl overflow-hidden border border-gray-100">
-              {campaign.per_creator_cap != null && (
-                <div className="flex-1 flex flex-col items-center py-4 px-2 border-r border-dc-pink">
-                  <UserCheck className="h-4 w-4 text-dc-teal mb-1" aria-hidden="true" />
-                  <span className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-0.5">Per-Creator Cap</span>
-                  <span className="text-sm font-bold text-gray-900">${campaign.per_creator_cap}</span>
-                </div>
-              )}
-              {campaign.usage_rights_days != null && (
-                <div className="flex-1 flex flex-col items-center py-4 px-2 border-r border-dc-pink">
-                  <Shield className="h-4 w-4 text-dc-teal mb-1" aria-hidden="true" />
-                  <span className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-0.5">Usage Rights</span>
-                  <span className="text-sm font-bold text-gray-900">{campaign.usage_rights_days} days</span>
-                </div>
-              )}
-              {campaign.exclusivity_days != null && (
-                <div className="flex-1 flex flex-col items-center py-4 px-2">
-                  <Lock className="h-4 w-4 text-dc-teal mb-1" aria-hidden="true" />
-                  <span className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-0.5">Exclusivity</span>
-                  <span className="text-sm font-bold text-gray-900">{campaign.exclusivity_days} days</span>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Scope: Geographic + Creator Count */}
-          {(campaign.geographic_scope || campaign.creator_count) && (
-            <div className="flex items-stretch rounded-2xl overflow-hidden border border-gray-100">
-              {campaign.geographic_scope && (
-                <div className="flex-1 flex flex-col items-center py-4 px-2 border-r border-dc-pink">
-                  <Globe className="h-4 w-4 text-dc-teal mb-1" aria-hidden="true" />
-                  <span className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-0.5">Geographic Scope</span>
-                  <span className="text-sm font-bold text-gray-900 capitalize">{campaign.geographic_scope}</span>
-                </div>
-              )}
-              {campaign.creator_count != null && (
-                <div className="flex-1 flex flex-col items-center py-4 px-2">
-                  <Users className="h-4 w-4 text-dc-teal mb-1" aria-hidden="true" />
-                  <span className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-0.5">Target Creators</span>
-                  <span className="text-sm font-bold text-gray-900">{campaign.creator_count}</span>
-                </div>
-              )}
+              <div className="flex-1 flex flex-col items-center py-4 px-2">
+                <Globe className="h-4 w-4 text-dc-teal mb-1" aria-hidden="true" />
+                <span className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-0.5">Geographic Scope</span>
+                <span className="text-sm font-bold text-gray-900 capitalize">{campaign.geographic_scope}</span>
+              </div>
             </div>
           )}
 

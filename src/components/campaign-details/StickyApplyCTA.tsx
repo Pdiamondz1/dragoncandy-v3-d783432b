@@ -1,4 +1,4 @@
-import { Send, CheckCircle, FolderOpen } from 'lucide-react';
+import { Send, CheckCircle, FolderOpen, UserCheck } from 'lucide-react';
 
 interface StickyApplyCTAProps {
   canApply: boolean;
@@ -7,6 +7,7 @@ interface StickyApplyCTAProps {
   onApply: () => void;
   onViewProject: () => void;
   spotsTotal?: number | null;
+  positionFilled?: boolean;
 }
 
 export function StickyApplyCTA({
@@ -16,6 +17,7 @@ export function StickyApplyCTA({
   onApply,
   onViewProject,
   spotsTotal,
+  positionFilled,
 }: StickyApplyCTAProps) {
   const canReapply = hasApplied && applicationStatus === 'rejected';
 
@@ -55,10 +57,11 @@ export function StickyApplyCTA({
             Apply Again
           </button>
         )}
-        {spotsTotal && (
-          <p className="text-center text-xs text-gray-500 mt-1.5">
-            {spotsTotal} spots total
-          </p>
+        {positionFilled && !hasApplied && (
+          <div className="w-full rounded-full bg-gray-100 text-gray-500 font-bold py-3.5 h-14 flex items-center justify-center gap-2">
+            <UserCheck className="h-4 w-4" />
+            Position Filled
+          </div>
         )}
       </div>
     </div>

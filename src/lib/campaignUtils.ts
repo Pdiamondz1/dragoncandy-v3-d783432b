@@ -87,10 +87,11 @@ export function formatBudget(campaign: {
     return `$${campaign.fixed_price}`;
   }
   if (campaign.budget_min && campaign.budget_max) {
+    if (campaign.budget_min === campaign.budget_max) return `$${campaign.budget_max}`;
     return `$${campaign.budget_min} – $${campaign.budget_max}`;
   }
-  if (campaign.budget_min) return `From $${campaign.budget_min}`;
-  if (campaign.budget_max) return `Up to $${campaign.budget_max}`;
+  if (campaign.budget_min) return `$${campaign.budget_min}`;
+  if (campaign.budget_max) return `$${campaign.budget_max}`;
   return 'Budget TBD';
 }
 

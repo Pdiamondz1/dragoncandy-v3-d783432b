@@ -324,7 +324,7 @@ const CampaignDetailsPage: React.FC = () => {
               applicationStatus={applicationStatus}
               onApply={() => setShowApplySheet(true)}
               onViewProject={() => navigate('/dashboard/creator/projects')}
-              spotsTotal={campaign.creator_count}
+              positionFilled={campaign.status === 'active'}
             />
 
             <OneTapApplySheet

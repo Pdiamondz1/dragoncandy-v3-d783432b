@@ -53,13 +53,10 @@ const CampaignMarketplaceListItemComponent: React.FC<CampaignMarketplaceListItem
     
     // Bid-range campaigns
     if (campaign.budget_max) {
-      if (campaign.budget_min) {
-        return `${formatCurrency(campaign.budget_min)} - ${formatCurrency(campaign.budget_max)}`;
-      }
-      return `Up to ${formatCurrency(campaign.budget_max)}`;
+      return formatCurrency(campaign.budget_max);
     }
     if (campaign.budget_min) {
-      return `From ${formatCurrency(campaign.budget_min)}`;
+      return formatCurrency(campaign.budget_min);
     }
     return 'Budget not specified';
   };
@@ -92,7 +89,12 @@ const CampaignMarketplaceListItemComponent: React.FC<CampaignMarketplaceListItem
             )}
           </div>
 
-          {/* Application Status Badge */}
+          {/* Application / Filled Status Badge */}
+          {campaign.status === 'active' && !campaign.user_applied && (
+            <Badge variant="secondary" className="ml-2 bg-gray-100 text-gray-500 shadow-sm">
+              Position Filled
+            </Badge>
+          )}
           {campaign.user_applied && campaign.application_status && (
             <div className="ml-2">
               {campaign.application_status === 'pending' && (

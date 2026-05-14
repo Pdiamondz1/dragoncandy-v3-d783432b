@@ -8,21 +8,31 @@ interface BudgetSliderProps {
   onChangeMax: (val: number) => void;
 }
 
-export function BudgetSlider({ min, max, onChangeMin, onChangeMax }: BudgetSliderProps) {
+export function BudgetSlider({ max, onChangeMin, onChangeMax }: BudgetSliderProps) {
+  const handleChange = (val: number) => {
+    onChangeMin(val);
+    onChangeMax(val);
+  };
+
   return (
     <div>
-      <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Budget Range</label>
-      <div className="flex items-center gap-3 mt-2">
-        <div className="flex items-center gap-1">
-          <span className="text-sm text-gray-500">$</span>
-          <Input type="text" inputMode="numeric" pattern="[0-9]*" value={min || ''} onChange={(e) => { const clean = sanitizeNumericInput(e.target.value); onChangeMin(Number(clean) || 0); }} className="w-24 text-sm" />
-        </div>
-        <span className="text-gray-400">—</span>
-        <div className="flex items-center gap-1">
-          <span className="text-sm text-gray-500">$</span>
-          <Input type="text" inputMode="numeric" pattern="[0-9]*" value={max || ''} onChange={(e) => { const clean = sanitizeNumericInput(e.target.value); onChangeMax(Number(clean) || 0); }} className="w-24 text-sm" />
-        </div>
+      <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Proposed Budget</label>
+      <div className="flex items-center gap-1 mt-2">
+        <span className="text-sm text-gray-500">$</span>
+        <Input
+          type="text"
+          inputMode="numeric"
+          pattern="[0-9]*"
+          value={max || ''}
+          onChange={(e) => {
+            const clean = sanitizeNumericInput(e.target.value);
+            handleChange(Number(clean) || 0);
+          }}
+          placeholder="e.g. 500"
+          className="w-32 text-sm"
+        />
       </div>
+      <p className="text-[11px] text-gray-400 mt-1">Creators can counter-offer during negotiation</p>
     </div>
   );
 }

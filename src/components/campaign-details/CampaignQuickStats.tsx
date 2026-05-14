@@ -8,7 +8,8 @@ interface CampaignQuickStatsProps {
 export function CampaignQuickStats({ budgetMin, budgetMax, deadline, creatorCount }: CampaignQuickStatsProps) {
   const formatBudget = () => {
     if (!budgetMin && !budgetMax) return 'TBD';
-    return `$${budgetMin ?? 0}–${budgetMax ?? 0}`;
+    if (budgetMin && budgetMax && budgetMin !== budgetMax) return `$${budgetMin}–${budgetMax}`;
+    return `$${budgetMax ?? budgetMin ?? 0}`;
   };
 
   const formatDeadline = () => {
