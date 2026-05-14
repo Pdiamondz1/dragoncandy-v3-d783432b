@@ -1,5 +1,7 @@
 @docs/PROJECT_CONTEXT.md
-# DragonCandy — Claude Code Briefing
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Project Overview
 
@@ -21,28 +23,60 @@ Simplify and optimize.
 Accelerate cycle time.
 Automate.
 
+## Commands
+
+```bash
+npm run dev          # Start dev server (http://127.0.0.1:8080)
+npm run build        # Production build (vite build) — run before every push
+npm run build:dev    # Development build (vite build --mode development)
+npm run typecheck    # TypeScript check (tsc --noEmit -p tsconfig.app.json)
+npm run lint         # ESLint (flat config, eslint.config.js)
+npm run test         # Run tests once (vitest run)
+npm run test:watch   # Run tests in watch mode (vitest)
+npm run preview      # Preview production build locally
+```
+
+**Workflow:** One change → `npm run build` → verify → push. Always build before pushing to main.
+
 ## Tech Stack
 
-* **Frontend:** React + TypeScript, hosted on Lovable.dev → dragoncandy.io
+* **Frontend:** React 18 + TypeScript (strict), Vite, hosted on Lovable.dev → dragoncandy.io
 * **Backend:** Supabase (Postgres, Auth, Edge Functions, Realtime, Storage)
-* **Payments:** Stripe (currently using Stripe test mode)
+* **Payments:** Stripe Connect (currently using Stripe test mode)
 * **Repo:** GitHub (auto-syncs with Lovable on push)
-* **Styling:** Tailwind CSS only — no custom CSS unless absolutely necessary
+* **UI Components:** shadcn/ui (Radix primitives) — configured in `components.json`, components in `src/components/ui/`
+* **Styling:** Tailwind CSS only — no custom CSS unless absolutely necessary. Font: Outfit (sans), Pacifico (script)
 * **Data Fetching:** React Query (TanStack Query) for all server state
+* **Animations:** Framer Motion (lazy-loaded via `LazyMotion`)
 * **Components:** Functional components only — no class components
 
 \---
 
 ## Coding Conventions
 
-* **TypeScript strict mode** — all code must be fully typed, no `any` unless unavoidable
+* **TypeScript strict mode** — `tsconfig.app.json` has `strict: true`, `noUnusedLocals`, `noUnusedParameters`
 * **Functional components only** — hooks over lifecycle methods
 * **React Query** for all Supabase data fetching, mutations, and caching
-* **Tailwind** for all styling — follow existing class patterns in the codebase
-* Match the conventions and tooling used by **Lovable.dev** and **Supabase** (e.g. Supabase JS client v2, Vite, shadcn/ui if present)
+* **Tailwind** for all styling — use `dc-*` color tokens (see Design System), follow existing class patterns
+* **Path alias** — `@/` maps to `src/` (e.g. `import { supabase } from "@/integrations/supabase/client"`)
+* Match the conventions and tooling used by **Lovable.dev** and **Supabase** (e.g. Supabase JS client v2, Vite, shadcn/ui)
 * Always add **error handling** for Supabase queries and mutations
 * Always handle **loading and error states** in UI components
 * Use **named exports** for components, **default exports** only for pages
+
+### ESLint Rules
+
+* `no-console` — only `console.error` and `console.warn` allowed (no `console.log` in committed code)
+* `@typescript-eslint/no-explicit-any` — warning level, fix when possible
+* `@typescript-eslint/no-unused-vars` — warning, prefix unused args/vars with `_`
+* ESLint ignores: `dist/`, `.claude/**`, `.worktrees/**`, `supabase/**`
+
+### React Query Conventions
+
+* Hook naming: `use<Entity><Action>` (e.g. `useBrandAnalytics`, `useWithdrawApplication`)
+* Query keys: `['entity-or-path', dependentId]` (e.g. `['campaign-detail', campaignId]`)
+* Always use `enabled: !!dependency` for conditional queries
+* Mutations: use `useQueryClient()` to invalidate related queries on success
 
 ## Code Review Standards
 After completing any implementation, review the code for:
@@ -53,6 +87,66 @@ After completing any implementation, review the code for:
 - Missing error handling on async operations
 
 Run /simplify before presenting code to the user.
+
+\---
+
+## Architecture
+
+### Provider Hierarchy (App.tsx)
+
+```
+ErrorBoundary → ThemeProvider → QueryClientProvider → LazyMotion → AuthProvider
+  → AnalyticsProvider → BrowserRouter → DonnyProviderWithAuth (non-public pages only)
+    → AppShell (SiteGateGuard + AnimatedRoutes + DonnyDesktopPanel + HelpBriefDrawer)
+```
+
+### Three User Roles
+
+| Role | `profiles.role` value | Route guard | Dashboard path |
+|-|-|-|-|
+| Restaurant/Business | `business_client` | `BusinessRoute` (checks `account_type === 'restaurant'`) | `/dashboard/business` |
+| Content Creator | `content_creator` | `ProtectedRoute` only | `/dashboard/creator` |
+| Brand/Sponsor | `brand` | `BrandRoute` (checks `account_type === 'brand'`) | `/dashboard/brand` |
+
+### Route Guards
+
+* **`ProtectedRoute`** — requires authenticated session, redirects to `/auth`
+* **`VerifiedRoute`** — requires authentication + email verification
+* **`BusinessRoute`** — requires `business_profiles.account_type === 'restaurant'`
+* **`BrandRoute`** — requires `business_profiles.account_type === 'brand'`
+
+### ErrorBoundary Levels
+
+`ErrorBoundary` accepts a `level` prop: `'page'` (default, full-height with logo), `'section'` (min-h-200), `'widget'` (min-h-200, used to isolate optional UI like Donny). Pass `fallback={null}` to silently swallow widget errors.
+
+### Supabase Client
+
+Single client instance at `src/integrations/supabase/client.ts`. Types are auto-generated at `src/integrations/supabase/types.ts` but may lag behind migrations — typed as `SupabaseClient<any, "public", any>` to accommodate.
+
+### Feature Modules
+
+Domain-specific code lives in `src/features/` (e.g. `features/donny/`, `features/promotions/`, `features/settings/`), each with its own components, hooks, and utilities. Prefer this pattern for self-contained feature code.
+
+### Edge Functions
+
+~60 Deno edge functions in `supabase/functions/`. Shared utilities in `supabase/functions/_shared/`:
+* `cors.ts` — origin allowlist (dragoncandy.io + preview), standard CORS headers
+* `auth.ts` — Donny OAuth token validation (not Supabase JWT), scope checking
+* `model-routing.ts` — AI model selection (Claude Sonnet/Haiku routing by task)
+* `cost-ledger.ts` — AI usage cost tracking per-request
+* `platform-fee.ts` / `dragonshare-fee.ts` — fee calculation
+* `anthropic-fetch.ts` — shared Claude API client
+* `outstand-mcp.ts` / `mcp-client.ts` — MCP integration for social posting
+
+\---
+
+## Testing
+
+* **Framework:** Vitest (configured in `vite.config.ts`, globals enabled)
+* **Libraries:** `@testing-library/react`, `@testing-library/jest-dom`
+* **Test files:** Co-located with source (e.g. `src/lib/donnyMatching.test.ts`, `src/hooks/useCampaignFilters.test.ts`)
+* **E2E tests:** `tests/e2e/` directory (e.g. `toast-integration.spec.ts`)
+* **Run a single test:** `npx vitest run src/lib/donnyMatching.test.ts`
 
 \---
 
@@ -171,23 +265,25 @@ src/
 
 > Screenshots of all screens are in the `/designs` folder. Always reference them when building or modifying UI.
 
-### Color Palette
+### Color Palette (Tailwind `dc-*` tokens)
 
-|Token|Hex|Usage|
-|-|-|-|
-|Mint / Teal (Primary)|`#4DD9C0` / `#00E5CC`|Primary buttons, borders, headings, icons, highlights|
-|Pink (Secondary)|`#F9A8D4` / `#FF69B4`|Inbound message bubbles, CTA accents, dashboard header bg|
-|Pink (Dark Accent)|`#EC4899`|Secondary buttons text, "Learn More" links, star ratings|
-|Background Gray|`#A8A8A0`|Main app background (most screens)|
-|Background White|`#FFFFFF`|Cards, profile stat sections, landing page|
-|Background Pink|`#F9C8E0`|Browse Creators page background, business dashboard header|
-|Text Dark|`#111111`|Headings, bold labels, card titles|
-|Text Gray|`#555555`|Body copy, subtitles, placeholder text|
-|Text White|`#FFFFFF`|Text on dark/image backgrounds, button labels|
-|Outbound Message Teal|`#4DD9C0`|Outbound (user) chat bubbles|
-|Inbound Message Pink|`#F9A8D4`|Inbound (other party) chat bubbles|
-|Nav Icon Gray|`#888888`|Bottom nav icons (inactive)|
-|CTA Yellow|`#FACC15`|Accent indicator strips on campaign cards|
+Use the `dc-*` Tailwind tokens defined in `tailwind.config.ts` — never hardcode hex values in components.
+
+|Token|Tailwind class|Hex|Usage|
+|-|-|-|-|
+|Teal (Primary)|`dc-teal`|`#4DD9C0`|Primary buttons, borders, headings, icons|
+|Teal Dark|`dc-teal-dark`|`#00E5CC`|Hover/accent teal|
+|Teal Button|`dc-teal-btn` / `dc-teal-btn-hover`|`#0F766E` / `#115E59`|Dark teal button fills|
+|Pink (Secondary)|`dc-pink`|`#F9A8D4`|Inbound bubbles, CTA accents|
+|Pink Accent|`dc-pink-accent`|`#EC4899`|Secondary button text, links, star ratings|
+|Pink Accent Button|`dc-pink-accent-btn` / hover|`#DB2777` / `#BE185D`|Pink button fills|
+|Pink Background|`dc-pink-bg`|`#F9C8E0`|Browse Creators, business dashboard header|
+|Gray Background|`dc-gray`|`#A8A8A0`|Main app background (most screens)|
+|Dark|`dc-dark`|`#1A1A2A`|Dark backgrounds|
+|Card|`dc-card`|`#FFFFFF`|Card backgrounds|
+|Text|`dc-text`|`#111111`|Headings, bold labels, card titles|
+|Text Muted|`dc-text-muted`|`#555555`|Body copy, subtitles, placeholder text|
+|Yellow|`dc-yellow`|`#FACC15`|CTA accent strips on campaign cards|
 
 ### Typography
 
