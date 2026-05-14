@@ -26,6 +26,16 @@ export const useCreateApplication = () => {
       proposedRate?: number;
       portfolioUrl?: string;
     }) => {
+      const { data: campaign } = await supabase
+        .from('campaigns')
+        .select('status')
+        .eq('id', campaignId)
+        .single();
+
+      if (campaign?.status !== 'published') {
+        throw new Error('This campaign is no longer accepting applications.');
+      }
+
       const { data, error } = await supabase
         .from('campaign_applications')
         .insert({
