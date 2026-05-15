@@ -8,8 +8,10 @@ import { CreatorCampaignDetails } from '@/components/campaign-details/CreatorCam
 import { ProjectStepper, getCreatorStep } from '@/components/projects/ProjectStepper';
 import { DeliverableCard } from '@/components/projects/DeliverableCard';
 import { ProjectFileUpload } from '@/components/projects/ProjectFileUpload';
+import { SubmitForReviewButton } from '@/components/campaigns/SubmitForReviewButton';
 import { useCollaboration } from '@/hooks/useCollaboration';
 import { useFileUploads } from '@/hooks/useFileQuery';
+import { useCampaignDeliverables } from '@/hooks/useCampaignDeliverables';
 
 interface ActivePhaseViewProps {
   campaign: Campaign;
@@ -21,10 +23,24 @@ type ActiveTab = 'project' | 'brief';
 
 export function ActivePhaseView({ campaign, enrichedDetail, collaborationId }: ActivePhaseViewProps) {
   const [activeTab, setActiveTab] = useState<ActiveTab>('project');
+  const [activeDeliverableUpload, setActiveDeliverableUpload] = useState<{
+    id: string;
+    label: string;
+    contentType: string;
+  } | null>(null);
   const navigate = useNavigate();
 
   const { data: collaboration } = useCollaboration(collaborationId);
   const { data: files } = useFileUploads(collaboration?.campaign_id, 'deliverable');
+  const { data: deliverables } = useCampaignDeliverables(campaign.id);
+
+  const totalDeliverables = deliverables?.length ?? 0;
+  const uploadedCount = deliverables?.filter((d) => {
+    const match = files?.find(
+      (f) => (f.metadata as Record<string, unknown>)?.deliverable_id === d.id,
+    );
+    return !!match;
+  }).length ?? 0;
 
   const tabs: { id: ActiveTab; label: string }[] = [
     { id: 'project', label: 'PROJECT' },
@@ -86,16 +102,42 @@ export function ActivePhaseView({ campaign, enrichedDetail, collaborationId }: A
                     uploadedFile={matchingFile ? { file_name: matchingFile.original_filename, file_size_bytes: matchingFile.file_size } : null}
                     feedback={collaboration.revision_feedback?.[d.id] ?? null}
                     disabled={collaboration.campaign?.escrow_status !== 'held'}
+                    onUpload={() => setActiveDeliverableUpload({
+                      id: d.id,
+                      label: `${d.platform ?? ''} ${d.content_type}`.trim(),
+                      contentType: d.content_type,
+                    })}
                   />
                 );
               })}
             </div>
           )}
 
-          {/* File Upload — renders its own dialog trigger button */}
+          {/* Per-deliverable upload dialog (controlled) */}
           <ProjectFileUpload
             campaignId={collaboration.campaign_id}
             campaignTitle={collaboration.campaign?.title || campaign.title}
+            deliverableId={activeDeliverableUpload?.id}
+            deliverableLabel={activeDeliverableUpload?.label}
+            acceptFilter={activeDeliverableUpload?.contentType === 'video' ? 'video/*' : undefined}
+            open={!!activeDeliverableUpload}
+            onOpenChange={(open) => { if (!open) setActiveDeliverableUpload(null); }}
+            onUploadComplete={() => setActiveDeliverableUpload(null)}
+          />
+
+          {/* Fallback upload button for non-deliverable files */}
+          <ProjectFileUpload
+            campaignId={collaboration.campaign_id}
+            campaignTitle={collaboration.campaign?.title || campaign.title}
+          />
+
+          {/* Submit for Review */}
+          <SubmitForReviewButton
+            collaborationId={collaborationId}
+            campaignId={campaign.id}
+            uploadedCount={uploadedCount}
+            totalCount={totalDeliverables}
+            contentStatus={collaboration.content_status ?? 'pending'}
           />
 
           {/* Messages CTA */}
