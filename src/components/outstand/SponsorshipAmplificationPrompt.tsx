@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Send, CalendarDays, Edit3, SkipForward, AlertTriangle } from 'lucide-react';
 import { DragonDashRushButton } from './DragonDashRushButton';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
@@ -29,6 +30,7 @@ function SponsorshipAmplificationPromptInner({
   creatorName,
   mediaUrls,
 }: SponsorshipAmplificationPromptProps) {
+  const navigate = useNavigate();
   const { apiKey, baseUrl } = useOutstandConfig();
   const { accounts } = useAccounts({ apiKey, baseUrl, limit: 100 });
   const { guidelines } = useBrandGuidelines();
@@ -174,7 +176,10 @@ function SponsorshipAmplificationPromptInner({
             </button>
             <button
               type="button"
-              onClick={() => toast.info('Scheduling coming soon')}
+              onClick={() => {
+                onOpenChange(false);
+                navigate('/dashboard/brand/social?tab=compose');
+              }}
               className="flex items-center justify-center gap-1.5 bg-white text-gray-700 text-sm font-semibold py-3 rounded-full border border-gray-200 hover:bg-gray-50 transition-colors"
             >
               <CalendarDays className="h-3.5 w-3.5" />
