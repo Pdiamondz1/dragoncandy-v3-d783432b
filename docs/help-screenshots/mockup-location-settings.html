@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DragonCandy - Location Settings Mockup</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f3f4f6; padding: 32px; color: #111; }
+  h1 { font-size: 24px; font-weight: 700; margin-bottom: 6px; }
+  h2 { font-size: 16px; font-weight: 600; margin-bottom: 12px; color: #374151; }
+  h3 { font-size: 14px; font-weight: 600; margin-bottom: 8px; color: #111; }
+  .subtitle { color: #6b7280; margin-bottom: 32px; max-width: 700px; font-size: 14px; line-height: 1.5; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; margin-bottom: 40px; }
+  .label-before { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #ef4444; margin-bottom: 8px; display: block; }
+  .label-after { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #16a34a; margin-bottom: 8px; display: block; }
+  .card { background: white; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); padding: 24px; max-width: 380px; }
+  .card-wide { background: white; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); padding: 24px; max-width: 500px; }
+  .mb { margin-bottom: 20px; }
+  .mt { margin-top: 40px; }
+
+  /* Location Switcher */
+  .switcher { display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: #f0fdfa; border: 2px solid #4DD9C0; border-radius: 12px; margin-bottom: 20px; cursor: pointer; }
+  .switcher-icon { width: 32px; height: 32px; border-radius: 8px; background: #4DD9C0; display: flex; align-items: center; justify-content: center; }
+  .switcher-text { flex: 1; }
+  .switcher-name { font-weight: 600; font-size: 14px; color: #111; }
+  .switcher-sub { font-size: 11px; color: #6b7280; }
+  .switcher-arrow { color: #9ca3af; font-size: 18px; }
+
+  /* Settings sections */
+  .section { border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+  .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .section-title { font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 8px; }
+  .status-connected { font-size: 11px; font-weight: 600; color: #16a34a; background: #dcfce7; padding: 2px 8px; border-radius: 999px; }
+  .status-missing { font-size: 11px; font-weight: 600; color: #ef4444; background: #fef2f2; padding: 2px 8px; border-radius: 999px; }
+  .status-pending { font-size: 11px; font-weight: 600; color: #f59e0b; background: #fffbeb; padding: 2px 8px; border-radius: 999px; }
+
+  /* Social accounts */
+  .social-item { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid #f3f4f6; }
+  .social-item:last-child { border-bottom: none; }
+  .social-icon { width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: white; }
+  .social-ig { background: linear-gradient(135deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888); }
+  .social-tt { background: #000; }
+  .social-fb { background: #1877f2; }
+  .social-handle { font-size: 13px; color: #374151; }
+  .social-status { font-size: 11px; color: #16a34a; margin-left: auto; }
+
+  /* Stripe section */
+  .stripe-row { display: flex; align-items: center; gap: 12px; padding: 8px 0; }
+  .stripe-icon { width: 32px; height: 32px; border-radius: 8px; background: #635bff; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 14px; }
+  .stripe-info { flex: 1; }
+  .stripe-label { font-size: 13px; font-weight: 500; color: #111; }
+  .stripe-detail { font-size: 11px; color: #6b7280; }
+
+  /* Buttons */
+  .btn-teal { display: inline-block; background: #4DD9C0; color: white; font-weight: 600; padding: 8px 20px; border-radius: 999px; font-size: 13px; border: none; cursor: pointer; }
+  .btn-outline { display: inline-block; background: white; color: #EC4899; font-weight: 600; padding: 8px 20px; border-radius: 999px; font-size: 13px; border: 2px solid #e5e7eb; cursor: pointer; }
+
+  /* Gate banner */
+  .gate-banner { background: #fffbeb; border: 1px solid #fde68a; border-radius: 12px; padding: 16px; display: flex; align-items: flex-start; gap: 12px; }
+  .gate-icon { font-size: 24px; flex-shrink: 0; }
+  .gate-text { font-size: 13px; color: #92400e; line-height: 1.5; }
+  .gate-text strong { color: #78350f; }
+  .gate-link { color: #4DD9C0; font-weight: 600; text-decoration: underline; cursor: pointer; }
+
+  /* Notes */
+  .notes { background: #fefce8; border: 1px solid #fde68a; border-radius: 12px; padding: 20px; max-width: 700px; }
+  .notes h3 { font-weight: 600; color: #78350f; margin-bottom: 8px; font-size: 14px; }
+  .notes li { font-size: 13px; color: #92400e; margin-bottom: 8px; line-height: 1.4; }
+  .notes code { background: #fef3c7; padding: 1px 4px; border-radius: 3px; font-size: 12px; }
+
+  /* Flow diagram */
+  .flow { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 20px 0; }
+  .flow-step { background: white; border: 2px solid #4DD9C0; border-radius: 12px; padding: 10px 16px; font-size: 12px; font-weight: 500; text-align: center; min-width: 120px; }
+  .flow-step.blocked { border-color: #fbbf24; background: #fffbeb; }
+  .flow-step.gated { border-color: #ef4444; background: #fef2f2; }
+  .flow-arrow { color: #9ca3af; font-size: 20px; }
+</style>
+</head>
+<body>
+
+<h1>Section 2: Multi-Location Social Media + Stripe</h1>
+<p class="subtitle">Each location (org_unit) gets its own social media accounts and Stripe Connect account. Features like Campaign Generation are gated until both are connected for the selected location.</p>
+
+<div class="grid">
+  <!-- Before: Broken State -->
+  <div>
+    <span class="label-before">BEFORE — Uncle Rocco selected, can't connect</span>
+    <div class="card">
+      <div class="switcher">
+        <div class="switcher-icon" style="font-size: 16px;">&#127843;</div>
+        <div class="switcher-text">
+          <div class="switcher-name">Uncle Rocco</div>
+          <div class="switcher-sub">123 Washington St, Hoboken</div>
+        </div>
+        <span class="switcher-arrow">&#9662;</span>
+      </div>
+
+      <div class="section">
+        <div class="section-header">
+          <span class="section-title">Social Media</span>
+          <span class="status-missing">Not Connected</span>
+        </div>
+        <p style="font-size: 13px; color: #9ca3af; text-align: center; padding: 16px 0;">No social accounts linked to this location.<br><span style="color: #ef4444; font-size: 12px;">Unable to connect — feature blocked</span></p>
+      </div>
+
+      <div class="section">
+        <div class="section-header">
+          <span class="section-title">Stripe Payments</span>
+          <span class="status-missing">Not Connected</span>
+        </div>
+        <p style="font-size: 13px; color: #9ca3af; text-align: center; padding: 16px 0;">Stripe account tied to parent business only.<br><span style="color: #ef4444; font-size: 12px;">No per-location Stripe support</span></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- After: Working State -->
+  <div>
+    <span class="label-after">AFTER — Uncle Rocco selected, fully connected</span>
+    <div class="card">
+      <div class="switcher">
+        <div class="switcher-icon" style="font-size: 16px;">&#127843;</div>
+        <div class="switcher-text">
+          <div class="switcher-name">Uncle Rocco</div>
+          <div class="switcher-sub">123 Washington St, Hoboken</div>
+        </div>
+        <span class="switcher-arrow">&#9662;</span>
+      </div>
+
+      <div class="section">
+        <div class="section-header">
+          <span class="section-title">Social Media</span>
+          <span class="status-connected">Connected</span>
+        </div>
+        <div class="social-item">
+          <div class="social-icon social-ig">IG</div>
+          <span class="social-handle">@uncleroccos_hoboken</span>
+          <span class="social-status">Active</span>
+        </div>
+        <div class="social-item">
+          <div class="social-icon social-tt">TT</div>
+          <span class="social-handle">@uncleroccos</span>
+          <span class="social-status">Active</span>
+        </div>
+        <div style="margin-top: 12px;">
+          <button class="btn-outline">+ Connect a Network</button>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-header">
+          <span class="section-title">Stripe Payments</span>
+          <span class="status-connected">Connected</span>
+        </div>
+        <div class="stripe-row">
+          <div class="stripe-icon">S</div>
+          <div class="stripe-info">
+            <div class="stripe-label">Uncle Rocco's Pizza</div>
+            <div class="stripe-detail">acct_1R...xYz &bull; Payouts enabled</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Feature Gating -->
+<h2>Feature Gating — Campaign Creation</h2>
+<p style="font-size: 13px; color: #6b7280; margin-bottom: 16px;">When a location is missing social or Stripe, features are gated with a clear call-to-action.</p>
+
+<div class="card-wide" style="margin-bottom: 24px;">
+  <div class="switcher" style="margin-bottom: 16px;">
+    <div class="switcher-icon" style="font-size: 16px;">&#127843;</div>
+    <div class="switcher-text">
+      <div class="switcher-name">Uncle Rocco</div>
+      <div class="switcher-sub">123 Washington St, Hoboken</div>
+    </div>
+    <span class="switcher-arrow">&#9662;</span>
+  </div>
+
+  <div class="gate-banner">
+    <span class="gate-icon">&#9888;&#65039;</span>
+    <div class="gate-text">
+      <strong>Complete Uncle Rocco's setup to unlock features</strong><br>
+      This location needs a connected Stripe account and at least one social media account before you can create campaigns, promotions, or use DragonShare.<br><br>
+      <span class="gate-link">Go to Settings &rarr;</span>
+    </div>
+  </div>
+</div>
+
+<!-- Data Flow -->
+<h2>Data Architecture</h2>
+<div class="flow">
+  <div class="flow-step">User selects<br><strong>Uncle Rocco</strong></div>
+  <span class="flow-arrow">&rarr;</span>
+  <div class="flow-step">activeOrgUnit<br>set in AuthContext</div>
+  <span class="flow-arrow">&rarr;</span>
+  <div class="flow-step">Settings page reads<br><strong>org_units.stripe_account_id</strong></div>
+  <span class="flow-arrow">&rarr;</span>
+  <div class="flow-step">Stripe onboarding<br>writes to <strong>org_units</strong></div>
+</div>
+<div class="flow">
+  <div class="flow-step">Social connect<br>passes <strong>org_unit_id</strong></div>
+  <span class="flow-arrow">&rarr;</span>
+  <div class="flow-step">outstand-proxy<br>records org_unit_id</div>
+  <span class="flow-arrow">&rarr;</span>
+  <div class="flow-step">Campaign creation<br>checks both connected</div>
+  <span class="flow-arrow">&rarr;</span>
+  <div class="flow-step" style="border-color: #16a34a; background: #f0fdf4;">Features<br><strong>Unlocked</strong></div>
+</div>
+
+<!-- Design Notes -->
+<div class="mt">
+  <div class="notes">
+    <h3>Design Notes</h3>
+    <ul>
+      <li><strong>Schema:</strong> Add <code>stripe_account_id</code> and <code>stripe_onboarding_complete</code> columns to <code>org_units</code> table (nullable)</li>
+      <li><strong>Edge function:</strong> Update <code>create-restaurant-connect-account</code> to accept <code>org_unit_id</code> param and write Stripe account to <code>org_units</code> instead of <code>business_profiles</code></li>
+      <li><strong>Social media:</strong> Fix <code>AccountsTab</code> to correctly pass <code>activeOrgUnit.id</code> to Outstand proxy. The <code>org_unit_id</code> column already exists on <code>business_outstand_accounts</code></li>
+      <li><strong>Feature gate:</strong> New <code>useLocationReadiness(orgUnitId)</code> hook checks if both social + Stripe are connected. Returns <code>{ isReady, missingSocial, missingStripe }</code></li>
+      <li><strong>Backward compat:</strong> Existing user-level Stripe account in <code>business_profiles</code> is preserved as fallback for businesses without org_units</li>
+      <li><strong>Same Stripe account OK:</strong> Multiple locations can reference the same <code>stripe_account_id</code> — each location just links to it</li>
+    </ul>
+  </div>
+</div>
+
+</body>
+</html>

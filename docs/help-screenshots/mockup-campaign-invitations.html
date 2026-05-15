@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DragonCandy - Campaign Invitations Mockup</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f3f4f6; padding: 32px; color: #111; }
+  h1 { font-size: 24px; font-weight: 700; margin-bottom: 6px; }
+  h2 { font-size: 16px; font-weight: 600; margin-bottom: 12px; color: #374151; }
+  .subtitle { color: #6b7280; margin-bottom: 32px; max-width: 700px; font-size: 14px; line-height: 1.5; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; margin-bottom: 40px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 24px; margin-bottom: 40px; }
+  .label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; display: block; }
+  .label-fix { color: #16a34a; }
+  .label-new { color: #2563eb; }
+  .label-role { color: #7c3aed; }
+  .card { background: white; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); padding: 24px; max-width: 380px; }
+  .card-wide { background: white; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); padding: 24px; }
+  .mb { margin-bottom: 20px; }
+  .mt { margin-top: 40px; }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 0; margin-bottom: 20px; border-bottom: 2px solid #e5e7eb; }
+  .tab { padding: 8px 16px; font-size: 13px; font-weight: 500; color: #9ca3af; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; }
+  .tab.active { color: #4DD9C0; border-bottom-color: #4DD9C0; font-weight: 600; }
+  .tab .badge-tab { background: #EC4899; color: white; font-size: 10px; font-weight: 700; min-width: 16px; height: 16px; display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; padding: 0 4px; margin-left: 6px; }
+
+  /* Invitation card */
+  .invite-card { border: 2px solid #4DD9C0; border-radius: 14px; padding: 16px; margin-bottom: 12px; background: #f0fdfa; }
+  .invite-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .invite-avatar { width: 36px; height: 36px; border-radius: 50%; background: #4DD9C0; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 14px; border: 2px solid #4DD9C0; }
+  .invite-from { font-weight: 600; font-size: 13px; color: #111; }
+  .invite-time { font-size: 11px; color: #9ca3af; }
+  .invite-tag { font-size: 10px; font-weight: 600; color: #4DD9C0; background: white; border: 1px solid #4DD9C0; padding: 2px 8px; border-radius: 999px; margin-left: auto; }
+  .invite-campaign { font-size: 14px; font-weight: 600; color: #111; margin-bottom: 4px; }
+  .invite-detail { font-size: 12px; color: #6b7280; margin-bottom: 4px; }
+  .invite-message { font-size: 13px; color: #555; font-style: italic; margin: 10px 0; padding: 8px 12px; background: white; border-radius: 8px; border-left: 3px solid #4DD9C0; }
+  .invite-actions { display: flex; gap: 8px; margin-top: 12px; }
+  .btn-apply { background: #4DD9C0; color: white; font-weight: 600; padding: 8px 20px; border-radius: 999px; font-size: 13px; border: none; cursor: pointer; flex: 1; }
+  .btn-decline { background: white; color: #EC4899; font-weight: 600; padding: 8px 20px; border-radius: 999px; font-size: 13px; border: 2px solid #e5e7eb; cursor: pointer; flex: 1; }
+  .btn-view { background: white; color: #4DD9C0; font-weight: 600; padding: 8px 16px; border-radius: 999px; font-size: 13px; border: 2px solid #4DD9C0; cursor: pointer; }
+
+  /* Restaurant invite flow */
+  .browse-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .browse-search { display: flex; align-items: center; gap: 8px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 10px; padding: 8px 12px; flex: 1; max-width: 260px; }
+  .browse-search input { border: none; background: transparent; font-size: 13px; outline: none; flex: 1; }
+  .creator-row { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid #f3f4f6; }
+  .creator-row:last-child { border-bottom: none; }
+  .creator-avatar { width: 40px; height: 40px; border-radius: 50%; border: 2px solid #4DD9C0; overflow: hidden; background: linear-gradient(135deg, #F9A8D4, #4DD9C0); display: flex; align-items: center; justify-content: center; font-weight: 700; color: white; font-size: 16px; }
+  .creator-info { flex: 1; }
+  .creator-name { font-weight: 600; font-size: 13px; color: #111; }
+  .creator-skills { font-size: 11px; color: #6b7280; }
+  .btn-invite { background: #4DD9C0; color: white; font-weight: 600; padding: 6px 14px; border-radius: 999px; font-size: 12px; border: none; cursor: pointer; display: flex; align-items: center; gap: 4px; }
+
+  /* Notification items */
+  .notif-item { display: flex; align-items: flex-start; gap: 10px; padding: 12px; border-radius: 10px; background: #f0fdfa; margin-bottom: 8px; }
+  .notif-item.pink { background: #fdf2f8; }
+  .notif-dot { width: 8px; height: 8px; border-radius: 50%; background: #4DD9C0; margin-top: 4px; flex-shrink: 0; }
+  .notif-dot.pink { background: #EC4899; }
+  .notif-text { font-size: 13px; color: #374151; line-height: 1.4; }
+  .notif-text strong { color: #111; }
+  .notif-time { font-size: 11px; color: #9ca3af; margin-top: 2px; }
+
+  /* Notes */
+  .notes { background: #fefce8; border: 1px solid #fde68a; border-radius: 12px; padding: 20px; max-width: 700px; }
+  .notes h3 { font-weight: 600; color: #78350f; margin-bottom: 8px; font-size: 14px; }
+  .notes li { font-size: 13px; color: #92400e; margin-bottom: 8px; line-height: 1.4; }
+  .notes code { background: #fef3c7; padding: 1px 4px; border-radius: 3px; font-size: 12px; }
+
+  /* Fix list */
+  .fix-list { list-style: none; padding: 0; }
+  .fix-list li { font-size: 13px; color: #374151; padding: 6px 0; display: flex; align-items: flex-start; gap: 8px; }
+  .fix-icon { font-size: 14px; flex-shrink: 0; }
+</style>
+</head>
+<body>
+
+<h1>Section 3: Campaign Invitations — Fix + Enhance</h1>
+<p class="subtitle">Three-phase approach: (1) Fix the broken invite pipeline, (2) Add Restaurant role access to Browse Creators, (3) Add Decline action and Invitations section for creators.</p>
+
+<!-- Phase 1: Fix Pipeline -->
+<h2>Phase 1: Fix the Broken Pipeline</h2>
+<div class="card-wide" style="max-width: 600px; margin-bottom: 32px;">
+  <h3 style="font-size: 14px; font-weight: 600; margin-bottom: 12px;">End-to-End Audit & Repair</h3>
+  <ul class="fix-list">
+    <li><span class="fix-icon">&#128269;</span><strong>Button visibility:</strong> Audit BrandCreatorCard — ensure invite Send icon renders for both brand AND restaurant roles. Check role-based route guards.</li>
+    <li><span class="fix-icon">&#128269;</span><strong>Edge function errors:</strong> Debug <code>send-campaign-invitation</code> — test with real campaign/creator IDs, check RLS policies on campaign_invitations table, verify campaign ownership validation.</li>
+    <li><span class="fix-icon">&#128269;</span><strong>Notification delivery:</strong> Verify email template for <code>campaign_invitation</code> type fires correctly. Check Donny message creation succeeds. Test deep link URL generation.</li>
+    <li><span class="fix-icon">&#128269;</span><strong>RLS policies:</strong> Ensure <code>campaign_invitations</code> allows INSERT by campaign owner and SELECT by invited creator.</li>
+  </ul>
+</div>
+
+<!-- Phase 2: Restaurant Browse Creators -->
+<div class="grid">
+  <div>
+    <span class="label label-role">PHASE 2: RESTAURANT BROWSE CREATORS</span>
+    <div class="card">
+      <div class="browse-header">
+        <h3 style="font-size: 15px; font-weight: 700; color: #111; margin: 0;">BROWSE CREATORS</h3>
+      </div>
+      <div class="browse-search">
+        <span style="color: #9ca3af;">&#128269;</span>
+        <input placeholder="Search creators..." />
+      </div>
+
+      <div class="creator-row">
+        <div class="creator-avatar">SC</div>
+        <div class="creator-info">
+          <div class="creator-name">Sarah Chen</div>
+          <div class="creator-skills">Food Photography, Reels, TikTok</div>
+        </div>
+        <button class="btn-invite">&#9993; Invite</button>
+      </div>
+      <div class="creator-row">
+        <div class="creator-avatar">MR</div>
+        <div class="creator-info">
+          <div class="creator-name">Marcus Rivera</div>
+          <div class="creator-skills">Video, Instagram Stories</div>
+        </div>
+        <button class="btn-invite">&#9993; Invite</button>
+      </div>
+      <div class="creator-row">
+        <div class="creator-avatar">JL</div>
+        <div class="creator-info">
+          <div class="creator-name">Jade Lopez</div>
+          <div class="creator-skills">UGC, Reviews, Food Content</div>
+        </div>
+        <button class="btn-invite">&#9993; Invite</button>
+      </div>
+    </div>
+    <p style="font-size: 12px; color: #6b7280; margin-top: 8px; max-width: 380px;">Same Browse Creators page as Brand role, added to restaurant navigation. Uses existing BrandCreators component with role-agnostic naming.</p>
+  </div>
+
+  <!-- Phase 3: Creator Invitations Section -->
+  <div>
+    <span class="label label-new">PHASE 3: CREATOR — INVITATIONS TAB</span>
+    <div class="card">
+      <div class="tabs">
+        <div class="tab">All Campaigns</div>
+        <div class="tab">Donny Picks</div>
+        <div class="tab active">Invitations <span class="badge-tab">2</span></div>
+      </div>
+
+      <div class="invite-card">
+        <div class="invite-header">
+          <div class="invite-avatar">UR</div>
+          <div>
+            <div class="invite-from">Uncle Rocco's Pizza</div>
+            <div class="invite-time">2 hours ago</div>
+          </div>
+          <span class="invite-tag">Invited</span>
+        </div>
+        <div class="invite-campaign">&#127843; Weekend Food Festival Reels</div>
+        <div class="invite-detail">$200 - $400 &bull; 3 Reels &bull; Due Jun 15</div>
+        <div class="invite-message">"Hey Sarah! We loved your food content. Would you be interested in covering our weekend festival?"</div>
+        <div class="invite-actions">
+          <button class="btn-apply">Apply Now</button>
+          <button class="btn-decline">Decline</button>
+        </div>
+      </div>
+
+      <div class="invite-card" style="border-color: #e5e7eb; background: white;">
+        <div class="invite-header">
+          <div class="invite-avatar" style="background: #EC4899; border-color: #EC4899;">BK</div>
+          <div>
+            <div class="invite-from">Burger Kitchen</div>
+            <div class="invite-time">1 day ago</div>
+          </div>
+          <span class="invite-tag">Invited</span>
+        </div>
+        <div class="invite-campaign">&#127828; Grand Opening UGC Campaign</div>
+        <div class="invite-detail">$150 - $300 &bull; 5 Posts &bull; Due Jun 20</div>
+        <div class="invite-actions">
+          <button class="btn-apply">Apply Now</button>
+          <button class="btn-decline">Decline</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Notifications for Both Parties -->
+<h2>Notifications — Both Parties</h2>
+<div class="grid">
+  <div>
+    <span class="label label-new">CREATOR RECEIVES</span>
+    <div class="card">
+      <div class="notif-item">
+        <div class="notif-dot"></div>
+        <div>
+          <div class="notif-text"><strong>Uncle Rocco's Pizza</strong> invited you to "<strong>Weekend Food Festival Reels</strong>"</div>
+          <div class="notif-time">2 hours ago</div>
+        </div>
+      </div>
+      <div class="notif-item" style="background: #f9fafb;">
+        <div class="notif-dot" style="background: #9ca3af;"></div>
+        <div>
+          <div class="notif-text">You <strong>declined</strong> Burger Kitchen's invitation to "Grand Opening UGC"</div>
+          <div class="notif-time">1 day ago</div>
+        </div>
+      </div>
+      <p style="font-size: 11px; color: #9ca3af; margin-top: 8px;">+ Email notification + Donny AI message</p>
+    </div>
+  </div>
+
+  <div>
+    <span class="label label-new">BUSINESS RECEIVES</span>
+    <div class="card">
+      <div class="notif-item pink">
+        <div class="notif-dot pink"></div>
+        <div>
+          <div class="notif-text"><strong>Sarah Chen</strong> applied to your campaign "<strong>Weekend Food Festival Reels</strong>" (via invitation)</div>
+          <div class="notif-time">1 hour ago</div>
+        </div>
+      </div>
+      <div class="notif-item" style="background: #f9fafb;">
+        <div class="notif-dot" style="background: #9ca3af;"></div>
+        <div>
+          <div class="notif-text"><strong>Marcus Rivera</strong> declined your invitation to "Weekend Food Festival Reels"</div>
+          <div class="notif-time">3 hours ago</div>
+        </div>
+      </div>
+      <p style="font-size: 11px; color: #9ca3af; margin-top: 8px;">+ Email notification</p>
+    </div>
+  </div>
+</div>
+
+<!-- Design Notes -->
+<div class="mt">
+  <div class="notes">
+    <h3>Design Notes</h3>
+    <ul>
+      <li><strong>Pipeline fix:</strong> Full end-to-end audit of <code>send-campaign-invitation</code> edge function, RLS policies, email templates, and Donny message creation</li>
+      <li><strong>Restaurant access:</strong> Add <code>/dashboard/restaurant/creators</code> route using existing <code>BrandCreators</code> component. Add nav link in restaurant sidebar config.</li>
+      <li><strong>Decline action:</strong> New <code>useDeclineInvitation</code> hook updates <code>campaign_invitations.status</code> to 'declined'. Triggers email + notification to inviter.</li>
+      <li><strong>Invitations tab:</strong> Added as third tab in <code>CreatorCampaignMarketplace</code>. Queries <code>campaign_invitations</code> where <code>creator_id = user.id AND status = 'pending'</code>.</li>
+      <li><strong>Notifications:</strong> Both parties get email + in-app notifications on invite sent, accepted (applied), and declined.</li>
+      <li><strong>No action = stays pending:</strong> Creator can ignore invitations — they remain in the Invitations tab until acted on or campaign expires.</li>
+    </ul>
+  </div>
+</div>
+
+</body>
+</html>
