@@ -214,6 +214,7 @@ export const useMarkMessagesAsRead = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
+      queryClient.invalidateQueries({ queryKey: ['unread-counts'] });
     },
   });
 };

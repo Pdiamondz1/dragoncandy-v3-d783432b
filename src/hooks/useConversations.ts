@@ -41,7 +41,7 @@ export const useConversations = (orgUnitId?: string | null) => {
       return data as Conversation[];
     },
     enabled: !!user,
-    staleTime: 120_000,
+    staleTime: 30_000,
     refetchOnWindowFocus: 'always',
   });
 

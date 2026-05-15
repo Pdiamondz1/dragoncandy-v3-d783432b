@@ -20,12 +20,18 @@ export const ConversationMessageThread: React.FC<ConversationMessageThreadProps>
   const { data: messages = [], isLoading } = useMessages(undefined, conversationId);
   const sendMessage = useSendMessage();
   const markAsRead = useMarkMessagesAsRead();
-  const markedRef = useRef<string | null>(null);
+  const lastMarkedRef = useRef<{ id: string; count: number } | null>(null);
 
   useEffect(() => {
-    if (conversationId && user && !isLoading && messages.length > 0 && markedRef.current !== conversationId) {
-      markedRef.current = conversationId;
-      markAsRead.mutate({ conversationId });
+    if (conversationId && user && !isLoading && messages.length > 0) {
+      const current = { id: conversationId, count: messages.length };
+      if (
+        lastMarkedRef.current?.id !== current.id ||
+        lastMarkedRef.current?.count !== current.count
+      ) {
+        lastMarkedRef.current = current;
+        markAsRead.mutate({ conversationId });
+      }
     }
   }, [conversationId, user, isLoading, messages.length, markAsRead]);
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
