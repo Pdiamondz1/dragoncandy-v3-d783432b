@@ -8,8 +8,6 @@ import { useAccounts } from '@outstand-so/ui';
 import { useOutstandConfig, DragonCandyOutstandProvider } from '@/integrations/outstand/Provider';
 import { useSponsorshipAmplification } from '@/hooks/outstand/useSponsorshipAmplification';
 import { useBrandGuidelines } from '@/hooks/outstand/useBrandGuidelines';
-import { toast } from 'sonner';
-
 interface SponsorshipAmplificationPromptProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;

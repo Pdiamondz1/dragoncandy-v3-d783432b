@@ -6,7 +6,6 @@ interface InvitationBannerProps {
   businessName?: string;
   campaignId?: string;
   campaignTitle?: string;
-  invitationId?: string;
   onQuickApply?: () => void;
   onDecline?: () => void;
 }
@@ -14,6 +13,7 @@ interface InvitationBannerProps {
 export function InvitationBanner({
   businessName,
   campaignId,
+  campaignTitle,
   onQuickApply,
   onDecline,
 }: InvitationBannerProps) {
@@ -28,7 +28,7 @@ export function InvitationBanner({
             <p className="font-bold text-dc-text text-sm">You're invited!</p>
             <p className="text-xs text-dc-text-muted mt-0.5">
               {businessName
-                ? `${businessName} personally invited you to this campaign`
+                ? `${businessName} personally invited you${campaignTitle ? ` to "${campaignTitle}"` : ' to this campaign'}`
                 : 'You were personally invited to this campaign'}
             </p>
           </div>

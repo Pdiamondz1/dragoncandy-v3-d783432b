@@ -318,7 +318,6 @@ const CampaignDetailsPage: React.FC = () => {
               enrichedDetail={enrichedDetail}
               isInvited={isInvited}
               hasApplied={hasApplied}
-              invitationId={pendingInvitation?.id}
               onQuickApply={() => setShowApplySheet(true)}
               onDeclineInvitation={
                 pendingInvitation?.id

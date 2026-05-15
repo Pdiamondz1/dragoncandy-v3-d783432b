@@ -17,7 +17,6 @@ interface CreatorCampaignDetailsProps {
   enrichedDetail?: EnrichedCampaignDetail;
   isInvited?: boolean;
   hasApplied?: boolean;
-  invitationId?: string;
   onQuickApply?: () => void;
   onDeclineInvitation?: () => void;
 }
@@ -27,7 +26,6 @@ export function CreatorCampaignDetails({
   enrichedDetail,
   isInvited,
   hasApplied,
-  invitationId,
   onQuickApply,
   onDeclineInvitation,
 }: CreatorCampaignDetailsProps) {
@@ -52,7 +50,6 @@ export function CreatorCampaignDetails({
           businessName={businessName}
           campaignId={campaign.id}
           campaignTitle={campaign.title}
-          invitationId={invitationId}
           onQuickApply={onQuickApply}
           onDecline={onDeclineInvitation}
         />
