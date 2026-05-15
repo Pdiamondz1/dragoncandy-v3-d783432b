@@ -45,7 +45,7 @@ const BrandSponsorships = () => {
       // Clean up URL params
       setSearchParams({}, { replace: true });
     }
-  }, [searchParams]);
+  }, [searchParams, setSearchParams, verifyPayment]);
 
   if (!profile) {
     return (
@@ -93,7 +93,7 @@ const BrandSponsorships = () => {
       if (error) throw error;
 
       navigate(`/dashboard/brand/messages/direct/${conversationId}`);
-    } catch (error) {
+    } catch {
       toast({ title: "Error", description: "Failed to start conversation.", variant: "destructive" });
     }
   };

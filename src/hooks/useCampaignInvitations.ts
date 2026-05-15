@@ -154,7 +154,7 @@ export const useDeclineInvitation = () => {
             data: {
               recipientUserId: invitation.invited_by,
               senderName: creatorProfile?.full_name ?? 'A creator',
-              campaignTitle: (invitation.campaigns as any)?.title ?? 'your campaign',
+              campaignTitle: (invitation.campaigns as { title?: string } | null)?.title ?? 'your campaign',
               campaignId: invitation.campaign_id,
             },
           },

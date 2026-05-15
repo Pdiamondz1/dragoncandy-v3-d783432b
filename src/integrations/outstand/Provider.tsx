@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import React from 'react';
 import { OutstandProvider } from '@outstand-so/ui';
 import { useAuth } from '@/hooks/useAuth';

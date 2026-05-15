@@ -38,10 +38,9 @@ export default function CampaignCreator() {
   };
 
   // Trigger create_campaign mission when ideas are generated (screen transitions to launchpad)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (screen === 'launchpad') completeMission('create_campaign');
-  }, [screen]);
+  }, [screen, completeMission]);
 
   const navRole = userRole || 'business_client';
 

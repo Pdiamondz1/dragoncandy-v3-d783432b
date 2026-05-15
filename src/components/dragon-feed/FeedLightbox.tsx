@@ -56,7 +56,7 @@ export const FeedLightbox: React.FC<FeedLightboxProps> = ({
     };
 
     checkIfLiked();
-  }, [item?.id]);
+  }, [item?.id, item]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

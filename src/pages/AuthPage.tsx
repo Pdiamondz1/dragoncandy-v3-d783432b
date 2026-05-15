@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { SEO } from "@/components/SEO";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -26,7 +26,7 @@ const AuthPage = () => {
   const [signupStep, setSignupStep] = useState<SignupStep>("role-selection");
   const [selectedRole, setSelectedRole] = useState<"business_client" | "content_creator" | "brand" | null>(null);
   const [resendCooldown, setResendCooldown] = useState(0);
-  const [needsVerification, setNeedsVerification] = useState(false);
+  const [_needsVerification, setNeedsVerification] = useState(false);
 
   const navigate = useNavigate();
   const { user, isAuthenticated, migrateCampaignData } = useAuth();
@@ -46,24 +46,7 @@ const AuthPage = () => {
     return () => clearTimeout(timer);
   }, [resendCooldown]);
 
-  // Redirect if already authenticated
-  useEffect(() => {
-    if (isAuthenticated) {
-      const returnTo = searchParams.get('returnTo');
-      if (returnTo) {
-        try {
-          const url = new URL(returnTo, window.location.origin);
-          if (ALLOWED_REDIRECT_ORIGINS.has(url.origin)) {
-            handleOAuthReturn(returnTo);
-            return;
-          }
-        } catch { /* invalid URL — fall through to normal flow */ }
-      }
-      checkProfileCompletion();
-    }
-  }, [isAuthenticated]);
-
-  const handleOAuthReturn = async (returnTo: string) => {
+  const handleOAuthReturn = useCallback(async (returnTo: string) => {
     try {
       const returnUrl = new URL(returnTo, window.location.origin);
       if (!ALLOWED_REDIRECT_ORIGINS.has(returnUrl.origin)) {
@@ -79,9 +62,9 @@ const AuthPage = () => {
       console.error('OAuth return redirect failed:', err);
       navigate('/', { replace: true });
     }
-  };
+  }, [navigate]);
 
-  const checkProfileCompletion = async () => {
+  const checkProfileCompletion = useCallback(async () => {
     if (!user) return;
 
     try {
@@ -176,7 +159,24 @@ const AuthPage = () => {
       console.error('Error checking profile completion:', error);
       navigate('/', { replace: true });
     }
-  };
+  }, [user, navigate, migrateCampaignData]);
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      const returnTo = searchParams.get('returnTo');
+      if (returnTo) {
+        try {
+          const url = new URL(returnTo, window.location.origin);
+          if (ALLOWED_REDIRECT_ORIGINS.has(url.origin)) {
+            handleOAuthReturn(returnTo);
+            return;
+          }
+        } catch { /* invalid URL — fall through to normal flow */ }
+      }
+      checkProfileCompletion();
+    }
+  }, [isAuthenticated, checkProfileCompletion, handleOAuthReturn, searchParams]);
 
   const handleResendVerification = async () => {
     if (!user || resendCooldown > 0) return;

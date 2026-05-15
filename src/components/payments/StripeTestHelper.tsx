@@ -17,10 +17,9 @@ const TEST_CARDS = [
 const TEST_BANK = { routing: '110000000', account: '000123456789', ssn: '0000' };
 
 export function StripeTestHelper({ variant = 'both', className }: StripeTestHelperProps) {
+  const [expanded, setExpanded] = useState(false);
   const isTestMode = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY?.startsWith('pk_test_');
   if (!isTestMode) return null;
-
-  const [expanded, setExpanded] = useState(false);
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text.replace(/\s/g, ''));

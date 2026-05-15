@@ -16,7 +16,7 @@ export function StickyApplyCTA({
   applicationStatus,
   onApply,
   onViewProject,
-  spotsTotal,
+  spotsTotal: _spotsTotal,
   positionFilled,
 }: StickyApplyCTAProps) {
   const canReapply = hasApplied && applicationStatus === 'rejected';

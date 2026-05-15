@@ -38,7 +38,7 @@ export const useCreatorProfileLoad = (setFormDataFromProfile: (profile: Partial<
     };
 
     loadProfile();
-  }, [user, navigate]); // Removed setFormDataFromProfile from dependencies
+  }, [user, navigate, setFormDataFromProfile]);
 
   return { user };
 };

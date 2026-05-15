@@ -68,8 +68,9 @@ export function MediaUploader({
 
   // Track preview URLs created in this component for cleanup
   useEffect(() => {
+    const urls = previewUrls.current;
     return () => {
-      previewUrls.current.forEach((url) => URL.revokeObjectURL(url));
+      urls.forEach((url) => URL.revokeObjectURL(url));
     };
   }, []);
 

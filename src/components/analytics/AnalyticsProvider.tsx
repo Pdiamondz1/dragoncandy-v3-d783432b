@@ -1,13 +1,14 @@
+/* eslint-disable react-refresh/only-export-components */
 
 import React, { createContext, useContext, ReactNode } from 'react';
 import { useAnalytics } from '@/hooks/useAnalytics';
 
 interface AnalyticsContextType {
-  trackEvent: (eventType: string, eventData?: Record<string, any>) => Promise<void>;
+  trackEvent: (eventType: string, eventData?: Record<string, unknown>) => Promise<void>;
   trackPageView: (pageName: string) => void;
-  trackUserAction: (action: string, context?: Record<string, any>) => void;
-  trackCampaignEvent: (eventType: string, campaignId: string, additionalData?: Record<string, any>) => void;
-  trackPerformance: (metric: string, value: number, context?: Record<string, any>) => void;
+  trackUserAction: (action: string, context?: Record<string, unknown>) => void;
+  trackCampaignEvent: (eventType: string, campaignId: string, additionalData?: Record<string, unknown>) => void;
+  trackPerformance: (metric: string, value: number, context?: Record<string, unknown>) => void;
 }
 
 const AnalyticsContext = createContext<AnalyticsContextType | undefined>(undefined);

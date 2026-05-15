@@ -121,8 +121,9 @@ export const useCampaignsList = (filterByOwnership: boolean = true, orgUnitId?: 
       }
 
       // Flatten collaboration array to first element
-      const enriched = (data ?? []).map((campaign: any) => {
-        const collab = campaign.campaign_collaborations?.[0] ?? null;
+      const enriched = (data ?? []).map((campaign: Record<string, unknown>) => {
+        const collabs = campaign.campaign_collaborations as Array<Record<string, unknown>> | undefined;
+        const collab = collabs?.[0] ?? null;
         return {
           ...campaign,
           campaign_collaborations: undefined,
@@ -139,7 +140,7 @@ export const useCampaignsList = (filterByOwnership: boolean = true, orgUnitId?: 
 
       // Batch-fetch creator profiles for campaigns with an assigned creator
       const creatorIds = enriched
-        .map((c: any) => c.collaboration_creator_id)
+        .map((c) => c.collaboration_creator_id)
         .filter(Boolean);
 
       if (creatorIds.length > 0) {
@@ -149,10 +150,10 @@ export const useCampaignsList = (filterByOwnership: boolean = true, orgUnitId?: 
           .in('user_id', creatorIds);
 
         const creatorMap = new Map(
-          (creators ?? []).map((c: any) => [c.user_id, c])
+          (creators ?? []).map((c) => [c.user_id, c])
         );
 
-        enriched.forEach((campaign: any) => {
+        enriched.forEach((campaign) => {
           const creator = creatorMap.get(campaign.collaboration_creator_id);
           campaign.creator_name = creator?.creator_name ?? null;
           campaign.creator_avatar_url = creator?.avatar_url ?? null;

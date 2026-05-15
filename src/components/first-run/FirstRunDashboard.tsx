@@ -11,7 +11,7 @@ interface FirstRunDashboardProps {
   onSkip: () => void;
 }
 
-export function FirstRunDashboard({ role, missions, onCompleteMission, onSkip }: FirstRunDashboardProps) {
+export function FirstRunDashboard({ role, missions, onCompleteMission: _onCompleteMission, onSkip }: FirstRunDashboardProps) {
   const { profile } = useAuth();
   const navigate = useNavigate();
 

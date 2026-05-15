@@ -32,7 +32,7 @@ const getSignedUrl = async (path: string): Promise<string | null> => {
     // Cache signed URL for 55 minutes
     urlCache.set(path, { url: data.signedUrl, expiresAt: now + 55 * 60 * 1000 });
     return data.signedUrl;
-  } catch (error) {
+  } catch {
     return null;
   }
 };

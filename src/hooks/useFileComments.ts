@@ -12,7 +12,7 @@ export const useCreateFileComment = () => {
     mutationFn: async (commentData: {
       file_upload_id: string;
       comment_text: string;
-      annotation_data?: Record<string, any>;
+      annotation_data?: Record<string, unknown>;
       parent_comment_id?: string;
     }) => {
       const { data, error } = await supabase

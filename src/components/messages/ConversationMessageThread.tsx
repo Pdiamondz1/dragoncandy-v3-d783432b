@@ -27,7 +27,7 @@ export const ConversationMessageThread: React.FC<ConversationMessageThreadProps>
       markedRef.current = conversationId;
       markAsRead.mutate({ conversationId });
     }
-  }, [conversationId, user, isLoading, messages.length]);
+  }, [conversationId, user, isLoading, messages.length, markAsRead]);
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
 
   const handleSendMessage = (content: string, options?: {

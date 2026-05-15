@@ -111,7 +111,7 @@ export function StripeConnectSetup({ role }: StripeConnectSetupProps) {
       const { data, error } = await supabase.functions.invoke('get-stripe-dashboard-link');
       if (error) throw error;
       if (data?.url) window.open(data.url, '_blank');
-    } catch (err) {
+    } catch {
       toast.error('Failed to open dashboard. Please try again.');
     } finally {
       setConnecting(false);
@@ -125,7 +125,7 @@ export function StripeConnectSetup({ role }: StripeConnectSetupProps) {
       if (error) throw error;
       toast.success(data?.message || 'Funds transferred to your Stripe account.');
       checkStatus();
-    } catch (err) {
+    } catch {
       toast.error('Withdrawal failed. Please try again.');
     } finally {
       setWithdrawing(false);

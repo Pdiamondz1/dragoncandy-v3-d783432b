@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { getFeature, TIER_PRICES, type TierName } from '@/lib/pricing/tier-features';
@@ -19,7 +19,7 @@ export function SoftPaywallSheet({ featureKey, open, onClose }: SoftPaywallSheet
   const requiredTier = feature?.requiredTier || 'starter';
   const price = TIER_PRICES[requiredTier as TierName];
 
-  const logEvent = async (action: 'viewed' | 'clicked_upgrade' | 'dismissed') => {
+  const logEvent = useCallback(async (action: 'viewed' | 'clicked_upgrade' | 'dismissed') => {
     await supabase.from('pricing_funnel_events').insert({
       user_id: user?.id,
       org_id: activeOrg?.id,
@@ -28,11 +28,11 @@ export function SoftPaywallSheet({ featureKey, open, onClose }: SoftPaywallSheet
       required_tier: requiredTier,
       action,
     });
-  };
+  }, [user?.id, activeOrg?.id, activeOrg?.subscription_tier, featureKey, requiredTier]);
 
   useEffect(() => {
     if (open) logEvent('viewed');
-  }, [open]);
+  }, [open, logEvent]);
 
   const handleUpgrade = async () => {
     await logEvent('clicked_upgrade');

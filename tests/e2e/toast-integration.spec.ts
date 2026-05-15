@@ -11,7 +11,7 @@
  * Edge Functions are Deno so we test the data-flow contracts here.
  */
 
-import { describe, test, expect, vi, beforeEach } from 'vitest';
+import { describe, test, expect, beforeEach } from 'vitest';
 
 // ── Types matching our DB schema ──
 
@@ -245,7 +245,7 @@ describe('Toast Integration E2E', () => {
   });
 
   test('idempotency: duplicate webhook returns 200 without double-counting', () => {
-    const conn = connectToast(BUSINESS_ID, RESTAURANT_GUID, {
+    const _conn = connectToast(BUSINESS_ID, RESTAURANT_GUID, {
       access: 'tok', refresh: 'ref',
       expiresAt: new Date(Date.now() + 3600_000).toISOString(),
     });
@@ -313,7 +313,7 @@ describe('Toast Integration E2E', () => {
   });
 
   test('ledger-first: sync event exists before redemption record', () => {
-    const conn = connectToast(BUSINESS_ID, RESTAURANT_GUID, {
+    const _conn = connectToast(BUSINESS_ID, RESTAURANT_GUID, {
       access: 'tok', refresh: 'ref',
       expiresAt: new Date(Date.now() + 3600_000).toISOString(),
     });
@@ -339,7 +339,7 @@ describe('Toast Integration E2E', () => {
   });
 
   test('multiple redemptions increment counter correctly', () => {
-    const conn = connectToast(BUSINESS_ID, RESTAURANT_GUID, {
+    const _conn = connectToast(BUSINESS_ID, RESTAURANT_GUID, {
       access: 'tok', refresh: 'ref',
       expiresAt: new Date(Date.now() + 3600_000).toISOString(),
     });

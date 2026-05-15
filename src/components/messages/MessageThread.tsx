@@ -34,7 +34,7 @@ export const MessageThread: React.FC<MessageThreadProps> = ({
       markedRef.current = campaignId;
       markAsRead.mutate({ campaignId });
     }
-  }, [campaignId, user, isLoading, messages.length]);
+  }, [campaignId, user, isLoading, messages.length, markAsRead]);
 
   const handleSendMessage = (content: string, options?: {
     attachmentUrl?: string;

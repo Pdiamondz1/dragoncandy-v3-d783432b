@@ -31,7 +31,7 @@ export const ProgressTimeline: React.FC<ProgressTimelineProps> = ({
         {PROJECT_STEPS.map((step, index) => {
           const isCompleted = index < currentIndex;
           const isCurrent   = index === currentIndex;
-          const isPending   = index > currentIndex;
+          const _isPending   = index > currentIndex;
 
           return (
             <div key={step.key} className="flex items-start gap-3">

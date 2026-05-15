@@ -35,7 +35,7 @@ export function OneTapApplySheet({
         budgetMax: campaign.budget_max,
       });
     }
-  }, [open, campaign.id]);
+  }, [open, campaign.id, campaign.budget_min, campaign.budget_max, donnyPitch]);
 
   const pitch = donnyPitch.data;
   const availability = campaign.delivery_type

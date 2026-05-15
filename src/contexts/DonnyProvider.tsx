@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useState, useEffect, useCallback, useMemo, type ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -151,7 +152,7 @@ export function DonnyProvider({ children, userRole }: DonnyProviderProps) {
 
       const outstandPostId = publishData?.id ?? publishData?.post_id ?? 'unknown';
 
-      const draftMetadata = (draft as any).metadata as Record<string, unknown> | null;
+      const draftMetadata = (draft.metadata ?? null) as Record<string, unknown> | null;
       const sourceToPostType: Record<string, string> = {
         campaign_social_hook: 'campaign',
         promotion_social_hook: 'ugc_promotion',

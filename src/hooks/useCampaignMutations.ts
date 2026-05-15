@@ -504,7 +504,7 @@ export const useDuplicateCampaign = () => {
           deadline: null,
           user_id: user!.id,
           duplicated_from: sourceCampaignId,
-        } as any)
+        } as unknown as Database['public']['Tables']['campaigns']['Insert'])
         .select('id')
         .single();
 

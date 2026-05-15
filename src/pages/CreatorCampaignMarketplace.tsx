@@ -27,6 +27,28 @@ import { UndoToast } from '@/components/campaigns/UndoToast';
 
 type Tab = 'all' | 'donny' | 'invitations';
 
+interface PendingInvitation {
+  id: string;
+  created_at: string;
+  invitation_message: string | null;
+  campaigns: {
+    id: string;
+    title: string;
+    emoji: string | null;
+    budget_min: number | null;
+    budget_max: number | null;
+    deadline: string | null;
+    deliverable_count: number | null;
+    content_types: string[] | null;
+    cover_image_url: string | null;
+    profiles: {
+      full_name: string | null;
+      avatar_url: string | null;
+      business_name: string | null;
+    } | null;
+  } | null;
+}
+
 const CreatorCampaignMarketplace = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -391,7 +413,7 @@ const CreatorCampaignMarketplace = () => {
                 <p className="text-gray-500 text-sm mt-1">When brands invite you to campaigns, they'll appear here.</p>
               </div>
             ) : (
-              pendingInvitations.map((inv: any) => {
+              pendingInvitations.map((inv: PendingInvitation) => {
                 const campaign = inv.campaigns;
                 const business = campaign?.profiles;
                 return (

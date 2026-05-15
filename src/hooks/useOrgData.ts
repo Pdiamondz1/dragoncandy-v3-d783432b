@@ -196,7 +196,7 @@ export function useCreateOrgUnit(orgId?: string | null) {
 
       for (const key of optionalKeys) {
         if (input[key] !== undefined) {
-          (payload as any)[key] = input[key];
+          (payload as Record<string, unknown>)[key] = input[key];
         }
       }
 

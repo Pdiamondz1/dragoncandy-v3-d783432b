@@ -94,7 +94,7 @@ const BusinessSettings = () => {
     };
 
     loadProfile();
-  }, [user?.id, navigate, setFormDataFromProfile]);
+  }, [user?.id, user, navigate, setFormDataFromProfile]);
 
   const handleBusinessFieldBlur = async () => {
     if (!user) return;

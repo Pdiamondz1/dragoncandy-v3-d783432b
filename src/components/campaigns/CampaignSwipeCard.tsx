@@ -32,7 +32,7 @@ export const CampaignSwipeCard: React.FC<CampaignSwipeCardProps> = ({
   React.useEffect(() => {
     setCurrentIndex(campaigns.length - 1);
     currentIndexRef.current = campaigns.length - 1;
-  }, [campaignFingerprint]);
+  }, [campaignFingerprint, campaigns.length]);
 
   const updateCurrentIndex = (val: number) => {
     currentIndexRef.current = val;

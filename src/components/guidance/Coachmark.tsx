@@ -46,7 +46,7 @@ export function Coachmark({ coachmarkKey, title, body, children }: CoachmarkProp
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [visible]);
+  }, [visible, dismiss]);
 
   const dismissMutation = useMutation({
     mutationFn: async () => {

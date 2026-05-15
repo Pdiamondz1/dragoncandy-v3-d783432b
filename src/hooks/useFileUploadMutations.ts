@@ -19,7 +19,7 @@ export const useCreateFileUpload = () => {
       file_hash?: string;
       campaign_id?: string;
       file_category?: string;
-      metadata?: Record<string, any>;
+      metadata?: Record<string, unknown>;
       is_public?: boolean;
       is_compressed?: boolean;
       compression_ratio?: number;

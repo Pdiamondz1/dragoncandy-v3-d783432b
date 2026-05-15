@@ -119,7 +119,7 @@ export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
     } else {
       setAvatarUrl(undefined);
     }
-  }, [fullProfile?.avatar_url]);
+  }, [fullProfile?.avatar_url, fullProfile]);
 
   useEffect(() => {
     if (!isOpen || !creator) return;
@@ -160,7 +160,7 @@ export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
     };
 
     fetchFullProfile();
-  }, [isOpen, creator?.id]);
+  }, [isOpen, creator?.id, creator]);
 
   const profile = fullProfile || creator;
 

@@ -28,7 +28,7 @@ export function useDraftPosts() {
     queryFn: async () => {
       if (!user) throw new Error('User not authenticated');
 
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('donny_scheduled_posts')
         .select('id, user_id, campaign_id, platform, content_type, caption, media_urls, hashtags, scheduled_at, status, ai_suggested_time, ai_reasoning, metadata, created_at')
         .eq('user_id', user.id)
@@ -46,7 +46,7 @@ export function useDraftPosts() {
     mutationFn: async (draftId: string) => {
       if (!user) throw new Error('User not authenticated');
 
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from('donny_scheduled_posts')
         .update({ status: 'cancelled' })
         .eq('id', draftId)

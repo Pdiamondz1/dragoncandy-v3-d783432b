@@ -49,14 +49,15 @@ export const useCreatorUpcomingDeadlines = () => {
           .filter((collab) => (collab.campaigns as { deadline?: string } | null)?.deadline)
           .map((collab) => {
             const campaignData = collab.campaigns as { title?: string; deadline?: string } | null;
-            const deadline = new Date(campaignData?.deadline!);
+            const deadlineStr = campaignData?.deadline ?? '';
+            const deadline = new Date(deadlineStr);
             const diffTime = deadline.getTime() - now.getTime();
             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
             return {
               id: collab.id,
               title: campaignData?.title || 'Untitled Campaign',
-              deadline: campaignData?.deadline!,
+              deadline: deadlineStr,
               daysUntilDeadline: diffDays,
               status: collab.status,
               campaign_id: collab.campaign_id,

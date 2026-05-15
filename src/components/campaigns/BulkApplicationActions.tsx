@@ -63,7 +63,7 @@ export const BulkApplicationActions: React.FC<BulkApplicationActionsProps> = ({
       });
       
       onSelectionChange([]);
-    } catch (error) {
+    } catch {
       toast({
         title: 'Error',
         description: 'Failed to process applications.',

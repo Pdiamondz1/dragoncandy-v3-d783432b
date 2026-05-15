@@ -127,7 +127,7 @@ export const useProfileData = () => {
     return () => {
       subscription.unsubscribe();
     };
-  }, [user, profile]);
+  }, [user, profile, fetchProfileData]);
 
   return { ...profileData, refetch: fetchProfileData };
 };

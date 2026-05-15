@@ -8,7 +8,7 @@ type AnalyticsEventInsert = Database['public']['Tables']['analytics_events']['In
 
 interface AnalyticsBatchEvent {
   event_type: string;
-  event_data?: Record<string, any>;
+  event_data?: Record<string, unknown>;
   user_id?: string;
   page_url?: string;
   user_agent?: string;
@@ -71,7 +71,7 @@ export const useAnalyticsBatch = () => {
     }, FLUSH_INTERVAL);
   }, [flushBatch]);
 
-  const addEvent = useCallback((eventType: string, eventData?: Record<string, any>, orgUnitId?: string | null) => {
+  const addEvent = useCallback((eventType: string, eventData?: Record<string, unknown>, orgUnitId?: string | null) => {
     const event: AnalyticsBatchEvent = {
       event_type: eventType,
       event_data: eventData || {},

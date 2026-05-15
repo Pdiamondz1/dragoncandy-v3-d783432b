@@ -5,7 +5,6 @@ import {
   Users,
   MessageSquare,
   Settings,
-  Briefcase,
   Image,
   DollarSign,
   Activity,

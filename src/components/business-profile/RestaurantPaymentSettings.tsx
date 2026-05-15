@@ -84,7 +84,7 @@ export const RestaurantPaymentSettings = () => {
       toast({ title: 'Setup incomplete', description: 'Please try connecting again.', variant: 'destructive' });
       window.history.replaceState({}, '', window.location.pathname);
     }
-  }, [checkPayoutStatus]);
+  }, [checkPayoutStatus, completeMission]);
 
   const handleConnectStripe = async () => {
     setConnecting(true);

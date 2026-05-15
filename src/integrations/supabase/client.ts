@@ -16,4 +16,5 @@ const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiO
 export const supabase = createClient<Database>(
   SUPABASE_URL,
   SUPABASE_PUBLISHABLE_KEY
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- types.ts lags behind migrations; loosened intentionally
 ) as unknown as SupabaseClient<any, "public", any>;

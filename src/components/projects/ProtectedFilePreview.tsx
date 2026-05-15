@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Download, Eye, FileText, Lock } from 'lucide-react';
@@ -35,7 +35,7 @@ export const ProtectedFilePreview: React.FC<ProtectedFilePreviewProps> = ({
   const [loading, setLoading] = useState(false);
   const [canDownload, setCanDownload] = useState(isApproved || !isBusinessClient);
 
-  const fetchPreviewUrl = async (): Promise<string | null> => {
+  const fetchPreviewUrl = useCallback(async (): Promise<string | null> => {
     setLoading(true);
     try {
       const response = await supabase.functions.invoke('get-watermarked-preview', {
@@ -57,14 +57,14 @@ export const ProtectedFilePreview: React.FC<ProtectedFilePreviewProps> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [file.file_path, file.bucket_name, collaborationId]);
 
   // Auto-fetch URL on mount for images/videos so preview is ready
   useEffect(() => {
     if (isImage || isVideo) {
       fetchPreviewUrl();
     }
-  }, [file.file_path, file.bucket_name, collaborationId]);
+  }, [file.file_path, file.bucket_name, collaborationId, fetchPreviewUrl, isImage, isVideo]);
 
   const handlePreview = async () => {
     if (!previewUrl) await fetchPreviewUrl();

@@ -121,7 +121,7 @@ export const CreatorMapView: React.FC<CreatorMapViewProps> = ({
     }, 300); // 300ms debounce
     
     return () => clearTimeout(timeoutId);
-  }, [filters, map]);
+  }, [filters, map, geocodedCreators]);
 
   const onLoad = useCallback((map: google.maps.Map) => {
     setMap(map);

@@ -57,7 +57,7 @@ const CampaignsPage: React.FC = () => {
               description: 'Your payment is still being processed. Please wait a moment and refresh.',
             });
           }
-        } catch (err) {
+        } catch {
           toast({
             variant: 'destructive',
             title: 'Error',

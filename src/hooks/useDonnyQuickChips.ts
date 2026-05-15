@@ -125,7 +125,7 @@ export function useDonnyQuickChips(userRole: UserRole) {
     // Merge: state chips first, then fill with page chips up to MAX_CHIPS
     const remaining = MAX_CHIPS - stateChips.length;
     return [...stateChips, ...pageChips.slice(0, remaining)];
-  }, [location.pathname, stateData]);
+  }, [location.pathname, stateData, userRole]);
 
   return chips;
 }

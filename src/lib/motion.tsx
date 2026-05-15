@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { LazyMotion, m, useReducedMotion, AnimatePresence } from "framer-motion";
 
 const loadMotionFeatures = () =>

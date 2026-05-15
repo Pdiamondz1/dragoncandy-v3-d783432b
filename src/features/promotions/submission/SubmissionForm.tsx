@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Instagram, Facebook, Twitter, Youtube } from 'lucide-react';

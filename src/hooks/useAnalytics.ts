@@ -1,12 +1,12 @@
 
-import { useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useOptimizedAnalytics } from '@/hooks/useOptimizedAnalytics';
 
 interface AnalyticsEvent {
   event_type: string;
-  event_data?: Record<string, any>;
+  event_data?: Record<string, unknown>;
   user_id?: string;
   session_id?: string;
   page_url?: string;
@@ -19,7 +19,7 @@ export const useAnalytics = () => {
   const { trackEventOptimized, trackPageViewOptimized, trackUserActionOptimized, trackCampaignEventOptimized } = useOptimizedAnalytics();
 
   // Legacy direct tracking method (kept for backward compatibility)
-  const trackEvent = async (eventType: string, eventData?: Record<string, any>) => {
+  const trackEvent = async (eventType: string, eventData?: Record<string, unknown>) => {
     try {
       const analyticsEvent: AnalyticsEvent = {
         event_type: eventType,
@@ -45,23 +45,23 @@ export const useAnalytics = () => {
     trackPageViewOptimized(pageName);
   };
 
-  const trackUserAction = (action: string, context?: Record<string, any>) => {
+  const trackUserAction = (action: string, context?: Record<string, unknown>) => {
     // Use optimized version for better performance
     trackUserActionOptimized(action, context);
   };
 
-  const trackCampaignEvent = (eventType: string, campaignId: string, additionalData?: Record<string, any>) => {
+  const trackCampaignEvent = (eventType: string, campaignId: string, additionalData?: Record<string, unknown>) => {
     // Use optimized version for better performance
     trackCampaignEventOptimized(eventType, campaignId, additionalData);
   };
 
-  const trackPerformance = (metric: string, value: number, context?: Record<string, any>) => {
+  const trackPerformance = useCallback((metric: string, value: number, context?: Record<string, unknown>) => {
     trackEventOptimized('performance_metric', {
       metric,
       value,
       ...context
     });
-  };
+  }, [trackEventOptimized]);
 
   // Track page performance on mount
   useEffect(() => {
@@ -79,7 +79,7 @@ export const useAnalytics = () => {
     };
 
     measurePageLoad();
-  }, []);
+  }, [trackPerformance]);
 
   return {
     trackEvent,

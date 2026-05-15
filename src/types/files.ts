@@ -12,7 +12,7 @@ export interface FileUpload {
   uploaded_by: string;
   campaign_id: string | null;
   file_category: string;
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
   is_public: boolean;
   is_compressed: boolean;
   compression_ratio: number | null;
@@ -62,7 +62,7 @@ export interface FileComment {
   file_upload_id: string;
   user_id: string;
   comment_text: string;
-  annotation_data: Record<string, any> | null;
+  annotation_data: Record<string, unknown> | null;
   parent_comment_id: string | null;
   created_at: string;
   updated_at: string;

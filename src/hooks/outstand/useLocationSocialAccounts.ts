@@ -34,12 +34,12 @@ export function useLocationSocialAccounts(userId: string | undefined, orgUnitId?
         throw error;
       }
 
-      return (data ?? []).map((row: any) => ({
+      return (data ?? []).map((row) => ({
         id: row.id,
         platform: row.platform,
         platform_handle: row.platform_handle,
         org_unit_id: row.org_unit_id,
-        org_unit_name: row.org_units?.name ?? null,
+        org_unit_name: (row.org_units as { name?: string } | null)?.name ?? null,
         status: row.status,
         outstand_social_account_id: row.outstand_social_account_id,
       })) as LocationSocialAccount[];
@@ -68,13 +68,13 @@ export function useUnassignedSocialAccounts(userId: string | undefined) {
       }
 
       return (data ?? [])
-        .filter((row: any) => !row.org_unit_id || row.org_units?.deleted_at != null)
-        .map((row: any) => ({
+        .filter((row) => !row.org_unit_id || (row.org_units as { deleted_at?: string | null } | null)?.deleted_at != null)
+        .map((row) => ({
           id: row.id,
           platform: row.platform,
           platform_handle: row.platform_handle,
           org_unit_id: row.org_unit_id,
-          org_unit_name: row.org_units?.name ?? null,
+          org_unit_name: (row.org_units as { name?: string } | null)?.name ?? null,
           status: row.status,
           outstand_social_account_id: row.outstand_social_account_id,
         })) as LocationSocialAccount[];
