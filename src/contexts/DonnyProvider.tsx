@@ -46,9 +46,41 @@ interface DonnyContextValue {
 
 const DonnyContext = createContext<DonnyContextValue | null>(null);
 
+const noop = () => {};
+const asyncNoop = async () => {};
+const DONNY_FALLBACK: DonnyContextValue = {
+  stage: 'closed' as DonnyStage,
+  open: noop,
+  expand: noop,
+  collapse: noop,
+  close: noop,
+  nudges: [],
+  unreadCount: 0,
+  executeAction: noop,
+  dismissNudge: noop,
+  messages: [],
+  conversation: null,
+  avatarState: 'idle' as DonnyAvatarState,
+  isStreaming: false,
+  streamingContent: '',
+  error: null,
+  sendMessage: noop,
+  retry: noop,
+  clearChat: asyncNoop,
+  publishDraft: asyncNoop,
+  currentPage: '/',
+  userRole: 'content_creator' as UserRole,
+  quickChips: [],
+  campaignContext: null,
+  openDonnyWithContext: noop,
+};
+
 export function useDonnyContext() {
   const ctx = useContext(DonnyContext);
-  if (!ctx) throw new Error('useDonnyContext must be used within DonnyProvider');
+  if (!ctx) {
+    console.warn('[DonnyProvider] useDonnyContext called outside provider — using fallback');
+    return DONNY_FALLBACK;
+  }
   return ctx;
 }
 
