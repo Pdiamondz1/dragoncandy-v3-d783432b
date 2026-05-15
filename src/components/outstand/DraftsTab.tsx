@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { FileText, Send, X as XIcon, CalendarClock } from 'lucide-react';
+import { FileText, Send, X as XIcon, CalendarClock, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DCEmptyState } from '@/components/ui/dc-empty-state';
 import { DCSkeleton } from '@/components/ui/dc-skeleton';
 import { useDraftPosts, type DraftPost } from '@/hooks/useDraftPosts';
 import { useDonnyContext } from '@/contexts/DonnyProvider';
 import { useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 
 const SOURCE_BADGES: Record<string, { label: string; className: string }> = {
   campaign_social_hook: { label: 'Campaign', className: 'bg-dc-teal/20 text-dc-teal' },
@@ -35,10 +36,11 @@ interface DraftsTabProps {
 }
 
 export const DraftsTab: React.FC<DraftsTabProps> = ({ onSwitchTab }) => {
-  const { drafts, isLoading, cancelDraft } = useDraftPosts();
+  const { drafts, isLoading, cancelDraft, scheduleDraft, scheduleAllDrafts } = useDraftPosts();
   const { publishDraft } = useDonnyContext();
   const queryClient = useQueryClient();
   const [publishingId, setPublishingId] = useState<string | null>(null);
+  const [schedulingId, setSchedulingId] = useState<string | null>(null);
 
   const handlePostNow = async (draft: DraftPost) => {
     setPublishingId(draft.id);
@@ -49,6 +51,29 @@ export const DraftsTab: React.FC<DraftsTabProps> = ({ onSwitchTab }) => {
       console.error('[DraftsTab] Post failed:', err);
     } finally {
       setPublishingId(null);
+    }
+  };
+
+  const handleSchedule = async (draft: DraftPost) => {
+    setSchedulingId(draft.id);
+    try {
+      await scheduleDraft.mutateAsync({ draftId: draft.id });
+      toast.success(`Scheduled for ${new Date(draft.scheduled_at).toLocaleString()}`);
+    } catch (err) {
+      console.error('[DraftsTab] Schedule failed:', err);
+      toast.error('Failed to schedule post');
+    } finally {
+      setSchedulingId(null);
+    }
+  };
+
+  const handleScheduleAll = async () => {
+    try {
+      await scheduleAllDrafts.mutateAsync();
+      toast.success(`Scheduled ${drafts.length} post${drafts.length !== 1 ? 's' : ''} at AI-suggested times`);
+    } catch (err) {
+      console.error('[DraftsTab] Schedule all failed:', err);
+      toast.error('Failed to schedule posts');
     }
   };
 
@@ -68,6 +93,17 @@ export const DraftsTab: React.FC<DraftsTabProps> = ({ onSwitchTab }) => {
 
   return (
     <div className="space-y-3">
+      {drafts.length > 1 && (
+        <Button
+          onClick={handleScheduleAll}
+          disabled={scheduleAllDrafts.isPending}
+          className="w-full rounded-full bg-dc-teal-btn text-white font-bold hover:bg-dc-teal-btn-hover"
+          size="sm"
+        >
+          <Clock className="h-3 w-3 mr-1" />
+          {scheduleAllDrafts.isPending ? 'Scheduling…' : `Schedule All ${drafts.length} Drafts`}
+        </Button>
+      )}
       {drafts.map((draft) => {
         const source = (draft.metadata as Record<string, unknown>)?.source as string | undefined;
         const scheduledDate = new Date(draft.scheduled_at);
@@ -121,9 +157,19 @@ export const DraftsTab: React.FC<DraftsTabProps> = ({ onSwitchTab }) => {
               <div className="flex flex-col gap-2">
                 <Button
                   size="sm"
+                  onClick={() => handleSchedule(draft)}
+                  disabled={schedulingId === draft.id || scheduleAllDrafts.isPending}
+                  className="rounded-full bg-dc-teal-btn text-white font-bold hover:bg-dc-teal-btn-hover"
+                >
+                  <Clock className="h-3 w-3 mr-1" />
+                  {schedulingId === draft.id ? 'Scheduling…' : 'Schedule'}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="dc-outline"
                   onClick={() => handlePostNow(draft)}
                   disabled={publishingId === draft.id}
-                  className="rounded-full bg-dc-teal-btn text-white font-bold hover:bg-dc-teal-btn-hover"
+                  className="rounded-full border-dc-teal text-dc-teal hover:bg-dc-teal/10"
                 >
                   <Send className="h-3 w-3 mr-1" />
                   {publishingId === draft.id ? 'Posting…' : 'Post Now'}

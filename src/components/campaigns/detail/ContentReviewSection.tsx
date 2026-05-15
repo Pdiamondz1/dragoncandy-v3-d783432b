@@ -175,9 +175,10 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
   });
 
   const isSubmitted = contentStatus === 'submitted';
+  const isApproved = contentStatus === 'approved';
   const hasFiles = files && files.length > 0;
 
-  if (!isSubmitted && !hasFiles && !filesLoading) return null;
+  if (!isSubmitted && !isApproved && !hasFiles && !filesLoading) return null;
 
   if (!hasFiles && !filesLoading) {
     return (
@@ -292,8 +293,21 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
         </DialogContent>
       </Dialog>
 
+      {/* Approved state — prompt to schedule posts */}
+      {isApproved && (
+        <div className="bg-teal-50 border border-teal-200 rounded-xl p-3 space-y-2">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="h-4 w-4 text-teal-600" />
+            <span className="text-sm font-semibold text-teal-800">Content approved — payment released!</span>
+          </div>
+          <p className="text-xs text-teal-700">
+            Donny prepared draft social posts for this campaign. Head to your Outstand drafts to schedule them.
+          </p>
+        </div>
+      )}
+
       {/* Actions — only show when content is submitted for review */}
-      {!isSubmitted && hasFiles && (
+      {!isSubmitted && !isApproved && hasFiles && (
         <p className="text-xs text-gray-500">
           Files uploaded but not yet submitted for review.
         </p>

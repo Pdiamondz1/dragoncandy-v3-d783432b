@@ -8,11 +8,12 @@ import { useNavigate } from 'react-router-dom';
 import { Campaign } from '@/hooks/useCampaigns';
 import { format } from 'date-fns';
 import { useCampaignApplicationsCount } from '@/hooks/useCampaignApplicationsCount';
-import { useDuplicateCampaign } from '@/hooks/useCampaignMutations';
+import { useDuplicateCampaign, useRelaunchWithCreators } from '@/hooks/useCampaignMutations';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
 import { EscrowFeeBreakdown } from '@/components/payments/EscrowFeeBreakdown';
+import { ReHireCreatorsModal } from './ReHireCreatorsModal';
 import {
   deriveCampaignPhase,
   deriveCurrentStep,
@@ -71,11 +72,13 @@ function getStepLabel(phase: CampaignPhase, step: ProjectStep | null, applicatio
 const CampaignCardComponent: React.FC<CampaignCardProps> = ({ campaign }) => {
   const { data: applicationCounts } = useCampaignApplicationsCount(campaign.id);
   const duplicateCampaign = useDuplicateCampaign();
+  const relaunchWithCreators = useRelaunchWithCreators();
   const { toast } = useToast();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [isPayingEscrow, setIsPayingEscrow] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
+  const [showReHireModal, setShowReHireModal] = useState(false);
 
   const collabShape = campaign.collaboration_status
     ? {
@@ -266,21 +269,8 @@ const CampaignCardComponent: React.FC<CampaignCardProps> = ({ campaign }) => {
 
         {/* Reuse actions for completed campaigns */}
         {phase === 'completed' && (
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="flex-1 rounded-full text-xs"
-              disabled={duplicateCampaign.isPending}
-              onClick={async () => {
-                const result = await duplicateCampaign.mutateAsync(campaign.id);
-                if (result?.id) navigate(`/dashboard/business/campaigns/${result.id}/edit`);
-              }}
-            >
-              <RefreshCw className="h-3 w-3 mr-1" />
-              Re-Launch
-            </Button>
-            {campaign.creator_name && (
+          <>
+            <div className="flex gap-2">
               <Button
                 variant="outline"
                 size="sm"
@@ -291,11 +281,35 @@ const CampaignCardComponent: React.FC<CampaignCardProps> = ({ campaign }) => {
                   if (result?.id) navigate(`/dashboard/business/campaigns/${result.id}/edit`);
                 }}
               >
-                <UserPlus className="h-3 w-3 mr-1" />
-                Re-Hire Creator
+                <RefreshCw className="h-3 w-3 mr-1" />
+                Re-Launch
               </Button>
-            )}
-          </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1 rounded-full text-xs"
+                onClick={() => setShowReHireModal(true)}
+              >
+                <UserPlus className="h-3 w-3 mr-1" />
+                Re-Hire Creators
+              </Button>
+            </div>
+            <ReHireCreatorsModal
+              open={showReHireModal}
+              onOpenChange={setShowReHireModal}
+              campaignId={campaign.id}
+              campaignTitle={campaign.title}
+              isLoading={relaunchWithCreators.isPending}
+              onConfirm={async (creatorIds) => {
+                const result = await relaunchWithCreators.mutateAsync({
+                  sourceCampaignId: campaign.id,
+                  reinviteCreatorIds: creatorIds,
+                });
+                setShowReHireModal(false);
+                if (result?.id) navigate(`/dashboard/business/campaigns/${result.id}`);
+              }}
+            />
+          </>
         )}
       </CardContent>
     </Card>

@@ -520,3 +520,68 @@ export const useDuplicateCampaign = () => {
     },
   });
 };
+
+export const useRelaunchWithCreators = () => {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      sourceCampaignId,
+      reinviteCreatorIds,
+    }: {
+      sourceCampaignId: string;
+      reinviteCreatorIds: string[];
+    }) => {
+      const { data: source, error: fetchError } = await supabase
+        .from('campaigns')
+        .select('title, description, goals, deliverables, platforms, budget_min, budget_max, style, tone, open_for_sponsorship, delivery_type, delivery_fee, pricing_type, fixed_price, ai_analysis, org_unit_id')
+        .eq('id', sourceCampaignId)
+        .single();
+
+      if (fetchError || !source) throw fetchError ?? new Error('Campaign not found');
+
+      const { data: newCampaign, error: insertError } = await supabase
+        .from('campaigns')
+        .insert({
+          ...source,
+          title: source.title.replace(/ \(Copy\)$/, ''),
+          status: 'published',
+          escrow_status: 'pending',
+          deadline: null,
+          user_id: user!.id,
+          duplicated_from: sourceCampaignId,
+        } as unknown as Database['public']['Tables']['campaigns']['Insert'])
+        .select('id')
+        .single();
+
+      if (insertError) throw insertError;
+
+      const inviteResults = await Promise.allSettled(
+        reinviteCreatorIds.map((creatorId) =>
+          supabase.functions.invoke('send-campaign-invitation', {
+            body: {
+              campaign_id: newCampaign!.id,
+              creator_id: creatorId,
+              invited_by: user!.id,
+              invitation_message: 'You did great work on our last campaign — we\'d love to work together again!',
+            },
+          })
+        )
+      );
+
+      const sentCount = inviteResults.filter((r) => r.status === 'fulfilled').length;
+      return { id: newCampaign!.id, sentCount };
+    },
+    onSuccess: (_data) => {
+      queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+      toast({
+        title: 'Campaign relaunched!',
+        description: `Published and ${_data.sentCount} creator${_data.sentCount !== 1 ? 's' : ''} invited.`,
+      });
+    },
+    onError: () => {
+      toast({ title: 'Failed to relaunch campaign', description: 'Please try again.', variant: 'destructive' });
+    },
+  });
+};
