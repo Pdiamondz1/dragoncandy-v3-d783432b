@@ -50,6 +50,7 @@ export function DeliverablesList({ deliverables, onChange }: DeliverablesListPro
   return (
     <div>
       <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Deliverables</label>
+      <p className="text-xs text-gray-500 mt-1">Each item is one piece of content the creator will produce and deliver</p>
       <div className="mt-2 space-y-2">
         {deliverables.map((d, i) => {
           const Icon = TYPE_ICONS[d.content_type] || Camera;
@@ -109,7 +110,15 @@ export function DeliverablesList({ deliverables, onChange }: DeliverablesListPro
       {/* Summary line */}
       {deliverables.length > 0 && (
         <p className="text-xs text-gray-500 mt-3">
-          {deliverables.length} deliverable{deliverables.length !== 1 ? 's' : ''} total — Creator will deliver all items for your proposed budget
+          {deliverables.length} deliverable{deliverables.length !== 1 ? 's' : ''}: {
+            Object.entries(
+              deliverables.reduce<Record<string, number>>((acc, d) => {
+                const label = TYPE_LABELS[d.content_type] || d.content_type;
+                acc[label] = (acc[label] || 0) + 1;
+                return acc;
+              }, {})
+            ).map(([label, count]) => `${count} ${label}${count > 1 ? 's' : ''}`).join(', ')
+          }
         </p>
       )}
     </div>

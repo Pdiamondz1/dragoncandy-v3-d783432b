@@ -257,7 +257,7 @@ const ApplicationCardComponent: React.FC<ApplicationCardProps> = ({
                   userRole={userRole}
                 />
               </div>
-            ) : counterOffers.some(o => o.status === 'pending') ? (
+            ) : counterOffers.some(o => o.status === 'pending' && o.sender_id === user?.id) ? (
               <div className="pt-4 border-t">
                 <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3 text-center">
                   Counter offer pending — waiting for response
@@ -272,7 +272,10 @@ const ApplicationCardComponent: React.FC<ApplicationCardProps> = ({
                   size="sm"
                 >
                   <Check className="h-4 w-4 mr-2" aria-hidden="true" />
-                  Accept {acceptedOffer ? `(${formatCurrency(acceptedOffer.proposed_rate)})` : ''}
+                  Accept ({formatCurrency(
+                    counterOffers.filter(o => o.status === 'pending' && o.sender_id !== user?.id).at(-1)?.proposed_rate
+                    || application.proposed_rate
+                  )})
                 </Button>
                 <Button
                   onClick={() => setShowCounterModal(true)}

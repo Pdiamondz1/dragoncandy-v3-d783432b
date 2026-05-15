@@ -26,10 +26,61 @@ export function useCampaignContentGallery(campaignId: string, statusFilter?: str
         .from('campaign_collaborations')
         .select('id, creator_id, deliverables_status, content_status, profiles!campaign_collaborations_creator_id_fkey(full_name, avatar_url)')
         .eq('campaign_id', campaignId)
-        .in('status', ['active', 'completed']);
+        .in('status', ['active', 'completed', 'pending']);
 
       if (collabError) throw collabError;
-      if (!collabs?.length) return [];
+
+      // Fallback: if no collaborations yet, query file_uploads directly for the campaign owner
+      if (!collabs?.length) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return [];
+
+        const { data: campaign } = await supabase
+          .from('campaigns')
+          .select('user_id')
+          .eq('id', campaignId)
+          .single();
+
+        if (!campaign || campaign.user_id !== user.id) return [];
+
+        const { data: directFiles, error: directError } = await supabase
+          .from('file_uploads')
+          .select('id, filename, original_filename, mime_type, file_size, file_path, bucket_name, uploaded_by, created_at')
+          .eq('campaign_id', campaignId)
+          .eq('file_category', 'deliverable')
+          .order('created_at', { ascending: false });
+
+        if (directError) throw directError;
+        if (!directFiles?.length) return [];
+
+        const uploaderIds = [...new Set(directFiles.map(f => f.uploaded_by))];
+        const { data: uploaderProfiles } = await supabase
+          .from('profiles')
+          .select('id, full_name, avatar_url')
+          .in('id', uploaderIds);
+
+        const profileMap = new Map((uploaderProfiles ?? []).map(p => [p.id, p]));
+
+        return directFiles.map(file => {
+          const profile = profileMap.get(file.uploaded_by);
+          return {
+            fileId: file.id,
+            filename: file.filename,
+            originalFilename: file.original_filename,
+            mimeType: file.mime_type,
+            fileSize: file.file_size,
+            filePath: file.file_path,
+            bucketName: file.bucket_name,
+            status: 'submitted' as GalleryFile['status'],
+            creatorId: file.uploaded_by,
+            creatorHandle: profile?.full_name ?? 'Creator',
+            creatorAvatarUrl: profile?.avatar_url ?? null,
+            collaborationId: '',
+            thumbnailUrl: null,
+            uploadedAt: file.created_at,
+          };
+        });
+      }
 
       const { data: files, error: fileError } = await supabase
         .from('file_uploads')

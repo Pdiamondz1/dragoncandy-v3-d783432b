@@ -31,6 +31,8 @@ export const useCounterOffers = (applicationId: string | undefined) => {
       return data as CounterOffer[];
     },
     enabled: !!applicationId,
+    refetchInterval: 15_000,
+    refetchOnWindowFocus: true,
   });
 };
 

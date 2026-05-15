@@ -423,10 +423,10 @@ export const CreatorMatchingSection: React.FC<CreatorMatchingSectionProps> = ({ 
               <CardContent className="flex flex-col items-center justify-center py-12">
                 <Users className="h-12 w-12 text-muted-foreground mb-4" />
                 <h3 className="text-lg font-semibold mb-2">
-                  No creators available
+                  No creators on the platform yet
                 </h3>
                 <p className="text-muted-foreground text-center max-w-md">
-                  There are currently no completed creator profiles available on the platform.
+                  Creators will appear here once they sign up. Use AI Matches to automatically find and invite the best fit for your campaign.
                 </p>
               </CardContent>
             </Card>

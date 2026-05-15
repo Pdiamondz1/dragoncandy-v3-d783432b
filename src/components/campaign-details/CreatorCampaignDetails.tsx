@@ -64,7 +64,7 @@ export function CreatorCampaignDetails({
           />
         )}
 
-        <CollapsibleBriefSection title="Content Requirements">
+        <CollapsibleBriefSection title="Content Requirements" defaultOpen>
           <ContentRequirementsSection campaign={campaign} campaignId={campaign.id} />
         </CollapsibleBriefSection>
 

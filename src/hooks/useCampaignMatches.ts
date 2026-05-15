@@ -44,37 +44,34 @@ export const useCampaignMatches = (campaignId: string) => {
   return useQuery({
     queryKey: ['campaign-matches', campaignId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data: matchRows, error: matchError } = await supabase
         .from('campaign_matches')
-        .select(`
-          *,
-          creator_profile:profiles!creator_id (
-            creator_profiles!user_id (
-              id,
-              creator_name,
-              avatar_url,
-              bio,
-              skills,
-              location,
-              base_rate_per_hour,
-              portfolio_urls,
-              instagram_url,
-              tiktok_url,
-              youtube_url
-            )
-          )
-        `)
+        .select('id, campaign_id, creator_id, match_score, match_reasons, ai_analysis, created_at')
         .eq('campaign_id', campaignId)
         .order('match_score', { ascending: false });
 
-      if (error) {
-        console.error('Error fetching campaign matches:', error);
-        throw error;
+      if (matchError) {
+        console.error('Error fetching campaign matches:', matchError);
+        throw matchError;
       }
 
-      // Transform the data to match our interface
-      const transformedData = data?.map((match) => {
+      if (!matchRows?.length) return [] as CreatorMatch[];
+
+      const creatorIds = matchRows.map(m => m.creator_id);
+      const { data: profiles, error: profileError } = await supabase
+        .from('creator_profiles')
+        .select('id, user_id, creator_name, avatar_url, bio, skills, location, base_rate_per_hour, portfolio_urls, instagram_url, tiktok_url, youtube_url')
+        .in('user_id', creatorIds);
+
+      if (profileError) {
+        console.error('Error fetching creator profiles for matches:', profileError);
+      }
+
+      const profileMap = new Map((profiles ?? []).map(p => [p.user_id, p]));
+
+      return matchRows.map((match) => {
         const matchReasons = (match.match_reasons ?? {}) as Record<string, unknown>;
+        const profile = profileMap.get(match.creator_id);
         return {
           id: match.id,
           campaign_id: match.campaign_id,
@@ -89,22 +86,20 @@ export const useCampaignMatches = (campaignId: string) => {
           ai_analysis: match.ai_analysis || '',
           created_at: match.created_at,
           creator_profile: {
-            id: match.creator_profile?.creator_profiles?.id || '',
-            creator_name: match.creator_profile?.creator_profiles?.creator_name || '',
-            avatar_url: match.creator_profile?.creator_profiles?.avatar_url || null,
-            bio: match.creator_profile?.creator_profiles?.bio || null,
-            skills: match.creator_profile?.creator_profiles?.skills || [],
-            location: match.creator_profile?.creator_profiles?.location || null,
-            base_rate_per_hour: match.creator_profile?.creator_profiles?.base_rate_per_hour || null,
-            portfolio_urls: match.creator_profile?.creator_profiles?.portfolio_urls || null,
-            instagram_url: match.creator_profile?.creator_profiles?.instagram_url || null,
-            tiktok_url: match.creator_profile?.creator_profiles?.tiktok_url || null,
-            youtube_url: match.creator_profile?.creator_profiles?.youtube_url || null,
-          }
+            id: profile?.id || '',
+            creator_name: profile?.creator_name || '',
+            avatar_url: profile?.avatar_url || null,
+            bio: profile?.bio || null,
+            skills: profile?.skills || [],
+            location: profile?.location || null,
+            base_rate_per_hour: profile?.base_rate_per_hour || null,
+            portfolio_urls: profile?.portfolio_urls || null,
+            instagram_url: profile?.instagram_url || null,
+            tiktok_url: profile?.tiktok_url || null,
+            youtube_url: profile?.youtube_url || null,
+          },
         };
-      }) || [];
-
-      return transformedData as CreatorMatch[];
+      }) as CreatorMatch[];
     },
     enabled: !!campaignId,
   });

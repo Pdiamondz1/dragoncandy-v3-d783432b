@@ -124,6 +124,12 @@ export function AppliedPhaseView({ campaign, enrichedDetail, application }: Appl
               </div>
             </>
           )}
+
+          {isCounterOffer && !latestPendingOffer && (
+            <div className="p-3 rounded-lg text-xs text-center bg-amber-50 text-amber-800 border border-amber-200">
+              Waiting for the other party to respond to your counter offer
+            </div>
+          )}
         </div>
       )}
 
