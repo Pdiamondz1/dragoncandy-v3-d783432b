@@ -3,28 +3,30 @@ import React from 'react';
 import { Upload, AlertCircle } from 'lucide-react';
 import { useDropzone, FileRejection } from 'react-dropzone';
 
+const defaultAccept: Record<string, string[]> = {
+  'image/*': ['.jpeg', '.jpg', '.png', '.gif', '.webp'],
+  'video/*': ['.mp4', '.webm', '.mov', '.avi'],
+};
+
 interface FileUploadDropzoneProps {
   onDrop: (acceptedFiles: File[], fileRejections: FileRejection[]) => void;
-  acceptedFiles: File[];
   fileRejections: FileRejection[];
+  acceptOverride?: Record<string, string[]>;
 }
 
 export const FileUploadDropzone: React.FC<FileUploadDropzoneProps> = ({
   onDrop,
-  fileRejections
+  fileRejections,
+  acceptOverride,
 }) => {
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop: (acceptedFiles, fileRejections) => {
-      // Convert FileWithPath[] to File[] by spreading into new array
+    onDrop: (acceptedFiles, rejections) => {
       const files = [...acceptedFiles] as File[];
-      onDrop(files, fileRejections);
+      onDrop(files, rejections);
     },
-    accept: {
-      'image/*': ['.jpeg', '.jpg', '.png', '.gif', '.webp'],
-      'video/*': ['.mp4', '.webm', '.mov', '.avi']
-    },
+    accept: acceptOverride ?? defaultAccept,
     maxSize: 100 * 1024 * 1024, // 100MB
-    maxFiles: 10
+    maxFiles: 10,
   });
 
   return (
@@ -33,18 +35,18 @@ export const FileUploadDropzone: React.FC<FileUploadDropzoneProps> = ({
       <div
         {...getRootProps()}
         className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
-          isDragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
+          isDragActive ? 'border-teal-400 bg-teal-50/30' : 'border-teal-300 hover:border-teal-400'
         }`}
       >
         <input {...getInputProps()} />
-        <Upload className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-        <p className="text-lg font-medium text-gray-700 mb-2">
+        <Upload className="h-12 w-12 mx-auto mb-4 text-dc-text-muted" />
+        <p className="text-lg font-medium text-dc-text mb-2">
           {isDragActive ? 'Drop files here' : 'Drag & drop files here'}
         </p>
-        <p className="text-sm text-gray-500 mb-4">
+        <p className="text-sm text-dc-text-muted mb-4">
           or click to select files
         </p>
-        <p className="text-xs text-gray-400">
+        <p className="text-xs text-dc-text-muted">
           Supports: Images (JPEG, PNG, GIF, WebP) and Videos (MP4, WebM, MOV, AVI)
           <br />
           Maximum file size: 100MB per file
@@ -70,4 +72,3 @@ export const FileUploadDropzone: React.FC<FileUploadDropzoneProps> = ({
     </div>
   );
 };
-

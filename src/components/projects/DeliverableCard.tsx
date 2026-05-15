@@ -40,7 +40,7 @@ export function DeliverableCard({ deliverable, status, uploadedFile, feedback, d
     ? 'bg-amber-100'
     : (isUploaded || isApproved)
       ? 'bg-teal-100'
-      : 'bg-gray-100';
+      : 'bg-teal-50';
 
   const containerClass = cn(
     'rounded-2xl p-3',

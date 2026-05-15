@@ -12,22 +12,48 @@ import { FileUploadPreview } from './upload/FileUploadPreview';
 interface ProjectFileUploadProps {
   campaignId: string;
   campaignTitle: string;
+  deliverableId?: string;
+  deliverableLabel?: string;
+  acceptFilter?: string;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
   onUploadComplete?: () => void;
 }
 
 export const ProjectFileUpload: React.FC<ProjectFileUploadProps> = ({
   campaignId,
   campaignTitle,
+  deliverableId,
+  deliverableLabel,
+  acceptFilter,
+  open: controlledOpen,
+  onOpenChange: controlledOnOpenChange,
   onUploadComplete
 }) => {
   const { user } = useAuth();
-  const [isOpen, setIsOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [rejectedFiles, setRejectedFiles] = useState<FileRejection[]>([]);
+
+  const isControlled = controlledOpen !== undefined && controlledOnOpenChange !== undefined;
+  const isOpen = isControlled ? controlledOpen : internalOpen;
+
+  const setIsOpen = (value: boolean) => {
+    if (isControlled) {
+      controlledOnOpenChange!(value);
+    } else {
+      setInternalOpen(value);
+    }
+  };
+
+  const acceptOverride: Record<string, string[]> | undefined = acceptFilter
+    ? { [acceptFilter]: [] }
+    : undefined;
 
   const { uploadProgress, isUploading, handleUpload } = useProjectFileUpload({
     campaignId,
     campaignTitle,
+    deliverableId,
     onUploadComplete: () => {
       setIsOpen(false);
       setSelectedFiles([]);
@@ -53,6 +79,56 @@ export const ProjectFileUpload: React.FC<ProjectFileUploadProps> = ({
     setRejectedFiles([]);
   };
 
+  const dialogTitle = deliverableLabel
+    ? `Upload: ${deliverableLabel}`
+    : `Upload Deliverables for ${campaignTitle}`;
+
+  const dialogContent = (
+    <DialogContent className="max-w-2xl">
+      <DialogHeader>
+        <DialogTitle>{dialogTitle}</DialogTitle>
+      </DialogHeader>
+
+      <div className="space-y-4 max-h-[70vh] overflow-y-auto">
+        <FileUploadDropzone
+          onDrop={handleFileDrop}
+          fileRejections={rejectedFiles}
+          acceptOverride={acceptOverride}
+        />
+
+        <FileUploadPreview
+          files={selectedFiles}
+          uploadProgress={uploadProgress}
+        />
+
+        {/* Upload Button */}
+        <div className="flex justify-end gap-3 pt-4 border-t">
+          <Button
+            variant="outline"
+            onClick={handleClose}
+            disabled={isUploading}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={onUpload}
+            disabled={selectedFiles.length === 0 || isUploading || !user}
+          >
+            {isUploading ? 'Uploading…' : `Upload ${selectedFiles.length} file(s)`}
+          </Button>
+        </div>
+      </div>
+    </DialogContent>
+  );
+
+  if (isControlled) {
+    return (
+      <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        {dialogContent}
+      </Dialog>
+    );
+  }
+
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
@@ -61,41 +137,7 @@ export const ProjectFileUpload: React.FC<ProjectFileUploadProps> = ({
           Upload Work
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>Upload Deliverables for {campaignTitle}</DialogTitle>
-        </DialogHeader>
-        
-        <div className="space-y-4 max-h-[70vh] overflow-y-auto">
-          <FileUploadDropzone
-            onDrop={handleFileDrop}
-            acceptedFiles={selectedFiles}
-            fileRejections={rejectedFiles}
-          />
-
-          <FileUploadPreview
-            files={selectedFiles}
-            uploadProgress={uploadProgress}
-          />
-
-          {/* Upload Button */}
-          <div className="flex justify-end gap-3 pt-4 border-t">
-            <Button
-              variant="outline"
-              onClick={handleClose}
-              disabled={isUploading}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={onUpload}
-              disabled={selectedFiles.length === 0 || isUploading || !user}
-            >
-              {isUploading ? 'Uploading…' : `Upload ${selectedFiles.length} file(s)`}
-            </Button>
-          </div>
-        </div>
-      </DialogContent>
+      {dialogContent}
     </Dialog>
   );
 };

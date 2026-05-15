@@ -9,12 +9,14 @@ import { toast } from '@/hooks/use-toast';
 interface UseProjectFileUploadProps {
   campaignId: string;
   campaignTitle: string;
+  deliverableId?: string;
   onUploadComplete?: () => void;
 }
 
 export const useProjectFileUpload = ({
   campaignId,
   campaignTitle,
+  deliverableId,
   onUploadComplete
 }: UseProjectFileUploadProps) => {
   const { user } = useAuth();
@@ -84,9 +86,10 @@ export const useProjectFileUpload = ({
             file_category: 'deliverable',
             metadata: {
               campaign_title: campaignTitle,
-              upload_type: 'project_deliverable',
+              upload_type: 'deliverable',
               campaign_id: campaignId,
-              uploaded_at: new Date().toISOString()
+              uploaded_at: new Date().toISOString(),
+              ...(deliverableId && { deliverable_id: deliverableId }),
             }
           });
 
