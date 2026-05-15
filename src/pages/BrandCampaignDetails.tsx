@@ -15,6 +15,7 @@ import { SponsorshipStatusCard } from '@/components/campaigns/SponsorshipStatusC
 import { CreatorApplicationsCard } from '@/components/campaigns/CreatorApplicationsCard';
 import { CampaignContentGallery } from '@/components/campaigns/CampaignContentGallery';
 import { SponsorshipAmplificationPrompt } from '@/components/outstand/SponsorshipAmplificationPrompt';
+import { SocialPostStatus } from '@/components/campaigns/SocialPostStatus';
 import { supabase } from '@/integrations/supabase/client';
 import {
   ArrowLeft,
@@ -318,6 +319,14 @@ const BrandCampaignDetails = () => {
             >
               Amplify to Your Channels
             </button>
+          )}
+
+          {/* Social post status — visible once sponsorship is accepted */}
+          {isAccepted && (
+            <SocialPostStatus
+              campaignId={campaignId}
+              socialManagerPath="/dashboard/brand/social"
+            />
           )}
         </div>
       </div>

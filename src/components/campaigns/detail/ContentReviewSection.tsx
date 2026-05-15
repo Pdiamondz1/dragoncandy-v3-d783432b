@@ -34,6 +34,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useFileUploads } from '@/hooks/useFileQuery';
 import { useDraftPosts } from '@/hooks/useDraftPosts';
+import { SocialPostStatus } from '@/components/campaigns/SocialPostStatus';
 
 interface ContentReviewSectionProps {
   collaborationId: string;
@@ -327,6 +328,13 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
             </Button>
           </div>
         </div>
+      )}
+
+      {isApproved && (
+        <SocialPostStatus
+          campaignId={campaignId}
+          socialManagerPath="/dashboard/business/social"
+        />
       )}
 
       {/* Actions — only show when content is submitted for review */}
