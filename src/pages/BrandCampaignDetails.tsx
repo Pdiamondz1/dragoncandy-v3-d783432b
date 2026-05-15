@@ -6,13 +6,16 @@ import { useCampaign } from '@/hooks/useCampaigns';
 import { useBrandSponsorshipStatus } from '@/hooks/useBrandSponsorshipStatus';
 import { useRestaurantProfile } from '@/hooks/useRestaurantProfile';
 import { useCreateDirectConversation } from '@/hooks/useConversations';
+import { useCampaignContentGallery } from '@/hooks/useCampaignContentGallery';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Badge } from '@/components/ui/badge';
 import { SponsorshipProposalModal } from '@/components/campaigns/SponsorshipProposalModal';
 import { RestaurantProfileCard } from '@/components/campaigns/RestaurantProfileCard';
 import { SponsorshipStatusCard } from '@/components/campaigns/SponsorshipStatusCard';
 import { CreatorApplicationsCard } from '@/components/campaigns/CreatorApplicationsCard';
+import { CampaignContentGallery } from '@/components/campaigns/CampaignContentGallery';
 import { SponsorshipAmplificationPrompt } from '@/components/outstand/SponsorshipAmplificationPrompt';
+import { supabase } from '@/integrations/supabase/client';
 import {
   ArrowLeft,
   Calendar,
@@ -34,6 +37,21 @@ const BrandCampaignDetails = () => {
   const { data: sponsorshipStatus, isLoading: isLoadingSponsorshipStatus } = useBrandSponsorshipStatus(id || '');
   const { data: restaurantProfile, isLoading: isLoadingRestaurant } = useRestaurantProfile(campaign?.user_id);
   const createConversation = useCreateDirectConversation();
+
+  const campaignId = id || '';
+  const isAccepted = sponsorshipStatus?.status === 'accepted';
+
+  const { data: galleryFiles } = useCampaignContentGallery(
+    campaignId,
+    isAccepted ? 'approved' : undefined,
+  );
+
+  const mediaUrls = (galleryFiles ?? [])
+    .filter(f => f.fileId && f.filePath && f.bucketName)
+    .map(f => supabase.storage.from(f.bucketName).getPublicUrl(f.filePath).data.publicUrl);
+
+  const creatorName =
+    (galleryFiles ?? []).find(f => f.creatorHandle)?.creatorHandle ?? null;
 
   const [isProposalModalOpen, setIsProposalModalOpen] = useState(false);
   const [showAmplify, setShowAmplify] = useState(false);
@@ -257,6 +275,14 @@ const BrandCampaignDetails = () => {
           {/* Creator Applications */}
           <CreatorApplicationsCard campaignId={campaign.id} />
 
+          {/* Content Delivery — visible once sponsorship is accepted */}
+          {isAccepted && (
+            <div className="space-y-3">
+              <h3 className="font-bold text-dc-text">Content Delivery</h3>
+              <CampaignContentGallery campaignId={campaignId} />
+            </div>
+          )}
+
           {/* Sponsorship Status */}
           <SponsorshipStatusCard
             sponsorshipStatus={sponsorshipStatus}
@@ -285,7 +311,7 @@ const BrandCampaignDetails = () => {
           </button>
 
           {/* Amplify CTA — only shown when brand's sponsorship is accepted */}
-          {sponsorshipStatus?.status === 'accepted' && (
+          {isAccepted && (
             <button
               onClick={() => setShowAmplify(true)}
               className="w-full rounded-full bg-dc-teal-btn text-white font-bold py-3 flex items-center justify-center gap-2"
@@ -308,15 +334,15 @@ const BrandCampaignDetails = () => {
       )}
 
       {/* Amplification Prompt — available once sponsorship is accepted */}
-      {sponsorshipStatus?.status === 'accepted' && (
+      {isAccepted && (
         <SponsorshipAmplificationPrompt
           open={showAmplify}
           onOpenChange={setShowAmplify}
           campaignId={campaign.id}
           campaignTitle={campaign.title}
           restaurantName={restaurantProfile?.business_name ?? ''}
-          creatorName={null}
-          mediaUrls={[]}
+          creatorName={creatorName}
+          mediaUrls={mediaUrls}
           originalCaption=""
         />
       )}
