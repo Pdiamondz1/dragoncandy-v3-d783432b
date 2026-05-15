@@ -40,14 +40,6 @@ export function Coachmark({ coachmarkKey, title, body, children }: CoachmarkProp
   }, [dismissed, coachmarkKey]);
 
   // Auto-dismiss after 8s
-  useEffect(() => {
-    if (!visible) return;
-    timerRef.current = setTimeout(() => dismiss(), 8000);
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, [visible, dismiss]);
-
   const dismissMutation = useMutation({
     mutationFn: async () => {
       if (!user) return;
@@ -67,6 +59,14 @@ export function Coachmark({ coachmarkKey, title, body, children }: CoachmarkProp
     setVisible(false);
     dismissMutation.mutate();
   }, [dismissMutation]);
+
+  useEffect(() => {
+    if (!visible) return;
+    timerRef.current = setTimeout(() => dismiss(), 8000);
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, [visible, dismiss]);
 
   return (
     <div ref={containerRef} className="relative inline-block">
