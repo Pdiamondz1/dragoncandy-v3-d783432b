@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
@@ -32,6 +33,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useFileUploads } from '@/hooks/useFileQuery';
+import { useDraftPosts } from '@/hooks/useDraftPosts';
 
 interface ContentReviewSectionProps {
   collaborationId: string;
@@ -58,6 +60,9 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
   const [feedback, setFeedback] = useState('');
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const safeRevisionCount = revisionCount ?? 0;
+
+  const navigate = useNavigate();
+  const { draftCount } = useDraftPosts();
 
   const { data: files, isLoading: filesLoading } = useFileUploads(campaignId, 'deliverable', creatorId);
 
@@ -293,16 +298,34 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
         </DialogContent>
       </Dialog>
 
-      {/* Approved state — prompt to schedule posts */}
+      {/* Approved state — actionable card to review/schedule social drafts */}
       {isApproved && (
-        <div className="bg-teal-50 border border-teal-200 rounded-xl p-3 space-y-2">
+        <div className="bg-teal-50 border border-teal-200 rounded-2xl p-4 space-y-3">
           <div className="flex items-center gap-2">
-            <CheckCircle2 className="h-4 w-4 text-teal-600" />
-            <span className="text-sm font-semibold text-teal-800">Content approved — payment released!</span>
+            <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+            <p className="font-semibold text-dc-text">Content Approved!</p>
           </div>
-          <p className="text-xs text-teal-700">
-            Donny prepared draft social posts for this campaign. Head to your Outstand drafts to schedule them.
-          </p>
+          {draftCount > 0 && (
+            <p className="text-sm text-dc-text-muted">
+              Donny prepared {draftCount} draft {draftCount === 1 ? 'post' : 'posts'} for you
+            </p>
+          )}
+          <div className="flex gap-2">
+            <Button
+              className="flex-1 rounded-full bg-dc-teal-btn hover:bg-dc-teal-btn-hover text-white font-bold text-sm"
+              onClick={() => navigate('/dashboard/business/social?tab=drafts')}
+            >
+              <Eye className="h-4 w-4 mr-1" />
+              Review &amp; Schedule
+            </Button>
+            <Button
+              variant="outline"
+              className="flex-1 rounded-full border-dc-teal text-dc-teal font-semibold text-sm"
+              onClick={() => {/* no-op dismiss */}}
+            >
+              Skip for Now
+            </Button>
+          </div>
         </div>
       )}
 
