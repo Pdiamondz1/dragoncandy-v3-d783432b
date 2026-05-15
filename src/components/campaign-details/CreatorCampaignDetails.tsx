@@ -17,6 +17,9 @@ interface CreatorCampaignDetailsProps {
   enrichedDetail?: EnrichedCampaignDetail;
   isInvited?: boolean;
   hasApplied?: boolean;
+  invitationId?: string;
+  onQuickApply?: () => void;
+  onDeclineInvitation?: () => void;
 }
 
 export function CreatorCampaignDetails({
@@ -24,9 +27,13 @@ export function CreatorCampaignDetails({
   enrichedDetail,
   isInvited,
   hasApplied,
+  invitationId,
+  onQuickApply,
+  onDeclineInvitation,
 }: CreatorCampaignDetailsProps) {
   const businessName =
-    (campaign.ai_analysis as Record<string, unknown>)?.business_name as string | undefined;
+    enrichedDetail?.businessProfile?.business_name ??
+    ((campaign.ai_analysis as Record<string, unknown>)?.business_name as string | undefined);
 
   const rawFootage = enrichedDetail?.media.filter((m) => m.media_type === 'raw_footage') ?? [];
 
@@ -40,7 +47,16 @@ export function CreatorCampaignDetails({
         applicationCount={enrichedDetail?.applicationCount}
       />
 
-      {isInvited && <InvitationBanner businessName={businessName} />}
+      {isInvited && (
+        <InvitationBanner
+          businessName={businessName}
+          campaignId={campaign.id}
+          campaignTitle={campaign.title}
+          invitationId={invitationId}
+          onQuickApply={onQuickApply}
+          onDecline={onDeclineInvitation}
+        />
+      )}
 
       <CampaignMetricsBar
         campaign={campaign}

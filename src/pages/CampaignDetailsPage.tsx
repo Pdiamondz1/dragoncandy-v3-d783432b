@@ -7,6 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { ArrowLeft, AlertCircle } from 'lucide-react';
 import { useCampaign } from '@/hooks/useCampaigns';
+import { useDeclineInvitation } from '@/hooks/useCampaignInvitations';
 import { ApplicationsListFixed } from '@/components/campaigns/ApplicationsListFixed';
 import { CreatorMatchingSection } from '@/components/campaigns/CreatorMatchingSection';
 import { CreatorCampaignDetails } from '@/components/campaign-details/CreatorCampaignDetails';
@@ -80,6 +81,8 @@ const CampaignDetailsPage: React.FC = () => {
 
   const canApply = isCreatorView && !isOwnCampaign && campaign?.status === 'published' && !hasApplied;
   const canReapply = isCreatorView && hasApplied && applicationStatus === 'rejected';
+
+  const declineInvitation = useDeclineInvitation();
 
   // One-tap apply flow state
   const [showApplySheet, setShowApplySheet] = useState(false);
@@ -315,6 +318,13 @@ const CampaignDetailsPage: React.FC = () => {
               enrichedDetail={enrichedDetail}
               isInvited={isInvited}
               hasApplied={hasApplied}
+              invitationId={pendingInvitation?.id}
+              onQuickApply={() => setShowApplySheet(true)}
+              onDeclineInvitation={
+                pendingInvitation?.id
+                  ? () => declineInvitation.mutate(pendingInvitation.id)
+                  : undefined
+              }
             />
           </div>
 
