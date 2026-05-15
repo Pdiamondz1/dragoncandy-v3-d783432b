@@ -47,7 +47,9 @@ export const FileUploadDropzone: React.FC<FileUploadDropzoneProps> = ({
           or click to select files
         </p>
         <p className="text-xs text-dc-text-muted">
-          Supports: Images (JPEG, PNG, GIF, WebP) and Videos (MP4, WebM, MOV, AVI)
+          {acceptOverride
+            ? `Accepts: ${Object.keys(acceptOverride).join(', ')}`
+            : 'Supports: Images (JPEG, PNG, GIF, WebP) and Videos (MP4, WebM, MOV, AVI)'}
           <br />
           Maximum file size: 100MB per file
         </p>

@@ -36,11 +36,14 @@ export const ProjectFileUpload: React.FC<ProjectFileUploadProps> = ({
   const [rejectedFiles, setRejectedFiles] = useState<FileRejection[]>([]);
 
   const isControlled = controlledOpen !== undefined && controlledOnOpenChange !== undefined;
+  if (process.env.NODE_ENV !== 'production' && (controlledOpen !== undefined) !== (controlledOnOpenChange !== undefined)) {
+    console.warn('ProjectFileUpload: provide both `open` and `onOpenChange`, or neither.');
+  }
   const isOpen = isControlled ? controlledOpen : internalOpen;
 
   const setIsOpen = (value: boolean) => {
-    if (isControlled) {
-      controlledOnOpenChange!(value);
+    if (isControlled && controlledOnOpenChange) {
+      controlledOnOpenChange(value);
     } else {
       setInternalOpen(value);
     }
