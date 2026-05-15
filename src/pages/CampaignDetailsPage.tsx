@@ -33,7 +33,7 @@ import { CollapsibleCampaignDetails } from '@/components/campaigns/detail/Collap
 import { SponsorshipCard } from '@/components/campaigns/detail/SponsorshipCard';
 import { useCampaignProject } from '@/hooks/useCampaignProject';
 import { useProjectComplete } from '@/hooks/useProjectComplete';
-import { useDeleteCampaign, useDuplicateCampaign } from '@/hooks/useCampaignMutations';
+import { useDeleteCampaign, useDuplicateCampaign } from '@/hooks/useCampaigns';
 import { RatingModal } from '@/components/reviews/RatingModal';
 import { useCampaignApplicationsCount } from '@/hooks/useCampaignApplicationsCount';
 import { useToast } from '@/hooks/use-toast';

@@ -8,7 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { Campaign } from '@/hooks/useCampaigns';
 import { format } from 'date-fns';
 import { useCampaignApplicationsCount } from '@/hooks/useCampaignApplicationsCount';
-import { useDuplicateCampaign, useRelaunchWithCreators } from '@/hooks/useCampaignMutations';
+import { useDuplicateCampaign, useRelaunchWithCreators } from '@/hooks/useCampaigns';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';

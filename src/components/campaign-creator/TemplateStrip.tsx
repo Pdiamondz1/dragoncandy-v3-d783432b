@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { useCampaignTemplates } from '@/hooks/useCampaignTemplates';
-import { useDuplicateCampaign } from '@/hooks/useCampaignMutations';
+import { useDuplicateCampaign } from '@/hooks/useCampaigns';
 import { Loader2 } from 'lucide-react';
 import { useState } from 'react';
 
