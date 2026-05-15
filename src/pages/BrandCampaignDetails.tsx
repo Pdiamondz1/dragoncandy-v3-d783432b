@@ -16,6 +16,7 @@ import { CreatorApplicationsCard } from '@/components/campaigns/CreatorApplicati
 import { CampaignContentGallery } from '@/components/campaigns/CampaignContentGallery';
 import { SponsorshipAmplificationPrompt } from '@/components/outstand/SponsorshipAmplificationPrompt';
 import { SocialPostStatus } from '@/components/campaigns/SocialPostStatus';
+import { SocialNudgeBanner } from '@/components/campaigns/SocialNudgeBanner';
 import { supabase } from '@/integrations/supabase/client';
 import {
   ArrowLeft,
@@ -324,6 +325,13 @@ const BrandCampaignDetails = () => {
           {/* Social post status — visible once sponsorship is accepted */}
           {isAccepted && (
             <SocialPostStatus
+              campaignId={campaignId}
+              socialManagerPath="/dashboard/brand/social"
+            />
+          )}
+
+          {isAccepted && (
+            <SocialNudgeBanner
               campaignId={campaignId}
               socialManagerPath="/dashboard/brand/social"
             />

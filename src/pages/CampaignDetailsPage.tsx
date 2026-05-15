@@ -38,6 +38,7 @@ import { RatingModal } from '@/components/reviews/RatingModal';
 import { useCampaignApplicationsCount } from '@/hooks/useCampaignApplicationsCount';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
+import { SocialNudgeBanner } from '@/components/campaigns/SocialNudgeBanner';
 
 const CampaignDetailsPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -501,6 +502,10 @@ const CampaignDetailsPage: React.FC = () => {
                   completedAt={collaborationData.completed_at ?? null}
                   budgetMin={campaign.budget_min}
                   budgetMax={campaign.budget_max}
+                />
+                <SocialNudgeBanner
+                  campaignId={campaign.id}
+                  socialManagerPath="/dashboard/business/social"
                 />
               </>
             )}

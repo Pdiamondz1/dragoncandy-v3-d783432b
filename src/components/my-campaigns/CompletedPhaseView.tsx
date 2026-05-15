@@ -8,6 +8,7 @@ import { CreatorCampaignDetails } from '@/components/campaign-details/CreatorCam
 import { CrossPostPrompt } from '@/components/outstand/CrossPostPrompt';
 import { DragonCandyOutstandProvider } from '@/integrations/outstand/Provider';
 import { SocialPostStatus } from '@/components/campaigns/SocialPostStatus';
+import { SocialNudgeBanner } from '@/components/campaigns/SocialNudgeBanner';
 import { useFileUploads } from '@/hooks/useFileQuery';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -126,6 +127,11 @@ export function CompletedPhaseView({ campaign, enrichedDetail, collaboration }: 
           </DragonCandyOutstandProvider>
 
           <SocialPostStatus
+            campaignId={campaign.id}
+            socialManagerPath="/dashboard/creator/social"
+          />
+
+          <SocialNudgeBanner
             campaignId={campaign.id}
             socialManagerPath="/dashboard/creator/social"
           />

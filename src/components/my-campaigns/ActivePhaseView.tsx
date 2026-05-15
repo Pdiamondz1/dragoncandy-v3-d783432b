@@ -15,6 +15,7 @@ import { useCampaignDeliverables } from '@/hooks/useCampaignDeliverables';
 import { CrossPostPrompt } from '@/components/outstand/CrossPostPrompt';
 import { DragonCandyOutstandProvider } from '@/integrations/outstand/Provider';
 import { supabase } from '@/integrations/supabase/client';
+import { SocialNudgeBanner } from '@/components/campaigns/SocialNudgeBanner';
 
 interface ActivePhaseViewProps {
   campaign: Campaign;
@@ -148,6 +149,11 @@ export function ActivePhaseView({ campaign, enrichedDetail, collaborationId }: A
             uploadedCount={uploadedCount}
             totalCount={totalDeliverables}
             contentStatus={collaboration.content_status ?? 'pending'}
+          />
+
+          <SocialNudgeBanner
+            campaignId={campaign.id}
+            socialManagerPath="/dashboard/creator/social"
           />
 
           {/* Cross-post prompt (shown when content is approved) */}
