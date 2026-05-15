@@ -119,7 +119,13 @@ export function ActivePhaseView({ campaign, enrichedDetail, collaborationId }: A
             campaignTitle={collaboration.campaign?.title || campaign.title}
             deliverableId={activeDeliverableUpload?.id}
             deliverableLabel={activeDeliverableUpload?.label}
-            acceptFilter={activeDeliverableUpload?.contentType === 'video' ? 'video/*' : undefined}
+            acceptFilter={
+              ['video_reel', 'tiktok', 'youtube_short', 'story'].includes(activeDeliverableUpload?.contentType ?? '')
+                ? 'video/*'
+                : activeDeliverableUpload?.contentType === 'photo'
+                  ? 'image/*'
+                  : undefined
+            }
             open={!!activeDeliverableUpload}
             onOpenChange={(open) => { if (!open) setActiveDeliverableUpload(null); }}
             onUploadComplete={() => setActiveDeliverableUpload(null)}

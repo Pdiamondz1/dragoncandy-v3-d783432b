@@ -55,6 +55,7 @@ export function SubmitForReviewButton({
   });
 
   const alreadySubmitted = contentStatus === 'submitted' || contentStatus === 'approved';
+  const isRevision = contentStatus === 'revision_requested';
   const noFiles = uploadedCount === 0;
   const isPartial = uploadedCount > 0 && uploadedCount < totalCount;
 
@@ -86,7 +87,7 @@ export function SubmitForReviewButton({
           }}
         >
           <Send className="h-4 w-4 mr-2" />
-          {submitMutation.isPending ? 'Submitting...' : 'Submit for Review'}
+          {submitMutation.isPending ? 'Submitting...' : isRevision ? 'Resubmit for Review' : 'Submit for Review'}
         </Button>
         {noFiles && (
           <p className="text-xs text-dc-text-muted text-center">
