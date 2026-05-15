@@ -31,6 +31,7 @@ export function useTour(): UseTourReturn {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tour-state", user?.id] });
     },
+    onError: (err) => { console.error('Failed to complete tour:', err); },
   });
 
   const completeTour = useCallback(() => {

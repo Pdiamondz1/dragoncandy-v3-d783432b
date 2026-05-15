@@ -44,6 +44,7 @@ export function useFirstRunMissions() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['first-run-missions', user?.id] });
     },
+    onError: (err) => { console.error('Failed to update missions:', err); },
   });
 
   // Initialize missions on first dashboard visit if null

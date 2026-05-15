@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 import type { OrgMember, OrgRole } from '@/types/org';
 
 type InviteResult = {
@@ -85,6 +86,7 @@ export function useUpdateMemberRole(orgId: string | undefined) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['org-members', orgId] });
     },
+    onError: () => { toast.error('Failed to update member role'); },
   });
 }
 
@@ -103,6 +105,7 @@ export function useRemoveMember(orgId: string | undefined) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['org-members', orgId] });
     },
+    onError: () => { toast.error('Failed to remove member'); },
   });
 }
 
@@ -141,5 +144,6 @@ export function useInviteMembers(orgId: string | undefined) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['org-members', orgId] });
     },
+    onError: () => { toast.error('Failed to send invitations'); },
   });
 }

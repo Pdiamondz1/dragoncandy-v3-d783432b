@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { toast } from 'sonner';
 import type {
   DragonSharePost,
   DragonSharePostWithRelations,
@@ -104,6 +105,7 @@ export function useSubmitDragonSharePost() {
         body: { post_id: data.id },
       }).catch(() => {});
     },
+    onError: () => { toast.error('Failed to submit DragonShare post'); },
   });
 }
 
@@ -165,6 +167,7 @@ export function useVerifyDragonSharePost() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: KEYS.adminQueue() });
     },
+    onError: () => { toast.error('Failed to verify DragonShare post'); },
   });
 }
 

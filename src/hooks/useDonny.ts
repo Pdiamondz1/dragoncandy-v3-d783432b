@@ -245,12 +245,13 @@ export function useDonny(options?: UseDonnyOptions) {
             })
           );
 
-          await supabase.from('donny_messages').insert({
+          const { error: saveErr } = await supabase.from('donny_messages').insert({
             conversation_id: conversation.id,
             role: 'assistant',
             content: accumulatedText,
             quick_actions: quickActions.length > 0 ? quickActions : null,
           });
+          if (saveErr) throw saveErr;
         } else {
           throw new Error('Donny could not generate a response');
         }
@@ -270,12 +271,13 @@ export function useDonny(options?: UseDonnyOptions) {
           })
         );
 
-        await supabase.from('donny_messages').insert({
+        const { error: saveErr } = await supabase.from('donny_messages').insert({
           conversation_id: conversation.id,
           role: 'assistant',
           content: data.answer,
           quick_actions: quickActions.length > 0 ? quickActions : null,
         });
+        if (saveErr) throw saveErr;
       } else {
         throw new Error(data?.error || 'Donny could not generate a response');
       }

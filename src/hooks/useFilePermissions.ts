@@ -38,6 +38,9 @@ export const useFilePermissions = () => {
         description: 'File access has been granted successfully.',
       });
     },
+    onError: () => {
+      toast({ title: 'Failed to grant permission', variant: 'destructive' });
+    },
   });
 
   const revokePermission = useMutation({
@@ -58,6 +61,9 @@ export const useFilePermissions = () => {
         title: 'Permission revoked',
         description: 'File access has been revoked successfully.',
       });
+    },
+    onError: () => {
+      toast({ title: 'Failed to revoke permission', variant: 'destructive' });
     },
   });
 

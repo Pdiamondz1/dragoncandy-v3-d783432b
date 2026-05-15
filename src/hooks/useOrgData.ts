@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { toast } from 'sonner';
 import type { Organization, OrgUnit, OrgMember } from '@/types/org';
 
 // ── Query key constants ──────────────────────────────────────────────────────
@@ -146,6 +147,7 @@ export function useUpdateActiveUnit() {
       queryClient.invalidateQueries({ queryKey: KEYS.orgFromProfile(user?.id) });
       queryClient.invalidateQueries({ queryKey: KEYS.activeOrgUnit(orgUnitId ?? undefined) });
     },
+    onError: () => { toast.error('Failed to update active location'); },
   });
 }
 
@@ -212,6 +214,7 @@ export function useCreateOrgUnit(orgId?: string | null) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: KEYS.orgUnits(orgId ?? undefined) });
     },
+    onError: () => { toast.error('Failed to create location'); },
   });
 }
 
@@ -244,6 +247,7 @@ export function useUpdateOrgUnit() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: KEYS.orgUnits(data.org_id) });
     },
+    onError: () => { toast.error('Failed to update location'); },
   });
 }
 
@@ -268,6 +272,7 @@ export function useDeleteOrgUnit() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: KEYS.orgUnits(data.org_id) });
     },
+    onError: () => { toast.error('Failed to delete location'); },
   });
 }
 

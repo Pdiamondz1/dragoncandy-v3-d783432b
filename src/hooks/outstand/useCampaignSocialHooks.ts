@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useEffect } from 'react';
+import { toast } from 'sonner';
 
 export interface CampaignSocialHook {
   id: string;
@@ -58,6 +59,7 @@ export function useCampaignSocialHooks(campaignId: string | undefined) {
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['campaign-social-hooks', campaignId] }),
+    onError: () => { toast.error('Failed to dismiss social hook'); },
   });
 
   const markPosted = useMutation({
@@ -70,6 +72,7 @@ export function useCampaignSocialHooks(campaignId: string | undefined) {
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['campaign-social-hooks', campaignId] }),
+    onError: () => { toast.error('Failed to mark hook as posted'); },
   });
 
   return {

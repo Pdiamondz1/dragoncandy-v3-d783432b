@@ -1,4 +1,4 @@
-export type Json =
+﻿export type Json =
   | string
   | number
   | boolean
@@ -3541,8 +3541,11 @@ export type Database = {
           name: string
           org_id: string
           other_social_url: string | null
+          pending_balance: number | null
           sample_content_urls: Json | null
           show_parent_brand: boolean | null
+          stripe_account_id: string | null
+          stripe_onboarding_complete: boolean
           tiktok_url: string | null
           unit_type: string
           updated_at: string
@@ -3567,8 +3570,11 @@ export type Database = {
           name: string
           org_id: string
           other_social_url?: string | null
+          pending_balance?: number | null
           sample_content_urls?: Json | null
           show_parent_brand?: boolean | null
+          stripe_account_id?: string | null
+          stripe_onboarding_complete?: boolean
           tiktok_url?: string | null
           unit_type: string
           updated_at?: string
@@ -3593,8 +3599,11 @@ export type Database = {
           name?: string
           org_id?: string
           other_social_url?: string | null
+          pending_balance?: number | null
           sample_content_urls?: Json | null
           show_parent_brand?: boolean | null
+          stripe_account_id?: string | null
+          stripe_onboarding_complete?: boolean
           tiktok_url?: string | null
           unit_type?: string
           updated_at?: string

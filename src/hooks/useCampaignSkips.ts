@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { toast } from 'sonner';
 
 export const useSkippedCampaignIds = () => {
   const { user } = useAuth();
@@ -44,6 +45,7 @@ export const useSkipCampaign = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['campaign-skips'] });
     },
+    onError: () => { toast.error('Failed to skip campaign'); },
   });
 };
 
@@ -66,5 +68,6 @@ export const useRestoreCampaign = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['campaign-skips'] });
     },
+    onError: () => { toast.error('Failed to restore campaign'); },
   });
 };

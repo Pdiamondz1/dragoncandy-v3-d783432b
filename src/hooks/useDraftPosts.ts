@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { toast } from 'sonner';
 
 export interface DraftPost {
   id: string;
@@ -57,6 +58,7 @@ export function useDraftPosts() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['draft-posts'] });
     },
+    onError: () => { toast.error('Failed to cancel draft'); },
   });
 
   const scheduleDraft = useMutation({
@@ -103,15 +105,15 @@ export function useDraftPosts() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['draft-posts'] });
     },
+    onError: () => { toast.error('Failed to schedule draft'); },
   });
 
   const scheduleAllDrafts = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error('User not authenticated');
-      for (const draft of drafts) {
-        await scheduleDraft.mutateAsync({ draftId: draft.id });
-      }
+      await Promise.all(drafts.map((draft) => scheduleDraft.mutateAsync({ draftId: draft.id })));
     },
+    onError: () => { toast.error('Failed to schedule all drafts'); },
   });
 
   return { drafts, isLoading, draftCount: drafts.length, cancelDraft, scheduleDraft, scheduleAllDrafts };

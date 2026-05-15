@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useEffect } from 'react';
+import { toast } from 'sonner';
 
 export interface TriplePostSession {
   id: string;
@@ -66,6 +67,7 @@ export function useTriplePostState(campaignId: string | undefined) {
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['triple-post-session', campaignId] }),
+    onError: () => { toast.error('Failed to update post status'); },
   });
 
   return {

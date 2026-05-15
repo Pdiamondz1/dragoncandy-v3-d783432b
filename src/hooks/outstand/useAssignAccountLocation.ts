@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface AssignmentInput {
   accountId: string;
@@ -30,6 +31,9 @@ export function useAssignAccountLocation() {
       queryClient.invalidateQueries({ queryKey: ['location-social-accounts'] });
       queryClient.invalidateQueries({ queryKey: ['unassigned-social-accounts'] });
       queryClient.invalidateQueries({ queryKey: ['verified-status'] });
+    },
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : 'Failed to assign accounts');
     },
   });
 }

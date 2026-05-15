@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { geocodingService } from '@/lib/geocoding';
 
@@ -17,8 +17,6 @@ interface GeocodedCampaign {
 }
 
 export function useCampaignGeocoding(campaigns: CampaignLocation[]) {
-  const [geocodedCampaigns, setGeocodedCampaigns] = useState<GeocodedCampaign[]>([]);
-
   const { data, isLoading } = useQuery({
     queryKey: ['campaign-geocoding', campaigns.map(c => c.id).join(',')],
     queryFn: async () => {
@@ -29,20 +27,13 @@ export function useCampaignGeocoding(campaigns: CampaignLocation[]) {
     staleTime: 1000 * 60 * 60 * 24,
   });
 
-  useEffect(() => {
-    if (data) {
-      const geocoded: GeocodedCampaign[] = [];
-      campaigns.forEach(campaign => {
-        const location = data.get(campaign.id);
-        if (location) {
-          geocoded.push({
-            id: campaign.id,
-            ...location
-          });
-        }
-      });
-      setGeocodedCampaigns(geocoded);
-    }
+  const geocodedCampaigns = useMemo<GeocodedCampaign[]>(() => {
+    if (!data) return [];
+    return campaigns.reduce<GeocodedCampaign[]>((acc, campaign) => {
+      const location = data.get(campaign.id);
+      if (location) acc.push({ id: campaign.id, ...location });
+      return acc;
+    }, []);
   }, [data, campaigns]);
 
   return { geocodedCampaigns, isLoading };

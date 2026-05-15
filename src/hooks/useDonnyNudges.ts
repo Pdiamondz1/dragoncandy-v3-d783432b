@@ -78,6 +78,7 @@ export function useDonnyNudges() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['donny-nudges', user?.id] });
     },
+    onError: (err) => { console.error('Failed to act on nudge:', err); },
   });
 
   // Dismiss nudge
@@ -92,6 +93,7 @@ export function useDonnyNudges() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['donny-nudges', user?.id] });
     },
+    onError: (err) => { console.error('Failed to dismiss nudge:', err); },
   });
 
   // Mark all as read
