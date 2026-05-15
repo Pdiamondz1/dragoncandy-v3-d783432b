@@ -23,10 +23,16 @@ export const useReviews = (revieweeId?: string, reviewType?: string) => {
       if (!revieweeId) return [];
 
       try {
-        // First get basic reviews
         let query = supabase
           .from('project_reviews')
-          .select('id, collaboration_id, sponsorship_id, reviewer_id, reviewee_id, rating, review_text, review_type, communication_rating, quality_rating, timeliness_rating, professionalism_rating, is_public, created_at, updated_at')
+          .select(`
+            id, collaboration_id, sponsorship_id, reviewer_id, reviewee_id,
+            rating, review_text, review_type,
+            communication_rating, quality_rating, timeliness_rating, professionalism_rating,
+            is_public, created_at, updated_at,
+            profiles!project_reviews_reviewer_id_fkey(full_name, avatar_url),
+            campaign_collaborations(campaign_id, campaigns(title))
+          `)
           .eq('reviewee_id', revieweeId)
           .eq('is_public', true)
           .order('created_at', { ascending: false });
@@ -45,58 +51,36 @@ export const useReviews = (revieweeId?: string, reviewType?: string) => {
           return [];
         }
 
-        // Then enrich with related data
-        const enrichedReviews: ReviewWithRelations[] = [];
-        
-        for (const review of reviews) {
-          try {
-            // Get reviewer profile
-            const { data: reviewer } = await supabase
-              .from('profiles')
-              .select('full_name, avatar_url')
-              .eq('id', review.reviewer_id)
-              .single();
-
-            // Get collaboration and campaign info
-            let collaboration = null;
-            if (review.collaboration_id) {
-              const { data: collab } = await supabase
-                .from('campaign_collaborations')
-                .select('campaign_id')
-                .eq('id', review.collaboration_id)
-                .single();
-
-              if (collab?.campaign_id) {
-                const { data: campaign } = await supabase
-                  .from('campaigns')
-                  .select('title')
-                  .eq('id', collab.campaign_id)
-                  .single();
-
-                if (campaign) {
-                  collaboration = { campaign };
-                }
-              }
-            }
-
-            // Only add review if we have essential data
-            if (reviewer?.full_name) {
-              enrichedReviews.push({
-                ...review,
-                reviewer: {
-                  full_name: reviewer.full_name,
-                  avatar_url: reviewer.avatar_url
-                },
-                collaboration: collaboration || { campaign: { title: 'Project' } }
-              } as ReviewWithRelations);
-            }
-          } catch (enrichError) {
-            console.error('Error enriching review:', enrichError);
-            // Skip this review but continue with others
-          }
-        }
-
-        return enrichedReviews;
+        return reviews
+          .filter((r) => (r.profiles as { full_name: string } | null)?.full_name)
+          .map((r) => {
+            const profile = r.profiles as { full_name: string; avatar_url?: string };
+            const collab = r.campaign_collaborations as { campaigns: { title: string } | null } | null;
+            return {
+              id: r.id,
+              collaboration_id: r.collaboration_id,
+              sponsorship_id: r.sponsorship_id,
+              reviewer_id: r.reviewer_id,
+              reviewee_id: r.reviewee_id,
+              rating: r.rating,
+              review_text: r.review_text,
+              review_type: r.review_type,
+              communication_rating: r.communication_rating,
+              quality_rating: r.quality_rating,
+              timeliness_rating: r.timeliness_rating,
+              professionalism_rating: r.professionalism_rating,
+              is_public: r.is_public,
+              created_at: r.created_at,
+              updated_at: r.updated_at,
+              reviewer: {
+                full_name: profile.full_name,
+                avatar_url: profile.avatar_url,
+              },
+              collaboration: collab?.campaigns
+                ? { campaign: { title: collab.campaigns.title } }
+                : { campaign: { title: 'Project' } },
+            } as ReviewWithRelations;
+          });
       } catch (error) {
         console.error('Error in useReviews:', error);
         return [];

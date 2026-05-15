@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import DOMPurify from "dompurify";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useDonnyContext } from "@/contexts/DonnyProvider";
@@ -100,7 +101,7 @@ export default function HelpArticlePage() {
         <article>
           <div
             className="prose prose-sm max-w-none text-gray-700 leading-relaxed whitespace-pre-line [&_img]:rounded-xl [&_img]:shadow-md [&_img]:my-4 [&_img]:max-w-full"
-            dangerouslySetInnerHTML={{ __html: article.body }}
+            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(article.body) }}
           />
         </article>
 
