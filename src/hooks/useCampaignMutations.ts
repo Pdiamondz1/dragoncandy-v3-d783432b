@@ -410,10 +410,14 @@ export const useDeleteCampaign = () => {
       const invitedCreatorIds = (invitations ?? []).map((i) => i.creator_id).filter(Boolean);
 
       // Delete related records before deleting the campaign
-      await supabase.from('campaign_applications').delete().eq('campaign_id', campaignId);
-      await supabase.from('campaign_invitations').delete().eq('campaign_id', campaignId);
-      await supabase.from('campaign_matches').delete().eq('campaign_id', campaignId);
-      await supabase.from('campaign_sponsorships').delete().eq('campaign_id', campaignId);
+      const { error: delApps } = await supabase.from('campaign_applications').delete().eq('campaign_id', campaignId);
+      if (delApps) throw delApps;
+      const { error: delInvites } = await supabase.from('campaign_invitations').delete().eq('campaign_id', campaignId);
+      if (delInvites) throw delInvites;
+      const { error: delMatches } = await supabase.from('campaign_matches').delete().eq('campaign_id', campaignId);
+      if (delMatches) throw delMatches;
+      const { error: delSponsors } = await supabase.from('campaign_sponsorships').delete().eq('campaign_id', campaignId);
+      if (delSponsors) throw delSponsors;
 
       // Delete the campaign itself (RLS-safe: owner check)
       const { error } = await supabase

@@ -301,9 +301,11 @@ export const usePromotions = () => {
   const deletePromotion = useMutation({
     mutationFn: async (id: string) => {
       // Delete discount codes first
-      await supabase.from('discount_codes').delete().eq('promotion_id', id);
+      const { error: codesError } = await supabase.from('discount_codes').delete().eq('promotion_id', id);
+      if (codesError) throw codesError;
       // Delete submissions
-      await supabase.from('promotion_submissions').delete().eq('promotion_id', id);
+      const { error: subsError } = await supabase.from('promotion_submissions').delete().eq('promotion_id', id);
+      if (subsError) throw subsError;
       // Delete promotion
       const { error } = await supabase.from('promotions').delete().eq('id', id);
       if (error) throw error;

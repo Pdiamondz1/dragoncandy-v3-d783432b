@@ -216,7 +216,7 @@ export const useRespondToCounterOffer = () => {
         });
 
         if (response === 'accepted') {
-          await supabase.from('donny_nudges').insert({
+          const { error: nudgeError } = await supabase.from('donny_nudges').insert({
             user_id: application.creator_id,
             type: 'campaign_hired',
             summary: `🎉 You've been selected for "${campaign.title}"! The restaurant will proceed with payment to start the project.`,
@@ -227,6 +227,7 @@ export const useRespondToCounterOffer = () => {
             ],
             raw_data: { campaign_id: application.campaign_id, application_id: applicationId },
           });
+          if (nudgeError) console.error('Failed to create hired nudge:', nudgeError);
         }
       } catch (e) {
         console.error('Failed to send response notification:', e);

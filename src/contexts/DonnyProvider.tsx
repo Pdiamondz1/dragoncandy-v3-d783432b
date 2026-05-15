@@ -199,13 +199,14 @@ export function DonnyProvider({ children, userRole }: DonnyProviderProps) {
 
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        await supabase.from('social_post_log').insert({
+        const { error: logError } = await supabase.from('social_post_log').insert({
           user_id: user.id,
           campaign_id: draft.campaign_id,
           outstand_post_id: String(outstandPostId),
           platform: draft.platform,
           post_type: postType,
         });
+        if (logError) console.error('[DonnyProvider] Failed to log social post:', logError);
       }
 
       toast.success(`Posted to ${draft.platform}!`);

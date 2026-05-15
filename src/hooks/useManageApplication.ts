@@ -41,9 +41,11 @@ export const useManageApplication = () => {
 
         // Sync legacy status column when final is resolved
         if (app.final_approval_status === 'approved') {
-          await supabase.from('campaign_applications').update({ status: 'accepted' }).eq('id', applicationId);
+          const { error: syncError } = await supabase.from('campaign_applications').update({ status: 'accepted' }).eq('id', applicationId);
+          if (syncError) throw syncError;
         } else if (app.final_approval_status === 'rejected') {
-          await supabase.from('campaign_applications').update({ status: 'rejected' }).eq('id', applicationId);
+          const { error: syncError } = await supabase.from('campaign_applications').update({ status: 'rejected' }).eq('id', applicationId);
+          if (syncError) throw syncError;
         }
 
         return app;
@@ -88,7 +90,7 @@ export const useManageApplication = () => {
               .maybeSingle();
 
             if (!existingCollab) {
-              await supabase
+              const { error: collabInsertError } = await supabase
                 .from('campaign_collaborations')
                 .insert({
                   campaign_id: data.campaign_id,
@@ -96,11 +98,13 @@ export const useManageApplication = () => {
                   application_id: data.id,
                   status: 'active',
                 });
+              if (collabInsertError) throw collabInsertError;
 
-              await supabase
+              const { error: activateError } = await supabase
                 .from('campaigns')
                 .update({ status: 'active' })
                 .eq('id', data.campaign_id);
+              if (activateError) throw activateError;
 
               queryClient.invalidateQueries({ queryKey: ['campaigns'] });
               queryClient.invalidateQueries({ queryKey: ['campaign-project'] });
