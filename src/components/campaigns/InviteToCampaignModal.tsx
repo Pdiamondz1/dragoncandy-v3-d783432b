@@ -122,7 +122,7 @@ export function InviteToCampaignModal({
                       className={[
                         'w-full text-left rounded-2xl border-2 p-3 transition-all',
                         alreadyInvited
-                          ? 'opacity-50 cursor-not-allowed border-gray-200 bg-gray-50'
+                          ? 'opacity-50 cursor-not-allowed border-teal-100 bg-teal-50/50'
                           : isSelected
                           ? 'border-dc-teal bg-teal-50'
                           : 'border-gray-200 bg-white hover:border-teal-300',
@@ -146,7 +146,7 @@ export function InviteToCampaignModal({
                               </span>
                             )}
                             {creatorCount != null && (
-                              <span className="text-xs bg-gray-100 text-dc-text-muted rounded-full px-2 py-0.5 font-medium">
+                              <span className="text-xs bg-teal-50 text-dc-text-muted rounded-full px-2 py-0.5 font-medium">
                                 {creatorCount} spot{creatorCount !== 1 ? 's' : ''}
                               </span>
                             )}
