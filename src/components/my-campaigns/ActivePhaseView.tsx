@@ -12,6 +12,9 @@ import { SubmitForReviewButton } from '@/components/campaigns/SubmitForReviewBut
 import { useCollaboration } from '@/hooks/useCollaboration';
 import { useFileUploads } from '@/hooks/useFileQuery';
 import { useCampaignDeliverables } from '@/hooks/useCampaignDeliverables';
+import { CrossPostPrompt } from '@/components/outstand/CrossPostPrompt';
+import { DragonCandyOutstandProvider } from '@/integrations/outstand/Provider';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ActivePhaseViewProps {
   campaign: Campaign;
@@ -29,6 +32,7 @@ export function ActivePhaseView({ campaign, enrichedDetail, collaborationId }: A
     contentType: string;
   } | null>(null);
   const navigate = useNavigate();
+  const [showCrossPost, setShowCrossPost] = useState(false);
 
   const { data: collaboration } = useCollaboration(collaborationId);
   const { data: files } = useFileUploads(collaboration?.campaign_id, 'deliverable');
@@ -145,6 +149,35 @@ export function ActivePhaseView({ campaign, enrichedDetail, collaborationId }: A
             totalCount={totalDeliverables}
             contentStatus={collaboration.content_status ?? 'pending'}
           />
+
+          {/* Cross-post prompt (shown when content is approved) */}
+          {collaboration?.content_status === 'approved' && (
+            <DragonCandyOutstandProvider>
+              <CrossPostPrompt
+                open={showCrossPost}
+                onOpenChange={setShowCrossPost}
+                campaignId={campaign.id}
+                campaignTitle={campaign.title}
+                creatorName={collaboration?.creator_name ?? ''}
+                mediaUrls={
+                  files
+                    ?.map((f) => supabase.storage.from(f.bucket_name).getPublicUrl(f.file_path).data.publicUrl)
+                    .filter(Boolean) as string[] ?? []
+                }
+                originalCaption=""
+              />
+            </DragonCandyOutstandProvider>
+          )}
+
+          {collaboration?.content_status === 'approved' && !showCrossPost && (
+            <Button
+              variant="outline"
+              className="w-full rounded-full border-dc-pink-accent text-dc-pink-accent font-semibold"
+              onClick={() => setShowCrossPost(true)}
+            >
+              Share to Your Socials
+            </Button>
+          )}
 
           {/* Messages CTA */}
           <Button

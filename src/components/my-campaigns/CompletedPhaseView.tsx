@@ -1,8 +1,14 @@
 import { useState } from 'react';
+import { Share2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import type { Campaign } from '@/hooks/useCampaignQueries';
 import type { EnrichedCampaignDetail } from '@/hooks/useCampaignDetailEnriched';
 import type { CreatorCollaboration } from '@/hooks/useCreatorCollaborations';
 import { CreatorCampaignDetails } from '@/components/campaign-details/CreatorCampaignDetails';
+import { CrossPostPrompt } from '@/components/outstand/CrossPostPrompt';
+import { DragonCandyOutstandProvider } from '@/integrations/outstand/Provider';
+import { useFileUploads } from '@/hooks/useFileQuery';
+import { supabase } from '@/integrations/supabase/client';
 
 interface CompletedPhaseViewProps {
   campaign: Campaign;
@@ -14,6 +20,8 @@ type CompletedTab = 'summary' | 'brief';
 
 export function CompletedPhaseView({ campaign, enrichedDetail, collaboration }: CompletedPhaseViewProps) {
   const [activeTab, setActiveTab] = useState<CompletedTab>('summary');
+  const [showCrossPost, setShowCrossPost] = useState(false);
+  const { data: files } = useFileUploads(campaign.id, 'deliverable');
 
   const tabs: { id: CompletedTab; label: string }[] = [
     { id: 'summary', label: 'SUMMARY' },
@@ -89,6 +97,32 @@ export function CompletedPhaseView({ campaign, enrichedDetail, collaboration }: 
               </div>
             </div>
           </div>
+
+          {/* Cross-post CTA */}
+          <Button
+            variant="outline"
+            className="w-full rounded-full border-dc-pink-accent text-dc-pink-accent font-semibold"
+            onClick={() => setShowCrossPost(true)}
+          >
+            <Share2 className="h-4 w-4 mr-2" />
+            Share to Your Socials
+          </Button>
+
+          <DragonCandyOutstandProvider>
+            <CrossPostPrompt
+              open={showCrossPost}
+              onOpenChange={setShowCrossPost}
+              campaignId={campaign.id}
+              campaignTitle={campaign.title}
+              creatorName=""
+              mediaUrls={
+                files
+                  ?.map((f) => supabase.storage.from(f.bucket_name).getPublicUrl(f.file_path).data.publicUrl)
+                  .filter(Boolean) as string[] ?? []
+              }
+              originalCaption=""
+            />
+          </DragonCandyOutstandProvider>
         </div>
       ) : (
         <div className="px-4 pt-4 pb-24">
