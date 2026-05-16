@@ -878,11 +878,21 @@ async function executeTool(
       if (error) throw error;
 
       if (args.action === "accept" && data) {
-        await supabaseAdmin.from("campaign_collaborations").insert({
-          campaign_id: data.campaign_id,
-          creator_id: data.creator_id,
-          status: "active",
-        });
+        const { data: existingCollab } = await supabaseAdmin
+          .from("campaign_collaborations")
+          .select("id")
+          .eq("campaign_id", data.campaign_id)
+          .eq("creator_id", data.creator_id)
+          .maybeSingle();
+
+        if (!existingCollab) {
+          await supabaseAdmin.from("campaign_collaborations").insert({
+            campaign_id: data.campaign_id,
+            creator_id: data.creator_id,
+            application_id: data.id,
+            status: "active",
+          });
+        }
       }
       return { result: { id: data.id, status: newStatus } };
     }

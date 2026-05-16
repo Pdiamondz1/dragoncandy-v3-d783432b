@@ -72,43 +72,44 @@ export const useManageApplication = () => {
       queryClient.invalidateQueries({ queryKey: ['campaign-applications'] });
       queryClient.invalidateQueries({ queryKey: ['creator-applications'] });
 
-      // When accepted and escrow already held, create collaboration immediately
+      // When accepted, always create collaboration record
       if (data.status === 'accepted' && data.campaign_id) {
         try {
-          const { data: campaign } = await supabase
-            .from('campaigns')
-            .select('escrow_status')
-            .eq('id', data.campaign_id)
-            .single();
+          const { data: existingCollab } = await supabase
+            .from('campaign_collaborations')
+            .select('id')
+            .eq('campaign_id', data.campaign_id)
+            .eq('creator_id', data.creator_id)
+            .maybeSingle();
 
-          if (campaign?.escrow_status === 'held') {
-            const { data: existingCollab } = await supabase
+          if (!existingCollab) {
+            const { error: collabInsertError } = await supabase
               .from('campaign_collaborations')
-              .select('id')
-              .eq('campaign_id', data.campaign_id)
-              .eq('creator_id', data.creator_id)
-              .maybeSingle();
+              .insert({
+                campaign_id: data.campaign_id,
+                creator_id: data.creator_id,
+                application_id: data.id,
+                status: 'active',
+              });
+            if (collabInsertError) throw collabInsertError;
 
-            if (!existingCollab) {
-              const { error: collabInsertError } = await supabase
-                .from('campaign_collaborations')
-                .insert({
-                  campaign_id: data.campaign_id,
-                  creator_id: data.creator_id,
-                  application_id: data.id,
-                  status: 'active',
-                });
-              if (collabInsertError) throw collabInsertError;
+            // Only activate campaign when escrow is already held
+            const { data: campaign } = await supabase
+              .from('campaigns')
+              .select('escrow_status')
+              .eq('id', data.campaign_id)
+              .single();
 
+            if (campaign?.escrow_status === 'held') {
               const { error: activateError } = await supabase
                 .from('campaigns')
                 .update({ status: 'active' })
                 .eq('id', data.campaign_id);
               if (activateError) throw activateError;
-
-              queryClient.invalidateQueries({ queryKey: ['campaigns'] });
-              queryClient.invalidateQueries({ queryKey: ['campaign-project'] });
             }
+
+            queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+            queryClient.invalidateQueries({ queryKey: ['campaign-project'] });
           }
         } catch (collabError) {
           console.error('Failed to auto-create collaboration:', collabError);
