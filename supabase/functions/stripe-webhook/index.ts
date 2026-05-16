@@ -110,6 +110,45 @@ serve(async (req) => {
 
           logStep("Campaign escrow confirmed via webhook", { campaignId, paymentIntentId });
 
+          // Belt-and-suspenders: create collaboration for any accepted application missing one
+          const { data: acceptedApps } = await supabase
+            .from("campaign_applications")
+            .select("id, creator_id")
+            .eq("campaign_id", campaignId)
+            .eq("status", "accepted");
+
+          if (acceptedApps && acceptedApps.length > 0) {
+            for (const app of acceptedApps) {
+              const { data: existingCollab } = await supabase
+                .from("campaign_collaborations")
+                .select("id")
+                .eq("campaign_id", campaignId)
+                .eq("creator_id", app.creator_id)
+                .maybeSingle();
+
+              if (!existingCollab) {
+                const { error: collabError } = await supabase
+                  .from("campaign_collaborations")
+                  .insert({
+                    campaign_id: campaignId,
+                    creator_id: app.creator_id,
+                    application_id: app.id,
+                    status: "active",
+                  });
+
+                if (collabError) {
+                  logStep("ERROR: Failed to create collaboration from webhook", {
+                    campaignId, creatorId: app.creator_id, error: collabError.message,
+                  });
+                } else {
+                  logStep("Collaboration created via webhook fallback", {
+                    campaignId, creatorId: app.creator_id, applicationId: app.id,
+                  });
+                }
+              }
+            }
+          }
+
           await writePaymentEvent(supabase, {
             event_type: 'escrow_held',
             entity_type: 'collaboration',
