@@ -410,7 +410,7 @@ const CreatorCampaignMarketplace = () => {
             {pendingInvitations.length === 0 ? (
               <div className="text-center py-12">
                 <p className="text-gray-900 font-semibold text-lg">No pending invitations</p>
-                <p className="text-gray-500 text-sm mt-1">When brands invite you to campaigns, they'll appear here.</p>
+                <p className="text-gray-500 text-sm mt-1">When you're invited to campaigns, they'll appear here.</p>
               </div>
             ) : (
               pendingInvitations.map((inv: PendingInvitation) => {

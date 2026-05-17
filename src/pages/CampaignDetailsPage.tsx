@@ -10,6 +10,7 @@ import { useCampaign } from '@/hooks/useCampaigns';
 import { useDeclineInvitation } from '@/hooks/useCampaignInvitations';
 import { ApplicationsListFixed } from '@/components/campaigns/ApplicationsListFixed';
 import { CreatorMatchingSection } from '@/components/campaigns/CreatorMatchingSection';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { CreatorCampaignDetails } from '@/components/campaign-details/CreatorCampaignDetails';
 import { StickyApplyCTA } from '@/components/campaign-details/StickyApplyCTA';
 import { OneTapApplySheet } from '@/components/campaigns/OneTapApplySheet';
@@ -470,9 +471,13 @@ const CampaignDetailsPage: React.FC = () => {
 
             {phase === 'pre_hire' && (
               <div id="applications-section" className="space-y-4">
-                <ApplicationsListFixed campaignId={campaign.id} />
+                <ErrorBoundary level="section">
+                  <ApplicationsListFixed campaignId={campaign.id} campaign={campaign} />
+                </ErrorBoundary>
                 {(applicationCounts?.accepted ?? 0) === 0 && (
-                  <CreatorMatchingSection campaignId={campaign.id} />
+                  <ErrorBoundary level="section">
+                    <CreatorMatchingSection campaignId={campaign.id} />
+                  </ErrorBoundary>
                 )}
               </div>
             )}

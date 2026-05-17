@@ -104,6 +104,7 @@ export const CreatorMatchingSection: React.FC<CreatorMatchingSectionProps> = ({ 
       if (fallbackError) throw fallbackError;
       return fallback || [];
     },
+    enabled: activeTab === 'all-creators',
   });
 
   const handleGenerateMatches = async () => {

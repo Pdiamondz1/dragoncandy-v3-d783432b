@@ -13,22 +13,21 @@ import { ApplicationAnalytics } from './ApplicationAnalytics';
 import { CreatorProfileModal } from './CreatorProfileModal';
 import { CampaignApplication } from '@/types/applications';
 import { useManageApplication } from '@/hooks/useManageApplication';
-import { useCampaign } from '@/hooks/useCampaigns';
 import { useAuth } from '@/hooks/useAuth';
 import { useCampaignSponsorship } from '@/hooks/useCampaignSponsorship';
 
 interface ApplicationsListFixedProps {
   campaignId: string;
+  campaign?: { user_id: string; open_for_sponsorship?: boolean | null };
 }
 
-export const ApplicationsListFixed: React.FC<ApplicationsListFixedProps> = ({ campaignId }) => {
+export const ApplicationsListFixed: React.FC<ApplicationsListFixedProps> = ({ campaignId, campaign }) => {
   const { data: applications = [], isLoading, error, refetch } = useCampaignApplications(campaignId);
   const { filters, filteredApplications, updateFilter, resetFilters } = useApplicationFilters(applications);
   const [selectedApplicationIds, setSelectedApplicationIds] = useState<string[]>([]);
   const [selectedApplication, setSelectedApplication] = useState<CampaignApplication | null>(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const manageApplication = useManageApplication();
-  const { campaign } = useCampaign(campaignId);
   const { profile } = useAuth();
   
   // Check if campaign has an active sponsorship

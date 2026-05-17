@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { SEO } from "@/components/SEO";
-import { useNavigate, useSearchParams, Link } from "react-router-dom";
+import { useNavigate, useSearchParams, useLocation, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { AuthForm } from "@/components/auth/AuthForm";
@@ -29,7 +29,10 @@ const AuthPage = () => {
   const [_needsVerification, setNeedsVerification] = useState(false);
 
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, isAuthenticated, migrateCampaignData } = useAuth();
+
+  const returnTo = (location.state as { from?: { pathname: string; search: string } })?.from;
 
   // Update mode when URL params change
   useEffect(() => {
@@ -106,6 +109,10 @@ const AuthPage = () => {
           return;
         }
 
+        if (returnTo && returnTo.pathname !== '/auth') {
+          navigate(returnTo.pathname + (returnTo.search || ''), { replace: true });
+          return;
+        }
         navigate('/', { replace: true });
         return;
       }
@@ -126,6 +133,10 @@ const AuthPage = () => {
           localStorage.removeItem('anonymous_campaign_data');
           localStorage.removeItem('anonymous_campaign_final');
           toast.message('Campaign creation is for business clients. You can browse paid campaigns.');
+        }
+        if (returnTo && returnTo.pathname !== '/auth') {
+          navigate(returnTo.pathname + (returnTo.search || ''), { replace: true });
+          return;
         }
         navigate('/dashboard/creator/campaigns', { replace: true });
         return;
@@ -149,6 +160,10 @@ const AuthPage = () => {
           localStorage.removeItem('anonymous_campaign_data');
           localStorage.removeItem('anonymous_campaign_final');
         }
+        if (returnTo && returnTo.pathname !== '/auth') {
+          navigate(returnTo.pathname + (returnTo.search || ''), { replace: true });
+          return;
+        }
         navigate('/dashboard/brand', { replace: true });
         return;
       }
@@ -159,7 +174,7 @@ const AuthPage = () => {
       console.error('Error checking profile completion:', error);
       navigate('/', { replace: true });
     }
-  }, [user, navigate, migrateCampaignData]);
+  }, [user, navigate, migrateCampaignData, returnTo]);
 
   // Redirect if already authenticated
   useEffect(() => {

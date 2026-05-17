@@ -1,6 +1,6 @@
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import type { CampaignAnalysis, StyleDirection } from '@/types/campaign';
@@ -168,11 +168,12 @@ export const useCampaignsList = (filterByOwnership: boolean = true, orgUnitId?: 
 
 export const useCampaignById = (id: string) => {
   const queryClient = useQueryClient();
+  const suffixRef = useRef(Math.random().toString(36).slice(2, 8));
 
   useEffect(() => {
     if (!id) return;
     const channel = supabase
-      .channel(`campaign-${id}`)
+      .channel(`campaign-${id}-${suffixRef.current}`)
       .on(
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'campaigns', filter: `id=eq.${id}` },
