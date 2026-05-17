@@ -8,6 +8,7 @@ import { Star, MapPin, Building2, MessageSquare } from 'lucide-react';
 import { PublicProfileReviews } from '@/components/profiles/PublicProfileReviews';
 import logo from '@/assets/Transparent_DragonCandy_logo.webp';
 import { SEO } from '@/components/SEO';
+import { PublicPageHeader } from '@/components/PublicPageHeader';
 
 interface BusinessProfile {
   id: string;
@@ -93,11 +94,14 @@ const PublicBusinessProfile = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="animate-pulse space-y-6 w-full max-w-md px-4">
-          <div className="h-[40vh] bg-gray-300 rounded-lg"></div>
-          <div className="h-24 bg-white rounded-3xl"></div>
-          <div className="h-20 bg-white rounded-2xl"></div>
+      <div className="min-h-screen bg-white">
+        <PublicPageHeader />
+        <div className="flex items-center justify-center py-16">
+          <div className="animate-pulse space-y-6 w-full max-w-md px-4">
+            <div className="h-[40vh] bg-gray-300 rounded-lg"></div>
+            <div className="h-24 bg-white rounded-3xl"></div>
+            <div className="h-20 bg-white rounded-2xl"></div>
+          </div>
         </div>
       </div>
     );
@@ -105,21 +109,24 @@ const PublicBusinessProfile = () => {
 
   if (notFound || !profile) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center px-4">
-        <div className="bg-white rounded-3xl p-8 max-w-md w-full text-center shadow-md">
-          <Building2 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-bold text-gray-900 mb-2">
-            Business Profile Not Found
-          </h3>
-          <p className="text-gray-500 text-sm mb-6">
-            The business profile you're looking for doesn't exist or is set to private.
-          </p>
-          <Button
-            onClick={() => navigate('/')}
-            className="w-full bg-dc-teal-btn text-white rounded-full h-12 font-bold"
-          >
-            Go Home
-          </Button>
+      <div className="min-h-screen bg-white">
+        <PublicPageHeader />
+        <div className="flex items-center justify-center px-4 py-16">
+          <div className="bg-white rounded-3xl p-8 max-w-md w-full text-center shadow-md">
+            <Building2 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-bold text-gray-900 mb-2">
+              Business Profile Not Found
+            </h3>
+            <p className="text-gray-500 text-sm mb-6">
+              The business profile you're looking for doesn't exist or is set to private.
+            </p>
+            <Button
+              onClick={() => navigate('/')}
+              className="w-full bg-dc-teal-btn text-white rounded-full h-12 font-bold"
+            >
+              Go Home
+            </Button>
+          </div>
         </div>
       </div>
     );
@@ -130,6 +137,7 @@ const PublicBusinessProfile = () => {
 
   return (
     <div className="bg-white min-h-screen md:max-w-3xl md:mx-auto">
+      <PublicPageHeader />
       <SEO
         title={`${profile.business_name} - DragonCandy`}
         description={`View ${profile.business_name}'s profile, active campaigns, and creator collaborations on DragonCandy.`}
