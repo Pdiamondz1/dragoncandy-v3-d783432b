@@ -4,6 +4,7 @@ import { MessageInputEnhanced } from './MessageInputEnhanced';
 import { useMessages, useSendMessage, type Message } from '@/hooks/useMessages';
 import { useAuth } from '@/hooks/useAuth';
 import { useMarkMessagesAsRead } from '@/hooks/useMessageMutations';
+import { useNotifications } from '@/hooks/useNotifications';
 
 interface ConversationMessageThreadProps {
   conversationId: string;
@@ -22,6 +23,7 @@ export const ConversationMessageThread: React.FC<ConversationMessageThreadProps>
   const markAsRead = useMarkMessagesAsRead();
   const markAsReadRef = useRef(markAsRead);
   markAsReadRef.current = markAsRead;
+  const { markConversationRead } = useNotifications();
   const lastMarkedRef = useRef<{ id: string; count: number } | null>(null);
 
   useEffect(() => {
@@ -37,9 +39,10 @@ export const ConversationMessageThread: React.FC<ConversationMessageThreadProps>
       ) {
         lastMarkedRef.current = current;
         markAsReadRef.current.mutate({ conversationId });
+        markConversationRead(conversationId);
       }
     }
-  }, [conversationId, user, isLoading, messages.length]);
+  }, [conversationId, user, isLoading, messages.length, markConversationRead]);
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
 
   const handleSendMessage = (content: string, options?: {

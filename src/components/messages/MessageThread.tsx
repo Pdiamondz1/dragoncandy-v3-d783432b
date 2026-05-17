@@ -9,6 +9,7 @@ import { MessageSearch } from './MessageSearch';
 import { useMessages, useSendMessage, type Message } from '@/hooks/useMessages';
 import { useAuth } from '@/hooks/useAuth';
 import { useMarkMessagesAsRead } from '@/hooks/useMessageMutations';
+import { useNotifications } from '@/hooks/useNotifications';
 
 interface MessageThreadProps {
   campaignId: string;
@@ -25,9 +26,16 @@ export const MessageThread: React.FC<MessageThreadProps> = ({
   const { data: messages = [], isLoading } = useMessages(campaignId);
   const sendMessage = useSendMessage();
   const markAsRead = useMarkMessagesAsRead();
+  const markAsReadRef = useRef(markAsRead);
+  markAsReadRef.current = markAsRead;
+  const { markConversationRead } = useNotifications();
   const lastMarkedRef = useRef<{ id: string; count: number } | null>(null);
   const [showSearch, setShowSearch] = useState(false);
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
+
+  useEffect(() => {
+    lastMarkedRef.current = null;
+  }, [campaignId]);
 
   useEffect(() => {
     if (campaignId && user && !isLoading && messages.length > 0) {
@@ -37,10 +45,11 @@ export const MessageThread: React.FC<MessageThreadProps> = ({
         lastMarkedRef.current?.count !== current.count
       ) {
         lastMarkedRef.current = current;
-        markAsRead.mutate({ campaignId });
+        markAsReadRef.current.mutate({ campaignId });
+        markConversationRead(campaignId);
       }
     }
-  }, [campaignId, user, isLoading, messages.length, markAsRead]);
+  }, [campaignId, user, isLoading, messages.length, markConversationRead]);
 
   const handleSendMessage = (content: string, options?: {
     attachmentUrl?: string;

@@ -565,10 +565,24 @@ export const useNotifications = () => {
     setUnreadCount(0);
   }, []);
 
+  const markConversationRead = useCallback((id: string) => {
+    setNotifications(prev => {
+      const updated = prev.map(notif => {
+        if (notif.type === 'message_received' && !notif.read &&
+          (notif.data?.conversation_id === id || notif.data?.campaign_id === id)) {
+          return { ...notif, read: true };
+        }
+        return notif;
+      });
+      return updated;
+    });
+  }, []);
+
   return {
     notifications,
     unreadCount,
     markAsRead,
     markAllAsRead,
+    markConversationRead,
   };
 };
