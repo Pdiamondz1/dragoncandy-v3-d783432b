@@ -6,6 +6,7 @@ import { TIER_ORDER, TIER_PRICES, type TierName } from '@/lib/pricing/tier-featu
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { PublicPageHeader } from '@/components/PublicPageHeader';
 
 const PricingPage = () => {
   const [searchParams] = useSearchParams();
@@ -43,6 +44,7 @@ const PricingPage = () => {
 
   return (
     <div className="min-h-screen bg-white">
+      <PublicPageHeader />
       <SEO
         title="Pricing"
         description="Simple, transparent pricing for restaurants and brands running creator campaigns on DragonCandy. Pay only for content delivered."
