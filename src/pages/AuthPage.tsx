@@ -222,7 +222,7 @@ const AuthPage = () => {
     // Reset signup step when switching modes
     setSignupStep("role-selection");
     setSelectedRole(null);
-    navigate(`/auth?mode=${newMode}`, { replace: true });
+    navigate(`/auth?mode=${newMode}`, { replace: true, state: location.state });
   };
 
   const handleSelectRole = (role: "business_client" | "content_creator" | "brand") => {
