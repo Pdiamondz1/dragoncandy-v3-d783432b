@@ -7,6 +7,7 @@ import { DCSkeleton } from "@/components/ui/dc-skeleton";
 import { Button } from "@/components/ui/button";
 import { SEO } from "@/components/SEO";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { PublicPageHeader } from '@/components/PublicPageHeader';
 
 interface HelpArticle {
   id: string;
@@ -70,6 +71,7 @@ export default function HelpCenter() {
 
   return (
     <div className="min-h-screen bg-white">
+      <PublicPageHeader />
       <SEO
         title="Help Center"
         description="Guides, FAQs, and tutorials for DragonCandy creators, restaurants, and brands."
