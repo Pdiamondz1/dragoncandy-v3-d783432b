@@ -31,7 +31,7 @@ export const MessageInputEnhanced: React.FC<MessageInputEnhancedProps> = ({
   conversationId,
   onSendMessage,
   disabled = false,
-  placeholder = "Type a message…",
+  placeholder = "Type a message...",
   replyingTo,
   onCancelReply
 }) => {
@@ -46,19 +46,16 @@ export const MessageInputEnhanced: React.FC<MessageInputEnhancedProps> = ({
 
   const draftKey = `dc_msg_draft_${conversationId || campaignId}`;
 
-  // Load draft on mount / conversation switch — reset to empty if no draft exists
   useEffect(() => {
     const saved = localStorage.getItem(draftKey);
     setMessage(saved || '');
   }, [draftKey]);
 
-  // Persist draft on change
   useEffect(() => {
     if (message) localStorage.setItem(draftKey, message);
     else localStorage.removeItem(draftKey);
   }, [message, draftKey]);
 
-  // Focus input when reply is set
   useEffect(() => {
     if (replyingTo && textareaRef.current) {
       textareaRef.current.focus();
@@ -191,19 +188,19 @@ export const MessageInputEnhanced: React.FC<MessageInputEnhancedProps> = ({
     <div className="bg-white border-t-2 border-dc-teal">
       {/* Reply indicator */}
       {replyingTo && (
-        <div className="flex items-center justify-between px-4 py-2 bg-teal-50 border-b border-teal-100">
+        <div className="flex items-center justify-between px-4 py-2 bg-dc-teal/5 border-b border-dc-teal/10">
           <div className="flex items-center gap-2 min-w-0">
             <div className="w-0.5 h-8 bg-dc-teal rounded-full flex-shrink-0" />
             <div className="min-w-0">
               <span className="text-[10px] font-medium text-dc-teal">
                 Replying to {replyingTo.sender_profile?.full_name || 'User'}
               </span>
-              <p className="text-xs text-gray-500 truncate">
+              <p className="text-xs text-muted-foreground truncate">
                 {replyingTo.content.substring(0, 60)}
               </p>
             </div>
           </div>
-          <Button variant="ghost" size="sm" className="h-6 w-6 p-0 flex-shrink-0" onClick={onCancelReply} aria-label="Cancel reply">
+          <Button variant="ghost" size="sm" className="h-6 w-6 p-0 flex-shrink-0 rounded-full" onClick={onCancelReply} aria-label="Cancel reply">
             <X className="h-3.5 w-3.5" />
           </Button>
         </div>
@@ -211,15 +208,15 @@ export const MessageInputEnhanced: React.FC<MessageInputEnhancedProps> = ({
 
       {/* File attachment preview */}
       {file && (
-        <div className="flex items-center justify-between px-4 py-2 bg-gray-50 border-b border-gray-100">
+        <div className="flex items-center justify-between px-4 py-2 bg-dc-teal/5 border-b border-dc-teal/10">
           <div className="flex items-center gap-2 min-w-0">
             <Paperclip className="h-3.5 w-3.5 text-dc-teal flex-shrink-0" aria-hidden="true" />
-            <span className="text-xs text-gray-700 truncate">{file.name}</span>
-            <span className="text-[10px] text-gray-400 flex-shrink-0">
+            <span className="text-xs text-foreground/70 truncate">{file.name}</span>
+            <span className="text-[10px] text-muted-foreground flex-shrink-0">
               ({(file.size / 1024 / 1024).toFixed(1)} MB)
             </span>
           </div>
-          <Button variant="ghost" size="sm" className="h-6 w-6 p-0 flex-shrink-0" onClick={removeFile} aria-label="Remove attachment">
+          <Button variant="ghost" size="sm" className="h-6 w-6 p-0 flex-shrink-0 rounded-full" onClick={removeFile} aria-label="Remove attachment">
             <X className="h-3.5 w-3.5" />
           </Button>
         </div>
@@ -236,15 +233,15 @@ export const MessageInputEnhanced: React.FC<MessageInputEnhancedProps> = ({
           name="file"
         />
 
-        {/* "+" attachment button */}
+        {/* Attachment button */}
         <button
           type="button"
-          className="w-11 h-11 rounded-full bg-gray-900 text-white flex items-center justify-center flex-shrink-0 hover:bg-gray-700 transition-colors disabled:opacity-50"
+          className="w-9 h-9 rounded-full bg-stone-100 text-muted-foreground flex items-center justify-center flex-shrink-0 hover:bg-stone-200 transition-colors disabled:opacity-50"
           onClick={() => fileInputRef.current?.click()}
           disabled={disabled || uploading}
           aria-label="Attach file"
         >
-          <span className="text-xl font-light leading-none">+</span>
+          <Paperclip className="h-4 w-4" />
         </button>
 
         <Textarea
@@ -254,7 +251,7 @@ export const MessageInputEnhanced: React.FC<MessageInputEnhancedProps> = ({
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
           disabled={disabled || uploading}
-          className="flex-1 min-h-[40px] max-h-[120px] resize-none text-base border border-dc-pink rounded-full px-4 py-2 focus:outline-none focus:ring-2 focus:ring-dc-teal focus:border-transparent"
+          className="flex-1 min-h-[38px] max-h-[120px] resize-none text-[15px] bg-stone-100 border-0 rounded-2xl px-4 py-2 focus:outline-none focus-visible:ring-1 focus-visible:ring-dc-teal"
           rows={1}
           aria-label="Message"
           name="message"
@@ -264,13 +261,12 @@ export const MessageInputEnhanced: React.FC<MessageInputEnhancedProps> = ({
         <button
           type="submit"
           disabled={(!message.trim() && !file) || disabled || uploading}
-          className="w-10 h-10 rounded-full bg-dc-teal-btn text-white flex items-center justify-center flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-dc-teal-btn-hover transition-colors"
+          className="w-9 h-9 rounded-full bg-dc-teal-btn text-white flex items-center justify-center flex-shrink-0 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-dc-teal-btn-hover transition-colors"
           aria-label="Send message"
         >
-          <Send className="h-5 w-5" />
+          <Send className="h-4 w-4" />
         </button>
       </form>
     </div>
   );
 };
-

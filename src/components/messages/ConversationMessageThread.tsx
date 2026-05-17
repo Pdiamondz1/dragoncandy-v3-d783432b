@@ -20,7 +20,13 @@ export const ConversationMessageThread: React.FC<ConversationMessageThreadProps>
   const { data: messages = [], isLoading } = useMessages(undefined, conversationId);
   const sendMessage = useSendMessage();
   const markAsRead = useMarkMessagesAsRead();
+  const markAsReadRef = useRef(markAsRead);
+  markAsReadRef.current = markAsRead;
   const lastMarkedRef = useRef<{ id: string; count: number } | null>(null);
+
+  useEffect(() => {
+    lastMarkedRef.current = null;
+  }, [conversationId]);
 
   useEffect(() => {
     if (conversationId && user && !isLoading && messages.length > 0) {
@@ -30,10 +36,10 @@ export const ConversationMessageThread: React.FC<ConversationMessageThreadProps>
         lastMarkedRef.current?.count !== current.count
       ) {
         lastMarkedRef.current = current;
-        markAsRead.mutate({ conversationId });
+        markAsReadRef.current.mutate({ conversationId });
       }
     }
-  }, [conversationId, user, isLoading, messages.length, markAsRead]);
+  }, [conversationId, user, isLoading, messages.length]);
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
 
   const handleSendMessage = (content: string, options?: {
@@ -68,7 +74,7 @@ export const ConversationMessageThread: React.FC<ConversationMessageThreadProps>
   return (
     <div className="flex flex-col h-full">
       {/* Messages area */}
-      <div className="flex-1 min-h-0 bg-teal-50" aria-live="polite">
+      <div className="flex-1 min-h-0 bg-stone-100" aria-live="polite">
         <MessageList
           conversationId={conversationId}
           messages={messages}

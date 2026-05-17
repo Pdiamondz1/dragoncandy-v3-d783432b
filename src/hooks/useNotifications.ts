@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
@@ -34,6 +34,9 @@ export const useNotifications = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const initializedRef = useRef(false);
+  const prefsRef = useRef<{ push: boolean; messages: boolean; campaigns: boolean }>({
+    push: true, messages: true, campaigns: true,
+  });
 
   // Persist notifications per-user so read state survives route changes/reloads
   useEffect(() => {
@@ -68,6 +71,20 @@ export const useNotifications = () => {
     const init = async () => {
       if (initializedRef.current) return;
       try {
+        // Load notification preferences
+        const { data: prefsData } = await supabase
+          .from('notification_preferences')
+          .select('push_notifications, message_notifications, campaign_notifications')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        if (prefsData) {
+          prefsRef.current = {
+            push: prefsData.push_notifications ?? true,
+            messages: prefsData.message_notifications ?? true,
+            campaigns: prefsData.campaign_notifications ?? true,
+          };
+        }
+
         // Build a map of read states from storage to keep them across navigations
         let storedRead = new Map<string, boolean>();
         try {
@@ -214,19 +231,20 @@ export const useNotifications = () => {
           table: 'campaign_applications',
         },
         (payload) => {
-          // Show toast notification
           const newStatus = payload.new.status;
-          if (newStatus === 'accepted') {
-            toast({
-              title: 'Application Accepted!',
-              description: 'Your application has been accepted. A new collaboration has been created.',
-            });
-          } else if (newStatus === 'rejected') {
-            toast({
-              title: 'Application Update',
-              description: 'Your application status has been updated.',
-              variant: 'destructive',
-            });
+          if (prefsRef.current.push && prefsRef.current.campaigns) {
+            if (newStatus === 'accepted') {
+              toast({
+                title: 'Application Accepted!',
+                description: 'Your application has been accepted. A new collaboration has been created.',
+              });
+            } else if (newStatus === 'rejected') {
+              toast({
+                title: 'Application Update',
+                description: 'Your application status has been updated.',
+                variant: 'destructive',
+              });
+            }
           }
 
           // Add to notifications list
@@ -252,11 +270,12 @@ export const useNotifications = () => {
           table: 'campaign_applications',
         },
         (payload) => {
-          // For business users - show toast when they receive new applications
-          toast({
-            title: 'New Application Received',
-            description: 'A creator has applied to one of your campaigns.',
-          });
+          if (prefsRef.current.push && prefsRef.current.campaigns) {
+            toast({
+              title: 'New Application Received',
+              description: 'A creator has applied to one of your campaigns.',
+            });
+          }
 
           const notification: Notification = {
             id: `new-app-${payload.new.id}`,
@@ -292,12 +311,13 @@ export const useNotifications = () => {
             return data;
           });
 
-          // Only notify the restaurant owner (campaign creator)
           if (campaign.user_id === user.id) {
-            toast({
-              title: 'New Sponsorship Proposal! 🎉',
-              description: `${brandProfile?.business_name || 'A brand'} wants to sponsor your campaign "${campaign.title}"`,
-            });
+            if (prefsRef.current.push && prefsRef.current.campaigns) {
+              toast({
+                title: 'New Sponsorship Proposal!',
+                description: `${brandProfile?.business_name || 'A brand'} wants to sponsor your campaign "${campaign.title}"`,
+              });
+            }
 
             const notification: Notification = {
               id: `sponsorship-${payload.new.id}`,
@@ -349,11 +369,13 @@ export const useNotifications = () => {
               };
 
               if (statusMessages[newStatus]) {
-                toast({
-                  title: 'Sponsorship Update',
-                  description: `${statusMessages[newStatus]} for "${campaign?.title || 'campaign'}"`,
-                  variant: newStatus === 'rejected' ? 'destructive' : 'default',
-                });
+                if (prefsRef.current.push && prefsRef.current.campaigns) {
+                  toast({
+                    title: 'Sponsorship Update',
+                    description: `${statusMessages[newStatus]} for "${campaign?.title || 'campaign'}"`,
+                    variant: newStatus === 'rejected' ? 'destructive' : 'default',
+                  });
+                }
 
                 const notification: Notification = {
                   id: `sponsorship-update-${payload.new.id}-${Date.now()}`,
@@ -409,11 +431,12 @@ export const useNotifications = () => {
                             likerProfile?.email?.split('@')[0] ||
                             'Someone';
 
-          // Show toast notification
-          toast({
-            title: '❤️ Your content got a like!',
-            description: `${likerName} liked your content`,
-          });
+          if (prefsRef.current.push) {
+            toast({
+              title: 'Your content got a like!',
+              description: `${likerName} liked your content`,
+            });
+          }
 
           // Add to notifications list
           const notification: Notification = {
@@ -452,10 +475,12 @@ export const useNotifications = () => {
             if (campaign) campaignTitle = campaign.title;
           } catch {}
 
-          toast({
-            title: 'Campaign Invitation!',
-            description: `You've been invited to "${campaignTitle}"`,
-          });
+          if (prefsRef.current.push && prefsRef.current.campaigns) {
+            toast({
+              title: 'Campaign Invitation!',
+              description: `You've been invited to "${campaignTitle}"`,
+            });
+          }
 
           const notification: Notification = {
             id: `invite-${payload.new.id}`,
@@ -493,10 +518,12 @@ export const useNotifications = () => {
             ? msg.content.substring(0, 60) + (msg.content.length > 60 ? '…' : '')
             : 'New message';
 
-          toast({
-            title: `Message from ${senderName}`,
-            description: preview,
-          });
+          if (prefsRef.current.push && prefsRef.current.messages) {
+            toast({
+              title: `Message from ${senderName}`,
+              description: preview,
+            });
+          }
 
           const notification: Notification = {
             id: `msg-${msg.id}`,
@@ -524,19 +551,19 @@ export const useNotifications = () => {
     };
   }, [user]);
 
-  const markAsRead = (notificationId: string) => {
+  const markAsRead = useCallback((notificationId: string) => {
     setNotifications(prev =>
       prev.map(notif =>
         notif.id === notificationId ? { ...notif, read: true } : notif
       )
     );
     setUnreadCount(prev => Math.max(0, prev - 1));
-  };
+  }, []);
 
-  const markAllAsRead = () => {
+  const markAllAsRead = useCallback(() => {
     setNotifications(prev => prev.map(notif => ({ ...notif, read: true })));
     setUnreadCount(0);
-  };
+  }, []);
 
   return {
     notifications,

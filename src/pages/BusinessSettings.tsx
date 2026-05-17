@@ -19,6 +19,7 @@ import {
 import { useLocationSocialAccounts } from '@/hooks/outstand/useLocationSocialAccounts';
 import { Button } from '@/components/ui/button';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { NotificationPreferencesSection } from '@/components/settings/NotificationPreferencesSection';
 import { useMyOrgRole } from '@/hooks/useOrgData';
 import { DeleteOrgSheet } from '@/components/org/DeleteOrgSheet';
 import { LeaveOrgSheet } from '@/components/org/LeaveOrgSheet';
@@ -235,7 +236,11 @@ const BusinessSettings = () => {
             />
           )}
 
-          <Accordion type="single" collapsible className="mt-6">
+          <Accordion type="single" collapsible className="mt-3">
+            <NotificationPreferencesSection />
+          </Accordion>
+
+          <Accordion type="single" collapsible className="mt-3">
             <AccordionItem value="danger" className="border-red-200">
               <AccordionTrigger className="text-red-600 hover:text-red-700">
                 <Coachmark coachmarkKey="delete_org_danger" title="Destructive actions" body="Read carefully. Deletion is permanent after 30 days.">

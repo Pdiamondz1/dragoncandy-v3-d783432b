@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useRef } from 'react';
 import { safeUrl } from '@/lib/safeUrl';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import logo from '@/assets/Transparent_DragonCandy_logo.webp';
@@ -13,7 +13,8 @@ import {
 import { formatDistanceToNow } from 'date-fns';
 import { useAuth } from '@/hooks/useAuth';
 import { type Message } from '@/hooks/useMessages';
-import { MessageReactions } from './MessageReactions';
+import { FloatingReactions } from './FloatingReactions';
+import { ReactionTrigger } from './ReactionTrigger';
 
 interface MessageBubbleEnhancedProps {
   message: Message;
@@ -31,12 +32,15 @@ export const MessageBubbleEnhanced: React.FC<MessageBubbleEnhancedProps> = ({
   onEdit: _onEdit
 }) => {
   const { user } = useAuth();
+  const [showReactionBar, setShowReactionBar] = useState(false);
+  const doubleTapRef = useRef<number>(0);
 
   const isOwnMessage = message.sender_id === user?.id;
   const senderName = message.sender_profile?.full_name ||
                      message.sender_profile?.email ||
                      `User ${message.sender_id.slice(0, 8)}`;
   const senderAvatar = message.sender_profile?.avatar_url;
+  const initials = senderName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
 
   const handleDownload = async (url: string, filename?: string) => {
     try {
@@ -56,14 +60,22 @@ export const MessageBubbleEnhanced: React.FC<MessageBubbleEnhancedProps> = ({
     }
   };
 
+  const handleDoubleTap = () => {
+    const now = Date.now();
+    if (now - doubleTapRef.current < 300) {
+      setShowReactionBar(true);
+    }
+    doubleTapRef.current = now;
+  };
+
   const getDeliveryStatusIcon = () => {
     switch (message.delivery_status) {
       case 'sent':
-        return <Check className="h-3 w-3 text-white/60" aria-hidden="true" />;
+        return <Check className="h-3 w-3 text-white/50" aria-hidden="true" />;
       case 'delivered':
-        return <CheckCheck className="h-3 w-3 text-white/60" aria-hidden="true" />;
+        return <CheckCheck className="h-3 w-3 text-white/50" aria-hidden="true" />;
       case 'read':
-        return <CheckCheck className="h-3 w-3 text-white" aria-hidden="true" />;
+        return <CheckCheck className="h-3 w-3 text-white/90" aria-hidden="true" />;
       default:
         return null;
     }
@@ -81,48 +93,46 @@ export const MessageBubbleEnhanced: React.FC<MessageBubbleEnhancedProps> = ({
 
   return (
     <div
-      className={`group flex gap-2.5 px-4 py-1.5 ${isOwnMessage ? 'flex-row-reverse' : ''}`}
-      style={{
-        animation: `${isOwnMessage ? 'slideInRight' : 'slideInLeft'} 0.2s ease-out`,
-      }}
+      className={`group flex gap-2 px-4 py-1 ${isOwnMessage ? 'flex-row-reverse' : ''}`}
+      onTouchEnd={handleDoubleTap}
     >
-      {/* Avatar — only show for other people's messages */}
+      {/* Avatar — only for other people's messages */}
       {!isOwnMessage && (
         showAvatar ? (
-          <Avatar className="h-8 w-8 flex-shrink-0 mt-1 ring-2 ring-teal-400">
+          <Avatar className="h-7 w-7 flex-shrink-0 mt-1 ring-2 ring-dc-teal">
             <AvatarImage src={senderAvatar || logo} alt={senderName} />
-            <AvatarFallback className="bg-dc-pink text-dc-text text-xs font-semibold">
-              {senderName.charAt(0).toUpperCase()}
+            <AvatarFallback className="bg-gradient-to-br from-dc-pink to-dc-pink-accent text-white text-[10px] font-bold">
+              {initials}
             </AvatarFallback>
           </Avatar>
         ) : (
-          <div className="w-8 flex-shrink-0" />
+          <div className="w-7 flex-shrink-0" />
         )
       )}
 
       {/* Message content */}
       <div className={`flex flex-col max-w-[70%] ${isOwnMessage ? 'items-end' : 'items-start'}`}>
-        {/* Sender name + time (only for other's messages) */}
+        {/* Sender name (only for other's messages) */}
         {!isOwnMessage && showAvatar && (
-          <div className="flex items-center gap-2 mb-0.5 px-1">
-            <span className="text-xs font-medium text-foreground">{senderName}</span>
+          <div className="flex items-center gap-2 mb-0.5 px-2">
+            <span className="text-[11px] font-medium text-foreground/70">{senderName}</span>
             {getCategoryBadge()}
           </div>
         )}
 
         {/* Forwarded indicator */}
         {message.forwarded_from_message_id && (
-          <div className="text-[10px] text-muted-foreground mb-0.5 px-1 italic">
+          <div className="text-[10px] text-muted-foreground mb-0.5 px-2 italic">
             Forwarded
           </div>
         )}
 
         {/* Reply context */}
         {message.parent_message_id && message.parent_message && (
-          <div className={`mb-1 px-3 py-1.5 rounded-lg text-xs border-l-2 ${
+          <div className={`mb-1 px-3 py-1.5 rounded-xl text-xs border-l-2 ${
             isOwnMessage
-              ? 'bg-dc-teal/20 border-dc-text/40 text-dc-text/80'
-              : 'bg-muted border-dc-pink/40 text-muted-foreground'
+              ? 'bg-white/10 border-white/30 text-white/80'
+              : 'bg-muted/60 border-dc-pink/40 text-muted-foreground'
           }`}>
             <span className="font-medium text-[10px]">
               {message.parent_message.sender_profile?.full_name || 'User'}
@@ -135,28 +145,29 @@ export const MessageBubbleEnhanced: React.FC<MessageBubbleEnhancedProps> = ({
           </div>
         )}
 
-        {/* Message bubble — teal for outbound, pink for inbound */}
-        <div
-          className={`inline-block px-4 py-2.5 max-w-full transition-shadow duration-200 ${
-            isOwnMessage
-              ? 'bg-dc-teal-btn text-dc-text rounded-2xl rounded-br-md shadow-sm'
-              : 'bg-dc-pink text-dc-text rounded-2xl rounded-bl-md shadow-sm'
-          }`}
-        >
-          <p className="text-base whitespace-pre-wrap break-words leading-relaxed">
-            {message.content}
-          </p>
+        {/* Bubble + floating reactions container */}
+        <div className="relative">
+          {/* Message bubble */}
+          <div
+            className={`inline-block px-4 py-2.5 max-w-full ${
+              isOwnMessage
+                ? 'bg-dc-teal-btn text-white rounded-2xl rounded-br-sm'
+                : 'bg-dc-pink text-dc-text rounded-2xl rounded-bl-sm'
+            }`}
+          >
+            <p className="text-[15px] whitespace-pre-wrap break-words leading-relaxed">
+              {message.content}
+            </p>
 
-          {/* Attachment */}
-          {message.attachment_url && (
-            <div className="mt-2">
-              {(() => {
-                const isImage = message.attachment_name &&
-                  /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(message.attachment_name);
+            {/* Attachment */}
+            {message.attachment_url && (
+              <div className="mt-2">
+                {(() => {
+                  const isImage = message.attachment_name &&
+                    /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(message.attachment_name);
 
-                if (isImage) {
-                  return (
-                    <div className="space-y-1.5">
+                  if (isImage) {
+                    return (
                       <img
                         src={message.attachment_url}
                         alt={message.attachment_name || 'Shared image'}
@@ -171,51 +182,59 @@ export const MessageBubbleEnhanced: React.FC<MessageBubbleEnhancedProps> = ({
                           target.style.display = 'none';
                         }}
                       />
-                    </div>
-                  );
-                } else {
-                  return (
-                    <div className={`mt-1.5 p-2 rounded-lg ${
-                      isOwnMessage ? 'bg-white/15' : 'bg-muted/60'
-                    }`}>
-                      <a
-                        href={safeUrl(message.attachment_url) ?? '#'}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-xs underline flex items-center gap-1.5"
-                      >
-                        📎 {message.attachment_name || 'Attachment'}
-                        {message.attachment_size && (
-                          <span className="opacity-70">
-                            ({Math.round(message.attachment_size / 1024)}KB)
-                          </span>
-                        )}
-                      </a>
-                    </div>
-                  );
-                }
-              })()}
-            </div>
-          )}
-
-          {/* Timestamp + delivery status inside bubble */}
-          <div className={`flex items-center gap-1.5 mt-1 ${isOwnMessage ? 'justify-end' : ''}`}>
-            <span className={`text-[10px] ${
-              isOwnMessage ? 'text-white/60' : 'text-muted-foreground'
-            }`}>
-              {formatDistanceToNow(new Date(message.created_at), { addSuffix: true })}
-            </span>
-            {message.edited_at && (
-              <span className={`text-[10px] ${isOwnMessage ? 'text-white/50' : 'text-muted-foreground/70'}`}>
-                · edited
-              </span>
+                    );
+                  } else {
+                    return (
+                      <div className={`mt-1.5 p-2 rounded-lg ${
+                        isOwnMessage ? 'bg-white/15' : 'bg-muted/60'
+                      }`}>
+                        <a
+                          href={safeUrl(message.attachment_url) ?? '#'}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs underline flex items-center gap-1.5"
+                        >
+                          <span aria-hidden="true">&#x1F4CE;</span> {message.attachment_name || 'Attachment'}
+                          {message.attachment_size && (
+                            <span className="opacity-70">
+                              ({Math.round(message.attachment_size / 1024)}KB)
+                            </span>
+                          )}
+                        </a>
+                      </div>
+                    );
+                  }
+                })()}
+              </div>
             )}
-            {isOwnMessage && getDeliveryStatusIcon()}
-          </div>
-        </div>
 
-        {/* Reactions */}
-        <MessageReactions messageId={message.id} />
+            {/* Timestamp + delivery status */}
+            <div className={`flex items-center gap-1.5 mt-1 ${isOwnMessage ? 'justify-end' : ''}`}>
+              <span className={`text-[10px] ${
+                isOwnMessage ? 'text-white/50' : 'text-dc-text/40'
+              }`}>
+                {formatDistanceToNow(new Date(message.created_at), { addSuffix: true })}
+              </span>
+              {message.edited_at && (
+                <span className={`text-[10px] ${isOwnMessage ? 'text-white/40' : 'text-dc-text/30'}`}>
+                  · edited
+                </span>
+              )}
+              {isOwnMessage && getDeliveryStatusIcon()}
+            </div>
+          </div>
+
+          {/* Floating reactions overlay */}
+          <FloatingReactions messageId={message.id} isOwnMessage={isOwnMessage} />
+
+          {/* Reaction trigger (hover smiley on desktop) */}
+          <ReactionTrigger
+            messageId={message.id}
+            isOwnMessage={isOwnMessage}
+            showBar={showReactionBar}
+            onShowBar={setShowReactionBar}
+          />
+        </div>
 
         {/* Hover actions */}
         <div className={`flex items-center gap-1 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity ${
@@ -226,7 +245,7 @@ export const MessageBubbleEnhanced: React.FC<MessageBubbleEnhancedProps> = ({
               variant="ghost"
               size="sm"
               onClick={() => onReply(message)}
-              className="h-6 px-2 text-[10px] text-muted-foreground hover:text-foreground"
+              className="h-6 px-2 text-[10px] text-muted-foreground hover:text-foreground rounded-full"
             >
               <Reply className="h-3 w-3 mr-1" />
               Reply
@@ -237,7 +256,7 @@ export const MessageBubbleEnhanced: React.FC<MessageBubbleEnhancedProps> = ({
               variant="ghost"
               size="sm"
               onClick={() => handleDownload(message.attachment_url!, message.attachment_name || undefined)}
-              className="h-6 px-2 text-[10px] text-muted-foreground hover:text-foreground"
+              className="h-6 px-2 text-[10px] text-muted-foreground hover:text-foreground rounded-full"
             >
               <Download className="h-3 w-3 mr-1" />
               Save
@@ -248,4 +267,3 @@ export const MessageBubbleEnhanced: React.FC<MessageBubbleEnhancedProps> = ({
     </div>
   );
 };
-

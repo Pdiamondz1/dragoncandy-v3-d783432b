@@ -117,37 +117,68 @@ export const useSendMessage = () => {
       
       queryClient.invalidateQueries({ queryKey });
       
-      // Send email notification to recipient for direct messages
-      if (variables.conversationId && variables.recipientId) {
-        try {
+      // Send email notification to recipient(s)
+      try {
+        const { data: senderProfile } = await supabase
+          .from('profiles')
+          .select('full_name')
+          .eq('id', user!.id)
+          .single();
+
+        const senderName = senderProfile?.full_name || 'A user';
+        const messagePreview = variables.content.substring(0, 100) + (variables.content.length > 100 ? '...' : '');
+
+        if (variables.conversationId && variables.recipientId) {
           const { data: recipientProfile } = await supabase
             .from('profiles')
             .select('email, full_name')
             .eq('id', variables.recipientId)
             .single();
 
-          const { data: senderProfile } = await supabase
-            .from('profiles')
-            .select('full_name')
-            .eq('id', user!.id)
-            .single();
-
           if (recipientProfile?.email) {
-            await supabase.functions.invoke('send-notification-email', {
+            const { error: fnError } = await supabase.functions.invoke('send-notification-email', {
               body: {
                 to: recipientProfile.email,
                 recipientName: recipientProfile.full_name,
                 type: 'new_message',
-                data: {
-                  senderName: senderProfile?.full_name || 'A user',
-                  message: variables.content.substring(0, 100) + (variables.content.length > 100 ? '...' : ''),
-                },
+                data: { senderName, message: messagePreview },
               },
             });
+            if (fnError) console.warn('Email notification failed:', fnError);
           }
-        } catch (error) {
-          console.error('Failed to send message notification email:', error);
+        } else if (variables.campaignId) {
+          const { data: participants } = await supabase
+            .from('conversation_participants')
+            .select('user_id')
+            .eq('conversation_id', _data.conversation_id);
+
+          const recipientIds = (participants || [])
+            .map(p => p.user_id)
+            .filter(id => id !== user!.id);
+
+          if (recipientIds.length > 0) {
+            const { data: recipientProfiles } = await supabase
+              .from('profiles')
+              .select('email, full_name')
+              .in('id', recipientIds);
+
+            for (const recipient of recipientProfiles || []) {
+              if (recipient.email) {
+                const { error: fnError } = await supabase.functions.invoke('send-notification-email', {
+                  body: {
+                    to: recipient.email,
+                    recipientName: recipient.full_name,
+                    type: 'new_message',
+                    data: { senderName, message: messagePreview },
+                  },
+                });
+                if (fnError) console.warn('Campaign email notification failed:', fnError);
+              }
+            }
+          }
         }
+      } catch (error) {
+        console.warn('Failed to send message notification email:', error);
       }
     },
   });
@@ -206,15 +237,16 @@ export const useMarkMessagesAsRead = () => {
         return;
       }
 
-      const { error } = await query;
+      const { data, error } = await query.select('id');
       if (error) {
         console.error('Error marking messages as read:', error);
         throw error;
       }
+      return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['conversations'] });
-      queryClient.invalidateQueries({ queryKey: ['unread-counts'] });
+      queryClient.refetchQueries({ queryKey: ['conversations'] });
+      queryClient.refetchQueries({ queryKey: ['unread-counts'] });
     },
   });
 };
