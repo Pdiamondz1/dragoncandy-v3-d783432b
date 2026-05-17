@@ -20,6 +20,7 @@ export function PublicPageHeader() {
         alt="DragonCandy"
         width={140}
         height={47}
+        fetchPriority="high"
         className="w-[100px] md:w-[120px] lg:w-[140px] h-auto cursor-pointer transition-transform duration-200 hover:scale-105"
         onClick={() => navigate('/')}
       />
@@ -46,10 +47,10 @@ export function PublicPageHeader() {
         <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
           <SheetTrigger asChild>
             <button
-              className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+              className="p-2 rounded-full hover:bg-teal-50 transition-colors"
               aria-label="Toggle menu"
             >
-              <Menu className="h-6 w-6 text-gray-600" />
+              <Menu className="h-6 w-6 text-dc-text-muted" />
             </button>
           </SheetTrigger>
           <SheetContent side="right" className="w-64 pt-8">
