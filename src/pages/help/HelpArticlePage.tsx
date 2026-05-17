@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { DCSkeleton } from "@/components/ui/dc-skeleton";
 import { SEO } from "@/components/SEO";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { PublicPageHeader } from '@/components/PublicPageHeader';
 
 export default function HelpArticlePage() {
   const { slug } = useParams<{ slug: string }>();
@@ -50,6 +51,7 @@ export default function HelpArticlePage() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-white">
+        <PublicPageHeader />
         <div className="max-w-2xl mx-auto px-4 py-8">
           <DCSkeleton variant="text-block" className="h-8 w-64 mb-4" />
           <DCSkeleton variant="text-block" count={5} />
@@ -60,12 +62,15 @@ export default function HelpArticlePage() {
 
   if (!article) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-lg font-semibold text-dc-dark">Article not found</p>
-          <Link to="/help" className="text-sm text-dc-teal mt-2 inline-block">
-            Back to Help Center
-          </Link>
+      <div className="min-h-screen bg-white">
+        <PublicPageHeader />
+        <div className="flex items-center justify-center py-16">
+          <div className="text-center">
+            <p className="text-lg font-semibold text-dc-dark">Article not found</p>
+            <Link to="/help" className="text-sm text-dc-teal mt-2 inline-block">
+              Back to Help Center
+            </Link>
+          </div>
         </div>
       </div>
     );
@@ -73,6 +78,7 @@ export default function HelpArticlePage() {
 
   return (
     <div className="min-h-screen bg-white">
+      <PublicPageHeader />
       <SEO
         title={`${article.title} - DragonCandy Help`}
         description={article.body?.slice(0, 155) ?? `Help article: ${article.title}`}

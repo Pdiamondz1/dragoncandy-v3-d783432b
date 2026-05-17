@@ -2,6 +2,7 @@ import React, { Suspense, lazy, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { SEO } from '@/components/SEO';
+import { PublicPageHeader } from '@/components/PublicPageHeader';
 
 /**
  * Valid brief slugs — Vite's import.meta.glob gives us a map of all .mdx files
@@ -28,20 +29,24 @@ export default function HelpBriefPage() {
 
   if (!slug || !MdxComponent) {
     return (
-      <div className="min-h-screen bg-white flex flex-col items-center justify-center p-6">
-        <h1 className="text-xl font-bold text-gray-900 mb-2">Brief not found</h1>
-        <p className="text-gray-500 text-sm mb-4">
-          The help article "{slug}" doesn't exist.
-        </p>
-        <Link to="/dashboard/business/promotions" className="text-dc-teal font-medium text-sm">
-          ← Back to Promotions
-        </Link>
+      <div className="min-h-screen bg-white">
+        <PublicPageHeader />
+        <div className="flex flex-col items-center justify-center p-6 py-16">
+          <h1 className="text-xl font-bold text-gray-900 mb-2">Brief not found</h1>
+          <p className="text-gray-500 text-sm mb-4">
+            The help article "{slug}" doesn't exist.
+          </p>
+          <Link to="/dashboard/business/promotions" className="text-dc-teal font-medium text-sm">
+            ← Back to Promotions
+          </Link>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-white">
+      <PublicPageHeader />
       <SEO
         title={`${slug ? slug.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()) : 'Help'} - DragonCandy Help`}
         description={`DragonCandy help guide for ${slug?.replace(/-/g, ' ') ?? 'promotions'}.`}

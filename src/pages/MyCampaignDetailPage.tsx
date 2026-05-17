@@ -8,6 +8,7 @@ import { AppliedPhaseView } from '@/components/my-campaigns/AppliedPhaseView';
 import { ActivePhaseView } from '@/components/my-campaigns/ActivePhaseView';
 import { CompletedPhaseView } from '@/components/my-campaigns/CompletedPhaseView';
 import { Skeleton } from '@/components/ui/skeleton';
+import { DashboardLayout } from '@/components/DashboardLayout';
 import type { Campaign } from '@/hooks/useCampaignQueries';
 import type { CreatorCollaboration } from '@/hooks/useCreatorCollaborations';
 
@@ -69,18 +70,22 @@ export default function MyCampaignDetailPage() {
 
   if (campaignLoading) {
     return (
-      <div className="min-h-screen bg-white p-4 space-y-4">
-        <Skeleton className="h-32 rounded-2xl" />
-        <Skeleton className="h-64 rounded-2xl" />
-      </div>
+      <DashboardLayout userRole="content_creator">
+        <div className="min-h-screen bg-white p-4 space-y-4">
+          <Skeleton className="h-32 rounded-2xl" />
+          <Skeleton className="h-64 rounded-2xl" />
+        </div>
+      </DashboardLayout>
     );
   }
 
   if (!campaign) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <p className="text-gray-600">Campaign not found</p>
-      </div>
+      <DashboardLayout userRole="content_creator">
+        <div className="min-h-screen bg-white flex items-center justify-center">
+          <p className="text-gray-600">Campaign not found</p>
+        </div>
+      </DashboardLayout>
     );
   }
 
@@ -89,43 +94,45 @@ export default function MyCampaignDetailPage() {
   const stats = buildStats(phase, campaign, activeCollab, completedCollab);
 
   return (
-    <div className="min-h-screen bg-white">
-      <CampaignDetailHeader
-        campaign={campaign}
-        phase={phase}
-        stats={stats}
-        applicationStatus={application?.status}
-      />
-
-      {phase === 'active' && activeCollab && (
-        <ActivePhaseView
+    <DashboardLayout userRole="content_creator">
+      <div className="min-h-screen bg-white">
+        <CampaignDetailHeader
           campaign={campaign}
-          enrichedDetail={enrichedDetail}
-          collaborationId={activeCollab.id}
+          phase={phase}
+          stats={stats}
+          applicationStatus={application?.status}
         />
-      )}
 
-      {phase === 'completed' && completedCollab && (
-        <CompletedPhaseView
-          campaign={campaign}
-          enrichedDetail={enrichedDetail}
-          collaboration={completedCollab}
-        />
-      )}
+        {phase === 'active' && activeCollab && (
+          <ActivePhaseView
+            campaign={campaign}
+            enrichedDetail={enrichedDetail}
+            collaborationId={activeCollab.id}
+          />
+        )}
 
-      {phase === 'applied' && application && (
-        <AppliedPhaseView
-          campaign={campaign}
-          enrichedDetail={enrichedDetail}
-          application={application}
-        />
-      )}
+        {phase === 'completed' && completedCollab && (
+          <CompletedPhaseView
+            campaign={campaign}
+            enrichedDetail={enrichedDetail}
+            collaboration={completedCollab}
+          />
+        )}
 
-      {phase === 'applied' && !application && (
-        <div className="px-4 pt-4 pb-24">
-          <p className="text-gray-500 text-center">No application found for this campaign.</p>
-        </div>
-      )}
-    </div>
+        {phase === 'applied' && application && (
+          <AppliedPhaseView
+            campaign={campaign}
+            enrichedDetail={enrichedDetail}
+            application={application}
+          />
+        )}
+
+        {phase === 'applied' && !application && (
+          <div className="px-4 pt-4 pb-24">
+            <p className="text-gray-500 text-center">No application found for this campaign.</p>
+          </div>
+        )}
+      </div>
+    </DashboardLayout>
   );
 }
