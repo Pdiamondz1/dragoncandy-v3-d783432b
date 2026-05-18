@@ -36,6 +36,7 @@ import { ContactCreatorModal } from '@/components/creator-profile/ContactCreator
 import { PortfolioLightbox } from '@/components/creator-profile/PortfolioLightbox';
 import { PublicProfileReviews } from '@/components/profiles/PublicProfileReviews';
 import { safeUrl } from '@/lib/safeUrl';
+import { getMediaType, type ResolvedPortfolioItem } from '@/lib/mediaUtils';
 
 interface CreatorProfile {
   id: string;
@@ -72,22 +73,14 @@ interface CreatorProfileModalProps {
   onClose: () => void;
 }
 
-const getContentType = (url: string): 'Photo' | 'Reel' | null => {
-  const ext = url.split('.').pop()?.toLowerCase().split('?')[0];
-  if (!ext) return null;
-  if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) return 'Photo';
-  if (['mp4', 'mov', 'webm'].includes(ext)) return 'Reel';
-  return null;
-};
-
 const SUPABASE_URL = 'https://zocahiffooqdybdhguqv.supabase.co';
 
 /**
  * Convert a raw Supabase public storage URL to an image-transform thumbnail URL.
  * Returns the original URL unchanged for video files or non-Supabase URLs.
  */
-const toThumbnailUrl = (url: string, width = 540): string => {
-  if (getContentType(url) !== 'Photo') return url;
+const toThumbnailUrl = (url: string, type: 'Photo' | 'Reel' | null, width = 540): string => {
+  if (type !== 'Photo') return url;
   const marker = '/storage/v1/object/public/';
   const idx = url.indexOf(marker);
   if (idx === -1) return url;
@@ -102,7 +95,7 @@ export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
   onClose,
 }) => {
   const [fullProfile, setFullProfile] = useState<CreatorProfile | null>(null);
-  const [portfolioUrls, setPortfolioUrls] = useState<string[]>([]);
+  const [portfolioItems, setPortfolioItems] = useState<ResolvedPortfolioItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
@@ -140,16 +133,21 @@ export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
           
           // Convert portfolio URLs
           if (data.portfolio_urls && data.portfolio_urls.length > 0) {
-            const urls = await Promise.all(
-              data.portfolio_urls.map(async (url: string) => {
-                if (!url) return null;
-                if (url.startsWith('http://') || url.startsWith('https://')) {
-                  return url;
+            const items = await Promise.all(
+              data.portfolio_urls.map(async (rawPath: string) => {
+                if (!rawPath) return null;
+                const type = getMediaType(rawPath);
+                let url: string | undefined;
+                if (rawPath.startsWith('http://') || rawPath.startsWith('https://')) {
+                  url = rawPath;
+                } else {
+                  url = await getSignedProfileUrl(rawPath);
                 }
-                return await getSignedProfileUrl(url);
+                if (!url) return null;
+                return { url, type } as ResolvedPortfolioItem;
               })
             );
-            setPortfolioUrls(urls.filter((u): u is string => !!u));
+            setPortfolioItems(items.filter((i): i is ResolvedPortfolioItem => i !== null));
           }
         }
       } catch (error) {
@@ -441,13 +439,12 @@ export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
             )}
 
             {/* Portfolio */}
-            {portfolioUrls.length > 0 && (
+            {portfolioItems.length > 0 && (
               <div>
                 <h3 className="text-lg font-semibold mb-3">Portfolio</h3>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  {portfolioUrls.map((url, index) => {
-                    if (!url) return null;
-                    const contentType = getContentType(url);
+                  {portfolioItems.map((item, index) => {
+                    const { url, type: contentType } = item;
                     const isVideo = contentType === 'Reel';
                     return (
                       <button
@@ -469,7 +466,7 @@ export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
                           </div>
                         ) : (
                           <img
-                            src={toThumbnailUrl(url)}
+                            src={toThumbnailUrl(url, contentType)}
                             alt={`${profile.creator_name} portfolio ${index + 1}`}
                             className="w-full h-full object-cover"
                             loading="lazy"
@@ -499,9 +496,9 @@ export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
 
                 {/* Portfolio Lightbox */}
                 <PortfolioLightbox
-                  items={portfolioUrls.map((url) => ({
+                  items={portfolioItems.map(({ url, type }) => ({
                     url,
-                    type: getContentType(url),
+                    type,
                   }))}
                   currentIndex={lightboxIndex}
                   isOpen={lightboxOpen}
