@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { CreatorProfileModal } from './CreatorProfileModal';
-import { CreatorPortfolioModal } from '@/components/creator-profile/CreatorPortfolioModal';
-import { Heart } from 'lucide-react';
+import { getMediaType } from '@/lib/mediaUtils';
+import { Heart, Play } from 'lucide-react';
 import type { CreatorProfile } from '@/hooks/useCreatorBrowse';
 import { getSignedProfileUrl } from '@/hooks/useSignedUrl';
 import { VerifiedBadge } from '@/components/outstand/VerifiedBadge';
@@ -30,53 +30,39 @@ const toggleFavorite = (id: string): boolean => {
   return !isFav;
 };
 
-/** Return true if the file extension looks like a video format. */
-const isVideoPath = (url: string): boolean => {
-  const ext = url.split('.').pop()?.toLowerCase().split('?')[0];
-  return !!ext && ['mp4', 'mov', 'webm', 'avi', 'mkv'].includes(ext);
-};
 
 export const CreatorCard: React.FC<CreatorCardProps> = React.memo(({ creator }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isPortfolioOpen, setIsPortfolioOpen] = useState(false);
-  const [portfolioIndex, setPortfolioIndex] = useState(0);
   const [portfolioImgFailed, setPortfolioImgFailed] = useState(false);
   const [avatarImgFailed, setAvatarImgFailed] = useState(false);
   const [isFavorite, setIsFavorite] = useState(() => getFavorites().includes(creator.id));
   const { isVerified } = useVerifiedStatus(creator.user_id);
 
   const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
-  const [resolvedPortfolioUrls, setResolvedPortfolioUrls] = useState<string[]>([]);
+  const [isVideoThumbnail, setIsVideoThumbnail] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     const resolve = async () => {
       if (creator.avatar_url && !avatarImgFailed) {
         const url = await getSignedProfileUrl(creator.avatar_url);
-        if (!cancelled && url) { setThumbnailUrl(url); return; }
+        if (!cancelled && url) { setThumbnailUrl(url); setIsVideoThumbnail(false); return; }
       }
       const firstPortfolio = creator.portfolio_urls?.[0];
-      if (firstPortfolio && !isVideoPath(firstPortfolio) && !portfolioImgFailed) {
+      if (firstPortfolio && !portfolioImgFailed) {
+        const mediaType = getMediaType(firstPortfolio);
         const url = await getSignedProfileUrl(firstPortfolio);
-        if (!cancelled && url) { setThumbnailUrl(url); return; }
+        if (!cancelled && url) {
+          setThumbnailUrl(url);
+          setIsVideoThumbnail(mediaType === 'Reel');
+          return;
+        }
       }
-      if (!cancelled) setThumbnailUrl(null);
+      if (!cancelled) { setThumbnailUrl(null); setIsVideoThumbnail(false); }
     };
     resolve();
     return () => { cancelled = true; };
   }, [creator.portfolio_urls, creator.avatar_url, portfolioImgFailed, avatarImgFailed]);
-
-  useEffect(() => {
-    let cancelled = false;
-    const resolve = async () => {
-      const first = creator.portfolio_urls?.[0];
-      if (!first) { setResolvedPortfolioUrls([]); return; }
-      const url = await getSignedProfileUrl(first);
-      if (!cancelled) setResolvedPortfolioUrls(url ? [url] : []);
-    };
-    resolve();
-    return () => { cancelled = true; };
-  }, [creator.portfolio_urls]);
 
   const handleCardClick = () => setIsModalOpen(true);
 
@@ -119,7 +105,23 @@ export const CreatorCard: React.FC<CreatorCardProps> = React.memo(({ creator }) 
         {/* Avatar — preserve the full uploaded photo */}
         <div className="w-24 flex-shrink-0 self-center">
           <div className="max-h-32 rounded-xl bg-gray-100 ring-2 ring-teal-400 overflow-hidden flex items-center justify-center">
-            {thumbnailUrl ? (
+            {thumbnailUrl && isVideoThumbnail ? (
+              <div className="relative w-full h-24">
+                <video
+                  src={`${thumbnailUrl}#t=0.5`}
+                  className="block w-full h-full object-cover"
+                  muted
+                  playsInline
+                  preload="metadata"
+                  onError={() => setPortfolioImgFailed(true)}
+                />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="w-8 h-8 rounded-full bg-black/50 flex items-center justify-center">
+                    <Play className="h-4 w-4 text-white ml-0.5" fill="currentColor" />
+                  </div>
+                </div>
+              </div>
+            ) : thumbnailUrl ? (
               <img
                 src={thumbnailUrl}
                 alt={creator.creator_name}
@@ -206,18 +208,6 @@ export const CreatorCard: React.FC<CreatorCardProps> = React.memo(({ creator }) 
         creator={creator}
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-      />
-
-      <CreatorPortfolioModal
-        isOpen={isPortfolioOpen}
-        onClose={() => setIsPortfolioOpen(false)}
-        creatorName={creator.creator_name}
-        images={resolvedPortfolioUrls.map((url) => ({
-          url,
-          artistName: creator.creator_name,
-        }))}
-        currentIndex={portfolioIndex}
-        onIndexChange={setPortfolioIndex}
       />
     </>
   );
