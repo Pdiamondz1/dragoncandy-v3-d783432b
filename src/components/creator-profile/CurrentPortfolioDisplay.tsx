@@ -150,20 +150,8 @@ export const CurrentPortfolioDisplay = ({ portfolioPaths, onRemoveItem }: Curren
                 onError={() => handleMediaError(item.path)}
               />
             ) : (
-              <div className="relative w-full h-full">
-                <video
-                  src={item.url}
-                  aria-label="Portfolio video"
-                  className="w-full h-full object-cover"
-                  muted
-                  playsInline
-                  preload="metadata"
-                  onLoadedData={() => handleMediaLoad(item.path)}
-                  onError={() => handleMediaError(item.path)}
-                />
-                <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Play className="w-8 h-8 text-white" />
-                </div>
+              <div className="relative w-full h-full bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center">
+                <Play className="w-8 h-8 text-white/60" fill="currentColor" />
               </div>
             )}
             
