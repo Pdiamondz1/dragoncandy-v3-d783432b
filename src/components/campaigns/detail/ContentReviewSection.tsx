@@ -61,6 +61,7 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
   const [showRevisionInput, setShowRevisionInput] = useState(false);
   const [feedback, setFeedback] = useState('');
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const [lightboxIsVideo, setLightboxIsVideo] = useState(false);
   const safeRevisionCount = revisionCount ?? 0;
 
   const navigate = useNavigate();
@@ -251,21 +252,24 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
                       onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
                     />
                     <button
-                      onClick={() => setLightboxUrl(publicUrl)}
+                      onClick={() => { setLightboxUrl(publicUrl); setLightboxIsVideo(false); }}
                       className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center"
                     >
                       <Eye className="h-5 w-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
                     </button>
                   </>
                 ) : isVideo ? (
-                  <div className="w-full h-full flex flex-col items-center justify-center gap-1">
+                  <button
+                    onClick={() => { setLightboxUrl(publicUrl); setLightboxIsVideo(true); }}
+                    className="w-full h-full flex flex-col items-center justify-center gap-1 group-hover:bg-gray-100 transition-colors cursor-pointer"
+                  >
                     <div className="w-10 h-10 rounded-full bg-dc-teal/10 flex items-center justify-center">
                       <span className="text-dc-teal text-lg">&#9654;</span>
                     </div>
                     <span className="text-xs text-gray-500 truncate max-w-[90%] px-2">
                       {file.original_filename}
                     </span>
-                  </div>
+                  </button>
                 ) : (
                   <a
                     href={publicUrl}
@@ -291,11 +295,26 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
       )}
 
       {/* Lightbox */}
-      <Dialog open={!!lightboxUrl} onOpenChange={() => setLightboxUrl(null)}>
+      <Dialog open={!!lightboxUrl} onOpenChange={() => { setLightboxUrl(null); setLightboxIsVideo(false); }}>
         <DialogContent className="max-w-3xl p-2">
           <DialogTitle className="sr-only">Content preview</DialogTitle>
           {lightboxUrl && (
-            <img src={lightboxUrl} alt="Full size preview" className="w-full h-auto rounded-lg" />
+            lightboxIsVideo ? (
+              <video src={lightboxUrl} controls autoPlay className="w-full h-auto rounded-lg max-h-[80vh]" />
+            ) : (
+              <img src={lightboxUrl} alt="Full size preview" className="w-full h-auto rounded-lg" />
+            )
+          )}
+          {lightboxUrl && (
+            <a
+              href={lightboxUrl}
+              download
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-1 text-sm text-dc-teal hover:underline py-1"
+            >
+              <Download className="h-4 w-4" /> Download
+            </a>
           )}
         </DialogContent>
       </Dialog>
