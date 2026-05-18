@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -68,6 +68,25 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
   const { draftCount } = useDraftPosts();
 
   const { data: files, isLoading: filesLoading } = useFileUploads(campaignId, 'deliverable', creatorId);
+  const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (!files?.length) return;
+    let cancelled = false;
+    (async () => {
+      const urls: Record<string, string> = {};
+      await Promise.all(
+        files.map(async (file) => {
+          const { data } = await supabase.storage
+            .from(file.bucket_name)
+            .createSignedUrl(file.file_path, 3600);
+          if (data?.signedUrl) urls[file.id] = data.signedUrl;
+        }),
+      );
+      if (!cancelled) setSignedUrls(urls);
+    })();
+    return () => { cancelled = true; };
+  }, [files]);
 
   const approveContent = useMutation({
     mutationFn: async () => {
@@ -237,7 +256,7 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
           {files!.slice(0, 6).map(file => {
             const isImage = file.mime_type?.startsWith('image/');
             const isVideo = file.mime_type?.startsWith('video/');
-            const publicUrl = supabase.storage.from(file.bucket_name).getPublicUrl(file.file_path).data.publicUrl;
+            const fileUrl = signedUrls[file.id] || supabase.storage.from(file.bucket_name).getPublicUrl(file.file_path).data.publicUrl;
             return (
               <div
                 key={file.id}
@@ -246,13 +265,13 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
                 {isImage ? (
                   <>
                     <img
-                      src={publicUrl}
+                      src={fileUrl}
                       alt={file.original_filename}
                       className="w-full h-full object-cover"
                       onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
                     />
                     <button
-                      onClick={() => { setLightboxUrl(publicUrl); setLightboxIsVideo(false); }}
+                      onClick={() => { setLightboxUrl(fileUrl); setLightboxIsVideo(false); }}
                       className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center"
                     >
                       <Eye className="h-5 w-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -260,7 +279,7 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
                   </>
                 ) : isVideo ? (
                   <button
-                    onClick={() => { setLightboxUrl(publicUrl); setLightboxIsVideo(true); }}
+                    onClick={() => { setLightboxUrl(fileUrl); setLightboxIsVideo(true); }}
                     className="w-full h-full flex flex-col items-center justify-center gap-1 group-hover:bg-gray-100 transition-colors cursor-pointer"
                   >
                     <div className="w-10 h-10 rounded-full bg-dc-teal/10 flex items-center justify-center">
@@ -272,7 +291,7 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
                   </button>
                 ) : (
                   <a
-                    href={publicUrl}
+                    href={fileUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="w-full h-full flex flex-col items-center justify-center gap-1 hover:bg-gray-100 transition-colors"
@@ -300,7 +319,9 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
           <DialogTitle className="sr-only">Content preview</DialogTitle>
           {lightboxUrl && (
             lightboxIsVideo ? (
-              <video src={lightboxUrl} controls autoPlay className="w-full h-auto rounded-lg max-h-[80vh]" />
+              <video controls autoPlay playsInline className="w-full h-auto rounded-lg max-h-[80vh]">
+                <source src={lightboxUrl} type="video/mp4" />
+              </video>
             ) : (
               <img src={lightboxUrl} alt="Full size preview" className="w-full h-auto rounded-lg" />
             )
