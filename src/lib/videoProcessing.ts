@@ -4,14 +4,24 @@ const TRANSCODE_MIME_TYPES = new Set([
   'video/avi',
 ]);
 
+const MAX_TRANSCODE_SIZE = 50 * 1024 * 1024; // 50MB
+
 export function needsTranscoding(mimeType: string): boolean {
   return TRANSCODE_MIME_TYPES.has(mimeType);
+}
+
+export function canTranscode(file: File): boolean {
+  return needsTranscoding(file.type) && file.size <= MAX_TRANSCODE_SIZE;
 }
 
 export async function transcodeToMp4(
   file: File,
   onProgress?: (pct: number) => void,
 ): Promise<File> {
+  if (file.size > MAX_TRANSCODE_SIZE) {
+    throw new Error(`Video too large for browser transcoding (${Math.round(file.size / 1024 / 1024)}MB, max ${MAX_TRANSCODE_SIZE / 1024 / 1024}MB)`);
+  }
+
   const { FFmpeg } = await import('@ffmpeg/ffmpeg');
   const { fetchFile } = await import('@ffmpeg/util');
 
@@ -43,6 +53,10 @@ export async function transcodeToMp4(
     ]);
 
     const data = await ffmpeg.readFile(outputName);
+
+    await ffmpeg.deleteFile(inputName);
+    await ffmpeg.deleteFile(outputName);
+
     const uint8 = data instanceof Uint8Array ? data : new TextEncoder().encode(data as string);
 
     const baseName = file.name.replace(/\.[^.]+$/, '');
@@ -57,8 +71,10 @@ export async function extractThumbnail(file: File): Promise<Blob | null> {
     const video = document.createElement('video');
     const objectUrl = URL.createObjectURL(file);
     let settled = false;
+    let timeout: ReturnType<typeof setTimeout>;
 
     const cleanup = () => {
+      clearTimeout(timeout);
       URL.revokeObjectURL(objectUrl);
       video.removeAttribute('src');
       video.load();
@@ -71,7 +87,7 @@ export async function extractThumbnail(file: File): Promise<Blob | null> {
       resolve(null);
     };
 
-    const timeout = setTimeout(fail, 10_000);
+    timeout = setTimeout(fail, 10_000);
 
     video.muted = true;
     video.playsInline = true;
@@ -87,7 +103,7 @@ export async function extractThumbnail(file: File): Promise<Blob | null> {
     video.addEventListener('seeked', () => {
       if (settled) return;
       settled = true;
-      clearTimeout(timeout);
+      cleanup();
 
       try {
         const canvas = document.createElement('canvas');
@@ -97,16 +113,15 @@ export async function extractThumbnail(file: File): Promise<Blob | null> {
         canvas.height = Math.round(video.videoHeight * scale);
 
         const ctx = canvas.getContext('2d');
-        if (!ctx) { cleanup(); resolve(null); return; }
+        if (!ctx) { resolve(null); return; }
 
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
         canvas.toBlob(
-          (blob) => { cleanup(); resolve(blob); },
+          (blob) => { resolve(blob); },
           'image/jpeg',
           0.8,
         );
       } catch {
-        cleanup();
         resolve(null);
       }
     }, { once: true });

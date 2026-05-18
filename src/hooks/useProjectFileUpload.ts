@@ -5,7 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useCreateFileUpload } from '@/hooks/useFileUploadMutations';
 import { useFileUploadNotification } from '@/hooks/useFileUploadNotification';
 import { toast } from '@/hooks/use-toast';
-import { useVideoProcessing, type VideoProcessingState } from '@/hooks/useVideoProcessing';
+import { useVideoProcessing } from '@/hooks/useVideoProcessing';
 import { extractThumbnail } from '@/lib/videoProcessing';
 
 interface UseProjectFileUploadProps {
@@ -27,21 +27,20 @@ export const useProjectFileUpload = ({
   const [isUploading, setIsUploading] = useState(false);
   const createFileUpload = useCreateFileUpload();
   const { notifyFileUpload } = useFileUploadNotification();
-  const { state: videoState, processVideo, reset: resetVideoProcessing } = useVideoProcessing();
+  const { processVideo, reset: resetVideoProcessing } = useVideoProcessing();
 
   const handleUpload = async (acceptedFiles: File[]) => {
     if (acceptedFiles.length === 0 || !user) {
-      console.error('Upload conditions not met:', { 
-        filesCount: acceptedFiles.length, 
-        user: !!user 
+      console.error('Upload conditions not met:', {
+        filesCount: acceptedFiles.length,
+        user: !!user
       });
       return;
     }
-    
+
     setIsUploading(true);
-    
+
     try {
-      // Verify authentication before starting
       const { data: session } = await supabase.auth.getSession();
       if (!session?.session) {
         throw new Error('Authentication required. Please sign in again.');
@@ -56,7 +55,6 @@ export const useProjectFileUpload = ({
         const extension = file.name.split('.').pop();
         const isVideo = file.type.startsWith('video/');
 
-        // Video processing: transcode MOV→MP4 and extract thumbnail
         let fileToUpload: File | Blob = file;
         let thumbnailBlob: Blob | null = null;
         let wasTranscoded = false;
@@ -72,7 +70,7 @@ export const useProjectFileUpload = ({
           } catch (err) {
             console.warn('Video processing failed, uploading original:', err);
             setUploadStatus(prev => ({ ...prev, [file.name]: 'Uploading original…' }));
-            try { thumbnailBlob = await extractThumbnail(file); } catch { /* skip */ }
+            try { thumbnailBlob = await extractThumbnail(file); } catch { /* best-effort */ }
           }
         }
 
@@ -84,7 +82,6 @@ export const useProjectFileUpload = ({
         setUploadProgress(prev => ({ ...prev, [file.name]: 30 }));
         setUploadStatus(prev => ({ ...prev, [file.name]: 'Uploading…' }));
 
-        // Upload to Supabase Storage
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from('campaign-deliverables')
           .upload(actualFilePath, fileToUpload, {
@@ -100,7 +97,6 @@ export const useProjectFileUpload = ({
 
         setUploadProgress(prev => ({ ...prev, [file.name]: 70 }));
 
-        // Upload thumbnail if extracted
         let thumbnailPath: string | null = null;
         if (thumbnailBlob) {
           const thumbPath = `${user.id}/thumbs/${timestamp}-${randomString}.jpg`;
@@ -110,14 +106,13 @@ export const useProjectFileUpload = ({
           if (!thumbErr) thumbnailPath = thumbPath;
         }
 
-        // Create database record with enhanced error handling
         try {
           const fileRecord = await createFileUpload.mutateAsync({
             filename: actualFilename,
             original_filename: file.name,
             file_path: uploadData.path,
             bucket_name: 'campaign-deliverables',
-            file_size: wasTranscoded ? (fileToUpload as File).size : file.size,
+            file_size: fileToUpload.size,
             mime_type: actualMimeType,
             campaign_id: campaignId,
             file_category: 'deliverable',
@@ -140,16 +135,15 @@ export const useProjectFileUpload = ({
           setUploadProgress(prev => ({ ...prev, [file.name]: 100 }));
         } catch (dbError) {
           console.error('Database record creation failed:', dbError);
-          
-          // Clean up the uploaded file from storage if database insert fails
+
+          const pathsToRemove = [uploadData.path];
+          if (thumbnailPath) pathsToRemove.push(thumbnailPath);
           try {
-            await supabase.storage
-              .from('campaign-deliverables')
-              .remove([uploadData.path]);
+            await supabase.storage.from('campaign-deliverables').remove(pathsToRemove);
           } catch (cleanupError) {
-            console.error('Failed to cleanup storage file:', cleanupError);
+            console.error('Failed to cleanup storage files:', cleanupError);
           }
-          
+
           throw new Error(`Database error: ${dbError instanceof Error ? dbError.message : 'Unknown database error'}`);
         }
       }
@@ -159,7 +153,6 @@ export const useProjectFileUpload = ({
         description: `${acceptedFiles.length} file(s) uploaded to ${campaignTitle}`,
       });
 
-      // Send notification
       try {
         const { data: profile } = await supabase
           .from('profiles')
@@ -180,14 +173,12 @@ export const useProjectFileUpload = ({
       }
 
       if (onUploadComplete) onUploadComplete();
-      
+
     } catch (error) {
-      console.error('=== UPLOAD PROCESS FAILED ===');
-      console.error('Upload error details:', error);
-      
-      // Provide specific error messages based on error type
+      console.error('Upload failed:', error);
+
       let errorMessage = 'There was an error uploading your files. Please try again.';
-      
+
       if (error instanceof Error) {
         if (error.message.includes('Storage upload failed')) {
           errorMessage = `Storage error: ${error.message}`;
@@ -203,7 +194,7 @@ export const useProjectFileUpload = ({
           errorMessage = `Upload failed: ${error.message}`;
         }
       }
-      
+
       toast({
         title: 'Upload failed',
         description: errorMessage,
@@ -220,7 +211,6 @@ export const useProjectFileUpload = ({
   return {
     uploadProgress,
     uploadStatus,
-    videoProcessingState: videoState,
     isUploading,
     handleUpload
   };

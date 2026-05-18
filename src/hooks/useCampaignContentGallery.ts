@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { getVideoThumbnailUrl } from '@/lib/fileUtils';
 
 export interface GalleryFile {
   fileId: string | null;
@@ -63,6 +64,10 @@ export function useCampaignContentGallery(campaignId: string, statusFilter?: str
 
         return directFiles.map(file => {
           const profile = profileMap.get(file.uploaded_by);
+          let thumbnailUrl: string | null = null;
+          if (file.mime_type?.startsWith('video/')) {
+            thumbnailUrl = getVideoThumbnailUrl('campaign-deliverables', file.metadata as Record<string, unknown>);
+          }
           return {
             fileId: file.id,
             filename: file.filename,
@@ -76,7 +81,7 @@ export function useCampaignContentGallery(campaignId: string, statusFilter?: str
             creatorHandle: profile?.full_name ?? 'Creator',
             creatorAvatarUrl: profile?.avatar_url ?? null,
             collaborationId: '',
-            thumbnailUrl: null,
+            thumbnailUrl,
             uploadedAt: file.created_at,
           };
         });
@@ -117,12 +122,7 @@ export function useCampaignContentGallery(campaignId: string, statusFilter?: str
             });
             thumbnailUrl = previewData?.signed_url ?? null;
           } else if (file.mime_type?.startsWith('video/')) {
-            const fileMeta = file.metadata as Record<string, unknown> | null;
-            if (fileMeta?.thumbnail_path) {
-              thumbnailUrl = supabase.storage
-                .from('campaign-deliverables')
-                .getPublicUrl(fileMeta.thumbnail_path as string).data.publicUrl;
-            }
+            thumbnailUrl = getVideoThumbnailUrl('campaign-deliverables', file.metadata as Record<string, unknown>);
           }
 
           items.push({
