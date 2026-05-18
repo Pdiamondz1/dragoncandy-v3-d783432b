@@ -24,6 +24,7 @@ import {
   Download,
   Eye,
   MessageSquare,
+  Play,
 } from 'lucide-react';
 import {
   Dialog,
@@ -61,6 +62,9 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
   const [showRevisionInput, setShowRevisionInput] = useState(false);
   const [feedback, setFeedback] = useState('');
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const [lightboxFile, setLightboxFile] = useState<{ isVideo: boolean; filename: string } | null>(null);
+  const [videoError, setVideoError] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const safeRevisionCount = revisionCount ?? 0;
 
   const navigate = useNavigate();
@@ -270,17 +274,22 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
                       onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
                     />
                     <button
-                      onClick={() => setLightboxUrl(fileUrl)}
+                      onClick={() => {
+                        setLightboxUrl(fileUrl);
+                        setLightboxFile({ isVideo: false, filename: file.original_filename });
+                      }}
                       className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center"
                     >
                       <Eye className="h-5 w-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
                     </button>
                   </>
                 ) : isVideo ? (
-                  <a
-                    href={fileUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <button
+                    onClick={() => {
+                      setLightboxUrl(fileUrl);
+                      setLightboxFile({ isVideo: true, filename: file.original_filename });
+                      setVideoError(false);
+                    }}
                     className="w-full h-full flex flex-col items-center justify-center gap-1 group-hover:bg-gray-100 transition-colors cursor-pointer"
                   >
                     <div className="w-10 h-10 rounded-full bg-dc-teal/10 flex items-center justify-center">
@@ -289,7 +298,7 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
                     <span className="text-xs text-gray-500 truncate max-w-[90%] px-2">
                       {file.original_filename}
                     </span>
-                  </a>
+                  </button>
                 ) : (
                   <a
                     href={fileUrl}
@@ -315,13 +324,60 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
       )}
 
       {/* Lightbox */}
-      <Dialog open={!!lightboxUrl} onOpenChange={() => setLightboxUrl(null)}>
+      <Dialog open={!!lightboxUrl} onOpenChange={() => { setLightboxUrl(null); setLightboxFile(null); setVideoError(false); }}>
         <DialogContent className="max-w-3xl p-2">
           <DialogTitle className="sr-only">Content preview</DialogTitle>
-          {lightboxUrl && (
+          {lightboxUrl && lightboxFile?.isVideo && !videoError && (
+            <video
+              src={lightboxUrl}
+              controls
+              autoPlay
+              playsInline
+              className="w-full h-auto rounded-lg max-h-[80vh]"
+              onError={() => setVideoError(true)}
+            />
+          )}
+          {lightboxUrl && lightboxFile?.isVideo && videoError && (
+            <div className="flex flex-col items-center gap-4 py-10 px-4">
+              <div className="w-16 h-16 rounded-full bg-dc-teal/10 flex items-center justify-center">
+                <Play className="h-8 w-8 text-dc-teal" />
+              </div>
+              <p className="text-dc-text font-semibold text-center">{lightboxFile.filename}</p>
+              <p className="text-sm text-dc-text-muted text-center">
+                This video format can't be previewed in the browser. Download it to watch in your video player.
+              </p>
+              <Button
+                className="rounded-full bg-dc-teal-btn hover:bg-dc-teal-btn-hover text-white font-bold px-8"
+                disabled={downloading}
+                onClick={async () => {
+                  if (!lightboxUrl) return;
+                  setDownloading(true);
+                  try {
+                    const resp = await fetch(lightboxUrl);
+                    const blob = await resp.blob();
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = lightboxFile.filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                  } catch {
+                    window.open(lightboxUrl, '_blank');
+                  }
+                  setDownloading(false);
+                }}
+              >
+                {downloading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Download className="h-4 w-4 mr-2" />}
+                Download Video
+              </Button>
+            </div>
+          )}
+          {lightboxUrl && !lightboxFile?.isVideo && (
             <img src={lightboxUrl} alt="Full size preview" className="w-full h-auto rounded-lg" />
           )}
-          {lightboxUrl && (
+          {lightboxUrl && !lightboxFile?.isVideo && (
             <a
               href={lightboxUrl}
               download
