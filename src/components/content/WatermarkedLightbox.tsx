@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useProtectedPreview } from '@/hooks/useProtectedPreview';
 import { downloadBlob } from '@/lib/downloadUtils';
+import { getVideoThumbnailUrl } from '@/lib/fileUtils';
 
 interface LightboxFile {
   id: string;
@@ -21,6 +22,7 @@ interface LightboxFile {
   file_path: string;
   bucket_name: string;
   mime_type: string;
+  metadata?: Record<string, unknown>;
 }
 
 interface WatermarkedLightboxProps {
@@ -54,6 +56,10 @@ const LightboxContent: React.FC<{
   const isVideo = file.mime_type?.startsWith('video/');
   const [videoError, setVideoError] = useState(false);
   const [downloading, setDownloading] = useState(false);
+
+  const posterUrl = isVideo
+    ? getVideoThumbnailUrl(file.bucket_name, file.metadata) ?? undefined
+    : undefined;
 
   const { signedUrl, canDownload, message, loading } = useProtectedPreview({
     filePath: file.file_path,
@@ -104,6 +110,7 @@ const LightboxContent: React.FC<{
             <video
               key={signedUrl}
               src={signedUrl}
+              poster={posterUrl}
               controls
               autoPlay
               playsInline
@@ -117,15 +124,31 @@ const LightboxContent: React.FC<{
         )}
 
         {isVideo && videoError && (
-          <div className="flex flex-col items-center gap-4 py-10 px-4">
-            <div className="w-16 h-16 rounded-full bg-dc-teal/10 flex items-center justify-center">
-              <Play className="h-8 w-8 text-dc-teal" />
-            </div>
-            <p className="text-white font-semibold text-center">{file.original_filename}</p>
-            <p className="text-sm text-gray-400 text-center">
-              This video format can't be previewed in the browser.
-              {canDownload ? ' Download it to watch in your video player.' : ''}
-            </p>
+          <div className="flex flex-col items-center gap-4 py-10 px-4 relative">
+            {posterUrl ? (
+              <>
+                <img
+                  src={posterUrl}
+                  alt={file.original_filename}
+                  className="max-w-full max-h-[60vh] object-contain rounded-lg"
+                />
+                {!canDownload && <WatermarkOverlay />}
+                <p className="text-sm text-gray-400 text-center">
+                  Video preview frame — {canDownload ? 'download to watch the full video.' : 'full video available after approval.'}
+                </p>
+              </>
+            ) : (
+              <>
+                <div className="w-16 h-16 rounded-full bg-dc-teal/10 flex items-center justify-center">
+                  <Play className="h-8 w-8 text-dc-teal" />
+                </div>
+                <p className="text-white font-semibold text-center">{file.original_filename}</p>
+                <p className="text-sm text-gray-400 text-center">
+                  This video format can't be previewed in the browser.
+                  {canDownload ? ' Download it to watch in your video player.' : ''}
+                </p>
+              </>
+            )}
             {canDownload && (
               <Button
                 className="rounded-full bg-dc-teal-btn hover:bg-dc-teal-btn-hover text-white font-bold px-8"

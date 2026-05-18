@@ -6,11 +6,13 @@ import { Progress } from '@/components/ui/progress';
 interface FileUploadPreviewProps {
   files: File[];
   uploadProgress: {[key: string]: number};
+  uploadStatus?: {[key: string]: string};
 }
 
 export const FileUploadPreview: React.FC<FileUploadPreviewProps> = ({
   files,
-  uploadProgress
+  uploadProgress,
+  uploadStatus,
 }) => {
   const getFileIcon = (file: File) => {
     if (file.type.startsWith('image/')) return <Image className="h-4 w-4" />;
@@ -41,8 +43,13 @@ export const FileUploadPreview: React.FC<FileUploadPreviewProps> = ({
             <p className="text-xs text-gray-500">{formatFileSize(file.size)}</p>
           </div>
           {uploadProgress[file.name] !== undefined && (
-            <div className="w-24 flex-shrink-0">
-              <Progress value={uploadProgress[file.name]} className="h-2" />
+            <div className="flex flex-col items-end gap-1 flex-shrink-0">
+              <div className="w-24">
+                <Progress value={uploadProgress[file.name]} className="h-2" />
+              </div>
+              {uploadStatus?.[file.name] && (
+                <span className="text-xs text-dc-teal font-medium">{uploadStatus[file.name]}</span>
+              )}
             </div>
           )}
         </div>

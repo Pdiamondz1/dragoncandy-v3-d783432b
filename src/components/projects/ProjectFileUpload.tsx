@@ -53,7 +53,7 @@ export const ProjectFileUpload: React.FC<ProjectFileUploadProps> = ({
     ? { [acceptFilter]: [] }
     : undefined;
 
-  const { uploadProgress, isUploading, handleUpload } = useProjectFileUpload({
+  const { uploadProgress, uploadStatus, isUploading, handleUpload } = useProjectFileUpload({
     campaignId,
     campaignTitle,
     deliverableId,
@@ -102,6 +102,7 @@ export const ProjectFileUpload: React.FC<ProjectFileUploadProps> = ({
         <FileUploadPreview
           files={selectedFiles}
           uploadProgress={uploadProgress}
+          uploadStatus={uploadStatus}
         />
 
         {/* Upload Button */}

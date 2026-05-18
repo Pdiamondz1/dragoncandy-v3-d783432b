@@ -24,6 +24,7 @@ import {
   Eye,
   MessageSquare,
   CreditCard,
+  Play,
 } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -32,6 +33,7 @@ import { useFileUploads } from '@/hooks/useFileQuery';
 import { useDraftPosts } from '@/hooks/useDraftPosts';
 import { SocialPostStatus } from '@/components/campaigns/SocialPostStatus';
 import { WatermarkedLightbox } from '@/components/content/WatermarkedLightbox';
+import { getVideoThumbnailUrl } from '@/lib/fileUtils';
 
 interface ContentReviewSectionProps {
   collaborationId: string;
@@ -279,7 +281,7 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
             const isVideo = file.mime_type?.startsWith('video/');
             const thumbnailUrl = isImage
               ? supabase.storage.from(file.bucket_name).getPublicUrl(file.file_path).data.publicUrl
-              : null;
+              : isVideo ? getVideoThumbnailUrl(file.bucket_name, file.metadata as Record<string, unknown>) : null;
             return (
               <div
                 key={file.id}
@@ -303,14 +305,32 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
                 ) : isVideo ? (
                   <button
                     onClick={() => setSelectedFileIndex(index)}
-                    className="w-full h-full flex flex-col items-center justify-center gap-1 group-hover:bg-gray-100 transition-colors cursor-pointer"
+                    className="w-full h-full flex flex-col items-center justify-center gap-1 group-hover:bg-gray-100 transition-colors cursor-pointer relative"
                   >
-                    <div className="w-10 h-10 rounded-full bg-dc-teal/10 flex items-center justify-center">
-                      <span className="text-dc-teal text-lg">&#9654;</span>
-                    </div>
-                    <span className="text-xs text-gray-500 truncate max-w-[90%] px-2">
-                      {file.original_filename}
-                    </span>
+                    {thumbnailUrl ? (
+                      <>
+                        <img
+                          src={thumbnailUrl}
+                          alt={file.original_filename}
+                          className="w-full h-full object-cover"
+                          onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                        />
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/30 transition-colors">
+                          <div className="w-10 h-10 rounded-full bg-black/50 flex items-center justify-center">
+                            <Play className="h-5 w-5 text-white ml-0.5" />
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="w-10 h-10 rounded-full bg-dc-teal/10 flex items-center justify-center">
+                          <Play className="h-5 w-5 text-dc-teal" />
+                        </div>
+                        <span className="text-xs text-gray-500 truncate max-w-[90%] px-2">
+                          {file.original_filename}
+                        </span>
+                      </>
+                    )}
                   </button>
                 ) : (
                   <button

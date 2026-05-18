@@ -1,4 +1,14 @@
 
+import { supabase } from '@/integrations/supabase/client';
+
+export function getVideoThumbnailUrl(
+  bucketName: string,
+  metadata: Record<string, unknown> | null | undefined,
+): string | null {
+  if (!metadata?.thumbnail_path || typeof metadata.thumbnail_path !== 'string') return null;
+  return supabase.storage.from(bucketName).getPublicUrl(metadata.thumbnail_path).data.publicUrl;
+}
+
 export const ALLOWED_FILE_TYPES = {
   images: ['image/jpeg', 'image/png', 'image/gif', 'image/webp'],
   videos: ['video/mp4', 'video/webm', 'video/quicktime', 'video/avi'],

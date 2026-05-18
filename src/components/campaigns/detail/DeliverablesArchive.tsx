@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Download, FileText, Loader2 } from 'lucide-react';
+import { Download, FileText, Loader2, Play } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useFileUploads } from '@/hooks/useFileQuery';
-import { formatFileSize } from '@/lib/fileUtils';
+import { formatFileSize, getVideoThumbnailUrl } from '@/lib/fileUtils';
 import { downloadBlob } from '@/lib/downloadUtils';
 import { WatermarkedLightbox } from '@/components/content/WatermarkedLightbox';
 
@@ -95,7 +95,7 @@ export const DeliverablesArchive: React.FC<DeliverablesArchiveProps> = ({
               const isVideo = file.mime_type?.startsWith('video/');
               const publicUrl = isImage
                 ? supabase.storage.from(file.bucket_name).getPublicUrl(file.file_path).data.publicUrl
-                : null;
+                : isVideo ? getVideoThumbnailUrl(file.bucket_name, file.metadata as Record<string, unknown>) : null;
 
               return (
                 <button
@@ -106,21 +106,30 @@ export const DeliverablesArchive: React.FC<DeliverablesArchiveProps> = ({
                   title={file.original_filename}
                 >
                   {downloadingId === file.id && (
-                    <div className="absolute inset-0 bg-white/70 flex items-center justify-center">
+                    <div className="absolute inset-0 bg-white/70 flex items-center justify-center z-10">
                       <Loader2 className="h-5 w-5 animate-spin text-teal-500" />
                     </div>
                   )}
-                  {isImage && publicUrl ? (
-                    <img
-                      src={publicUrl}
-                      alt={file.original_filename}
-                      className="w-full h-full object-cover"
-                      onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                    />
+                  {publicUrl ? (
+                    <>
+                      <img
+                        src={publicUrl}
+                        alt={file.original_filename}
+                        className="w-full h-full object-cover"
+                        onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                      />
+                      {isVideo && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                          <div className="w-8 h-8 rounded-full bg-black/50 flex items-center justify-center">
+                            <Play className="h-4 w-4 text-white ml-0.5" />
+                          </div>
+                        </div>
+                      )}
+                    </>
                   ) : (
                     <div className="text-center p-1">
                       {isVideo
-                        ? <span className="text-2xl">&#127909;</span>
+                        ? <Play className="h-6 w-6 text-gray-400 mx-auto" />
                         : <FileText className="h-6 w-6 text-gray-400 mx-auto" />
                       }
                       <p className="text-xs text-gray-400 mt-1 truncate w-full px-1">

@@ -5,6 +5,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { useCreateFileUpload } from '@/hooks/useFileUploadMutations';
 import { useFileUploadNotification } from '@/hooks/useFileUploadNotification';
 import { toast } from '@/hooks/use-toast';
+import { useVideoProcessing, type VideoProcessingState } from '@/hooks/useVideoProcessing';
+import { extractThumbnail } from '@/lib/videoProcessing';
 
 interface UseProjectFileUploadProps {
   campaignId: string;
@@ -21,9 +23,11 @@ export const useProjectFileUpload = ({
 }: UseProjectFileUploadProps) => {
   const { user } = useAuth();
   const [uploadProgress, setUploadProgress] = useState<{[key: string]: number}>({});
+  const [uploadStatus, setUploadStatus] = useState<{[key: string]: string}>({});
   const [isUploading, setIsUploading] = useState(false);
   const createFileUpload = useCreateFileUpload();
   const { notifyFileUpload } = useFileUploadNotification();
+  const { state: videoState, processVideo, reset: resetVideoProcessing } = useVideoProcessing();
 
   const handleUpload = async (acceptedFiles: File[]) => {
     if (acceptedFiles.length === 0 || !user) {
@@ -45,25 +49,48 @@ export const useProjectFileUpload = ({
       const uploadedFiles = [];
 
       for (const file of acceptedFiles) {
-        // Set initial progress
-        setUploadProgress(prev => ({ ...prev, [file.name]: 10 }));
-        
-        // Generate unique filename with user ID folder structure
+        setUploadProgress(prev => ({ ...prev, [file.name]: 5 }));
+
         const timestamp = Date.now();
         const randomString = Math.random().toString(36).substring(2, 8);
         const extension = file.name.split('.').pop();
-        const filename = `${timestamp}-${randomString}.${extension}`;
-        const filePath = `${user.id}/${filename}`;
-        
-        // Update progress
+        const isVideo = file.type.startsWith('video/');
+
+        // Video processing: transcode MOV→MP4 and extract thumbnail
+        let fileToUpload: File | Blob = file;
+        let thumbnailBlob: Blob | null = null;
+        let wasTranscoded = false;
+
+        if (isVideo) {
+          try {
+            resetVideoProcessing();
+            setUploadStatus(prev => ({ ...prev, [file.name]: 'Processing video…' }));
+            const result = await processVideo(file);
+            fileToUpload = result.videoFile;
+            thumbnailBlob = result.thumbnail;
+            wasTranscoded = result.wasTranscoded;
+          } catch (err) {
+            console.warn('Video processing failed, uploading original:', err);
+            setUploadStatus(prev => ({ ...prev, [file.name]: 'Uploading original…' }));
+            try { thumbnailBlob = await extractThumbnail(file); } catch { /* skip */ }
+          }
+        }
+
+        const actualExtension = wasTranscoded ? 'mp4' : extension;
+        const actualFilename = `${timestamp}-${randomString}.${actualExtension}`;
+        const actualFilePath = `${user.id}/${actualFilename}`;
+        const actualMimeType = wasTranscoded ? 'video/mp4' : file.type;
+
         setUploadProgress(prev => ({ ...prev, [file.name]: 30 }));
-        
+        setUploadStatus(prev => ({ ...prev, [file.name]: 'Uploading…' }));
+
         // Upload to Supabase Storage
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from('campaign-deliverables')
-          .upload(filePath, file, {
+          .upload(actualFilePath, fileToUpload, {
             cacheControl: '3600',
-            upsert: false
+            upsert: false,
+            contentType: actualMimeType,
           });
 
         if (uploadError) {
@@ -73,15 +100,25 @@ export const useProjectFileUpload = ({
 
         setUploadProgress(prev => ({ ...prev, [file.name]: 70 }));
 
+        // Upload thumbnail if extracted
+        let thumbnailPath: string | null = null;
+        if (thumbnailBlob) {
+          const thumbPath = `${user.id}/thumbs/${timestamp}-${randomString}.jpg`;
+          const { error: thumbErr } = await supabase.storage
+            .from('campaign-deliverables')
+            .upload(thumbPath, thumbnailBlob, { contentType: 'image/jpeg', cacheControl: '86400' });
+          if (!thumbErr) thumbnailPath = thumbPath;
+        }
+
         // Create database record with enhanced error handling
         try {
           const fileRecord = await createFileUpload.mutateAsync({
-            filename,
+            filename: actualFilename,
             original_filename: file.name,
             file_path: uploadData.path,
             bucket_name: 'campaign-deliverables',
-            file_size: file.size,
-            mime_type: file.type,
+            file_size: wasTranscoded ? (fileToUpload as File).size : file.size,
+            mime_type: actualMimeType,
             campaign_id: campaignId,
             file_category: 'deliverable',
             metadata: {
@@ -90,6 +127,12 @@ export const useProjectFileUpload = ({
               campaign_id: campaignId,
               uploaded_at: new Date().toISOString(),
               ...(deliverableId && { deliverable_id: deliverableId }),
+              ...(thumbnailPath && { thumbnail_path: thumbnailPath }),
+              ...(wasTranscoded && {
+                transcoded: true,
+                original_extension: extension,
+                original_mime_type: file.type,
+              }),
             }
           });
 
@@ -169,11 +212,15 @@ export const useProjectFileUpload = ({
     } finally {
       setIsUploading(false);
       setUploadProgress({});
+      setUploadStatus({});
+      resetVideoProcessing();
     }
   };
 
   return {
     uploadProgress,
+    uploadStatus,
+    videoProcessingState: videoState,
     isUploading,
     handleUpload
   };

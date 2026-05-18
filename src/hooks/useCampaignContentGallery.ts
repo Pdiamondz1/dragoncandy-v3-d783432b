@@ -45,7 +45,7 @@ export function useCampaignContentGallery(campaignId: string, statusFilter?: str
 
         const { data: directFiles, error: directError } = await supabase
           .from('file_uploads')
-          .select('id, filename, original_filename, mime_type, file_size, file_path, bucket_name, uploaded_by, created_at')
+          .select('id, filename, original_filename, mime_type, file_size, file_path, bucket_name, uploaded_by, created_at, metadata')
           .eq('campaign_id', campaignId)
           .eq('file_category', 'deliverable')
           .order('created_at', { ascending: false });
@@ -84,7 +84,7 @@ export function useCampaignContentGallery(campaignId: string, statusFilter?: str
 
       const { data: files, error: fileError } = await supabase
         .from('file_uploads')
-        .select('id, filename, original_filename, mime_type, file_size, file_path, bucket_name, uploaded_by, created_at')
+        .select('id, filename, original_filename, mime_type, file_size, file_path, bucket_name, uploaded_by, created_at, metadata')
         .eq('campaign_id', campaignId)
         .eq('file_category', 'deliverable')
         .order('created_at', { ascending: false });
@@ -111,11 +111,18 @@ export function useCampaignContentGallery(campaignId: string, statusFilter?: str
           const normalizedStatus = (fileStatus === 'auto_approved') ? 'approved' : fileStatus;
 
           let thumbnailUrl: string | null = null;
-          if (file.mime_type?.startsWith('image/') || file.mime_type?.startsWith('video/')) {
+          if (file.mime_type?.startsWith('image/')) {
             const { data: previewData } = await supabase.functions.invoke('get-watermarked-preview', {
               body: { file_path: file.file_path, bucket_name: file.bucket_name, collaboration_id: collab.id },
             });
             thumbnailUrl = previewData?.signed_url ?? null;
+          } else if (file.mime_type?.startsWith('video/')) {
+            const fileMeta = file.metadata as Record<string, unknown> | null;
+            if (fileMeta?.thumbnail_path) {
+              thumbnailUrl = supabase.storage
+                .from('campaign-deliverables')
+                .getPublicUrl(fileMeta.thumbnail_path as string).data.publicUrl;
+            }
           }
 
           items.push({
