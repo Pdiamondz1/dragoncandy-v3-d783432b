@@ -6,7 +6,6 @@ type CreatorSkill = Database['public']['Enums']['creator_skill'];
 
 const skills: { id: CreatorSkill; label: string }[] = [
   { id: 'video_editing', label: 'Video Editing' },
-  { id: 'ugc_creation', label: 'UGC Creation' },
   { id: 'illustration', label: 'Illustration' },
   { id: 'photography', label: 'Photography' },
   { id: 'copywriting', label: 'Copywriting' },

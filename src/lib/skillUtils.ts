@@ -5,7 +5,6 @@ type CreatorSkill = Database['public']['Enums']['creator_skill'];
 export const SKILL_OPTIONS: { value: CreatorSkill; label: string }[] = [
   { value: 'video_editing', label: 'Video Editing' },
   { value: 'photography', label: 'Photography' },
-  { value: 'ugc_creation', label: 'UGC Creation' },
   { value: 'social_media_management', label: 'Social Media Management' },
   { value: 'copywriting', label: 'Copywriting' },
   { value: 'graphic_design', label: 'Graphic Design' },
@@ -18,6 +17,10 @@ export const SKILL_OPTIONS: { value: CreatorSkill; label: string }[] = [
 
 const skillLabelMap = new Map(SKILL_OPTIONS.map(s => [s.value, s.label]));
 
+const LEGACY_SKILL_LABELS: Record<string, string> = {
+  ugc_creation: 'UGC Creation',
+};
+
 export function formatSkillLabel(skill: string): string {
-  return skillLabelMap.get(skill as CreatorSkill) ?? skill.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  return skillLabelMap.get(skill as CreatorSkill) ?? LEGACY_SKILL_LABELS[skill] ?? skill.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }

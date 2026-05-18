@@ -46,7 +46,6 @@ const INDUSTRY_ITEMS = [
 ];
 
 const SKILL_ITEMS = [
-  { value: 'ugc_creation', label: 'UGC', icon: '🎬' },
   { value: 'video_editing', label: 'Video', icon: '✂️' },
   { value: 'photography', label: 'Photo', icon: '📷' },
   { value: 'graphic_design', label: 'Design', icon: '🎨' },
