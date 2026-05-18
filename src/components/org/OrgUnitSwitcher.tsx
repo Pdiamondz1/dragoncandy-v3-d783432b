@@ -9,6 +9,7 @@ import type { OrgUnit } from '@/types/org';
 import { Coachmark } from '@/components/guidance/Coachmark';
 import { useLocationCampaignCounts } from '@/hooks/useLocationCampaignCounts';
 import { useLocationSocialAccounts } from '@/hooks/outstand/useLocationSocialAccounts';
+import { useSignedUrl } from '@/hooks/useSignedUrl';
 
 interface OrgUnitSwitcherProps {
   onAddUnit?: () => void;
@@ -27,14 +28,26 @@ function UnitAvatar({ unit, isActive = false, size = 'md' }: UnitAvatarProps) {
   const sizeClass = size === 'sm' ? 'w-5 h-5' : 'w-7 h-7';
   const ringClass = isActive ? 'ring-2 ring-teal-400' : '';
   const textSize = size === 'sm' ? 'text-[10px]' : 'text-xs';
+  const isHttp = unit.logo_url?.startsWith('http');
+  const signedUrl = useSignedUrl('profile-assets', isHttp ? null : unit.logo_url);
+  const resolvedUrl = isHttp ? unit.logo_url : signedUrl;
 
-  if (unit.logo_url) {
+  if (resolvedUrl) {
     return (
       <img
-        src={unit.logo_url}
+        src={resolvedUrl}
         alt={unit.name}
         className={`${sizeClass} rounded-full object-cover shrink-0 ${ringClass}`}
       />
+    );
+  }
+  if (unit.logo_url && !resolvedUrl) {
+    return (
+      <span
+        className={`${sizeClass} rounded-full bg-teal-100 flex items-center justify-center shrink-0 ${ringClass}`}
+      >
+        <span className={`${textSize} text-teal-500 font-bold`}>{unit.name.charAt(0).toUpperCase()}</span>
+      </span>
     );
   }
   return (
@@ -104,6 +117,9 @@ export function OrgUnitSwitcher({ onAddUnit, canManage }: OrgUnitSwitcherProps) 
   const { data: units = [] } = useOrgUnits(activeOrg?.id);
   const { data: campaignCounts = [] } = useLocationCampaignCounts(activeOrg?.id);
   const { data: allSocialAccounts = [] } = useLocationSocialAccounts(user?.id);
+  const isOrgLogoHttp = activeOrg?.logo_url?.startsWith('http');
+  const orgLogoSigned = useSignedUrl('profile-assets', isOrgLogoHttp ? null : (activeOrg?.logo_url ?? null));
+  const orgLogoUrl = isOrgLogoHttp ? activeOrg?.logo_url : orgLogoSigned;
 
   if (!activeOrg) return null;
 
@@ -200,9 +216,9 @@ export function OrgUnitSwitcher({ onAddUnit, canManage }: OrgUnitSwitcherProps) 
               onClick={() => handleSelect(null)}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-teal-50 transition-colors text-left ${!activeOrgUnit ? 'border-l-2 border-teal-400 pl-2.5 bg-teal-50/60' : ''}`}
             >
-              {activeOrg.logo_url ? (
+              {orgLogoUrl ? (
                 <img
-                  src={activeOrg.logo_url}
+                  src={orgLogoUrl}
                   alt={isRestaurant ? 'All Locations' : 'All Products'}
                   className={`w-7 h-7 rounded-full object-cover shrink-0 ${!activeOrgUnit ? 'ring-2 ring-teal-400' : ''}`}
                 />
