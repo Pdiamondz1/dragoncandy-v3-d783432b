@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 
 export function useVideoBlobUrl(signedUrl: string | null | undefined) {
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(!!signedUrl);
   const [error, setError] = useState(false);
 
   useEffect(() => {
