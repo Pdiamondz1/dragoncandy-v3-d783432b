@@ -13,8 +13,11 @@ import {
   Play,
 } from 'lucide-react';
 import { useProtectedPreview } from '@/hooks/useProtectedPreview';
+import { useLightboxTranscoding } from '@/hooks/useLightboxTranscoding';
 import { downloadBlob } from '@/lib/downloadUtils';
 import { getVideoThumbnailUrl } from '@/lib/fileUtils';
+import { needsTranscoding } from '@/lib/videoProcessing';
+import { Progress } from '@/components/ui/progress';
 
 interface LightboxFile {
   id: string;
@@ -22,6 +25,7 @@ interface LightboxFile {
   file_path: string;
   bucket_name: string;
   mime_type: string;
+  file_size?: number;
   metadata?: Record<string, unknown>;
 }
 
@@ -67,6 +71,16 @@ const LightboxContent: React.FC<{
     collaborationId,
   });
 
+  const {
+    transcodedUrl,
+    status: txStatus,
+    progress: txProgress,
+    statusMessage: txMessage,
+    startTranscoding,
+  } = useLightboxTranscoding(file.mime_type, file.file_size ?? null);
+
+  const showVideoError = videoError || txStatus === 'failed';
+
   const handleDownload = useCallback(async () => {
     if (!canDownload || !signedUrl) return;
     setDownloading(true);
@@ -105,11 +119,11 @@ const LightboxContent: React.FC<{
           </>
         )}
 
-        {isVideo && !videoError && (
+        {isVideo && !showVideoError && (txStatus === 'idle' || txStatus === 'ready') && (
           <>
             <video
-              key={signedUrl}
-              src={signedUrl}
+              key={transcodedUrl ?? signedUrl}
+              src={transcodedUrl ?? signedUrl ?? ''}
               poster={posterUrl}
               controls
               autoPlay
@@ -117,13 +131,35 @@ const LightboxContent: React.FC<{
               controlsList={!canDownload ? 'nodownload' : undefined}
               disablePictureInPicture={!canDownload}
               className="max-w-full max-h-[80vh] object-contain"
-              onError={() => setVideoError(true)}
+              onError={() => {
+                if (needsTranscoding(file.mime_type) && txStatus === 'idle' && signedUrl) {
+                  startTranscoding(signedUrl, file.original_filename);
+                } else {
+                  setVideoError(true);
+                }
+              }}
             />
             {!canDownload && <WatermarkOverlay opacity="opacity-15" />}
           </>
         )}
 
-        {isVideo && videoError && (
+        {isVideo && (txStatus === 'fetching' || txStatus === 'transcoding') && (
+          <div className="flex flex-col items-center gap-4 py-10 px-4">
+            <Loader2 className="h-10 w-10 text-dc-teal animate-spin" />
+            <p className="text-white font-semibold text-center">{txMessage}</p>
+            {txStatus === 'transcoding' && (
+              <div className="w-64">
+                <Progress value={txProgress} className="h-2 bg-gray-700" />
+                <p className="text-xs text-gray-400 text-center mt-1">{txProgress}%</p>
+              </div>
+            )}
+            <p className="text-xs text-gray-500 text-center">
+              This may take a moment for larger videos
+            </p>
+          </div>
+        )}
+
+        {isVideo && showVideoError && (
           <div className="flex flex-col items-center gap-4 py-10 px-4 relative">
             {posterUrl ? (
               <>

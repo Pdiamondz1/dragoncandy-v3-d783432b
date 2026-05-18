@@ -4,7 +4,7 @@ const TRANSCODE_MIME_TYPES = new Set([
   'video/avi',
 ]);
 
-const MAX_TRANSCODE_SIZE = 50 * 1024 * 1024; // 50MB
+export const MAX_TRANSCODE_SIZE = 50 * 1024 * 1024; // 50MB
 
 export function needsTranscoding(mimeType: string): boolean {
   return TRANSCODE_MIME_TYPES.has(mimeType);
