@@ -126,9 +126,29 @@ const CampaignDetailsPage: React.FC = () => {
           });
           if (error) throw error;
           if (data?.success) {
-            toast({ title: 'Payment Confirmed!', description: 'Your campaign is now published and visible to creators.' });
+            const pendingApproval = localStorage.getItem('autoApproveAfterPayment');
+            if (pendingApproval) {
+              const { collaborationId, campaignId: storedCampaignId } = JSON.parse(pendingApproval);
+              localStorage.removeItem('autoApproveAfterPayment');
+              if (storedCampaignId === id && collaborationId) {
+                try {
+                  const { error: payoutError } = await supabase.functions.invoke('release-creator-payout', {
+                    body: { collaborationId },
+                  });
+                  if (payoutError) throw payoutError;
+                  toast({ title: 'Content Approved!', description: 'Payment confirmed and released to creator.' });
+                } catch {
+                  toast({ title: 'Payment Confirmed!', description: 'Content approval failed — click Approve & Pay to retry.' });
+                }
+              } else {
+                toast({ title: 'Payment Confirmed!', description: 'Your campaign is now published and visible to creators.' });
+              }
+            } else {
+              toast({ title: 'Payment Confirmed!', description: 'Your campaign is now published and visible to creators.' });
+            }
             queryClient.invalidateQueries({ queryKey: ['campaigns'] });
             queryClient.invalidateQueries({ queryKey: ['campaign', id] });
+            queryClient.invalidateQueries({ queryKey: ['campaign-project', id] });
           } else {
             toast({ variant: 'destructive', title: 'Payment Pending', description: 'Payment not yet confirmed. Please refresh.' });
           }
@@ -138,6 +158,7 @@ const CampaignDetailsPage: React.FC = () => {
       };
       void verify();
     } else if (paymentParam === 'cancelled') {
+      localStorage.removeItem('autoApproveAfterPayment');
       toast({ title: 'Payment Cancelled', description: 'Your campaign was saved as a draft. You can pay escrow later.' });
     }
 
@@ -501,6 +522,8 @@ const CampaignDetailsPage: React.FC = () => {
                   creatorName={creatorData?.creator_name ?? 'Creator'}
                   contentStatus={collaborationData.content_status ?? null}
                   revisionCount={collaborationData.revision_count ?? null}
+                  escrowStatus={campaign.escrow_status ?? null}
+                  pricingType={campaign.pricing_type ?? null}
                 />
               </div>
             )}

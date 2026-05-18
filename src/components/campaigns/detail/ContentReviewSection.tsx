@@ -25,6 +25,7 @@ import {
   Eye,
   MessageSquare,
   Play,
+  CreditCard,
 } from 'lucide-react';
 import {
   Dialog,
@@ -45,6 +46,8 @@ interface ContentReviewSectionProps {
   creatorName: string;
   contentStatus: string | null;
   revisionCount: number | null;
+  escrowStatus: string | null;
+  pricingType?: string | null;
 }
 
 const MAX_REVISIONS = 2;
@@ -56,6 +59,8 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
   creatorName,
   contentStatus,
   revisionCount,
+  escrowStatus,
+  pricingType,
 }) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -66,6 +71,8 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
   const [videoError, setVideoError] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const safeRevisionCount = revisionCount ?? 0;
+  const [isPayingEscrow, setIsPayingEscrow] = useState(false);
+  const needsEscrowPayment = pricingType === 'fixed' && escrowStatus !== 'held';
 
   const navigate = useNavigate();
   const { draftCount } = useDraftPosts();
@@ -139,6 +146,45 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
       toast({ variant: 'destructive', title: 'Approval Failed', description: err.message });
     },
   });
+
+  const handlePayAndApprove = async () => {
+    setIsPayingEscrow(true);
+    localStorage.setItem('autoApproveAfterPayment', JSON.stringify({ collaborationId, campaignId }));
+    const checkoutWindow = window.open('about:blank', '_blank');
+    try {
+      const { data, error } = await supabase.functions.invoke('create-campaign-escrow', {
+        body: { campaignId },
+      });
+      if (error) throw error;
+      if (data?.alreadyPaid) {
+        checkoutWindow?.close();
+        localStorage.removeItem('autoApproveAfterPayment');
+        approveContent.mutate();
+        return;
+      }
+      if (data?.url && checkoutWindow) {
+        checkoutWindow.location.href = data.url;
+        toast({ title: 'Complete Payment', description: 'Finish payment in the new tab. Content will be auto-approved.' });
+      } else if (data?.url) {
+        checkoutWindow?.close();
+        toast({
+          title: 'Popup Blocked',
+          description: 'Click below to open payment.',
+          action: (
+            <a href={data.url} target="_blank" rel="noopener noreferrer" className="text-dc-teal underline text-sm">
+              Open Payment
+            </a>
+          ),
+        });
+      }
+    } catch {
+      checkoutWindow?.close();
+      localStorage.removeItem('autoApproveAfterPayment');
+      toast({ variant: 'destructive', title: 'Payment Setup Failed', description: 'Could not initiate payment. Try again.' });
+    } finally {
+      setIsPayingEscrow(false);
+    }
+  };
 
   const requestRevision = useMutation({
     mutationFn: async (revisionFeedback: string) => {
@@ -445,12 +491,14 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button
-                    disabled={approveContent.isPending}
+                    disabled={approveContent.isPending || isPayingEscrow}
                     size="sm"
                     className="rounded-full bg-teal-400 hover:bg-teal-500 text-white font-semibold"
                   >
-                    {approveContent.isPending ? (
-                      <><Loader2 className="h-3 w-3 mr-1 animate-spin" />Approving…</>
+                    {(approveContent.isPending || isPayingEscrow) ? (
+                      <><Loader2 className="h-3 w-3 mr-1 animate-spin" />{isPayingEscrow ? 'Setting up payment…' : 'Approving…'}</>
+                    ) : needsEscrowPayment ? (
+                      <><CreditCard className="h-3 w-3 mr-1" />Pay & Approve</>
                     ) : (
                       <><CheckCircle2 className="h-3 w-3 mr-1" />Approve & Pay</>
                     )}
@@ -458,20 +506,24 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>Release payment to creator?</AlertDialogTitle>
+                    <AlertDialogTitle>
+                      {needsEscrowPayment ? 'Pay escrow & approve content?' : 'Release payment to creator?'}
+                    </AlertDialogTitle>
                     <AlertDialogDescription>
-                      {!isSubmitted
-                        ? 'This content has not been formally submitted yet. Approving now will release payment immediately. This cannot be undone.'
-                        : 'This will approve the content and release payment immediately. This cannot be undone.'}
+                      {needsEscrowPayment
+                        ? 'You\'ll be taken to Stripe to complete payment. Once paid, the content will be automatically approved and the creator will be paid.'
+                        : !isSubmitted
+                          ? 'This content has not been formally submitted yet. Approving now will release payment immediately. This cannot be undone.'
+                          : 'This will approve the content and release payment immediately. This cannot be undone.'}
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
                     <AlertDialogAction
                       className="bg-teal-400 hover:bg-teal-500"
-                      onClick={() => approveContent.mutate()}
+                      onClick={() => needsEscrowPayment ? handlePayAndApprove() : approveContent.mutate()}
                     >
-                      Yes, Approve & Pay
+                      {needsEscrowPayment ? 'Pay & Approve' : 'Yes, Approve & Pay'}
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
