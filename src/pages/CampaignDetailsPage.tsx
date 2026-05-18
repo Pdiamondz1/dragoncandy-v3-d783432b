@@ -533,6 +533,7 @@ const CampaignDetailsPage: React.FC = () => {
                 <div id="deliverables-section">
                   <DeliverablesArchive
                     campaignId={campaign.id}
+                    collaborationId={collaborationData.id}
                   />
                 </div>
                 <PaymentSummary

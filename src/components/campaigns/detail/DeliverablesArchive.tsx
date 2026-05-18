@@ -5,18 +5,23 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useFileUploads } from '@/hooks/useFileQuery';
 import { formatFileSize } from '@/lib/fileUtils';
+import { downloadBlob } from '@/lib/downloadUtils';
+import { WatermarkedLightbox } from '@/components/content/WatermarkedLightbox';
 
 interface DeliverablesArchiveProps {
   campaignId: string;
+  collaborationId: string;
 }
 
 export const DeliverablesArchive: React.FC<DeliverablesArchiveProps> = ({
   campaignId,
+  collaborationId,
 }) => {
   const { toast } = useToast();
   const { data: files, isLoading } = useFileUploads(campaignId, 'deliverable');
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [downloadingAll, setDownloadingAll] = useState(false);
+  const [selectedFileIndex, setSelectedFileIndex] = useState<number | null>(null);
 
   const downloadFile = async (file: {
     id: string;
@@ -26,20 +31,26 @@ export const DeliverablesArchive: React.FC<DeliverablesArchiveProps> = ({
   }) => {
     setDownloadingId(file.id);
     try {
-      const { data } = await supabase.storage
-        .from(file.bucket_name)
-        .download(file.file_path);
-      if (data) {
-        const url = window.URL.createObjectURL(data);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = file.original_filename;
-        link.style.display = 'none';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        window.URL.revokeObjectURL(url);
+      const response = await supabase.functions.invoke('get-watermarked-preview', {
+        body: {
+          file_path: file.file_path,
+          bucket_name: file.bucket_name,
+          collaboration_id: collaborationId,
+        },
+      });
+
+      if (!response.data?.can_download) {
+        toast({ variant: 'destructive', title: 'Download Unavailable', description: 'Content must be approved before downloading.' });
+        return;
       }
+
+      const signedUrl = response.data.signed_url;
+      if (!signedUrl) {
+        toast({ variant: 'destructive', title: 'Download Failed', description: 'Could not generate download URL.' });
+        return;
+      }
+
+      await downloadBlob(signedUrl, file.original_filename);
     } catch {
       toast({ variant: 'destructive', title: 'Download Failed', description: 'Could not download file.' });
     } finally {
@@ -51,9 +62,7 @@ export const DeliverablesArchive: React.FC<DeliverablesArchiveProps> = ({
     if (!files || files.length === 0) return;
     setDownloadingAll(true);
     try {
-      for (const file of files) {
-        await downloadFile(file);
-      }
+      await Promise.allSettled(files.map(downloadFile));
     } finally {
       setDownloadingAll(false);
     }
@@ -81,7 +90,7 @@ export const DeliverablesArchive: React.FC<DeliverablesArchiveProps> = ({
         <>
           {/* File grid */}
           <div className="grid grid-cols-3 gap-2">
-            {files.map(file => {
+            {files.map((file, index) => {
               const isImage = file.mime_type?.startsWith('image/');
               const isVideo = file.mime_type?.startsWith('video/');
               const publicUrl = isImage
@@ -91,7 +100,7 @@ export const DeliverablesArchive: React.FC<DeliverablesArchiveProps> = ({
               return (
                 <button
                   key={file.id}
-                  onClick={() => downloadFile(file)}
+                  onClick={() => setSelectedFileIndex(index)}
                   disabled={downloadingId === file.id}
                   className="aspect-square rounded-xl border border-gray-200 overflow-hidden bg-gray-50 flex items-center justify-center relative group hover:border-teal-400 transition-colors"
                   title={file.original_filename}
@@ -111,7 +120,7 @@ export const DeliverablesArchive: React.FC<DeliverablesArchiveProps> = ({
                   ) : (
                     <div className="text-center p-1">
                       {isVideo
-                        ? <span className="text-2xl">🎥</span>
+                        ? <span className="text-2xl">&#127909;</span>
                         : <FileText className="h-6 w-6 text-gray-400 mx-auto" />
                       }
                       <p className="text-xs text-gray-400 mt-1 truncate w-full px-1">
@@ -139,6 +148,15 @@ export const DeliverablesArchive: React.FC<DeliverablesArchiveProps> = ({
               <><Download className="h-4 w-4 mr-2" />Download All ({files.length})</>
             )}
           </Button>
+
+          {/* Protected lightbox */}
+          <WatermarkedLightbox
+            files={files}
+            initialIndex={selectedFileIndex ?? 0}
+            collaborationId={collaborationId}
+            isOpen={selectedFileIndex !== null}
+            onClose={() => setSelectedFileIndex(null)}
+          />
         </>
       )}
     </div>

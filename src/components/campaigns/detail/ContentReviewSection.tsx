@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -21,23 +21,17 @@ import {
   Send,
   FileCheck,
   AlertCircle,
-  Download,
   Eye,
   MessageSquare,
-  Play,
   CreditCard,
 } from 'lucide-react';
-import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useFileUploads } from '@/hooks/useFileQuery';
 import { useDraftPosts } from '@/hooks/useDraftPosts';
 import { SocialPostStatus } from '@/components/campaigns/SocialPostStatus';
+import { WatermarkedLightbox } from '@/components/content/WatermarkedLightbox';
 
 interface ContentReviewSectionProps {
   collaborationId: string;
@@ -66,10 +60,7 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
   const queryClient = useQueryClient();
   const [showRevisionInput, setShowRevisionInput] = useState(false);
   const [feedback, setFeedback] = useState('');
-  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
-  const [lightboxFile, setLightboxFile] = useState<{ isVideo: boolean; filename: string } | null>(null);
-  const [videoError, setVideoError] = useState(false);
-  const [downloading, setDownloading] = useState(false);
+  const [selectedFileIndex, setSelectedFileIndex] = useState<number | null>(null);
   const safeRevisionCount = revisionCount ?? 0;
   const [isPayingEscrow, setIsPayingEscrow] = useState(false);
   const needsEscrowPayment = pricingType === 'fixed' && escrowStatus !== 'held';
@@ -78,25 +69,6 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
   const { draftCount } = useDraftPosts();
 
   const { data: files, isLoading: filesLoading } = useFileUploads(campaignId, 'deliverable', creatorId);
-  const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
-
-  useEffect(() => {
-    if (!files?.length) return;
-    let cancelled = false;
-    (async () => {
-      const urls: Record<string, string> = {};
-      await Promise.all(
-        files.map(async (file) => {
-          const { data } = await supabase.storage
-            .from(file.bucket_name)
-            .createSignedUrl(file.file_path, 3600);
-          if (data?.signedUrl) urls[file.id] = data.signedUrl;
-        }),
-      );
-      if (!cancelled) setSignedUrls(urls);
-    })();
-    return () => { cancelled = true; };
-  }, [files]);
 
   const approveContent = useMutation({
     mutationFn: async () => {
@@ -302,10 +274,12 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
       {/* File gallery */}
       {hasFiles && (
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-          {files!.slice(0, 6).map(file => {
+          {files!.slice(0, 6).map((file, index) => {
             const isImage = file.mime_type?.startsWith('image/');
             const isVideo = file.mime_type?.startsWith('video/');
-            const fileUrl = signedUrls[file.id] || supabase.storage.from(file.bucket_name).getPublicUrl(file.file_path).data.publicUrl;
+            const thumbnailUrl = isImage
+              ? supabase.storage.from(file.bucket_name).getPublicUrl(file.file_path).data.publicUrl
+              : null;
             return (
               <div
                 key={file.id}
@@ -314,16 +288,13 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
                 {isImage ? (
                   <>
                     <img
-                      src={fileUrl}
+                      src={thumbnailUrl!}
                       alt={file.original_filename}
                       className="w-full h-full object-cover"
                       onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
                     />
                     <button
-                      onClick={() => {
-                        setLightboxUrl(fileUrl);
-                        setLightboxFile({ isVideo: false, filename: file.original_filename });
-                      }}
+                      onClick={() => setSelectedFileIndex(index)}
                       className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center"
                     >
                       <Eye className="h-5 w-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -331,11 +302,7 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
                   </>
                 ) : isVideo ? (
                   <button
-                    onClick={() => {
-                      setLightboxUrl(fileUrl);
-                      setLightboxFile({ isVideo: true, filename: file.original_filename });
-                      setVideoError(false);
-                    }}
+                    onClick={() => setSelectedFileIndex(index)}
                     className="w-full h-full flex flex-col items-center justify-center gap-1 group-hover:bg-gray-100 transition-colors cursor-pointer"
                   >
                     <div className="w-10 h-10 rounded-full bg-dc-teal/10 flex items-center justify-center">
@@ -346,17 +313,15 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
                     </span>
                   </button>
                 ) : (
-                  <a
-                    href={fileUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-full h-full flex flex-col items-center justify-center gap-1 hover:bg-gray-100 transition-colors"
+                  <button
+                    onClick={() => setSelectedFileIndex(index)}
+                    className="w-full h-full flex flex-col items-center justify-center gap-1 hover:bg-gray-100 transition-colors cursor-pointer"
                   >
-                    <Download className="h-5 w-5 text-gray-400" />
+                    <Eye className="h-5 w-5 text-gray-400" />
                     <span className="text-xs text-gray-500 truncate max-w-[90%] px-2">
                       {file.original_filename}
                     </span>
-                  </a>
+                  </button>
                 )}
               </div>
             );
@@ -369,73 +334,15 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
         </div>
       )}
 
-      {/* Lightbox */}
-      <Dialog open={!!lightboxUrl} onOpenChange={() => { setLightboxUrl(null); setLightboxFile(null); setVideoError(false); }}>
-        <DialogContent className="max-w-3xl p-2">
-          <DialogTitle className="sr-only">Content preview</DialogTitle>
-          {lightboxUrl && lightboxFile?.isVideo && !videoError && (
-            <video
-              src={lightboxUrl}
-              controls
-              autoPlay
-              playsInline
-              className="w-full h-auto rounded-lg max-h-[80vh]"
-              onError={() => setVideoError(true)}
-            />
-          )}
-          {lightboxUrl && lightboxFile?.isVideo && videoError && (
-            <div className="flex flex-col items-center gap-4 py-10 px-4">
-              <div className="w-16 h-16 rounded-full bg-dc-teal/10 flex items-center justify-center">
-                <Play className="h-8 w-8 text-dc-teal" />
-              </div>
-              <p className="text-dc-text font-semibold text-center">{lightboxFile.filename}</p>
-              <p className="text-sm text-dc-text-muted text-center">
-                This video format can't be previewed in the browser. Download it to watch in your video player.
-              </p>
-              <Button
-                className="rounded-full bg-dc-teal-btn hover:bg-dc-teal-btn-hover text-white font-bold px-8"
-                disabled={downloading}
-                onClick={async () => {
-                  if (!lightboxUrl) return;
-                  setDownloading(true);
-                  try {
-                    const resp = await fetch(lightboxUrl);
-                    const blob = await resp.blob();
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = lightboxFile.filename;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    URL.revokeObjectURL(url);
-                  } catch {
-                    window.open(lightboxUrl, '_blank');
-                  }
-                  setDownloading(false);
-                }}
-              >
-                {downloading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Download className="h-4 w-4 mr-2" />}
-                Download Video
-              </Button>
-            </div>
-          )}
-          {lightboxUrl && !lightboxFile?.isVideo && (
-            <img src={lightboxUrl} alt="Full size preview" className="w-full h-auto rounded-lg" />
-          )}
-          {lightboxUrl && !lightboxFile?.isVideo && (
-            <a
-              href={lightboxUrl}
-              download
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center justify-center gap-1 text-sm text-dc-teal hover:underline py-1"
-            >
-              <Download className="h-4 w-4" /> Download
-            </a>
-          )}
-        </DialogContent>
-      </Dialog>
+      {hasFiles && (
+        <WatermarkedLightbox
+          files={files!}
+          initialIndex={selectedFileIndex ?? 0}
+          collaborationId={collaborationId}
+          isOpen={selectedFileIndex !== null}
+          onClose={() => setSelectedFileIndex(null)}
+        />
+      )}
 
       {/* Approved state — actionable card to review/schedule social drafts */}
       {isApproved && (
