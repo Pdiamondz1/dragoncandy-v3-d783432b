@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { getSignedProfileUrl } from '@/hooks/useSignedUrl';
+import { getMediaType, type ResolvedPortfolioItem } from '@/lib/mediaUtils';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -56,18 +57,11 @@ const formatSkillLabel = (skill: string): string => {
     .join(' ');
 };
 
-const getContentType = (url: string): 'Photo' | 'Reel' | null => {
-  const ext = url.split('.').pop()?.toLowerCase().split('?')[0];
-  if (!ext) return null;
-  if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) return 'Photo';
-  if (['mp4', 'mov', 'webm'].includes(ext)) return 'Reel';
-  return null;
-};
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://zocahiffooqdybdhguqv.supabase.co';
 
-const toThumbnailUrl = (url: string, width = 540): string => {
-  if (getContentType(url) !== 'Photo') return url;
+const toThumbnailUrl = (url: string, type: 'Photo' | 'Reel' | null, width = 540): string => {
+  if (type !== 'Photo') return url;
   const marker = '/storage/v1/object/public/';
   const idx = url.indexOf(marker);
   if (idx === -1) return url;
@@ -83,7 +77,7 @@ const PublicCreatorProfile = () => {
   const [profile, setProfile] = useState<CreatorProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
-  const [portfolioUrls, setPortfolioUrls] = useState<string[]>([]);
+  const [portfolioItems, setPortfolioItems] = useState<ResolvedPortfolioItem[]>([]);
   const [projectsCount, setProjectsCount] = useState<number>(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
@@ -211,11 +205,14 @@ const PublicCreatorProfile = () => {
     const convertPortfolioUrls = async () => {
       if (!profile?.portfolio_urls) return;
 
-      const urls = await Promise.all(
-        profile.portfolio_urls.map(async (path) => {
-          if (!path) return null;
+      const items = await Promise.all(
+        profile.portfolio_urls.map(async (rawPath) => {
+          if (!rawPath) return null;
           try {
-            return await getSignedProfileUrl(path);
+            const type = getMediaType(rawPath);
+            const url = await getSignedProfileUrl(rawPath);
+            if (!url) return null;
+            return { url, type } as ResolvedPortfolioItem;
           } catch (error) {
             console.error('Error converting portfolio URL:', error);
             return null;
@@ -223,7 +220,7 @@ const PublicCreatorProfile = () => {
         })
       );
 
-      setPortfolioUrls(urls.filter((u): u is string => u !== null));
+      setPortfolioItems(items.filter((i): i is ResolvedPortfolioItem => i !== null));
     };
 
     convertPortfolioUrls();
@@ -269,7 +266,7 @@ const PublicCreatorProfile = () => {
     );
   }
 
-  const heroImage = portfolioUrls[0] || avatarUrl;
+  const heroImage = portfolioItems.find(item => item.type === 'Photo')?.url || avatarUrl;
 
   return (
     <div className="bg-white min-h-screen md:max-w-3xl md:mx-auto">
@@ -358,7 +355,7 @@ const PublicCreatorProfile = () => {
       </div>
 
       {/* Stats Row */}
-      {projectsCount === 0 && portfolioUrls.length === 0 && (profile.total_reviews ?? 0) === 0 ? (
+      {projectsCount === 0 && portfolioItems.length === 0 && (profile.total_reviews ?? 0) === 0 ? (
         <div className="flex justify-center py-4 px-4 mt-2">
           <span className="bg-gradient-to-r from-dc-teal to-emerald-400 text-white px-6 py-2 rounded-full font-bold text-sm">
             🌟 New Creator
@@ -372,7 +369,7 @@ const PublicCreatorProfile = () => {
           </div>
           <div className="w-px bg-dc-pink self-stretch mx-1" />
           <div className="flex-1 text-center">
-            <p className="text-3xl font-extrabold text-gray-900">{portfolioUrls.length}</p>
+            <p className="text-3xl font-extrabold text-gray-900">{portfolioItems.length}</p>
             <p className="text-xs text-gray-500">Portfolio</p>
           </div>
           <div className="w-px bg-dc-pink self-stretch mx-1" />
@@ -415,11 +412,10 @@ const PublicCreatorProfile = () => {
       {/* Portfolio Grid */}
       <div className="px-4 pb-4">
         <h2 className="text-sm font-bold text-gray-900 mb-2">Portfolio</h2>
-        {portfolioUrls.length > 0 ? (
+        {portfolioItems.length > 0 ? (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 md:gap-3 lg:gap-4">
-            {portfolioUrls.map((url, index) => {
-              if (!url) return null;
-              const contentType = getContentType(url);
+            {portfolioItems.map((item, index) => {
+              const { url, type: contentType } = item;
               const isVideo = contentType === 'Reel';
               return (
                 <button
@@ -442,7 +438,7 @@ const PublicCreatorProfile = () => {
                     </div>
                   ) : (
                     <img
-                      src={toThumbnailUrl(url)}
+                      src={toThumbnailUrl(url, contentType)}
                       alt={`${profile.creator_name} portfolio ${index + 1}`}
                       className="w-full h-full object-cover"
                       onError={(e) => {
@@ -490,11 +486,11 @@ const PublicCreatorProfile = () => {
       </div>
 
       {/* Portfolio Lightbox */}
-      {portfolioUrls.length > 0 && profile && (
+      {portfolioItems.length > 0 && profile && (
         <PortfolioLightbox
-          items={portfolioUrls.map((url) => ({
+          items={portfolioItems.map(({ url, type }) => ({
             url,
-            type: getContentType(url),
+            type,
           }))}
           currentIndex={lightboxIndex}
           isOpen={lightboxOpen}
