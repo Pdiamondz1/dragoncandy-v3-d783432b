@@ -106,20 +106,8 @@ export const CreatorCard: React.FC<CreatorCardProps> = React.memo(({ creator }) 
         <div className="w-24 flex-shrink-0 self-center">
           <div className="max-h-32 rounded-xl bg-gray-100 ring-2 ring-teal-400 overflow-hidden flex items-center justify-center">
             {thumbnailUrl && isVideoThumbnail ? (
-              <div className="relative w-full h-24">
-                <video
-                  src={`${thumbnailUrl}#t=0.5`}
-                  className="block w-full h-full object-cover"
-                  muted
-                  playsInline
-                  preload="metadata"
-                  onError={() => setPortfolioImgFailed(true)}
-                />
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-8 h-8 rounded-full bg-black/50 flex items-center justify-center">
-                    <Play className="h-4 w-4 text-white ml-0.5" fill="currentColor" />
-                  </div>
-                </div>
+              <div className="relative w-full h-24 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center">
+                <Play className="h-8 w-8 text-white/60" fill="currentColor" />
               </div>
             ) : thumbnailUrl ? (
               <img

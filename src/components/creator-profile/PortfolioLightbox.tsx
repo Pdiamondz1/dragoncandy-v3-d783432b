@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect } from 'react';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { ContactCreatorModal } from '@/components/creator-profile/ContactCreatorModal';
+import { useVideoBlobUrl } from '@/hooks/useVideoBlobUrl';
 
 interface PortfolioItem {
   url: string;
@@ -25,6 +26,38 @@ interface PortfolioLightboxProps {
   onClose: () => void;
   onIndexChange: (index: number) => void;
   creator: CreatorInfo;
+}
+
+function LightboxVideoPlayer({ url }: { url: string }) {
+  const { blobUrl, loading, error } = useVideoBlobUrl(url);
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-3 text-white/70">
+        <Loader2 className="h-10 w-10 animate-spin" />
+        <span className="text-sm">Loading video…</span>
+      </div>
+    );
+  }
+
+  if (error || !blobUrl) {
+    return (
+      <div className="flex items-center justify-center text-white/50 text-sm">
+        Unable to load video
+      </div>
+    );
+  }
+
+  return (
+    <video
+      key={blobUrl}
+      src={blobUrl}
+      controls
+      autoPlay
+      playsInline
+      className="max-w-full max-h-[85vh] object-contain"
+    />
+  );
 }
 
 export const PortfolioLightbox: React.FC<PortfolioLightboxProps> = ({
@@ -101,14 +134,7 @@ export const PortfolioLightbox: React.FC<PortfolioLightboxProps> = ({
           {/* Content */}
           <div className="flex-1 flex items-center justify-center bg-black min-h-[50vh] lg:min-h-[70vh] relative">
             {isVideo ? (
-              <video
-                key={item.url}
-                src={item.url}
-                controls
-                playsInline
-                preload="metadata"
-                className="max-w-full max-h-[85vh] object-contain"
-              />
+              <LightboxVideoPlayer key={item.url} url={item.url} />
             ) : (
               <img
                 src={item.url}
