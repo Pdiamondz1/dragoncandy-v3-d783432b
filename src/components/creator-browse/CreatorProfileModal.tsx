@@ -14,6 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
+import { VideoThumbnail } from '@/components/shared/VideoThumbnail';
 import {
   User,
   MapPin,
@@ -455,9 +456,7 @@ export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
                         aria-label={`View ${contentType || 'portfolio item'} ${index + 1}`}
                       >
                         {isVideo ? (
-                          <div className="w-full h-full bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center">
-                            <Play className="h-10 w-10 text-white/60" fill="currentColor" />
-                          </div>
+                          <VideoThumbnail src={url} />
                         ) : (
                           <img
                             src={toThumbnailUrl(url, contentType)}

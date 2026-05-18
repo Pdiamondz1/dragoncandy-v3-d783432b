@@ -17,6 +17,7 @@ import { VerifiedBadge } from '@/components/outstand/VerifiedBadge';
 import { VerifiedSocialStats } from '@/components/outstand/VerifiedSocialStats';
 import { useVerifiedStatus } from '@/hooks/outstand/useVerifiedStatus';
 import { PublicPageHeader } from '@/components/PublicPageHeader';
+import { VideoThumbnail } from '@/components/shared/VideoThumbnail';
 
 interface CreatorProfile {
   id: string;
@@ -426,9 +427,7 @@ const PublicCreatorProfile = () => {
                   aria-label={`View ${contentType || 'portfolio item'} ${index + 1}`}
                 >
                   {isVideo ? (
-                    <div className="w-full h-full bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center">
-                      <Play className="h-10 w-10 text-white/60" fill="currentColor" />
-                    </div>
+                    <VideoThumbnail src={url} />
                   ) : (
                     <img
                       src={toThumbnailUrl(url, contentType)}

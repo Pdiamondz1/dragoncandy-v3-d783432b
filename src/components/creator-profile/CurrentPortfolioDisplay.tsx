@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { X, Play, Image as ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
+import { VideoThumbnail } from '@/components/shared/VideoThumbnail';
 
 // URL cache for both public and signed URLs
 const urlCache = new Map<string, { url: string; expiresAt: number }>();
@@ -150,9 +151,10 @@ export const CurrentPortfolioDisplay = ({ portfolioPaths, onRemoveItem }: Curren
                 onError={() => handleMediaError(item.path)}
               />
             ) : (
-              <div className="relative w-full h-full bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center">
-                <Play className="w-8 h-8 text-white/60" fill="currentColor" />
-              </div>
+              <VideoThumbnail
+                src={item.url}
+                className="w-full h-full object-cover"
+              />
             )}
             
             {/* Media type indicator */}

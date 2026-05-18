@@ -7,6 +7,7 @@ import { getSignedProfileUrl } from '@/hooks/useSignedUrl';
 import { VerifiedBadge } from '@/components/outstand/VerifiedBadge';
 import { useVerifiedStatus } from '@/hooks/outstand/useVerifiedStatus';
 import { formatSkillLabel } from '@/lib/skillUtils';
+import { VideoThumbnail } from '@/components/shared/VideoThumbnail';
 
 interface CreatorCardProps {
   creator: CreatorProfile;
@@ -106,8 +107,13 @@ export const CreatorCard: React.FC<CreatorCardProps> = React.memo(({ creator }) 
         <div className="w-24 flex-shrink-0 self-center">
           <div className="max-h-32 rounded-xl bg-gray-100 ring-2 ring-teal-400 overflow-hidden flex items-center justify-center">
             {thumbnailUrl && isVideoThumbnail ? (
-              <div className="relative w-full h-24 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center">
-                <Play className="h-8 w-8 text-white/60" fill="currentColor" />
+              <div className="relative w-full h-24">
+                <VideoThumbnail src={thumbnailUrl} className="w-full h-24 object-cover" />
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div className="w-7 h-7 rounded-full bg-black/40 flex items-center justify-center">
+                    <Play className="h-3 w-3 text-white ml-0.5" fill="currentColor" />
+                  </div>
+                </div>
               </div>
             ) : thumbnailUrl ? (
               <img
