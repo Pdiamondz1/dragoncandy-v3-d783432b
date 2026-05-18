@@ -73,6 +73,7 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
   useEffect(() => {
     if (!files?.length) return;
     let cancelled = false;
+    const blobUrls: string[] = [];
     (async () => {
       const urls: Record<string, string> = {};
       await Promise.all(
@@ -80,12 +81,30 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
           const { data } = await supabase.storage
             .from(file.bucket_name)
             .createSignedUrl(file.file_path, 3600);
-          if (data?.signedUrl) urls[file.id] = data.signedUrl;
+          if (!data?.signedUrl) return;
+          const isQuicktime = file.mime_type === 'video/quicktime';
+          if (isQuicktime) {
+            try {
+              const resp = await fetch(data.signedUrl);
+              const blob = await resp.blob();
+              const mp4Blob = new Blob([blob], { type: 'video/mp4' });
+              const objUrl = URL.createObjectURL(mp4Blob);
+              blobUrls.push(objUrl);
+              urls[file.id] = objUrl;
+            } catch {
+              urls[file.id] = data.signedUrl;
+            }
+          } else {
+            urls[file.id] = data.signedUrl;
+          }
         }),
       );
       if (!cancelled) setSignedUrls(urls);
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      blobUrls.forEach((u) => URL.revokeObjectURL(u));
+    };
   }, [files]);
 
   const approveContent = useMutation({
