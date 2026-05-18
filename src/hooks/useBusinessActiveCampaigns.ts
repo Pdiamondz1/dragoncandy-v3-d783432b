@@ -53,6 +53,26 @@ export function useBusinessActiveCampaigns(orgUnitId?: string | null) {
         if (name) creatorMap.set(c.campaign_id, name);
       });
 
+      // Fallback: check accepted applications for campaigns without a collaboration match
+      const campaignsWithoutCreator = campaigns
+        .filter((c) => !creatorMap.has(c.id))
+        .map((c) => c.id);
+
+      if (campaignsWithoutCreator.length > 0) {
+        const { data: acceptedApps } = await supabase
+          .from('campaign_applications')
+          .select('campaign_id, creator_id, profiles:creator_id(full_name)')
+          .in('campaign_id', campaignsWithoutCreator)
+          .eq('status', 'accepted');
+
+        acceptedApps?.forEach((app) => {
+          const name = (app.profiles as unknown as { full_name: string | null })?.full_name;
+          if (name && !creatorMap.has(app.campaign_id)) {
+            creatorMap.set(app.campaign_id, name);
+          }
+        });
+      }
+
       return campaigns.map((c) => ({
         id: c.id,
         title: c.title,

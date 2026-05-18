@@ -1,4 +1,4 @@
-import { Calendar, Globe, Users } from 'lucide-react';
+import { Calendar, Globe } from 'lucide-react';
 import { Sparkles, Rocket, Package } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { TIER_LIMITS } from '@/types/campaignMedia';
@@ -71,16 +71,6 @@ export function LogisticsSection({ campaign }: LogisticsSectionProps) {
                   </Badge>
                 ))}
               </div>
-            </div>
-          </div>
-        )}
-
-        {campaign.creator_count != null && (
-          <div className="flex items-center gap-3">
-            <Users className="w-4 h-4 text-dc-teal flex-shrink-0" />
-            <div>
-              <span className="text-[11px] text-gray-500 uppercase tracking-wider">Target Creator Count</span>
-              <p className="text-sm font-medium text-gray-900">{campaign.creator_count}</p>
             </div>
           </div>
         )}

@@ -23,6 +23,7 @@ import {
   AlertCircle,
   Download,
   Eye,
+  MessageSquare,
 } from 'lucide-react';
 import {
   Dialog,
@@ -337,100 +338,119 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
         />
       )}
 
-      {/* Actions — only show when content is submitted for review */}
-      {!isSubmitted && !isApproved && hasFiles && (
-        <p className="text-xs text-gray-500">
-          Files uploaded but not yet submitted for review.
-        </p>
-      )}
-      {isSubmitted && (
-        !showRevisionInput ? (
-          <div className="flex gap-2 flex-wrap">
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
+      {/* Actions — show for both pre-submitted (uploaded) and submitted states */}
+      {!isApproved && hasFiles && (
+        <>
+          {!isSubmitted && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-3">
+              <p className="text-xs text-gray-600">
+                Files uploaded but not yet formally submitted for review. You can preview them above and provide early feedback.
+              </p>
+            </div>
+          )}
+
+          {!showRevisionInput ? (
+            <div className="flex gap-2 flex-wrap">
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    disabled={approveContent.isPending}
+                    size="sm"
+                    className="rounded-full bg-teal-400 hover:bg-teal-500 text-white font-semibold"
+                  >
+                    {approveContent.isPending ? (
+                      <><Loader2 className="h-3 w-3 mr-1 animate-spin" />Approving…</>
+                    ) : (
+                      <><CheckCircle2 className="h-3 w-3 mr-1" />Approve & Pay</>
+                    )}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Release payment to creator?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      {!isSubmitted
+                        ? 'This content has not been formally submitted yet. Approving now will release payment immediately. This cannot be undone.'
+                        : 'This will approve the content and release payment immediately. This cannot be undone.'}
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      className="bg-teal-400 hover:bg-teal-500"
+                      onClick={() => approveContent.mutate()}
+                    >
+                      Yes, Approve & Pay
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+
+              {canRequestRevision && (
                 <Button
-                  disabled={approveContent.isPending}
+                  variant="outline"
                   size="sm"
-                  className="rounded-full bg-teal-400 hover:bg-teal-500 text-white font-semibold"
+                  className="rounded-full"
+                  onClick={() => setShowRevisionInput(true)}
                 >
-                  {approveContent.isPending ? (
-                    <><Loader2 className="h-3 w-3 mr-1 animate-spin" />Approving…</>
+                  <RotateCcw className="h-3 w-3 mr-1" />
+                  Request Revision
+                </Button>
+              )}
+
+              {!canRequestRevision && (
+                <div className="flex items-center gap-1 text-xs text-gray-500">
+                  <AlertCircle className="h-3 w-3" />
+                  Max revisions reached
+                </div>
+              )}
+
+              {!isSubmitted && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-full border-dc-teal text-dc-teal"
+                  onClick={() => navigate(`/messages/${campaignId}`)}
+                >
+                  <MessageSquare className="h-3 w-3 mr-1" />
+                  Message Creator
+                </Button>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <Textarea
+                placeholder="Describe the changes you need…"
+                value={feedback}
+                onChange={e => setFeedback(e.target.value)}
+                rows={2}
+                className="text-sm rounded-xl"
+              />
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => requestRevision.mutate(feedback)}
+                  disabled={!feedback.trim() || requestRevision.isPending}
+                  size="sm"
+                  className="rounded-full bg-teal-400 hover:bg-teal-500 text-white"
+                >
+                  {requestRevision.isPending ? (
+                    <><Loader2 className="h-3 w-3 mr-1 animate-spin" />Sending…</>
                   ) : (
-                    <><CheckCircle2 className="h-3 w-3 mr-1" />Approve & Pay</>
+                    <><Send className="h-3 w-3 mr-1" />Send</>
                   )}
                 </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Release payment to creator?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This will approve the content and release payment immediately. This cannot be undone.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    className="bg-teal-400 hover:bg-teal-500"
-                    onClick={() => approveContent.mutate()}
-                  >
-                    Yes, Approve & Pay
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-
-            {canRequestRevision && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="rounded-full"
-                onClick={() => setShowRevisionInput(true)}
-              >
-                <RotateCcw className="h-3 w-3 mr-1" />
-                Request Revision
-              </Button>
-            )}
-
-            {!canRequestRevision && (
-              <div className="flex items-center gap-1 text-xs text-gray-500">
-                <AlertCircle className="h-3 w-3" />
-                Max revisions reached
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="rounded-full"
+                  onClick={() => { setShowRevisionInput(false); setFeedback(''); }}
+                >
+                  Cancel
+                </Button>
               </div>
-            )}
-          </div>
-        ) : (
-          <div className="space-y-2">
-            <Textarea
-              placeholder="Describe the changes you need…"
-              value={feedback}
-              onChange={e => setFeedback(e.target.value)}
-              rows={2}
-              className="text-sm rounded-xl"
-            />
-            <div className="flex gap-2">
-              <Button
-                onClick={() => requestRevision.mutate(feedback)}
-                disabled={!feedback.trim() || requestRevision.isPending}
-                size="sm"
-                className="rounded-full bg-teal-400 hover:bg-teal-500 text-white"
-              >
-                {requestRevision.isPending ? (
-                  <><Loader2 className="h-3 w-3 mr-1 animate-spin" />Sending…</>
-                ) : (
-                  <><Send className="h-3 w-3 mr-1" />Send</>
-                )}
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="rounded-full"
-                onClick={() => { setShowRevisionInput(false); setFeedback(''); }}
-              >
-                Cancel
-              </Button>
             </div>
-          </div>
-        )
+          )}
+        </>
       )}
     </div>
   );

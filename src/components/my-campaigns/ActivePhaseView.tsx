@@ -137,10 +137,12 @@ export function ActivePhaseView({ campaign, enrichedDetail, collaborationId }: A
           />
 
           {/* Fallback upload button for non-deliverable files */}
-          <ProjectFileUpload
-            campaignId={collaboration.campaign_id}
-            campaignTitle={collaboration.campaign?.title || campaign.title}
-          />
+          <div className="flex justify-center">
+            <ProjectFileUpload
+              campaignId={collaboration.campaign_id}
+              campaignTitle={collaboration.campaign?.title || campaign.title}
+            />
+          </div>
 
           {/* Submit for Review */}
           <SubmitForReviewButton
@@ -186,14 +188,16 @@ export function ActivePhaseView({ campaign, enrichedDetail, collaborationId }: A
           )}
 
           {/* Messages CTA */}
-          <Button
-            variant="outline"
-            className="w-full rounded-full border-2 border-dc-teal text-dc-teal font-bold py-3"
-            onClick={() => navigate(`/messages/${collaboration.campaign_id}`)}
-          >
-            <MessageSquare className="h-4 w-4 mr-2" />
-            Open Messages
-          </Button>
+          <div className="flex justify-center">
+            <Button
+              variant="outline"
+              className="rounded-full border-2 border-dc-teal text-dc-teal font-bold py-3 px-6"
+              onClick={() => navigate(`/messages/${collaboration.campaign_id}`)}
+            >
+              <MessageSquare className="h-4 w-4 mr-2" />
+              Open Messages
+            </Button>
+          </div>
         </div>
       ) : (
         <div className="px-4 pt-4 pb-24">

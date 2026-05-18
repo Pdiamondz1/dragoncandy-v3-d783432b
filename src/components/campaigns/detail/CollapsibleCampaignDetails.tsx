@@ -7,16 +7,21 @@ import { LogisticsSection } from '@/components/campaign-details/sections/Logisti
 import type { Campaign } from '@/hooks/useCampaignQueries';
 import type { CampaignPhase } from '@/lib/campaignPhase';
 import { formatBudget } from '@/lib/campaignPhase';
+import { useAgreedValue } from '@/hooks/useAgreedValue';
 
 interface CollapsibleCampaignDetailsProps {
   campaign: Campaign;
   phase: CampaignPhase;
 }
 
-function buildOverviewSubtitle(campaign: Campaign): string {
+function buildOverviewSubtitle(campaign: Campaign, agreedValue?: number | null): string {
   const parts: string[] = [];
-  const budget = formatBudget(campaign);
-  if (budget) parts.push(budget);
+  if (agreedValue != null) {
+    parts.push(`$${agreedValue.toLocaleString()}`);
+  } else {
+    const budget = formatBudget(campaign);
+    if (budget) parts.push(budget);
+  }
   if (campaign.platforms?.length) parts.push(campaign.platforms.slice(0, 2).join(', '));
   return parts.join(' · ');
 }
@@ -25,13 +30,14 @@ export const CollapsibleCampaignDetails: React.FC<CollapsibleCampaignDetailsProp
   campaign,
   phase,
 }) => {
+  const { data: agreedValue } = useAgreedValue(campaign.id);
   const overviewOpen = phase === 'pre_hire' || phase === 'cancelled';
 
   return (
     <div className="bg-white border border-teal-200 rounded-2xl overflow-hidden lg:sticky lg:top-4 p-4 space-y-1">
       <CollapsibleBriefSection
         title="Campaign Overview"
-        subtitle={buildOverviewSubtitle(campaign)}
+        subtitle={buildOverviewSubtitle(campaign, agreedValue)}
         defaultOpen={overviewOpen}
       >
         <CampaignOverviewSection campaign={campaign} />

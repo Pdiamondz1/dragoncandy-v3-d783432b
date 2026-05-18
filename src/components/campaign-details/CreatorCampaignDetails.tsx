@@ -57,7 +57,13 @@ export function CreatorCampaignDetails({
 
       <CampaignMetricsBar
         campaign={campaign}
-        deliverableCount={enrichedDetail?.deliverables.length ?? campaign.deliverables?.length ?? 0}
+        campaignId={campaign.id}
+        deliverableCount={
+          enrichedDetail?.deliverables.length
+          || ((campaign.ai_analysis as Record<string, unknown>)?.deliverables as unknown[] | undefined)?.length
+          || campaign.deliverables?.length
+          || 1
+        }
         matchScore={enrichedDetail?.matchScore ?? null}
       />
 

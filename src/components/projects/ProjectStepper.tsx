@@ -61,7 +61,7 @@ export function ProjectStepper({
               {/* Connecting line before step (except first) */}
               {index > 0 && (
                 <div
-                  className="h-0.5 flex-[0.5]"
+                  className="h-0.5 flex-1"
                   style={{
                     backgroundColor: index <= currentStep ? '#4DD9C0' : '#E5E7EB',
                   }}
@@ -109,7 +109,7 @@ export function ProjectStepper({
               {/* Connecting line after step (except last) */}
               {index < steps.length - 1 && (
                 <div
-                  className="h-0.5 flex-[0.5]"
+                  className="h-0.5 flex-1"
                   style={{
                     backgroundColor: index < currentStep ? '#4DD9C0' : '#E5E7EB',
                   }}

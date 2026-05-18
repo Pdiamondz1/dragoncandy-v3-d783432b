@@ -97,7 +97,6 @@ serve(async (req) => {
             .from("campaigns")
             .update({
               escrow_status: "held",
-              status: "published",
               escrow_payment_intent_id: paymentIntentId,
             })
             .eq("id", campaignId);
@@ -147,6 +146,15 @@ serve(async (req) => {
                 }
               }
             }
+
+            // Transition campaign to active now that escrow is held and collaborations exist
+            await supabase
+              .from("campaigns")
+              .update({ status: "active" })
+              .eq("id", campaignId)
+              .in("status", ["published", "draft"]);
+
+            logStep("Campaign transitioned to active", { campaignId });
           }
 
           await writePaymentEvent(supabase, {

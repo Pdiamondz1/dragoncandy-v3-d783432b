@@ -3,6 +3,7 @@ import { useCampaignById } from '@/hooks/useCampaignQueries';
 import { useCampaignDetailEnriched } from '@/hooks/useCampaignDetailEnriched';
 import { useCreatorApplications } from '@/hooks/useCreatorApplications';
 import { useCreatorCollaborations } from '@/hooks/useCreatorCollaborations';
+import { useAgreedValue } from '@/hooks/useAgreedValue';
 import { CampaignDetailHeader } from '@/components/my-campaigns/CampaignDetailHeader';
 import { AppliedPhaseView } from '@/components/my-campaigns/AppliedPhaseView';
 import { ActivePhaseView } from '@/components/my-campaigns/ActivePhaseView';
@@ -20,15 +21,16 @@ function buildStats(
   campaign: Campaign,
   activeCollab?: CreatorCollaboration | null,
   completedCollab?: CreatorCollaboration | null,
+  agreedValue?: number | null,
 ): Stat[] {
   if (phase === 'active') {
-    const price = campaign.fixed_price ?? campaign.budget_min ?? 0;
+    const price = agreedValue ?? campaign.fixed_price ?? campaign.budget_min ?? 0;
     const deadline = activeCollab?.content_deadline || campaign.deadline;
     const daysLeft = deadline
       ? Math.ceil((new Date(deadline).getTime() - Date.now()) / 86400000)
       : null;
     return [
-      { label: 'Value', value: `$${price}` },
+      { label: 'Value', value: `$${price.toLocaleString()}` },
       {
         label: 'Deadline',
         value: deadline
@@ -41,7 +43,7 @@ function buildStats(
     ];
   }
   if (phase === 'completed') {
-    const price = campaign.fixed_price ?? campaign.budget_min ?? 0;
+    const price = agreedValue ?? campaign.fixed_price ?? campaign.budget_min ?? 0;
     const completedDate = completedCollab?.completed_at
       ? new Date(completedCollab.completed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
       : '—';
@@ -60,6 +62,7 @@ export default function MyCampaignDetailPage() {
 
   const { data: campaign, isLoading: campaignLoading } = useCampaignById(campaignId!);
   const { data: enrichedDetail } = useCampaignDetailEnriched(campaignId ?? null, campaign?.user_id ?? null);
+  const { data: agreedValue } = useAgreedValue(campaignId);
   const { data: applications = [] } = useCreatorApplications();
   const { data: activeCollabs = [] } = useCreatorCollaborations('active');
   const { data: completedCollabs = [] } = useCreatorCollaborations('completed');
@@ -91,7 +94,7 @@ export default function MyCampaignDetailPage() {
 
   // Phase detection: active > completed > applied
   const phase: Phase = activeCollab ? 'active' : completedCollab ? 'completed' : 'applied';
-  const stats = buildStats(phase, campaign, activeCollab, completedCollab);
+  const stats = buildStats(phase, campaign, activeCollab, completedCollab, agreedValue);
 
   return (
     <DashboardLayout userRole="content_creator">

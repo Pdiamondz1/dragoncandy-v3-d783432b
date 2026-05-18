@@ -1,5 +1,6 @@
 import { Sparkles, Rocket, Package } from 'lucide-react';
 import { formatBudget } from '@/lib/campaignUtils';
+import { useAgreedValue } from '@/hooks/useAgreedValue';
 
 interface CampaignMetricsBarProps {
   campaign: {
@@ -9,6 +10,7 @@ interface CampaignMetricsBarProps {
     budget_max?: number | null;
     delivery_type?: string | null;
   };
+  campaignId?: string;
   deliverableCount: number;
   matchScore: number | null;
 }
@@ -19,12 +21,14 @@ const TIER_CONFIG: Record<string, { icon: typeof Sparkles; label: string; timefr
   standard: { icon: Package, label: 'Standard', timeframe: '5–7 days', bg: 'bg-gray-200 text-gray-700' },
 };
 
-export function CampaignMetricsBar({ campaign, deliverableCount, matchScore }: CampaignMetricsBarProps) {
+export function CampaignMetricsBar({ campaign, campaignId, deliverableCount, matchScore }: CampaignMetricsBarProps) {
   const tier = campaign.delivery_type ? TIER_CONFIG[campaign.delivery_type] : null;
+  const { data: agreedValue } = useAgreedValue(campaignId);
+  const budgetDisplay = agreedValue != null ? `$${agreedValue.toLocaleString()}` : formatBudget(campaign);
 
   return (
     <div className="flex items-center gap-2 flex-wrap px-5 py-3 bg-white border-b border-gray-100 sticky top-0 z-10">
-      <span className="text-sm font-bold text-dc-teal">{formatBudget(campaign)}</span>
+      <span className="text-sm font-bold text-dc-teal">{budgetDisplay}</span>
       <span className="text-gray-300">·</span>
       <span className="text-sm text-gray-600">
         {deliverableCount} deliverable{deliverableCount !== 1 ? 's' : ''}
