@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -220,6 +220,7 @@ export const WatermarkedLightbox: React.FC<WatermarkedLightboxProps> = ({
         onInteractOutside={onClose}
       >
         <DialogTitle className="sr-only">Content preview</DialogTitle>
+        <DialogDescription className="sr-only">Preview uploaded content with watermark protection</DialogDescription>
 
         <button
           onClick={onClose}
