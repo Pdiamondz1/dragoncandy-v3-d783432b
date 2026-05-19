@@ -1,27 +1,41 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Download, FileText, Loader2, Play } from 'lucide-react';
+import { Download, FileText, Loader2, Play, Share2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useFileUploads } from '@/hooks/useFileQuery';
 import { formatFileSize, getVideoThumbnailUrl } from '@/lib/fileUtils';
 import { downloadBlob } from '@/lib/downloadUtils';
 import { WatermarkedLightbox } from '@/components/content/WatermarkedLightbox';
+import { CrossPostPrompt } from '@/components/outstand/CrossPostPrompt';
+import { SponsorshipAmplificationPrompt } from '@/components/outstand/SponsorshipAmplificationPrompt';
+import { DragonCandyOutstandProvider } from '@/integrations/outstand/Provider';
 
 interface DeliverablesArchiveProps {
   campaignId: string;
   collaborationId: string;
+  campaignTitle?: string;
+  campaignDescription?: string;
+  creatorName?: string;
+  restaurantName?: string;
+  userRole?: 'business' | 'creator' | 'brand';
 }
 
 export const DeliverablesArchive: React.FC<DeliverablesArchiveProps> = ({
   campaignId,
   collaborationId,
+  campaignTitle,
+  campaignDescription,
+  creatorName,
+  restaurantName,
+  userRole,
 }) => {
   const { toast } = useToast();
   const { data: files, isLoading } = useFileUploads(campaignId, 'deliverable');
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [downloadingAll, setDownloadingAll] = useState(false);
   const [selectedFileIndex, setSelectedFileIndex] = useState<number | null>(null);
+  const [showShareModal, setShowShareModal] = useState(false);
 
   const downloadFile = async (file: {
     id: string;
@@ -145,18 +159,27 @@ export const DeliverablesArchive: React.FC<DeliverablesArchiveProps> = ({
             })}
           </div>
 
-          {/* Download All */}
-          <Button
-            onClick={downloadAll}
-            disabled={downloadingAll}
-            className="w-full rounded-full bg-teal-400 hover:bg-teal-500 text-white font-semibold"
-          >
-            {downloadingAll ? (
-              <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Downloading…</>
-            ) : (
-              <><Download className="h-4 w-4 mr-2" />Download All ({files.length})</>
-            )}
-          </Button>
+          {/* Action buttons */}
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Button
+              onClick={downloadAll}
+              disabled={downloadingAll}
+              className="flex-1 rounded-full bg-teal-400 hover:bg-teal-500 text-white font-semibold"
+            >
+              {downloadingAll ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Downloading…</>
+              ) : (
+                <><Download className="h-4 w-4 mr-2" />Download All ({files.length})</>
+              )}
+            </Button>
+            <Button
+              onClick={() => setShowShareModal(true)}
+              variant="outline"
+              className="flex-1 rounded-full border-dc-pink-accent text-dc-pink-accent hover:bg-pink-50 font-semibold"
+            >
+              <Share2 className="h-4 w-4 mr-2" />Share
+            </Button>
+          </div>
 
           {/* Protected lightbox */}
           <WatermarkedLightbox
@@ -166,6 +189,37 @@ export const DeliverablesArchive: React.FC<DeliverablesArchiveProps> = ({
             isOpen={selectedFileIndex !== null}
             onClose={() => setSelectedFileIndex(null)}
           />
+
+          {showShareModal && (
+            <DragonCandyOutstandProvider>
+              {userRole === 'brand' ? (
+                <SponsorshipAmplificationPrompt
+                  open={showShareModal}
+                  onOpenChange={setShowShareModal}
+                  campaignId={campaignId}
+                  campaignTitle={campaignTitle ?? ''}
+                  restaurantName={restaurantName ?? ''}
+                  creatorName={creatorName ?? null}
+                  mediaUrls={files
+                    .filter(f => f.mime_type?.startsWith('image/') || f.mime_type?.startsWith('video/'))
+                    .map(f => supabase.storage.from(f.bucket_name).getPublicUrl(f.file_path).data.publicUrl)}
+                  originalCaption={campaignDescription ?? ''}
+                />
+              ) : (
+                <CrossPostPrompt
+                  open={showShareModal}
+                  onOpenChange={setShowShareModal}
+                  campaignId={campaignId}
+                  campaignTitle={campaignTitle ?? ''}
+                  creatorName={creatorName ?? ''}
+                  mediaUrls={files
+                    .filter(f => f.mime_type?.startsWith('image/') || f.mime_type?.startsWith('video/'))
+                    .map(f => supabase.storage.from(f.bucket_name).getPublicUrl(f.file_path).data.publicUrl)}
+                  originalCaption={campaignDescription ?? ''}
+                />
+              )}
+            </DragonCandyOutstandProvider>
+          )}
         </>
       )}
     </div>
