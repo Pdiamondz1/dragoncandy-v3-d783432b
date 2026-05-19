@@ -96,10 +96,10 @@ const CreatorDashboard = () => {
   };
 
   const creatorStats: StatItem[] = [
-    { label: 'Revenue', value: formatCurrency(stats?.totalRevenue || 0), subtitle: 'From completed projects', icon: DollarSign },
-    { label: 'Applied', value: stats?.campaignsApplied || 0, subtitle: 'Total applications', icon: Target },
-    { label: 'Completed', value: stats?.projectsCompleted || 0, subtitle: 'Successfully delivered', icon: Clock },
-    { label: 'Rating', value: stats?.averageRating ? stats.averageRating.toFixed(1) : 'N/A', subtitle: 'Client feedback score', icon: Star },
+    { label: 'Revenue', value: formatCurrency(stats?.totalRevenue || 0), subtitle: 'From completed projects', icon: DollarSign, href: '/dashboard/creator/earnings' },
+    { label: 'Applied', value: stats?.campaignsApplied || 0, subtitle: 'Total applications', icon: Target, href: '/dashboard/creator/campaigns' },
+    { label: 'Completed', value: stats?.projectsCompleted || 0, subtitle: 'Successfully delivered', icon: Clock, href: '/dashboard/creator/my-campaigns' },
+    { label: 'Rating', value: stats?.averageRating ? stats.averageRating.toFixed(1) : 'N/A', subtitle: 'Client feedback score', icon: Star, href: '/dashboard/creator/settings' },
   ];
 
   const creatorActions: [QuickAction, QuickAction] = [

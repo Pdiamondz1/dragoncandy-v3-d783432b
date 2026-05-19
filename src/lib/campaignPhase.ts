@@ -10,6 +10,15 @@ export const PROJECT_STEPS: { key: ProjectStep; label: string }[] = [
   { key: 'review_left', label: 'Leave review' },
 ];
 
+export function phaseToDisplayLabel(phase: CampaignPhase): string {
+  switch (phase) {
+    case 'pre_hire': return 'published';
+    case 'active_delivery': return 'active';
+    case 'completed': return 'completed';
+    case 'cancelled': return 'cancelled';
+  }
+}
+
 export function deriveCampaignPhase(
   campaignStatus: string,
   collaboration?: { status: string } | null

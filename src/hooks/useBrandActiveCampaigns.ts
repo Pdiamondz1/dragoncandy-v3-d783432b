@@ -2,12 +2,14 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { deriveCampaignPhase, phaseToDisplayLabel } from '@/lib/campaignPhase';
 
 export interface BrandCampaignItem {
   id: string;
   title: string;
   subtitle: string;
   status: string;
+  displayStatus: string;
   type: 'own' | 'sponsored';
 }
 
@@ -24,7 +26,7 @@ export function useBrandActiveCampaigns(orgUnitId?: string | null) {
         .from('campaigns')
         .select('id, title, status, deadline')
         .eq('user_id', user.id)
-        .in('status', ['published', 'active']);
+        .not('status', 'eq', 'cancelled');
 
       if (orgUnitId) {
         ownQuery = ownQuery.eq('org_unit_id', orgUnitId);
@@ -73,12 +75,27 @@ export function useBrandActiveCampaigns(orgUnitId?: string | null) {
               title: campaign.title,
               subtitle: `Sponsored · $${Number(s.sponsorship_amount).toLocaleString()} budget`,
               status: s.status,
+              displayStatus: s.status,
               type: 'sponsored' as const,
             };
           });
       }
 
-      // 3. Map own campaigns
+      // 3. Fetch collaborations for own campaigns to derive display status
+      const ownCampaignIds = (ownCampaigns || []).map((c) => c.id);
+      const collabStatusMap = new Map<string, { status: string }>();
+      if (ownCampaignIds.length > 0) {
+        const { data: ownCollabs } = await supabase
+          .from('campaign_collaborations')
+          .select('campaign_id, status')
+          .in('campaign_id', ownCampaignIds)
+          .in('status', ['active', 'completed']);
+        ownCollabs?.forEach((c) => {
+          collabStatusMap.set(c.campaign_id, { status: c.status });
+        });
+      }
+
+      // 4. Map own campaigns
       const ownItems: BrandCampaignItem[] = (ownCampaigns || []).map((c) => {
         const deadline = c.deadline
           ? new Date(c.deadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
@@ -88,11 +105,12 @@ export function useBrandActiveCampaigns(orgUnitId?: string | null) {
           title: c.title,
           subtitle: `Due ${deadline}`,
           status: c.status,
+          displayStatus: phaseToDisplayLabel(deriveCampaignPhase(c.status, collabStatusMap.get(c.id) ?? null)),
           type: 'own' as const,
         };
       });
 
-      // 4. Merge, deduplicate by id, return max 8
+      // 5. Merge, deduplicate by id, return max 8
       const seen = new Set<string>();
       const merged: BrandCampaignItem[] = [];
       for (const item of [...ownItems, ...sponsoredItems]) {

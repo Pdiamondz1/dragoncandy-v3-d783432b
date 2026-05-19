@@ -74,10 +74,10 @@ const BusinessDashboard = () => {
   const hasMore = (campaigns?.length ?? 0) > 3;
 
   const businessStats: StatItem[] = [
-    { label: 'Active', value: campaignsLoading ? '…' : recentCampaigns.length, icon: Megaphone },
-    { label: 'Creators', value: '—', subtitle: 'In your network', icon: Users },
-    { label: 'Spend', value: '—', icon: DollarSign },
-    { label: 'ROI', value: '—', icon: TrendingUp },
+    { label: 'Active', value: campaignsLoading ? '…' : recentCampaigns.length, icon: Megaphone, href: '/dashboard/business/campaigns' },
+    { label: 'Creators', value: '—', subtitle: 'In your network', icon: Users, href: '/dashboard/business/creators' },
+    { label: 'Spend', value: '—', icon: DollarSign, href: '/dashboard/payments' },
+    { label: 'ROI', value: '—', icon: TrendingUp, href: '/dashboard/analytics' },
   ];
 
   const businessActions: [QuickAction, QuickAction] = [
@@ -137,7 +137,7 @@ const BusinessDashboard = () => {
 
             <div className="flex items-center justify-between">
               <p className="text-sm font-bold uppercase tracking-wide text-dc-teal">
-                Your Active Campaigns
+                Your Campaigns
               </p>
               <div className="flex items-center gap-2">
                 {hasMore && (
@@ -177,7 +177,7 @@ const BusinessDashboard = () => {
                     key={campaign.id}
                     title={campaign.title}
                     subtitle={`${campaign.creatorName ? `@${campaign.creatorName}` : 'Unassigned'} · Due ${formatDate(campaign.deadline)}`}
-                    status={campaign.status}
+                    status={campaign.displayStatus}
                     onClick={() => navigate(`/dashboard/business/campaigns/${campaign.id}`)}
                   />
                 ))}

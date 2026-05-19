@@ -1,7 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useState, useEffect, useCallback, useMemo, type ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, SUPABASE_URL } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useDonny } from '@/hooks/useDonny';
 import { useDonnyNudges } from '@/hooks/useDonnyNudges';
@@ -154,35 +154,57 @@ export function DonnyProvider({ children, userRole }: DonnyProviderProps) {
 
   const publishDraft = useCallback(async (scheduledPostId: string) => {
     try {
-      const postId = scheduledPostId;
-
       const { data: draft, error: draftErr } = await supabase
         .from('donny_scheduled_posts')
         .select('caption, media_urls, platform, content_type, campaign_id, metadata')
-        .eq('id', postId)
+        .eq('id', scheduledPostId)
         .single();
 
       if (draftErr || !draft) throw new Error('Could not load draft post');
 
-      const { data: publishData, error: publishErr } = await supabase.functions.invoke(
-        'outstand-proxy',
-        {
-          body: {
-            path: '/v1/posts',
-            method: 'POST',
-            payload: {
-              caption: draft.caption,
-              media_urls: draft.media_urls,
-              platform: draft.platform,
-              content_type: draft.content_type,
-            },
-          },
-        },
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error('Not authenticated');
+
+      const { data: connectedAccounts, error: acctErr } = await supabase
+        .from('business_outstand_accounts')
+        .select('outstand_social_account_id')
+        .eq('user_id', session.user.id)
+        .neq('status', 'revoked');
+
+      if (acctErr) throw acctErr;
+      const accountIds = (connectedAccounts ?? []).map(
+        (a: { outstand_social_account_id: string }) => a.outstand_social_account_id,
       );
+      if (accountIds.length === 0) throw new Error('No connected social accounts');
 
-      if (publishErr) throw publishErr;
+      const container: Record<string, unknown> = { content: draft.caption ?? '' };
+      if (draft.media_urls && (draft.media_urls as string[]).length > 0) {
+        container.media = (draft.media_urls as string[]).map((url: string, i: number) => ({
+          id: `media-${i}`,
+          url,
+          filename: url.split('/').pop() || `upload-${i}`,
+        }));
+      }
 
-      const outstandPostId = publishData?.id ?? publishData?.post_id ?? 'unknown';
+      const proxyUrl = `${SUPABASE_URL}/functions/v1/outstand-proxy/posts`;
+      const res = await fetch(proxyUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ accounts: accountIds, containers: [container] }),
+      });
+
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}));
+        throw new Error((errBody as Record<string, string>).error || `Outstand API returned ${res.status}`);
+      }
+
+      const publishData = await res.json() as Record<string, unknown>;
+      const dataObj = publishData?.data as Record<string, unknown> | undefined;
+      const postObj = dataObj?.post as Record<string, unknown> | undefined;
+      const outstandPostId = postObj?.id ?? publishData?.id ?? 'unknown';
 
       const draftMetadata = (draft.metadata ?? null) as Record<string, unknown> | null;
       const sourceToPostType: Record<string, string> = {
@@ -195,12 +217,11 @@ export function DonnyProvider({ children, userRole }: DonnyProviderProps) {
       await supabase
         .from('donny_scheduled_posts')
         .update({ status: 'published', published_at: new Date().toISOString() })
-        .eq('id', postId);
+        .eq('id', scheduledPostId);
 
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
+      if (session.user) {
         const { error: logError } = await supabase.from('social_post_log').insert({
-          user_id: user.id,
+          user_id: session.user.id,
           campaign_id: draft.campaign_id,
           outstand_post_id: String(outstandPostId),
           platform: draft.platform,

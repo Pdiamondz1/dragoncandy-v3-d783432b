@@ -78,10 +78,10 @@ const BrandDashboard = () => {
   }
 
   const brandStats: StatItem[] = [
-    { label: 'Active Campaigns', value: statsLoading ? '…' : stats?.activeCampaigns ?? 0, icon: Rocket },
-    { label: 'Total Spend', value: statsLoading ? '…' : formatSpend(stats?.totalSpend ?? 0), icon: DollarSign },
-    { label: 'Creators', value: statsLoading ? '…' : stats?.creatorsConnected ?? 0, subtitle: 'In your network', icon: Users },
-    { label: 'Avg. ROI', value: statsLoading ? '…' : `${stats?.avgROI ?? 0}%`, icon: TrendingUp },
+    { label: 'Active Campaigns', value: statsLoading ? '…' : stats?.activeCampaigns ?? 0, icon: Rocket, href: '/dashboard/brand/discover-campaigns' },
+    { label: 'Total Spend', value: statsLoading ? '…' : formatSpend(stats?.totalSpend ?? 0), icon: DollarSign, href: '/dashboard/payments' },
+    { label: 'Creators', value: statsLoading ? '…' : stats?.creatorsConnected ?? 0, subtitle: 'In your network', icon: Users, href: '/dashboard/brand/creators' },
+    { label: 'Avg. ROI', value: statsLoading ? '…' : `${stats?.avgROI ?? 0}%`, icon: TrendingUp, href: '/dashboard/analytics' },
   ];
 
   const brandActions: [QuickAction, QuickAction] = [
@@ -141,7 +141,7 @@ const BrandDashboard = () => {
             <div>
               <div className="flex items-center justify-between mb-2">
                 <p className="font-sans text-sm font-bold uppercase tracking-wide text-dc-teal">
-                  Active Campaigns
+                  Your Campaigns
                 </p>
                 <button
                   onClick={triggerTour}
@@ -172,7 +172,7 @@ const BrandDashboard = () => {
                       key={campaign.id}
                       title={campaign.title}
                       subtitle={campaign.subtitle}
-                      status={campaign.status}
+                      status={campaign.displayStatus}
                       onClick={() => navigate(
                         campaign.type === 'own'
                           ? `/dashboard/brand/campaigns/${campaign.id}`

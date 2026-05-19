@@ -2,11 +2,13 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { deriveCampaignPhase, phaseToDisplayLabel } from '@/lib/campaignPhase';
 
 export interface ActiveCampaignItem {
   id: string;
   title: string;
   status: 'draft' | 'published' | 'active' | 'completed' | 'cancelled';
+  displayStatus: string;
   deadline: string | null;
   creatorName: string | null;
 }
@@ -23,7 +25,7 @@ export function useBusinessActiveCampaigns(orgUnitId?: string | null) {
         .from('campaigns')
         .select('id, title, status, deadline')
         .eq('user_id', user.id)
-        .in('status', ['draft', 'published', 'active']);
+        .not('status', 'eq', 'cancelled');
 
       if (orgUnitId) {
         campaignQuery = campaignQuery.eq('org_unit_id', orgUnitId);
@@ -40,17 +42,19 @@ export function useBusinessActiveCampaigns(orgUnitId?: string | null) {
       const campaignIds = campaigns.map((c) => c.id);
       const { data: collabs, error: collabError } = await supabase
         .from('campaign_collaborations')
-        .select('campaign_id, creator_id, profiles:creator_id(full_name)')
+        .select('campaign_id, creator_id, status, profiles:creator_id(full_name)')
         .in('campaign_id', campaignIds)
-        .eq('status', 'active');
+        .in('status', ['active', 'completed']);
 
       if (collabError) throw collabError;
 
-      // Map creator names by campaign_id
+      // Map creator names and collaboration status by campaign_id
       const creatorMap = new Map<string, string>();
+      const collabStatusMap = new Map<string, { status: string }>();
       collabs?.forEach((c) => {
         const name = (c.profiles as unknown as { full_name: string | null })?.full_name;
         if (name) creatorMap.set(c.campaign_id, name);
+        collabStatusMap.set(c.campaign_id, { status: c.status });
       });
 
       // Fallback: check accepted applications for campaigns without a collaboration match
@@ -77,6 +81,7 @@ export function useBusinessActiveCampaigns(orgUnitId?: string | null) {
         id: c.id,
         title: c.title,
         status: c.status as ActiveCampaignItem['status'],
+        displayStatus: phaseToDisplayLabel(deriveCampaignPhase(c.status, collabStatusMap.get(c.id) ?? null)),
         deadline: c.deadline,
         creatorName: creatorMap.get(c.id) ?? null,
       }));

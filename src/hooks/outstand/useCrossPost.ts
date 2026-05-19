@@ -17,13 +17,18 @@ export function useCrossPost() {
 
   return useMutation({
     mutationFn: async ({ caption, mediaUrls, accountIds, scheduledAt }: CrossPostInput) => {
-      const body: Record<string, unknown> = {
-        text: caption,
-        socialAccountIds: accountIds,
-      };
+      const container: Record<string, unknown> = { content: caption };
       if (mediaUrls.length > 0) {
-        body.mediaUrls = mediaUrls;
+        container.media = mediaUrls.map((url, i) => ({
+          id: `media-${i}`,
+          url,
+          filename: url.split('/').pop() || `upload-${i}`,
+        }));
       }
+      const body: Record<string, unknown> = {
+        accounts: accountIds,
+        containers: [container],
+      };
       if (scheduledAt) {
         body.scheduledAt = scheduledAt;
       }
