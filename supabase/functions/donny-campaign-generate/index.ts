@@ -126,7 +126,7 @@ Respond ONLY with valid JSON matching this exact schema:
           "estimated_duration": <seconds or null>
         }
       ],
-      "budget_range": { "min": <number>, "max": <number> },
+      "price": <number>,
       "timeline_days": <number>,
       "tier": "<dragondash|express|standard>",
       "tier_reasoning": "<one sentence why this tier>",

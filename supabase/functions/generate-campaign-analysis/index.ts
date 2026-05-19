@@ -71,8 +71,7 @@ serve(async (req) => {
               "key_messages": ["message1", "message2", "message3"],
               "success_metrics": ["metric1", "metric2", "metric3"],
               "budget_recommendations": {
-                "min": 500,
-                "max": 2000,
+                "price": 1200,
                 "reasoning": "Budget explanation"
               },
               "timeline_recommendations": {
