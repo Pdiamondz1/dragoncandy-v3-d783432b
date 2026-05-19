@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { LocationBadge } from '@/components/org/LocationBadge';
+import { deriveCampaignPhase, phaseToDisplayLabel } from '@/lib/campaignPhase';
 
 const CampaignsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -81,14 +82,14 @@ const CampaignsPage: React.FC = () => {
 
   const getCounts = () => {
     if (!campaigns) return { all: 0, draft: 0, published: 0, active: 0, completed: 0, cancelled: 0 };
-    return {
-      all: campaigns.length,
-      draft: campaigns.filter(c => c.status === 'draft').length,
-      published: campaigns.filter(c => c.status === 'published').length,
-      active: campaigns.filter(c => c.status === 'active').length,
-      completed: campaigns.filter(c => c.status === 'completed').length,
-      cancelled: campaigns.filter(c => c.status === 'cancelled').length,
-    };
+    const counts = { all: campaigns.length, draft: 0, published: 0, active: 0, completed: 0, cancelled: 0 };
+    campaigns.forEach(c => {
+      if (c.status === 'draft') { counts.draft++; return; }
+      const collabShape = c.collaboration_status ? { status: c.collaboration_status } : null;
+      const label = phaseToDisplayLabel(deriveCampaignPhase(c.status, collabShape));
+      if (label in counts) counts[label as keyof typeof counts]++;
+    });
+    return counts;
   };
 
   const counts = getCounts();

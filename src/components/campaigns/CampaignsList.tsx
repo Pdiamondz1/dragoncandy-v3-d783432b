@@ -6,6 +6,7 @@ import { CampaignCard } from '@/components/campaigns/CampaignCard';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { deriveCampaignPhase, phaseToDisplayLabel } from '@/lib/campaignPhase';
 
 interface CampaignsListProps {
   statusFilter?: 'all' | 'draft' | 'published' | 'active' | 'completed' | 'cancelled';
@@ -41,9 +42,16 @@ export const CampaignsList: React.FC<CampaignsListProps> = ({
     );
   }
 
-  const filteredCampaigns = statusFilter === 'all' 
-    ? campaigns 
-    : campaigns.filter(campaign => campaign.status === statusFilter);
+  const filteredCampaigns = statusFilter === 'all'
+    ? campaigns
+    : campaigns.filter(campaign => {
+        if (campaign.status === 'draft') return statusFilter === 'draft';
+        const collabShape = campaign.collaboration_status
+          ? { status: campaign.collaboration_status }
+          : null;
+        const phase = deriveCampaignPhase(campaign.status, collabShape);
+        return phaseToDisplayLabel(phase) === statusFilter;
+      });
 
   if (filteredCampaigns.length === 0) {
     return (

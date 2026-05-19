@@ -22,6 +22,7 @@ import {
   getStepIndex,
   getStatusBadgeClass,
   formatBudget,
+  phaseToDisplayLabel,
   type CampaignPhase,
   type ProjectStep,
 } from '@/lib/campaignPhase';
@@ -189,9 +190,14 @@ const CampaignCardComponent: React.FC<CampaignCardProps> = ({ campaign }) => {
         {/* Title + status badge */}
         <div className="flex items-start justify-between gap-2">
           <h3 className="text-base font-semibold text-gray-900 line-clamp-2 flex-1">{campaign.title}</h3>
-          <Badge className={`${getStatusBadgeClass(campaign.status)} text-xs font-medium shrink-0`}>
-            {campaign.status.charAt(0).toUpperCase() + campaign.status.slice(1)}
-          </Badge>
+          {(() => {
+            const displayLabel = campaign.status === 'draft' ? 'draft' : phaseToDisplayLabel(phase);
+            return (
+              <Badge className={`${getStatusBadgeClass(displayLabel)} text-xs font-medium shrink-0`}>
+                {displayLabel.charAt(0).toUpperCase() + displayLabel.slice(1)}
+              </Badge>
+            );
+          })()}
         </div>
 
         {/* Stats line */}
