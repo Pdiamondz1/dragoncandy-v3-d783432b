@@ -11,6 +11,26 @@ export const useSubmitRating = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
+      if (reviewData.collaboration_id) {
+        const { data: existing } = await supabase
+          .from('project_reviews')
+          .select('id')
+          .eq('collaboration_id', reviewData.collaboration_id)
+          .eq('reviewer_id', user.id)
+          .maybeSingle();
+        if (existing) throw new Error('You have already submitted a review for this collaboration.');
+      }
+
+      if (reviewData.sponsorship_id) {
+        const { data: existing } = await supabase
+          .from('project_reviews')
+          .select('id')
+          .eq('sponsorship_id', reviewData.sponsorship_id)
+          .eq('reviewer_id', user.id)
+          .maybeSingle();
+        if (existing) throw new Error('You have already submitted a review for this sponsorship.');
+      }
+
       const { data, error } = await supabase
         .from('project_reviews')
         .insert({
@@ -22,12 +42,9 @@ export const useSubmitRating = () => {
 
       if (error) throw error;
 
-      // Update review status based on whether it's a collaboration or sponsorship review
       if (reviewData.sponsorship_id) {
-        // Sponsorship review - update campaign_sponsorships
         await updateSponsorshipReviewStatus(reviewData.sponsorship_id, user.id);
       } else if (reviewData.collaboration_id) {
-        // Collaboration review - update campaign_collaborations
         await updateCollaborationReviewStatus(reviewData.collaboration_id, user.id);
       }
 
@@ -39,6 +56,8 @@ export const useSubmitRating = () => {
       queryClient.invalidateQueries({ queryKey: ['sponsorship-review-completion'] });
       queryClient.invalidateQueries({ queryKey: ['reviews'] });
       queryClient.invalidateQueries({ queryKey: ['profile-ratings'] });
+      queryClient.invalidateQueries({ queryKey: ['has-reviewed-collaboration'] });
+      queryClient.invalidateQueries({ queryKey: ['sponsorship-review-check'] });
       toast({
         title: "Review submitted successfully",
         description: "Thank you for your feedback!",
