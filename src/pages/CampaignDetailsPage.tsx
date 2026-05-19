@@ -37,6 +37,7 @@ import { useCampaignProject } from '@/hooks/useCampaignProject';
 import { useProjectComplete } from '@/hooks/useProjectComplete';
 import { useDeleteCampaign, useDuplicateCampaign } from '@/hooks/useCampaigns';
 import { RatingModal } from '@/components/reviews/RatingModal';
+import { useHasReviewedCollaboration } from '@/hooks/useHasReviewedCollaboration';
 import { useCampaignApplicationsCount } from '@/hooks/useCampaignApplicationsCount';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -400,6 +401,12 @@ const CampaignDetailsPage: React.FC = () => {
   const phase = deriveCampaignPhase(campaign.status, collaborationData);
   const currentStep = collaborationData ? deriveCurrentStep(collaborationData) : null;
 
+  const { data: existingReview } = useHasReviewedCollaboration(
+    collaborationData?.id,
+    user?.id,
+  );
+  const hasReviewed = !!existingReview;
+
   // Show project loading spinner only when in active/completed phase where we need collaboration data
   if (projectLoading && (campaign.status === 'active' || campaign.status === 'completed')) {
     return (
@@ -441,6 +448,7 @@ const CampaignDetailsPage: React.FC = () => {
           currentStep={currentStep}
           applicationCount={applicationCount}
           creatorName={creatorData?.creator_name}
+          hasReviewed={hasReviewed}
           isLoading={false}
           onEdit={() => navigate(`/dashboard/business/campaigns/${id}/edit`)}
           onDelete={handleDelete}
@@ -474,6 +482,7 @@ const CampaignDetailsPage: React.FC = () => {
               <ProgressTimeline
                 currentStep={currentStep}
                 phase={phase}
+                hasReviewed={hasReviewed}
                 onLeaveReview={() => setShowRatingModal(true)}
                 onMarkComplete={() => {
                   if (collaborationData) {
@@ -555,7 +564,7 @@ const CampaignDetailsPage: React.FC = () => {
         </div>
       </div>
 
-      {showRatingModal && collaborationData && creatorData && (
+      {showRatingModal && collaborationData && creatorData && !hasReviewed && (
         <RatingModal
           isOpen={showRatingModal}
           onClose={() => setShowRatingModal(false)}

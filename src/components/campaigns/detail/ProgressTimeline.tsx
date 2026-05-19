@@ -1,5 +1,6 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
+import { Star } from 'lucide-react';
 import {
   PROJECT_STEPS,
   getStepIndex,
@@ -10,6 +11,7 @@ import {
 interface ProgressTimelineProps {
   currentStep: ProjectStep | null;
   phase: CampaignPhase;
+  hasReviewed?: boolean;
   onLeaveReview: () => void;
   onMarkComplete: () => void;
 }
@@ -17,6 +19,7 @@ interface ProgressTimelineProps {
 export const ProgressTimeline: React.FC<ProgressTimelineProps> = ({
   currentStep,
   phase,
+  hasReviewed,
   onLeaveReview,
   onMarkComplete,
 }) => {
@@ -55,7 +58,7 @@ export const ProgressTimeline: React.FC<ProgressTimelineProps> = ({
                   {step.label}
                 </p>
 
-                {isCurrent && step.key === 'review_left' && (
+                {isCurrent && step.key === 'review_left' && !hasReviewed && (
                   <Button
                     onClick={onLeaveReview}
                     size="sm"
@@ -63,6 +66,13 @@ export const ProgressTimeline: React.FC<ProgressTimelineProps> = ({
                   >
                     Leave a Review →
                   </Button>
+                )}
+
+                {isCurrent && step.key === 'review_left' && hasReviewed && (
+                  <span className="inline-flex items-center gap-1 text-xs text-dc-teal font-semibold mt-1.5">
+                    <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
+                    Review Submitted
+                  </span>
                 )}
 
                 {isCurrent && step.key === 'payment' && (
