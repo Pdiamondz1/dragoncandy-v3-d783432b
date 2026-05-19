@@ -98,9 +98,8 @@ export const useCreatorPendingInvitations = () => {
         .select(`
           *,
           campaigns:campaign_id (
-            id, title, emoji, budget_min, budget_max, deadline,
-            deliverable_count, content_types, cover_image_url,
-            user_id
+            id, title, description, fixed_price, pricing_type,
+            budget_min, budget_max, deadline, platforms, user_id
           )
         `)
         .eq('creator_id', user.id)

@@ -36,13 +36,13 @@ interface PendingInvitation {
   campaigns: {
     id: string;
     title: string;
-    emoji: string | null;
+    description: string | null;
+    fixed_price: number | null;
+    pricing_type: string | null;
     budget_min: number | null;
     budget_max: number | null;
     deadline: string | null;
-    deliverable_count: number | null;
-    content_types: string[] | null;
-    cover_image_url: string | null;
+    platforms: string[] | null;
   } | null;
 }
 
@@ -428,11 +428,11 @@ const CreatorCampaignMarketplace = () => {
                       </span>
                     </div>
                     <p className="font-semibold text-gray-900 mb-1">
-                      {campaign?.emoji ?? ''} {campaign?.title}
+                      {campaign?.title}
                     </p>
                     <p className="text-xs text-gray-500 mb-2">
                       {campaign ? formatBudget(campaign) : 'Budget TBD'}
-                      {campaign?.deliverable_count ? ` · ${campaign.deliverable_count} deliverables` : ''}
+                      {campaign?.platforms?.length ? ` · ${campaign.platforms.join(', ')}` : ''}
                       {campaign?.deadline ? ` · Due ${new Date(campaign.deadline).toLocaleDateString()}` : ''}
                     </p>
                     {inv.invitation_message && (
