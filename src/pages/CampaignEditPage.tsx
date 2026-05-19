@@ -9,7 +9,6 @@ import { ArrowLeft, Save, Eye, X } from 'lucide-react';
 import { EditorSection } from '@/components/campaign-creator/EditorSection';
 import { PlatformChips } from '@/components/campaign-creator/PlatformChips';
 import { DeliverablesList } from '@/components/campaign-creator/DeliverablesList';
-import { BudgetSlider } from '@/components/campaign-creator/BudgetSlider';
 import { TimelinePicker } from '@/components/campaign-creator/TimelinePicker';
 import { TierBadge } from '@/components/campaign-creator/TierBadge';
 import { CostBreakdown } from '@/components/campaigns/CostBreakdown';
@@ -154,7 +153,7 @@ const CampaignEditPage: React.FC = () => {
   const tier = mapDeliveryType(formData.delivery_type);
   const tierConfig = getTierConfig(tier);
   const deliverableCount = structuredDeliverables.length || formData.deliverables.length || 1;
-  const budgetMax = parseFloat(formData.budget_max) || 0;
+  const budgetMax = parseFloat(formData.fixed_price) || 0;
   const premiumAmount = tierConfig?.fee ?? 0;
   const baseCostPerDeliverable = deliverableCount > 0
     ? Math.max(0, (budgetMax - premiumAmount) / deliverableCount)
@@ -335,12 +334,23 @@ const CampaignEditPage: React.FC = () => {
           {/* ── Section 3: Compensation & Terms ──────────────────────────── */}
           <EditorSection title="Compensation & Terms" defaultOpen>
 
-            <BudgetSlider
-              min={parseFloat(formData.budget_min) || 0}
-              max={parseFloat(formData.budget_max) || 0}
-              onChangeMin={val => handleInputChange('budget_min', val.toString())}
-              onChangeMax={val => handleInputChange('budget_max', val.toString())}
-            />
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">Campaign Price</label>
+              <div className="relative max-w-xs">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-dc-teal font-bold">$</span>
+                <input
+                  type="number"
+                  value={formData.fixed_price}
+                  onChange={(e) => handleInputChange('fixed_price', e.target.value)}
+                  className="w-full pl-8 pr-3 py-2 border border-gray-200 rounded-xl text-lg font-semibold outline-none focus:border-dc-teal focus:ring-1 focus:ring-dc-teal"
+                  min={50}
+                  step={25}
+                />
+              </div>
+              {parseFloat(formData.fixed_price) > 0 && parseFloat(formData.fixed_price) < 50 && (
+                <p className="text-sm text-red-500">Minimum campaign price is $50</p>
+              )}
+            </div>
 
             <CostBreakdown
               deliverableCount={deliverableCount}

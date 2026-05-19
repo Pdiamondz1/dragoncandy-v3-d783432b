@@ -26,11 +26,10 @@ const TOOL_DEFINITIONS = [
         title: { type: "string", description: "Campaign title" },
         description: { type: "string", description: "Campaign brief/description" },
         platform: { type: "string", description: "Target platform" },
-        budget_min: { type: "number", description: "Minimum budget" },
-        budget_max: { type: "number", description: "Maximum budget" },
+        price: { type: "number", description: "Campaign price for creator" },
         content_type: { type: "string", description: "Type of content needed" },
       },
-      required: ["title", "description", "platform", "budget_min", "budget_max"],
+      required: ["title", "description", "platform", "price"],
     },
   },
   {
@@ -47,8 +46,7 @@ const TOOL_DEFINITIONS = [
         campaign_id: { type: "string", description: "Campaign UUID" },
         title: { type: "string", description: "New title" },
         description: { type: "string", description: "New description" },
-        budget_min: { type: "number", description: "New minimum budget" },
-        budget_max: { type: "number", description: "New maximum budget" },
+        price: { type: "number", description: "New campaign price" },
         status: { type: "string", description: "New status (draft, published, closed)" },
       },
       required: ["campaign_id"],
@@ -688,8 +686,8 @@ async function executeTool(
           title: args.title,
           description: args.description,
           platform: args.platform,
-          budget_min: args.budget_min,
-          budget_max: args.budget_max,
+          fixed_price: args.price,
+          pricing_type: 'fixed',
           content_type: args.content_type ?? "video",
           status: "draft",
         })
@@ -702,7 +700,7 @@ async function executeTool(
     case "get_campaigns": {
       const { data, error } = await supabaseAdmin
         .from("campaigns")
-        .select("id, title, status, platform, budget_min, budget_max, created_at, campaign_applications(count)")
+        .select("id, title, status, platform, fixed_price, created_at, campaign_applications(count)")
         .eq("user_id", userId)
         .order("created_at", { ascending: false })
         .limit(10);
@@ -714,8 +712,7 @@ async function executeTool(
       const updates: Record<string, any> = {};
       if (args.title) updates.title = args.title;
       if (args.description) updates.description = args.description;
-      if (args.budget_min) updates.budget_min = args.budget_min;
-      if (args.budget_max) updates.budget_max = args.budget_max;
+      if (args.price) updates.fixed_price = args.price;
       if (args.status) updates.status = args.status;
 
       const { data, error } = await supabaseAdmin

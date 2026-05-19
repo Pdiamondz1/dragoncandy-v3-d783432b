@@ -70,9 +70,9 @@ function buildPromptForType(
   const campaignContext = [
     `Campaign title: ${campaign.title ?? "Untitled"}`,
     campaign.description ? `Description: ${campaign.description}` : null,
-    (campaign.budget_min != null || campaign.budget_max != null)
-      ? `Budget: $${campaign.budget_min ?? "?"} – $${campaign.budget_max ?? "?"}`
-      : null,
+    campaign.fixed_price
+      ? `Campaign Price: $${campaign.fixed_price}`
+      : (campaign.budget_max ? `Budget: $${campaign.budget_max}` : null),
     campaign.goals ? `Goals: ${campaign.goals}` : null,
     campaign.style ? `Style: ${campaign.style}` : null,
     campaign.tone ? `Tone: ${campaign.tone}` : null,
@@ -251,7 +251,7 @@ async function handleGenerate(
   // Fetch campaign data
   const { data: campaign, error: campaignErr } = await supabaseAdmin
     .from("campaigns")
-    .select("id, title, description, budget_min, budget_max, goals, style, tone, platforms, deliverables, content_source, delivery_type")
+    .select("id, title, description, fixed_price, budget_min, budget_max, goals, style, tone, platforms, deliverables, content_source, delivery_type")
     .eq("id", campaign_id)
     .single();
 

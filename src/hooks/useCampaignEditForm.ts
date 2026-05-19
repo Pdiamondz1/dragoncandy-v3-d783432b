@@ -14,8 +14,7 @@ export interface CampaignEditFormData {
   goals: string;
   deliverables: string[];
   platforms: string[];
-  budget_min: string;
-  budget_max: string;
+  fixed_price: string;
   deadline: string;
   status: 'draft' | 'published' | 'active' | 'completed' | 'cancelled';
   style: string;
@@ -48,8 +47,7 @@ export const useCampaignEditForm = (campaign: Campaign | undefined) => {
     goals: '',
     deliverables: [],
     platforms: [],
-    budget_min: '',
-    budget_max: '',
+    fixed_price: '',
     deadline: '',
     status: 'draft',
     style: '',
@@ -79,8 +77,7 @@ export const useCampaignEditForm = (campaign: Campaign | undefined) => {
         goals: campaign.goals || '',
         deliverables: campaign.deliverables || [],
         platforms: campaign.platforms || [],
-        budget_min: campaign.budget_min?.toString() || '',
-        budget_max: campaign.budget_max?.toString() || '',
+        fixed_price: (campaign.fixed_price || campaign.budget_max)?.toString() || '',
         deadline: campaign.deadline ? new Date(campaign.deadline).toISOString().split('T')[0] : '',
         status: campaign.status,
         style: campaign.style || '',
@@ -152,8 +149,8 @@ export const useCampaignEditForm = (campaign: Campaign | undefined) => {
           : formData.goals,
         deliverables: formData.deliverables,
         platforms: formData.platforms,
-        budget_min: formData.budget_min ? parseFloat(formData.budget_min) : undefined,
-        budget_max: formData.budget_max ? parseFloat(formData.budget_max) : undefined,
+        fixed_price: formData.fixed_price ? parseFloat(formData.fixed_price) : undefined,
+        pricing_type: 'fixed',
         deadline: formData.deadline || undefined,
         status: saveStatus,
         style: formData.style_direction || formData.style,
