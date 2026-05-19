@@ -19,7 +19,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { CostBreakdown } from './CostBreakdown';
 import { DeliveryBadge } from './DeliveryBadge';
 import type { DeliveryTier } from '@/types/campaignMedia';
-import type { PricingType } from './PricingTypeSelector';
 import type { CampaignAnalysis } from '@/types/campaign';
 import { useScopeValidation } from '@/hooks/useScopeValidation';
 import { ScopeValidationCard } from './ScopeValidationCard';
@@ -46,14 +45,11 @@ interface CampaignFinalizeStepProps {
     platforms: string[];
     style: string;
     tone: string;
-    budgetMin?: number;
-    budgetMax?: number;
     deadline: Date;
     // DragonDash fields
     deliveryType: DeliveryTier;
     deliveryFee: number;
-    pricingType: PricingType;
-    fixedPrice?: number;
+    fixedPrice: number;
     aiAnalysis?: CampaignAnalysis;
     contentSource?: string;
     structuredDeliverables?: Array<{
@@ -99,10 +95,7 @@ export const CampaignFinalizeStep: React.FC<CampaignFinalizeStepProps> = ({
 
   // Calculate total cost for display
   const getTotalCost = () => {
-    const baseAmount = campaignData.pricingType === 'fixed' 
-      ? (campaignData.fixedPrice || 0)
-      : (campaignData.budgetMax || 0);
-    return baseAmount + campaignData.deliveryFee;
+    return (campaignData.fixedPrice || 0) + campaignData.deliveryFee;
   };
 
   const getContentTypeIcon = (contentType: string) => {
@@ -150,30 +143,21 @@ export const CampaignFinalizeStep: React.FC<CampaignFinalizeStepProps> = ({
 
     setIsCreating(true);
 
-    // For fixed-price campaigns that want to publish, open a blank window IMMEDIATELY
-    // This prevents popup blockers since it's synchronous with the user click
+    // Open a blank window IMMEDIATELY to prevent popup blockers
+    // This is synchronous with the user click
     let checkoutWindow: Window | null = null;
-    const isFixedPrice = campaignData.pricingType === 'fixed';
 
-    if (wantToPublish && isFixedPrice) {
+    if (wantToPublish) {
       checkoutWindow = window.open('about:blank', '_blank');
     }
-    
+
     try {
-      // For fixed-price campaigns wanting to publish, save as draft with pending escrow
-      // The campaign will only become 'published' after payment verification
+      // Keep as draft until escrow payment is verified
       let status: 'draft' | 'published' = 'draft';
       let escrowStatus: 'none' | 'pending' = 'none';
-      
       if (wantToPublish) {
-        if (isFixedPrice) {
-          // Fixed price: keep as draft until paid
-          status = 'draft';
-          escrowStatus = 'pending';
-        } else {
-          // Bid-range: can publish immediately (no upfront payment)
-          status = 'published';
-        }
+        status = 'draft';
+        escrowStatus = 'pending';
       }
       
       // Build the campaign payload
@@ -185,16 +169,14 @@ export const CampaignFinalizeStep: React.FC<CampaignFinalizeStepProps> = ({
         platforms: campaignData.platforms,
         style: campaignData.style,
         tone: campaignData.tone,
-        budget_min: campaignData.pricingType === 'bid_range' ? campaignData.budgetMin : undefined,
-        budget_max: campaignData.pricingType === 'bid_range' ? campaignData.budgetMax : undefined,
         deadline: format(campaignData.deadline, 'yyyy-MM-dd'),
         status,
         open_for_sponsorship: data.openForSponsorship,
         // DragonDash fields — map UI tier names to DB column values
         delivery_type: mapDeliveryTierToDb(campaignData.deliveryType),
         delivery_fee: campaignData.deliveryFee,
-        pricing_type: campaignData.pricingType,
-        fixed_price: campaignData.pricingType === 'fixed' ? campaignData.fixedPrice : undefined,
+        pricing_type: 'fixed',
+        fixed_price: campaignData.fixedPrice,
         escrow_status: escrowStatus,
         // Persist the full AI analysis
         ...(campaignData.aiAnalysis ? { ai_analysis: campaignData.aiAnalysis } : {}),
@@ -240,8 +222,8 @@ export const CampaignFinalizeStep: React.FC<CampaignFinalizeStepProps> = ({
         if (delError) console.error('Failed to insert deliverables:', delError);
       }
 
-      // If fixed price and user wants to publish, trigger Stripe escrow checkout
-      if (wantToPublish && isFixedPrice) {
+      // If user wants to publish, trigger Stripe escrow checkout
+      if (wantToPublish) {
         const { data: checkoutData, error: checkoutError } = await supabase.functions.invoke(
           'create-campaign-escrow',
           {
@@ -352,19 +334,16 @@ export const CampaignFinalizeStep: React.FC<CampaignFinalizeStepProps> = ({
                 <DollarSign className="h-3.5 w-3.5 shrink-0" />
                 <span className="truncate">Pricing Type</span>
               </div>
-              <p className="font-semibold capitalize text-sm">{campaignData.pricingType.replace('_', ' ')}</p>
+              <p className="font-semibold capitalize text-sm">Fixed Price</p>
             </div>
 
             <div className="p-3 rounded-lg bg-background/50 min-w-0">
               <div className="flex items-center gap-1 text-muted-foreground text-xs mb-1">
                 <DollarSign className="h-3.5 w-3.5 shrink-0" />
-                <span className="truncate">{campaignData.pricingType === 'fixed' ? 'Creator Payout' : 'Proposed Budget'}</span>
+                <span className="truncate">Creator Payout</span>
               </div>
               <p className="font-semibold text-sm truncate">
-                {campaignData.pricingType === 'fixed'
-                  ? `$${campaignData.fixedPrice}`
-                  : `$${campaignData.budgetMax}`
-                }
+                ${campaignData.fixedPrice}
               </p>
             </div>
 
@@ -379,17 +358,15 @@ export const CampaignFinalizeStep: React.FC<CampaignFinalizeStepProps> = ({
             )}
           </div>
           
-          {campaignData.pricingType === 'fixed' && (
-            <div className="mt-4 p-4 rounded-lg bg-primary/10 border border-primary/20">
-              <div className="flex flex-wrap justify-between items-center gap-2">
-                <span className="font-medium">Total Campaign Cost (Escrow)</span>
-                <span className="text-xl font-bold text-primary shrink-0">${getTotalCost()}</span>
-              </div>
-              <p className="text-sm text-muted-foreground mt-1">
-                This amount will be held in escrow when you publish the campaign
-              </p>
+          <div className="mt-4 p-4 rounded-lg bg-primary/10 border border-primary/20">
+            <div className="flex flex-wrap justify-between items-center gap-2">
+              <span className="font-medium">Total Campaign Cost (Escrow)</span>
+              <span className="text-xl font-bold text-primary shrink-0">${getTotalCost()}</span>
             </div>
-          )}
+            <p className="text-sm text-muted-foreground mt-1">
+              This amount will be held in escrow when you publish the campaign
+            </p>
+          </div>
         </CardContent>
       </Card>
 
@@ -469,9 +446,7 @@ export const CampaignFinalizeStep: React.FC<CampaignFinalizeStepProps> = ({
             deliverableCount={campaignData.structuredDeliverables.length}
             budgetTotal={getTotalCost()}
             baseCostPerDeliverable={
-              (campaignData.pricingType === 'fixed'
-                ? (campaignData.fixedPrice || 0)
-                : (campaignData.budgetMax || 0)) /
+              (campaignData.fixedPrice || 0) /
               campaignData.structuredDeliverables.length
             }
             premiumAmount={campaignData.deliveryFee}
@@ -486,9 +461,7 @@ export const CampaignFinalizeStep: React.FC<CampaignFinalizeStepProps> = ({
         <div className="flex justify-between text-sm">
           <span className="text-gray-600">Content budget</span>
           <span className="font-medium">
-            {campaignData.pricingType === 'fixed'
-              ? `$${campaignData.fixedPrice?.toFixed(2)}`
-              : `$${campaignData.budgetMax}`}
+            ${campaignData.fixedPrice.toFixed(2)}
           </span>
         </div>
         {campaignData.deliveryFee > 0 && (
@@ -574,8 +547,7 @@ export const CampaignFinalizeStep: React.FC<CampaignFinalizeStepProps> = ({
                             <TooltipContent className="max-w-sm">
                               <p>
                                 <strong>Published:</strong> Visible to creators immediately.<br/>
-                                <strong>Fixed Price:</strong> Escrow payment required on publish.<br/>
-                                <strong>Bid Range:</strong> No payment until you accept a bid.
+                                Escrow payment required on publish.
                               </p>
                             </TooltipContent>
                           </Tooltip>
@@ -587,8 +559,7 @@ export const CampaignFinalizeStep: React.FC<CampaignFinalizeStepProps> = ({
                         <div className="flex items-center gap-2 text-sm text-green-700">
                           <Rocket className="h-3 w-3" />
                           <span>
-                            Campaign will be published to the marketplace
-                            {campaignData.pricingType === 'fixed' && ' (escrow payment required)'}
+                            Campaign will be published to the marketplace (escrow payment required)
                           </span>
                         </div>
                       ) : (
@@ -679,10 +650,7 @@ export const CampaignFinalizeStep: React.FC<CampaignFinalizeStepProps> = ({
                 ) : form.watch('publishImmediately') ? (
                   <>
                     <Rocket className="h-4 w-4 shrink-0" />
-                    {campaignData.pricingType === 'fixed'
-                      ? `Publish & Pay $${getTotalCost()} Escrow`
-                      : 'Create & Publish'
-                    }
+                    {`Publish & Pay $${getTotalCost()} Escrow`}
                   </>
                 ) : (
                   <>

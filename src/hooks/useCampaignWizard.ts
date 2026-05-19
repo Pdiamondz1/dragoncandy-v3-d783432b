@@ -14,10 +14,7 @@ export interface TimelineBudgetData {
   deadline: Date;
   deliveryType: DeliveryTier;
   deliveryFee: number;
-  pricingType: 'fixed' | 'bid_range';
-  fixedPrice?: number;
-  budgetMin?: number;
-  budgetMax?: number;
+  fixedPrice: number;
 }
 
 export interface FinalCampaignData {
@@ -32,10 +29,7 @@ export interface FinalCampaignData {
   // DragonDash fields
   deliveryType: DeliveryTier;
   deliveryFee: number;
-  pricingType: 'fixed' | 'bid_range';
-  fixedPrice?: number;
-  budgetMin?: number;
-  budgetMax?: number;
+  fixedPrice: number;
   // Full AI analysis for persistence
   aiAnalysis?: CampaignAnalysis;
   // New fields for 5-step flow
@@ -191,10 +185,7 @@ export const useCampaignWizard = () => {
       deadline: timelineBudgetData.deadline,
       deliveryType: deliveryTier!,
       deliveryFee: deliveryFee,
-      pricingType: timelineBudgetData.pricingType,
       fixedPrice: timelineBudgetData.fixedPrice,
-      budgetMin: timelineBudgetData.budgetMin,
-      budgetMax: timelineBudgetData.budgetMax,
       aiAnalysis: campaignAnalysis || undefined,
       contentSource,
       structuredDeliverables: deliverables,

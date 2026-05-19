@@ -12,43 +12,13 @@ import { CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import type { DeliveryTier } from '@/types/campaignMedia';
-import { PricingTypeSelector, PricingType } from './PricingTypeSelector';
 
 const timelineBudgetSchema = z.object({
   goals: z.string().min(10, 'Please describe your campaign goals (minimum 10 characters)'),
-  deadline: z.date({
-    required_error: 'Please select a campaign deadline',
-  }),
+  deadline: z.date({ required_error: 'Please select a campaign deadline' }),
   deliveryType: z.enum(['dragondash', 'express', 'standard']),
   deliveryFee: z.number().min(0),
-  pricingType: z.enum(['fixed', 'bid_range']),
-  fixedPrice: z.number().optional(),
-  budgetMin: z.number().optional(),
-  budgetMax: z.number().optional(),
-}).refine((data) => {
-  if (data.pricingType === 'fixed') {
-    return data.fixedPrice && data.fixedPrice >= 50;
-  }
-  return true;
-}, {
-  message: 'Fixed price must be at least $50',
-  path: ['fixedPrice'],
-}).refine((data) => {
-  if (data.pricingType === 'bid_range') {
-    return data.budgetMin && data.budgetMin >= 100;
-  }
-  return true;
-}, {
-  message: 'Minimum budget must be at least $100',
-  path: ['budgetMin'],
-}).refine((data) => {
-  if (data.pricingType === 'bid_range') {
-    return data.budgetMax && data.budgetMax >= (data.budgetMin || 0);
-  }
-  return true;
-}, {
-  message: 'Maximum budget must be greater than or equal to minimum',
-  path: ['budgetMax'],
+  fixedPrice: z.number().min(50, 'Campaign price must be at least $50'),
 });
 
 type TimelineBudgetFormData = z.infer<typeof timelineBudgetSchema>;
@@ -59,10 +29,8 @@ interface CampaignTimelineBudgetStepProps {
   initialData?: {
     goals?: string;
     deadline?: string;
-    budget_min?: number;
-    budget_max?: number;
-    pricing_type?: PricingType;
     fixed_price?: number;
+    ai_suggested_price?: number;
   };
   onContinue: (data: TimelineBudgetFormData) => void;
   onBackToCustomize: () => void;
@@ -75,25 +43,17 @@ export const CampaignTimelineBudgetStep: React.FC<CampaignTimelineBudgetStepProp
   onContinue,
   onBackToCustomize,
 }) => {
-  const [pricingType, setPricingType] = useState<PricingType>(
-    initialData?.pricing_type || 'bid_range'
-  );
-  const [fixedPrice, setFixedPrice] = useState<number>(
-    initialData?.fixed_price || 500
-  );
-  const [budgetMin, setBudgetMin] = useState<number>(
-    initialData?.budget_min || 500
-  );
-  const [budgetMax, setBudgetMax] = useState<number>(
-    initialData?.budget_max || 1000
-  );
-
-  // Force fixed pricing for DragonDash
-  useEffect(() => {
-    if (deliveryTier === 'dragondash') {
-      setPricingType('fixed');
+  const getDefaultPrice = () => {
+    if (initialData?.fixed_price) return initialData.fixed_price;
+    if (initialData?.ai_suggested_price) return initialData.ai_suggested_price;
+    switch (deliveryTier) {
+      case 'dragondash': return 750;
+      case 'express': return 600;
+      default: return 500;
     }
-  }, [deliveryTier]);
+  };
+
+  const [fixedPrice, setFixedPrice] = useState<number>(getDefaultPrice());
 
   const form = useForm<TimelineBudgetFormData>({
     resolver: zodResolver(timelineBudgetSchema),
@@ -102,10 +62,7 @@ export const CampaignTimelineBudgetStep: React.FC<CampaignTimelineBudgetStepProp
       deadline: initialData?.deadline ? new Date(initialData.deadline) : undefined,
       deliveryType: deliveryTier,
       deliveryFee: deliveryFee,
-      pricingType: pricingType,
-      fixedPrice: fixedPrice,
-      budgetMin: budgetMin,
-      budgetMax: budgetMax,
+      fixedPrice: getDefaultPrice(),
     },
   });
 
@@ -113,15 +70,8 @@ export const CampaignTimelineBudgetStep: React.FC<CampaignTimelineBudgetStepProp
   useEffect(() => {
     form.setValue('deliveryType', deliveryTier);
     form.setValue('deliveryFee', deliveryFee);
-    form.setValue('pricingType', pricingType);
     form.setValue('fixedPrice', fixedPrice);
-    form.setValue('budgetMin', budgetMin);
-    form.setValue('budgetMax', budgetMax);
-  }, [deliveryTier, deliveryFee, pricingType, fixedPrice, budgetMin, budgetMax, form]);
-
-  const handleSubmit = (data: TimelineBudgetFormData) => {
-    onContinue(data);
-  };
+  }, [deliveryTier, deliveryFee, fixedPrice, form]);
 
   // Calculate AI recommended price based on delivery tier
   const getAiRecommendedPrice = () => {
@@ -132,26 +82,51 @@ export const CampaignTimelineBudgetStep: React.FC<CampaignTimelineBudgetStepProp
     }
   };
 
+  const handleSubmit = (data: TimelineBudgetFormData) => {
+    onContinue(data);
+  };
+
   return (
     <div>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-          {/* Pricing Type Selection */}
+          {/* Campaign Price */}
           <Card>
             <CardContent className="pt-6">
-              <PricingTypeSelector
-                value={pricingType}
-                onChange={setPricingType}
-                fixedPrice={fixedPrice}
-                onFixedPriceChange={setFixedPrice}
-                budgetMin={budgetMin}
-                budgetMax={budgetMax}
-                onBudgetMinChange={setBudgetMin}
-                onBudgetMaxChange={setBudgetMax}
-                deliveryFee={deliveryFee}
-                forceFixed={deliveryTier === 'dragondash'}
-                aiRecommendedPrice={getAiRecommendedPrice()}
-              />
+              <div className="space-y-3">
+                <div>
+                  <label className="text-base font-semibold block mb-1">Campaign Price</label>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    What you'll pay the creator. They can accept or make a counter-offer.
+                  </p>
+                </div>
+                <div className="relative max-w-xs">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-dc-teal font-bold text-lg">$</span>
+                  <input
+                    type="number"
+                    value={fixedPrice}
+                    onChange={(e) => setFixedPrice(Number(e.target.value) || 0)}
+                    className="w-full pl-8 pr-3 py-3 border border-gray-200 rounded-xl text-lg font-semibold text-gray-800 outline-none focus:border-dc-teal focus:ring-1 focus:ring-dc-teal"
+                    min={50}
+                    step={25}
+                  />
+                </div>
+                {fixedPrice < 50 && fixedPrice > 0 && (
+                  <p className="text-sm text-red-500">Minimum campaign price is $50</p>
+                )}
+                {deliveryFee > 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    + ${deliveryFee} delivery fee · Total: ${fixedPrice + deliveryFee}
+                  </p>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setFixedPrice(getAiRecommendedPrice())}
+                  className="text-sm text-dc-teal hover:text-dc-teal-dark transition-colors"
+                >
+                  Use AI recommended: ${getAiRecommendedPrice()}
+                </button>
+              </div>
             </CardContent>
           </Card>
 
@@ -245,4 +220,3 @@ export const CampaignTimelineBudgetStep: React.FC<CampaignTimelineBudgetStepProp
     </div>
   );
 };
-
