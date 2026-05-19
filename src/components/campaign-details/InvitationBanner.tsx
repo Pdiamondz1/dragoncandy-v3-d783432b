@@ -51,7 +51,7 @@ export function InvitationBanner({
           <Button
             variant="outline"
             size="sm"
-            onClick={() => navigate(`/campaigns/${campaignId}`)}
+            onClick={() => navigate(`/dashboard/creator/campaigns/${campaignId}`)}
             className="flex-1 rounded-full border-dc-teal text-dc-teal hover:bg-teal-50 font-semibold text-xs h-9"
           >
             View Campaign
