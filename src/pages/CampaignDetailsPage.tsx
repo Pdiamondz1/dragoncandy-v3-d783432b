@@ -542,6 +542,11 @@ const CampaignDetailsPage: React.FC = () => {
                   <DeliverablesArchive
                     campaignId={campaign.id}
                     collaborationId={collaborationData.id}
+                    campaignTitle={campaign.title}
+                    campaignDescription={campaign.description}
+                    creatorName={creatorData?.creator_name}
+                    restaurantName={businessName}
+                    userRole="business"
                   />
                 </div>
                 <PaymentSummary
