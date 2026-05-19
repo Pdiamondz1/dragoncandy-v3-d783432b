@@ -153,8 +153,8 @@ serve(async (req) => {
         entity_type: 'collaboration',
         entity_id: collaborationId,
         campaign_id: campaign.id,
-        actor_id: callerId ?? undefined,
-        actor_role: 'business',
+        actor_id: collaboration.creator_id,
+        actor_role: 'creator',
         amount_cents: Math.round(creatorPayout * 100),
         stripe_id: transfer.id,
       }, '[RELEASE-CREATOR-PAYOUT]');
@@ -230,7 +230,8 @@ serve(async (req) => {
         entity_type: 'collaboration',
         entity_id: collaborationId,
         campaign_id: campaign.id,
-        actor_role: 'system',
+        actor_id: collaboration.creator_id,
+        actor_role: 'creator',
         amount_cents: Math.round(creatorPayout * 100),
         metadata: { reason: 'Creator Stripe onboarding incomplete' },
       }, '[RELEASE-CREATOR-PAYOUT]');
