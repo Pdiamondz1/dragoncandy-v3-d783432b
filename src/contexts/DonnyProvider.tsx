@@ -186,7 +186,7 @@ export function DonnyProvider({ children, userRole }: DonnyProviderProps) {
         }));
       }
 
-      const proxyUrl = `${SUPABASE_URL}/functions/v1/outstand-proxy/posts`;
+      const proxyUrl = `${SUPABASE_URL}/functions/v1/outstand-proxy/posts/`;
       const res = await fetch(proxyUrl, {
         method: 'POST',
         headers: {
