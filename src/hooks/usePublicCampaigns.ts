@@ -78,16 +78,8 @@ export const usePublicCampaigns = (userId?: string) => {
         return [];
       }
 
-      // Filter out fixed-price campaigns that haven't been paid (escrow_status !== 'held')
-      // Bid-range campaigns don't require upfront payment, so they're always visible
-      const visibleCampaigns = campaigns.filter(campaign => {
-        if (campaign.pricing_type === 'fixed') {
-          // Fixed-price campaigns must have escrow held to be visible
-          return campaign.escrow_status === 'held';
-        }
-        // Bid-range campaigns are always visible once published
-        return true;
-      });
+      // All published campaigns are visible — escrow is paid after hire, not before listing
+      const visibleCampaigns = campaigns;
 
       // Get unique user IDs from visible campaigns
       const userIds = [...new Set(visibleCampaigns.map(campaign => campaign.user_id))];
