@@ -100,8 +100,7 @@ export const useCreatorPendingInvitations = () => {
           campaigns:campaign_id (
             id, title, emoji, budget_min, budget_max, deadline,
             deliverable_count, content_types, cover_image_url,
-            user_id,
-            profiles:user_id ( full_name, avatar_url )
+            user_id
           )
         `)
         .eq('creator_id', user.id)
@@ -116,22 +115,28 @@ export const useCreatorPendingInvitations = () => {
       )] as string[];
 
       let businessMap = new Map<string, string>();
+      let profileMap = new Map<string, { full_name: string | null; avatar_url: string | null }>();
       if (ownerIds.length > 0) {
-        const { data: bps } = await supabase
-          .from('business_profiles')
-          .select('user_id, business_name')
-          .in('user_id', ownerIds);
-        if (bps) {
-          businessMap = new Map(bps.map(b => [b.user_id, b.business_name]));
+        const [bpResult, profileResult] = await Promise.all([
+          supabase.from('business_profiles').select('user_id, business_name').in('user_id', ownerIds),
+          supabase.from('profiles').select('id, full_name, avatar_url').in('id', ownerIds),
+        ]);
+        if (bpResult.data) {
+          businessMap = new Map(bpResult.data.map(b => [b.user_id, b.business_name]));
+        }
+        if (profileResult.data) {
+          profileMap = new Map(profileResult.data.map(p => [p.id, { full_name: p.full_name, avatar_url: p.avatar_url }]));
         }
       }
 
-      return data.map(inv => ({
-        ...inv,
-        _business_name: inv.campaigns
-          ? businessMap.get((inv.campaigns as { user_id?: string }).user_id ?? '') ?? null
-          : null,
-      }));
+      return data.map(inv => {
+        const ownerId = (inv.campaigns as { user_id?: string } | null)?.user_id ?? '';
+        return {
+          ...inv,
+          _business_name: businessMap.get(ownerId) ?? null,
+          _owner_profile: profileMap.get(ownerId) ?? null,
+        };
+      });
     },
     enabled: !!user,
     staleTime: 60_000,
