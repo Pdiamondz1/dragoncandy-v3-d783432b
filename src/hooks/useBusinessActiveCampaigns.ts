@@ -38,46 +38,71 @@ export function useBusinessActiveCampaigns(orgUnitId?: string | null) {
       if (error) throw error;
       if (!campaigns || campaigns.length === 0) return [];
 
-      // Fetch collaborations for these campaigns to get creator names
+      // Fetch collaborations for these campaigns
       const campaignIds = campaigns.map((c) => c.id);
       const { data: collabs, error: collabError } = await supabase
         .from('campaign_collaborations')
-        .select('campaign_id, creator_id, status, profiles:creator_id(full_name), creator_profiles:creator_id(creator_name)')
+        .select('campaign_id, creator_id, status')
         .in('campaign_id', campaignIds)
         .in('status', ['active', 'completed']);
 
       if (collabError) throw collabError;
 
-      // Map creator names and collaboration status by campaign_id
-      const creatorMap = new Map<string, string>();
+      // Map collaboration status and collect creator IDs
       const collabStatusMap = new Map<string, { status: string }>();
+      const collabCreatorMap = new Map<string, string>();
       collabs?.forEach((c) => {
-        const creatorName = (c.creator_profiles as unknown as { creator_name: string | null })?.creator_name;
-        const fullName = (c.profiles as unknown as { full_name: string | null })?.full_name;
-        const name = creatorName || fullName;
-        if (name) creatorMap.set(c.campaign_id, name);
         collabStatusMap.set(c.campaign_id, { status: c.status });
+        if (c.creator_id) collabCreatorMap.set(c.campaign_id, c.creator_id);
       });
 
-      // Fallback: check accepted applications for campaigns without a collaboration match
-      const campaignsWithoutCreator = campaigns
-        .filter((c) => !creatorMap.has(c.id))
+      // Fallback: check accepted applications for campaigns without a collaboration
+      const campaignsWithoutCollab = campaigns
+        .filter((c) => !collabCreatorMap.has(c.id))
         .map((c) => c.id);
 
-      if (campaignsWithoutCreator.length > 0) {
+      if (campaignsWithoutCollab.length > 0) {
         const { data: acceptedApps } = await supabase
           .from('campaign_applications')
-          .select('campaign_id, creator_id, profiles:creator_id(full_name), creator_profiles:creator_id(creator_name)')
-          .in('campaign_id', campaignsWithoutCreator)
+          .select('campaign_id, creator_id')
+          .in('campaign_id', campaignsWithoutCollab)
           .eq('status', 'accepted');
 
         acceptedApps?.forEach((app) => {
-          const creatorName = (app.creator_profiles as unknown as { creator_name: string | null })?.creator_name;
-          const fullName = (app.profiles as unknown as { full_name: string | null })?.full_name;
-          const name = creatorName || fullName;
-          if (name && !creatorMap.has(app.campaign_id)) {
-            creatorMap.set(app.campaign_id, name);
+          if (app.creator_id && !collabCreatorMap.has(app.campaign_id)) {
+            collabCreatorMap.set(app.campaign_id, app.creator_id);
           }
+        });
+      }
+
+      // Batch-fetch creator display names from creator_profiles, fall back to profiles
+      const creatorMap = new Map<string, string>();
+      const allCreatorIds = [...new Set(collabCreatorMap.values())];
+      if (allCreatorIds.length > 0) {
+        const { data: creatorProfiles } = await supabase
+          .from('creator_profiles')
+          .select('user_id, creator_name')
+          .in('user_id', allCreatorIds);
+
+        const cpMap = new Map(
+          (creatorProfiles ?? []).map((cp) => [cp.user_id, cp.creator_name])
+        );
+
+        const missingIds = allCreatorIds.filter((id) => !cpMap.get(id));
+        let profileMap = new Map<string, string | null>();
+        if (missingIds.length > 0) {
+          const { data: profiles } = await supabase
+            .from('profiles')
+            .select('id, full_name')
+            .in('id', missingIds);
+          profileMap = new Map(
+            (profiles ?? []).map((p) => [p.id, p.full_name])
+          );
+        }
+
+        collabCreatorMap.forEach((creatorId, campaignId) => {
+          const name = cpMap.get(creatorId) || profileMap.get(creatorId);
+          if (name) creatorMap.set(campaignId, name);
         });
       }
 
