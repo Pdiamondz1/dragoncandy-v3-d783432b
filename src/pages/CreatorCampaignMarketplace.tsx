@@ -31,6 +31,7 @@ interface PendingInvitation {
   id: string;
   created_at: string;
   invitation_message: string | null;
+  _business_name: string | null;
   campaigns: {
     id: string;
     title: string;
@@ -44,9 +45,6 @@ interface PendingInvitation {
     profiles: {
       full_name: string | null;
       avatar_url: string | null;
-    } | null;
-    business_profiles: {
-      business_name: string | null;
     } | null;
   } | null;
 }
@@ -417,7 +415,7 @@ const CreatorCampaignMarketplace = () => {
             ) : (
               pendingInvitations.map((inv: PendingInvitation) => {
                 const campaign = inv.campaigns;
-                const businessName = campaign?.business_profiles?.business_name ?? campaign?.profiles?.full_name;
+                const businessName = inv._business_name ?? campaign?.profiles?.full_name;
                 return (
                   <div key={inv.id} className="bg-teal-50 border-2 border-dc-teal rounded-2xl p-4">
                     <div className="flex items-center gap-3 mb-3">

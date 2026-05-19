@@ -100,8 +100,8 @@ export const useCreatorPendingInvitations = () => {
           campaigns:campaign_id (
             id, title, emoji, budget_min, budget_max, deadline,
             deliverable_count, content_types, cover_image_url,
-            profiles:user_id ( full_name, avatar_url ),
-            business_profiles:user_id ( business_name )
+            user_id,
+            profiles:user_id ( full_name, avatar_url )
           )
         `)
         .eq('creator_id', user.id)
@@ -109,7 +109,29 @@ export const useCreatorPendingInvitations = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return data ?? [];
+      if (!data || data.length === 0) return [];
+
+      const ownerIds = [...new Set(
+        data.map(d => (d.campaigns as { user_id?: string } | null)?.user_id).filter(Boolean)
+      )] as string[];
+
+      let businessMap = new Map<string, string>();
+      if (ownerIds.length > 0) {
+        const { data: bps } = await supabase
+          .from('business_profiles')
+          .select('user_id, business_name')
+          .in('user_id', ownerIds);
+        if (bps) {
+          businessMap = new Map(bps.map(b => [b.user_id, b.business_name]));
+        }
+      }
+
+      return data.map(inv => ({
+        ...inv,
+        _business_name: inv.campaigns
+          ? businessMap.get((inv.campaigns as { user_id?: string }).user_id ?? '') ?? null
+          : null,
+      }));
     },
     enabled: !!user,
     staleTime: 60_000,
