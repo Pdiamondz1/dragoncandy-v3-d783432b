@@ -65,15 +65,7 @@ export function formatBudget(campaign: {
   budget_min?: number | null;
   budget_max?: number | null;
 }): string {
-  if (campaign.pricing_type === 'fixed' && campaign.fixed_price) {
-    const total = campaign.fixed_price + (campaign.delivery_fee || 0);
-    return `$${total}`;
-  }
-  if (campaign.budget_min && campaign.budget_max) {
-    if (campaign.budget_min === campaign.budget_max) return `$${campaign.budget_max}`;
-    return `$${campaign.budget_min}–$${campaign.budget_max}`;
-  }
-  if (campaign.budget_min) return `$${campaign.budget_min}`;
-  if (campaign.budget_max) return `$${campaign.budget_max}`;
-  return 'Budget TBD';
+  const base = campaign.fixed_price || campaign.budget_max || campaign.budget_min;
+  if (!base) return 'Budget TBD';
+  return `$${base.toLocaleString()}`;
 }
