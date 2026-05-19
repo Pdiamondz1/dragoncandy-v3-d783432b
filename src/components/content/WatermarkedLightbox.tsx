@@ -14,7 +14,9 @@ import {
 } from 'lucide-react';
 import { useProtectedPreview } from '@/hooks/useProtectedPreview';
 import { useLightboxTranscoding } from '@/hooks/useLightboxTranscoding';
+import { useVideoFrameCapture } from '@/hooks/useVideoFrameCapture';
 import { downloadBlob } from '@/lib/downloadUtils';
+import { persistVideoThumbnail } from '@/lib/thumbnailBackfill';
 import { getVideoThumbnailUrl } from '@/lib/fileUtils';
 import { needsTranscoding } from '@/lib/videoProcessing';
 import { Progress } from '@/components/ui/progress';
@@ -80,6 +82,17 @@ const LightboxContent: React.FC<{
   } = useLightboxTranscoding(file.mime_type, file.file_size ?? null);
 
   const showVideoError = videoError || txStatus === 'failed';
+
+  const backfillUrl = txStatus === 'ready' ? transcodedUrl : null;
+  const { frameDataUrl: backfillFrame } = useVideoFrameCapture(backfillUrl, 'video/mp4');
+  const backfillDoneRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (backfillFrame && file.id && backfillDoneRef.current !== file.id) {
+      backfillDoneRef.current = file.id;
+      persistVideoThumbnail(file.id, backfillFrame);
+    }
+  }, [backfillFrame, file.id]);
 
   const handleDownload = useCallback(async () => {
     if (!canDownload || !signedUrl) return;

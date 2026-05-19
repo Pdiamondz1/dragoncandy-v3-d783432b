@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { CheckCircle2, RotateCcw, Download, Play, ImageOff } from 'lucide-react';
+import { CheckCircle2, RotateCcw, Download, ImageOff } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
+import { VideoFrameThumbnail } from '@/components/content/VideoFrameThumbnail';
+import { supabase } from '@/integrations/supabase/client';
 import type { GalleryFile } from '@/hooks/useCampaignContentGallery';
 
 interface ContentTileProps {
@@ -55,7 +57,15 @@ export function ContentTile({
         disabled={isNotSubmitted}
         className="relative w-full h-[120px] bg-gray-100 rounded-t-xl overflow-hidden"
       >
-        {file.thumbnailUrl ? (
+        {isVideo ? (
+          <VideoFrameThumbnail
+            fileId={file.fileId ?? ''}
+            videoUrl={file.filePath ? supabase.storage.from(file.bucketName).getPublicUrl(file.filePath).data.publicUrl : null}
+            storedThumbnailUrl={file.thumbnailUrl}
+            mimeType={file.mimeType}
+            filename={file.originalFilename}
+          />
+        ) : file.thumbnailUrl ? (
           <img
             src={file.thumbnailUrl}
             alt={file.originalFilename}
@@ -65,14 +75,6 @@ export function ContentTile({
         ) : (
           <div className="w-full h-full flex items-center justify-center">
             <ImageOff className="h-8 w-8 text-gray-300" />
-          </div>
-        )}
-
-        {isVideo && file.thumbnailUrl && (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="w-8 h-8 rounded-full bg-black/50 flex items-center justify-center">
-              <Play className="h-4 w-4 text-white fill-white" />
-            </div>
           </div>
         )}
 
