@@ -44,6 +44,8 @@ interface PendingInvitation {
     profiles: {
       full_name: string | null;
       avatar_url: string | null;
+    } | null;
+    business_profiles: {
       business_name: string | null;
     } | null;
   } | null;
@@ -415,15 +417,15 @@ const CreatorCampaignMarketplace = () => {
             ) : (
               pendingInvitations.map((inv: PendingInvitation) => {
                 const campaign = inv.campaigns;
-                const business = campaign?.profiles;
+                const businessName = campaign?.business_profiles?.business_name ?? campaign?.profiles?.full_name;
                 return (
                   <div key={inv.id} className="bg-teal-50 border-2 border-dc-teal rounded-2xl p-4">
                     <div className="flex items-center gap-3 mb-3">
                       <div className="w-9 h-9 rounded-full bg-dc-teal flex items-center justify-center text-white font-bold text-sm">
-                        {business?.business_name?.[0] ?? business?.full_name?.[0] ?? '?'}
+                        {businessName?.[0] ?? '?'}
                       </div>
                       <div className="flex-1">
-                        <p className="font-semibold text-sm text-gray-900">{business?.business_name ?? business?.full_name}</p>
+                        <p className="font-semibold text-sm text-gray-900">{businessName}</p>
                         <p className="text-xs text-gray-500">{new Date(inv.created_at).toLocaleDateString()}</p>
                       </div>
                       <span className="text-[10px] font-semibold text-dc-teal bg-white border border-dc-teal px-2 py-0.5 rounded-full">

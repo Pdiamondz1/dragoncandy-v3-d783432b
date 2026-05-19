@@ -100,7 +100,8 @@ export const useCreatorPendingInvitations = () => {
           campaigns:campaign_id (
             id, title, emoji, budget_min, budget_max, deadline,
             deliverable_count, content_types, cover_image_url,
-            profiles:user_id ( full_name, avatar_url, business_name )
+            profiles:user_id ( full_name, avatar_url ),
+            business_profiles:user_id ( business_name )
           )
         `)
         .eq('creator_id', user.id)

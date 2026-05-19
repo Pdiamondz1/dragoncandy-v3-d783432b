@@ -194,6 +194,36 @@ export const useNotifications = () => {
           }
         }
 
+        // Load notifications for creators (pending campaign invitations)
+        const { data: pendingInvites } = await supabase
+          .from('campaign_invitations')
+          .select('id, campaign_id, created_at, campaigns:campaign_id ( title )')
+          .eq('creator_id', user.id)
+          .eq('status', 'pending')
+          .order('created_at', { ascending: false })
+          .limit(10);
+
+        if (pendingInvites && pendingInvites.length > 0) {
+          const inviteNotifications: Notification[] = pendingInvites.map((inv) => ({
+            id: `invite-${inv.id}`,
+            type: 'campaign_invitation' as const,
+            title: 'Campaign Invitation',
+            message: `You've been invited to "${(inv.campaigns as { title?: string } | null)?.title || 'a campaign'}"`,
+            read: storedRead.get(`invite-${inv.id}`) ?? false,
+            created_at: inv.created_at,
+            data: {
+              campaign_id: inv.campaign_id,
+              invitation_id: inv.id,
+            },
+          }));
+
+          setNotifications(prev => {
+            const existingIds = new Set(prev.map(n => n.id));
+            const toAdd = inviteNotifications.filter(n => !existingIds.has(n.id));
+            return [...toAdd, ...prev];
+          });
+        }
+
         initializedRef.current = true;
       } catch (e) {
         console.error('Initial notifications load failed', e);
