@@ -75,6 +75,8 @@ export const DetailedApplicationCard: React.FC<DetailedApplicationCardProps> = (
       counterOfferId: latestPendingOffer.id,
       applicationId: application.id,
       response: 'accepted',
+      currentUserRole: 'creator',
+      agreedRate: latestPendingOffer.proposed_rate || undefined,
     });
   };
 
@@ -84,6 +86,7 @@ export const DetailedApplicationCard: React.FC<DetailedApplicationCardProps> = (
       counterOfferId: latestPendingOffer.id,
       applicationId: application.id,
       response: 'declined',
+      currentUserRole: 'creator',
     });
   };
 

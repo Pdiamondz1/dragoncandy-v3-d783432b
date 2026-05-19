@@ -95,6 +95,8 @@ export function AppliedPhaseView({ campaign, enrichedDetail, application }: Appl
                     counterOfferId: latestPendingOffer.id,
                     applicationId: application.id,
                     response: 'accepted',
+                    currentUserRole: 'creator',
+                    agreedRate: latestPendingOffer.proposed_rate || undefined,
                   })}
                   disabled={respondToOffer.isPending}
                 >
@@ -116,6 +118,7 @@ export function AppliedPhaseView({ campaign, enrichedDetail, application }: Appl
                     counterOfferId: latestPendingOffer.id,
                     applicationId: application.id,
                     response: 'declined',
+                    currentUserRole: 'creator',
                   })}
                   disabled={respondToOffer.isPending}
                 >

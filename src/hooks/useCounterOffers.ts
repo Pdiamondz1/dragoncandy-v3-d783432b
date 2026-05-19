@@ -138,10 +138,14 @@ export const useRespondToCounterOffer = () => {
       counterOfferId,
       applicationId,
       response,
+      currentUserRole,
+      agreedRate,
     }: {
       counterOfferId: string;
       applicationId: string;
       response: 'accepted' | 'declined';
+      currentUserRole: 'business' | 'creator';
+      agreedRate?: number;
     }) => {
       // Update counter-offer status with race guard
       const { data: offerRows, error: offerError } = await supabase
@@ -158,9 +162,14 @@ export const useRespondToCounterOffer = () => {
 
       // If accepted, update application status with race guard
       if (response === 'accepted') {
+        const newAppStatus = currentUserRole === 'business' ? 'accepted' : 'pending';
+
         const { data: appRows, error: appError } = await supabase
           .from('campaign_applications')
-          .update({ status: 'accepted' })
+          .update({
+            status: newAppStatus,
+            ...(agreedRate ? { proposed_rate: agreedRate } : {}),
+          })
           .eq('id', applicationId)
           .eq('status', 'counter_offered')
           .select('id');
@@ -171,16 +180,30 @@ export const useRespondToCounterOffer = () => {
         }
       }
 
-      return { response, applicationId };
+      if (response === 'declined') {
+        await supabase
+          .from('campaign_applications')
+          .update({ status: 'rejected' })
+          .eq('id', applicationId)
+          .eq('status', 'counter_offered');
+      }
+
+      return { response, applicationId, currentUserRole };
     },
-    onSuccess: async ({ response, applicationId }) => {
+    onSuccess: async ({ response, applicationId, currentUserRole }) => {
       queryClient.invalidateQueries({ queryKey: ['counter-offers'] });
       queryClient.invalidateQueries({ queryKey: ['campaign-applications'] });
       queryClient.invalidateQueries({ queryKey: ['creator-applications'] });
       toast({
-        title: response === 'accepted' ? 'Offer accepted!' : 'Offer declined',
+        title: response === 'accepted'
+          ? currentUserRole === 'business'
+            ? 'Creator hired!'
+            : 'Price agreed!'
+          : 'Offer declined',
         description: response === 'accepted'
-          ? 'The restaurant will now proceed with escrow payment to start the project.'
+          ? currentUserRole === 'business'
+            ? 'Proceed to payment to start the project.'
+            : 'The business will review your application.'
           : 'The other party will be notified.',
       });
 
@@ -215,7 +238,7 @@ export const useRespondToCounterOffer = () => {
           applicationStatus: response,
         });
 
-        if (response === 'accepted') {
+        if (response === 'accepted' && currentUserRole === 'business') {
           const { error: nudgeError } = await supabase.from('donny_nudges').insert({
             user_id: application.creator_id,
             type: 'campaign_hired',
