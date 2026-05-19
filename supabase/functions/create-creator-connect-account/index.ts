@@ -50,13 +50,22 @@ serve(async (req) => {
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
     const origin = req.headers.get("origin") || "https://dragoncandy-v3.lovable.app";
-    
+    const isTestMode = stripeKey.startsWith('sk_test_');
+
     let accountId = creatorProfile?.stripe_account_id;
+
+    if (isTestMode && creatorProfile?.stripe_onboarding_complete) {
+      logStep("Test mode: account already fully provisioned", { accountId });
+      return new Response(JSON.stringify({ autoCreated: true, accountId }), {
+        headers: { ...corsHeaders(req), "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
 
     // If no existing account, create one
     if (!accountId) {
       logStep("Creating new Express connected account");
-      
+
       const account = await stripe.accounts.create({
         type: 'express',
         email: user.email,
@@ -90,7 +99,66 @@ serve(async (req) => {
       logStep("Using existing connected account", { accountId });
     }
 
-    // Create account link for onboarding
+    // Test mode: auto-provision the account with test data instead of redirecting
+    if (isTestMode) {
+      logStep("Test mode: auto-provisioning account with test data");
+
+      const nameParts = (creatorProfile?.creator_name || 'Test Creator').split(' ');
+      const firstName = nameParts[0] || 'Test';
+      const lastName = nameParts.slice(1).join(' ') || 'Creator';
+      const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+        || req.headers.get('cf-connecting-ip')
+        || '127.0.0.1';
+
+      await stripe.accounts.update(accountId, {
+        business_type: 'individual',
+        individual: {
+          first_name: firstName,
+          last_name: lastName,
+          email: user.email,
+          dob: { day: 1, month: 1, year: 1990 },
+          address: {
+            line1: '123 Test St',
+            city: 'Hoboken',
+            state: 'NJ',
+            postal_code: '07030',
+            country: 'US',
+          },
+          ssn_last_4: '0000',
+        },
+        tos_acceptance: {
+          date: Math.floor(Date.now() / 1000),
+          ip: clientIp,
+        },
+      });
+
+      await stripe.accounts.createExternalAccount(accountId, {
+        external_account: {
+          object: 'bank_account',
+          country: 'US',
+          currency: 'usd',
+          routing_number: '110000000',
+          account_number: '000123456789',
+        },
+      });
+
+      const { error: completeError } = await supabaseClient
+        .from('creator_profiles')
+        .update({ stripe_onboarding_complete: true })
+        .eq('user_id', user.id);
+
+      if (completeError) {
+        logStep("Warning: Failed to mark onboarding complete", { error: completeError.message });
+      }
+
+      logStep("Test mode: account fully provisioned", { accountId });
+      return new Response(JSON.stringify({ autoCreated: true, accountId }), {
+        headers: { ...corsHeaders(req), "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
+
+    // Production mode: create account link for onboarding
     const accountLink = await stripe.accountLinks.create({
       account: accountId,
       refresh_url: `${origin}/dashboard/creator/settings?stripe_refresh=true`,
@@ -100,10 +168,10 @@ serve(async (req) => {
 
     logStep("Account link created", { url: accountLink.url });
 
-    return new Response(JSON.stringify({ 
-      url: accountLink.url, 
+    return new Response(JSON.stringify({
+      url: accountLink.url,
       accountId,
-      isNew: !creatorProfile?.stripe_account_id 
+      isNew: !creatorProfile?.stripe_account_id
     }), {
       headers: { ...corsHeaders(req), "Content-Type": "application/json" },
       status: 200,

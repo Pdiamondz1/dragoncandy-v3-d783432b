@@ -55,9 +55,11 @@ serve(async (req) => {
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
     const origin = req.headers.get("origin") || "https://dragoncandy-v3.lovable.app";
+    const isTestMode = stripeKey.startsWith('sk_test_');
 
     // Resolution order: org_units first (when org_unit_id provided), then business_profiles
     let stripeAccountId: string | null = null;
+    let sourceTable: 'org_units' | 'business_profiles' = 'business_profiles';
 
     if (org_unit_id) {
       const { data: orgUnit } = await supabaseClient
@@ -68,7 +70,16 @@ serve(async (req) => {
 
       if (orgUnit?.stripe_account_id) {
         stripeAccountId = orgUnit.stripe_account_id;
+        sourceTable = 'org_units';
         logStep("Found existing account in org_units", { stripeAccountId });
+      }
+
+      if (isTestMode && orgUnit?.stripe_onboarding_complete) {
+        logStep("Test mode: account already fully provisioned", { stripeAccountId });
+        return new Response(JSON.stringify({ autoCreated: true, accountId: stripeAccountId }), {
+          headers: { ...corsHeaders(req), "Content-Type": "application/json" },
+          status: 200,
+        });
       }
     }
 
@@ -76,6 +87,14 @@ serve(async (req) => {
       stripeAccountId = businessProfile?.stripe_account_id ?? null;
       if (stripeAccountId) {
         logStep("Found existing account in business_profiles", { stripeAccountId });
+      }
+
+      if (isTestMode && businessProfile?.stripe_onboarding_complete) {
+        logStep("Test mode: account already fully provisioned", { stripeAccountId });
+        return new Response(JSON.stringify({ autoCreated: true, accountId: stripeAccountId }), {
+          headers: { ...corsHeaders(req), "Content-Type": "application/json" },
+          status: 200,
+        });
       }
     }
 
@@ -107,6 +126,7 @@ serve(async (req) => {
       logStep("Express account created", { accountId });
 
       if (org_unit_id) {
+        sourceTable = 'org_units';
         const { error: updateError } = await supabaseClient
           .from('org_units')
           .update({ stripe_account_id: accountId })
@@ -130,6 +150,70 @@ serve(async (req) => {
       logStep("Using existing connected account", { accountId });
     }
 
+    // Test mode: auto-provision the account with test data instead of redirecting
+    if (isTestMode) {
+      logStep("Test mode: auto-provisioning account with test data");
+
+      const nameParts = (businessProfile?.business_name || 'Test Business').split(' ');
+      const firstName = nameParts[0] || 'Test';
+      const lastName = nameParts.slice(1).join(' ') || 'Business';
+      const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+        || req.headers.get('cf-connecting-ip')
+        || '127.0.0.1';
+
+      await stripe.accounts.update(accountId, {
+        business_type: 'individual',
+        individual: {
+          first_name: firstName,
+          last_name: lastName,
+          email: user.email,
+          dob: { day: 1, month: 1, year: 1990 },
+          address: {
+            line1: '123 Test St',
+            city: 'Hoboken',
+            state: 'NJ',
+            postal_code: '07030',
+            country: 'US',
+          },
+          ssn_last_4: '0000',
+        },
+        tos_acceptance: {
+          date: Math.floor(Date.now() / 1000),
+          ip: clientIp,
+        },
+      });
+
+      await stripe.accounts.createExternalAccount(accountId, {
+        external_account: {
+          object: 'bank_account',
+          country: 'US',
+          currency: 'usd',
+          routing_number: '110000000',
+          account_number: '000123456789',
+        },
+      });
+
+      if (sourceTable === 'org_units' && org_unit_id) {
+        await supabaseClient
+          .from('org_units')
+          .update({ stripe_onboarding_complete: true })
+          .eq('id', org_unit_id);
+      } else {
+        await supabaseClient
+          .from('business_profiles')
+          .update({ stripe_onboarding_complete: true })
+          .eq('user_id', user.id)
+          .eq('account_type', 'restaurant');
+      }
+
+      logStep("Test mode: account fully provisioned", { accountId });
+      return new Response(JSON.stringify({ autoCreated: true, accountId }), {
+        headers: { ...corsHeaders(req), "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
+
+    // Production mode: create account link for onboarding
     const accountLink = await stripe.accountLinks.create({
       account: accountId,
       refresh_url: `${origin}/dashboard/business/settings?stripe_refresh=true`,

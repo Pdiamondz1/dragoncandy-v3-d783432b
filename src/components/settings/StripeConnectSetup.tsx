@@ -1,13 +1,24 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ExternalLink, AlertCircle, CheckCircle2, Clock, Wallet, LayoutDashboard, Loader2 } from 'lucide-react';
+import { ExternalLink, AlertCircle, CheckCircle2, Clock, Wallet, LayoutDashboard, Loader2, Unplug } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useOrgUnits } from '@/hooks/useOrgData';
 import { toast } from 'sonner';
 import { useFirstRunMissions } from '@/hooks/useFirstRunMissions';
 import { StripeTestHelper } from '@/components/payments/StripeTestHelper';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 interface PayoutStatus {
   hasAccount: boolean;
@@ -52,8 +63,10 @@ export function StripeConnectSetup({ role }: StripeConnectSetupProps) {
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState(false);
   const [withdrawing, setWithdrawing] = useState(false);
+  const [disconnecting, setDisconnecting] = useState(false);
 
   const config = ROLE_CONFIG[role];
+  const isTestMode = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY?.startsWith('pk_test_');
 
   const checkStatus = useCallback(async () => {
     if (!user) return;
@@ -94,7 +107,11 @@ export function StripeConnectSetup({ role }: StripeConnectSetupProps) {
         body: { org_unit_id: activeOrgUnit?.id ?? null },
       });
       if (error) throw error;
-      if (data?.url) {
+      if (data?.autoCreated) {
+        toast.success('Test Stripe account created instantly!');
+        completeMission(config.mission);
+        checkStatus();
+      } else if (data?.url) {
         window.location.href = data.url;
       }
     } catch (err) {
@@ -129,6 +146,26 @@ export function StripeConnectSetup({ role }: StripeConnectSetupProps) {
       toast.error('Withdrawal failed. Please try again.');
     } finally {
       setWithdrawing(false);
+    }
+  };
+
+  const handleDisconnect = async () => {
+    setDisconnecting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('disconnect-stripe-account', {
+        body: { org_unit_id: activeOrgUnit?.id ?? null },
+      });
+      if (error) throw error;
+      if (data?.error === 'BALANCE_REMAINING') {
+        toast.error(`You have $${data.balance.toFixed(2)} pending. Withdraw your balance before disconnecting.`);
+        return;
+      }
+      toast.success('Stripe account disconnected.');
+      checkStatus();
+    } catch {
+      toast.error('Failed to disconnect. Please try again.');
+    } finally {
+      setDisconnecting(false);
     }
   };
 
@@ -185,6 +222,11 @@ export function StripeConnectSetup({ role }: StripeConnectSetupProps) {
             <ExternalLink className="w-4 h-4 mr-2" />
             {connecting ? 'Connecting...' : config.connectLabel}
           </Button>
+          {isTestMode && (
+            <p className="text-[10px] text-muted-foreground">
+              Test mode: creates a verified sandbox account instantly
+            </p>
+          )}
         </div>
       )}
 
@@ -210,20 +252,57 @@ export function StripeConnectSetup({ role }: StripeConnectSetupProps) {
       {status?.hasAccount && status.onboardingComplete && (
         <div className="rounded-xl border border-green-200 bg-green-50 p-4 space-y-3">
           <p className="text-sm text-green-800">{config.connectedLabel}</p>
-          <Button
-            onClick={handleDashboard}
-            disabled={connecting}
-            variant="outline"
-            size="sm"
-            className="rounded-full"
-          >
-            {connecting ? (
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            ) : (
-              <LayoutDashboard className="w-4 h-4 mr-2" />
-            )}
-            {connecting ? 'Opening...' : 'View Stripe Dashboard'}
-          </Button>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button
+              onClick={handleDashboard}
+              disabled={connecting}
+              variant="outline"
+              size="sm"
+              className="rounded-full"
+            >
+              {connecting ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <LayoutDashboard className="w-4 h-4 mr-2" />
+              )}
+              {connecting ? 'Opening...' : 'View Stripe Dashboard'}
+            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-full border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                  disabled={disconnecting || (status?.platformPendingBalance ?? 0) > 0}
+                >
+                  <Unplug className="w-4 h-4 mr-2" />
+                  {disconnecting ? 'Disconnecting...' : 'Disconnect Account'}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Disconnect Stripe Account?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will unlink your Stripe account from DragonCandy. You won't be able to {role === 'creator' ? 'receive' : 'process'} payments until you reconnect.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel className="rounded-full">Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleDisconnect}
+                    className="rounded-full bg-red-600 hover:bg-red-700"
+                  >
+                    Disconnect
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+          {(status?.platformPendingBalance ?? 0) > 0 && (
+            <p className="text-xs text-amber-600 font-medium">
+              Withdraw your balance before disconnecting.
+            </p>
+          )}
         </div>
       )}
 
