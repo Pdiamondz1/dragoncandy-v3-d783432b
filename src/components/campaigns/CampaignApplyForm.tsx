@@ -5,7 +5,6 @@ import { Loader2 } from 'lucide-react';
 import { PublicCampaign } from '@/hooks/usePublicCampaigns';
 import { getSignedProfileUrl } from '@/hooks/useSignedUrl';
 import { useCreateApplication } from '@/hooks/useCreateApplication';
-import { formatBudget } from '@/lib/campaignUtils';
 import type { DeliveryTier } from '@/types/campaignMedia';
 import { TIER_LIMITS } from '@/types/campaignMedia';
 import { useAuth } from '@/hooks/useAuth';
@@ -64,8 +63,8 @@ export const CampaignApplyForm: React.FC<CampaignApplyFormProps> = ({
   onCancel,
 }) => {
   const isDragonDash = deliveryTier === 'dragondash';
-  const isFixedPrice = campaign.pricing_type === 'fixed';
 
+  const [offerMode, setOfferMode] = useState<'accept' | 'offer'>('accept');
   const [proposedRate, setProposedRate] = useState('');
   const [selectedDate, setSelectedDate] = useState<DateOption>('today');
   const [pitch, setPitch] = useState('');
@@ -103,18 +102,20 @@ export const CampaignApplyForm: React.FC<CampaignApplyFormProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isFixedPrice && (!proposedRate || Number(proposedRate) <= 0)) return;
+    if (offerMode === 'offer' && (!proposedRate || Number(proposedRate) < 50)) return;
 
     try {
       await createApplication.mutateAsync({
         campaignId: campaign.id,
         introMessage: pitch || '',
         proposedTimeline: getISODate(selectedDate),
-        proposedRate: isFixedPrice ? undefined : Number(proposedRate),
+        proposedRate: offerMode === 'accept'
+          ? (campaign.fixed_price || undefined)
+          : Number(proposedRate),
         portfolioUrl: portfolioUrl || undefined,
+        isCounterOffer: offerMode === 'offer',
       });
       setSubmitted(true);
-      // Small delay so user sees success state before modal closes
       setTimeout(() => onSuccess(), 1500);
     } catch {
       // Error handled by mutation's onError
@@ -146,34 +147,57 @@ export const CampaignApplyForm: React.FC<CampaignApplyFormProps> = ({
         </button>
       </div>
 
-      {/* Proposed Rate (bid-range only) */}
-      {isFixedPrice ? (
-        <div className="bg-green-50 border border-green-200 rounded-xl p-3 mb-4">
-          <p className="text-sm text-green-800">
-            Fixed-price campaign. You will receive <strong>{formatBudget(campaign)}</strong> upon successful completion.
+      {/* Campaign Price & Offer Options */}
+      <div className="mb-4">
+        <div className="bg-teal-50 border border-teal-200 rounded-xl p-3 mb-3">
+          <p className="text-sm text-teal-800 font-semibold">
+            Campaign Price: <span className="text-lg">${campaign.fixed_price?.toLocaleString()}</span>
           </p>
         </div>
-      ) : (
-        <div className="mb-4">
-          <label className="text-xs font-semibold text-gray-700 block mb-1.5">💰 Your Rate</label>
-          <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-dc-teal font-bold text-sm">$</span>
-            <input
-              type="number"
-              value={proposedRate}
-              onChange={(e) => setProposedRate(e.target.value)}
-              className="w-full pl-7 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-800 outline-none focus:border-dc-teal focus:ring-1 focus:ring-dc-teal"
-              placeholder="Enter your rate"
-              min="0"
-              step="1"
-              required
-            />
+        <div className="flex gap-2 mb-3">
+          <button
+            type="button"
+            onClick={() => { setOfferMode('accept'); setProposedRate(''); }}
+            className={`flex-1 text-xs px-3 py-2 rounded-full font-semibold transition-colors ${
+              offerMode === 'accept'
+                ? 'bg-dc-teal-btn text-white'
+                : 'bg-white text-gray-600 border border-gray-200 hover:border-dc-teal'
+            }`}
+          >
+            Accept Price
+          </button>
+          <button
+            type="button"
+            onClick={() => setOfferMode('offer')}
+            className={`flex-1 text-xs px-3 py-2 rounded-full font-semibold transition-colors ${
+              offerMode === 'offer'
+                ? 'bg-dc-pink-accent text-white'
+                : 'bg-white text-gray-600 border border-gray-200 hover:border-dc-pink-accent'
+            }`}
+          >
+            Make an Offer
+          </button>
+        </div>
+        {offerMode === 'offer' && (
+          <div>
+            <label className="text-xs font-semibold text-gray-700 block mb-1.5">Your Offer</label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-dc-teal font-bold text-sm">$</span>
+              <input
+                type="number"
+                value={proposedRate}
+                onChange={(e) => setProposedRate(e.target.value)}
+                className="w-full pl-7 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-800 outline-none focus:border-dc-teal focus:ring-1 focus:ring-dc-teal"
+                placeholder="Enter your offer"
+                min={50}
+                step={1}
+                required
+              />
+            </div>
+            <p className="text-[11px] text-gray-500 mt-1">Minimum offer: $50</p>
           </div>
-          <p className="text-[11px] text-gray-500 mt-1">
-            Campaign range: {formatBudget(campaign)}
-          </p>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Available Dates */}
       <div className="mb-4">
@@ -281,16 +305,15 @@ export const CampaignApplyForm: React.FC<CampaignApplyFormProps> = ({
       {/* Submit */}
       <button
         type="submit"
-        disabled={createApplication.isPending || (!isFixedPrice && (!proposedRate || Number(proposedRate) <= 0))}
+        disabled={createApplication.isPending || (offerMode === 'offer' && (!proposedRate || Number(proposedRate) < 50))}
         className="w-full bg-dc-teal-btn text-white rounded-full py-3.5 font-bold text-sm hover:bg-dc-teal-btn-hover transition-colors active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
       >
         {createApplication.isPending ? (
-          <>
-            <Loader2 className="w-4 h-4 animate-spin" />
-            Submitting…
-          </>
+          <><Loader2 className="w-4 h-4 animate-spin" />Submitting…</>
+        ) : offerMode === 'accept' ? (
+          'Accept Price & Apply'
         ) : (
-          'Submit Application'
+          'Submit Offer & Apply'
         )}
       </button>
       <p className="text-[11px] text-gray-400 text-center mt-2">
