@@ -193,12 +193,15 @@ export function DonnyProvider({ children, userRole }: DonnyProviderProps) {
           'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ socialAccountIds: accountIds, containers: [container] }),
+        body: JSON.stringify({ accounts: accountIds, containers: [container] }),
       });
 
       if (!res.ok) {
-        const errBody = await res.json().catch(() => ({}));
-        throw new Error((errBody as Record<string, string>).error || `Outstand API returned ${res.status}`);
+        const errBody = await res.json().catch(() => ({})) as Record<string, unknown>;
+        const errDetail = Array.isArray(errBody.error)
+          ? (errBody.error as Array<{ message?: string }>)[0]?.message ?? JSON.stringify(errBody.error)
+          : (errBody.error as string) || `Outstand API returned ${res.status}`;
+        throw new Error(errDetail);
       }
 
       const publishData = await res.json() as Record<string, unknown>;

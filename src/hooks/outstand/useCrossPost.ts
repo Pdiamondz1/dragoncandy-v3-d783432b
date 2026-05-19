@@ -25,7 +25,7 @@ export function useCrossPost() {
         }));
       }
       const payload: Record<string, unknown> = {
-        socialAccountIds: accountIds,
+        accounts: accountIds,
         containers: [container],
       };
       if (scheduledAt) {
@@ -43,7 +43,10 @@ export function useCrossPost() {
 
       const data = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
       if (!res.ok) {
-        throw new Error(data?.error || data?.message || `Post failed (${res.status})`);
+        const errMsg = Array.isArray(data?.error)
+          ? data.error[0]?.message ?? JSON.stringify(data.error)
+          : data?.error || data?.message || `Post failed (${res.status})`;
+        throw new Error(errMsg);
       }
       return data;
     },

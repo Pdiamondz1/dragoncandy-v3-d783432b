@@ -142,6 +142,13 @@ export const CrossPostPrompt: React.FC<CrossPostPromptProps> = ({
             onRushComplete={() => onOpenChange(false)}
           />
 
+          {crossPost.isError && (
+            <div className="bg-red-50 border border-red-200 rounded-xl p-3">
+              <p className="text-sm text-red-800 font-medium">Cross-post failed</p>
+              <p className="text-xs text-red-700 mt-1">{crossPost.error?.message}</p>
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-2">
             <button
               type="button"
@@ -150,7 +157,7 @@ export const CrossPostPrompt: React.FC<CrossPostPromptProps> = ({
               className="flex items-center justify-center gap-1.5 bg-dc-teal text-white text-sm font-bold py-3 rounded-full hover:bg-teal-500 transition-colors disabled:opacity-50"
             >
               <Send className="h-3.5 w-3.5" />
-              Post Now
+              {crossPost.isPending ? 'Posting...' : 'Post Now'}
             </button>
             <button
               type="button"
