@@ -39,7 +39,7 @@ export const CounterOfferModal: React.FC<CounterOfferModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!message.trim() || !proposedRate) return;
+    if (!message.trim() || !proposedRate || parseFloat(proposedRate) < 50) return;
 
     await createCounterOffer.mutateAsync({
       applicationId,
@@ -81,9 +81,12 @@ export const CounterOfferModal: React.FC<CounterOfferModalProps> = ({
               placeholder={currentRate ? `Current: $${currentRate}` : 'Enter proposed rate'}
               value={proposedRate}
               onChange={(e) => setProposedRate(e.target.value)}
-              min={0}
+              min={50}
               required
             />
+            {proposedRate && parseFloat(proposedRate) < 50 && parseFloat(proposedRate) > 0 && (
+              <p className="text-sm text-red-500">Minimum offer is $50</p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -117,7 +120,7 @@ export const CounterOfferModal: React.FC<CounterOfferModalProps> = ({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={!message.trim() || !proposedRate || createCounterOffer.isPending}>
+            <Button type="submit" disabled={!message.trim() || !proposedRate || parseFloat(proposedRate) < 50 || createCounterOffer.isPending}>
               {createCounterOffer.isPending ? 'Sending…' : 'Send Counter Offer'}
             </Button>
           </DialogFooter>
