@@ -41,8 +41,6 @@ export default function MyCampaignsPage() {
     { id: 'done', label: 'Done', count: completedCollabs.length },
   ];
 
-  const totalCount = pendingApps.length + activeCollabs.length + completedCollabs.length;
-
   const handleSetupPayouts = async () => {
     const { data } = await supabase.functions.invoke('create-creator-connect-account');
     if (data?.url) window.location.href = data.url;
@@ -54,11 +52,6 @@ export default function MyCampaignsPage() {
         {/* Page title */}
         <div className="px-4 pt-4 pb-3 flex items-center justify-between">
           <h1 className="text-xl font-bold text-gray-900 tracking-wide">MY CAMPAIGNS</h1>
-          {totalCount > 0 && (
-            <span className="bg-dc-teal text-white text-xs font-semibold px-2.5 py-0.5 rounded-full">
-              {totalCount}
-            </span>
-          )}
         </div>
 
         {/* Earnings Summary */}
