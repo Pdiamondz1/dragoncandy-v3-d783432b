@@ -33,7 +33,7 @@ export function CampaignPreviewCard({ campaign }: CampaignPreviewCardProps) {
           <p className="text-sm text-gray-600 line-clamp-3">{campaign.description || 'No description yet'}</p>
           <div className="flex flex-wrap gap-2">
             <span className="bg-teal-50 text-teal-700 rounded-full px-2 py-1 text-xs font-medium">
-              ${campaign.budget_max || 0}
+              ${campaign.fixed_price || 0}
             </span>
             {tierConfig && (
               <span className="bg-gray-100 rounded-full px-2 py-1 text-xs font-medium text-gray-700 inline-flex items-center gap-1">

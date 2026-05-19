@@ -2,7 +2,6 @@ import type { EditableCampaign, BrandFields, CampaignIdea } from '@/types/campai
 import { EditableField } from './EditableField';
 import { PlatformChips } from './PlatformChips';
 import { DeliverablesList } from './DeliverablesList';
-import { BudgetSlider } from './BudgetSlider';
 import { TimelinePicker } from './TimelinePicker';
 import { TierBadge } from './TierBadge';
 import { EditorSection } from './EditorSection';
@@ -79,12 +78,24 @@ export function CampaignEditor({
 
       {/* Compensation & Terms */}
       <EditorSection title="Compensation & Terms" id="section-compensation">
-        <BudgetSlider min={campaign.budget_min} max={campaign.budget_max}
-          onChangeMin={(v) => updateField('budget_min', v)} onChangeMax={(v) => updateField('budget_max', v)} />
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-gray-700">Campaign Price</label>
+          <div className="relative max-w-xs">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-dc-teal font-bold">$</span>
+            <input
+              type="number"
+              value={campaign.fixed_price}
+              onChange={(e) => updateField('fixed_price', Number(e.target.value) || 0)}
+              className="w-full pl-8 pr-3 py-2 border border-gray-200 rounded-xl text-lg font-semibold outline-none focus:border-dc-teal focus:ring-1 focus:ring-dc-teal"
+              min={50}
+              step={25}
+            />
+          </div>
+        </div>
         <CostBreakdown
           deliverableCount={campaign.deliverables.length}
-          budgetTotal={campaign.budget_max + tierConfig.fee}
-          baseCostPerDeliverable={campaign.deliverables.length > 0 ? campaign.budget_max / campaign.deliverables.length : 0}
+          budgetTotal={campaign.fixed_price + tierConfig.fee}
+          baseCostPerDeliverable={campaign.deliverables.length > 0 ? campaign.fixed_price / campaign.deliverables.length : 0}
           premiumAmount={tierConfig.fee}
           deliveryType={tierConfig.label}
         />

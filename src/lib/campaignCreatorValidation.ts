@@ -47,7 +47,8 @@ export const campaignIdeaSchema = z.object({
   campaign_type: campaignTypeSchema.catch('ugc_content'),
   recommended_platforms: z.array(platformSchema).min(1),
   deliverables: z.array(ideaDeliverableSchema).min(1),
-  budget_range: z.object({ min: z.number(), max: z.number() }),
+  price: z.number().optional(),
+  budget_range: z.object({ min: z.number(), max: z.number() }).optional(),
   timeline_days: z.number().positive(),
   tier: deliveryTierSchema.catch('standard'),
   tier_reasoning: z.string(),
@@ -77,8 +78,7 @@ export const launchValidationSchema = z.object({
     max_duration_seconds: z.number().nullish(),
     description: z.string().nullish(),
   })).min(1, 'At least one deliverable required'),
-  budget_min: z.number().positive('Budget must be positive'),
-  budget_max: z.number().positive('Budget must be positive'),
+  fixed_price: z.number().min(50, 'Price must be at least $50'),
   deadline: z.string().refine(
     (d) => new Date(d) > new Date(),
     'Deadline must be in the future'

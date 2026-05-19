@@ -56,7 +56,7 @@ export function DonnyRichCard({ card }: DonnyRichCardProps) {
         <div className="bg-white rounded-xl p-3 border-2 border-teal-300 mt-1.5">
           <div className="text-sm font-bold text-dc-text">{card.data.title}</div>
           <div className="text-xs text-dc-text-muted mt-1">
-            {card.data.platform} · ${card.data.budget_max || card.data.budget_min || 0}
+            {card.data.platform} · ${card.data.fixed_price || 0}
           </div>
           <div className="text-xs text-dc-teal mt-1">
             {card.data.application_count} applications · {card.data.status}

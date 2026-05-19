@@ -26,7 +26,7 @@ export function IdeaCard({ idea, isSelected, onSelect }: IdeaCardProps) {
       </div>
       <div className="flex flex-wrap gap-2 mt-3">
         <span className="bg-gray-100 rounded-full px-2 py-1 text-xs font-medium text-gray-700">
-          ${idea.budget_range.min}–${idea.budget_range.max}
+          ${idea.price ?? idea.budget_range?.max ?? 'TBD'}
         </span>
         <span className="bg-gray-100 rounded-full px-2 py-1 text-xs font-medium text-gray-700">
           {idea.timeline_days} days

@@ -31,8 +31,7 @@ export interface DonnyRichCardCampaignSummary {
   data: {
     id: string;
     title: string;
-    budget_min: number;
-    budget_max: number;
+    fixed_price: number;
     platform: string;
     application_count: number;
     status: string;

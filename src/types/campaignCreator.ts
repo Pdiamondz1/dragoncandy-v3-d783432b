@@ -36,7 +36,8 @@ export interface CampaignIdea {
   campaign_type: CampaignType;
   recommended_platforms: Platform[];
   deliverables: IdeaDeliverable[];
-  budget_range: { min: number; max: number };
+  price?: number;
+  budget_range?: { min: number; max: number };
   timeline_days: number;
   tier: DeliveryTier;
   tier_reasoning: string;
@@ -53,8 +54,7 @@ export interface EditableCampaign {
   campaign_type: CampaignType;
   platforms: Platform[];
   deliverables: Deliverable[];
-  budget_min: number;
-  budget_max: number;
+  fixed_price: number;
   per_creator_cap: number;
   usage_rights_days: number;
   exclusivity_days: number;
