@@ -10,7 +10,7 @@ import { ApplicationStatusBadge } from './ApplicationStatusBadge';
 import { JointApprovalCard } from './JointApprovalCard';
 import { CounterOfferModal } from './CounterOfferModal';
 import { CounterOfferThread } from './CounterOfferThread';
-import { useCounterOffers } from '@/hooks/useCounterOffers';
+import { useCounterOffers, useRespondToCounterOffer } from '@/hooks/useCounterOffers';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -39,20 +39,44 @@ const ApplicationCardComponent: React.FC<ApplicationCardProps> = ({
   const [showCounterModal, setShowCounterModal] = useState(false);
   const [isPayingEscrow, setIsPayingEscrow] = useState(false);
   const { data: counterOffers = [] } = useCounterOffers(application.id);
+  const respondToOffer = useRespondToCounterOffer();
   const { user } = useAuth();
 
+  const latestCreatorOffer = counterOffers
+    .filter(o => o.status === 'pending' && o.sender_id !== user?.id)
+    .at(-1);
+
   const handleAccept = async () => {
-    await manageApplication.mutateAsync({
-      applicationId: application.id,
-      status: 'accepted',
-    });
+    if (application.status === 'counter_offered' && latestCreatorOffer) {
+      await respondToOffer.mutateAsync({
+        counterOfferId: latestCreatorOffer.id,
+        applicationId: application.id,
+        response: 'accepted',
+        currentUserRole: 'business',
+        agreedRate: latestCreatorOffer.proposed_rate || undefined,
+      });
+    } else {
+      await manageApplication.mutateAsync({
+        applicationId: application.id,
+        status: 'accepted',
+      });
+    }
   };
 
   const handleReject = async () => {
-    await manageApplication.mutateAsync({
-      applicationId: application.id,
-      status: 'rejected',
-    });
+    if (application.status === 'counter_offered' && latestCreatorOffer) {
+      await respondToOffer.mutateAsync({
+        counterOfferId: latestCreatorOffer.id,
+        applicationId: application.id,
+        response: 'declined',
+        currentUserRole: 'business',
+      });
+    } else {
+      await manageApplication.mutateAsync({
+        applicationId: application.id,
+        status: 'rejected',
+      });
+    }
   };
 
   const handlePayEscrow = async () => {
@@ -267,20 +291,20 @@ const ApplicationCardComponent: React.FC<ApplicationCardProps> = ({
               <div className="flex gap-2 pt-4 border-t">
                 <Button
                   onClick={handleAccept}
-                  disabled={manageApplication.isPending}
+                  disabled={manageApplication.isPending || respondToOffer.isPending}
                   className="flex-1"
                   size="sm"
                 >
                   <Check className="h-4 w-4 mr-2" aria-hidden="true" />
                   Accept ({formatCurrency(
-                    counterOffers.filter(o => o.status === 'pending' && o.sender_id !== user?.id).at(-1)?.proposed_rate
+                    latestCreatorOffer?.proposed_rate
                     || application.proposed_rate
                   )})
                 </Button>
                 <Button
                   onClick={() => setShowCounterModal(true)}
                   variant="secondary"
-                  disabled={manageApplication.isPending}
+                  disabled={manageApplication.isPending || respondToOffer.isPending}
                   className="flex-1"
                   size="sm"
                 >
@@ -290,7 +314,7 @@ const ApplicationCardComponent: React.FC<ApplicationCardProps> = ({
                 <Button
                   onClick={handleReject}
                   variant="outline"
-                  disabled={manageApplication.isPending}
+                  disabled={manageApplication.isPending || respondToOffer.isPending}
                   className="flex-1"
                   size="sm"
                 >

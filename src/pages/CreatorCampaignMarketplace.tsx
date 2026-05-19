@@ -434,7 +434,7 @@ const CreatorCampaignMarketplace = () => {
                       {campaign?.emoji ?? ''} {campaign?.title}
                     </p>
                     <p className="text-xs text-gray-500 mb-2">
-                      {formatBudget(campaign)}
+                      {campaign ? formatBudget(campaign) : 'Budget TBD'}
                       {campaign?.deliverable_count ? ` · ${campaign.deliverable_count} deliverables` : ''}
                       {campaign?.deadline ? ` · Due ${new Date(campaign.deadline).toLocaleDateString()}` : ''}
                     </p>
