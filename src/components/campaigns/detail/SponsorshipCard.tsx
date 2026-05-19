@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { DollarSign, MessageSquare, CheckCircle, Clock, Loader2, Star, Handshake } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 import { useCampaignSponsorshipDetail } from '@/hooks/useCampaignSponsorshipDetail';
 import { useSponsorshipComplete } from '@/hooks/useSponsorshipComplete';
 import { ResponsiveRatingModal } from '@/components/reviews/ResponsiveRatingModal';
@@ -17,6 +20,21 @@ export const SponsorshipCard: React.FC<SponsorshipCardProps> = ({ campaignId }) 
   const { data: sponsorship, isLoading } = useCampaignSponsorshipDetail(campaignId);
   const { requestCompletion, requestingId } = useSponsorshipComplete();
   const [ratingModal, setRatingModal] = useState(false);
+  const { user } = useAuth();
+
+  const { data: existingSponsorshipReview } = useQuery({
+    queryKey: ['sponsorship-review-check', sponsorship?.id, user?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('project_reviews')
+        .select('id, rating')
+        .eq('sponsorship_id', sponsorship!.id)
+        .eq('reviewer_id', user!.id)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!sponsorship?.id && !!user?.id && !!sponsorship?.completed_at,
+  });
 
   if (isLoading || !sponsorship) return null;
 
@@ -134,7 +152,7 @@ export const SponsorshipCard: React.FC<SponsorshipCardProps> = ({ campaignId }) 
               <MessageSquare className="h-3 w-3 mr-1" />
               Message Brand
             </Button>
-            {isCompleted && (
+            {isCompleted && !existingSponsorshipReview && (
               <Button
                 size="sm"
                 className="rounded-full bg-pink-500 hover:bg-pink-600 text-white flex-1"
@@ -144,11 +162,17 @@ export const SponsorshipCard: React.FC<SponsorshipCardProps> = ({ campaignId }) 
                 Leave Review
               </Button>
             )}
+            {isCompleted && existingSponsorshipReview && (
+              <span className="inline-flex items-center gap-1 text-xs text-dc-teal font-semibold flex-1 justify-center">
+                <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                {existingSponsorshipReview.rating}/5 — Review Submitted
+              </span>
+            )}
           </div>
         </CardContent>
       </Card>
 
-      {ratingModal && sponsorship.brand_profile && (
+      {ratingModal && sponsorship.brand_profile && !existingSponsorshipReview && (
         <ResponsiveRatingModal
           isOpen={ratingModal}
           onClose={() => setRatingModal(false)}
