@@ -42,7 +42,7 @@ export function useBusinessActiveCampaigns(orgUnitId?: string | null) {
       const campaignIds = campaigns.map((c) => c.id);
       const { data: collabs, error: collabError } = await supabase
         .from('campaign_collaborations')
-        .select('campaign_id, creator_id, status, profiles:creator_id(full_name)')
+        .select('campaign_id, creator_id, status, profiles:creator_id(full_name), creator_profiles:creator_id(creator_name)')
         .in('campaign_id', campaignIds)
         .in('status', ['active', 'completed']);
 
@@ -52,7 +52,9 @@ export function useBusinessActiveCampaigns(orgUnitId?: string | null) {
       const creatorMap = new Map<string, string>();
       const collabStatusMap = new Map<string, { status: string }>();
       collabs?.forEach((c) => {
-        const name = (c.profiles as unknown as { full_name: string | null })?.full_name;
+        const creatorName = (c.creator_profiles as unknown as { creator_name: string | null })?.creator_name;
+        const fullName = (c.profiles as unknown as { full_name: string | null })?.full_name;
+        const name = creatorName || fullName;
         if (name) creatorMap.set(c.campaign_id, name);
         collabStatusMap.set(c.campaign_id, { status: c.status });
       });
@@ -65,12 +67,14 @@ export function useBusinessActiveCampaigns(orgUnitId?: string | null) {
       if (campaignsWithoutCreator.length > 0) {
         const { data: acceptedApps } = await supabase
           .from('campaign_applications')
-          .select('campaign_id, creator_id, profiles:creator_id(full_name)')
+          .select('campaign_id, creator_id, profiles:creator_id(full_name), creator_profiles:creator_id(creator_name)')
           .in('campaign_id', campaignsWithoutCreator)
           .eq('status', 'accepted');
 
         acceptedApps?.forEach((app) => {
-          const name = (app.profiles as unknown as { full_name: string | null })?.full_name;
+          const creatorName = (app.creator_profiles as unknown as { creator_name: string | null })?.creator_name;
+          const fullName = (app.profiles as unknown as { full_name: string | null })?.full_name;
+          const name = creatorName || fullName;
           if (name && !creatorMap.has(app.campaign_id)) {
             creatorMap.set(app.campaign_id, name);
           }
