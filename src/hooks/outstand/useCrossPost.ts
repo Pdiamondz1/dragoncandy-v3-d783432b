@@ -25,7 +25,7 @@ export function useCrossPost() {
         }));
       }
       const payload: Record<string, unknown> = {
-        accounts: accountIds,
+        socialAccountIds: accountIds,
         containers: [container],
       };
       if (scheduledAt) {

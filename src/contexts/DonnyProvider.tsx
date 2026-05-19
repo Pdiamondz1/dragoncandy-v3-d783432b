@@ -193,7 +193,7 @@ export function DonnyProvider({ children, userRole }: DonnyProviderProps) {
           'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ accounts: accountIds, containers: [container] }),
+        body: JSON.stringify({ socialAccountIds: accountIds, containers: [container] }),
       });
 
       if (!res.ok) {
