@@ -10,8 +10,6 @@ import { BottomCTA } from "@/components/landing/BottomCTA";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { lazy, Suspense, useEffect } from "react";
-import { Spinner } from "@/components/ui/spinner";
-
 export default function LandingPage() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
@@ -21,18 +19,6 @@ export default function LandingPage() {
       navigate('/dashboard', { replace: true });
     }
   }, [user, loading, navigate]);
-
-  // Show splash while auth resolves for returning users (Supabase sets sb- cookies)
-  const hasSessionHint = typeof document !== 'undefined' &&
-    document.cookie.includes('sb-');
-  if (loading && hasSessionHint) {
-    return (
-      <div className="min-h-screen bg-white flex flex-col items-center justify-center">
-        <img src="/logo.webp" alt="DragonCandy" className="h-16 w-auto mb-6" />
-        <Spinner className="h-10 w-10 border-teal-400" />
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-white relative overflow-x-hidden">
