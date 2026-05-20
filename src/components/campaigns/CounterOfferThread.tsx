@@ -30,14 +30,18 @@ export const CounterOfferThread: React.FC<CounterOfferThreadProps> = ({ counterO
         Negotiation History
       </h4>
       <div className="space-y-2">
-        {counterOffers.map((offer) => {
+        {counterOffers.map((offer, index) => {
           const isFromMe = offer.sender_id === currentUserId;
+          const isSuperseded = offer.status === 'declined' && counterOffers.slice(index + 1).some(
+            later => later.sender_role !== offer.sender_role
+          );
+          const displayStatus = isSuperseded ? 'superseded' : offer.status;
           return (
             <div
               key={offer.id}
               className={`p-3 rounded-lg border text-sm ${
                 isFromMe ? 'bg-primary/5 border-primary/20 ml-4' : 'bg-muted/50 mr-4'
-              }`}
+              } ${isSuperseded ? 'opacity-50' : ''}`}
             >
               <div className="flex items-center justify-between mb-1.5">
                 <span className="font-medium text-xs">
@@ -45,10 +49,10 @@ export const CounterOfferThread: React.FC<CounterOfferThreadProps> = ({ counterO
                 </span>
                 <div className="flex items-center gap-2">
                   <Badge
-                    variant={offer.status === 'accepted' ? 'default' : offer.status === 'declined' ? 'destructive' : 'secondary'}
+                    variant={displayStatus === 'accepted' ? 'default' : displayStatus === 'declined' ? 'destructive' : 'secondary'}
                     className="text-[10px] px-1.5 py-0"
                   >
-                    {offer.status}
+                    {displayStatus}
                   </Badge>
                   <span className="text-[10px] text-muted-foreground">{formatDate(offer.created_at)}</span>
                 </div>

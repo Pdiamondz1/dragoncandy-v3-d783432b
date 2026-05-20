@@ -67,6 +67,13 @@ export const NotificationDropdown: React.FC = () => {
       } else if (notification.data?.campaign_id) {
         navigate(`/messages/${notification.data.campaign_id}`);
       }
+    } else if (notification.type === 'counter_offer_received' || notification.type === 'counter_offer_responded') {
+      if (notification.data?.campaign_id) {
+        const isCreatorView = notification.data.sender_role === 'business';
+        navigate(isCreatorView
+          ? `/dashboard/creator/my-campaigns/${notification.data.campaign_id}`
+          : `/dashboard/business/campaigns/${notification.data.campaign_id}`);
+      }
     }
   };
 

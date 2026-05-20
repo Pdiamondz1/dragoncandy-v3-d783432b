@@ -354,8 +354,8 @@ const ApplicationCardComponent: React.FC<ApplicationCardProps> = ({
           onOpenChange={setShowCounterModal}
           applicationId={application.id}
           senderRole="business"
-          currentRate={application.proposed_rate}
-          currentTimeline={application.proposed_timeline}
+          currentRate={latestCreatorOffer?.proposed_rate || application.proposed_rate}
+          currentTimeline={latestCreatorOffer?.proposed_timeline || application.proposed_timeline}
         />
       </CardContent>
     </Card>

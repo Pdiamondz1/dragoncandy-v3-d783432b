@@ -4,6 +4,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { useEmailNotifications } from '@/hooks/useEmailNotifications';
 
+type CounterOfferStatus = 'pending' | 'accepted' | 'declined';
+
 export interface CounterOffer {
   id: string;
   application_id: string;
@@ -65,7 +67,15 @@ export const useCreateCounterOffer = () => {
 
       if (statusError) throw statusError;
 
-      // Insert the counter-offer
+      // Supersede the other party's pending offers (RLS allows updating non-self offers)
+      await supabase
+        .from('application_counter_offers')
+        .update({ status: 'declined' as CounterOfferStatus })
+        .eq('application_id', applicationId)
+        .eq('status', 'pending')
+        .neq('sender_id', user.id);
+
+      // Insert the counter-offer with explicit pending status
       const { data, error } = await supabase
         .from('application_counter_offers')
         .insert({
@@ -75,6 +85,7 @@ export const useCreateCounterOffer = () => {
           proposed_rate: proposedRate || null,
           proposed_timeline: proposedTimeline || null,
           message,
+          status: 'pending' as CounterOfferStatus,
         })
         .select('id, application_id, sender_id, sender_role, proposed_rate, proposed_timeline, message, status, created_at')
         .single();
@@ -157,7 +168,7 @@ export const useRespondToCounterOffer = () => {
 
       if (offerError) throw offerError;
       if (!offerRows || offerRows.length === 0) {
-        throw new Error('This counter offer is no longer pending — it may have already been responded to.');
+        throw new Error('This offer was replaced by a newer counter-offer. The page will refresh with updated terms.');
       }
 
       // If accepted, update application status with race guard
@@ -258,7 +269,9 @@ export const useRespondToCounterOffer = () => {
     },
     onError: (error) => {
       console.error('Response failed:', error);
-      toast({ title: 'Failed to respond', description: 'Please try again.', variant: 'destructive' });
+      queryClient.invalidateQueries({ queryKey: ['counter-offers'] });
+      queryClient.invalidateQueries({ queryKey: ['campaign-applications'] });
+      toast({ title: 'Offer updated', description: error instanceof Error ? error.message : 'Please try again.', variant: 'destructive' });
     },
   });
 };

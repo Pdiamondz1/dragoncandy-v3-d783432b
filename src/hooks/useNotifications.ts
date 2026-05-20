@@ -1,11 +1,13 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
 
 export interface NotificationData {
   campaign_id?: string;
+  application_id?: string;
   sponsorship_id?: string;
   brand_id?: string;
   status?: string;
@@ -16,12 +18,14 @@ export interface NotificationData {
   conversation_id?: string;
   sender_id?: string;
   sender_name?: string;
+  proposed_rate?: number;
+  sender_role?: string;
   [key: string]: unknown;
 }
 
 export interface Notification {
   id: string;
-  type: 'application_received' | 'application_status_changed' | 'milestone_completed' | 'sponsorship_proposal_received' | 'sponsorship_status_changed' | 'content_liked' | 'campaign_invitation' | 'message_received';
+  type: 'application_received' | 'application_status_changed' | 'milestone_completed' | 'sponsorship_proposal_received' | 'sponsorship_status_changed' | 'content_liked' | 'campaign_invitation' | 'message_received' | 'counter_offer_received' | 'counter_offer_responded';
   title: string;
   message: string;
   read: boolean;
@@ -31,6 +35,7 @@ export interface Notification {
 
 export const useNotifications = () => {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const initializedRef = useRef(false);
@@ -574,12 +579,118 @@ export const useNotifications = () => {
           setUnreadCount(prev => prev + 1);
         }
       )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'application_counter_offers',
+        },
+        async (payload) => {
+          if (payload.new.sender_id === user.id) return;
+
+          const application = await cachedLookup(`application-${payload.new.application_id}`, async () => {
+            const { data } = await supabase.from('campaign_applications').select('campaign_id, creator_id').eq('id', payload.new.application_id).single();
+            return data;
+          });
+          if (!application) return;
+
+          const campaign = await cachedLookup(`campaign-${application.campaign_id}`, async () => {
+            const { data } = await supabase.from('campaigns').select('title, user_id').eq('id', application.campaign_id).single();
+            return data;
+          });
+
+          const isRelevant = user.id === application.creator_id || user.id === campaign?.user_id;
+          if (!isRelevant) return;
+
+          const amount = payload.new.proposed_rate;
+          const amountStr = amount ? `$${Number(amount).toLocaleString()}` : '';
+
+          if (prefsRef.current.push && prefsRef.current.campaigns) {
+            toast({
+              title: 'New Counter Offer',
+              description: `New counter-offer on "${campaign?.title || 'campaign'}"${amountStr ? `: ${amountStr}` : ''}`,
+            });
+          }
+
+          const notification: Notification = {
+            id: `counter-offer-${payload.new.id}`,
+            type: 'counter_offer_received',
+            title: 'New Counter Offer',
+            message: `New counter-offer on "${campaign?.title || 'campaign'}"${amountStr ? `: ${amountStr}` : ''}`,
+            read: false,
+            created_at: new Date().toISOString(),
+            data: {
+              campaign_id: application.campaign_id,
+              application_id: payload.new.application_id,
+              proposed_rate: amount,
+              sender_role: payload.new.sender_role,
+            },
+          };
+
+          setNotifications(prev => [notification, ...prev]);
+          setUnreadCount(prev => prev + 1);
+          queryClient.invalidateQueries({ queryKey: ['counter-offers'] });
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'application_counter_offers',
+        },
+        async (payload) => {
+          const newStatus = payload.new.status as string;
+          if (newStatus !== 'accepted' && newStatus !== 'declined') return;
+          if (payload.new.sender_id !== user.id) return;
+
+          const application = await cachedLookup(`application-${payload.new.application_id}`, async () => {
+            const { data } = await supabase.from('campaign_applications').select('campaign_id, creator_id').eq('id', payload.new.application_id).single();
+            return data;
+          });
+          if (!application) return;
+
+          const campaign = await cachedLookup(`campaign-${application.campaign_id}`, async () => {
+            const { data } = await supabase.from('campaigns').select('title, user_id').eq('id', application.campaign_id).single();
+            return data;
+          });
+
+          if (prefsRef.current.push && prefsRef.current.campaigns) {
+            toast({
+              title: newStatus === 'accepted' ? 'Counter Offer Accepted!' : 'Counter Offer Declined',
+              description: `Your counter-offer on "${campaign?.title || 'campaign'}" was ${newStatus}`,
+              variant: newStatus === 'declined' ? 'destructive' : 'default',
+            });
+          }
+
+          const notification: Notification = {
+            id: `counter-response-${payload.new.id}-${Date.now()}`,
+            type: 'counter_offer_responded',
+            title: newStatus === 'accepted' ? 'Counter Offer Accepted' : 'Counter Offer Declined',
+            message: `Your counter-offer on "${campaign?.title || 'campaign'}" was ${newStatus}`,
+            read: false,
+            created_at: new Date().toISOString(),
+            data: {
+              campaign_id: application.campaign_id,
+              application_id: payload.new.application_id,
+              status: newStatus,
+              sender_role: payload.new.sender_role,
+            },
+          };
+
+          setNotifications(prev => [notification, ...prev]);
+          setUnreadCount(prev => prev + 1);
+          queryClient.invalidateQueries({ queryKey: ['counter-offers'] });
+          queryClient.invalidateQueries({ queryKey: ['campaign-applications'] });
+        }
+      )
       .subscribe();
 
     return () => {
       supabase.removeChannel(notificationChannel);
     };
-  }, [user]);
+  }, [user, queryClient]);
 
   const markAsRead = useCallback((notificationId: string) => {
     setNotifications(prev =>
