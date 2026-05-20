@@ -26,6 +26,9 @@ const NotFound = lazy(() => import("./pages/NotFound"));
 const AuthPage = lazy(() => import("./pages/AuthPage"));
 import { PromotionsErrorBoundary } from "./components/promotions/PromotionsErrorBoundary";
 import { useAuth } from "@/hooks/useAuth";
+import { useLogout } from "@/hooks/useLogout";
+import { useInactivityTimeout } from "@/hooks/useInactivityTimeout";
+import { InactivityWarningDialog } from "@/components/InactivityWarningDialog";
 import { PageTransition } from "@/components/PageTransition";
 import type { UserRole } from "@/types/user";
 
@@ -302,7 +305,28 @@ function AnimatedRoutes() {
   );
 }
 
+function hasSessionHint(): boolean {
+  try {
+    return Object.keys(localStorage).some(key => key.startsWith('sb-'));
+  } catch {
+    return false;
+  }
+}
+
 const PUBLIC_PATHS = new Set(['/', '/home', '/landing']);
+
+function AuthenticatedShell({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated } = useAuth();
+  const logout = useLogout();
+  const { showWarning, confirmActive } = useInactivityTimeout(logout, isAuthenticated);
+
+  return (
+    <>
+      {children}
+      <InactivityWarningDialog open={showWarning} onConfirm={confirmActive} />
+    </>
+  );
+}
 
 function AppShell() {
   const { pathname } = useLocation();
@@ -323,14 +347,26 @@ function AppShell() {
 }
 
 function AppLayout() {
+  const { loading } = useAuth();
   const { pathname } = useLocation();
   const isPublic = PUBLIC_PATHS.has(pathname);
+
+  if (loading && isPublic && hasSessionHint()) {
+    return (
+      <div className="min-h-screen bg-white flex flex-col items-center justify-center">
+        <img src="/logo.webp" alt="DragonCandy" className="h-16 w-auto mb-6" />
+        <Spinner className="h-10 w-10 border-teal-400" />
+      </div>
+    );
+  }
 
   if (isPublic) return <AppShell />;
 
   return (
     <DonnyProviderWithAuth>
-      <AppShell />
+      <AuthenticatedShell>
+        <AppShell />
+      </AuthenticatedShell>
     </DonnyProviderWithAuth>
   );
 }
