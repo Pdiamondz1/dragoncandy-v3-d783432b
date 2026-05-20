@@ -234,35 +234,53 @@ const CampaignDetailsPage: React.FC = () => {
     });
   };
 
+  const computeProposedTimeline = (deliveryType?: string | null): string => {
+    const tierDays: Record<string, number> = { dragonrush: 0, expedited: 2, standard: 7 };
+    const daysOut = deliveryType ? tierDays[deliveryType] ?? 7 : 7;
+    const d = new Date();
+    d.setDate(d.getDate() + daysOut);
+    return d.toISOString().slice(0, 10);
+  };
+
+  const logDonnyEvent = (eventType: string, payload: Record<string, unknown>) => {
+    supabase
+      .from('donny_events')
+      .insert({ event_type: eventType, user_id: user!.id, campaign_id: campaign?.id, payload })
+      .then(({ error: logErr }) => { if (logErr) console.error('donny_events log failed:', logErr); });
+  };
+
   const handleDonnySend = async (pitch: DonnyPitchResult) => {
     if (!campaign) return;
     try {
-      const tierDates: Record<string, number> = { dragonrush: 0, expedited: 2, standard: 7 };
-      const daysOut = campaign.delivery_type ? tierDates[campaign.delivery_type] ?? 7 : 7;
-      const targetDate = new Date();
-      targetDate.setDate(targetDate.getDate() + daysOut);
-      const pad = (n: number) => String(n).padStart(2, '0');
-      const proposedTimeline = `${targetDate.getFullYear()}-${pad(targetDate.getMonth() + 1)}-${pad(targetDate.getDate())}`;
-
       await createApplication.mutateAsync({
         campaignId: campaign.id,
         introMessage: pitch.pitch,
         proposedRate: pitch.suggested_rate,
-        proposedTimeline,
+        proposedTimeline: computeProposedTimeline(campaign.delivery_type),
         portfolioUrl: pitch.suggested_portfolio_piece_url ?? undefined,
       });
 
-      // Log to donny_events
-      supabase
-        .from('donny_events')
-        .insert({
-          event_type: 'apply_with_donny',
-          user_id: user!.id,
-          campaign_id: campaign.id,
-          payload: { used_edit: false, pitch_source: pitch.pitch_source },
-        })
-        .then(({ error: logErr }) => { if (logErr) console.error('donny_events log failed:', logErr); });
+      logDonnyEvent('apply_with_donny', { used_edit: false, pitch_source: pitch.pitch_source });
+      setShowApplySheet(false);
+      setShowConfirmation(true);
+    } catch {
+      // Error handled by useCreateApplication's onError toast
+    }
+  };
 
+  const handleCounterOffer = async (pitch: DonnyPitchResult, counterRate: number, message: string) => {
+    if (!campaign) return;
+    try {
+      await createApplication.mutateAsync({
+        campaignId: campaign.id,
+        introMessage: message || pitch.pitch,
+        proposedRate: counterRate,
+        proposedTimeline: computeProposedTimeline(campaign.delivery_type),
+        portfolioUrl: pitch.suggested_portfolio_piece_url ?? undefined,
+        isCounterOffer: true,
+      });
+
+      logDonnyEvent('counter_offer_from_invite', { counter_rate: counterRate, original_price: campaign.fixed_price });
       setShowApplySheet(false);
       setShowConfirmation(true);
     } catch {
@@ -271,17 +289,7 @@ const CampaignDetailsPage: React.FC = () => {
   };
 
   const handleEditDetails = (_pitch: DonnyPitchResult) => {
-    // Log that user chose to edit
-    supabase
-      .from('donny_events')
-      .insert({
-        event_type: 'apply_edit_details',
-        user_id: user!.id,
-        campaign_id: campaign?.id,
-        payload: {},
-      })
-      .then(({ error: logErr }) => { if (logErr) console.error('donny_events log failed:', logErr); });
-
+    logDonnyEvent('apply_edit_details', {});
     setShowApplySheet(false);
     setShowLegacyForm(true);
   };
@@ -366,6 +374,8 @@ const CampaignDetailsPage: React.FC = () => {
               campaign={campaign}
               onSend={handleDonnySend}
               onEditDetails={handleEditDetails}
+              isInvited={isInvited}
+              onCounterOffer={handleCounterOffer}
             />
           </PrerequisiteGate>
 

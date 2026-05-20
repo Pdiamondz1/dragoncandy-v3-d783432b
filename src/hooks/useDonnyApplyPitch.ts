@@ -21,16 +21,18 @@ export const useDonnyApplyPitch = () => {
       campaignId,
       budgetMin,
       budgetMax: _budgetMax,
+      fixedPrice,
     }: {
       campaignId: string;
       budgetMin?: number | null;
       budgetMax?: number | null;
+      fixedPrice?: number | null;
     }): Promise<DonnyPitchResult> => {
       if (!user?.id) throw new Error('Not authenticated');
 
       const fallback: DonnyPitchResult = {
         pitch: CLIENT_FALLBACK_PITCH,
-        suggested_rate: budgetMin ?? 100,
+        suggested_rate: fixedPrice ?? budgetMin ?? 100,
         suggested_portfolio_piece_url: null,
         pitch_source: 'template',
       };

@@ -151,6 +151,8 @@ export const useCampaignWizard = () => {
           ai_preview_status: 'none',
           delivery_type: deliveryTier ? mapDeliveryTierToDb(deliveryTier) : undefined,
           delivery_fee: deliveryFee,
+          pricing_type: 'fixed' as const,
+          fixed_price: timelineBudgetData?.fixedPrice ?? undefined,
           ...(campaignAnalysis ? { ai_analysis: campaignAnalysis as unknown as Record<string, unknown> } : {}),
         })
         .select('id')
