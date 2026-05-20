@@ -18,15 +18,33 @@ interface CaptionRequest {
   user_id: string;
   source?: "campaign" | "promotion" | "dragonshare";
   context?: Record<string, string>;
+  business_name?: string;
+  business_location?: string;
+  business_category?: string;
+  deliverable_types?: string[];
+  campaign_goals?: string;
+  deliverable_descriptions?: string[];
 }
+
+const PLATFORM_CONFIG: Record<string, { maxLength: number; hashtagCount: string; tone: string }> = {
+  instagram: { maxLength: 2200, hashtagCount: "10-15", tone: "visual storytelling with emojis, engaging and energetic" },
+  tiktok: { maxLength: 300, hashtagCount: "3-5", tone: "casual, trendy, short and punchy with a hook" },
+  twitter: { maxLength: 280, hashtagCount: "1-2", tone: "concise, witty, conversational" },
+  facebook: { maxLength: 500, hashtagCount: "3-5", tone: "community-focused, warm and inviting" },
+  youtube: { maxLength: 5000, hashtagCount: "5-8", tone: "descriptive, SEO-friendly with clear CTA" },
+  linkedin: { maxLength: 3000, hashtagCount: "3-5", tone: "professional, value-driven" },
+  threads: { maxLength: 500, hashtagCount: "3-5", tone: "conversational, authentic" },
+};
+
+const DEFAULT_PLATFORM_CONFIG = { maxLength: 500, hashtagCount: "3-5", tone: "engaging and authentic" };
 
 const ROLE_PROMPTS: Record<string, string> = {
   restaurant:
-    "You are writing a social media caption for a restaurant posting campaign content. Use a promotional, inviting tone. Include a call-to-action. Mention the restaurant experience.",
+    "You are a social media manager writing a caption for a restaurant showcasing campaign content. Use an inviting, proud tone that highlights the dining experience. Include a clear call-to-action (visit, reserve, try it). Mention what makes this place special.",
   creator:
-    "You are writing a social media caption for a content creator sharing their work. Use an authentic, personal tone. Credit the creator's work. Use creator-style language.",
+    "You are writing a social media caption for a content creator sharing their authentic experience. Use a personal, genuine first-person tone. Talk about what you loved about the experience. Avoid sounding like an ad.",
   brand:
-    "You are writing a social media caption for a brand amplifying campaign content. Use professional amplification tone. Include sponsor messaging and brand hashtags.",
+    "You are a social media manager writing a caption for a brand amplifying a creator-restaurant collaboration they sponsored. Use professional co-marketing tone. Reference the partnership value and the experience.",
 };
 
 const PROMOTION_PROMPT =
@@ -48,7 +66,11 @@ serve(async (req) => {
 
   try {
     const body = (await req.json()) as CaptionRequest;
-    const { campaign_title, campaign_description, content_type, party_role, platform, user_id, source, context } = body;
+    const {
+      campaign_title, campaign_description, content_type, party_role, platform,
+      user_id, source, context, business_name, business_location,
+      business_category, deliverable_types, campaign_goals, deliverable_descriptions,
+    } = body;
 
     if (!party_role || !platform || !user_id) {
       return new Response(
@@ -58,6 +80,7 @@ serve(async (req) => {
     }
 
     const config = getModelConfig("social-caption");
+    const platformCfg = PLATFORM_CONFIG[platform.toLowerCase()] ?? DEFAULT_PLATFORM_CONFIG;
 
     const title = campaign_title || context?.title || "Content";
     const description = campaign_description || context?.description || "";
@@ -76,6 +99,22 @@ serve(async (req) => {
     } else {
       systemPrompt = ROLE_PROMPTS[party_role] ?? ROLE_PROMPTS.restaurant;
     }
+
+    const businessContext = [
+      business_name ? `Business: ${business_name}` : null,
+      business_location ? `Location: ${business_location}` : null,
+      business_category ? `Category: ${business_category}` : null,
+    ].filter(Boolean).join("\n");
+
+    const deliverableContext = [
+      deliverable_types?.length ? `Content types: ${deliverable_types.join(", ")}` : null,
+      deliverable_descriptions?.length ? `Deliverable details: ${deliverable_descriptions.join("; ")}` : null,
+      campaign_goals ? `Campaign goals: ${campaign_goals}` : null,
+    ].filter(Boolean).join("\n");
+
+    const locationHashtagHint = business_location
+      ? `Include location-relevant hashtags for ${business_location} (e.g., #${business_location.replace(/[^a-zA-Z]/g, "")}Eats, #${business_location.replace(/[^a-zA-Z]/g, "")}Food).`
+      : "";
 
     const response = await anthropicFetch(
       "https://api.anthropic.com/v1/messages",
@@ -96,10 +135,16 @@ serve(async (req) => {
 
 Campaign: "${title}"
 Description: ${description || "N/A"}
+${businessContext}
+${deliverableContext}
 Content type: ${content_type}
 Platform: ${platform}
 
-Write a short, engaging caption (under 200 characters) and suggest 3-5 relevant hashtags.
+Write an engaging, platform-native caption optimized for ${platform} (aim for under ${platformCfg.maxLength} characters). Tone: ${platformCfg.tone}.
+
+Generate ${platformCfg.hashtagCount} relevant hashtags. Always include #DragonDashed as one of the hashtags. ${locationHashtagHint}
+
+The caption should feel like a real social media manager wrote it — specific to this campaign, not generic. Reference the actual content and experience described above.
 
 Respond in JSON: {"caption": "...", "hashtags": ["#tag1", "#tag2"]}`,
             },
@@ -124,6 +169,11 @@ Respond in JSON: {"caption": "...", "hashtags": ["#tag1", "#tag2"]}`,
 
     const parsed = JSON.parse(cleaned);
 
+    const hashtags: string[] = parsed.hashtags ?? [];
+    if (!hashtags.some((h: string) => h.toLowerCase().includes("dragondashed"))) {
+      hashtags.push("#DragonDashed");
+    }
+
     const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     await logCost(supabaseAdmin, {
       userId: user_id,
@@ -135,7 +185,7 @@ Respond in JSON: {"caption": "...", "hashtags": ["#tag1", "#tag2"]}`,
     });
 
     return new Response(
-      JSON.stringify({ caption: parsed.caption ?? "", hashtags: parsed.hashtags ?? [] }),
+      JSON.stringify({ caption: parsed.caption ?? "", hashtags }),
       { headers: { ...corsHeaders(req), "Content-Type": "application/json" } },
     );
   } catch (error) {

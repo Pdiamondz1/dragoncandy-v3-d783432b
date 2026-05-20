@@ -99,7 +99,8 @@ export function ContentRequirementsSection({ campaign, campaignId }: ContentRequ
                     </div>
                   </div>
                 ))
-              : campaign.deliverables?.map((d, i) => (
+              : campaign.deliverables?.length
+              ? campaign.deliverables.map((d, i) => (
                   <div key={i} className="flex gap-3 items-start">
                     <div className="w-6 h-6 rounded-full bg-dc-teal-btn text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
                       {i + 1}
@@ -107,6 +108,26 @@ export function ContentRequirementsSection({ campaign, campaignId }: ContentRequ
                     <p className="text-sm text-gray-800">{d}</p>
                   </div>
                 ))
+              : (
+                <div className="flex gap-3 items-start">
+                  <div className="w-6 h-6 rounded-full bg-dc-teal-btn text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
+                    1
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-800">
+                      Content piece
+                      {campaign.platforms?.[0] ? ` · ${platformLabels[campaign.platforms[0]] ?? campaign.platforms[0]}` : ''}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {campaign.delivery_type === 'dragonrush'
+                        ? 'Rush delivery'
+                        : campaign.delivery_type === 'expedited'
+                          ? 'Expedited delivery'
+                          : 'Standard delivery'}
+                    </p>
+                  </div>
+                </div>
+              )
             }
           </div>
         </div>

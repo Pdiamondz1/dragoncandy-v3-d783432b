@@ -30,7 +30,7 @@ serve(async (req) => {
 
     const { data: campaign } = await supabase
       .from('campaigns')
-      .select('id, title, user_id, status, org_unit_id')
+      .select('id, title, description, goals, user_id, status, org_unit_id, delivery_type, platforms')
       .eq('id', campaign_id)
       .single();
 
@@ -40,6 +40,12 @@ serve(async (req) => {
         headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
       });
     }
+
+    const { data: businessProfile } = await supabase
+      .from('business_profiles')
+      .select('business_name, location, city, industry')
+      .eq('user_id', campaign.user_id)
+      .maybeSingle();
 
     const parties: { user_id: string; role: string }[] = [];
     const template = STAGE_TEMPLATES[stage] ?? '';
@@ -151,14 +157,14 @@ serve(async (req) => {
             }
           }
 
-          const { data: delivSpec } = await supabase
+          const { data: delivSpecs } = await supabase
             .from('campaign_deliverables')
-            .select('content_type')
-            .eq('campaign_id', campaign_id)
-            .limit(1)
-            .single();
+            .select('content_type, platform, description')
+            .eq('campaign_id', campaign_id);
 
-          const contentType = delivSpec?.content_type || 'photo';
+          const contentType = delivSpecs?.[0]?.content_type || 'photo';
+          const deliverableTypes = [...new Set(delivSpecs?.map((d) => d.content_type) ?? [])];
+          const deliverableDescriptions = delivSpecs?.map((d) => d.description).filter(Boolean) ?? [];
 
           let caption = template;
           let hashtags: string[] = [];
@@ -173,11 +179,17 @@ serve(async (req) => {
                 },
                 body: JSON.stringify({
                   campaign_title: campaign.title,
-                  campaign_description: '',
+                  campaign_description: campaign.description || campaign.goals || '',
                   content_type: contentType,
                   party_role: party.role,
                   platform,
                   user_id: party.user_id,
+                  business_name: businessProfile?.business_name || '',
+                  business_location: businessProfile?.city || businessProfile?.location || '',
+                  business_category: businessProfile?.industry || '',
+                  deliverable_types: deliverableTypes,
+                  campaign_goals: campaign.goals || '',
+                  deliverable_descriptions: deliverableDescriptions,
                 }),
               },
             );
@@ -209,8 +221,11 @@ serve(async (req) => {
             );
             if (scheduleResp.ok) {
               const scheduleData = await scheduleResp.json();
-              if (scheduleData.suggestions?.[0]?.time) {
-                scheduledAt = scheduleData.suggestions[0].time;
+              const suggestedTime =
+                scheduleData.data?.slots?.[0]?.datetime ??
+                scheduleData.suggestions?.[0]?.time;
+              if (suggestedTime) {
+                scheduledAt = suggestedTime;
               }
             }
           } catch (schedErr) {
@@ -230,7 +245,9 @@ serve(async (req) => {
               scheduled_at: scheduledAt,
               status: 'draft',
               ai_suggested_time: true,
-              ai_reasoning: 'Auto-drafted by campaign social hook (stage 4)',
+              ai_reasoning: scheduledAt !== new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+                ? 'Donny picked the optimal posting time for your audience'
+                : 'Auto-drafted by campaign social hook (stage 4)',
               metadata: { source: 'campaign_social_hook', stage: 4 },
             })
             .select('id')

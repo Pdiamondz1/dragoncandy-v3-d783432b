@@ -7,7 +7,7 @@ import { useFileUploads } from '@/hooks/useFileQuery';
 import { formatFileSize, getVideoThumbnailUrl } from '@/lib/fileUtils';
 import { downloadBlob } from '@/lib/downloadUtils';
 import { WatermarkedLightbox } from '@/components/content/WatermarkedLightbox';
-import { CrossPostPrompt } from '@/components/outstand/CrossPostPrompt';
+import { SocialPostPrompt } from '@/components/outstand/SocialPostPrompt';
 import { SponsorshipAmplificationPrompt } from '@/components/outstand/SponsorshipAmplificationPrompt';
 import { DragonCandyOutstandProvider } from '@/integrations/outstand/Provider';
 
@@ -206,16 +206,18 @@ export const DeliverablesArchive: React.FC<DeliverablesArchiveProps> = ({
                   originalCaption={campaignDescription ?? ''}
                 />
               ) : (
-                <CrossPostPrompt
+                <SocialPostPrompt
                   open={showShareModal}
                   onOpenChange={setShowShareModal}
                   campaignId={campaignId}
                   campaignTitle={campaignTitle ?? ''}
                   creatorName={creatorName ?? ''}
+                  restaurantName={restaurantName ?? ''}
                   mediaUrls={files
                     .filter(f => f.mime_type?.startsWith('image/') || f.mime_type?.startsWith('video/'))
                     .map(f => supabase.storage.from(f.bucket_name).getPublicUrl(f.file_path).data.publicUrl)}
                   originalCaption={campaignDescription ?? ''}
+                  userRole={userRole === 'business' ? 'restaurant' : userRole ?? 'creator'}
                 />
               )}
             </DragonCandyOutstandProvider>
