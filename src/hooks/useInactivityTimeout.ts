@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 
-const IDLE_WARNING_MS = 45 * 60 * 1000;
+const IDLE_WARNING_MS = 165 * 60 * 1000;
 const IDLE_LOGOUT_MS = 15 * 60 * 1000;
 const ACTIVITY_EVENTS = ['mousedown', 'keydown', 'touchstart', 'scroll'] as const;
 
-export function useInactivityTimeout(onLogout: () => void) {
+export function useInactivityTimeout(onLogout: () => void, enabled = true) {
   const [showWarning, setShowWarning] = useState(false);
   const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const logoutTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -33,6 +33,12 @@ export function useInactivityTimeout(onLogout: () => void) {
   }, [resetIdleTimer]);
 
   useEffect(() => {
+    if (!enabled) {
+      clearTimers();
+      setShowWarning(false);
+      return;
+    }
+
     resetIdleTimer();
 
     const onActivity = () => {
@@ -49,7 +55,7 @@ export function useInactivityTimeout(onLogout: () => void) {
         window.removeEventListener(event, onActivity);
       }
     };
-  }, [showWarning, resetIdleTimer, clearTimers]);
+  }, [enabled, showWarning, resetIdleTimer, clearTimers]);
 
   return { showWarning, confirmActive };
 }
