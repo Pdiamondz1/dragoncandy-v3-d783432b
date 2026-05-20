@@ -258,6 +258,7 @@ const CampaignDetailsPage: React.FC = () => {
         proposedRate: pitch.suggested_rate,
         proposedTimeline: computeProposedTimeline(campaign.delivery_type),
         portfolioUrl: pitch.suggested_portfolio_piece_url ?? undefined,
+        isInvited,
       });
 
       logDonnyEvent('apply_with_donny', { used_edit: false, pitch_source: pitch.pitch_source });
@@ -278,6 +279,7 @@ const CampaignDetailsPage: React.FC = () => {
         proposedTimeline: computeProposedTimeline(campaign.delivery_type),
         portfolioUrl: pitch.suggested_portfolio_piece_url ?? undefined,
         isCounterOffer: true,
+        isInvited: true,
       });
 
       logDonnyEvent('counter_offer_from_invite', { counter_rate: counterRate, original_price: campaign.fixed_price });

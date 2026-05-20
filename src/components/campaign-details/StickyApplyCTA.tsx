@@ -1,9 +1,9 @@
-import { Send, CheckCircle, FolderOpen, UserCheck } from 'lucide-react';
+import { Send, CheckCircle, FolderOpen, UserCheck, MessageCircle } from 'lucide-react';
 
 interface StickyApplyCTAProps {
   canApply: boolean;
   hasApplied: boolean;
-  applicationStatus: 'pending' | 'accepted' | 'rejected' | null;
+  applicationStatus: 'pending' | 'accepted' | 'rejected' | 'counter_offered' | null;
   onApply: () => void;
   onViewProject: () => void;
   spotsTotal?: number | null;
@@ -34,9 +34,15 @@ export function StickyApplyCTA({
           </button>
         )}
         {hasApplied && applicationStatus === 'pending' && (
-          <div className="w-full rounded-full bg-gray-100 text-gray-500 font-bold py-3.5 h-14 flex items-center justify-center gap-2">
+          <div className="w-full rounded-full bg-dc-teal/10 text-dc-teal-btn font-bold py-3.5 h-14 flex items-center justify-center gap-2">
             <CheckCircle className="h-4 w-4" />
             Applied (Pending)
+          </div>
+        )}
+        {hasApplied && applicationStatus === 'counter_offered' && (
+          <div className="w-full rounded-full bg-dc-pink/20 text-dc-pink-accent font-bold py-3.5 h-14 flex items-center justify-center gap-2">
+            <MessageCircle className="h-4 w-4" />
+            Counter Offer Sent
           </div>
         )}
         {hasApplied && applicationStatus === 'accepted' && (

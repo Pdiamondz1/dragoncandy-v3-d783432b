@@ -20,6 +20,7 @@ export const useCreateApplication = () => {
       proposedRate,
       portfolioUrl,
       isCounterOffer,
+      isInvited,
     }: {
       campaignId: string;
       introMessage: string;
@@ -27,6 +28,7 @@ export const useCreateApplication = () => {
       proposedRate?: number;
       portfolioUrl?: string;
       isCounterOffer?: boolean;
+      isInvited?: boolean;
     }) => {
       const { data: campaign } = await supabase
         .from('campaigns')
@@ -35,26 +37,72 @@ export const useCreateApplication = () => {
         .single();
 
       if (campaign?.status !== 'published') {
-        throw new Error('This campaign is no longer accepting applications.');
+        if (!isInvited) {
+          throw new Error('This campaign is no longer accepting applications.');
+        }
+        const { data: invitation } = await supabase
+          .from('campaign_invitations')
+          .select('id')
+          .eq('campaign_id', campaignId)
+          .eq('creator_id', user!.id)
+          .eq('status', 'pending')
+          .maybeSingle();
+        if (!invitation) {
+          throw new Error('This campaign is no longer accepting applications.');
+        }
       }
 
-      const { data, error } = await supabase
+      // Check for existing application (unique constraint: campaign_id + creator_id)
+      const { data: existingApp } = await supabase
         .from('campaign_applications')
-        .insert({
-          campaign_id: campaignId,
-          creator_id: user!.id,
-          intro_message: introMessage,
-          proposed_timeline: proposedTimeline,
-          proposed_rate: proposedRate,
-          portfolio_url: portfolioUrl,
-          status: isCounterOffer ? 'counter_offered' : 'pending',
-        })
-        .select('id, campaign_id, creator_id, status')
-        .single();
+        .select('id, status')
+        .eq('campaign_id', campaignId)
+        .eq('creator_id', user!.id)
+        .maybeSingle();
 
-      if (error) {
-        console.error('Error creating application:', error);
-        throw error;
+      let data;
+
+      if (existingApp) {
+        if (isCounterOffer) {
+          const { data: updated, error } = await supabase
+            .from('campaign_applications')
+            .update({
+              status: 'counter_offered',
+              proposed_rate: proposedRate,
+              intro_message: introMessage,
+              proposed_timeline: proposedTimeline,
+            })
+            .eq('id', existingApp.id)
+            .select('id, campaign_id, creator_id, status')
+            .single();
+          if (error) {
+            console.error('Error updating application:', error);
+            throw error;
+          }
+          data = updated;
+        } else {
+          throw new Error('You have already applied to this campaign.');
+        }
+      } else {
+        const { data: inserted, error } = await supabase
+          .from('campaign_applications')
+          .insert({
+            campaign_id: campaignId,
+            creator_id: user!.id,
+            intro_message: introMessage,
+            proposed_timeline: proposedTimeline,
+            proposed_rate: proposedRate,
+            portfolio_url: portfolioUrl,
+            status: isCounterOffer ? 'counter_offered' : 'pending',
+          })
+          .select('id, campaign_id, creator_id, status')
+          .single();
+
+        if (error) {
+          console.error('Error creating application:', error);
+          throw error;
+        }
+        data = inserted;
       }
 
       if (isCounterOffer && data) {
@@ -73,6 +121,7 @@ export const useCreateApplication = () => {
     onSuccess: async (data) => {
       queryClient.invalidateQueries({ queryKey: ['campaign-applications'] });
       queryClient.invalidateQueries({ queryKey: ['creator-applications'] });
+      queryClient.invalidateQueries({ queryKey: ['creator-application-status'] });
       completeMission('apply_campaign');
 
       const isOffer = data.status === 'counter_offered';
@@ -114,11 +163,12 @@ export const useCreateApplication = () => {
         console.error('Failed to send notification email:', error);
       }
 
-      // Update invitation status to 'accepted' if creator was invited
+      // Update invitation status if creator was invited
       try {
+        const invitationStatus = data.status === 'counter_offered' ? 'counter_offered' : 'accepted';
         await supabase
           .from('campaign_invitations')
-          .update({ status: 'accepted' })
+          .update({ status: invitationStatus })
           .eq('campaign_id', data.campaign_id)
           .eq('creator_id', user!.id)
           .eq('status', 'pending');
@@ -126,11 +176,15 @@ export const useCreateApplication = () => {
         console.error('Failed to update invitation status:', invErr);
       }
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       console.error('Application submission failed:', error);
+      const description =
+        error.message?.includes('already applied') || error.message?.includes('no longer accepting')
+          ? error.message
+          : 'Please try again later.';
       toast({
         title: 'Failed to submit application',
-        description: 'Please try again later.',
+        description,
         variant: 'destructive',
       });
     },

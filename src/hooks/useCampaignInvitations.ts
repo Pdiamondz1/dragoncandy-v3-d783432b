@@ -9,7 +9,7 @@ export interface CampaignInvitation {
   campaign_id: string;
   creator_id: string;
   invited_by: string;
-  status: 'pending' | 'accepted' | 'declined';
+  status: 'pending' | 'accepted' | 'declined' | 'counter_offered';
   invitation_message: string | null;
   created_at: string;
   updated_at: string;

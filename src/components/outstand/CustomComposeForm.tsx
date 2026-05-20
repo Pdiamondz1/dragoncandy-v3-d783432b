@@ -2,7 +2,6 @@ import React, { useMemo, useState } from 'react';
 import { CalendarClock, Send, Loader2 } from 'lucide-react';
 import {
   PostComposer,
-  NetworkSelector,
   MediaUploader,
   NetworkConfigPanel,
   usePosts,
@@ -11,6 +10,7 @@ import {
   type MediaFile,
   type SocialNetwork,
 } from '@outstand-so/ui';
+import { DCNetworkSelector } from './DCNetworkSelector';
 import { useOutstandConfig } from '@/integrations/outstand/Provider';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -242,7 +242,7 @@ export const CustomComposeForm: React.FC<CustomComposeFormProps> = ({ accounts, 
       {/* Accounts */}
       <div className="space-y-2">
         <label className="block text-sm font-bold text-gray-900">Post to</label>
-        <NetworkSelector
+        <DCNetworkSelector
           accounts={accounts}
           selectedIds={selectedAccountIds}
           onChange={setSelectedAccountIds}

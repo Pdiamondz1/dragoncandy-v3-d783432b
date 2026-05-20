@@ -5,7 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 
 interface ApplicationStatus {
   hasApplied: boolean;
-  applicationStatus: 'pending' | 'accepted' | 'rejected' | null;
+  applicationStatus: 'pending' | 'accepted' | 'rejected' | 'counter_offered' | null;
   applicationId: string | null;
   isLoading: boolean;
 }
@@ -37,7 +37,7 @@ export const useCreatorApplicationStatus = (campaignId: string | undefined): App
 
   return {
     hasApplied: !!data,
-    applicationStatus: data?.status as 'pending' | 'accepted' | 'rejected' | null,
+    applicationStatus: data?.status as 'pending' | 'accepted' | 'rejected' | 'counter_offered' | null,
     applicationId: data?.id ?? null,
     isLoading,
   };
