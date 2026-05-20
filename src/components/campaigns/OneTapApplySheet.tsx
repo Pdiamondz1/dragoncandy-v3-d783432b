@@ -81,7 +81,7 @@ export function OneTapApplySheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="rounded-t-2xl px-5 pt-6 pb-8 max-h-[60vh] sm:max-w-lg sm:right-auto sm:left-1/2 sm:-translate-x-1/2">
+      <SheetContent side="bottom" className="rounded-t-2xl px-5 pt-6 pb-8 max-h-[70vh] overflow-y-auto sm:!left-1/2 sm:!right-auto sm:!-translate-x-1/2 sm:!max-w-lg sm:bottom-4 sm:rounded-2xl">
         {pitchPending ? (
           <div className="flex flex-col items-center justify-center py-12 gap-3">
             <Loader2 className="w-8 h-8 animate-spin text-dc-teal" />

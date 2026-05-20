@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { MapPin, DollarSign } from 'lucide-react';
+import { useResolvedLogoUrl } from '@/hooks/useSignedUrl';
 
 interface CampaignMapViewProps {
   campaigns: (PublicCampaign | SponsorshipCampaign)[];
@@ -24,6 +25,8 @@ export const CampaignMapView: React.FC<CampaignMapViewProps> = ({ campaigns, onV
 
   const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(null);
   const [debouncedCampaigns, setDebouncedCampaigns] = useState(campaigns);
+  const selectedCampaignForLogo = campaigns.find(c => c.id === selectedCampaignId);
+  const resolvedLogoUrl = useResolvedLogoUrl(selectedCampaignForLogo?.business_profile?.logo_url);
 
   // Debounce campaigns updates to prevent excessive re-geocoding
   useEffect(() => {
@@ -136,7 +139,7 @@ export const CampaignMapView: React.FC<CampaignMapViewProps> = ({ campaigns, onV
               <div className="space-y-3">
                 <div className="flex items-start gap-3">
                   <Avatar className="h-12 w-12">
-                    <AvatarImage src={selectedCampaign.business_profile?.logo_url} alt={selectedCampaign.business_profile?.business_name || 'Business logo'} />
+                    <AvatarImage src={resolvedLogoUrl} alt={selectedCampaign.business_profile?.business_name || 'Business logo'} />
                     <AvatarFallback>
                       {selectedCampaign.business_profile?.business_name?.charAt(0) || 'B'}
                     </AvatarFallback>

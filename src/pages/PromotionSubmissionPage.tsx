@@ -10,6 +10,7 @@ import { SocialHandleFields, useSocialHandles } from '@/features/promotions/subm
 import { SEO } from '@/components/SEO';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { PrerequisiteGate } from '@/components/PrerequisiteGate';
+import { useResolvedLogoUrl } from '@/hooks/useSignedUrl';
 
 type Step = 'welcome' | 'video' | 'info' | 'success' | 'error';
 
@@ -43,6 +44,7 @@ export default function PromotionSubmissionPage() {
   
   const { submitPromotion, isSubmitting } = usePromotionSubmission();
   const { handles, setHandles, getSanitized } = useSocialHandles();
+  const resolvedLogoUrl = useResolvedLogoUrl(promotion?.business_profiles?.logo_url);
 
   useEffect(() => {
     const fetchPromotion = async () => {
@@ -188,9 +190,9 @@ export default function PromotionSubmissionPage() {
       <div className="max-w-md mx-auto p-4">
         {/* Business identity */}
         <div className="text-center py-6">
-          {promotion.business_profiles?.logo_url ? (
+          {resolvedLogoUrl ? (
             <img
-              src={promotion.business_profiles.logo_url}
+              src={resolvedLogoUrl}
               alt={businessName}
               className="w-20 h-20 rounded-full object-cover mx-auto mb-4 ring-2 ring-dc-teal"
             />

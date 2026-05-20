@@ -7,6 +7,7 @@ import { MapPin, DollarSign, Calendar, Users, TrendingUp, CheckCircle, Clock, XC
 import { SponsorshipCampaign } from '@/hooks/useSponsorshipCampaigns';
 import { useBrandSponsorshipStatus } from '@/hooks/useBrandSponsorshipStatus';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useResolvedLogoUrl } from '@/hooks/useSignedUrl';
 
 interface BrandCampaignCardProps {
   campaign: SponsorshipCampaign;
@@ -24,6 +25,7 @@ export const BrandCampaignCard: React.FC<BrandCampaignCardProps> = ({
   submittedCampaignId: _submittedCampaignId,
 }) => {
   const { data: existingProposal, isLoading: isLoadingProposal } = useBrandSponsorshipStatus(campaign.id);
+  const resolvedLogoUrl = useResolvedLogoUrl(campaign.business_profile?.logo_url);
 
   const formatCurrency = (amount?: number) => {
     if (!amount) return 'N/A';
@@ -110,7 +112,7 @@ export const BrandCampaignCard: React.FC<BrandCampaignCardProps> = ({
             {getProposalStatusBadge()}
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Avatar className="h-6 w-6">
-                <AvatarImage src={campaign.business_profile?.logo_url} />
+                <AvatarImage src={resolvedLogoUrl} />
                 <AvatarFallback>
                   {campaign.business_profile?.business_name?.[0] || 'R'}
                 </AvatarFallback>

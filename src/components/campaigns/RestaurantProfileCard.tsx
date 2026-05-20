@@ -5,6 +5,7 @@ import { Building2, MapPin, Star, ExternalLink, Globe, Instagram } from 'lucide-
 import { RestaurantProfile } from '@/hooks/useRestaurantProfile';
 import { Skeleton } from '@/components/ui/skeleton';
 import { safeUrl } from '@/lib/safeUrl';
+import { useResolvedLogoUrl } from '@/hooks/useSignedUrl';
 
 interface RestaurantProfileCardProps {
   restaurant: RestaurantProfile | null;
@@ -12,6 +13,8 @@ interface RestaurantProfileCardProps {
 }
 
 export const RestaurantProfileCard = ({ restaurant, isLoading }: RestaurantProfileCardProps) => {
+  const resolvedLogoUrl = useResolvedLogoUrl(restaurant?.logo_url);
+
   if (isLoading) {
     return (
       <Card>
@@ -59,7 +62,7 @@ export const RestaurantProfileCard = ({ restaurant, isLoading }: RestaurantProfi
       <CardContent className="space-y-4">
         <div className="flex items-start gap-4">
           <Avatar className="h-16 w-16">
-            <AvatarImage src={restaurant.logo_url || undefined} alt={restaurant.business_name} />
+            <AvatarImage src={resolvedLogoUrl} alt={restaurant.business_name} />
             <AvatarFallback>{restaurant.business_name.substring(0, 2).toUpperCase()}</AvatarFallback>
           </Avatar>
           

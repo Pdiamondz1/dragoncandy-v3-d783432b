@@ -343,7 +343,7 @@ const CampaignDetailsPage: React.FC = () => {
               <div className="w-7" />
             </div>
           </PageHeader>
-          <div className="md:max-w-2xl md:mx-auto md:mt-6">
+          <div className="md:max-w-2xl lg:max-w-3xl md:mx-auto md:mt-6 md:px-4">
             <CreatorCampaignDetails
               campaign={campaign}
               enrichedDetail={enrichedDetail}

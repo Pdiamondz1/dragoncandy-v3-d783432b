@@ -9,6 +9,7 @@ import { PublicProfileReviews } from '@/components/profiles/PublicProfileReviews
 import logo from '@/assets/Transparent_DragonCandy_logo.webp';
 import { SEO } from '@/components/SEO';
 import { PublicPageHeader } from '@/components/PublicPageHeader';
+import { useResolvedLogoUrl } from '@/hooks/useSignedUrl';
 
 interface BusinessProfile {
   id: string;
@@ -41,6 +42,7 @@ const PublicBusinessProfile = () => {
   const [profile, setProfile] = useState<BusinessProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const resolvedLogoUrl = useResolvedLogoUrl(profile?.logo_url);
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -177,7 +179,7 @@ const PublicBusinessProfile = () => {
       {/* White Profile Card — overlaps hero */}
       <div className="bg-white rounded-3xl -mt-6 relative z-10 mx-4 px-4 py-3 flex items-center gap-3 shadow-md">
         <Avatar className="w-16 h-16 ring-2 ring-dc-teal flex-shrink-0">
-          <AvatarImage src={profile.logo_url} />
+          <AvatarImage src={resolvedLogoUrl} />
           <AvatarFallback className="bg-dc-teal/20">
             <Building2 className="h-8 w-8 text-dc-teal" />
           </AvatarFallback>

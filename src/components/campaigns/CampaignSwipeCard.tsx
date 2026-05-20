@@ -6,6 +6,7 @@ import { MapPin, Users } from 'lucide-react';
 import logo from '@/assets/Transparent_DragonCandy_logo.webp';
 import { DeliveryBadge } from './DeliveryBadge';
 import { mapDeliveryType, getRelativeTime, formatBudget } from '@/lib/campaignUtils';
+import { useResolvedLogoUrl } from '@/hooks/useSignedUrl';
 
 interface CampaignSwipeCardProps {
   campaigns: PublicCampaign[];
@@ -122,7 +123,7 @@ interface CardContentProps {
 
 const CardContent: React.FC<CardContentProps> = ({ campaign, onViewDetail, matchInfo }) => {
   const businessName = campaign.business_profile?.business_name ?? 'Unknown Business';
-  const businessLogo = campaign.business_profile?.logo_url;
+  const businessLogo = useResolvedLogoUrl(campaign.business_profile?.logo_url);
   const location = campaign.business_profile?.city
     ? `${campaign.business_profile.city}${campaign.business_profile.country ? ', ' + campaign.business_profile.country : ''}`
     : campaign.business_profile?.location ?? null;

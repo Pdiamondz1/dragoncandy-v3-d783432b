@@ -10,6 +10,7 @@ import { Sparkles, ExternalLink, Clock, CheckCircle, XCircle } from 'lucide-reac
 import type { DragonSharePostWithRelations, PostStatus } from '@/types/dragonshare';
 import { Coachmark } from '@/components/guidance/Coachmark';
 import { PrerequisiteGate } from '@/components/PrerequisiteGate';
+import { useResolvedLogoUrl } from '@/hooks/useSignedUrl';
 
 type Tab = 'submitted' | 'boosted' | 'expired';
 
@@ -104,6 +105,7 @@ const CreatorDragonShare: React.FC = () => {
 };
 
 function CreatorPostCard({ post }: { post: DragonSharePostWithRelations }) {
+  const resolvedLogoUrl = useResolvedLogoUrl(post.target_org?.logo_url);
   const statusConfig: Record<PostStatus, { label: string; className: string; icon: React.ElementType }> = {
     pending_verification: { label: 'Awaiting verification', className: 'bg-yellow-100 text-yellow-800', icon: Clock },
     verified: { label: 'Verified', className: 'bg-green-100 text-green-800', icon: CheckCircle },
@@ -134,8 +136,8 @@ function CreatorPostCard({ post }: { post: DragonSharePostWithRelations }) {
 
       <div className="flex items-center justify-between text-sm">
         <div className="flex items-center gap-2">
-          {post.target_org?.logo_url && (
-            <img src={post.target_org.logo_url} alt="Brand logo" className="h-5 w-5 rounded-full" />
+          {resolvedLogoUrl && (
+            <img src={resolvedLogoUrl} alt="Brand logo" className="h-5 w-5 rounded-full" />
           )}
           <span className="text-muted-foreground">{post.target_org?.name ?? 'Unknown org'}</span>
         </div>

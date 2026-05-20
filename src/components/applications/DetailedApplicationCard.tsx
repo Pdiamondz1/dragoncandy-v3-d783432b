@@ -24,6 +24,7 @@ import { useWithdrawApplication } from '@/hooks/useWithdrawApplication';
 import { useCounterOffers, useRespondToCounterOffer } from '@/hooks/useCounterOffers';
 import { useApplicationCollaboration } from '@/hooks/useApplicationCollaboration';
 import { useAuth } from '@/hooks/useAuth';
+import { useResolvedLogoUrl } from '@/hooks/useSignedUrl';
 import { JointApprovalStatus } from './JointApprovalStatus';
 import { DragonCandyOutstandProvider } from '@/integrations/outstand/Provider';
 import { CrossPostPrompt } from '@/components/outstand/CrossPostPrompt';
@@ -43,7 +44,8 @@ export const DetailedApplicationCard: React.FC<DetailedApplicationCardProps> = (
   const { data: collaboration } = useApplicationCollaboration(application.id, application.status === 'accepted');
   const respondToOffer = useRespondToCounterOffer();
   const { user } = useAuth();
-  
+  const resolvedLogoUrl = useResolvedLogoUrl(application.campaign?.business_profile?.logo_url);
+
   const latestPendingOffer = counterOffers
     .filter(o => o.status === 'pending' && o.sender_id !== user?.id)
     .at(-1);
@@ -104,7 +106,7 @@ export const DetailedApplicationCard: React.FC<DetailedApplicationCardProps> = (
             {application.campaign?.business_profile && (
               <div className="flex items-center gap-2 mt-2">
                 <Avatar className="h-8 w-8">
-                  <AvatarImage src={application.campaign.business_profile.logo_url} />
+                  <AvatarImage src={resolvedLogoUrl} />
                   <AvatarFallback>
                     <Building className="h-4 w-4" />
                   </AvatarFallback>

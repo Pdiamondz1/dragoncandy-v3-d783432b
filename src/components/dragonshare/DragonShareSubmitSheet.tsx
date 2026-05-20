@@ -8,6 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { Sparkles, ArrowLeft, Check, Loader2 } from 'lucide-react';
 import type { PostPlatform, ContentType } from '@/types/dragonshare';
+import { useResolvedLogoUrl } from '@/hooks/useSignedUrl';
 
 interface Props {
   open: boolean;
@@ -29,6 +30,35 @@ const CONTENT_TYPES: { value: ContentType; label: string }[] = [
   { value: 'story', label: 'Story' },
   { value: 'carousel', label: 'Carousel' },
 ];
+
+function OrgPickerButton({ org, selected, onSelect }: {
+  org: { id: string; name: string; logo_url: string | null; org_type: string };
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  const resolvedLogoUrl = useResolvedLogoUrl(org.logo_url);
+  return (
+    <button
+      onClick={onSelect}
+      className={`flex items-center gap-2 rounded-xl p-3 border transition-colors text-left ${
+        selected ? 'border-teal-500 bg-teal-50' : 'border-border hover:border-teal-300'
+      }`}
+    >
+      {resolvedLogoUrl ? (
+        <img src={resolvedLogoUrl} alt="Brand logo" className="h-8 w-8 rounded-full ring-2 ring-teal-400" />
+      ) : (
+        <div className="h-8 w-8 rounded-full bg-teal-100 flex items-center justify-center text-xs font-bold text-teal-600">
+          {org.name.charAt(0)}
+        </div>
+      )}
+      <div className="min-w-0">
+        <p className="text-sm font-medium truncate">{org.name}</p>
+        <p className="text-xs text-muted-foreground capitalize">{org.org_type}</p>
+      </div>
+      {selected && <Check className="h-4 w-4 text-teal-500 ml-auto flex-shrink-0" />}
+    </button>
+  );
+}
 
 export function DragonShareSubmitSheet({ open, onOpenChange }: Props) {
   const { toast } = useToast();
@@ -179,26 +209,12 @@ export function DragonShareSubmitSheet({ open, onOpenChange }: Props) {
               />
               <div className="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto">
                 {(orgs ?? []).map((org) => (
-                  <button
+                  <OrgPickerButton
                     key={org.id}
-                    onClick={() => setTargetOrgId(org.id)}
-                    className={`flex items-center gap-2 rounded-xl p-3 border transition-colors text-left ${
-                      targetOrgId === org.id ? 'border-teal-500 bg-teal-50' : 'border-border hover:border-teal-300'
-                    }`}
-                  >
-                    {org.logo_url ? (
-                      <img src={org.logo_url} alt="Brand logo" className="h-8 w-8 rounded-full ring-2 ring-teal-400" />
-                    ) : (
-                      <div className="h-8 w-8 rounded-full bg-teal-100 flex items-center justify-center text-xs font-bold text-teal-600">
-                        {org.name.charAt(0)}
-                      </div>
-                    )}
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium truncate">{org.name}</p>
-                      <p className="text-xs text-muted-foreground capitalize">{org.org_type}</p>
-                    </div>
-                    {targetOrgId === org.id && <Check className="h-4 w-4 text-teal-500 ml-auto flex-shrink-0" />}
-                  </button>
+                    org={org}
+                    selected={targetOrgId === org.id}
+                    onSelect={() => setTargetOrgId(org.id)}
+                  />
                 ))}
               </div>
               <Button className="w-full rounded-full" disabled={!targetOrgId} onClick={() => setStep(4)}>

@@ -9,6 +9,7 @@ import { useCreateDirectConversation } from '@/hooks/useConversations';
 import { useSendMessage } from '@/hooks/useMessageMutations';
 import { toast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
+import { useResolvedLogoUrl } from '@/hooks/useSignedUrl';
 
 interface ContactRestaurantModalProps {
   restaurant: {
@@ -28,6 +29,7 @@ export const ContactRestaurantModal: React.FC<ContactRestaurantModalProps> = ({
 }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const resolvedLogoUrl = useResolvedLogoUrl(restaurant.logo_url);
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState('');
   
@@ -90,7 +92,7 @@ export const ContactRestaurantModal: React.FC<ContactRestaurantModalProps> = ({
           {/* Restaurant Info */}
           <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
             <Avatar>
-              <AvatarImage src={restaurant.logo_url} alt={restaurant.business_name ?? "Restaurant avatar"} />
+              <AvatarImage src={resolvedLogoUrl} alt={restaurant.business_name ?? "Restaurant avatar"} />
               <AvatarFallback>
                 <Building className="h-4 w-4" />
               </AvatarFallback>

@@ -16,6 +16,7 @@ import { useOrgUnits, useMyOrgRole, useDeleteOrgUnit } from '@/hooks/useOrgData'
 import { AddEditUnitModal } from '@/components/org/AddEditUnitModal';
 import { useToast } from '@/hooks/use-toast';
 import type { OrgUnit } from '@/types/org';
+import { useResolvedLogoUrl } from '@/hooks/useSignedUrl';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -55,15 +56,16 @@ interface UnitCardProps {
 }
 
 function UnitCard({ unit, canManage, isLastUnit, onEdit, onDelete }: UnitCardProps) {
+  const resolvedLogoUrl = useResolvedLogoUrl(unit.logo_url);
   const subtext = getUnitSubtext(unit);
   const Icon = unit.unit_type === 'location' ? MapPin : Tag;
 
   return (
     <Card className="border border-teal-300 rounded-2xl hover:shadow-md transition-shadow">
       <CardContent className="flex items-center gap-4 p-4">
-        {unit.logo_url ? (
+        {resolvedLogoUrl ? (
           <img
-            src={unit.logo_url}
+            src={resolvedLogoUrl}
             alt={unit.name}
             className="h-12 w-12 rounded-full object-cover ring-2 ring-teal-400 flex-shrink-0"
             loading="lazy"

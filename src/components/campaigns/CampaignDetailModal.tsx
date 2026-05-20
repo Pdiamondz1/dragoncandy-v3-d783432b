@@ -7,6 +7,7 @@ import { safeUrl } from '@/lib/safeUrl';
 import { PublicCampaign } from '@/hooks/usePublicCampaigns';
 import { useCampaignDetail } from '@/hooks/useCampaignDetail';
 import { useAuth } from '@/hooks/useAuth';
+import { useSignedUrl } from '@/hooks/useSignedUrl';
 import { DeliveryBadge } from './DeliveryBadge';
 import { CampaignApplyForm } from './CampaignApplyForm';
 import { mapDeliveryType, getRelativeTime, formatBudget, getTierConfig } from '@/lib/campaignUtils';
@@ -37,7 +38,10 @@ export const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
   const deliveryTier = mapDeliveryType(campaign.delivery_type);
   const tierConfig = getTierConfig(deliveryTier);
   const businessName = campaign.business_profile?.business_name ?? 'Unknown Business';
-  const businessLogo = campaign.business_profile?.logo_url;
+  const rawLogoUrl = campaign.business_profile?.logo_url;
+  const isHttpLogo = rawLogoUrl?.startsWith('http');
+  const signedLogoUrl = useSignedUrl('profile-assets', isHttpLogo ? null : rawLogoUrl);
+  const businessLogo = isHttpLogo ? rawLogoUrl : signedLogoUrl;
   const location = campaign.business_profile?.city
     ? `${campaign.business_profile.city}${campaign.business_profile.country ? ', ' + campaign.business_profile.country : ''}`
     : null;
@@ -76,7 +80,7 @@ export const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
 
       {/* Modal */}
       <div className="fixed inset-0 z-[60] flex items-end lg:items-center lg:justify-center">
-        <div className="w-full h-full lg:h-auto lg:max-h-[90vh] lg:max-w-lg bg-white lg:rounded-2xl overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+        <div className="w-full h-full lg:h-auto lg:max-h-[90vh] lg:max-w-2xl bg-white lg:rounded-2xl overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
           {/* Sticky header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 flex-shrink-0">
             <button onClick={onClose} className="p-1 -ml-1 hover:bg-gray-100 rounded-full transition-colors">
@@ -397,7 +401,7 @@ export const CampaignDetailModal: React.FC<CampaignDetailModalProps> = ({
               <h3 className="text-sm font-bold text-gray-900 mb-2">Budget</h3>
               <div className="text-2xl font-bold text-dc-teal">{formatBudget(campaign)}</div>
               <div className="text-xs text-gray-500 mt-1">
-                {campaign.pricing_type === 'fixed'
+                {(campaign.pricing_type === 'fixed' || campaign.fixed_price != null)
                   ? 'Fixed price'
                   : 'Proposed budget · You can counter-offer when applying'
                 }

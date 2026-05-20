@@ -44,6 +44,14 @@ export function useSignedUrl(
   return url;
 }
 
+export function useResolvedLogoUrl(
+  logoUrl: string | null | undefined
+): string | undefined {
+  const isHttp = logoUrl?.startsWith('http');
+  const signedUrl = useSignedUrl('profile-assets', isHttp ? null : logoUrl);
+  return isHttp ? logoUrl : signedUrl;
+}
+
 export async function getSignedProfileUrl(
   path: string | null | undefined
 ): Promise<string | undefined> {
