@@ -75,3 +75,7 @@ export async function getSignedProfileUrl(
   }
   return undefined;
 }
+
+export function clearSignedUrlCache(): void {
+  signedUrlCache.clear();
+}

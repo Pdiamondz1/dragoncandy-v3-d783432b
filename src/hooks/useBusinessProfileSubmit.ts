@@ -1,17 +1,21 @@
 
 import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import {
   uploadProfileAsset,
   UploadError,
 } from '@/lib/storage/uploadProfileAsset';
+import { clearSignedUrlCache } from '@/hooks/useSignedUrl';
+import { clearProfileCache } from '@/hooks/useProfileData';
 import type { BusinessProfileFormData } from './useBusinessProfileForm';
 import type { Database } from '@/integrations/supabase/types';
 
 type IndustryType = Database['public']['Enums']['industry_type'];
 
 export const useBusinessProfileSubmit = () => {
+  const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
 
   const submitProfile = async (
@@ -106,6 +110,10 @@ export const useBusinessProfileSubmit = () => {
 
         if (insertError) throw insertError;
       }
+
+      clearSignedUrlCache();
+      clearProfileCache(userId);
+      queryClient.invalidateQueries({ queryKey: ['restaurant-profile', userId] });
 
       toast({
         title: "Profile saved successfully!",

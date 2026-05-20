@@ -7,7 +7,7 @@ export interface PendingAction {
   campaignTitle: string;
   actionType: 'review_application' | 'review_content';
   creatorName: string;
-  daysAgo: number;
+  occurredAt: string;
 }
 
 export function usePendingActions() {
@@ -34,8 +34,6 @@ export function usePendingActions() {
 
       if (pendingApps) {
         for (const app of pendingApps) {
-          const createdAt = new Date(app.created_at);
-          const daysAgo = Math.floor((Date.now() - createdAt.getTime()) / (1000 * 60 * 60 * 24));
           const campaign = app.campaigns as unknown as { title: string; user_id: string };
           const profile = app.profiles as unknown as { full_name: string | null };
           actions.push({
@@ -43,7 +41,7 @@ export function usePendingActions() {
             campaignTitle: campaign?.title ?? 'Untitled Campaign',
             actionType: 'review_application',
             creatorName: profile?.full_name ?? 'A creator',
-            daysAgo,
+            occurredAt: app.created_at,
           });
         }
       }
@@ -65,8 +63,6 @@ export function usePendingActions() {
 
       if (pendingContent) {
         for (const collab of pendingContent) {
-          const updatedAt = new Date(collab.updated_at);
-          const daysAgo = Math.floor((Date.now() - updatedAt.getTime()) / (1000 * 60 * 60 * 24));
           const campaign = collab.campaigns as unknown as { title: string; user_id: string };
           const profile = collab.profiles as unknown as { full_name: string | null };
           actions.push({
@@ -74,7 +70,7 @@ export function usePendingActions() {
             campaignTitle: campaign?.title ?? 'Untitled Campaign',
             actionType: 'review_content',
             creatorName: profile?.full_name ?? 'A creator',
-            daysAgo,
+            occurredAt: collab.updated_at,
           });
         }
       }

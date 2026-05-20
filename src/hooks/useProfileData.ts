@@ -131,3 +131,11 @@ export const useProfileData = () => {
 
   return { ...profileData, refetch: fetchProfileData };
 };
+
+export function clearProfileCache(userId?: string): void {
+  if (userId) {
+    profileCache.delete(userId);
+  } else {
+    profileCache.clear();
+  }
+}

@@ -1,5 +1,6 @@
 
 import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -7,6 +8,8 @@ import {
   uploadProfileAsset,
   UploadError,
 } from '@/lib/storage/uploadProfileAsset';
+import { clearSignedUrlCache } from '@/hooks/useSignedUrl';
+import { clearProfileCache } from '@/hooks/useProfileData';
 import type { CreatorProfileFormData } from './useCreatorProfileForm';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -14,6 +17,7 @@ type CreatorSkill = Database['public']['Enums']['creator_skill'];
 
 export const useCreatorProfileSubmit = () => {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
 
   const submitProfile = async (
@@ -98,6 +102,10 @@ export const useCreatorProfileSubmit = () => {
             .upsert(profileData);
 
       if (error) throw error;
+
+      clearSignedUrlCache();
+      clearProfileCache(user.id);
+      queryClient.invalidateQueries({ queryKey: ['available-creators'] });
 
       toast({
         title: isUpdate ? "Profile updated successfully!" : "Profile created successfully!",

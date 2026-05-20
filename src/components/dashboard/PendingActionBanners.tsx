@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Clock, Eye, X } from 'lucide-react';
 import { usePendingActions, type PendingAction } from '@/hooks/usePendingActions';
+import { formatRelativeTime } from '@/lib/campaignUtils';
 
 function isDismissed(campaignId: string): boolean {
   try {
@@ -27,9 +28,10 @@ function ActionBanner({ action, onDismiss }: { action: PendingAction; onDismiss:
     ? <Clock className="h-4 w-4 text-amber-600 shrink-0" />
     : <Eye className="h-4 w-4 text-pink-600 shrink-0" />;
 
+  const timeAgo = formatRelativeTime(action.occurredAt);
   const message = action.actionType === 'review_application'
-    ? `${action.creatorName} applied to "${action.campaignTitle}" ${action.daysAgo} day${action.daysAgo !== 1 ? 's' : ''} ago`
-    : `${action.creatorName} submitted content for "${action.campaignTitle}" ${action.daysAgo} day${action.daysAgo !== 1 ? 's' : ''} ago`;
+    ? `${action.creatorName} applied to "${action.campaignTitle}" ${timeAgo}`
+    : `${action.creatorName} submitted content for "${action.campaignTitle}" ${timeAgo}`;
 
   const ctaLabel = action.actionType === 'review_application' ? 'Review Application →' : 'Review Content →';
 

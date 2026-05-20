@@ -49,6 +49,19 @@ export function getRelativeTime(dateString: string): string {
   return new Date(dateString).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
+export function formatRelativeTime(isoDate: string): string {
+  const diffMs = Date.now() - new Date(isoDate).getTime();
+  const seconds = Math.max(1, Math.floor(diffMs / 1000));
+  const minutes = Math.floor(diffMs / 60_000);
+  const hours = Math.floor(diffMs / 3_600_000);
+  const days = Math.floor(diffMs / 86_400_000);
+
+  if (minutes < 1) return `${seconds} ${seconds === 1 ? 'second' : 'seconds'} ago`;
+  if (hours < 1) return `${minutes} ${minutes === 1 ? 'minute' : 'minutes'} ago`;
+  if (days < 1) return `${hours} ${hours === 1 ? 'hour' : 'hours'} ago`;
+  return `${days} ${days === 1 ? 'day' : 'days'} ago`;
+}
+
 /**
  * Haversine distance in miles between two lat/lng pairs.
  * Returns null if any coordinate is missing.
