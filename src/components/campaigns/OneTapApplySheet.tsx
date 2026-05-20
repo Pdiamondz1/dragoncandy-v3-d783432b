@@ -1,17 +1,34 @@
-import { useEffect, useState } from 'react';
-import { Loader2 } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Loader2, Upload, Link as LinkIcon, ChevronDown, ChevronUp } from 'lucide-react';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { useDonnyApplyPitch, type DonnyPitchResult } from '@/hooks/useDonnyApplyPitch';
+import { getSignedProfileUrl } from '@/hooks/useSignedUrl';
+import { uploadProfileAsset } from '@/lib/storage/uploadProfileAsset';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from '@tanstack/react-query';
+import { toast } from '@/hooks/use-toast';
 import type { Campaign } from '@/hooks/useCampaignQueries';
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+
+const toThumbnailUrl = (url: string, width = 128): string => {
+  const marker = '/storage/v1/object/public/';
+  const idx = url.indexOf(marker);
+  if (idx === -1) return url;
+  const storagePath = url.substring(idx + marker.length);
+  if (/\.(mp4|mov|webm|avi)(\?|$)/i.test(storagePath)) return url;
+  return `${SUPABASE_URL}/storage/v1/render/image/public/${storagePath}?width=${width}&quality=75`;
+};
 
 interface OneTapApplySheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   campaign: Campaign;
-  onSend: (pitch: DonnyPitchResult) => void;
+  onSend: (pitch: DonnyPitchResult, portfolioUrl?: string) => void;
   onEditDetails: (pitch: DonnyPitchResult) => void;
   isInvited?: boolean;
-  onCounterOffer?: (pitch: DonnyPitchResult, counterRate: number, message: string) => void;
+  onCounterOffer?: (pitch: DonnyPitchResult, counterRate: number, message: string, portfolioUrl?: string) => void;
 }
 
 const TIER_AVAILABILITY: Record<string, string> = {
@@ -30,10 +47,42 @@ export function OneTapApplySheet({
   onCounterOffer,
 }: OneTapApplySheetProps) {
   const { data: pitchData, isPending: pitchPending, mutate: pitchMutate } = useDonnyApplyPitch();
+  const { user } = useAuth();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [offerMode, setOfferMode] = useState<'accept' | 'offer'>('accept');
   const [counterRate, setCounterRate] = useState('');
   const [counterMessage, setCounterMessage] = useState('');
+
+  const [sampleUrl, setSampleUrl] = useState('');
+  const [selectedThumbIndex, setSelectedThumbIndex] = useState<number | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [sampleExpanded, setSampleExpanded] = useState(false);
+  const [urlInput, setUrlInput] = useState('');
+  const mountedRef = useRef(true);
+
+  const { data: portfolioThumbnails = [] } = useQuery({
+    queryKey: ['creator-portfolio-urls', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      const { data: profile } = await supabase
+        .from('creator_profiles')
+        .select('portfolio_urls')
+        .eq('user_id', user.id)
+        .single();
+
+      if (!profile?.portfolio_urls?.length) return [];
+
+      const urls = await Promise.all(
+        profile.portfolio_urls.map(async (path: string) => {
+          if (!path) return null;
+          return await getSignedProfileUrl(path);
+        })
+      );
+      return urls.filter((u): u is string => u !== null);
+    },
+    enabled: !!user?.id && open,
+  });
 
   useEffect(() => {
     if (open && !pitchData && !pitchPending) {
@@ -47,11 +96,26 @@ export function OneTapApplySheet({
   }, [open, campaign.id, campaign.budget_min, campaign.budget_max, campaign.fixed_price, pitchData, pitchPending, pitchMutate]);
 
   useEffect(() => {
+    if (pitchData?.suggested_portfolio_piece_url && !sampleUrl && selectedThumbIndex === null && !urlInput) {
+      getSignedProfileUrl(pitchData.suggested_portfolio_piece_url).then((url) => {
+        if (url && mountedRef.current) setSampleUrl(url);
+      });
+    }
+  }, [pitchData?.suggested_portfolio_piece_url, sampleUrl, selectedThumbIndex, urlInput]);
+
+  useEffect(() => {
+    mountedRef.current = true;
     if (!open) {
       setOfferMode('accept');
       setCounterRate('');
       setCounterMessage('');
+      setSampleUrl('');
+      setSelectedThumbIndex(null);
+      setSampleExpanded(false);
+      setUrlInput('');
+      setIsUploading(false);
     }
+    return () => { mountedRef.current = false; };
   }, [open]);
 
   const availability = campaign.delivery_type
@@ -69,19 +133,71 @@ export function OneTapApplySheet({
     const rate = Number(counterRate);
     if (!rate || rate < 50) return;
     const resolved = resolvePitch(pitchData);
-    onCounterOffer(resolved, rate, counterMessage || resolved.pitch);
+    onCounterOffer(resolved, rate, counterMessage || resolved.pitch, sampleUrl || undefined);
   };
 
-  const handleAction = (cb: (pitch: DonnyPitchResult) => void) => {
+  const handleAction = (cb: (pitch: DonnyPitchResult, portfolioUrl?: string) => void) => {
     if (!pitchData) return;
-    cb(resolvePitch(pitchData));
+    cb(resolvePitch(pitchData), sampleUrl || undefined);
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user?.id) return;
+
+    setIsUploading(true);
+    try {
+      const { path } = await uploadProfileAsset({ file, userId: user.id, kind: 'sample' });
+      const signedUrl = await getSignedProfileUrl(path);
+      if (signedUrl && mountedRef.current) {
+        setSampleUrl(signedUrl);
+        setSelectedThumbIndex(null);
+        setUrlInput('');
+      }
+    } catch (err) {
+      if (!mountedRef.current) return;
+      const msg = err instanceof Error ? err.message : 'Upload failed';
+      toast({ title: 'Upload failed', description: msg, variant: 'destructive' });
+    } finally {
+      if (mountedRef.current) setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleUrlInput = (value: string) => {
+    setUrlInput(value);
+    if (value.startsWith('http://') || value.startsWith('https://')) {
+      setSampleUrl(value);
+      setSelectedThumbIndex(null);
+    }
+  };
+
+  const handleThumbSelect = (url: string, index: number) => {
+    if (selectedThumbIndex === index) {
+      setSelectedThumbIndex(null);
+      setSampleUrl('');
+    } else {
+      setSelectedThumbIndex(index);
+      setSampleUrl(url);
+      setUrlInput('');
+    }
   };
 
   const showInviteNegotiation = isInvited && isFixedPrice && onCounterOffer;
 
+  const isVideoSample = sampleUrl && /\.(mp4|mov|webm|avi)(\?|$)/i.test(sampleUrl);
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="bottom" className="rounded-t-2xl px-5 pt-6 pb-8 max-h-[70vh] overflow-y-auto sm:!left-1/2 sm:!right-auto sm:!-translate-x-1/2 sm:!max-w-lg sm:bottom-4 sm:rounded-2xl">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quicktime"
+          className="hidden"
+          onChange={handleFileUpload}
+        />
+
         {pitchPending ? (
           <div className="flex flex-col items-center justify-center py-12 gap-3">
             <Loader2 className="w-8 h-8 animate-spin text-dc-teal" />
@@ -104,19 +220,96 @@ export function OneTapApplySheet({
                 <span className="text-xs text-gray-500 uppercase">When</span>
                 <span className="text-sm text-gray-700">{availability}</span>
               </div>
-              {pitchData.suggested_portfolio_piece_url && (
-                <div className="flex justify-between items-center">
+
+              {/* Sample section */}
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  onClick={() => setSampleExpanded(!sampleExpanded)}
+                  className="flex justify-between items-center w-full"
+                >
                   <span className="text-xs text-gray-500 uppercase">Sample</span>
-                  <div className="w-12 h-12 rounded-lg overflow-hidden border border-gray-200">
-                    <img
-                      src={pitchData.suggested_portfolio_piece_url}
-                      alt="Portfolio sample"
-                      className="w-full h-full object-cover"
-                      loading="lazy"
-                    />
+                  <div className="flex items-center gap-2">
+                    {sampleUrl && !isVideoSample && (
+                      <div className="w-10 h-10 rounded-lg overflow-hidden border border-gray-200">
+                        <img
+                          src={sampleUrl}
+                          alt="Portfolio sample"
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                        />
+                      </div>
+                    )}
+                    {sampleUrl && isVideoSample && (
+                      <div className="w-10 h-10 rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center">
+                        <span className="text-[10px] font-medium text-gray-500">VIDEO</span>
+                      </div>
+                    )}
+                    {!sampleUrl && (
+                      <span className="text-xs text-gray-400">Add a sample</span>
+                    )}
+                    {sampleExpanded ? (
+                      <ChevronUp className="w-4 h-4 text-gray-400" />
+                    ) : (
+                      <ChevronDown className="w-4 h-4 text-gray-400" />
+                    )}
                   </div>
-                </div>
-              )}
+                </button>
+
+                {sampleExpanded && (
+                  <div className="space-y-2 pt-1">
+                    {/* Portfolio thumbnails */}
+                    {portfolioThumbnails.length > 0 && (
+                      <div className="flex gap-2 overflow-x-auto pb-2 md:overflow-x-visible md:flex-wrap">
+                        {portfolioThumbnails.map((url, i) => (
+                          <button
+                            key={i}
+                            type="button"
+                            onClick={() => handleThumbSelect(url, i)}
+                            className={`w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 border-2 transition-all ${
+                              selectedThumbIndex === i
+                                ? 'border-dc-teal ring-2 ring-dc-teal'
+                                : 'border-gray-200 hover:border-gray-300'
+                            }`}
+                          >
+                            <img src={toThumbnailUrl(url)} alt={`Portfolio ${i + 1}`} className="w-full h-full object-cover" loading="lazy" />
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Upload + URL row */}
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isUploading}
+                        className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-xl border border-gray-200 text-gray-600 hover:border-dc-teal hover:text-dc-teal transition-colors disabled:opacity-50"
+                      >
+                        {isUploading ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <Upload className="w-3.5 h-3.5" />
+                        )}
+                        {isUploading ? 'Uploading…' : 'Upload'}
+                      </button>
+                    </div>
+
+                    {/* URL paste input */}
+                    <div className="relative">
+                      <LinkIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                      <input
+                        type="url"
+                        value={urlInput}
+                        onChange={(e) => handleUrlInput(e.target.value)}
+                        placeholder="https://your-portfolio.com/sample"
+                        className="w-full pl-8 pr-3 py-2 border border-gray-200 rounded-xl text-xs text-gray-800 outline-none focus:border-dc-teal focus:ring-1 focus:ring-dc-teal"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <div>
                 <span className="text-xs text-gray-500 uppercase block mb-1">Pitch</span>
                 <p className="text-sm text-gray-700 italic bg-gray-50 rounded-xl p-3">

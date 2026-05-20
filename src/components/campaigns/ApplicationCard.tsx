@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Check, X, Clock, DollarSign, User, ArrowRightLeft, CreditCard, Loader2, Eye } from 'lucide-react';
+import { Check, X, Clock, DollarSign, User, ArrowRightLeft, CreditCard, Loader2, Eye, ImageIcon } from 'lucide-react';
 import { useManageApplication } from '@/hooks/useManageApplication';
 import { CampaignApplication } from '@/types/applications';
 import { ApplicationStatusBadge } from './ApplicationStatusBadge';
@@ -12,6 +12,7 @@ import { CounterOfferModal } from './CounterOfferModal';
 import { CounterOfferThread } from './CounterOfferThread';
 import { useCounterOffers, useRespondToCounterOffer } from '@/hooks/useCounterOffers';
 import { useAuth } from '@/hooks/useAuth';
+import { useResolvedLogoUrl } from '@/hooks/useSignedUrl';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { formatSkillLabel } from '@/lib/skillUtils';
@@ -41,6 +42,7 @@ const ApplicationCardComponent: React.FC<ApplicationCardProps> = ({
   const { data: counterOffers = [] } = useCounterOffers(application.id);
   const respondToOffer = useRespondToCounterOffer();
   const { user } = useAuth();
+  const resolvedPortfolioUrl = useResolvedLogoUrl(application.portfolio_url);
 
   const latestCreatorOffer = counterOffers
     .filter(o => o.status === 'pending' && o.sender_id !== user?.id)
@@ -201,6 +203,27 @@ const ApplicationCardComponent: React.FC<ApplicationCardProps> = ({
             {application.intro_message || 'No message provided'}
           </p>
         </div>
+
+        {resolvedPortfolioUrl && (
+          <div>
+            <h4 className="font-medium mb-1 flex items-center gap-1.5">
+              <ImageIcon className="h-4 w-4 text-dc-teal" aria-hidden="true" />
+              Portfolio Sample
+            </h4>
+            <button
+              type="button"
+              onClick={() => window.open(resolvedPortfolioUrl, '_blank')}
+              className="w-20 h-20 rounded-lg overflow-hidden border-2 border-gray-200 hover:border-dc-teal transition-colors"
+            >
+              <img
+                src={resolvedPortfolioUrl}
+                alt="Portfolio sample"
+                className="w-full h-full object-cover"
+                loading="lazy"
+              />
+            </button>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {application.proposed_timeline && (

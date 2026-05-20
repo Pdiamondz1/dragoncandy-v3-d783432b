@@ -249,7 +249,7 @@ const CampaignDetailsPage: React.FC = () => {
       .then(({ error: logErr }) => { if (logErr) console.error('donny_events log failed:', logErr); });
   };
 
-  const handleDonnySend = async (pitch: DonnyPitchResult) => {
+  const handleDonnySend = async (pitch: DonnyPitchResult, portfolioUrl?: string) => {
     if (!campaign) return;
     try {
       await createApplication.mutateAsync({
@@ -257,7 +257,7 @@ const CampaignDetailsPage: React.FC = () => {
         introMessage: pitch.pitch,
         proposedRate: pitch.suggested_rate,
         proposedTimeline: computeProposedTimeline(campaign.delivery_type),
-        portfolioUrl: pitch.suggested_portfolio_piece_url ?? undefined,
+        portfolioUrl: portfolioUrl ?? pitch.suggested_portfolio_piece_url ?? undefined,
         isInvited,
       });
 
@@ -269,7 +269,7 @@ const CampaignDetailsPage: React.FC = () => {
     }
   };
 
-  const handleCounterOffer = async (pitch: DonnyPitchResult, counterRate: number, message: string) => {
+  const handleCounterOffer = async (pitch: DonnyPitchResult, counterRate: number, message: string, portfolioUrl?: string) => {
     if (!campaign) return;
     try {
       await createApplication.mutateAsync({
@@ -277,7 +277,7 @@ const CampaignDetailsPage: React.FC = () => {
         introMessage: message || pitch.pitch,
         proposedRate: counterRate,
         proposedTimeline: computeProposedTimeline(campaign.delivery_type),
-        portfolioUrl: pitch.suggested_portfolio_piece_url ?? undefined,
+        portfolioUrl: portfolioUrl ?? pitch.suggested_portfolio_piece_url ?? undefined,
         isCounterOffer: true,
         isInvited: true,
       });

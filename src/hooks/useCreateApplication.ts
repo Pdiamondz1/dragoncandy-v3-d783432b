@@ -106,7 +106,7 @@ export const useCreateApplication = () => {
       }
 
       if (isCounterOffer && data) {
-        await supabase.from('application_counter_offers').insert({
+        const { error: counterOfferError } = await supabase.from('application_counter_offers').insert({
           application_id: data.id,
           sender_id: user!.id,
           sender_role: 'creator',
@@ -114,6 +114,9 @@ export const useCreateApplication = () => {
           message: introMessage || 'I would like to propose a different rate for this campaign.',
           status: 'pending',
         });
+        if (counterOfferError) {
+          console.error('Error creating counter offer record:', counterOfferError);
+        }
       }
 
       return data;
@@ -178,10 +181,12 @@ export const useCreateApplication = () => {
     },
     onError: (error: Error) => {
       console.error('Application submission failed:', error);
-      const description =
-        error.message?.includes('already applied') || error.message?.includes('no longer accepting')
-          ? error.message
-          : 'Please try again later.';
+      let description = 'Please try again later.';
+      if (error.message?.includes('already applied') || error.message?.includes('no longer accepting')) {
+        description = error.message;
+      } else if (error.message?.includes('row-level security') || error.message?.includes('violates row')) {
+        description = 'A permissions issue occurred. Please refresh and try again.';
+      }
       toast({
         title: 'Failed to submit application',
         description,

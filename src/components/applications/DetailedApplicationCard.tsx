@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Clock, DollarSign, Building, MessageSquare, X, Check, ArrowRightLeft, Share2, ArrowRight } from 'lucide-react';
+import { Clock, DollarSign, Building, MessageSquare, X, Check, ArrowRightLeft, Share2, ArrowRight, ImageIcon } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
@@ -45,6 +45,7 @@ export const DetailedApplicationCard: React.FC<DetailedApplicationCardProps> = (
   const respondToOffer = useRespondToCounterOffer();
   const { user } = useAuth();
   const resolvedLogoUrl = useResolvedLogoUrl(application.campaign?.business_profile?.logo_url);
+  const resolvedPortfolioUrl = useResolvedLogoUrl(application.portfolio_url);
 
   const latestPendingOffer = counterOffers
     .filter(o => o.status === 'pending' && o.sender_id !== user?.id)
@@ -154,6 +155,27 @@ export const DetailedApplicationCard: React.FC<DetailedApplicationCardProps> = (
             {application.intro_message || 'No message provided'}
           </p>
         </div>
+
+        {resolvedPortfolioUrl && (
+          <div>
+            <h4 className="font-medium mb-1 flex items-center gap-1.5">
+              <ImageIcon className="h-4 w-4 text-dc-teal" aria-hidden="true" />
+              Your Sample
+            </h4>
+            <button
+              type="button"
+              onClick={() => window.open(resolvedPortfolioUrl, '_blank')}
+              className="w-20 h-20 rounded-lg overflow-hidden border-2 border-gray-200 hover:border-dc-teal transition-colors"
+            >
+              <img
+                src={resolvedPortfolioUrl}
+                alt="Portfolio sample"
+                className="w-full h-full object-cover"
+                loading="lazy"
+              />
+            </button>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {application.proposed_timeline && (
