@@ -203,7 +203,7 @@ const CreatorCampaignMarketplace = () => {
             >
               {tab.label}
               {tab.badge && tab.badge > 0 ? (
-                <span className="ml-1.5 bg-pink-500 text-white text-[10px] font-bold min-w-[16px] h-4 flex items-center justify-center rounded-full px-1">
+                <span className="ml-1.5 bg-pink-500 text-white text-[10px] font-bold min-w-[16px] h-4 inline-flex items-center justify-center rounded-full px-1">
                   {tab.badge}
                 </span>
               ) : null}

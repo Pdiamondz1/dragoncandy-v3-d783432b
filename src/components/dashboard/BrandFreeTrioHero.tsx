@@ -81,7 +81,7 @@ export function BrandFreeTrioHero({ orgId }: BrandFreeTrioHeroProps) {
               </p>
               <Button
                 variant="dc-primary"
-                className="w-full rounded-full text-sm"
+                className="w-full md:w-fit rounded-full text-sm"
                 onClick={handleMatchReport}
               >
                 Get matches
@@ -104,7 +104,7 @@ export function BrandFreeTrioHero({ orgId }: BrandFreeTrioHeroProps) {
               </p>
               <Button
                 variant="dc-primary"
-                className="w-full rounded-full text-sm"
+                className="w-full md:w-fit rounded-full text-sm"
                 onClick={handleBrandBrief}
               >
                 Generate brief
@@ -129,7 +129,7 @@ export function BrandFreeTrioHero({ orgId }: BrandFreeTrioHeroProps) {
               </p>
               <Button
                 variant="dc-outline"
-                className="w-full rounded-full text-sm"
+                className="w-full md:w-fit rounded-full text-sm"
                 onClick={handleTemplates}
               >
                 Browse templates
@@ -139,7 +139,7 @@ export function BrandFreeTrioHero({ orgId }: BrandFreeTrioHeroProps) {
         </div>
 
         {/* Slim banner */}
-        <div className="flex items-center justify-between rounded-full bg-white/60 px-4 py-2">
+        <div className="flex items-center justify-between rounded-xl bg-white/60 px-4 py-2">
           <p className="text-xs text-gray-500">
             These tools stay free forever.
           </p>
