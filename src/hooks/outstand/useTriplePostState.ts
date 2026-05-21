@@ -13,7 +13,17 @@ export interface TriplePostSession {
   restaurant_status: 'pending' | 'posted' | 'skipped';
   creator_status: 'pending' | 'posted' | 'skipped';
   brand_status: 'pending' | 'posted' | 'skipped' | 'n/a';
+  status: 'in_progress' | 'completed';
+  completed_at: string | null;
   created_at: string;
+}
+
+function isTriplePostComplete(session: TriplePostSession): boolean {
+  const done = (s: string | null) => s === null || ['posted', 'skipped', 'n/a'].includes(s);
+  const anyPosted = session.restaurant_status === 'posted' ||
+    session.creator_status === 'posted' ||
+    session.brand_status === 'posted';
+  return anyPosted && done(session.restaurant_status) && done(session.creator_status) && done(session.brand_status);
 }
 
 export function useTriplePostState(campaignId: string | undefined) {
@@ -70,9 +80,11 @@ export function useTriplePostState(campaignId: string | undefined) {
     onError: () => { toast.error('Failed to update post status'); },
   });
 
+  const session = query.data;
   return {
-    session: query.data,
+    session,
     isLoading: query.isLoading,
+    isTriplePostComplete: session ? isTriplePostComplete(session) : false,
     updateMyStatus: updateMyStatus.mutate,
   };
 }

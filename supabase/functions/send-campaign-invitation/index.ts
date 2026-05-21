@@ -97,42 +97,49 @@ serve(async (req) => {
       );
     }
 
-    // Check for duplicate pending invitation
-    const { data: existing } = await supabase
-      .from("campaign_invitations")
-      .select("id, status")
-      .eq("campaign_id", campaign_id)
-      .eq("creator_id", creator_id)
-      .eq("status", "pending")
-      .maybeSingle();
+    // Atomic upsert — UNIQUE(campaign_id, creator_id) prevents duplicates at the DB layer
+    const ttlDays = parseInt(Deno.env.get("INVITATION_TTL_DAYS") ?? "7", 10);
+    const expiresAt = new Date(Date.now() + ttlDays * 24 * 60 * 60 * 1000).toISOString();
 
-    if (existing) {
+    const { data: upsertRows, error: upsertError } = await supabase
+      .from("campaign_invitations")
+      .upsert(
+        {
+          campaign_id,
+          creator_id,
+          invited_by,
+          invitation_message: invitation_message || null,
+          status: "pending",
+          expires_at: expiresAt,
+        },
+        { onConflict: "campaign_id,creator_id", ignoreDuplicates: true },
+      )
+      .select();
+
+    if (upsertError) {
+      console.error("Error upserting invitation:", upsertError);
+      return new Response(
+        JSON.stringify({ error: "Failed to create invitation" }),
+        { status: 500, headers: { ...corsHeaders(req), "Content-Type": "application/json" } },
+      );
+    }
+
+    // No row returned means the conflict was hit — fetch the existing invitation
+    if (!upsertRows || upsertRows.length === 0) {
+      const { data: existing } = await supabase
+        .from("campaign_invitations")
+        .select("id, status")
+        .eq("campaign_id", campaign_id)
+        .eq("creator_id", creator_id)
+        .maybeSingle();
+
       return new Response(
         JSON.stringify({ invitation: existing, already_invited: true }),
         { status: 200, headers: { ...corsHeaders(req), "Content-Type": "application/json" } },
       );
     }
 
-    // --- Insert invitation ---
-    const { data: invitation, error: insertError } = await supabase
-      .from("campaign_invitations")
-      .insert({
-        campaign_id,
-        creator_id,
-        invited_by,
-        invitation_message: invitation_message || null,
-        status: "pending",
-      })
-      .select()
-      .single();
-
-    if (insertError) {
-      console.error("Error inserting invitation:", insertError);
-      return new Response(
-        JSON.stringify({ error: "Failed to create invitation" }),
-        { status: 500, headers: { ...corsHeaders(req), "Content-Type": "application/json" } },
-      );
-    }
+    const invitation = upsertRows[0];
 
     // --- Get business name ---
     const { data: businessProfile } = await supabase

@@ -1,6 +1,6 @@
 import { serve } from 'https://deno.land/std@0.190.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import Stripe from 'https://esm.sh/stripe@14.21.0?target=deno';
+import Stripe from 'https://esm.sh/stripe@18.5.0';
 import { corsHeaders } from "../_shared/cors.ts";
 
 // Base price IDs per tier and billing period
@@ -29,7 +29,7 @@ serve(async (req) => {
     const siteUrl = Deno.env.get('PUBLIC_SITE_URL') || 'https://dragoncandy.io';
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    const stripe = new Stripe(stripeSecretKey, { apiVersion: '2023-10-16' });
+    const stripe = new Stripe(stripeSecretKey, { apiVersion: '2025-08-27.basil' });
 
     // Authenticate user via JWT
     const authHeader = req.headers.get('Authorization');

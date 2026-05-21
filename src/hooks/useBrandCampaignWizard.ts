@@ -23,6 +23,8 @@ export interface BrandBriefData {
 }
 
 export interface BrandDetailsData {
+  pricingType: 'fixed' | 'bid_range';
+  fixedPrice: number;
   budgetMin: number;
   budgetMax: number;
   perCreatorCap: number;
@@ -62,6 +64,8 @@ export const useBrandCampaignWizard = () => {
 
   // Step 2: Details
   const [detailsData, setDetailsData] = useState<BrandDetailsData>({
+    pricingType: 'bid_range',
+    fixedPrice: 0,
     budgetMin: 0,
     budgetMax: 0,
     perCreatorCap: 0,
@@ -120,8 +124,10 @@ export const useBrandCampaignWizard = () => {
           tagline: briefData.tagline || null,
           target_creator_personas: briefData.targetPersonas.length > 0 ? briefData.targetPersonas : null,
           geographic_scope: briefData.geographicScope || null,
-          budget_min: detailsData.budgetMin || null,
-          budget_max: detailsData.budgetMax || null,
+          pricing_type: detailsData.pricingType,
+          ...(detailsData.pricingType === 'fixed'
+            ? { fixed_price: detailsData.fixedPrice || null }
+            : { budget_min: detailsData.budgetMin || null, budget_max: detailsData.budgetMax || null }),
           per_creator_cap: detailsData.perCreatorCap || null,
           creator_count: detailsData.creatorCount || null,
           hashtag_requirements: detailsData.hashtagRequirements || null,

@@ -57,111 +57,14 @@ export const useCreateCampaign = () => {
     onSuccess: async (data) => {
       queryClient.invalidateQueries({ queryKey: ['campaigns'] });
       
-      // Send email notification if campaign is published
+      // Batched publish notifications via single edge function call
       if (data.status === 'published') {
         try {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('email, full_name')
-            .eq('id', user!.id)
-            .maybeSingle();
-
-          if (profile) {
-            await supabase.functions.invoke('send-notification-email', {
-              body: {
-                to: profile.email,
-                recipientName: profile.full_name,
-                type: 'campaign_published',
-                data: {
-                  campaignTitle: data.title,
-                  campaignId: data.id,
-                },
-              },
-            });
-          }
-
-            // Notify all brands if campaign is open for sponsorship
-          if (data.open_for_sponsorship === true) {
-            const { data: brands, error: brandsError } = await supabase
-              .from('business_profiles')
-              .select('user_id, business_name')
-              .eq('account_type', 'brand')
-              .eq('is_completed', true);
-
-            if (!brandsError && brands && brands.length > 0) {
-              const brandUserIds = brands.map(b => b.user_id);
-              const { data: brandProfiles } = await supabase
-                .from('profiles')
-                .select('id, email, full_name')
-                .in('id', brandUserIds);
-
-              if (brandProfiles) {
-                const notificationPromises = brandProfiles.map(async (brandProfile) => {
-                  try {
-                    return await supabase.functions.invoke('send-notification-email', {
-                      body: {
-                        to: brandProfile.email,
-                        recipientName: brandProfile.full_name,
-                        type: 'new_campaign_for_brands',
-                        data: {
-                          campaignTitle: data.title,
-                          campaignId: data.id,
-                          description: data.description?.substring(0, 200),
-                        },
-                      },
-                    });
-                  } catch (error) {
-                    console.error(`Failed to notify brand ${brandProfile.id}:`, error);
-                    return null;
-                  }
-                });
-
-                await Promise.allSettled(notificationPromises);
-              }
-            }
-          }
-
-          // Notify all creators about new campaign
-          const { data: creators, error: creatorsError } = await supabase
-            .from('creator_profiles')
-            .select('user_id, creator_name')
-            .eq('is_completed', true);
-
-          if (!creatorsError && creators && creators.length > 0) {
-            const creatorUserIds = creators.map(c => c.user_id);
-            const { data: creatorProfiles } = await supabase
-              .from('profiles')
-              .select('id, email, full_name')
-              .in('id', creatorUserIds);
-
-            if (creatorProfiles) {
-              const notificationPromises = creatorProfiles.map(async (creatorProfile) => {
-                try {
-                  return await supabase.functions.invoke('send-notification-email', {
-                    body: {
-                      to: creatorProfile.email,
-                      recipientName: creatorProfile.full_name,
-                      type: 'new_campaign_for_creators',
-                      data: {
-                        campaignTitle: data.title,
-                        campaignId: data.id,
-                        description: data.description?.substring(0, 200),
-                        budget: data.budget_max || data.budget_min,
-                        platforms: data.platforms,
-                      },
-                    },
-                  });
-                } catch (error) {
-                  console.error(`Failed to notify creator ${creatorProfile.id}:`, error);
-                  return null;
-                }
-              });
-
-              await Promise.allSettled(notificationPromises);
-            }
-          }
+          await supabase.functions.invoke('send-campaign-publish-notifications', {
+            body: { campaignId: data.id, campaignTitle: data.title, userId: user!.id },
+          });
         } catch (error) {
-          console.error('Failed to send campaign published email:', error);
+          console.error('Failed to send publish notifications:', error);
         }
       }
       
@@ -209,133 +112,22 @@ export const useUpdateCampaign = () => {
     onSuccess: async (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['campaigns'] });
       
-      // Send email notification if status was changed
-      if (variables.updates.status) {
+      // Batched publish notifications via single edge function call
+      if (variables.updates.status === 'published' && data.status === 'published') {
         try {
-          const { data: { user } } = await supabase.auth.getUser();
-          if (!user) return;
-
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('email, full_name')
-            .eq('id', user.id)
-            .maybeSingle();
-
-          if (profile) {
-            const statusMessages: Record<string, string> = {
-              published: 'Your campaign has been published and is now live in the marketplace!',
-              active: 'Your campaign is now active with accepted creators working on it.',
-              completed: 'Your campaign has been marked as completed.',
-              cancelled: 'Your campaign has been cancelled.',
-              draft: 'Your campaign has been saved as a draft.',
-            };
-
-            await supabase.functions.invoke('send-notification-email', {
-              body: {
-                to: profile.email,
-                recipientName: profile.full_name,
-                type: data.status === 'published' ? 'campaign_published' : 'campaign_update',
-                data: {
-                  campaignTitle: data.title,
-                  campaignId: data.id,
-                  updateDetails: statusMessages[data.status as string] || `Campaign status updated to ${data.status}`,
-                },
-              },
-            });
-
-            // Notify all brands if campaign is changed to published AND open for sponsorship
-            if (data.status === 'published' && data.open_for_sponsorship === true) {
-              const { data: brands, error: brandsError } = await supabase
-                .from('business_profiles')
-                .select('user_id, business_name')
-                .eq('account_type', 'brand')
-                .eq('is_completed', true);
-
-              if (!brandsError && brands && brands.length > 0) {
-                const brandUserIds = brands.map(b => b.user_id);
-                const { data: brandProfiles } = await supabase
-                  .from('profiles')
-                  .select('id, email, full_name')
-                  .in('id', brandUserIds);
-
-                if (brandProfiles) {
-                  const notificationPromises = brandProfiles.map(async (brandProfile) => {
-                    try {
-                      return await supabase.functions.invoke('send-notification-email', {
-                        body: {
-                          to: brandProfile.email,
-                          recipientName: brandProfile.full_name,
-                          type: 'new_campaign_for_brands',
-                          data: {
-                            campaignTitle: data.title,
-                            campaignId: data.id,
-                            description: data.description?.substring(0, 200),
-                          },
-                        },
-                      });
-                    } catch (error) {
-                      console.error(`Failed to notify brand ${brandProfile.id}:`, error);
-                      return null;
-                    }
-                  });
-
-                  await Promise.allSettled(notificationPromises);
-                }
-              }
-            }
-
-            // Notify all creators if campaign status changed to published
-            if (data.status === 'published' && variables.updates.status === 'published') {
-              const { data: creators, error: creatorsError } = await supabase
-                .from('creator_profiles')
-                .select('user_id, creator_name')
-                .eq('is_completed', true);
-
-              if (!creatorsError && creators && creators.length > 0) {
-                const creatorUserIds = creators.map(c => c.user_id);
-                const { data: creatorProfiles } = await supabase
-                  .from('profiles')
-                  .select('id, email, full_name')
-                  .in('id', creatorUserIds);
-
-                if (creatorProfiles) {
-                  const notificationPromises = creatorProfiles.map(async (creatorProfile) => {
-                    try {
-                      return await supabase.functions.invoke('send-notification-email', {
-                        body: {
-                          to: creatorProfile.email,
-                          recipientName: creatorProfile.full_name,
-                          type: 'new_campaign_for_creators',
-                          data: {
-                            campaignTitle: data.title,
-                            campaignId: data.id,
-                            description: data.description?.substring(0, 200),
-                            budget: data.budget_max || data.budget_min,
-                            platforms: data.platforms,
-                          },
-                        },
-                      });
-                    } catch (error) {
-                      console.error(`Failed to notify creator ${creatorProfile.id}:`, error);
-                      return null;
-                    }
-                  });
-
-                  await Promise.allSettled(notificationPromises);
-                }
-              }
-            }
-          }
-        } catch (error) {
-          console.error('Failed to send campaign status update email:', error);
-        }
-
-        // Clean up temporary reference media when campaign reaches terminal status
-        if (data.status === 'completed' || data.status === 'cancelled') {
-          cleanupCampaignMedia(data.id).catch((err) => {
-            console.error('Campaign media cleanup failed (non-blocking):', err);
+          await supabase.functions.invoke('send-campaign-publish-notifications', {
+            body: { campaignId: data.id, campaignTitle: data.title, userId: user!.id },
           });
+        } catch (error) {
+          console.error('Failed to send publish notifications:', error);
         }
+      }
+
+      // Clean up temporary reference media when campaign reaches terminal status
+      if (data.status === 'completed' || data.status === 'cancelled') {
+        cleanupCampaignMedia(data.id).catch((err) => {
+          console.error('Campaign media cleanup failed (non-blocking):', err);
+        });
       }
 
       toast({
@@ -513,6 +305,41 @@ export const useDuplicateCampaign = () => {
         .single();
 
       if (insertError) throw insertError;
+
+      // Copy deliverables with status reset
+      const { data: sourceDeliverables } = await supabase
+        .from('campaign_deliverables')
+        .select('content_type, platform, aspect_ratio, description, quantity')
+        .eq('campaign_id', sourceCampaignId);
+
+      if (sourceDeliverables?.length) {
+        const { error: delivErr } = await supabase
+          .from('campaign_deliverables')
+          .insert(sourceDeliverables.map((d) => ({
+            ...d,
+            campaign_id: newCampaign.id,
+            status: 'pending',
+          })));
+        if (delivErr) console.error('Failed to copy deliverables:', delivErr);
+      }
+
+      // Copy media assets
+      const { data: sourceMedia } = await supabase
+        .from('campaign_media')
+        .select('media_type, media_url, caption, sort_order')
+        .eq('campaign_id', sourceCampaignId);
+
+      if (sourceMedia?.length) {
+        const { error: mediaErr } = await supabase
+          .from('campaign_media')
+          .insert(sourceMedia.map((m) => ({
+            ...m,
+            campaign_id: newCampaign.id,
+            uploaded_by: user!.id,
+          })));
+        if (mediaErr) console.error('Failed to copy media:', mediaErr);
+      }
+
       return newCampaign;
     },
     onSuccess: () => {

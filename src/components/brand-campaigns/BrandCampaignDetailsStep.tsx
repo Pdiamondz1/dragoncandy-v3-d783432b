@@ -63,8 +63,11 @@ export const BrandCampaignDetailsStep = ({
     updateField('brandAssets', updated);
   };
 
+  const hasBudget = detailsData.pricingType === 'fixed'
+    ? detailsData.fixedPrice > 0
+    : detailsData.budgetMax > 0;
   const canContinue =
-    detailsData.budgetMax > 0 &&
+    hasBudget &&
     detailsData.creatorCount >= 1 &&
     detailsData.deliverables.length >= 1;
 
@@ -75,7 +78,49 @@ export const BrandCampaignDetailsStep = ({
         <CardContent className="p-4 space-y-4">
           <h3 className="text-sm font-semibold text-gray-800">Budget & Scale</h3>
 
-          {/* Budget Pool */}
+          {/* Pricing Type */}
+          <div className="space-y-2">
+            <label className="text-sm text-gray-600">
+              Pricing Type <span className="text-red-500">*</span>
+            </label>
+            <Select
+              value={detailsData.pricingType}
+              onValueChange={(val) => updateField('pricingType', val as 'fixed' | 'bid_range')}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select pricing type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="fixed">Fixed Price</SelectItem>
+                <SelectItem value="bid_range">Bid Range</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Fixed Price (shown when pricingType is fixed) */}
+          {detailsData.pricingType === 'fixed' && (
+            <div className="space-y-2">
+              <label className="text-sm text-gray-600">Fixed Price ($)</label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">$</span>
+                <Input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  className="pl-7"
+                  placeholder="0"
+                  value={detailsData.fixedPrice || ''}
+                  onChange={(e) => {
+                    const clean = sanitizeNumericInput(e.target.value);
+                    updateField('fixedPrice', Number(clean) || 0);
+                  }}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Budget Pool (shown when pricingType is bid_range) */}
+          {detailsData.pricingType === 'bid_range' && (
           <div className="space-y-2">
             <label className="text-sm text-gray-600">Budget Pool ($)</label>
             <div className="flex gap-3">
@@ -107,6 +152,7 @@ export const BrandCampaignDetailsStep = ({
               </div>
             </div>
           </div>
+          )}
 
           {/* Per-Creator Payout Cap */}
           <div className="space-y-2">

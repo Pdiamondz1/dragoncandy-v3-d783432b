@@ -76,6 +76,22 @@ export function useDraftPosts() {
 
       const scheduleTime = scheduledAt || draft.scheduled_at;
 
+      // Validate Outstand account is connected for this platform
+      const { data: outstandAccount } = await supabase
+        .from('business_outstand_accounts')
+        .select('id, status')
+        .eq('user_id', user.id)
+        .eq('platform', draft.platform)
+        .maybeSingle();
+
+      if (!outstandAccount) {
+        throw new Error(`No active Outstand account for ${draft.platform}. Connect your account in Settings > Social.`);
+      }
+      if (outstandAccount.status !== 'active') {
+        throw new Error(`Your Outstand ${draft.platform} account is disconnected or expired. Reconnect in Settings > Social.`);
+      }
+
+      let outstandScheduled = false;
       try {
         await supabase.functions.invoke('outstand-proxy', {
           body: {
@@ -90,13 +106,17 @@ export function useDraftPosts() {
             },
           },
         });
+        outstandScheduled = true;
       } catch {
-        // Outstand scheduling may fail in test mode — still save locally
+        toast.error('Outstand scheduling failed — draft saved locally. You can retry later.');
       }
 
       const { error } = await supabase
         .from('donny_scheduled_posts')
-        .update({ status: 'scheduled', scheduled_at: scheduleTime })
+        .update({
+          status: outstandScheduled ? 'scheduled' : 'draft',
+          scheduled_at: scheduleTime,
+        })
         .eq('id', draftId)
         .eq('user_id', user.id);
 
@@ -105,7 +125,7 @@ export function useDraftPosts() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['draft-posts'] });
     },
-    onError: () => { toast.error('Failed to schedule draft'); },
+    onError: (err: Error) => { toast.error(err.message || 'Failed to schedule draft'); },
   });
 
   const scheduleAllDrafts = useMutation({

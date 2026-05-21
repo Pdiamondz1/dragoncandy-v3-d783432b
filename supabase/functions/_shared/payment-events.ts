@@ -27,9 +27,8 @@ export async function writePaymentEvent(
     });
 
   if (error) {
-    console.error(`${logPrefix} Failed to write ${event.event_type} for ${event.entity_type}/${event.entity_id}: ${error.message}`);
-    // Fire-and-forget: don't throw. Reconciliation cron catches gaps.
+    throw new Error(`${logPrefix} Failed to write ${event.event_type} for ${event.entity_type}/${event.entity_id}: ${error.message}`);
   } else {
-    console.log(`${logPrefix} Wrote ${event.event_type} for ${event.entity_type}/${event.entity_id}`);
+    console.warn(`${logPrefix} Wrote ${event.event_type} for ${event.entity_type}/${event.entity_id}`);
   }
 }

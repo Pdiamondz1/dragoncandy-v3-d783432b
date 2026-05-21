@@ -58,7 +58,7 @@ export const useProjectComplete = () => {
           ...(userRole === 'content_creator' && { content_status: 'submitted' })
         })
         .eq('id', collaborationId)
-        .select('id, application_id, business_completion_status, campaign_id, completed_at, content_deadline, content_started_at, content_status, contract_details, created_at, creator_completion_status, creator_id, deliverables_status, milestones, review_status, revision_count, status, updated_at')
+        .select('id, application_id, business_completion_status, campaign_id, completed_at, content_deadline, content_started_at, content_status, contract_details, created_at, creator_completion_status, creator_id, deliverables_status, dispute_outcome, dispute_reason, milestones, review_extended, review_status, revision_count, revision_feedback, status, submitted_at, updated_at')
         .single();
 
       if (error) throw error;
@@ -69,8 +69,8 @@ export const useProjectComplete = () => {
         (userRole === 'content_creator' && data.business_completion_status === 'requested');
 
       if (bothRequested) {
-        // Both parties requested - mark as completed
-        const { data: completedData, error: completeError } = await supabase
+        // Race guard: only the first concurrent caller's update succeeds
+        const { data: completedRows, error: completeError } = await supabase
           .from('campaign_collaborations')
           .update({
             status: 'completed',
@@ -81,33 +81,51 @@ export const useProjectComplete = () => {
             completed_at: new Date().toISOString()
           })
           .eq('id', collaborationId)
-          .select('id, application_id, business_completion_status, campaign_id, completed_at, content_deadline, content_started_at, content_status, contract_details, created_at, creator_completion_status, creator_id, deliverables_status, milestones, review_status, revision_count, status, updated_at')
-          .single();
+          .neq('status', 'completed')
+          .select('id, application_id, business_completion_status, campaign_id, completed_at, content_deadline, content_started_at, content_status, contract_details, created_at, creator_completion_status, creator_id, deliverables_status, dispute_outcome, dispute_reason, milestones, review_extended, review_status, revision_count, revision_feedback, status, submitted_at, updated_at');
 
         if (completeError) throw completeError;
 
-        // Trigger payout release
+        // If no rows returned, a concurrent caller already completed — re-read canonical state
+        if (!completedRows || completedRows.length === 0) {
+          const { data: canonical } = await supabase
+            .from('campaign_collaborations')
+            .select('id, application_id, business_completion_status, campaign_id, completed_at, content_deadline, content_started_at, content_status, contract_details, created_at, creator_completion_status, creator_id, deliverables_status, dispute_outcome, dispute_reason, milestones, review_extended, review_status, revision_count, revision_feedback, status, submitted_at, updated_at')
+            .eq('id', collaborationId)
+            .maybeSingle();
+          return { ...(canonical as CollaborationRow), payoutSuccess: false, payoutAmount: 0 };
+        }
+
+        const completedData = completedRows[0];
+
+        // Trigger payout release — guard on escrow still being held
         let payoutSuccess = false;
         let payoutAmount = 0;
         let payoutMethod = '';
 
-        try {
-          const { data: payoutResult, error: payoutError } = await supabase.functions
-            .invoke('release-creator-payout', {
-              body: { collaborationId }
-            });
+        const { data: campaignEscrow } = await supabase
+          .from('campaigns')
+          .select('escrow_status')
+          .eq('id', completedData.campaign_id)
+          .single();
 
-          if (payoutError) {
-            console.error('Payout release failed:', payoutError);
-          } else if (payoutResult?.success) {
-            payoutSuccess = true;
-            payoutAmount = payoutResult.amount || 0;
-            payoutMethod = payoutResult.method || 'pending_balance';
-            // Payout released successfully
+        if (campaignEscrow?.escrow_status !== 'released') {
+          try {
+            const { data: payoutResult, error: payoutError } = await supabase.functions
+              .invoke('release-creator-payout', {
+                body: { collaborationId }
+              });
+
+            if (payoutError) {
+              console.error('Payout release failed:', payoutError);
+            } else if (payoutResult?.success) {
+              payoutSuccess = true;
+              payoutAmount = payoutResult.amount || 0;
+              payoutMethod = payoutResult.method || 'pending_balance';
+            }
+          } catch (payoutErr) {
+            console.error('Payout error:', payoutErr);
           }
-        } catch (payoutErr) {
-          console.error('Payout error:', payoutErr);
-          // Don't throw - project completion is valid, payout can be retried
         }
 
         // Send completion confirmation emails to both parties with payment info

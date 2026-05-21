@@ -72,51 +72,10 @@ export const useManageApplication = () => {
       queryClient.invalidateQueries({ queryKey: ['campaign-applications'] });
       queryClient.invalidateQueries({ queryKey: ['creator-applications'] });
 
-      // When accepted, always create collaboration record
+      // When accepted, use atomic RPC for collaboration + campaign activation + sibling rejection
       if (data.status === 'accepted' && data.campaign_id) {
         try {
-          const { data: existingCollab } = await supabase
-            .from('campaign_collaborations')
-            .select('id')
-            .eq('campaign_id', data.campaign_id)
-            .eq('creator_id', data.creator_id)
-            .maybeSingle();
-
-          if (!existingCollab) {
-            const { error: collabInsertError } = await supabase
-              .from('campaign_collaborations')
-              .insert({
-                campaign_id: data.campaign_id,
-                creator_id: data.creator_id,
-                application_id: data.id,
-                status: 'active',
-              });
-            if (collabInsertError) throw collabInsertError;
-
-            // Only activate campaign when escrow is already held
-            const { data: campaign } = await supabase
-              .from('campaigns')
-              .select('escrow_status')
-              .eq('id', data.campaign_id)
-              .single();
-
-            if (campaign?.escrow_status === 'held') {
-              const { error: activateError } = await supabase
-                .from('campaigns')
-                .update({ status: 'active' })
-                .eq('id', data.campaign_id);
-              if (activateError) throw activateError;
-            }
-
-            queryClient.invalidateQueries({ queryKey: ['campaigns'] });
-            queryClient.invalidateQueries({ queryKey: ['campaign-project'] });
-          }
-        } catch (collabError) {
-          console.error('Failed to auto-create collaboration:', collabError);
-        }
-
-        // Auto-decline all other pending/counter_offered applications for this campaign
-        try {
+          // Snapshot sibling creator IDs before the RPC (for notifications after)
           const { data: otherApps } = await supabase
             .from('campaign_applications')
             .select('id, creator_id')
@@ -124,15 +83,19 @@ export const useManageApplication = () => {
             .neq('id', data.id)
             .in('status', ['pending', 'counter_offered']);
 
-          if (otherApps && otherApps.length > 0) {
-            await supabase
-              .from('campaign_applications')
-              .update({ status: 'rejected' })
-              .eq('campaign_id', data.campaign_id)
-              .neq('id', data.id)
-              .in('status', ['pending', 'counter_offered']);
+          // Atomic: creates collaboration, activates campaign if escrow held, rejects siblings
+          const { error: rpcError } = await supabase
+            .rpc('accept_application_with_collaboration', {
+              p_application_id: data.id,
+            });
 
-            // Notify declined creators
+          if (rpcError) throw rpcError;
+
+          queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+          queryClient.invalidateQueries({ queryKey: ['campaign-project'] });
+
+          // Notify declined creators (best-effort, after atomic RPC)
+          if (otherApps && otherApps.length > 0) {
             const { data: campaignInfo } = await supabase
               .from('campaigns')
               .select('title')
@@ -164,8 +127,8 @@ export const useManageApplication = () => {
               }
             }
           }
-        } catch (declineError) {
-          console.error('Failed to auto-decline other applications:', declineError);
+        } catch (collabError) {
+          console.error('Failed to accept application atomically:', collabError);
         }
       }
 

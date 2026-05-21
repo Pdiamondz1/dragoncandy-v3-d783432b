@@ -59,38 +59,19 @@ export const useCreateCounterOffer = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      // Update application status to counter_offered
-      const { error: statusError } = await supabase
-        .from('campaign_applications')
-        .update({ status: 'counter_offered' })
-        .eq('id', applicationId);
+      // Atomic RPC: locks application, declines all pending offers, inserts new one
+      const { data: rpcResult, error: rpcError } = await supabase
+        .rpc('create_counter_offer', {
+          p_application_id: applicationId,
+          p_sender_id: user.id,
+          p_sender_role: senderRole,
+          p_proposed_rate: proposedRate ?? null,
+          p_proposed_timeline: proposedTimeline ?? null,
+          p_message: message,
+        });
 
-      if (statusError) throw statusError;
-
-      // Supersede the other party's pending offers (RLS allows updating non-self offers)
-      await supabase
-        .from('application_counter_offers')
-        .update({ status: 'declined' as CounterOfferStatus })
-        .eq('application_id', applicationId)
-        .eq('status', 'pending')
-        .neq('sender_id', user.id);
-
-      // Insert the counter-offer with explicit pending status
-      const { data, error } = await supabase
-        .from('application_counter_offers')
-        .insert({
-          application_id: applicationId,
-          sender_id: user.id,
-          sender_role: senderRole,
-          proposed_rate: proposedRate || null,
-          proposed_timeline: proposedTimeline || null,
-          message,
-          status: 'pending' as CounterOfferStatus,
-        })
-        .select('id, application_id, sender_id, sender_role, proposed_rate, proposed_timeline, message, status, created_at')
-        .single();
-
-      if (error) throw error;
+      if (rpcError) throw rpcError;
+      const data = rpcResult as CounterOffer;
       return { data, senderRole, applicationId };
     },
     onSuccess: async ({ data, senderRole, applicationId }) => {
@@ -179,7 +160,7 @@ export const useRespondToCounterOffer = () => {
           .from('campaign_applications')
           .update({
             status: newAppStatus,
-            ...(agreedRate ? { proposed_rate: agreedRate } : {}),
+            ...(agreedRate ? { agreed_rate: agreedRate } : {}),
           })
           .eq('id', applicationId)
           .eq('status', 'counter_offered')

@@ -44,7 +44,8 @@ serve(async (req) => {
       `)
       .eq('content_status', 'submitted')
       .eq('status', 'active')
-      .not('submitted_at', 'is', null);
+      .not('submitted_at', 'is', null)
+      .not('content_status', 'in', '("approved","auto_approved","rejected","disputed")');
 
     if (fetchError) {
       logStep("ERROR fetching collaborations", { error: fetchError.message });
@@ -81,6 +82,18 @@ serve(async (req) => {
         hoursElapsed: Math.round(hoursElapsed),
         threshold: approveAfterHours,
       });
+
+      // Re-check content_status before transitioning — a business may have approved/rejected between fetch and now
+      const { data: freshCollab } = await supabaseClient
+        .from('campaign_collaborations')
+        .select('content_status, status')
+        .eq('id', collab.id)
+        .single();
+
+      if (!freshCollab || freshCollab.content_status !== 'submitted' || freshCollab.status !== 'active') {
+        logStep("Skipping — status changed since fetch", { collaborationId: collab.id, content_status: freshCollab?.content_status });
+        continue;
+      }
 
       // Transition via state machine before triggering payout
       const { error: transitionError } = await supabaseClient

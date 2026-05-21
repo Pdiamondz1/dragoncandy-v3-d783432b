@@ -124,6 +124,26 @@ serve(async (req) => {
 
     // Check if creator has completed Stripe onboarding
     if (creatorProfile?.stripe_account_id && creatorProfile?.stripe_onboarding_complete) {
+      // Ledger: record intent BEFORE moving money
+      await writePaymentEvent(supabaseClient, {
+        event_type: 'content_approved',
+        entity_type: 'collaboration',
+        entity_id: collaborationId,
+        campaign_id: campaign.id,
+        actor_id: callerId ?? undefined,
+        actor_role: 'business',
+      }, '[RELEASE-CREATOR-PAYOUT]');
+
+      await writePaymentEvent(supabaseClient, {
+        event_type: 'payment_release_initiated',
+        entity_type: 'collaboration',
+        entity_id: collaborationId,
+        campaign_id: campaign.id,
+        actor_role: 'system',
+        amount_cents: Math.round(creatorPayout * 100),
+        metadata: { destination: creatorProfile.stripe_account_id },
+      }, '[RELEASE-CREATOR-PAYOUT]');
+
       // Transfer funds to creator's connected account.
       // Idempotency key prevents duplicate transfers on retry.
       const transfer = await stripe.transfers.create({
@@ -138,15 +158,6 @@ serve(async (req) => {
       }, { idempotencyKey: `payout_${collaborationId}` });
 
       logStep("Transfer created", { transferId: transfer.id, amount: creatorPayout });
-
-      await writePaymentEvent(supabaseClient, {
-        event_type: 'content_approved',
-        entity_type: 'collaboration',
-        entity_id: collaborationId,
-        campaign_id: campaign.id,
-        actor_id: callerId ?? undefined,
-        actor_role: 'business',
-      }, '[RELEASE-CREATOR-PAYOUT]');
 
       await writePaymentEvent(supabaseClient, {
         event_type: 'payment_released',

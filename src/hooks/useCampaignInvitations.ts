@@ -11,6 +11,7 @@ export interface CampaignInvitation {
   invited_by: string;
   status: 'pending' | 'accepted' | 'declined' | 'counter_offered';
   invitation_message: string | null;
+  expires_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -21,8 +22,9 @@ export const useCampaignInvitations = (campaignId: string) => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('campaign_invitations')
-        .select('id, campaign_id, creator_id, invited_by, status, invitation_message, created_at, updated_at')
+        .select('id, campaign_id, creator_id, invited_by, status, invitation_message, expires_at, created_at, updated_at')
         .eq('campaign_id', campaignId)
+        .or(`status.neq.pending,expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -104,6 +106,7 @@ export const useCreatorPendingInvitations = () => {
         `)
         .eq('creator_id', user.id)
         .eq('status', 'pending')
+        .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
         .order('created_at', { ascending: false });
 
       if (error) throw error;

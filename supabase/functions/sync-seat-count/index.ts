@@ -1,6 +1,6 @@
 import { serve } from 'https://deno.land/std@0.190.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import Stripe from 'https://esm.sh/stripe@14.21.0?target=deno';
+import Stripe from 'https://esm.sh/stripe@18.5.0';
 import { corsHeaders } from "../_shared/cors.ts";
 
 serve(async (req) => {
@@ -71,7 +71,7 @@ serve(async (req) => {
       .single();
 
     if (org?.stripe_subscription_id && stripeSecretKey) {
-      const stripe = new Stripe(stripeSecretKey, { apiVersion: '2023-10-16' });
+      const stripe = new Stripe(stripeSecretKey, { apiVersion: '2025-08-27.basil' });
       const subscription = await stripe.subscriptions.retrieve(org.stripe_subscription_id);
 
       const seatItem = subscription.items.data.find(

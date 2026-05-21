@@ -52,12 +52,13 @@ export const useCreateApplication = () => {
         }
       }
 
-      // Check for existing application (unique constraint: campaign_id + creator_id)
+      // Check for existing non-rejected application (partial unique index excludes rejected)
       const { data: existingApp } = await supabase
         .from('campaign_applications')
         .select('id, status')
         .eq('campaign_id', campaignId)
         .eq('creator_id', user!.id)
+        .neq('status', 'rejected')
         .maybeSingle();
 
       let data;
@@ -84,25 +85,22 @@ export const useCreateApplication = () => {
           throw new Error('You have already applied to this campaign.');
         }
       } else {
-        const { data: inserted, error } = await supabase
-          .from('campaign_applications')
-          .insert({
-            campaign_id: campaignId,
-            creator_id: user!.id,
-            intro_message: introMessage,
-            proposed_timeline: proposedTimeline,
-            proposed_rate: proposedRate,
-            portfolio_url: portfolioUrl,
-            status: isCounterOffer ? 'counter_offered' : 'pending',
-          })
-          .select('id, campaign_id, creator_id, status')
-          .single();
+        // Atomic RPC: inserts application + syncs pending invitation in one transaction
+        const { data: rpcResult, error: rpcError } = await supabase
+          .rpc('apply_to_campaign', {
+            p_campaign_id: campaignId,
+            p_creator_id: user!.id,
+            p_proposed_rate: proposedRate ?? 0,
+            p_intro_message: introMessage,
+            p_proposed_timeline: proposedTimeline ?? null,
+            p_is_counter_offer: isCounterOffer ?? false,
+          });
 
-        if (error) {
-          console.error('Error creating application:', error);
-          throw error;
+        if (rpcError) {
+          console.error('Error creating application:', rpcError);
+          throw rpcError;
         }
-        data = inserted;
+        data = rpcResult as { id: string; campaign_id: string; creator_id: string; status: string };
       }
 
       if (isCounterOffer && data) {
@@ -166,18 +164,7 @@ export const useCreateApplication = () => {
         console.error('Failed to send notification email:', error);
       }
 
-      // Update invitation status if creator was invited
-      try {
-        const invitationStatus = data.status === 'counter_offered' ? 'counter_offered' : 'accepted';
-        await supabase
-          .from('campaign_invitations')
-          .update({ status: invitationStatus })
-          .eq('campaign_id', data.campaign_id)
-          .eq('creator_id', user!.id)
-          .eq('status', 'pending');
-      } catch (invErr) {
-        console.error('Failed to update invitation status:', invErr);
-      }
+      // Invitation sync is handled atomically by the apply_to_campaign RPC
     },
     onError: (error: Error) => {
       console.error('Application submission failed:', error);

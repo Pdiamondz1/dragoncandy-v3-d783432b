@@ -136,9 +136,10 @@ serve(async (req) => {
 
           const { data: outstandAccounts } = await accountQuery.limit(1);
 
-          if (!outstandAccounts?.length) continue;
-
-          const platform = outstandAccounts[0].platform;
+          const outstandConnected = !!outstandAccounts?.length;
+          const platform = outstandConnected
+            ? outstandAccounts[0].platform
+            : (campaign.platforms?.[0] ?? 'instagram');
 
           const { data: uploadedFiles } = await supabase
             .from('file_uploads')
@@ -248,7 +249,7 @@ serve(async (req) => {
               ai_reasoning: scheduledAt !== new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
                 ? 'Donny picked the optimal posting time for your audience'
                 : 'Auto-drafted by campaign social hook (stage 4)',
-              metadata: { source: 'campaign_social_hook', stage: 4 },
+              metadata: { source: 'campaign_social_hook', stage: 4, outstand_connected: outstandConnected },
             })
             .select('id')
             .single();
@@ -262,6 +263,36 @@ serve(async (req) => {
             .single();
 
           if (hookRow) {
+            const nudgeActions = outstandConnected
+              ? [
+                  {
+                    label: 'Post Now',
+                    variant: 'primary',
+                    action: 'post_now',
+                    payload: { scheduled_post_id: scheduledPost?.id ?? null, campaign_id },
+                  },
+                  {
+                    label: 'Review Draft',
+                    variant: 'secondary',
+                    action: 'navigate',
+                    payload: { route: party.role === 'creator' ? '/dashboard/creator/social' : '/dashboard/business/social' },
+                  },
+                ]
+              : [
+                  {
+                    label: 'Connect Outstand',
+                    variant: 'primary',
+                    action: 'navigate',
+                    payload: { route: '/settings/social' },
+                  },
+                  {
+                    label: 'Review Draft',
+                    variant: 'secondary',
+                    action: 'navigate',
+                    payload: { route: party.role === 'creator' ? '/dashboard/creator/social' : '/dashboard/business/social' },
+                  },
+                ];
+
             await supabase.from('donny_nudges').upsert(
               {
                 user_id: party.user_id,
@@ -269,28 +300,10 @@ serve(async (req) => {
                 priority: 'high',
                 source_table: 'campaign_social_hooks',
                 source_id: hookRow.id,
-                summary: 'Your campaign content is ready to share!',
-                actions: [
-                  {
-                    label: 'Post Now',
-                    variant: 'primary',
-                    action: 'post_now',
-                    payload: {
-                      scheduled_post_id: scheduledPost?.id ?? null,
-                      campaign_id,
-                    },
-                  },
-                  {
-                    label: 'Review Draft',
-                    variant: 'secondary',
-                    action: 'navigate',
-                    payload: {
-                      route: party.role === 'creator'
-                        ? '/dashboard/creator/social'
-                        : '/dashboard/business/social',
-                    },
-                  },
-                ],
+                summary: outstandConnected
+                  ? 'Your campaign content is ready to share!'
+                  : 'Your campaign draft is ready — connect Outstand to schedule it.',
+                actions: nudgeActions,
               },
               { onConflict: 'user_id,source_table,source_id', ignoreDuplicates: true },
             );

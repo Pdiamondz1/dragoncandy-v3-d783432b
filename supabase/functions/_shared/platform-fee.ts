@@ -1,6 +1,7 @@
 import { type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-export const PLATFORM_FEE_RATE = 0.05;
+// Free-tier default from the take-rate ladder: Free 10% / Starter 7% / Growth 5% / Pro 3% / Enterprise 2%
+export const PLATFORM_FEE_RATE = 0.10;
 
 export function calculatePlatformFee(amountDollars: number, rate?: number): {
   feeCents: number;
@@ -26,7 +27,7 @@ export async function getOrgTakeRate(
     .eq("id", userId)
     .maybeSingle();
 
-  if (!profile?.org_id) return 0.10;
+  if (!profile?.org_id) return PLATFORM_FEE_RATE;
 
   const { data: org } = await supabase
     .from("organizations")
@@ -34,5 +35,5 @@ export async function getOrgTakeRate(
     .eq("id", profile.org_id)
     .maybeSingle();
 
-  return org?.take_rate ?? 0.10;
+  return org?.take_rate ?? PLATFORM_FEE_RATE;
 }

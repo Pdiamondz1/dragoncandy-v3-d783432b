@@ -105,13 +105,26 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
         console.error('Failed to send content approval email:', e);
       }
 
-      // Trigger social hook to auto-draft scheduled posts for all parties
-      try {
-        await supabase.functions.invoke('fire-campaign-social-hook', {
-          body: { campaign_id: campaignId, stage: 4 },
+      // Trigger social hook with one retry + visible failure toast
+      let socialHookOk = false;
+      for (let attempt = 0; attempt < 2 && !socialHookOk; attempt++) {
+        try {
+          if (attempt > 0) await new Promise((r) => setTimeout(r, 500));
+          const { error: hookErr } = await supabase.functions.invoke('fire-campaign-social-hook', {
+            body: { campaign_id: campaignId, stage: 4 },
+          });
+          if (hookErr) throw hookErr;
+          socialHookOk = true;
+        } catch (e) {
+          console.error(`Social hook attempt ${attempt + 1} failed (campaign=${campaignId}):`, e);
+        }
+      }
+      if (!socialHookOk) {
+        toast({
+          variant: 'destructive',
+          title: 'Auto-drafting skipped',
+          description: 'Social post drafts could not be created automatically. You can draft posts manually from the Social tab.',
         });
-      } catch (e) {
-        console.error('Failed to trigger social hook:', e);
       }
     },
     onError: (err: Error) => {
