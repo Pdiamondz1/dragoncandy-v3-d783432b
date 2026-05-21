@@ -25,17 +25,17 @@ DragonCandy’s competitive advantage is built on compounding interactions rathe
 DragonCandy aims for $5–8M ARR with a net profit margin of 20–40%. The strategy emphasizes high revenue per employee (targeting $1M+ per head) to remain "default alive" without venture capital.
 
 *   **Four Revenue Streams:**
-    1.  **SaaS Subscriptions:** $99–$499/month tiers with 80–90% gross margins.
-    2.  **Marketplace Take Rates:** 15–20% total take rate on creator deals (65–80% margins).
+    1.  **SaaS Subscriptions:** Free / $149 / $449 / $899 / Enterprise tiers with 80–90% gross margins. See `docs/STRIPE_PRICES.md` for current pricing.
+    2.  **Marketplace Take Rates:** 2–10% tiered take rate on creator deals (65–80% margins).
     3.  **AI Premium Features:** Credit-based pricing for Donny AI interactions (70–90% margins).
-    4.  **DragonDash Rush Premiums:** 50–200% premiums for 24-hour or same-day content delivery.
+    4.  **DragonDash Rush Premiums:** $25–$75 delivery premiums plus platform-count-based rush surcharges.
 *   **The Restaurant Wedge:** Average restaurants spend $2,000–$4,000 monthly on marketing. DragonCandy seeks a blended ARPU of $350–$500 by consolidating disparate costs (social media management, photography, and outreach) into one platform.
 
 ### 3. Product Strategy and "Elon’s Algorithm"
 To accelerate launch and improve user experience (UX), the platform applies a simplification framework to its current 8-screen architecture:
 *   **Question Requirements:** Eliminate features like in-app phone calls and redundant landing page cards.
 *   **Delete Steps:** Move from a 9-step manual browsing flow to a 6-step AI-driven flow where Donny AI handles matching automatically.
-*   **Simplify:** Adopt professional, "dark mode" dashboard patterns similar to enterprise tools (e.g., TheCirqle) but optimized for the 5-minute windows available to busy restaurant owners.
+*   **Simplify:** Adopt professional dashboard patterns optimized for the 5-minute windows available to busy restaurant owners.
 
 ### 4. Technical Evolution: From Prompt Engineering to Fine-Tuning
 The platform's AI strategy follows a phased technical progression:
@@ -79,10 +79,16 @@ To activate all six moats simultaneously, the following execution sequence is pr
 
 ### Operational Strategy for Launch
 *   **Sequential Development:** Use Claude Code with a one-change-at-a-time rule to overhaul the design system and landing pages within 5 days (approx. 6 hours of work).
-*   **Post-Launch Automation:** Deploy an OpenClaw agent team (named agents with persistent SOUL.md memory) to manage ongoing development with strict domain boundaries and file scope.
+*   **Post-Launch Automation:** Single Claude Code agent workflow with session handoffs at plan-phase boundaries.
 *   **Brand Seeding:** Explicitly use the term "DragonDashing" in all marketing to encourage verbification of the high-speed delivery service.
 
 ### Profitability Milestones
 *   **Year 1 (The Wedge):** Reach 100–200 restaurants in 2–3 markets. Aim for $300K–$600K ARR.
 *   **Year 2 (Inflection):** Expand to 8–12 markets and 500–1,000 restaurants. Profitability should reach $500K–$2M.
 *   **Year 3 (Scale):** Penetrate 20+ markets with 1,500–3,000 restaurants. Target $7–12M ARR and $2–5M annual profit.
+
+### Why Staying Lean Beats Raising Capital
+
+Bootstrapped SaaS companies grow at nearly identical rates to VC-backed peers (44% vs 42.8% YoY for $1–15M ARR) but keep what they earn. Raising $5–10M would demand 20–30 people ($4–5M in salary costs), pushing profitability to $10M+ ARR. Staying lean with 5–10 people means profitability at $3–5M ARR — achievable within 24 months. The restaurant market rewards city-by-city density over blitz-scaling. Each metro creates a local network effect that deepens with time, not capital.
+
+See `docs/DragonCandy_Pricing_Profitability_Briefing_v2.md` for detailed financial projections and AI cost analysis.

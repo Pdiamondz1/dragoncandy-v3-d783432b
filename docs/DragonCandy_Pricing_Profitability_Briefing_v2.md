@@ -16,6 +16,12 @@ Confidential — For Internal Use
 
 *Updated April 2026*
 
+> **Note (May 2026):** This document contains strategic pricing analysis and
+> recommendations. Some prices discussed here (e.g., $199 Starter) differ from
+> the implemented values. For current pricing as implemented in the codebase,
+> see **`docs/STRIPE_PRICES.md`** — the single source of truth for all tier
+> prices, take rates, seat limits, AI budgets, and delivery premiums.
+
 ---
 
 ## Section 1: Executive Summary

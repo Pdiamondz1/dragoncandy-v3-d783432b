@@ -22,7 +22,7 @@ npm run preview      # Preview production build locally
 
 ## Tech Stack
 
-React 18 + TypeScript (strict), Vite, Tailwind CSS, shadcn/ui (Radix). Supabase backend (Postgres, Auth, Edge Functions, Realtime, Storage). Stripe Connect (test mode). React Query for server state. Framer Motion (lazy-loaded). Hosted on Lovable.dev → dragoncandy.io. Fonts: Outfit (sans), Pacifico (script).
+React 18 + TypeScript (strict), Vite, Tailwind CSS, shadcn/ui (Radix). Supabase backend (Postgres, Auth, Edge Functions, Realtime, Storage). Stripe Connect (test mode). React Query for server state. Framer Motion (lazy-loaded). Outstand.so for social media integration (Instagram, TikTok, YouTube). Google Maps (geocoding). Claude API (Anthropic) for AI features — backend-only via 67 Deno edge functions. Hosted on Lovable.dev → dragoncandy.io. Fonts: Outfit (sans), Pacifico (script).
 
 ## Coding Conventions
 
@@ -56,8 +56,13 @@ React 18 + TypeScript (strict), Vite, Tailwind CSS, shadcn/ui (Radix). Supabase 
 
 ```
 ErrorBoundary → ThemeProvider → QueryClientProvider → LazyMotion → AuthProvider
-  → AnalyticsProvider → BrowserRouter → DonnyProviderWithAuth (non-public pages only)
-    → AppShell (SiteGateGuard + AnimatedRoutes + DonnyDesktopPanel + HelpBriefDrawer)
+  → AnalyticsProvider
+    ├─ ErrorBoundary (widget) → PerformanceMonitor  (isolated, silent failure)
+    └─ TooltipProvider → Toaster + Sonner
+        └─ BrowserRouter → AppLayout
+            ├─ Public paths: AppShell directly
+            └─ Authenticated paths: DonnyProviderWithAuth → AuthenticatedShell (3-hr inactivity timeout)
+                → AppShell (SiteGateGuard → AnimatedRoutes + HelpBriefDrawer + DonnyDesktopPanel)
 ```
 
 ### Three User Roles
@@ -78,8 +83,10 @@ ErrorBoundary → ThemeProvider → QueryClientProvider → LazyMotion → AuthP
 ### Key Modules
 
 * **Supabase client**: single instance at `src/integrations/supabase/client.ts`
-* **Feature modules**: domain code in `src/features/` (donny, promotions, settings, etc.)
-* **Edge functions**: ~60 Deno functions in `supabase/functions/`, shared utils in `_shared/` (cors, auth, model-routing, cost-ledger, platform-fee, anthropic-fetch, mcp-client)
+* **Feature modules**: domain code in `src/features/` (donny, promotions, settings)
+* **Edge functions**: 67 Deno functions in `supabase/functions/`, shared utils in `_shared/` (cors, auth, model-routing, cost-ledger, platform-fee, anthropic-fetch, mcp-client)
+* **Outstand integration**: `src/integrations/outstand/Provider.tsx` + 17 hooks in `src/hooks/outstand/` — social media account linking, delegated posting, analytics
+* **Auth system**: app-level loading guard in `AppLayout`, 3-hour global inactivity timeout in `AuthenticatedShell` (both defined in `src/App.tsx`)
 * **ErrorBoundary** levels: `'page'` (default), `'section'`, `'widget'`. Pass `fallback={null}` for silent widget errors.
 
 ## Testing

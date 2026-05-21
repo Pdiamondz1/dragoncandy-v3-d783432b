@@ -48,47 +48,46 @@ paid campaign in under 60 seconds.
 ## 4. Current State
 
 Pre-revenue by choice. ~30 organic users, $0 paying customers, ~$295/mo
-operating cost, Stripe in test mode. Production launch targeted next month.
+operating cost, Stripe in test mode. Production launch date TBD — blocked
+on content delivery system stability and bug resolution.
 
-**Codebase scale**: 63 pages, 140+ hooks, 42 edge functions.
+**Codebase scale** (as of 2026-05-20): 59 pages, 162 hooks, 67 edge functions.
 **Repo**: `C:\GIT\dragoncandy-v3-d783432b`
-**Active integrations**: Toast POS, Stripe Connect, Claude Sonnet 4 + Haiku
-routing, OpenAI embeddings (RAG). GPT-4o tasks (campaign generation, creator
-matching) migrating to Claude per cost architecture.
+**Active integrations**: Toast POS, Stripe Connect, Outstand.so (social media —
+Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
+(cost routing via backend edge functions).
 
 ## 5. Active Workstreams
 
-- Pre-launch improvement playbook (9-prompt Claude Code sequence): Campaign
-  Wizard restructuring, branding fixes, Creator/Brand role UX parity.
-- Social media auto-posting integration playbook staged. "Download & Post"
-  manual flow ships at launch; social APIs (Meta, TikTok, YouTube, X)
-  layered in post-launch.
+- Content delivery system stabilization — fixing bugs in the
+  creator-to-business content handoff and payment flow before launch.
+- Auth session management — app-level loading guard, 3-hour global
+  inactivity timeout, session hint cleanup (completed May 2026).
+- Outstand social media integration — Instagram, TikTok, YouTube account
+  linking and delegated posting via Outstand.so API. Phases 1–3 complete;
+  phase 4 (analytics dashboard) in scope.
+- Dashboard UX polish — pill badge sizing, avatar cache invalidation,
+  relative timestamps, status synchronization across roles.
+- RLS compliance and query optimization — resolving infinite recursion in
+  Supabase RLS policies, removing nested profile joins blocked by RLS.
 - GTM Capital & CAC Playbook structured across Phase 0–3 with explicit
   budget gates and kill-switches. Creators onboarded before restaurants in
   each new market.
-- Donny AI multi-surface architecture (Chrome Extension, Safari iOS, mobile
-  widget, SMS, embeddable SDK). Single-agent workflow during launch week.
-- First-Run Experience: Progressive disclosure + mission-based onboarding
-  for all three roles. Dragon Feed integrated as style reference into
-  Campaign Creator. State machine architecture (first_run_missions JSONB).
 
 **Workflow discipline**: Single Claude Code agent, one prompt at a time
 → `npm run build` → verify → push. Session handoffs at plan-phase
-boundaries (see `.claude/handoffs/`). OpenClaw multi-agent (Scout/Forge/
-Athena/Guardian) deferred to post-launch.
+boundaries (see `.claude/handoffs/`).
 
 ## 6. On the Horizon
 
-- Production launch (next month). Social API approvals running in parallel
-  (Meta App Review 2–6 weeks, TikTok Content Posting API, YouTube sensitive
-  scope, X paid tier).
-- OpenClaw multi-agent deployment post-launch.
+- Production launch (date TBD — blocked on content delivery system
+  stability). Social media integration handled via Outstand.so; direct
+  platform API approvals (Meta, TikTok, YouTube, X) deferred.
 - City-by-city density: one metro first (20–30 creators, 5–10 restaurants),
   then replication scorecard for metro 2.
 - Fine-tuning Donny on proprietary data once 1,000–5,000 campaigns
   accumulate (LoRA on open-source models).
-- Toast partnership application (6–12 month timeline — should already be
-  in motion).
+- Toast partnership application (6–12 month timeline).
 - Trademark filings: DragonCandy, Donny AI, DragonDash (Classes 35 & 42).
 - Provisional patents: campaign-from-URL system, AI-scored matching pipeline.
 
@@ -108,9 +107,6 @@ discipline already embedded in the codebase.
 
 **Never block launch on API approvals.** Ship manual "Download & Post" flow
 first; layer automated social APIs after.
-
-**Parallel agents = merge conflict risk during launch week.** Sequential
-single-agent workflow until post-launch stabilization.
 
 **Session handoffs preserve multi-session continuity.** Work that spans
 multiple sessions (plan execution, multi-task audits, staged rollouts)
@@ -144,8 +140,9 @@ Stack all four revenue streams on one customer:
 3. Donny AI credit overages
 4. DragonDash rush surcharge
 
-**Take-rate ladder**: Free 10% / Starter $149 → 7% / Growth $499 → 5% /
-Pro $999 → 3% / Enterprise → 2%.
+**Take-rate ladder**: Free 10% / Starter $149 → 7% / Growth $449 → 5% /
+Pro $899 → 3% / Enterprise → 2%. See `docs/STRIPE_PRICES.md` for
+current price IDs and full pricing breakdown.
 
 **Variable**: Donny credit overage $0.10–0.25/call; DragonDash rush
 surcharge $25–50. AI API spend hard-capped at 15% of revenue ($250/mo floor
@@ -189,20 +186,21 @@ Apply to every recommendation, every prompt, every PR:
 
 ## 10. Stack & Resources
 
-**Frontend**: React/TypeScript, Tailwind CSS, Lovable.dev (hosting/preview),
-GitHub.
-**Backend**: Supabase (35+ tables, Deno Edge Functions, RLS, realtime),
-Stripe Connect.
-**AI**: Claude Sonnet 4 + Haiku (cost routing), OpenAI embeddings (RAG for
-Donny).
-**Post-launch automation**: OpenClaw (WSL-based, self-hosted agent gateway).
+**Frontend**: React 18 / TypeScript (strict), Vite, Tailwind CSS, shadcn/ui,
+Framer Motion, Lovable.dev (hosting/preview), GitHub.
+**Backend**: Supabase (70+ tables, 67 Deno Edge Functions, RLS, realtime),
+Stripe Connect (test mode).
+**AI**: Claude Sonnet 4 + Haiku (cost routing via edge functions, backend
+only). Model routing and cost ledger in `_shared/`.
+**Social**: Outstand.so (Instagram, TikTok, YouTube integration).
+**Integrations**: Toast POS (restaurant discounts), Google Maps (geocoding).
 **Knowledge management**: NotebookLM.
 
 **Key project documents**:
-- `CLAUDE.md` — design system spec
-- `dragoncandy-prelaunch-fixes.md`
-- `prompt-delivery-payment-audit.md`
-- `DragonCandy_Engineering_Blueprint.md`
-- `DragonCandy_GTM_Capital_CAC_Playbook.md`
-- `Donny AI Cost Architecture` — model routing, token budgets, revenue cap governance
-- Social Media Integration spec (`docs/superpowers/specs/2026-05-03-outstand-social-media-integration-design.md`)
+- `CLAUDE.md` — developer guidance + design system import
+- `docs/STRIPE_PRICES.md` — pricing source of truth
+- `docs/DragonCandy_Strategy_Briefing.md` — competitive strategy
+- `docs/DragonCandy_Moat_Playbook.md` — competitive defensibility
+- `docs/DragonCandy_Engineering_Blueprint.md` — build guidance
+- `docs/content-delivery-system-flows.md` — state machines and flows
+- Outstand integration spec (`docs/superpowers/specs/2026-05-03-outstand-social-media-integration-design.md`)

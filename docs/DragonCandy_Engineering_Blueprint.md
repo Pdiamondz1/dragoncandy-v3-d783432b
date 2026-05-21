@@ -1,72 +1,28 @@
 # DragonCandy Engineering Blueprint
-## OpenClaw Agent Team + Claude Code Prompts — Production Launch Sprint
+## Claude Code Prompts — Production Launch Sprint
 
 ---
 
-## Part 1: Honest Assessment — OpenClaw vs. Claude Code for Launch Week
+## Part 1: Development Workflow
 
-### The Reality Check (Musk Algorithm Step 1: Question Every Requirement)
+### Single-Agent Sequential Workflow
 
-**Do you actually need OpenClaw right now?** OpenClaw is powerful but introduces significant risk for a launch-week sprint:
+DragonCandy uses a single Claude Code agent with sequential, one-change-at-a-time
+prompts. This avoids merge conflicts and ensures each change is verified before
+the next begins.
 
-- **Setup overhead**: Installing OpenClaw, configuring SOUL.md files, setting up channels, and debugging agent coordination takes 1–2 days minimum — days you don't have.
-- **Security concerns**: OpenClaw runs with shell access and browser control on your local machine. Cisco's security team has already documented prompt injection vulnerabilities in community skills. For a production app handling user data, this is risky.
-- **Merge conflict hell**: Multiple OpenClaw agents writing to the same Lovable.dev/GitHub repo will cause the exact same parallel-change disasters you've already experienced. OpenClaw agents don't inherently understand git branch isolation.
-
-**The recommended hybrid approach:**
-
-| Tool | Role | When |
-|------|------|------|
-| **Claude Code** (with `/superpowers` + `/design-flow`) | Primary builder — sequential, controlled, tested commits | NOW (launch week) |
-| **OpenClaw** (post-launch) | Background automation: monitoring, testing, content generation, creator outreach | After launch stabilizes (Week 2+) |
-
-This follows Musk's Algorithm perfectly: **delete the unnecessary step** (OpenClaw setup) from the critical path, **simplify** to one proven tool for the sprint, **accelerate** by going sequential, then **automate** with OpenClaw once the foundation is solid.
+**Workflow:** One change per prompt → `npm run build` → verify → push. Session
+handoffs at plan-phase boundaries (see `.claude/handoffs/`).
 
 ---
 
-## Part 2: TheCirqle UX Patterns to Adopt (Keeping DragonCandy's Identity)
+## Part 2: UX Principles
 
-### What TheCirqle Gets Right (That DragonCandy Should Mirror)
-
-**1. Clear Value Hierarchy on Every Page**
-- Hero section with ONE clear headline + ONE CTA
-- Social proof immediately visible (brand logos, metrics, testimonials)
-- Feature sections with screenshot/video previews of the actual product
-
-**2. Professional Dashboard UX**
-- Clean data tables with real metrics (not placeholder "50/50/50")
-- Card-based layouts with consistent spacing
-- Navigation that clearly separates: Discovery → Campaign Management → Reporting → Settings
-
-**3. Two-Sided Marketplace Clarity**
-- Separate, clear entry points: "Book a Demo" (brands) vs "Join as Creator" (creators)
-- Creator profiles show performance data (CPM, reach, engagement) not just portfolio images
-- Campaign cards show budget, timeline, deliverables, and status
-
-**4. AI as Infrastructure (Not Gimmick)**
-- AI creator matching presented as data-driven scoring, not chatbot
-- Predictive ROAS shown as clean metrics, not AI conversation
-- Automated workflows (contracts, approvals, payments) feel native, not bolted-on
-
-### What DragonCandy Keeps (Brand Differentiation)
-
-| Element | Keep | Evolve |
-|---------|------|--------|
-| Color scheme | Teal `#4DD9C0`, Pink `#F9A8D4`, Gray `#A8A8A0` | Use teal as primary action color, pink as accent, gray as neutral background (not the dominant background) |
-| DragonCandy logo | Yes — it's distinctive and memorable | Place it consistently top-left, smaller on dashboard pages |
-| Donny AI | Yes — this is the moat | Present as intelligent toolbar/sidebar, not full-page chat |
-| DragonDash | Yes — primary revenue feature | Make it the #1 CTA on the restaurant dashboard |
-| Fun personality | Yes — differentiates from corporate tools | Keep in copy and micro-interactions, not in layout chaos |
-
-### Current Issues Visible in Screenshots
-
-1. **Login page**: Functional but the image carousel at bottom adds clutter. Social login icons (Google, Apple, Facebook) need to actually work or be removed.
-2. **Restaurant dashboard**: "Ask Donny" search bar is good. Quick Actions cards are solid. But the bottom nav has too many icons (7) — simplify to 5 max.
-3. **Browse Creators**: All cards show identical placeholder data ("Creator Name" + same image + same description). Needs real/varied seed data.
-4. **Creator Portfolio**: "10/200" follower ratio and "Artist Name" labels are placeholder. The hero image is good but the data section needs real metrics.
-5. **Creator/Business Profile**: "50 Projects / 50 Reels / 50 Projects" is placeholder and the third column repeats "Projects Completed." Reviews are all identical placeholder text.
-6. **Available Campaigns**: Swipeable card UI is nice but "Available Campaigns" title appears twice (header and card). Campaign details need budget, timeline, deliverables.
-7. **Messaging**: Clean layout but empty. Needs connection to Supabase real-time messaging.
+- Clear value hierarchy on every page: one headline, one CTA, social proof visible
+- Professional dashboard UX: real metrics, card-based layouts, consistent spacing
+- Two-sided marketplace clarity: separate entry points for each role
+- AI as infrastructure: Donny AI presented as data-driven scoring, not chatbot
+- See `docs/DESIGN_SYSTEM.md` for color tokens, typography, and component patterns
 
 ---
 
@@ -86,7 +42,7 @@ Copy the prompt below into Claude Code with the `/superpowers` and `/design-flow
 
 CONTEXT: DragonCandy (dragoncandy.io) is a two-sided marketplace connecting restaurants/businesses with content creators. It's built with React/TypeScript on Lovable.dev, Supabase backend, Tailwind CSS. The app goes LIVE in production next week.
 
-REFERENCE DESIGN: https://thecirqle.com/ — we want DragonCandy to feel this polished and professional, but keeping our own color scheme and brand identity.
+REFERENCE: See docs/DESIGN_SYSTEM.md for DragonCandy's design tokens and component patterns.
 
 DESIGN SYSTEM (from CLAUDE.md — DO NOT CHANGE THESE):
 - Primary Teal: #4DD9C0
@@ -137,14 +93,14 @@ PROTECT: Do NOT change any existing page content — ONLY the navigation compone
 npm run build → verify → git commit "fix: simplify bottom nav to 5 items"
 
 ═══════════════════════════════════════════════════════════════
-PHASE 2: DESIGN POLISH (TheCirqle-Level Professional)
+PHASE 2: DESIGN POLISH (Professional Quality)
 ═══════════════════════════════════════════════════════════════
 
 IMPORTANT: Work through these ONE PAGE AT A TIME. Do NOT batch changes.
 Each page gets its own commit. Test mobile (base Tailwind) AND desktop (lg: breakpoints) after every change.
 
 STEP 2.1 — Login / Landing Page
-Apply these TheCirqle-inspired patterns while keeping DC brand:
+Apply these professional patterns while keeping DC brand:
 - Clean the hero: ONE headline, ONE subheadline, TWO CTAs ("Get Started" teal button + "Learn More" outline button)
 - Remove or fix the social login icons — if Google OAuth isn't wired to Supabase Auth, remove the Google icon. Same for Apple and Facebook. Do NOT show broken auth options.
 - Add social proof section below the fold: "Trusted by X restaurants" or placeholder for launch metrics
@@ -544,100 +500,11 @@ RULES — FOLLOW THESE ON EVERY STEP:
 
 ---
 
-## Part 4: OpenClaw Agent Team Architecture (Post-Launch)
-
-### When to Deploy OpenClaw
-
-**NOT during launch week.** Deploy OpenClaw agents once DragonCandy is live, stable, and has real users. Here's the team structure for Week 2+:
-
-### Agent Team Design
-
-#### Agent 1: "Scout" — QA & Monitoring Agent
-**SOUL.md Purpose**: Monitor DragonCandy production for errors, broken flows, and performance issues.
-**Skills**: Browser automation, Supabase log reading, error screenshot capture
-**Channel**: Slack or Discord (posts alerts)
-**Cron**: Every 6 hours, run through critical user flows (login → dashboard → browse creators → apply to campaign → send message) and report any failures
-**Model**: Claude Sonnet 4 (cost-efficient for repetitive checks)
-
-#### Agent 2: "Builder" — Engineering Agent  
-**SOUL.md Purpose**: Execute code changes from a prioritized task queue. Never touches production directly — always works on feature branches.
-**Skills**: OpenCode integration, GitHub PR creation, npm run build verification
-**Channel**: Telegram (receives task assignments)
-**Workflow**: Receives task → creates branch → makes changes → runs build → creates PR → notifies Dame for review
-**Model**: Claude Opus 4.6 (needs deep reasoning for code changes)
-
-#### Agent 3: "Donny Ops" — AI Assistant Monitor
-**SOUL.md Purpose**: Monitor Donny AI's Supabase Edge Function performance, log response quality, flag when the AI gives bad recommendations.
-**Skills**: Supabase query runner, response quality scorer, cost tracker
-**Channel**: WhatsApp (sends daily digest)
-**Cron**: Daily at 9 AM — summarize yesterday's Donny conversations, flag any that got negative user feedback, report API costs
-**Model**: Claude Haiku 4.5 (lightweight analysis)
-
-#### Agent 4: "Growth" — Marketing & Outreach Agent
-**SOUL.md Purpose**: Find and reach out to potential restaurant customers and content creators in target launch cities.
-**Skills**: Web scraping (restaurant listings), email drafting, social media research
-**Channel**: Slack
-**Cron**: Daily — research 10 restaurants in target city, draft personalized outreach emails, queue for Dame's review
-**Model**: Claude Sonnet 4
-
-### OpenClaw Setup Prompt (for Week 2+)
-
-```bash
-# Install OpenClaw
-git clone https://github.com/openclaw/openclaw.git
-cd openclaw
-
-# Run onboarding
-openclaw onboard
-
-# Create agent workspace structure
-mkdir -p agents/{scout,builder,donny-ops,growth}
-
-# Each agent gets:
-# - SOUL.md (identity + rules)
-# - MISSIONS.md (current objectives)  
-# - HEARTBEAT.md (check-in cadence)
-# - skills/ (custom skills folder)
-```
-
-### Critical Safety Rules for OpenClaw with DragonCandy
-
-1. **NEVER give OpenClaw agents direct write access to the production Supabase database.** Use read-only API keys. All writes go through PRs that Dame reviews.
-2. **Run OpenClaw on a dedicated VM or container**, not your primary development machine. If an agent goes rogue, you can kill the VM.
-3. **Use the Agent Trust Hub skill scanner** before installing any community skills. Cisco already found data exfiltration in third-party skills.
-4. **Set spending limits** on the Anthropic API key used by OpenClaw. Multiple agents running 24/7 can burn through credits fast.
-5. **Require PR review for all code changes.** The Builder agent creates PRs, but Dame merges them.
-
----
-
-## Part 5: Priority Sequence Summary
+## Part 4: Priority Sequence Summary
 
 | Priority | What | Tool | Timeline |
 |----------|------|------|----------|
-| **P0** | Run the Phase 1–4 Claude Code prompt above | Claude Code + `/superpowers` + `/design-flow` | Days 1–5 |
+| **P0** | Run the Phase 1–4 Claude Code prompt above | Claude Code | Days 1–5 |
 | **P1** | Verify live deployment on Lovable.dev | Manual testing | Day 5–6 |
 | **P2** | Fix any launch-blocking issues found in testing | Claude Code (targeted fix prompts) | Day 6–7 |
 | **P3** | LAUNCH | Go live | Day 7 |
-| **P4** | Set up OpenClaw Scout agent for monitoring | OpenClaw | Week 2 |
-| **P5** | Set up remaining OpenClaw agents | OpenClaw | Week 2–3 |
-| **P6** | Resume Donny Super Agent roadmap (Prompt 1B-4+) | Claude Code | Week 3+ |
-
----
-
-## Appendix: TheCirqle vs. DragonCandy Feature Mapping
-
-| TheCirqle Feature | DragonCandy Equivalent | Status |
-|-------------------|----------------------|--------|
-| AI Creator Discovery | Donny AI Creator Matching | Built (needs polish) |
-| Campaign Management | Campaign Create + DragonDash | Built (needs wiring) |
-| Campaign Visual Previews | Donny AI mood boards + storyboards (Step 3.2A) | **NEW — added to blueprint** |
-| Delivery Tier Alignment | AI-constrained briefs per tier (Step 3.2B) | **NEW — critical fix** |
-| Content Approvals | Secure upload + watermark + accept/reject (Step 3.2C) | **NEW — added to blueprint** |
-| Turn Into Ads | Future (Phase 2+) | Not started |
-| Reporting/Analytics | View Analytics dashboard | Placeholder |
-| RoAS Forecasting | Donny AI predictions | Future |
-| Automated Contracts | Future | Not started |
-| Payment/Payout | Stripe Connect | Configured (needs testing) |
-| Creator Profiles with CPM/Reach data | Creator Portfolio + Profile | Built (needs real data) |
-
-**Key insight**: DragonCandy doesn't need feature parity with TheCirqle for launch. TheCirqle serves enterprise e-commerce brands. DragonCandy serves local restaurants. The feature set is simpler. What matters is that the features you DO have work flawlessly and look professional.

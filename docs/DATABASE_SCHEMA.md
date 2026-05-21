@@ -74,3 +74,92 @@
 | `review_responses` | Responses to reviews |
 | `beta_feedback` | Beta user feedback submissions |
 | `analytics_events` | Custom event tracking |
+| `pricing_funnel_events` | Pricing page conversion funnel tracking |
+
+## Campaign Extensions
+
+| Table | Purpose |
+|-|-|
+| `campaign_brief_generations` | AI-generated campaign briefs |
+| `campaign_media` | Media assets attached to campaigns |
+| `campaign_social_hooks` | Social media hooks for campaigns |
+| `campaign_deliverables` | Deliverable specifications and tracking |
+| `campaign_templates` | Reusable campaign templates |
+
+## Donny AI
+
+| Table | Purpose |
+|-|-|
+| `donny_actions` | Tracked Donny AI actions and their outcomes |
+| `donny_campaign_previews` | Donny AI campaign preview data |
+| `donny_conversations` | Donny AI conversation threads |
+| `donny_messages` | Individual messages in Donny conversations |
+| `donny_help_logs` | Help requests and resolutions via Donny |
+| `donny_knowledge` | Donny's knowledge base entries (RAG) |
+| `donny_nudges` | Proactive nudge definitions and delivery tracking |
+| `donny_tool_executions` | Tool call logs from Donny orchestrator |
+| `donny_oauth_clients` | OAuth client registrations for Donny API |
+| `donny_oauth_codes` | OAuth authorization codes |
+| `donny_oauth_tokens` | OAuth access/refresh tokens |
+
+## DragonShare
+
+| Table | Purpose |
+|-|-|
+| `dragonshare_boosts` | Content boost campaigns |
+| `dragonshare_engagement` | Engagement tracking on shared content |
+| `dragonshare_events` | DragonShare lifecycle events |
+| `dragonshare_payouts` | Creator payouts from DragonShare |
+| `dragonshare_posts` | Shared content posts |
+
+## Payments & Revenue
+
+| Table | Purpose |
+|-|-|
+| `payment_events` | Payment lifecycle events (ledger) |
+| `stripe_webhook_events` | Raw Stripe webhook event log |
+| `rush_surcharge_log` | DragonDash rush surcharge records |
+
+## Organizations
+
+| Table | Purpose |
+|-|-|
+| `organizations` | Parent organization entities |
+| `org_units` | Organizational units (locations/divisions) |
+| `org_members` | Organization membership records |
+
+## Account Management
+
+| Table | Purpose |
+|-|-|
+| `account_deletion_requests` | User account deletion requests (GDPR) |
+
+## Social & Outstand Integration
+
+| Table | Purpose |
+|-|-|
+| `business_outstand_accounts` | Outstand.so account links for businesses |
+| `business_contexts` | Business context data for AI matching |
+| `creator_automation_preferences` | Creator automation and posting preferences |
+| `delegated_posting_permissions` | Permissions for delegated social posting |
+| `social_post_log` | Log of social media posts |
+| `triple_post_sessions` | Multi-platform posting session tracking |
+| `brand_shortlists` | Brand-curated creator shortlists |
+
+## Help & Support
+
+| Table | Purpose |
+|-|-|
+| `help_articles` | Help center articles |
+| `help_article_feedback` | User feedback on help articles |
+
+## Views
+
+| View | Purpose |
+|-|-|
+| `messages_with_profiles` | Messages joined with sender profile data |
+| `message_participant_profiles` | Conversation participants with profiles |
+| `public_business_profiles` | Public-facing business profile data |
+| `public_creator_profiles` | Public-facing creator profile data |
+| `public_organizations` | Public-facing organization data |
+| `safe_profiles` | Sanitized profile view (no sensitive fields) |
