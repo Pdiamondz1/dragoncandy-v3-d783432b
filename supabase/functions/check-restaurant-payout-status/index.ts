@@ -53,6 +53,7 @@ serve(async (req) => {
 
     // Resolution order: org_units first (when org_unit_id provided), then business_profiles
     let stripeAccountId: string | null = null;
+    let resolvedFromFallback = false;
 
     if (org_unit_id) {
       const { data: orgUnit } = await supabaseClient
@@ -70,6 +71,7 @@ serve(async (req) => {
     if (!stripeAccountId) {
       stripeAccountId = businessProfile?.stripe_account_id ?? null;
       if (stripeAccountId) {
+        resolvedFromFallback = true;
         logStep("Found Stripe account in business_profiles", { stripeAccountId });
       }
     }
@@ -102,13 +104,28 @@ serve(async (req) => {
 
     // Write onboarding status back to the source table
     if (org_unit_id) {
-      const { error: updateError } = await supabaseClient
-        .from('org_units')
-        .update({ stripe_onboarding_complete: onboardingComplete })
-        .eq('id', org_unit_id);
-
-      if (updateError) {
-        logStep("Warning: Failed to update onboarding status in org_units", { error: updateError.message });
+      if (resolvedFromFallback) {
+        // Self-healing: sync stripe data from business_profiles to org_units
+        const { error: syncError } = await supabaseClient
+          .from('org_units')
+          .update({
+            stripe_account_id: stripeAccountId,
+            stripe_onboarding_complete: onboardingComplete,
+          })
+          .eq('id', org_unit_id);
+        if (syncError) {
+          logStep("Warning: Failed to sync Stripe data to org_units", { error: syncError.message });
+        } else {
+          logStep("Self-healed: synced Stripe data from business_profiles to org_units", { org_unit_id, stripeAccountId });
+        }
+      } else {
+        const { error: updateError } = await supabaseClient
+          .from('org_units')
+          .update({ stripe_onboarding_complete: onboardingComplete })
+          .eq('id', org_unit_id);
+        if (updateError) {
+          logStep("Warning: Failed to update onboarding status in org_units", { error: updateError.message });
+        }
       }
     } else if (onboardingComplete !== businessProfile.stripe_onboarding_complete) {
       const { error: updateError } = await supabaseClient

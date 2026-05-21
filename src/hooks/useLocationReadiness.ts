@@ -3,7 +3,7 @@ import { useLocationSocialAccounts } from '@/hooks/outstand/useLocationSocialAcc
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
-export const useLocationReadiness = () => {
+export const useLocationReadiness = (accountType: string = 'restaurant') => {
   const { user, activeOrgUnit } = useAuth();
 
   const { data: socialAccounts = [] } = useLocationSocialAccounts(
@@ -11,24 +11,27 @@ export const useLocationReadiness = () => {
     activeOrgUnit?.id ?? null
   );
 
-  const { data: orgUnit } = useQuery({
-    queryKey: ['org-unit-stripe', activeOrgUnit?.id],
+  const needsFallback = !!user && !!activeOrgUnit && !activeOrgUnit.stripe_account_id;
+
+  const { data: fallbackProfile } = useQuery({
+    queryKey: ['bp-stripe-fallback', user?.id, accountType],
     queryFn: async () => {
-      if (!activeOrgUnit) return null;
       const { data, error } = await supabase
-        .from('org_units')
+        .from('business_profiles')
         .select('stripe_account_id, stripe_onboarding_complete')
-        .eq('id', activeOrgUnit.id)
-        .single();
+        .eq('user_id', user!.id)
+        .eq('account_type', accountType)
+        .maybeSingle();
       if (error) return null;
       return data;
     },
-    enabled: !!activeOrgUnit,
+    enabled: needsFallback,
   });
 
   const hasSocial = socialAccounts.length > 0;
   const hasStripe =
-    !!orgUnit?.stripe_account_id && !!orgUnit?.stripe_onboarding_complete;
+    (!!activeOrgUnit?.stripe_account_id && !!activeOrgUnit?.stripe_onboarding_complete) ||
+    (needsFallback && !!fallbackProfile?.stripe_account_id && !!fallbackProfile?.stripe_onboarding_complete);
 
   return {
     isReady: hasSocial && hasStripe,

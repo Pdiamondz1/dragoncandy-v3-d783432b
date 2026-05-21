@@ -87,6 +87,20 @@ serve(async (req) => {
       stripeAccountId = businessProfile?.stripe_account_id ?? null;
       if (stripeAccountId) {
         logStep("Found existing account in business_profiles", { stripeAccountId });
+
+        // Self-healing: sync stripe_account_id to org_units so dashboard sees it
+        if (org_unit_id) {
+          const { error: syncError } = await supabaseClient
+            .from('org_units')
+            .update({ stripe_account_id: stripeAccountId })
+            .eq('id', org_unit_id);
+          if (syncError) {
+            logStep("Warning: Failed to sync stripe_account_id to org_units", { error: syncError.message });
+          } else {
+            logStep("Self-healed: synced stripe_account_id from business_profiles to org_units", { org_unit_id });
+            sourceTable = 'org_units';
+          }
+        }
       }
 
       if (isTestMode && businessProfile?.stripe_onboarding_complete) {
