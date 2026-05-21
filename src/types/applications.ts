@@ -6,6 +6,7 @@ export interface CampaignApplication {
   intro_message?: string;
   proposed_timeline?: string;
   proposed_rate?: number;
+  agreed_rate?: number | null;
   portfolio_url?: string;
   status: 'pending' | 'accepted' | 'rejected' | 'counter_offered';
   created_at: string;

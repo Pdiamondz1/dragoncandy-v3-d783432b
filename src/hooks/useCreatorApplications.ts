@@ -33,6 +33,7 @@ export interface CreatorApplication {
   intro_message: string | null;
   proposed_timeline: string | null;
   proposed_rate: number | null;
+  agreed_rate: number | null;
   status: 'pending' | 'accepted' | 'rejected' | 'counter_offered';
   created_at: string;
   updated_at: string;
@@ -53,7 +54,7 @@ export const useCreatorApplications = () => {
         .from('campaign_applications')
         .select(`
           id, campaign_id, creator_id, intro_message, proposed_timeline,
-          proposed_rate, status, created_at, updated_at,
+          proposed_rate, agreed_rate, status, created_at, updated_at,
           campaign:campaigns!inner(id, title, user_id, description, goals, style, tone, delivery_type, pricing_type, fixed_price, budget_min, budget_max, deliverables)
         `)
         .eq('creator_id', user.id)

@@ -16,7 +16,7 @@ export const useCampaignApplications = (campaignId: string) => {
       // First, get the applications
       const { data: applications, error: applicationsError } = await supabase
         .from('campaign_applications')
-        .select('id, campaign_id, creator_id, intro_message, proposed_timeline, proposed_rate, portfolio_url, status, created_at, updated_at, brand_approval_status, restaurant_approval_status, final_approval_status')
+        .select('id, campaign_id, creator_id, intro_message, proposed_timeline, proposed_rate, agreed_rate, portfolio_url, status, created_at, updated_at, brand_approval_status, restaurant_approval_status, final_approval_status')
         .eq('campaign_id', campaignId)
         .order('created_at', { ascending: false });
 
@@ -84,7 +84,7 @@ export const useCreatorApplications = () => {
       const { data, error } = await supabase
         .from('campaign_applications')
         .select(`
-          id, campaign_id, creator_id, intro_message, proposed_timeline, proposed_rate, portfolio_url, status, created_at, updated_at, brand_approval_status, restaurant_approval_status, final_approval_status,
+          id, campaign_id, creator_id, intro_message, proposed_timeline, proposed_rate, agreed_rate, portfolio_url, status, created_at, updated_at, brand_approval_status, restaurant_approval_status, final_approval_status,
           campaign:campaigns!campaign_id (
             title,
             description,

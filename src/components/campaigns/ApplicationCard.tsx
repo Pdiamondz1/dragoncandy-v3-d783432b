@@ -48,6 +48,10 @@ const ApplicationCardComponent: React.FC<ApplicationCardProps> = ({
     .filter(o => o.status === 'pending' && o.sender_id !== user?.id)
     .at(-1);
 
+  const effectiveRate = application.agreed_rate
+    ?? latestCreatorOffer?.proposed_rate
+    ?? application.proposed_rate;
+
   const handleAccept = async () => {
     if (application.status === 'counter_offered' && latestCreatorOffer) {
       await respondToOffer.mutateAsync({
@@ -144,7 +148,7 @@ const ApplicationCardComponent: React.FC<ApplicationCardProps> = ({
 
   // Determine agreed amount for display
   const acceptedOffer = counterOffers.find(o => o.status === 'accepted');
-  const agreedAmount = acceptedOffer?.proposed_rate || application.proposed_rate;
+  const agreedAmount = application.agreed_rate ?? acceptedOffer?.proposed_rate ?? application.proposed_rate;
 
   return (
     <Card>
@@ -319,10 +323,7 @@ const ApplicationCardComponent: React.FC<ApplicationCardProps> = ({
                   size="sm"
                 >
                   <Check className="h-4 w-4 mr-2" aria-hidden="true" />
-                  Accept ({formatCurrency(
-                    latestCreatorOffer?.proposed_rate
-                    || application.proposed_rate
-                  )})
+                  Accept ({formatCurrency(effectiveRate)})
                 </Button>
                 <Button
                   onClick={() => setShowCounterModal(true)}
@@ -354,7 +355,7 @@ const ApplicationCardComponent: React.FC<ApplicationCardProps> = ({
           onOpenChange={setShowCounterModal}
           applicationId={application.id}
           senderRole="business"
-          currentRate={latestCreatorOffer?.proposed_rate || application.proposed_rate}
+          currentRate={effectiveRate}
           currentTimeline={latestCreatorOffer?.proposed_timeline || application.proposed_timeline}
         />
       </CardContent>

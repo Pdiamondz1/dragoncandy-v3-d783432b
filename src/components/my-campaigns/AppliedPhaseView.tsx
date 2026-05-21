@@ -87,10 +87,10 @@ export function AppliedPhaseView({ campaign, enrichedDetail, application }: Appl
                   )}
                 </div>
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <Button
                   size="sm"
-                  className="flex-1 rounded-full bg-teal-400 hover:bg-teal-500 text-white font-semibold"
+                  className="sm:flex-1 rounded-full bg-teal-400 hover:bg-teal-500 text-white font-semibold"
                   onClick={() => respondToOffer.mutate({
                     counterOfferId: latestPendingOffer.id,
                     applicationId: application.id,
@@ -105,7 +105,7 @@ export function AppliedPhaseView({ campaign, enrichedDetail, application }: Appl
                 <Button
                   size="sm"
                   variant="secondary"
-                  className="flex-1 rounded-full"
+                  className="sm:flex-1 rounded-full"
                   onClick={() => setShowCounterModal(true)}
                 >
                   <ArrowRightLeft className="h-4 w-4 mr-1" /> Counter
@@ -113,7 +113,7 @@ export function AppliedPhaseView({ campaign, enrichedDetail, application }: Appl
                 <Button
                   size="sm"
                   variant="outline"
-                  className="flex-1 rounded-full"
+                  className="sm:flex-1 rounded-full"
                   onClick={() => respondToOffer.mutate({
                     counterOfferId: latestPendingOffer.id,
                     applicationId: application.id,
