@@ -311,11 +311,11 @@ const ApplicationCardComponent: React.FC<ApplicationCardProps> = ({
                 </p>
               </div>
             ) : (
-              <div className="flex gap-2 pt-4 border-t">
+              <div className="flex flex-col sm:flex-row gap-2 pt-4 border-t">
                 <Button
                   onClick={handleAccept}
                   disabled={manageApplication.isPending || respondToOffer.isPending}
-                  className="flex-1"
+                  className="sm:flex-1"
                   size="sm"
                 >
                   <Check className="h-4 w-4 mr-2" aria-hidden="true" />
@@ -328,7 +328,7 @@ const ApplicationCardComponent: React.FC<ApplicationCardProps> = ({
                   onClick={() => setShowCounterModal(true)}
                   variant="secondary"
                   disabled={manageApplication.isPending || respondToOffer.isPending}
-                  className="flex-1"
+                  className="sm:flex-1"
                   size="sm"
                 >
                   <ArrowRightLeft className="h-4 w-4 mr-2" aria-hidden="true" />
@@ -338,7 +338,7 @@ const ApplicationCardComponent: React.FC<ApplicationCardProps> = ({
                   onClick={handleReject}
                   variant="outline"
                   disabled={manageApplication.isPending || respondToOffer.isPending}
-                  className="flex-1"
+                  className="sm:flex-1"
                   size="sm"
                 >
                   <X className="h-4 w-4 mr-2" aria-hidden="true" />
