@@ -13,7 +13,7 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-  v_app_status text;
+  v_app_status application_status;
   v_app record;
   v_invitation_status text;
 BEGIN
