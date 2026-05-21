@@ -325,16 +325,18 @@ const ApplicationCardComponent: React.FC<ApplicationCardProps> = ({
                   <Check className="h-4 w-4 mr-2" aria-hidden="true" />
                   Accept ({formatCurrency(effectiveRate)})
                 </Button>
-                <Button
-                  onClick={() => setShowCounterModal(true)}
-                  variant="secondary"
-                  disabled={manageApplication.isPending || respondToOffer.isPending}
-                  className="sm:flex-1"
-                  size="sm"
-                >
-                  <ArrowRightLeft className="h-4 w-4 mr-2" aria-hidden="true" />
-                  Counter
-                </Button>
+                {!application.agreed_rate && (
+                  <Button
+                    onClick={() => setShowCounterModal(true)}
+                    variant="secondary"
+                    disabled={manageApplication.isPending || respondToOffer.isPending}
+                    className="sm:flex-1"
+                    size="sm"
+                  >
+                    <ArrowRightLeft className="h-4 w-4 mr-2" aria-hidden="true" />
+                    Counter
+                  </Button>
+                )}
                 <Button
                   onClick={handleReject}
                   variant="outline"
