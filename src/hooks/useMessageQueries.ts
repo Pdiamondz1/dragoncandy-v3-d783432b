@@ -25,13 +25,14 @@ export const useMessages = (campaignId?: string, conversationId?: string) => {
       const senderIds = [...new Set(data?.map(m => m.sender_id) || [])];
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('id, full_name, email, avatar_url')
+        .select('id, full_name, avatar_url')
         .in('id', senderIds);
+
 
       // Fetch parent messages for replies
       const parentMessageIds = [...new Set(data?.filter(m => m.parent_message_id).map(m => m.parent_message_id) || [])];
       let parentMessages: { id: string; content: string; sender_id: string }[] = [];
-      let parentProfiles: { id: string; full_name: string; email: string }[] = [];
+      let parentProfiles: { id: string; full_name: string }[] = [];
       
       if (parentMessageIds.length > 0) {
         const { data: parentMessagesData } = await supabase
@@ -135,8 +136,9 @@ export const useSearchMessages = (campaignId: string, searchQuery: string) => {
       const senderIds = [...new Set(data?.map(m => m.sender_id) || [])];
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('id, full_name, email, avatar_url')
+        .select('id, full_name, avatar_url')
         .in('id', senderIds);
+
 
       // Merge profile data with messages
       const messagesWithProfiles = data?.map(message => ({

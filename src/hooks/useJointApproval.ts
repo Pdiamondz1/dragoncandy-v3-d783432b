@@ -85,11 +85,8 @@ export const useJointApproval = () => {
 
         // If final decision is made, notify creator
         if (finalStatus === 'approved' || finalStatus === 'rejected') {
-          const { data: creatorProfile } = await supabase
-            .from('profiles')
-            .select('email, full_name')
-            .eq('id', application.creator_id)
-            .single();
+          const { fetchRecipientEmail } = await import('@/lib/recipientEmail');
+          const creatorProfile = await fetchRecipientEmail(application.creator_id);
 
           if (creatorProfile?.email && application.campaign?.title) {
             await sendNotification(
@@ -104,12 +101,8 @@ export const useJointApproval = () => {
             );
           }
         } else if (action === 'approved') {
-          // Brand approved, notify restaurant owner
-          const { data: restaurantProfile } = await supabase
-            .from('profiles')
-            .select('email, full_name')
-            .eq('id', application.campaign.user_id)
-            .single();
+          const { fetchRecipientEmail } = await import('@/lib/recipientEmail');
+          const restaurantProfile = await fetchRecipientEmail(application.campaign.user_id);
 
           if (restaurantProfile?.email && application.campaign?.title) {
             await sendNotification(
@@ -124,6 +117,7 @@ export const useJointApproval = () => {
             );
           }
         }
+
       } catch (emailError) {
         console.error('Failed to send email notification:', emailError);
       }
@@ -219,11 +213,8 @@ export const useJointApproval = () => {
         
         // If final decision is made, notify creator
         if (finalStatus === 'approved' || finalStatus === 'rejected') {
-          const { data: creatorProfile } = await supabase
-            .from('profiles')
-            .select('email, full_name')
-            .eq('id', application.creator_id)
-            .single();
+          const { fetchRecipientEmail } = await import('@/lib/recipientEmail');
+          const creatorProfile = await fetchRecipientEmail(application.creator_id);
           
           if (creatorProfile?.email && application.campaign?.title) {
             await sendNotification(
@@ -251,11 +242,8 @@ export const useJointApproval = () => {
               .single();
             
             if (brandProfile?.user_id) {
-              const { data: brandUser } = await supabase
-                .from('profiles')
-                .select('email, full_name')
-                .eq('id', brandProfile.user_id)
-                .single();
+              const { fetchRecipientEmail } = await import('@/lib/recipientEmail');
+              const brandUser = await fetchRecipientEmail(brandProfile.user_id);
               
               if (brandUser?.email && application.campaign?.title) {
                 await sendNotification(
@@ -267,6 +255,7 @@ export const useJointApproval = () => {
                     party: 'restaurant owner',
                     campaignId: application.campaign_id,
                   }
+
                 );
               }
             }

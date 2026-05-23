@@ -219,51 +219,47 @@ export const useDeleteCampaign = () => {
         .eq('user_id', user!.id);
       if (error) throw error;
 
+      const { fetchRecipientEmail } = await import('@/lib/recipientEmail');
+
       // Notify applicant creators
       if (applicantIds.length > 0) {
-        const { data: creatorProfiles } = await supabase
-          .from('profiles')
-          .select('id, email, full_name')
-          .in('id', applicantIds);
-
-        const promises = (creatorProfiles ?? []).map((p) =>
-          supabase.functions.invoke('send-notification-email', {
+        const promises = applicantIds.map(async (id) => {
+          const p = await fetchRecipientEmail(id);
+          if (!p?.email) return;
+          return supabase.functions.invoke('send-notification-email', {
             body: {
               to: p.email,
               recipientName: p.full_name,
               type: 'campaign_cancelled',
               data: { campaignTitle, businessName },
             },
-          }).catch((err) => console.error(`Failed to notify creator ${p.id}:`, err))
-        );
+          });
+        });
         await Promise.allSettled(promises);
       }
 
       // Notify invited creators
       if (invitedCreatorIds.length > 0) {
-        // Deduplicate: don't re-notify creators already notified as applicants
         const alreadyNotified = new Set(applicantIds);
         const uniqueInvitedIds = invitedCreatorIds.filter((id) => !alreadyNotified.has(id));
 
         if (uniqueInvitedIds.length > 0) {
-          const { data: invitedProfiles } = await supabase
-            .from('profiles')
-            .select('id, email, full_name')
-            .in('id', uniqueInvitedIds);
-
-          const promises = (invitedProfiles ?? []).map((p) =>
-            supabase.functions.invoke('send-notification-email', {
+          const promises = uniqueInvitedIds.map(async (id) => {
+            const p = await fetchRecipientEmail(id);
+            if (!p?.email) return;
+            return supabase.functions.invoke('send-notification-email', {
               body: {
                 to: p.email,
                 recipientName: p.full_name,
                 type: 'campaign_cancelled',
                 data: { campaignTitle, businessName },
               },
-            }).catch((err) => console.error(`Failed to notify invited creator ${p.id}:`, err))
-          );
+            });
+          });
           await Promise.allSettled(promises);
         }
       }
+
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['campaigns'] });

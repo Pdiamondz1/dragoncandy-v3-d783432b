@@ -128,12 +128,10 @@ export const useSendMessage = () => {
         const senderName = senderProfile?.full_name || 'A user';
         const messagePreview = variables.content.substring(0, 100) + (variables.content.length > 100 ? '...' : '');
 
+        const { fetchRecipientEmail } = await import('@/lib/recipientEmail');
+
         if (variables.conversationId && variables.recipientId) {
-          const { data: recipientProfile } = await supabase
-            .from('profiles')
-            .select('email, full_name')
-            .eq('id', variables.recipientId)
-            .single();
+          const recipientProfile = await fetchRecipientEmail(variables.recipientId);
 
           if (recipientProfile?.email) {
             const { error: fnError } = await supabase.functions.invoke('send-notification-email', {
@@ -156,27 +154,22 @@ export const useSendMessage = () => {
             .map(p => p.user_id)
             .filter(id => id !== user!.id);
 
-          if (recipientIds.length > 0) {
-            const { data: recipientProfiles } = await supabase
-              .from('profiles')
-              .select('email, full_name')
-              .in('id', recipientIds);
-
-            for (const recipient of recipientProfiles || []) {
-              if (recipient.email) {
-                const { error: fnError } = await supabase.functions.invoke('send-notification-email', {
-                  body: {
-                    to: recipient.email,
-                    recipientName: recipient.full_name,
-                    type: 'new_message',
-                    data: { senderName, message: messagePreview },
-                  },
-                });
-                if (fnError) console.warn('Campaign email notification failed:', fnError);
-              }
+          for (const rid of recipientIds) {
+            const recipient = await fetchRecipientEmail(rid);
+            if (recipient?.email) {
+              const { error: fnError } = await supabase.functions.invoke('send-notification-email', {
+                body: {
+                  to: recipient.email,
+                  recipientName: recipient.full_name,
+                  type: 'new_message',
+                  data: { senderName, message: messagePreview },
+                },
+              });
+              if (fnError) console.warn('Campaign email notification failed:', fnError);
             }
           }
         }
+
       } catch (error) {
         console.warn('Failed to send message notification email:', error);
       }
