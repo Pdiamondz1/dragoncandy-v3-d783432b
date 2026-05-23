@@ -100,10 +100,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         throw new Error(`Database connection failed: ${testError.message}`);
       }
       
-      // Get the basic profile first
+      // Get the basic profile first (email comes from session, not the column)
       const { data: basicProfile, error: profileError } = await supabase
         .from('profiles')
-        .select('id, email, role, full_name, avatar_url, email_verified, org_id, active_org_unit_id')
+        .select('id, role, full_name, avatar_url, email_verified, org_id, active_org_unit_id')
         .eq('id', userId)
         .maybeSingle();
 
@@ -125,7 +125,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Start with the basic profile
       const extendedProfile: Profile = {
         id: basicProfile.id,
-        email: basicProfile.email,
+        email: session?.user?.email ?? '',
         role: basicProfile.role,
         full_name: basicProfile.full_name,
         avatar_url: basicProfile.avatar_url,
@@ -133,6 +133,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         org_id: basicProfile.org_id,
         active_org_unit_id: basicProfile.active_org_unit_id,
       };
+
 
       // Fetch role-specific data with error handling
       try {
