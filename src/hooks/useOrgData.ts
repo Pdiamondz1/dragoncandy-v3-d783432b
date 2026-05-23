@@ -89,14 +89,23 @@ export function useOrgUnits(orgId?: string | null) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('org_units')
-        .select('id, org_id, unit_type, name, address, lat, lng, website_url, logo_url, is_primary, deleted_at, created_at, updated_at, stripe_account_id, stripe_onboarding_complete, pending_balance, description, brand_category, sample_content_urls, show_parent_brand, instagram_url, tiktok_url, youtube_url, facebook_url, linkedin_url, x_url, other_social_url')
+        .select('id, org_id, unit_type, name, address, lat, lng, website_url, logo_url, is_primary, deleted_at, created_at, updated_at, description, brand_category, sample_content_urls, show_parent_brand, instagram_url, tiktok_url, youtube_url, facebook_url, linkedin_url, x_url, other_social_url')
         .eq('org_id', orgId!)
         .is('deleted_at', null)
         .order('is_primary', { ascending: false })
         .order('name', { ascending: true });
 
       if (error) throw error;
-      return (data ?? []) as unknown as OrgUnit[];
+      const units = (data ?? []) as unknown as OrgUnit[];
+      // Hydrate financials (owner/admin only — non-admin members get nulls)
+      const { fetchOrgUnitFinancials } = await import('@/lib/recipientEmail');
+      const hydrated = await Promise.all(
+        units.map(async (u) => {
+          const fin = await fetchOrgUnitFinancials(u.id);
+          return fin ? { ...u, ...fin } : u;
+        }),
+      );
+      return hydrated as OrgUnit[];
     },
     enabled: !!orgId,
   });
@@ -111,16 +120,20 @@ export function useActiveOrgUnit(orgUnitId?: string | null) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('org_units')
-        .select('id, org_id, unit_type, name, address, lat, lng, website_url, logo_url, is_primary, deleted_at, created_at, updated_at, stripe_account_id, stripe_onboarding_complete, pending_balance, description, brand_category, sample_content_urls, show_parent_brand, instagram_url, tiktok_url, youtube_url, facebook_url, linkedin_url, x_url, other_social_url')
+        .select('id, org_id, unit_type, name, address, lat, lng, website_url, logo_url, is_primary, deleted_at, created_at, updated_at, description, brand_category, sample_content_urls, show_parent_brand, instagram_url, tiktok_url, youtube_url, facebook_url, linkedin_url, x_url, other_social_url')
         .eq('id', orgUnitId!)
         .maybeSingle();
 
       if (error) throw error;
-      return data as unknown as OrgUnit | null;
+      if (!data) return null;
+      const { fetchOrgUnitFinancials } = await import('@/lib/recipientEmail');
+      const fin = await fetchOrgUnitFinancials(orgUnitId!);
+      return (fin ? { ...(data as unknown as OrgUnit), ...fin } : (data as unknown as OrgUnit));
     },
     enabled: !!orgUnitId,
   });
 }
+
 
 // ── useUpdateActiveUnit ──────────────────────────────────────────────────────
 
@@ -205,11 +218,12 @@ export function useCreateOrgUnit(orgId?: string | null) {
       const { data, error } = await supabase
         .from('org_units')
         .insert(payload)
-        .select('id, org_id, unit_type, name, address, lat, lng, website_url, logo_url, is_primary, deleted_at, created_at, updated_at, stripe_account_id, stripe_onboarding_complete, pending_balance, description, brand_category, sample_content_urls, show_parent_brand, instagram_url, tiktok_url, youtube_url, facebook_url, linkedin_url, x_url, other_social_url')
+        .select('id, org_id, unit_type, name, address, lat, lng, website_url, logo_url, is_primary, deleted_at, created_at, updated_at, description, brand_category, sample_content_urls, show_parent_brand, instagram_url, tiktok_url, youtube_url, facebook_url, linkedin_url, x_url, other_social_url')
         .single();
 
       if (error) throw error;
       return data as unknown as OrgUnit;
+
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: KEYS.orgUnits(orgId ?? undefined) });
@@ -238,11 +252,12 @@ export function useUpdateOrgUnit() {
         .from('org_units')
         .update({ ...updates, updated_at: new Date().toISOString() })
         .eq('id', id)
-        .select('id, org_id, unit_type, name, address, lat, lng, website_url, logo_url, is_primary, deleted_at, created_at, updated_at, stripe_account_id, stripe_onboarding_complete, pending_balance, description, brand_category, sample_content_urls, show_parent_brand, instagram_url, tiktok_url, youtube_url, facebook_url, linkedin_url, x_url, other_social_url')
+        .select('id, org_id, unit_type, name, address, lat, lng, website_url, logo_url, is_primary, deleted_at, created_at, updated_at, description, brand_category, sample_content_urls, show_parent_brand, instagram_url, tiktok_url, youtube_url, facebook_url, linkedin_url, x_url, other_social_url')
         .single();
 
       if (error) throw error;
       return data as unknown as OrgUnit;
+
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: KEYS.orgUnits(data.org_id) });
