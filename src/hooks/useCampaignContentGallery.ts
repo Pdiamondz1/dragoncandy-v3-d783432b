@@ -100,7 +100,7 @@ export function useCampaignContentGallery(campaignId: string, statusFilter?: str
 
       for (const collab of collabs) {
         const ds = collab.deliverables_status as Record<string, string> | null;
-        const profile = collab.profiles as { full_name: string | null; avatar_url: string | null } | null;
+        const profile = collab.profiles as unknown as { full_name: string | null; avatar_url: string | null } | null;
         const creatorFiles = (files ?? []).filter(f => f.uploaded_by === collab.creator_id);
 
         const dsKeys = ds ? Object.keys(ds) : [];

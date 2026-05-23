@@ -144,7 +144,7 @@ const OutstandManagerInner: React.FC = () => {
 
       const events: SponsorshipEvent[] = [];
       for (const s of data) {
-        const campaign = s.campaigns as { title: string; deadline?: string } | null;
+        const campaign = s.campaigns as unknown as { title: string; deadline?: string } | null;
         if (campaign?.title) {
           events.push({ id: `${s.id}-start`, date: new Date(s.created_at), title: campaign.title, type: 'start' });
           if (campaign.deadline) {

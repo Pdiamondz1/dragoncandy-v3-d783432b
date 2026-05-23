@@ -52,10 +52,10 @@ export const useReviews = (revieweeId?: string, reviewType?: string) => {
         }
 
         return reviews
-          .filter((r) => (r.profiles as { full_name: string } | null)?.full_name)
+          .filter((r) => (r.profiles as unknown as { full_name: string } | null)?.full_name)
           .map((r) => {
-            const profile = r.profiles as { full_name: string; avatar_url?: string };
-            const collab = r.campaign_collaborations as { campaigns: { title: string } | null } | null;
+            const profile = r.profiles as unknown as { full_name: string; avatar_url?: string };
+            const collab = r.campaign_collaborations as unknown as { campaigns: { title: string } | null } | null;
             return {
               id: r.id,
               collaboration_id: r.collaboration_id,

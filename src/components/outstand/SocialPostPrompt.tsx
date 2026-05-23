@@ -91,15 +91,17 @@ function SocialPostPromptInner({
 
     if (campaignId && user?.id) {
       setLoadingDraft(true);
-      supabase
-        .from('donny_scheduled_posts')
-        .select('caption, hashtags, scheduled_at, ai_reasoning')
-        .eq('campaign_id', campaignId)
-        .eq('user_id', user.id)
-        .eq('status', 'draft')
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle()
+      Promise.resolve(
+        supabase
+          .from('donny_scheduled_posts')
+          .select('caption, hashtags, scheduled_at, ai_reasoning')
+          .eq('campaign_id', campaignId)
+          .eq('user_id', user.id)
+          .eq('status', 'draft')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+      )
         .then(({ data: draft }) => {
           if (draft?.caption) {
             const hashtagStr = draft.hashtags?.length ? `\n\n${draft.hashtags.join(' ')}` : '';

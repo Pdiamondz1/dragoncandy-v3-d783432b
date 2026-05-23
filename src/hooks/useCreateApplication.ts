@@ -18,7 +18,7 @@ export const useCreateApplication = () => {
       introMessage,
       proposedTimeline,
       proposedRate,
-      portfolioUrl,
+      portfolioUrl: _portfolioUrl,
       isCounterOffer,
       isInvited,
     }: {

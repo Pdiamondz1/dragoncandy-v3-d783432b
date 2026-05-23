@@ -160,7 +160,7 @@ export const useCampaignsList = (filterByOwnership: boolean = true, orgUnitId?: 
         });
       }
 
-      return enriched.map(hydrateCampaignFromAnalysis);
+      return (enriched as unknown as Campaign[]).map((c) => hydrateCampaignFromAnalysis(c));
     },
     enabled: !!user,
   });

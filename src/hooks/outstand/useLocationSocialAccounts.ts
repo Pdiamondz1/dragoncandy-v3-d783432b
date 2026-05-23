@@ -57,7 +57,7 @@ export function useUnassignedSocialAccounts(userId: string | undefined) {
 
       const { data, error } = await supabase
         .from('business_outstand_accounts')
-        .select('id, platform, platform_handle, org_unit_id, outstand_social_account_id, org_units(name, deleted_at)')
+        .select('id, platform, platform_handle, org_unit_id, outstand_social_account_id, status, org_units(name, deleted_at)')
         .eq('user_id', userId)
         .eq('status', 'active')
         .order('connected_at', { ascending: false });
@@ -68,13 +68,13 @@ export function useUnassignedSocialAccounts(userId: string | undefined) {
       }
 
       return (data ?? [])
-        .filter((row) => !row.org_unit_id || (row.org_units as { deleted_at?: string | null } | null)?.deleted_at != null)
+        .filter((row) => !row.org_unit_id || (row.org_units as unknown as { deleted_at?: string | null } | null)?.deleted_at != null)
         .map((row) => ({
           id: row.id,
           platform: row.platform,
           platform_handle: row.platform_handle,
           org_unit_id: row.org_unit_id,
-          org_unit_name: (row.org_units as { name?: string } | null)?.name ?? null,
+          org_unit_name: (row.org_units as unknown as { name?: string } | null)?.name ?? null,
           status: row.status,
           outstand_social_account_id: row.outstand_social_account_id,
         })) as LocationSocialAccount[];

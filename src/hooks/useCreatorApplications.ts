@@ -83,7 +83,7 @@ export const useCreatorApplications = () => {
       );
 
       // Step 3: Merge
-      return applications.map(app => {
+      return applications.map((app): CreatorApplication => {
         const campaign = app.campaign as unknown as ApplicationCampaign;
         const businessProfile = campaign ? profileMap.get(campaign.user_id) : undefined;
 
@@ -94,6 +94,7 @@ export const useCreatorApplications = () => {
           intro_message: app.intro_message,
           proposed_timeline: app.proposed_timeline,
           proposed_rate: app.proposed_rate,
+          agreed_rate: (app as { agreed_rate: number | null }).agreed_rate ?? null,
           status: app.status as CreatorApplication['status'],
           created_at: app.created_at,
           updated_at: app.updated_at,

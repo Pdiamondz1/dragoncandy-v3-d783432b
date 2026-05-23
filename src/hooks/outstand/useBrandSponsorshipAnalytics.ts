@@ -59,7 +59,7 @@ export function useBrandSponsorshipAnalytics() {
       const restaurantUserIds = [
         ...new Set(
           data
-            .map((s) => (s.campaigns as { title: string; deadline: string | null; user_id: string } | null)?.user_id)
+            .map((s) => (s.campaigns as unknown as { title: string; deadline: string | null; user_id: string } | null)?.user_id)
             .filter((id): id is string => !!id)
         ),
       ];
@@ -91,13 +91,13 @@ export function useBrandSponsorshipAnalytics() {
           a.campaign_id,
           {
             id: a.creator_id as string,
-            name: (a.profiles as { full_name: string | null } | null)?.full_name ?? null,
+            name: (a.profiles as unknown as { full_name: string | null } | null)?.full_name ?? null,
           },
         ])
       );
 
       return data.map((s) => {
-        const campaign = s.campaigns as { title: string; deadline: string | null; user_id: string } | null;
+        const campaign = s.campaigns as unknown as { title: string; deadline: string | null; user_id: string } | null;
         const creator = creatorByCampaignId.get(s.campaign_id);
         return {
           id: s.id,

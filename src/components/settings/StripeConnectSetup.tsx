@@ -152,7 +152,7 @@ export function StripeConnectSetup({ role }: StripeConnectSetupProps) {
   const handleDisconnect = async () => {
     setDisconnecting(true);
     try {
-      const { data, error } = await supabase.functions.invoke('disconnect-stripe-account', {
+      const { error } = await supabase.functions.invoke('disconnect-stripe-account', {
         body: { org_unit_id: activeOrgUnit?.id ?? null },
       });
       if (error) {

@@ -40,21 +40,21 @@ function getMissionStatus(
   missionKey: string,
   defs: MissionDef[]
 ): 'active' | 'locked' | 'completed' {
-  const value = (missions as Record<string, unknown>)[missionKey];
+  const value = (missions as unknown as Record<string, unknown>)[missionKey];
   if (value === true) return 'completed';
 
   const idx = defs.findIndex((d) => d.key === missionKey);
   if (idx === 0) return 'active';
 
   const prevKey = defs[idx - 1].key;
-  const prevDone = (missions as Record<string, unknown>)[prevKey] === true;
+  const prevDone = (missions as unknown as Record<string, unknown>)[prevKey] === true;
   return prevDone ? 'active' : 'locked';
 }
 
 export function MissionChecklist({ role, missions, onMissionGo, onSkip }: MissionChecklistProps) {
   const defs = MISSION_DEFS[role];
   const accentColor = role === 'brand' ? 'pink' : 'teal';
-  const completedCount = defs.filter((d) => (missions as Record<string, unknown>)[d.key] === true).length;
+  const completedCount = defs.filter((d) => (missions as unknown as Record<string, unknown>)[d.key] === true).length;
 
   return (
     <div className="bg-white rounded-2xl p-4">

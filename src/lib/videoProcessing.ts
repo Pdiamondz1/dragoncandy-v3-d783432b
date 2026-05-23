@@ -60,7 +60,7 @@ export async function transcodeToMp4(
     const uint8 = data instanceof Uint8Array ? data : new TextEncoder().encode(data as string);
 
     const baseName = file.name.replace(/\.[^.]+$/, '');
-    return new File([uint8], `${baseName}.mp4`, { type: 'video/mp4' });
+    return new File([new Blob([uint8 as BlobPart])], `${baseName}.mp4`, { type: 'video/mp4' });
   } finally {
     ffmpeg.terminate();
   }
