@@ -10,12 +10,13 @@ interface PrerequisiteGateProps {
   inline?: boolean;
 }
 
-export function PrerequisiteGate({ feature, children, inline }: PrerequisiteGateProps) {
-  const { isLoading, items, allMet } = usePrerequisiteStatus();
-  const navigate = useNavigate();
-
+export function PrerequisiteGate({ feature: _feature, children, inline: _inline }: PrerequisiteGateProps) {
   // Temporarily bypass gate while social media + Stripe integrations are being fixed
   return <>{children}</>;
+  // eslint-disable-next-line no-unreachable
+  // @ts-ignore - kept for future re-enable
+  const _unused = { useNavigate, usePrerequisiteStatus, Loader2, CheckCircle2, Circle, Sparkles, Button };
+
 
   if (isLoading) {
     return (
