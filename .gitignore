@@ -79,6 +79,9 @@ supabase/.temp/
 # Local settings (per-machine)
 .claude/settings.local.json
 
+# Wiki external sources (PDFs, large binaries)
+docs/wiki/raw/external/
+
 # Misc artifacts
 *.patch
 *.png.tmp

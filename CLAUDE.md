@@ -1,6 +1,7 @@
 @docs/PROJECT_CONTEXT.md
 @docs/DESIGN_SYSTEM.md
 @docs/DATABASE_SCHEMA.md
+@docs/KNOWLEDGE_WIKI.md
 # CLAUDE.md
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
@@ -117,6 +118,12 @@ Run /simplify before presenting code to the user.
 * **Ask before refactoring** large shared components (auth flow, messaging UI, campaign listings)
 * Always include **`.select()` field lists** in Supabase queries — avoid `select *`
 * **Stripe test mode only** — never use live keys without explicit approval
+
+## Rigor & Context Management
+
+* **Ask until 95% confident** — before starting any task, ask clarifying questions until you understand exactly what's needed. Don't make assumptions.
+* **95% complete before moving on** — don't move to the next task until the current one is complete, correct, and passes.
+* **Compact proactively** — after reading 10+ files or spanning multiple major tasks, run /compact to preserve context for productive work.
 
 ## Session Continuity
 
