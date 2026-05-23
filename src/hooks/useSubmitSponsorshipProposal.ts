@@ -114,15 +114,11 @@ export const useSubmitSponsorshipProposal = () => {
           console.error('Error fetching restaurant profile:', restaurantProfileError);
         }
 
-        const { data: restaurantUser, error: restaurantUserError } = await supabase
-          .from('profiles')
-          .select('email, full_name')
-          .eq('id', restaurantProfile?.user_id)
-          .maybeSingle();
+        const { fetchRecipientEmail } = await import('@/lib/recipientEmail');
+        const restaurantUser = restaurantProfile?.user_id
+          ? await fetchRecipientEmail(restaurantProfile.user_id)
+          : null;
 
-        if (restaurantUserError) {
-          console.error('Error fetching restaurant user:', restaurantUserError);
-        }
 
         // Get brand name
         const { data: brandProfile, error: brandProfileError } = await supabase

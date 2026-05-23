@@ -102,13 +102,10 @@ export const useManageApplication = () => {
               .eq('id', data.campaign_id)
               .single();
 
+            const { fetchRecipientEmail } = await import('@/lib/recipientEmail');
             for (const app of otherApps) {
               try {
-                const { data: profile } = await supabase
-                  .from('profiles')
-                  .select('email, full_name')
-                  .eq('id', app.creator_id)
-                  .single();
+                const profile = await fetchRecipientEmail(app.creator_id);
 
                 if (profile?.email && campaignInfo?.title) {
                   await sendNotification(
@@ -126,19 +123,17 @@ export const useManageApplication = () => {
                 // Best-effort notification
               }
             }
+
           }
         } catch (collabError) {
           console.error('Failed to accept application atomically:', collabError);
         }
       }
 
-      // Send email notification to creator
-      const { data: creatorProfile } = await supabase
-        .from('profiles')
-        .select('email, full_name')
-        .eq('id', data.creator_id)
-        .single()
-        .then(r => r, () => ({ data: null }));
+      // Send email notification to creator via gated RPC
+      const { fetchRecipientEmail } = await import('@/lib/recipientEmail');
+      const creatorProfile = await fetchRecipientEmail(data.creator_id);
+
 
       const { data: campaign } = await supabase
         .from('campaigns')

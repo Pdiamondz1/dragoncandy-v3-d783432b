@@ -57,14 +57,12 @@ export const useFileUploadNotification = () => {
         notificationType = 'file_uploaded_by_restaurant';
       }
 
-      // Get recipient profile
-      const { data: recipientProfile } = await supabase
-        .from('profiles')
-        .select('email, full_name')
-        .eq('id', recipientId)
-        .single();
+      // Resolve recipient email via gated RPC
+      const { fetchRecipientEmail } = await import('@/lib/recipientEmail');
+      const recipientProfile = await fetchRecipientEmail(recipientId);
 
-      if (!recipientProfile) return;
+      if (!recipientProfile?.email) return;
+
 
       // Send email notification
       await supabase.functions.invoke('send-notification-email', {

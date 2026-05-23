@@ -85,11 +85,8 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
       queryClient.invalidateQueries({ queryKey: ['campaign-project', campaignId] });
 
       try {
-        const { data: creatorProfile } = await supabase
-          .from('profiles')
-          .select('email, full_name')
-          .eq('id', creatorId)
-          .single();
+        const { fetchRecipientEmail } = await import('@/lib/recipientEmail');
+        const creatorProfile = await fetchRecipientEmail(creatorId);
 
         if (creatorProfile?.email) {
           await supabase.functions.invoke('send-notification-email', {
@@ -104,6 +101,7 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
       } catch (e) {
         console.error('Failed to send content approval email:', e);
       }
+
 
       // Trigger social hook with one retry + visible failure toast
       let socialHookOk = false;
@@ -210,11 +208,8 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
       queryClient.invalidateQueries({ queryKey: ['campaign-project', campaignId] });
 
       try {
-        const { data: creatorProfile } = await supabase
-          .from('profiles')
-          .select('email, full_name')
-          .eq('id', creatorId)
-          .single();
+        const { fetchRecipientEmail } = await import('@/lib/recipientEmail');
+        const creatorProfile = await fetchRecipientEmail(creatorId);
 
         if (creatorProfile?.email) {
           await supabase.functions.invoke('send-notification-email', {
@@ -229,6 +224,7 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
       } catch (e) {
         console.error('Failed to send revision request email:', e);
       }
+
     },
     onError: (err: Error) => {
       toast({ variant: 'destructive', title: 'Request Failed', description: err.message });

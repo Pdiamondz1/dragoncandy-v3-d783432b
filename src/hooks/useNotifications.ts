@@ -458,13 +458,12 @@ export const useNotifications = () => {
 
           // Fetch the liker's profile for display name (cached)
           const likerProfile = await cachedLookup(`profile-${payload.new.user_id}`, async () => {
-            const { data } = await supabase.from('profiles').select('full_name, email').eq('id', payload.new.user_id).single();
+            const { data } = await supabase.from('profiles').select('full_name').eq('id', payload.new.user_id).single();
             return data;
           });
 
-          const likerName = likerProfile?.full_name ||
-                            likerProfile?.email?.split('@')[0] ||
-                            'Someone';
+          const likerName = likerProfile?.full_name || 'Someone';
+
 
           if (prefsRef.current.push) {
             toast({
@@ -544,11 +543,12 @@ export const useNotifications = () => {
           if (msg.sender_id === user.id) return;
 
           const senderProfile = await cachedLookup(`profile-${msg.sender_id}`, async () => {
-            const { data } = await supabase.from('profiles').select('full_name, email').eq('id', msg.sender_id).single();
+            const { data } = await supabase.from('profiles').select('full_name').eq('id', msg.sender_id).single();
             return data;
           });
 
-          const senderName = senderProfile?.full_name || senderProfile?.email?.split('@')[0] || 'Someone';
+          const senderName = senderProfile?.full_name || 'Someone';
+
           const preview = typeof msg.content === 'string'
             ? msg.content.substring(0, 60) + (msg.content.length > 60 ? '…' : '')
             : 'New message';
