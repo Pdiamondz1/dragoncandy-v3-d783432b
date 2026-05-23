@@ -4944,6 +4944,21 @@ export type Database = {
         }[]
       }
       get_dashboard_summary: { Args: { p_user_id: string }; Returns: Json }
+      get_org_unit_financials: {
+        Args: { p_unit_id: string }
+        Returns: {
+          pending_balance: number
+          stripe_account_id: string
+          stripe_onboarding_complete: boolean
+        }[]
+      }
+      get_recipient_email: {
+        Args: { p_user_id: string }
+        Returns: {
+          email: string
+          full_name: string
+        }[]
+      }
       get_unread_message_counts: {
         Args: { user_uuid: string }
         Returns: {
