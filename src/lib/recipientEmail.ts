@@ -8,7 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
  */
 export async function fetchRecipientEmail(
   userId: string,
-): Promise<{ email: string | null; full_name: string | null } | null> {
+): Promise<{ email: string | undefined; full_name: string | undefined } | null> {
   try {
     const { data, error } = await supabase.rpc('get_recipient_email', {
       p_user_id: userId,
@@ -19,12 +19,13 @@ export async function fetchRecipientEmail(
     }
     const row = Array.isArray(data) ? data[0] : data;
     if (!row) return null;
-    return { email: row.email ?? null, full_name: row.full_name ?? null };
+    return { email: row.email ?? undefined, full_name: row.full_name ?? undefined };
   } catch (err) {
     console.warn('fetchRecipientEmail threw:', err);
     return null;
   }
 }
+
 
 /**
  * Securely loads financial columns for an org_unit (stripe_account_id,
