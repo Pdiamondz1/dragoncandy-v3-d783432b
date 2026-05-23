@@ -48,6 +48,7 @@ export interface CampaignAnalysis {
   captions?: string[];
   posting_schedule?: PostingScheduleEntry[];
   style_direction?: StyleDirection;
+  deliverables?: { id: string; content_type: string; platform?: string; description?: string }[];
 }
 
 export interface CampaignData {

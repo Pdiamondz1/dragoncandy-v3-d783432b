@@ -166,7 +166,7 @@ export function ActivePhaseView({ campaign, enrichedDetail, collaborationId }: A
                 onOpenChange={setShowCrossPost}
                 campaignId={campaign.id}
                 campaignTitle={campaign.title}
-                creatorName={collaboration?.creator_name ?? ''}
+                creatorName={collaboration?.creator_profile?.creator_name ?? ''}
                 mediaUrls={
                   files
                     ?.map((f) => supabase.storage.from(f.bucket_name).getPublicUrl(f.file_path).data.publicUrl)

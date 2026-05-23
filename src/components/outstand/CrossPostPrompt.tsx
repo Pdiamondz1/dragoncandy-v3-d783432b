@@ -1,6 +1,6 @@
 import React from 'react';
 import { SocialPostPrompt } from './SocialPostPrompt';
-import { DragonCandyOutstandProvider } from '@/integrations/outstand/Provider';
+
 
 interface CrossPostPromptProps {
   open: boolean;

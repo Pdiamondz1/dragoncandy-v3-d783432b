@@ -75,7 +75,7 @@ export function getInitialMissions(role: UserRole): RoleMissions {
 
 export function areMissionsComplete(missions: RoleMissions): boolean {
   if ('completed_at' in missions && missions.completed_at) return true;
-  const { completed_at: _completed_at, ...flags } = missions as Record<string, unknown>;
+  const { completed_at: _completed_at, ...flags } = missions as unknown as Record<string, unknown>;
   return Object.values(flags).every((v) => v === true);
 }
 

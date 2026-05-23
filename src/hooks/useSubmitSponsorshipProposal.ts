@@ -94,7 +94,7 @@ export const useSubmitSponsorshipProposal = () => {
         // Get campaign details
         const { data: campaign, error: campaignError } = await supabase
           .from('campaigns')
-          .select('title, user_id')
+          .select('id, title, user_id')
           .eq('id', variables.campaignId)
           .single();
 

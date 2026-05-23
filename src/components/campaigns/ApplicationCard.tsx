@@ -323,7 +323,7 @@ const ApplicationCardComponent: React.FC<ApplicationCardProps> = ({
                   size="sm"
                 >
                   <Check className="h-4 w-4 mr-2" aria-hidden="true" />
-                  Accept ({formatCurrency(effectiveRate)})
+                  Accept ({formatCurrency(effectiveRate ?? null)})
                 </Button>
                 {!application.agreed_rate && (
                   <Button

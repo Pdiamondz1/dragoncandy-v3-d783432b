@@ -49,7 +49,7 @@ export function useResolvedLogoUrl(
 ): string | undefined {
   const isHttp = logoUrl?.startsWith('http');
   const signedUrl = useSignedUrl('profile-assets', isHttp ? null : logoUrl);
-  return isHttp ? logoUrl : signedUrl;
+  return isHttp ? (logoUrl ?? undefined) : signedUrl;
 }
 
 export async function getSignedProfileUrl(
