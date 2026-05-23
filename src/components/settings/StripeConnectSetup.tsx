@@ -155,10 +155,13 @@ export function StripeConnectSetup({ role }: StripeConnectSetupProps) {
       const { data, error } = await supabase.functions.invoke('disconnect-stripe-account', {
         body: { org_unit_id: activeOrgUnit?.id ?? null },
       });
-      if (error) throw error;
-      if (data?.error === 'BALANCE_REMAINING') {
-        toast.error(`You have $${data.balance.toFixed(2)} pending. Withdraw your balance before disconnecting.`);
-        return;
+      if (error) {
+        const context = await (error as { context?: Response }).context?.json?.().catch(() => null);
+        if (context?.error === 'BALANCE_REMAINING') {
+          toast.error(`You have $${context.balance.toFixed(2)} pending. Withdraw your balance before disconnecting.`);
+          return;
+        }
+        throw error;
       }
       toast.success('Stripe account disconnected.');
       checkStatus();
