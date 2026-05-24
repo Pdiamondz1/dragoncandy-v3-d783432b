@@ -110,7 +110,9 @@ serve(async (req) => {
     const totalAmountCents = Math.round(totalAmount * 100); // Convert to cents
     logStep("Fee calculation", { totalAmount, takeRate, platformFee: platformFee / 100, totalAmountCents: totalAmountCents / 100 });
 
-    const origin = req.headers.get("origin") || "https://dragoncandy-v3.lovable.app";
+    const origin = req.headers.get("origin")
+      || Deno.env.get("PUBLIC_SITE_URL")
+      || "https://dragoncandy.io";
 
     // Build description based on delivery type
     const deliveryLabels: Record<string, string> = {
