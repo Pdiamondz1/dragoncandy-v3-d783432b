@@ -39,6 +39,7 @@ export const useNotifications = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const initializedRef = useRef(false);
+  const channelSuffix = useRef(Math.random().toString(36).slice(2, 8));
   const prefsRef = useRef<{ push: boolean; messages: boolean; campaigns: boolean }>({
     push: true, messages: true, campaigns: true,
   });
@@ -255,9 +256,8 @@ export const useNotifications = () => {
       return result;
     };
 
-    // Single consolidated channel for all notification events
     const notificationChannel = supabase
-      .channel(`notifications-${user.id}`)
+      .channel(`notifications-${user.id}-${channelSuffix.current}`)
       .on(
         'postgres_changes',
         {
