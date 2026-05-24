@@ -55,7 +55,7 @@ const ROLE_CONFIG = {
 };
 
 export function StripeConnectSetup({ role }: StripeConnectSetupProps) {
-  const { user, activeOrgUnit, activeOrg } = useAuth();
+  const { user, activeOrgUnit, activeOrg, refreshActiveOrgUnit } = useAuth();
   const { data: orgUnits = [] } = useOrgUnits(activeOrg?.id);
   const hasMultipleLocations = orgUnits.length > 1;
   const { completeMission } = useFirstRunMissions();
@@ -92,13 +92,13 @@ export function StripeConnectSetup({ role }: StripeConnectSetupProps) {
     if (params.get('stripe_onboarding') === 'complete') {
       toast.success('Stripe setup updated — checking your account status...');
       completeMission(config.mission);
-      checkStatus();
+      checkStatus().then(() => refreshActiveOrgUnit());
       window.history.replaceState({}, '', window.location.pathname);
     } else if (params.get('stripe_refresh') === 'true') {
       toast.error('Setup incomplete. Please try connecting again.');
       window.history.replaceState({}, '', window.location.pathname);
     }
-  }, [checkStatus, completeMission, config.mission]);
+  }, [checkStatus, completeMission, config.mission, refreshActiveOrgUnit]);
 
   const handleConnect = async () => {
     setConnecting(true);
@@ -110,7 +110,7 @@ export function StripeConnectSetup({ role }: StripeConnectSetupProps) {
       if (data?.alreadyComplete) {
         toast.success('Stripe account is already connected!');
         completeMission(config.mission);
-        checkStatus();
+        checkStatus().then(() => refreshActiveOrgUnit());
       } else if (data?.url) {
         window.location.href = data.url;
       }

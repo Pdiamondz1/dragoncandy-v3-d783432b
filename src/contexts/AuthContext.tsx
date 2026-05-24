@@ -32,6 +32,7 @@ interface AuthContextType {
   activeOrg: Organization | null;
   activeOrgUnit: OrgUnit | null;
   switchOrgUnit: (unitId: string | null) => Promise<void>;
+  refreshActiveOrgUnit: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -246,6 +247,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
 
+  const refreshActiveOrgUnit = async () => {
+    if (!activeOrgUnit) return;
+    const { data: unit } = await supabase
+      .from('org_units')
+      .select('id, org_id, unit_type, name, address, lat, lng, website_url, logo_url, is_primary, deleted_at, created_at, updated_at, description, brand_category, sample_content_urls, show_parent_brand, instagram_url, tiktok_url, youtube_url, facebook_url, linkedin_url, x_url, other_social_url')
+      .eq('id', activeOrgUnit.id)
+      .maybeSingle();
+    const hydrated = await hydrateOrgUnitFinancials(unit as OrgUnit | null);
+    setActiveOrgUnit(hydrated);
+  };
+
   useEffect(() => {
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -423,7 +435,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     migrateCampaignData,
     activeOrg,
     activeOrgUnit,
-    switchOrgUnit
+    switchOrgUnit,
+    refreshActiveOrgUnit,
   };
 
   return (
