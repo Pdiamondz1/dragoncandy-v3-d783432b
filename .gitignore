@@ -81,6 +81,7 @@ supabase/.temp/
 
 # Wiki external sources (PDFs, large binaries)
 docs/wiki/raw/external/
+!docs/wiki/raw/external/karpathy-llm-wiki-schema.md
 
 # Misc artifacts
 *.patch

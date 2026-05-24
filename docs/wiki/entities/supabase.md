@@ -2,7 +2,7 @@
 title: Supabase
 type: entity
 created: 2026-05-23
-updated: 2026-05-23
+updated: 2026-05-24
 sources: [docs/DATABASE_SCHEMA.md, .claude/handoffs/2026-05-04-232158-code-architecture-audit-remediation.md]
 tags: [supabase, database, auth, rls]
 ---
@@ -45,3 +45,6 @@ Realtime subscriptions, and Storage.
 - [[DragonCandy Platform]]
 - [[TypeScript Patterns]]
 - [[Error Handling Patterns]]
+- [[Code Architecture Audit Session]]
+- [[Realtime Edge Cases Session]]
+- [[Counter-Offer Enum Fix Session]]

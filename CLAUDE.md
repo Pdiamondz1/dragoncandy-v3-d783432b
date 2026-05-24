@@ -125,13 +125,19 @@ Run /simplify before presenting code to the user.
 * **95% complete before moving on** — don't move to the next task until the current one is complete, correct, and passes.
 * **Compact proactively** — after reading 10+ files or spanning multiple major tasks, run /compact to preserve context for productive work.
 
+## Session Discipline
+
+* **Compact early** — run `/compact` proactively when context usage reaches ~55%. Don't wait for automatic compression; compress early to preserve working memory for the current task.
+* **Verify production after deploy** — after every push to main (auto-deployed via Lovable.dev), verify at dragoncandy.io: screenshot the affected pages, open Chrome DevTools, check for console errors. Test both desktop and mobile viewports. Test account credentials are stored in the project memory system.
+* **Desktop/Mobile viewport separation** — frontend changes must target the correct viewport. Changes meant for desktop use `lg:` / `xl:` prefixed Tailwind classes. Changes meant for mobile use base (unprefixed) classes. Never apply mobile-targeted changes to desktop or vice versa. Test both viewports after any UI change.
+
 ## Session Continuity
 
 Work spanning multiple sessions uses handoff documents in `.claude/handoffs/`.
 
 **Resuming:** Check `.claude/handoffs/` for existing handoffs. If user continues prior work, load the freshest relevant handoff. If ambiguous, load and note it. If clearly unrelated, skip.
 
-**Creating:** Invoke `session-handoff` skill when completing a plan phase with more work remaining, switching workstreams, or ending a session with pending work. Skip for small self-contained fixes or fully completed work.
+**Creating:** Invoke `session-handoff` skill when completing a plan phase with more work remaining, switching workstreams, or ending a session with pending work. Skip for small self-contained fixes or fully completed work. After writing the handoff to `.claude/handoffs/`, also copy it to `docs/wiki/raw/sessions/` and run `/wiki-ops ingest` on the raw session file to synthesize it into the wiki.
 
 | Layer | Purpose | Update cadence |
 |-------|---------|----------------|

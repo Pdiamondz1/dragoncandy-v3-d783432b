@@ -2,7 +2,7 @@
 title: Pricing Architecture
 type: concept
 created: 2026-05-23
-updated: 2026-05-23
+updated: 2026-05-24
 sources: [docs/STRIPE_PRICES.md, docs/PROJECT_CONTEXT.md]
 tags: [pricing, revenue, business-model]
 ---
@@ -43,3 +43,5 @@ Annual billing gives 20% discount. Per-seat add-ons available on paid tiers.
 - [[Stripe Connect]]
 - [[DragonDash]]
 - [[Donny AI]]
+- [[Donny Audit Phase 1 Session]]
+- [[Donny Audit Phase 2 Session]]

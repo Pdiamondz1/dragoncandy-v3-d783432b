@@ -2,7 +2,7 @@
 title: Error Handling Patterns
 type: concept
 created: 2026-05-23
-updated: 2026-05-23
+updated: 2026-05-24
 sources: [.claude/handoffs/2026-05-04-232158-code-architecture-audit-remediation.md]
 tags: [error-handling, error-boundary, patterns]
 ---
@@ -35,3 +35,4 @@ the root ErrorBoundary in App.tsx catches everything.
 - [[TypeScript Patterns]]
 - [[Supabase]]
 - [[DragonCandy Platform]]
+- [[Realtime Edge Cases Session]]

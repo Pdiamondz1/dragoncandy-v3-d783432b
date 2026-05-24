@@ -41,14 +41,17 @@ frontmatter. `[[Wikilinks]]` use display names, resolved via `index.md`.
 
 ## Ingest Workflow
 
-1. Read the raw source completely.
+1. Read the raw source completely. If it contains image references,
+   read the text first, then view key images separately.
 2. Discuss 3-5 key takeaways with the user.
 3. Create source summary page in `sources/`.
 4. Create or update entity pages in `entities/`.
 5. Create or update concept pages in `concepts/`.
 6. Update `[[cross-references]]` across all touched pages.
 7. Update `index.md` — add new entries, keep alphabetically sorted.
-8. Append to `log.md` — include pages created and updated.
+8. Append to `log.md` — include pages created and updated. Use the format:
+   `## [YYYY-MM-DD] operation | Subject` where operation is one of:
+   `ingest`, `query`, `lint`, `update`, `analysis`.
 
 **Rules:** Never modify `raw/`. Flag contradictions explicitly — never
 silently overwrite. Prefer updating existing pages over creating new ones.

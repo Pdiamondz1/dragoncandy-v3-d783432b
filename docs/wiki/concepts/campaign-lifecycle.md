@@ -2,7 +2,7 @@
 title: Campaign Lifecycle
 type: concept
 created: 2026-05-23
-updated: 2026-05-23
+updated: 2026-05-24
 sources: [docs/content-delivery-system-flows.md, docs/DATABASE_SCHEMA.md]
 tags: [campaigns, lifecycle, applications]
 ---
@@ -50,3 +50,5 @@ Either party rejecting sets `final_approval_status: 'rejected'`.
 - [[Content Delivery State Machine]]
 - [[Stripe Connect]]
 - [[DragonCandy Platform]]
+- [[Realtime Edge Cases Session]]
+- [[Counter-Offer Enum Fix Session]]

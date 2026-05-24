@@ -2,7 +2,7 @@
 title: TypeScript Patterns
 type: concept
 created: 2026-05-23
-updated: 2026-05-23
+updated: 2026-05-24
 sources: [.claude/handoffs/2026-05-04-232158-code-architecture-audit-remediation.md]
 tags: [typescript, strict-mode, patterns]
 ---
@@ -39,3 +39,4 @@ TypeScript strict mode is enabled (`tsconfig.app.json`). This includes
 - [[Supabase]]
 - [[Error Handling Patterns]]
 - [[DragonCandy Platform]]
+- [[Code Architecture Audit Session]]

@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "prompt",
+            "if": "Bash(git push *)",
+            "prompt": "STOP — this is a git push to production (no staging environment). Before allowing this push, confirm that BOTH `npm run build` AND `npm run typecheck` have been run successfully in this session. If either has not been run or the last run failed, deny this action and instruct the user to run them first.",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}

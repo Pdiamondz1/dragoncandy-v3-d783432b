@@ -2,7 +2,7 @@
 title: Donny AI
 type: entity
 created: 2026-05-23
-updated: 2026-05-23
+updated: 2026-05-24
 sources: [docs/PROJECT_CONTEXT.md, docs/DATABASE_SCHEMA.md, docs/STRIPE_PRICES.md]
 tags: [ai, donny, intelligence-layer]
 ---
@@ -52,3 +52,5 @@ Donny powers [[DragonDash]]; DragonDash sells.
 - [[DragonDash]]
 - [[DragonCandy Platform]]
 - [[Pricing Architecture]]
+- [[Donny Audit Phase 1 Session]]
+- [[Donny Audit Phase 2 Session]]

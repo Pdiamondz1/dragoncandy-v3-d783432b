@@ -103,3 +103,4 @@ Use the `dc-*` Tailwind tokens defined in `tailwind.config.ts` — never hardcod
 * **Consistent spacing** — use `p-4` or `p-6` for card padding, `gap-4` between elements
 * **Never use gray backgrounds/banners/badges** — use brand-adjacent colors (teal, pink, warm neutrals)
 * **Opacity variants are permitted** — e.g., `bg-dc-teal/12`, `bg-dc-pink/50` for layering and hover states
+* **Desktop and mobile are separate targets** — desktop changes use `lg:` / `xl:` prefixed classes only; mobile changes use base (unprefixed) classes only. Never apply mobile changes to desktop or vice versa. Test both viewports after any UI change.
