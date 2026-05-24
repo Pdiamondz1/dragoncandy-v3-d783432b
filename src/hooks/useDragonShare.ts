@@ -129,7 +129,6 @@ export function useAdminDragonShareQueue() {
 }
 
 export function useVerifyDragonSharePost() {
-  const { user } = useAuth();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({
@@ -141,28 +140,12 @@ export function useVerifyDragonSharePost() {
       action: 'approve' | 'reject';
       rejectionReason?: string;
     }) => {
-      if (action === 'approve') {
-        const { error } = await supabase
-          .from('dragonshare_posts')
-          .update({
-            status: 'verified',
-            boost_status: 'available',
-            verification_method: 'manual',
-            verified_at: new Date().toISOString(),
-            verified_by: user!.id,
-          })
-          .eq('id', postId);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from('dragonshare_posts')
-          .update({
-            status: 'rejected',
-            rejection_reason: rejectionReason ?? 'Does not meet verification criteria',
-          })
-          .eq('id', postId);
-        if (error) throw error;
-      }
+      const { error } = await supabase.rpc('verify_dragonshare_post', {
+        p_post_id: postId,
+        p_action: action,
+        p_rejection_reason: rejectionReason ?? null,
+      });
+      if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: KEYS.adminQueue() });
