@@ -1,5 +1,4 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { corsHeaders } from "../_shared/cors.ts";
 
@@ -21,9 +20,6 @@ serve(async (req) => {
 
   try {
     logStep("Function started");
-
-    const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
-    if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
 
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) throw new Error("No authorization header provided");
@@ -115,22 +111,14 @@ serve(async (req) => {
       });
     }
 
-    // Deauthorize the Stripe account
-    const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
-
-    try {
-      await stripe.accounts.del(stripeAccountId);
-      logStep("Stripe account deleted", { stripeAccountId });
-    } catch (stripeErr) {
-      logStep("Warning: Stripe account deletion failed (may already be deleted)", {
-        error: stripeErr instanceof Error ? stripeErr.message : String(stripeErr),
-      });
-    }
-
-    // Clear Stripe fields in the source table
+    // Preserve the account ID for potential reconnection, then unlink
     let query = supabaseClient
       .from(sourceTable)
-      .update({ stripe_account_id: null, stripe_onboarding_complete: false });
+      .update({
+        stripe_account_id: null,
+        stripe_onboarding_complete: false,
+        disconnected_stripe_account_id: stripeAccountId,
+      });
 
     for (const [key, value] of Object.entries(sourceFilter)) {
       query = query.eq(key, value);

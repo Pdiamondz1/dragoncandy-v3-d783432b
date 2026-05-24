@@ -38,8 +38,8 @@ serve(async (req) => {
     logStep("User authenticated", { userId: user.id, email: user.email });
 
     const body = await req.json().catch(() => ({}));
-    const { org_unit_id } = body;
-    logStep("Request body parsed", { org_unit_id: org_unit_id ?? null });
+    const { org_unit_id, action, previous_account_id } = body;
+    logStep("Request body parsed", { org_unit_id: org_unit_id ?? null, action: action ?? null });
 
     const { data: businessProfile, error: profileError } = await supabaseClient
       .from('business_profiles')
@@ -109,6 +109,114 @@ serve(async (req) => {
           headers: { ...corsHeaders(req), "Content-Type": "application/json" },
           status: 200,
         });
+      }
+    }
+
+    // Check for a previously disconnected account
+    if (!accountId) {
+      let disconnectedId: string | null = null;
+
+      if (org_unit_id) {
+        const { data: ou } = await supabaseClient
+          .from('org_units')
+          .select('disconnected_stripe_account_id')
+          .eq('id', org_unit_id)
+          .single();
+        disconnectedId = ou?.disconnected_stripe_account_id ?? null;
+      }
+      if (!disconnectedId) {
+        const { data: bp } = await supabaseClient
+          .from('business_profiles')
+          .select('disconnected_stripe_account_id')
+          .eq('user_id', user.id)
+          .eq('account_type', 'restaurant')
+          .single();
+        disconnectedId = bp?.disconnected_stripe_account_id ?? null;
+      }
+
+      if (disconnectedId) {
+        try {
+          const prev = await stripe.accounts.retrieve(disconnectedId);
+          const isComplete = prev.charges_enabled && prev.payouts_enabled;
+
+          if (!action) {
+            logStep("Found previous account, awaiting user choice", { disconnectedId });
+            return new Response(JSON.stringify({
+              previousAccount: {
+                id: disconnectedId,
+                chargesEnabled: prev.charges_enabled,
+                payoutsEnabled: prev.payouts_enabled,
+                onboardingComplete: isComplete,
+              },
+            }), {
+              headers: { ...corsHeaders(req), "Content-Type": "application/json" },
+              status: 200,
+            });
+          }
+
+          if (action === 'reconnect') {
+            logStep("Reconnecting to previous account", { disconnectedId });
+            accountId = disconnectedId;
+
+            await supabaseClient
+              .from('business_profiles')
+              .update({
+                stripe_account_id: accountId,
+                stripe_onboarding_complete: isComplete,
+                disconnected_stripe_account_id: null,
+              })
+              .eq('user_id', user.id)
+              .eq('account_type', 'restaurant');
+
+            if (org_unit_id) {
+              await supabaseClient
+                .from('org_units')
+                .update({
+                  stripe_account_id: accountId,
+                  stripe_onboarding_complete: isComplete,
+                  disconnected_stripe_account_id: null,
+                })
+                .eq('id', org_unit_id);
+            }
+
+            if (isComplete) {
+              return new Response(JSON.stringify({ alreadyComplete: true, accountId }), {
+                headers: { ...corsHeaders(req), "Content-Type": "application/json" },
+                status: 200,
+              });
+            }
+          }
+
+          if (action === 'create_new') {
+            logStep("User chose new account, clearing previous reference");
+            await supabaseClient
+              .from('business_profiles')
+              .update({ disconnected_stripe_account_id: null })
+              .eq('user_id', user.id)
+              .eq('account_type', 'restaurant');
+            if (org_unit_id) {
+              await supabaseClient
+                .from('org_units')
+                .update({ disconnected_stripe_account_id: null })
+                .eq('id', org_unit_id);
+            }
+          }
+        } catch (prevErr: any) {
+          logStep("Previous account no longer valid, clearing", {
+            error: prevErr?.message,
+          });
+          await supabaseClient
+            .from('business_profiles')
+            .update({ disconnected_stripe_account_id: null })
+            .eq('user_id', user.id)
+            .eq('account_type', 'restaurant');
+          if (org_unit_id) {
+            await supabaseClient
+              .from('org_units')
+              .update({ disconnected_stripe_account_id: null })
+              .eq('id', org_unit_id);
+          }
+        }
       }
     }
 

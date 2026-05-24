@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ExternalLink, AlertCircle, CheckCircle2, Clock, Wallet, LayoutDashboard, Loader2, Unplug } from 'lucide-react';
+import { ExternalLink, AlertCircle, CheckCircle2, Clock, Wallet, LayoutDashboard, Loader2, Unplug, RefreshCw, Plus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useOrgUnits } from '@/hooks/useOrgData';
@@ -29,6 +29,13 @@ interface PayoutStatus {
   availableBalance: number;
   pendingBalance: number;
   platformPendingBalance: number;
+}
+
+interface PreviousAccount {
+  id: string;
+  chargesEnabled: boolean;
+  payoutsEnabled: boolean;
+  onboardingComplete: boolean;
 }
 
 interface StripeConnectSetupProps {
@@ -64,6 +71,7 @@ export function StripeConnectSetup({ role }: StripeConnectSetupProps) {
   const [connecting, setConnecting] = useState(false);
   const [withdrawing, setWithdrawing] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
+  const [previousAccount, setPreviousAccount] = useState<PreviousAccount | null>(null);
 
   const config = ROLE_CONFIG[role];
   const isTestMode = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY?.startsWith('pk_test_');
@@ -100,14 +108,17 @@ export function StripeConnectSetup({ role }: StripeConnectSetupProps) {
     }
   }, [checkStatus, completeMission, config.mission, refreshActiveOrgUnit]);
 
-  const handleConnect = async () => {
+  const handleConnect = async (action?: 'reconnect' | 'create_new') => {
     setConnecting(true);
+    setPreviousAccount(null);
     try {
       const { data, error } = await supabase.functions.invoke(config.createFn, {
-        body: { org_unit_id: activeOrgUnit?.id ?? null },
+        body: { org_unit_id: activeOrgUnit?.id ?? null, action: action ?? null },
       });
       if (error) throw error;
-      if (data?.alreadyComplete) {
+      if (data?.previousAccount) {
+        setPreviousAccount(data.previousAccount);
+      } else if (data?.alreadyComplete) {
         toast.success('Stripe account is already connected!');
         completeMission(config.mission);
         checkStatus().then(() => refreshActiveOrgUnit());
@@ -166,7 +177,7 @@ export function StripeConnectSetup({ role }: StripeConnectSetupProps) {
         throw error;
       }
       toast.success('Stripe account disconnected.');
-      checkStatus();
+      checkStatus().then(() => refreshActiveOrgUnit());
     } catch {
       toast.error('Failed to disconnect. Please try again.');
     } finally {
@@ -215,12 +226,42 @@ export function StripeConnectSetup({ role }: StripeConnectSetupProps) {
         )}
       </div>
 
+      {/* Previous account found — reconnect or create new */}
+      {!status?.hasAccount && previousAccount && (
+        <div className="rounded-xl border border-teal-200 bg-teal-50 p-4 space-y-3">
+          <p className="text-sm text-teal-800">
+            We found your previous Stripe account. Would you like to reconnect to it or start fresh?
+          </p>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button
+              onClick={() => handleConnect('reconnect')}
+              disabled={connecting}
+              size="sm"
+              className="rounded-full bg-teal-500 hover:bg-teal-600"
+            >
+              <RefreshCw className="w-4 h-4 mr-2" />
+              {connecting ? 'Reconnecting...' : 'Reconnect Previous Account'}
+            </Button>
+            <Button
+              onClick={() => handleConnect('create_new')}
+              disabled={connecting}
+              variant="outline"
+              size="sm"
+              className="rounded-full"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Create New Account
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Not connected */}
-      {!status?.hasAccount && (
+      {!status?.hasAccount && !previousAccount && (
         <div className="rounded-xl border border-dashed p-4 text-center space-y-3">
           <p className="text-sm text-muted-foreground">{config.description}</p>
           <Button
-            onClick={handleConnect}
+            onClick={() => handleConnect()}
             disabled={connecting}
             className="rounded-full bg-teal-500 hover:bg-teal-600"
           >
@@ -242,7 +283,7 @@ export function StripeConnectSetup({ role }: StripeConnectSetupProps) {
             Your Stripe account setup is incomplete. Please finish verification to start {role === 'creator' ? 'receiving' : 'processing'} payments.
           </p>
           <Button
-            onClick={handleConnect}
+            onClick={() => handleConnect()}
             disabled={connecting}
             variant="outline"
             className="rounded-full"
