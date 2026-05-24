@@ -221,9 +221,6 @@ serve(async (req) => {
       const nameParts = (businessProfile?.business_name || 'Test Business').split(' ');
       const firstName = nameParts[0] || 'Test';
       const lastName = nameParts.slice(1).join(' ') || 'Business';
-      const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
-        || req.headers.get('cf-connecting-ip')
-        || '127.0.0.1';
 
       await stripe.accounts.update(accountId, {
         business_type: 'individual',
@@ -240,10 +237,6 @@ serve(async (req) => {
             country: 'US',
           },
           ssn_last_4: '0000',
-        },
-        tos_acceptance: {
-          date: Math.floor(Date.now() / 1000),
-          ip: clientIp,
         },
       });
 
