@@ -116,66 +116,76 @@ serve(async (req) => {
         });
       }
 
-      const isNewAccount = !creatorProfile?.stripe_account_id;
-      logStep("Test mode: auto-provisioning account with test data", { isNewAccount });
+      // Existing account with broken capabilities — delete and recreate
+      if (creatorProfile?.stripe_account_id) {
+        logStep("Test mode: existing account has disabled capabilities, replacing it", { accountId });
+        await stripe.accounts.del(accountId);
 
-      if (isNewAccount) {
-        const nameParts = (creatorProfile?.creator_name || 'Test Creator').split(' ');
-        const firstName = nameParts[0] || 'Test';
-        const lastName = nameParts.slice(1).join(' ') || 'Creator';
-        const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
-          || req.headers.get('cf-connecting-ip')
-          || '127.0.0.1';
-
-        await stripe.accounts.update(accountId, {
-          business_type: 'individual',
-          individual: {
-            first_name: firstName,
-            last_name: lastName,
-            email: user.email,
-            dob: { day: 1, month: 1, year: 1990 },
-            address: {
-              line1: '123 Test St',
-              city: 'Hoboken',
-              state: 'NJ',
-              postal_code: '07030',
-              country: 'US',
-            },
-            ssn_last_4: '0000',
+        const newAccount = await stripe.accounts.create({
+          type: 'express',
+          email: user.email,
+          metadata: {
+            user_id: user.id,
+            platform: 'dragoncandy',
           },
-          tos_acceptance: {
-            date: Math.floor(Date.now() / 1000),
-            ip: clientIp,
+          capabilities: {
+            card_payments: { requested: true },
+            transfers: { requested: true },
+          },
+          business_profile: {
+            name: creatorProfile?.creator_name || undefined,
+            product_description: 'Content creation services via DragonCandy marketplace',
           },
         });
-      } else {
-        logStep("Test mode: skipping individual/tos update on existing Express account");
+        accountId = newAccount.id;
+        logStep("Replacement account created", { accountId });
       }
 
-      try {
-        await stripe.accounts.createExternalAccount(accountId, {
-          external_account: {
-            object: 'bank_account',
+      logStep("Test mode: auto-provisioning account with test data");
+
+      const nameParts = (creatorProfile?.creator_name || 'Test Creator').split(' ');
+      const firstName = nameParts[0] || 'Test';
+      const lastName = nameParts.slice(1).join(' ') || 'Creator';
+      const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+        || req.headers.get('cf-connecting-ip')
+        || '127.0.0.1';
+
+      await stripe.accounts.update(accountId, {
+        business_type: 'individual',
+        individual: {
+          first_name: firstName,
+          last_name: lastName,
+          email: user.email,
+          dob: { day: 1, month: 1, year: 1990 },
+          address: {
+            line1: '123 Test St',
+            city: 'Hoboken',
+            state: 'NJ',
+            postal_code: '07030',
             country: 'US',
-            currency: 'usd',
-            routing_number: '110000000',
-            account_number: '000123456789',
           },
-        });
-      } catch (bankErr) {
-        logStep("Test mode: external account already exists, skipping", {
-          error: bankErr instanceof Error ? bankErr.message : String(bankErr),
-        });
-      }
+          ssn_last_4: '0000',
+        },
+        tos_acceptance: {
+          date: Math.floor(Date.now() / 1000),
+          ip: clientIp,
+        },
+      });
 
-      const { error: completeError } = await supabaseClient
+      await stripe.accounts.createExternalAccount(accountId, {
+        external_account: {
+          object: 'bank_account',
+          country: 'US',
+          currency: 'usd',
+          routing_number: '110000000',
+          account_number: '000123456789',
+        },
+      });
+
+      await supabaseClient
         .from('creator_profiles')
-        .update({ stripe_onboarding_complete: true })
+        .update({ stripe_account_id: accountId, stripe_onboarding_complete: true })
         .eq('user_id', user.id);
-
-      if (completeError) {
-        logStep("Warning: Failed to mark onboarding complete", { error: completeError.message });
-      }
 
       logStep("Test mode: account fully provisioned", { accountId });
       return new Response(JSON.stringify({ autoCreated: true, accountId }), {
