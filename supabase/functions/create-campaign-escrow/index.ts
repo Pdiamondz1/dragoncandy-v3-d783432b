@@ -4,6 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { writePaymentEvent } from "../_shared/payment-events.ts";
 import { getOrgTakeRate } from "../_shared/platform-fee.ts";
 import { corsHeaders } from "../_shared/cors.ts";
+import { resolvePayoutAmount } from "../_shared/pricing-utils.ts";
 
 const logStep = (step: string, details?: any) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
@@ -65,36 +66,9 @@ serve(async (req) => {
       throw new Error("You are not authorized to pay for this campaign");
     }
 
-    // Derive pricing from the negotiated agreement, not the original campaign budget.
-    // Priority: accepted counter offer → accepted application rate → campaign budget
-    let amount: number | null = null;
-
-    const { data: acceptedApp } = await supabaseClient
-      .from('campaign_applications')
-      .select('id, proposed_rate')
-      .eq('campaign_id', campaignId)
-      .eq('status', 'accepted')
-      .limit(1)
-      .maybeSingle();
-
-    if (acceptedApp) {
-      const { data: acceptedOffer } = await supabaseClient
-        .from('application_counter_offers')
-        .select('proposed_rate')
-        .eq('application_id', acceptedApp.id)
-        .eq('status', 'accepted')
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      amount = acceptedOffer?.proposed_rate ?? acceptedApp.proposed_rate;
-    }
-
-    if (!amount || amount <= 0) {
-      amount = campaign.pricing_type === 'fixed'
-        ? campaign.fixed_price
-        : campaign.budget_max;
-    }
+    // Resolve pricing from the shared utility (same logic payout will use)
+    const pricing = await resolvePayoutAmount(supabaseClient, campaignId);
+    let amount = pricing?.amount ?? null;
 
     if (!amount || amount <= 0) {
       return new Response(JSON.stringify({ error: 'Campaign has no valid budget set' }), {
@@ -102,6 +76,7 @@ serve(async (req) => {
         headers: { ...corsHeaders(req), "Content-Type": "application/json" },
       });
     }
+    logStep("Pricing resolved", { amount, source: pricing!.source });
     const deliveryFee = campaign.delivery_fee || 0;
     const campaignTitle = campaign.title || 'Content Campaign';
     const deliveryType = campaign.delivery_type || 'standard';
