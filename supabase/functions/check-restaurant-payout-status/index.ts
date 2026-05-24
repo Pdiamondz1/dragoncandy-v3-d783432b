@@ -93,7 +93,37 @@ serve(async (req) => {
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
 
-    const account = await stripe.accounts.retrieve(stripeAccountId);
+    let account: Stripe.Account;
+    try {
+      account = await stripe.accounts.retrieve(stripeAccountId);
+    } catch (retrieveErr: any) {
+      if (retrieveErr?.statusCode === 404 || retrieveErr?.code === 'account_invalid') {
+        logStep("Stripe account no longer exists, clearing stale reference", { stripeAccountId });
+        await supabaseClient
+          .from('business_profiles')
+          .update({ stripe_account_id: null, stripe_onboarding_complete: false })
+          .eq('user_id', user.id)
+          .eq('account_type', 'restaurant');
+        if (org_unit_id) {
+          await supabaseClient
+            .from('org_units')
+            .update({ stripe_account_id: null, stripe_onboarding_complete: false })
+            .eq('id', org_unit_id);
+        }
+        return new Response(JSON.stringify({
+          hasAccount: false,
+          onboardingComplete: false,
+          pendingBalance: 0,
+          chargesEnabled: false,
+          payoutsEnabled: false,
+          platformPendingBalance: businessProfile?.pending_balance || 0,
+        }), {
+          headers: { ...corsHeaders(req), "Content-Type": "application/json" },
+          status: 200,
+        });
+      }
+      throw retrieveErr;
+    }
     logStep("Retrieved Stripe account", {
       accountId: account.id,
       chargesEnabled: account.charges_enabled,

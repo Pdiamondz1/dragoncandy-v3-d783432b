@@ -257,17 +257,17 @@ serve(async (req) => {
         },
       });
 
-      if (sourceTable === 'org_units' && org_unit_id) {
+      await supabaseClient
+        .from('business_profiles')
+        .update({ stripe_account_id: accountId, stripe_onboarding_complete: true })
+        .eq('user_id', user.id)
+        .eq('account_type', 'restaurant');
+
+      if (org_unit_id) {
         await supabaseClient
           .from('org_units')
           .update({ stripe_account_id: accountId, stripe_onboarding_complete: true })
           .eq('id', org_unit_id);
-      } else {
-        await supabaseClient
-          .from('business_profiles')
-          .update({ stripe_account_id: accountId, stripe_onboarding_complete: true })
-          .eq('user_id', user.id)
-          .eq('account_type', 'restaurant');
       }
 
       logStep("Test mode: account fully provisioned", { accountId });
