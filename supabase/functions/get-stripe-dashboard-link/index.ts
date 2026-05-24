@@ -15,53 +15,64 @@ serve(async (req) => {
   try {
     logStep('Starting dashboard link generation');
 
-    // Initialize Supabase client
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? ""
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      { auth: { persistSession: false } }
     );
 
-    // Authenticate user
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      throw new Error("No authorization header provided");
-    }
+    if (!authHeader) throw new Error("No authorization header provided");
 
     const token = authHeader.replace("Bearer ", "");
     const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token);
-
-    if (authError || !user) {
-      logStep('Authentication failed', { error: authError });
-      throw new Error("Authentication failed");
-    }
-
+    if (authError || !user) throw new Error("Authentication failed");
     logStep('User authenticated', { userId: user.id });
 
-    // Try creator profile first
+    const url = new URL(req.url);
+    const orgUnitId = url.searchParams.get('org_unit_id');
+
     let stripeAccountId: string | null = null;
 
-    const { data: creatorProfile } = await supabaseClient
-      .from('creator_profiles')
-      .select('stripe_account_id, stripe_onboarding_complete')
-      .eq('user_id', user.id)
-      .single();
+    // Check org_units first (location-scoped)
+    if (orgUnitId) {
+      const { data: orgUnit } = await supabaseClient
+        .from('org_units')
+        .select('stripe_account_id, stripe_onboarding_complete')
+        .eq('id', orgUnitId)
+        .single();
 
-    if (creatorProfile?.stripe_account_id && creatorProfile?.stripe_onboarding_complete) {
-      stripeAccountId = creatorProfile.stripe_account_id;
-      logStep('Found creator Stripe account', { accountId: stripeAccountId });
+      if (orgUnit?.stripe_account_id && orgUnit?.stripe_onboarding_complete) {
+        stripeAccountId = orgUnit.stripe_account_id;
+        logStep('Found Stripe account in org_units', { accountId: stripeAccountId });
+      }
     }
 
-    // Fallback: check business_profiles (restaurant)
+    // Check creator_profiles
+    if (!stripeAccountId) {
+      const { data: creatorProfile } = await supabaseClient
+        .from('creator_profiles')
+        .select('stripe_account_id, stripe_onboarding_complete')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (creatorProfile?.stripe_account_id && creatorProfile?.stripe_onboarding_complete) {
+        stripeAccountId = creatorProfile.stripe_account_id;
+        logStep('Found creator Stripe account', { accountId: stripeAccountId });
+      }
+    }
+
+    // Check business_profiles
     if (!stripeAccountId) {
       const { data: businessProfile } = await supabaseClient
         .from('business_profiles')
         .select('stripe_account_id, stripe_onboarding_complete')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
       if (businessProfile?.stripe_account_id && businessProfile?.stripe_onboarding_complete) {
         stripeAccountId = businessProfile.stripe_account_id;
-        logStep('Found restaurant Stripe account', { accountId: stripeAccountId });
+        logStep('Found business Stripe account', { accountId: stripeAccountId });
       }
     }
 

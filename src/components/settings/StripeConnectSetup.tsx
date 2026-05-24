@@ -138,7 +138,8 @@ export function StripeConnectSetup({ role }: StripeConnectSetupProps) {
   const handleDashboard = async () => {
     setConnecting(true);
     try {
-      const { data, error } = await supabase.functions.invoke('get-stripe-dashboard-link');
+      const params = activeOrgUnit ? `?org_unit_id=${activeOrgUnit.id}` : '';
+      const { data, error } = await supabase.functions.invoke(`get-stripe-dashboard-link${params}`);
       if (error) throw error;
       if (data?.url) window.open(data.url, '_blank');
     } catch {
