@@ -69,11 +69,11 @@ export const useMessages = (campaignId?: string, conversationId?: string) => {
     refetchOnWindowFocus: true,
   });
 
-  // Set up real-time subscription with stable channel name
+  // Set up real-time subscription — unique suffix prevents "subscribe multiple times" crash
   useEffect(() => {
     if (!campaignId && !conversationId) return;
 
-    const channelName = `messages-${campaignId || conversationId}`;
+    const channelName = `messages-${campaignId || conversationId}-${Date.now()}`;
     const channel = supabase
       .channel(channelName)
       .on(
@@ -82,8 +82,8 @@ export const useMessages = (campaignId?: string, conversationId?: string) => {
           event: 'INSERT',
           schema: 'public',
           table: 'messages',
-          filter: campaignId 
-            ? `campaign_id=eq.${campaignId}` 
+          filter: campaignId
+            ? `campaign_id=eq.${campaignId}`
             : `conversation_id=eq.${conversationId}`
         },
         () => {
@@ -96,8 +96,8 @@ export const useMessages = (campaignId?: string, conversationId?: string) => {
           event: 'UPDATE',
           schema: 'public',
           table: 'messages',
-          filter: campaignId 
-            ? `campaign_id=eq.${campaignId}` 
+          filter: campaignId
+            ? `campaign_id=eq.${campaignId}`
             : `conversation_id=eq.${conversationId}`
         },
         () => {
