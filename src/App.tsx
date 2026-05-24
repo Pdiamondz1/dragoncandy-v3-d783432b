@@ -14,6 +14,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { LazyMotion, loadMotionFeatures } from "@/lib/motion";
 import { ProtectedRoute } from '@/components/ProtectedRoute';
+import { AdminRoute } from '@/components/AdminRoute';
 import { VerifiedRoute } from '@/components/VerifiedRoute';
 import { BusinessRoute } from "@/components/BusinessRoute";
 import { BrandRoute } from "@/components/BrandRoute";
