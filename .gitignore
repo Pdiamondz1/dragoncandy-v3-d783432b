@@ -83,6 +83,15 @@ supabase/.temp/
 docs/wiki/raw/external/
 !docs/wiki/raw/external/karpathy-llm-wiki-schema.md
 
+# Verification artifacts (one-off scripts and screenshots)
+verify_*.mjs
+verify_*.cjs
+verify_screenshots*/
+verify_prod_screenshots/
+audit-output/
+.claude/verify_*.py
+.claude/scheduled_tasks.lock
+
 # Misc artifacts
 *.patch
 *.png.tmp
