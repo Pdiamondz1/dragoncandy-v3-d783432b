@@ -294,8 +294,8 @@ function AnimatedRoutes() {
           <Route path="/invite/accept" element={<InviteAcceptPage />} />
 
           {/* Admin DragonShare Routes */}
-          <Route path="/admin/dragonshare-queue" element={<ProtectedRoute><AdminDragonShareQueue /></ProtectedRoute>} />
-          <Route path="/admin/dragonshare-ledger" element={<ProtectedRoute><AdminDragonShareLedger /></ProtectedRoute>} />
+          <Route path="/admin/dragonshare-queue" element={<ProtectedRoute><AdminRoute><AdminDragonShareQueue /></AdminRoute></ProtectedRoute>} />
+          <Route path="/admin/dragonshare-ledger" element={<ProtectedRoute><AdminRoute><AdminDragonShareLedger /></AdminRoute></ProtectedRoute>} />
 
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
