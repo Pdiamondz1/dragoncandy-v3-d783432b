@@ -7,6 +7,8 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Play, Pause, Heart, MessageSquare, User } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
+import { useQueryClient } from '@tanstack/react-query';
 import { Spinner } from '@/components/ui/spinner';
 
 interface PortfolioMedia {
@@ -30,6 +32,8 @@ export const DragonFeedCard: React.FC<DragonFeedCardProps> = ({ media }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { activeOrgUnit } = useAuth();
+  const queryClient = useQueryClient();
 
   const handleLoad = () => setLoaded(true);
   const handleError = () => setError(true);
@@ -122,15 +126,22 @@ export const DragonFeedCard: React.FC<DragonFeedCardProps> = ({ media }) => {
         return;
       }
 
+      const rpcParams: { user1_uuid: string; user2_uuid: string; p_org_unit_id?: string } = {
+        user1_uuid: user.id,
+        user2_uuid: media.creatorId,
+      };
+      if (activeOrgUnit?.id) {
+        rpcParams.p_org_unit_id = activeOrgUnit.id;
+      }
+
       const { data: conversationId, error } = await supabase.rpc(
         'create_or_get_direct_conversation',
-        {
-          user1_uuid: user.id,
-          user2_uuid: media.creatorId
-        }
+        rpcParams
       );
 
       if (error) throw error;
+
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
 
       toast({
         title: "Opening conversation",
@@ -139,7 +150,7 @@ export const DragonFeedCard: React.FC<DragonFeedCardProps> = ({ media }) => {
 
       const userRole = user.user_metadata?.role || 'business_client';
       const rolePrefix = userRole === 'brand' ? 'brand' : 'business';
-      
+
       navigate(`/dashboard/${rolePrefix}/messages/direct/${conversationId}`);
     } catch (error) {
       console.error('Failed to create conversation:', error);

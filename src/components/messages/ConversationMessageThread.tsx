@@ -5,6 +5,8 @@ import { useMessages, useSendMessage, type Message } from '@/hooks/useMessages';
 import { useAuth } from '@/hooks/useAuth';
 import { useMarkMessagesAsRead } from '@/hooks/useMessageMutations';
 import { useNotifications } from '@/hooks/useNotifications';
+import { MessageSquare, RefreshCw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface ConversationMessageThreadProps {
   conversationId: string;
@@ -18,7 +20,7 @@ export const ConversationMessageThread: React.FC<ConversationMessageThreadProps>
   conversationTitle: _conversationTitle
 }) => {
   const { user } = useAuth();
-  const { data: messages = [], isLoading } = useMessages(undefined, conversationId);
+  const { data: messages = [], isLoading, isError, refetch } = useMessages(undefined, conversationId);
   const sendMessage = useSendMessage();
   const markAsRead = useMarkMessagesAsRead();
   const markAsReadRef = useRef(markAsRead);
@@ -73,6 +75,33 @@ export const ConversationMessageThread: React.FC<ConversationMessageThreadProps>
   const handleCancelReply = () => {
     setReplyingTo(null);
   };
+
+  if (isError) {
+    return (
+      <div className="flex flex-col h-full">
+        <div className="flex-1 flex items-center justify-center p-8 bg-teal-50">
+          <div className="text-center space-y-3">
+            <div className="p-4 bg-teal-100 rounded-2xl w-fit mx-auto">
+              <MessageSquare className="h-8 w-8 text-teal-400" />
+            </div>
+            <p className="text-sm font-medium text-gray-600">Couldn't load messages</p>
+            <Button variant="outline" size="sm" onClick={() => refetch()} className="rounded-full">
+              <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+              Try again
+            </Button>
+          </div>
+        </div>
+        <div className="flex-shrink-0">
+          <MessageInputEnhanced
+            conversationId={conversationId}
+            onSendMessage={handleSendMessage}
+            disabled
+            placeholder="Messages unavailable…"
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-full">

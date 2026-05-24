@@ -8,6 +8,7 @@ import { ConversationMessageThread } from '@/components/messages/ConversationMes
 import { useConversations } from '@/hooks/useConversations';
 import { supabase } from '@/integrations/supabase/client';
 import { CampaignConversationHeader } from '@/components/messaging/CampaignConversationHeader';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 const DirectConversationPage: React.FC = () => {
   const { conversationId } = useParams<{ conversationId: string }>();
@@ -111,11 +112,13 @@ const DirectConversationPage: React.FC = () => {
 
         {/* Message Thread — fills remaining height */}
         <div className="flex-1 min-h-0 flex flex-col">
-          <ConversationMessageThread
-            conversationId={conversationId}
-            recipientId={recipientId}
-            conversationTitle={conversation?.other_participant_name || 'Direct Conversation'}
-          />
+          <ErrorBoundary level="section">
+            <ConversationMessageThread
+              conversationId={conversationId}
+              recipientId={recipientId}
+              conversationTitle={conversation?.other_participant_name || 'Direct Conversation'}
+            />
+          </ErrorBoundary>
         </div>
       </div>
     </DashboardLayout>

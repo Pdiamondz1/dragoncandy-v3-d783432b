@@ -13,6 +13,7 @@ interface AnalyticsBatchEvent {
   page_url?: string;
   user_agent?: string;
   org_unit_id?: string | null;
+  _retryCount?: number;
 }
 
 export const useAnalyticsBatch = () => {
@@ -23,6 +24,7 @@ export const useAnalyticsBatch = () => {
 
   const BATCH_SIZE = 10;
   const FLUSH_INTERVAL = 5000; // 5 seconds
+  const MAX_RETRIES = 2;
 
   const flushBatch = useCallback(async () => {
     if (isFlushingRef.current || batchQueue.current.length === 0) {
@@ -34,7 +36,7 @@ export const useAnalyticsBatch = () => {
     batchQueue.current = [];
 
     try {
-      const insertData = eventsToSend.map(event => ({
+      const insertData = eventsToSend.map(({ _retryCount: _, ...event }) => ({
         event_type: event.event_type,
         event_data: event.event_data || {},
         user_id: event.user_id || null,
@@ -49,13 +51,21 @@ export const useAnalyticsBatch = () => {
 
       if (error) {
         console.error('Failed to flush analytics batch:', error);
-        // Re-add failed events back to queue for retry
-        batchQueue.current.unshift(...eventsToSend);
+        const retriable = eventsToSend
+          .map(e => ({ ...e, _retryCount: (e._retryCount || 0) + 1 }))
+          .filter(e => e._retryCount <= MAX_RETRIES);
+        if (retriable.length > 0) {
+          batchQueue.current.unshift(...retriable);
+        }
       }
     } catch (error) {
       console.error('Error flushing analytics batch:', error);
-      // Re-add failed events back to queue for retry
-      batchQueue.current.unshift(...eventsToSend);
+      const retriable = eventsToSend
+        .map(e => ({ ...e, _retryCount: (e._retryCount || 0) + 1 }))
+        .filter(e => e._retryCount <= MAX_RETRIES);
+      if (retriable.length > 0) {
+        batchQueue.current.unshift(...retriable);
+      }
     } finally {
       isFlushingRef.current = false;
     }
