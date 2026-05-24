@@ -4427,6 +4427,27 @@ export type Database = {
         }
         Relationships: []
       }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       message_participant_profiles: {
@@ -4986,6 +5007,13 @@ export type Database = {
         Args: { p_campaign_id: string; p_user_id: string }
         Returns: boolean
       }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
       increment_pending_balance: {
         Args: { p_amount: number; p_profile_type: string; p_user_id: string }
         Returns: number
@@ -5005,6 +5033,7 @@ export type Database = {
         Returns: boolean
       }
       is_org_owner_or_admin: { Args: { p_org_id: string }; Returns: boolean }
+      is_platform_admin: { Args: never; Returns: boolean }
       match_donny_knowledge: {
         Args: { match_count?: number; query_embedding: string }
         Returns: {
@@ -5021,8 +5050,17 @@ export type Database = {
         Args: { conversation_uuid: string; user_uuid: string }
         Returns: boolean
       }
+      verify_dragonshare_post: {
+        Args: {
+          p_action: string
+          p_post_id: string
+          p_rejection_reason?: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
+      app_role: "admin" | "moderator"
       application_status:
         | "pending"
         | "accepted"
@@ -5191,6 +5229,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      app_role: ["admin", "moderator"],
       application_status: [
         "pending",
         "accepted",
