@@ -119,9 +119,17 @@ serve(async (req) => {
     }
 
     // Payment succeeded! Update campaign
+    const updateFields: Record<string, unknown> = {
+      escrow_status: 'held',
+      status: 'published',
+      escrow_payment_intent_id: actualPaymentIntentId,
+    };
+    if (sessionId) {
+      updateFields.escrow_checkout_session_id = sessionId;
+    }
     const { error: updateError } = await supabaseClient
       .from('campaigns')
-      .update({ escrow_status: 'held', status: 'published', escrow_payment_intent_id: actualPaymentIntentId })
+      .update(updateFields)
       .eq('id', campaignId);
 
     if (updateError) throw new Error("Failed to update campaign status");

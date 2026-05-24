@@ -167,12 +167,17 @@ serve(async (req) => {
       url: session.url 
     });
 
-    // Store session.id (not payment_intent which may be null at this stage)
+    // Store payment intent ID if available, fall back to session ID; always store session ID separately
+    const paymentIntentId = typeof session.payment_intent === 'string'
+      ? session.payment_intent
+      : (session.payment_intent as any)?.id;
+
     const { error: updateError } = await supabaseClient
       .from('campaigns')
-      .update({ 
+      .update({
         escrow_status: 'pending',
-        escrow_payment_intent_id: session.id, // Store session ID for now
+        escrow_payment_intent_id: paymentIntentId || session.id,
+        escrow_checkout_session_id: session.id,
       })
       .eq('id', campaignId);
 
