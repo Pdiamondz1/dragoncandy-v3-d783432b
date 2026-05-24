@@ -77,7 +77,7 @@ serve(async (req) => {
       });
     }
     logStep("Pricing resolved", { amount, source: pricing!.source });
-    const deliveryFee = campaign.delivery_fee || 0;
+    const deliveryFee = Number(campaign.delivery_fee) || 0;
     const campaignTitle = campaign.title || 'Content Campaign';
     const deliveryType = campaign.delivery_type || 'standard';
     const totalAmount = amount + deliveryFee;
@@ -99,9 +99,8 @@ serve(async (req) => {
 
     // Check if customer exists
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
-    let customerId;
-    if (customers.data.length > 0) {
-      customerId = customers.data[0].id;
+    const customerId = customers.data.length > 0 ? customers.data[0].id : undefined;
+    if (customerId) {
       logStep("Found existing customer", { customerId });
     }
 
