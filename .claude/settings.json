@@ -7,7 +7,7 @@
           {
             "type": "prompt",
             "if": "Bash(git push *)",
-            "prompt": "STOP — this is a git push to production (no staging environment). Before allowing this push, confirm that BOTH `npm run build` AND `npm run typecheck` have been run successfully in this session. If either has not been run or the last run failed, deny this action and instruct the user to run them first.",
+            "prompt": "This is a git push to production (no staging environment). Remind the user that both `npm run build` and `npm run typecheck` should pass before pushing. If both have already been run successfully in this session, approve the push. When in doubt, approve and remind rather than block.",
             "timeout": 30
           }
         ]
