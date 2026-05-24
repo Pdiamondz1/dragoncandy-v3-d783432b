@@ -64,6 +64,14 @@ serve(async (req) => {
       const campaign = collab.campaign as any;
       if (!campaign) continue;
 
+      if (campaign.escrow_status !== 'held') {
+        logStep('Skipping — escrow not held', {
+          collaborationId: collab.id,
+          escrowStatus: campaign.escrow_status,
+        });
+        continue;
+      }
+
       const deliveryType = campaign.delivery_type || 'standard';
       const baseHours = AUTO_APPROVE_HOURS[deliveryType] ?? AUTO_APPROVE_HOURS.standard;
       const extensionHours = collab.review_extended
@@ -104,6 +112,20 @@ serve(async (req) => {
 
       if (transitionError) {
         logStep("Transition failed", { collaborationId: collab.id, error: transitionError.message });
+        continue;
+      }
+
+      // Guard: if a business manually approved between fetch and transition,
+      // content_status will be 'approved' (not 'auto_approved'). Skip payout —
+      // the manual approval path already handled it.
+      const { data: postTransition } = await supabaseClient
+        .from('campaign_collaborations')
+        .select('content_status')
+        .eq('id', collab.id)
+        .single();
+
+      if (postTransition?.content_status === 'approved') {
+        logStep('Skipping payout — manually approved during transition', { collaborationId: collab.id });
         continue;
       }
 
