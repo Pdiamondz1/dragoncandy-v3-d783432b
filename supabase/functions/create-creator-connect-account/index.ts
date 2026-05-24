@@ -116,36 +116,41 @@ serve(async (req) => {
         });
       }
 
-      logStep("Test mode: auto-provisioning account with test data");
+      const isNewAccount = !creatorProfile?.stripe_account_id;
+      logStep("Test mode: auto-provisioning account with test data", { isNewAccount });
 
-      const nameParts = (creatorProfile?.creator_name || 'Test Creator').split(' ');
-      const firstName = nameParts[0] || 'Test';
-      const lastName = nameParts.slice(1).join(' ') || 'Creator';
-      const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
-        || req.headers.get('cf-connecting-ip')
-        || '127.0.0.1';
+      if (isNewAccount) {
+        const nameParts = (creatorProfile?.creator_name || 'Test Creator').split(' ');
+        const firstName = nameParts[0] || 'Test';
+        const lastName = nameParts.slice(1).join(' ') || 'Creator';
+        const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+          || req.headers.get('cf-connecting-ip')
+          || '127.0.0.1';
 
-      await stripe.accounts.update(accountId, {
-        business_type: 'individual',
-        individual: {
-          first_name: firstName,
-          last_name: lastName,
-          email: user.email,
-          dob: { day: 1, month: 1, year: 1990 },
-          address: {
-            line1: '123 Test St',
-            city: 'Hoboken',
-            state: 'NJ',
-            postal_code: '07030',
-            country: 'US',
+        await stripe.accounts.update(accountId, {
+          business_type: 'individual',
+          individual: {
+            first_name: firstName,
+            last_name: lastName,
+            email: user.email,
+            dob: { day: 1, month: 1, year: 1990 },
+            address: {
+              line1: '123 Test St',
+              city: 'Hoboken',
+              state: 'NJ',
+              postal_code: '07030',
+              country: 'US',
+            },
+            ssn_last_4: '0000',
           },
-          ssn_last_4: '0000',
-        },
-        tos_acceptance: {
-          date: Math.floor(Date.now() / 1000),
-          ip: clientIp,
-        },
-      });
+          tos_acceptance: {
+            date: Math.floor(Date.now() / 1000),
+            ip: clientIp,
+          },
+        });
+      } else {
+        logStep("Test mode: skipping individual/tos update on existing Express account");
+      }
 
       try {
         await stripe.accounts.createExternalAccount(accountId, {
