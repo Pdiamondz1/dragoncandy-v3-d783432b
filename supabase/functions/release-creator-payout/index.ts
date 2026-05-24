@@ -3,6 +3,7 @@ import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { writePaymentEvent } from "../_shared/payment-events.ts";
 import { calculatePlatformFee, getOrgTakeRate } from "../_shared/platform-fee.ts";
+import { resolvePayoutAmount } from "../_shared/pricing-utils.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 
 const logStep = (step: string, details?: any) => {
@@ -78,35 +79,28 @@ serve(async (req) => {
     });
 
     // Get creator's Stripe account
-    const { data: creatorProfile, error: creatorError } = await supabaseClient
+    const { data: creatorProfile } = await supabaseClient
       .from('creator_profiles')
       .select('stripe_account_id, stripe_onboarding_complete, pending_balance')
       .eq('user_id', collaboration.creator_id)
-      .single();
-
-    if (creatorError) {
-      throw new Error(`Failed to fetch creator profile: ${creatorError.message}`);
-    }
+      .maybeSingle();
 
     const campaign = collaboration.campaign;
 
-    // Escrow must be held before releasing payout
-    if (campaign.escrow_status !== 'held') {
-      throw new Error(`Cannot release payout: escrow status is '${campaign.escrow_status}', expected 'held'`);
+    // Escrow must be held (or releasing for idempotent retries) before releasing payout
+    if (campaign.escrow_status !== 'held' && campaign.escrow_status !== 'releasing') {
+      throw new Error(`Cannot release payout: escrow status is '${campaign.escrow_status}', expected 'held' or 'releasing'`);
     }
 
-    // Calculate payout amount
-    let payoutAmount = 0;
-    if (campaign.pricing_type === 'fixed' && campaign.fixed_price) {
-      payoutAmount = campaign.fixed_price;
-    } else if (campaign.budget_max) {
-      // For bid range, use the accepted bid amount or budget_max
-      payoutAmount = campaign.budget_max;
+    // Resolve pricing from negotiated agreement (counter-offer → application → campaign)
+    const pricing = await resolvePayoutAmount(supabaseClient, campaign.id);
+    if (!pricing) {
+      throw new Error('Cannot determine payout amount: no pricing found for campaign');
     }
+    logStep("Pricing resolved", { amount: pricing.amount, source: pricing.source });
 
-    // Add delivery fee if applicable (goes to creator)
-    const deliveryFee = campaign.delivery_fee || 0;
-    payoutAmount += deliveryFee;
+    const deliveryFee = Number(campaign.delivery_fee) || 0;
+    const payoutAmount = pricing.amount + deliveryFee;
 
     const takeRate = await getOrgTakeRate(supabaseClient, collaboration.campaign.user_id);
     const { feeDollars: platformFee, netPayoutDollars: creatorPayout } = calculatePlatformFee(payoutAmount, takeRate);
@@ -125,63 +119,102 @@ serve(async (req) => {
     // Check if creator has completed Stripe onboarding
     if (creatorProfile?.stripe_account_id && creatorProfile?.stripe_onboarding_complete) {
       // Ledger: record intent BEFORE moving money
-      await writePaymentEvent(supabaseClient, {
-        event_type: 'content_approved',
-        entity_type: 'collaboration',
-        entity_id: collaborationId,
-        campaign_id: campaign.id,
-        actor_id: callerId ?? undefined,
-        actor_role: 'business',
-      }, '[RELEASE-CREATOR-PAYOUT]');
-
-      await writePaymentEvent(supabaseClient, {
-        event_type: 'payment_release_initiated',
-        entity_type: 'collaboration',
-        entity_id: collaborationId,
-        campaign_id: campaign.id,
-        actor_role: 'system',
-        amount_cents: Math.round(creatorPayout * 100),
-        metadata: { destination: creatorProfile.stripe_account_id },
-      }, '[RELEASE-CREATOR-PAYOUT]');
-
-      // Transfer funds to creator's connected account.
-      // Idempotency key prevents duplicate transfers on retry.
-      const transfer = await stripe.transfers.create({
-        amount: Math.round(creatorPayout * 100), // Convert to cents
-        currency: 'usd',
-        destination: creatorProfile.stripe_account_id,
-        metadata: {
-          collaboration_id: collaborationId,
+      try {
+        await writePaymentEvent(supabaseClient, {
+          event_type: 'content_approved',
+          entity_type: 'collaboration',
+          entity_id: collaborationId,
           campaign_id: campaign.id,
-          platform_fee: platformFee.toString(),
-        },
-      }, { idempotencyKey: `payout_${collaborationId}` });
+          actor_id: callerId ?? undefined,
+          actor_role: 'business',
+        }, '[RELEASE-CREATOR-PAYOUT]');
+      } catch (auditErr) {
+        console.error('Payment event logging failed (non-blocking):', auditErr);
+      }
+
+      try {
+        await writePaymentEvent(supabaseClient, {
+          event_type: 'payment_release_initiated',
+          entity_type: 'collaboration',
+          entity_id: collaborationId,
+          campaign_id: campaign.id,
+          actor_role: 'system',
+          amount_cents: Math.round(creatorPayout * 100),
+          metadata: { destination: creatorProfile.stripe_account_id },
+        }, '[RELEASE-CREATOR-PAYOUT]');
+      } catch (auditErr) {
+        console.error('Payment event logging failed (non-blocking):', auditErr);
+      }
+
+      // Phase 1: Mark escrow as releasing (before moving money)
+      if (campaign.escrow_status === 'held') {
+        const { error: preCommitError } = await supabaseClient
+          .from('campaigns')
+          .update({ escrow_status: 'releasing' })
+          .eq('id', campaign.id)
+          .eq('escrow_status', 'held');
+
+        if (preCommitError) {
+          throw new Error(`Failed to set releasing state: ${preCommitError.message}`);
+        }
+      }
+
+      // Phase 2: Transfer funds to creator's connected account.
+      // Idempotency key prevents duplicate transfers on retry.
+      let transfer;
+      try {
+        transfer = await stripe.transfers.create({
+          amount: Math.round(creatorPayout * 100),
+          currency: 'usd',
+          destination: creatorProfile.stripe_account_id,
+          metadata: {
+            collaboration_id: collaborationId,
+            campaign_id: campaign.id,
+            platform_fee: platformFee.toString(),
+          },
+        }, { idempotencyKey: `payout_${collaborationId}` });
+      } catch (stripeErr) {
+        // Rollback: revert escrow to held
+        await supabaseClient
+          .from('campaigns')
+          .update({ escrow_status: 'held' })
+          .eq('id', campaign.id);
+        throw stripeErr;
+      }
 
       logStep("Transfer created", { transferId: transfer.id, amount: creatorPayout });
 
-      await writePaymentEvent(supabaseClient, {
-        event_type: 'payment_released',
-        entity_type: 'collaboration',
-        entity_id: collaborationId,
-        campaign_id: campaign.id,
-        actor_id: collaboration.creator_id,
-        actor_role: 'creator',
-        amount_cents: Math.round(creatorPayout * 100),
-        stripe_id: transfer.id,
-      }, '[RELEASE-CREATOR-PAYOUT]');
+      try {
+        await writePaymentEvent(supabaseClient, {
+          event_type: 'payment_released',
+          entity_type: 'collaboration',
+          entity_id: collaborationId,
+          campaign_id: campaign.id,
+          actor_id: collaboration.creator_id,
+          actor_role: 'creator',
+          amount_cents: Math.round(creatorPayout * 100),
+          stripe_id: transfer.id,
+        }, '[RELEASE-CREATOR-PAYOUT]');
+      } catch (auditErr) {
+        console.error('Payment event logging failed (non-blocking):', auditErr);
+      }
 
-      await writePaymentEvent(supabaseClient, {
-        event_type: 'transfer_created',
-        entity_type: 'collaboration',
-        entity_id: collaborationId,
-        campaign_id: campaign.id,
-        actor_role: 'system',
-        amount_cents: Math.round(creatorPayout * 100),
-        stripe_id: transfer.id,
-        metadata: { destination: creatorProfile.stripe_account_id },
-      }, '[RELEASE-CREATOR-PAYOUT]');
+      try {
+        await writePaymentEvent(supabaseClient, {
+          event_type: 'transfer_created',
+          entity_type: 'collaboration',
+          entity_id: collaborationId,
+          campaign_id: campaign.id,
+          actor_role: 'system',
+          amount_cents: Math.round(creatorPayout * 100),
+          stripe_id: transfer.id,
+          metadata: { destination: creatorProfile.stripe_account_id },
+        }, '[RELEASE-CREATOR-PAYOUT]');
+      } catch (auditErr) {
+        console.error('Payment event logging failed (non-blocking):', auditErr);
+      }
 
-      // Update collaboration status
+      // Phase 3: Finalize DB state
       const { error: collabUpdateError } = await supabaseClient
         .from('campaign_collaborations')
         .update({
@@ -192,20 +225,23 @@ serve(async (req) => {
         .eq('id', collaborationId);
 
       if (collabUpdateError) {
-        throw new Error(`Transfer succeeded but failed to update collaboration status: ${collabUpdateError.message}`);
+        console.error('CRITICAL: Transfer succeeded but collaboration update failed. Manual reconciliation needed.', {
+          collaborationId, transferId: transfer.id, error: collabUpdateError.message
+        });
       }
 
-      // Update campaign escrow status
       const { error: campaignUpdateError } = await supabaseClient
         .from('campaigns')
         .update({ escrow_status: 'released' })
         .eq('id', campaign.id);
 
       if (campaignUpdateError) {
-        throw new Error(`Transfer succeeded but failed to update campaign escrow status: ${campaignUpdateError.message}`);
+        console.error('CRITICAL: Transfer succeeded but campaign escrow update failed. Manual reconciliation needed.', {
+          campaignId: campaign.id, transferId: transfer.id, error: campaignUpdateError.message
+        });
       }
 
-      return new Response(JSON.stringify({ 
+      return new Response(JSON.stringify({
         success: true,
         transferId: transfer.id,
         amount: creatorPayout,
@@ -227,25 +263,33 @@ serve(async (req) => {
         added: creatorPayout,
       });
 
-      await writePaymentEvent(supabaseClient, {
-        event_type: 'content_approved',
-        entity_type: 'collaboration',
-        entity_id: collaborationId,
-        campaign_id: campaign.id,
-        actor_id: callerId ?? undefined,
-        actor_role: 'business',
-      }, '[RELEASE-CREATOR-PAYOUT]');
+      try {
+        await writePaymentEvent(supabaseClient, {
+          event_type: 'content_approved',
+          entity_type: 'collaboration',
+          entity_id: collaborationId,
+          campaign_id: campaign.id,
+          actor_id: callerId ?? undefined,
+          actor_role: 'business',
+        }, '[RELEASE-CREATOR-PAYOUT]');
+      } catch (auditErr) {
+        console.error('Payment event logging failed (non-blocking):', auditErr);
+      }
 
-      await writePaymentEvent(supabaseClient, {
-        event_type: 'payout_pending_wallet',
-        entity_type: 'collaboration',
-        entity_id: collaborationId,
-        campaign_id: campaign.id,
-        actor_id: collaboration.creator_id,
-        actor_role: 'creator',
-        amount_cents: Math.round(creatorPayout * 100),
-        metadata: { reason: 'Creator Stripe onboarding incomplete' },
-      }, '[RELEASE-CREATOR-PAYOUT]');
+      try {
+        await writePaymentEvent(supabaseClient, {
+          event_type: 'payout_pending_wallet',
+          entity_type: 'collaboration',
+          entity_id: collaborationId,
+          campaign_id: campaign.id,
+          actor_id: collaboration.creator_id,
+          actor_role: 'creator',
+          amount_cents: Math.round(creatorPayout * 100),
+          metadata: { reason: 'Creator Stripe onboarding incomplete' },
+        }, '[RELEASE-CREATOR-PAYOUT]');
+      } catch (auditErr) {
+        console.error('Payment event logging failed (non-blocking):', auditErr);
+      }
 
       // Update collaboration status
       await supabaseClient
