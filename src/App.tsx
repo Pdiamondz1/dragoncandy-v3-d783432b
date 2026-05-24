@@ -14,6 +14,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { LazyMotion, loadMotionFeatures } from "@/lib/motion";
 import { ProtectedRoute } from '@/components/ProtectedRoute';
+import { AdminRoute } from '@/components/AdminRoute';
 import { VerifiedRoute } from '@/components/VerifiedRoute';
 import { BusinessRoute } from "@/components/BusinessRoute";
 import { BrandRoute } from "@/components/BrandRoute";
@@ -294,8 +295,8 @@ function AnimatedRoutes() {
           <Route path="/invite/accept" element={<InviteAcceptPage />} />
 
           {/* Admin DragonShare Routes */}
-          <Route path="/admin/dragonshare-queue" element={<ProtectedRoute><AdminDragonShareQueue /></ProtectedRoute>} />
-          <Route path="/admin/dragonshare-ledger" element={<ProtectedRoute><AdminDragonShareLedger /></ProtectedRoute>} />
+          <Route path="/admin/dragonshare-queue" element={<ProtectedRoute><AdminRoute><AdminDragonShareQueue /></AdminRoute></ProtectedRoute>} />
+          <Route path="/admin/dragonshare-ledger" element={<ProtectedRoute><AdminRoute><AdminDragonShareLedger /></AdminRoute></ProtectedRoute>} />
 
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
