@@ -58,6 +58,7 @@ export const useProjectFileUpload = ({
       }
       const uploaderRole = profile.role === 'content_creator' ? 'creator' : 'restaurant';
 
+      const uploadedPaths: string[] = [];
       const uploadedFiles = [];
 
       for (const file of acceptedFiles) {
@@ -108,6 +109,7 @@ export const useProjectFileUpload = ({
           throw new Error(`Storage upload failed: ${uploadError.message}`);
         }
 
+        uploadedPaths.push(uploadData.path);
         setUploadProgress(prev => ({ ...prev, [file.name]: 70 }));
 
         let thumbnailPath: string | null = null;
@@ -116,7 +118,10 @@ export const useProjectFileUpload = ({
           const { error: thumbErr } = await supabase.storage
             .from('campaign-deliverables')
             .upload(thumbPath, thumbnailBlob, { contentType: 'image/jpeg', cacheControl: '86400' });
-          if (!thumbErr) thumbnailPath = thumbPath;
+          if (!thumbErr) {
+            thumbnailPath = thumbPath;
+            uploadedPaths.push(thumbPath);
+          }
         }
 
         try {
@@ -149,10 +154,10 @@ export const useProjectFileUpload = ({
         } catch (dbError) {
           console.error('Database record creation failed:', dbError);
 
-          const pathsToRemove = [uploadData.path];
-          if (thumbnailPath) pathsToRemove.push(thumbnailPath);
           try {
-            await supabase.storage.from('campaign-deliverables').remove(pathsToRemove);
+            if (uploadedPaths.length > 0) {
+              await supabase.storage.from('campaign-deliverables').remove(uploadedPaths);
+            }
           } catch (cleanupError) {
             console.error('Failed to cleanup storage files:', cleanupError);
           }
