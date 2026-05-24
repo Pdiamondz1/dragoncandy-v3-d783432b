@@ -45,6 +45,19 @@ export const useProjectFileUpload = ({
       if (!session?.session) {
         throw new Error('Authentication required. Please sign in again.');
       }
+
+      // Determine uploader role BEFORE uploading — fail early if profile unreadable
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single();
+
+      if (profileError || !profile) {
+        throw new Error('Could not determine your account role. Please refresh and try again.');
+      }
+      const uploaderRole = profile.role === 'content_creator' ? 'creator' : 'restaurant';
+
       const uploadedFiles = [];
 
       for (const file of acceptedFiles) {
@@ -154,14 +167,6 @@ export const useProjectFileUpload = ({
       });
 
       try {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', user.id)
-          .single();
-
-        const uploaderRole = profile?.role === 'content_creator' ? 'creator' : 'restaurant';
-
         await notifyFileUpload(
           campaignId,
           campaignTitle,
