@@ -65,6 +65,22 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
   const [isPayingEscrow, setIsPayingEscrow] = useState(false);
   const needsEscrowPayment = escrowStatus !== 'held';
 
+  // Clean up stale autoApproveAfterPayment flags (older than 1 hour)
+  React.useEffect(() => {
+    const stored = localStorage.getItem('autoApproveAfterPayment');
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        const timestamp = parsed.timestamp;
+        if (!timestamp || Date.now() - timestamp > 3600000) {
+          localStorage.removeItem('autoApproveAfterPayment');
+        }
+      } catch {
+        localStorage.removeItem('autoApproveAfterPayment');
+      }
+    }
+  }, []);
+
   const navigate = useNavigate();
   const { draftCount } = useDraftPosts();
 
@@ -89,7 +105,7 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
         const creatorProfile = await fetchRecipientEmail(creatorId);
 
         if (creatorProfile?.email) {
-          await supabase.functions.invoke('send-notification-email', {
+          const { error: emailError } = await supabase.functions.invoke('send-notification-email', {
             body: {
               to: creatorProfile.email,
               recipientName: creatorProfile.full_name,
@@ -97,9 +113,13 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
               data: { campaignId, creatorName: creatorName },
             },
           });
+          if (emailError) {
+            toast({ variant: 'default', title: 'Content approved', description: 'Email notification to creator failed. They may not be notified immediately.' });
+          }
         }
       } catch (e) {
         console.error('Failed to send content approval email:', e);
+        toast({ variant: 'default', title: 'Content approved', description: 'Email notification to creator failed. They may not be notified immediately.' });
       }
 
 
@@ -132,7 +152,6 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
 
   const handlePayAndApprove = async () => {
     setIsPayingEscrow(true);
-    localStorage.setItem('autoApproveAfterPayment', JSON.stringify({ collaborationId, campaignId }));
     const checkoutWindow = window.open('about:blank', '_blank');
     try {
       const { data, error } = await supabase.functions.invoke('create-campaign-escrow', {
@@ -141,15 +160,16 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
       if (error) throw error;
       if (data?.alreadyPaid) {
         checkoutWindow?.close();
-        localStorage.removeItem('autoApproveAfterPayment');
         approveContent.mutate();
         return;
       }
       if (data?.url && checkoutWindow) {
+        localStorage.setItem('autoApproveAfterPayment', JSON.stringify({ collaborationId, campaignId, timestamp: Date.now() }));
         checkoutWindow.location.href = data.url;
         toast({ title: 'Complete Payment', description: 'Finish payment in the new tab. Content will be auto-approved.' });
       } else if (data?.url) {
         checkoutWindow?.close();
+        localStorage.setItem('autoApproveAfterPayment', JSON.stringify({ collaborationId, campaignId, timestamp: Date.now() }));
         toast({
           title: 'Popup Blocked',
           description: 'Click below to open payment.',
