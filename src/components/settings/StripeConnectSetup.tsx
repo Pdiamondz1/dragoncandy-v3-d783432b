@@ -107,8 +107,8 @@ export function StripeConnectSetup({ role }: StripeConnectSetupProps) {
         body: { org_unit_id: activeOrgUnit?.id ?? null },
       });
       if (error) throw error;
-      if (data?.autoCreated) {
-        toast.success('Test Stripe account created instantly!');
+      if (data?.alreadyComplete) {
+        toast.success('Stripe account is already connected!');
         completeMission(config.mission);
         checkStatus();
       } else if (data?.url) {

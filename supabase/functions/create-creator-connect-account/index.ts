@@ -32,12 +32,11 @@ serve(async (req) => {
     const token = authHeader.replace("Bearer ", "");
     const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
     if (userError) throw new Error(`Authentication error: ${userError.message}`);
-    
+
     const user = userData.user;
     if (!user?.email) throw new Error("User not authenticated or email not available");
     logStep("User authenticated", { userId: user.id, email: user.email });
 
-    // Check if creator already has a Stripe account
     const { data: creatorProfile, error: profileError } = await supabaseClient
       .from('creator_profiles')
       .select('stripe_account_id, stripe_onboarding_complete, creator_name')
@@ -49,20 +48,29 @@ serve(async (req) => {
     }
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
-    const origin = req.headers.get("origin") || "https://dragoncandy-v3.lovable.app";
-    const isTestMode = stripeKey.startsWith('sk_test_');
+    const origin = req.headers.get("origin") || "https://dragoncandy.io";
 
     let accountId = creatorProfile?.stripe_account_id;
 
-    if (isTestMode && creatorProfile?.stripe_onboarding_complete) {
-      logStep("Test mode: account already fully provisioned", { accountId });
-      return new Response(JSON.stringify({ autoCreated: true, accountId }), {
-        headers: { ...corsHeaders(req), "Content-Type": "application/json" },
-        status: 200,
-      });
+    // If already fully onboarded, return early
+    if (accountId) {
+      const existing = await stripe.accounts.retrieve(accountId);
+      if (existing.charges_enabled && existing.payouts_enabled) {
+        logStep("Account already fully onboarded", { accountId });
+
+        await supabaseClient
+          .from('creator_profiles')
+          .update({ stripe_onboarding_complete: true })
+          .eq('user_id', user.id);
+
+        return new Response(JSON.stringify({ alreadyComplete: true, accountId }), {
+          headers: { ...corsHeaders(req), "Content-Type": "application/json" },
+          status: 200,
+        });
+      }
     }
 
-    // If no existing account, create one
+    // Create account if none exists
     if (!accountId) {
       logStep("Creating new Express connected account");
 
@@ -86,108 +94,13 @@ serve(async (req) => {
       accountId = account.id;
       logStep("Express account created", { accountId });
 
-      // Save the account ID to creator profile
-      const { error: updateError } = await supabaseClient
+      await supabaseClient
         .from('creator_profiles')
         .update({ stripe_account_id: accountId })
         .eq('user_id', user.id);
-
-      if (updateError) {
-        logStep("Warning: Failed to save stripe_account_id", { error: updateError.message });
-      }
-    } else {
-      logStep("Using existing connected account", { accountId });
     }
 
-    // Test mode: auto-provision the account with test data instead of redirecting
-    if (isTestMode) {
-      logStep("Test mode: checking Stripe account state before provisioning");
-
-      const existingAccount = await stripe.accounts.retrieve(accountId);
-      if (existingAccount.charges_enabled && existingAccount.payouts_enabled) {
-        logStep("Test mode: account already fully onboarded in Stripe, syncing DB");
-        await supabaseClient
-          .from('creator_profiles')
-          .update({ stripe_onboarding_complete: true })
-          .eq('user_id', user.id);
-        return new Response(JSON.stringify({ autoCreated: true, accountId }), {
-          headers: { ...corsHeaders(req), "Content-Type": "application/json" },
-          status: 200,
-        });
-      }
-
-      // Existing account with broken capabilities — delete and recreate
-      if (creatorProfile?.stripe_account_id) {
-        logStep("Test mode: existing account has disabled capabilities, replacing it", { accountId });
-        await stripe.accounts.del(accountId);
-
-        const newAccount = await stripe.accounts.create({
-          type: 'express',
-          email: user.email,
-          metadata: {
-            user_id: user.id,
-            platform: 'dragoncandy',
-          },
-          capabilities: {
-            card_payments: { requested: true },
-            transfers: { requested: true },
-          },
-          business_profile: {
-            name: creatorProfile?.creator_name || undefined,
-            product_description: 'Content creation services via DragonCandy marketplace',
-          },
-        });
-        accountId = newAccount.id;
-        logStep("Replacement account created", { accountId });
-      }
-
-      logStep("Test mode: auto-provisioning account with test data");
-
-      const nameParts = (creatorProfile?.creator_name || 'Test Creator').split(' ');
-      const firstName = nameParts[0] || 'Test';
-      const lastName = nameParts.slice(1).join(' ') || 'Creator';
-
-      await stripe.accounts.update(accountId, {
-        business_type: 'individual',
-        individual: {
-          first_name: firstName,
-          last_name: lastName,
-          email: user.email,
-          dob: { day: 1, month: 1, year: 1990 },
-          address: {
-            line1: '123 Test St',
-            city: 'Hoboken',
-            state: 'NJ',
-            postal_code: '07030',
-            country: 'US',
-          },
-          ssn_last_4: '0000',
-        },
-      });
-
-      await stripe.accounts.createExternalAccount(accountId, {
-        external_account: {
-          object: 'bank_account',
-          country: 'US',
-          currency: 'usd',
-          routing_number: '110000000',
-          account_number: '000123456789',
-        },
-      });
-
-      await supabaseClient
-        .from('creator_profiles')
-        .update({ stripe_account_id: accountId, stripe_onboarding_complete: true })
-        .eq('user_id', user.id);
-
-      logStep("Test mode: account fully provisioned", { accountId });
-      return new Response(JSON.stringify({ autoCreated: true, accountId }), {
-        headers: { ...corsHeaders(req), "Content-Type": "application/json" },
-        status: 200,
-      });
-    }
-
-    // Production mode: create account link for onboarding
+    // Always use Stripe's hosted onboarding (works in both test and live mode)
     const accountLink = await stripe.accountLinks.create({
       account: accountId,
       refresh_url: `${origin}/dashboard/creator/settings?stripe_refresh=true`,
@@ -200,7 +113,6 @@ serve(async (req) => {
     return new Response(JSON.stringify({
       url: accountLink.url,
       accountId,
-      isNew: !creatorProfile?.stripe_account_id
     }), {
       headers: { ...corsHeaders(req), "Content-Type": "application/json" },
       status: 200,
