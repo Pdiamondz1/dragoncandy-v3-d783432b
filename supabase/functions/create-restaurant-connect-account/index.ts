@@ -166,6 +166,29 @@ serve(async (req) => {
 
     // Test mode: auto-provision the account with test data instead of redirecting
     if (isTestMode) {
+      logStep("Test mode: checking Stripe account state before provisioning");
+
+      const existingAccount = await stripe.accounts.retrieve(accountId);
+      if (existingAccount.charges_enabled && existingAccount.payouts_enabled) {
+        logStep("Test mode: account already fully onboarded in Stripe, syncing DB");
+        if (sourceTable === 'org_units' && org_unit_id) {
+          await supabaseClient
+            .from('org_units')
+            .update({ stripe_onboarding_complete: true })
+            .eq('id', org_unit_id);
+        } else {
+          await supabaseClient
+            .from('business_profiles')
+            .update({ stripe_onboarding_complete: true })
+            .eq('user_id', user.id)
+            .eq('account_type', 'restaurant');
+        }
+        return new Response(JSON.stringify({ autoCreated: true, accountId }), {
+          headers: { ...corsHeaders(req), "Content-Type": "application/json" },
+          status: 200,
+        });
+      }
+
       logStep("Test mode: auto-provisioning account with test data");
 
       const nameParts = (businessProfile?.business_name || 'Test Business').split(' ');
@@ -197,15 +220,21 @@ serve(async (req) => {
         },
       });
 
-      await stripe.accounts.createExternalAccount(accountId, {
-        external_account: {
-          object: 'bank_account',
-          country: 'US',
-          currency: 'usd',
-          routing_number: '110000000',
-          account_number: '000123456789',
-        },
-      });
+      try {
+        await stripe.accounts.createExternalAccount(accountId, {
+          external_account: {
+            object: 'bank_account',
+            country: 'US',
+            currency: 'usd',
+            routing_number: '110000000',
+            account_number: '000123456789',
+          },
+        });
+      } catch (bankErr) {
+        logStep("Test mode: external account already exists, skipping", {
+          error: bankErr instanceof Error ? bankErr.message : String(bankErr),
+        });
+      }
 
       if (sourceTable === 'org_units' && org_unit_id) {
         await supabaseClient

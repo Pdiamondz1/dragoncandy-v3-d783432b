@@ -114,9 +114,11 @@ export function StripeConnectSetup({ role }: StripeConnectSetupProps) {
       } else if (data?.url) {
         window.location.href = data.url;
       }
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Failed to create connect account:', err);
-      toast.error('Connection failed. Please try again.');
+      const context = (err as { context?: Response })?.context;
+      const serverMsg = context ? await context.json().catch(() => null) : null;
+      toast.error(serverMsg?.error || 'Connection failed. Please try again.');
     } finally {
       setConnecting(false);
     }
