@@ -1,11 +1,12 @@
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { Message } from '@/types/messages';
 
 export const useMessages = (campaignId?: string, conversationId?: string) => {
   const queryClient = useQueryClient();
+  const channelSuffix = useRef(Math.random().toString(36).slice(2, 8));
 
   const query = useQuery({
     queryKey: ['messages', campaignId, conversationId],
@@ -73,7 +74,7 @@ export const useMessages = (campaignId?: string, conversationId?: string) => {
   useEffect(() => {
     if (!campaignId && !conversationId) return;
 
-    const channelName = `messages-${campaignId || conversationId}-${Date.now()}`;
+    const channelName = `messages-${campaignId || conversationId}-${channelSuffix.current}`;
     const channel = supabase
       .channel(channelName)
       .on(
