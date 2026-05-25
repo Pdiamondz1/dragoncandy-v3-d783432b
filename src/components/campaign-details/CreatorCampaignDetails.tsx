@@ -60,6 +60,7 @@ export function CreatorCampaignDetails({
         campaignId={campaign.id}
         deliverableCount={
           enrichedDetail?.deliverables.length
+          || campaign.campaign_deliverables?.length
           || ((campaign.ai_analysis as Record<string, unknown>)?.deliverables as unknown[] | undefined)?.length
           || campaign.deliverables?.length
           || 1

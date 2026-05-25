@@ -67,8 +67,8 @@ export function ActivePhaseView({ campaign, enrichedDetail, collaborationId }: A
 
   return (
     <div>
-      {/* Tabs */}
-      <div className="flex bg-white border-b border-gray-200">
+      {/* Tabs — mobile only */}
+      <div className="flex bg-white border-b border-gray-200 lg:hidden">
         {tabs.map((tab) => (
           <button
             key={tab.id}
@@ -84,17 +84,18 @@ export function ActivePhaseView({ campaign, enrichedDetail, collaborationId }: A
         ))}
       </div>
 
-      {/* Tab Content */}
-      {activeTab === 'project' ? (
-        <div className="px-4 pt-4 pb-24 space-y-3">
+      {/* Two-column on desktop, tab-switched on mobile */}
+      <div className="lg:grid lg:grid-cols-5 lg:gap-6 lg:px-4 lg:pt-4 lg:pb-8 lg:items-start">
+        {/* Left: Project workflow */}
+        <div className={`px-4 pt-4 pb-24 space-y-3 lg:col-span-2 lg:px-0 lg:pb-0 ${activeTab !== 'project' ? 'hidden lg:block' : ''}`}>
           {/* Stepper */}
-          <div className="bg-white rounded-2xl p-4">
+          <div className="bg-white rounded-2xl p-4 lg:border lg:border-gray-200">
             <ProjectStepper currentStep={currentStep} role="creator" tierColor={tierColor} />
           </div>
 
           {/* Deliverables */}
           {campaignDeliverables && campaignDeliverables.length > 0 && (
-            <div className="bg-white rounded-2xl p-4 space-y-3">
+            <div className="bg-white rounded-2xl p-4 space-y-3 lg:border lg:border-gray-200">
               <div className="text-sm font-bold text-gray-900">DELIVERABLES</div>
               {campaignDeliverables.map((d) => {
                 const status = (deliverablesStatus?.[d.id] as 'pending' | 'in_progress' | 'submitted' | 'revision_requested' | 'approved') || 'pending';
@@ -201,15 +202,17 @@ export function ActivePhaseView({ campaign, enrichedDetail, collaborationId }: A
             </Button>
           </div>
         </div>
-      ) : (
-        <div className="px-4 pt-4 pb-24">
+
+        {/* Right: Campaign brief */}
+        <div className={`px-4 pt-4 pb-24 lg:col-span-3 lg:px-0 lg:pb-0 ${activeTab !== 'brief' ? 'hidden lg:block' : ''}`}>
+          <div className="text-sm font-bold text-gray-900 mb-3 hidden lg:block">CAMPAIGN BRIEF</div>
           <CreatorCampaignDetails
             campaign={campaign}
             enrichedDetail={enrichedDetail}
             hasApplied={true}
           />
         </div>
-      )}
+      </div>
     </div>
   );
 }

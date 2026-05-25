@@ -37,8 +37,10 @@ interface AiDeliverable {
 export function ContentRequirementsSection({ campaign, campaignId }: ContentRequirementsSectionProps) {
   const { data: structuredDeliverables } = useCampaignDeliverables(campaignId);
   const hasStructured = structuredDeliverables && structuredDeliverables.length > 0;
+  const jsonDeliverables = campaign.campaign_deliverables as AiDeliverable[] | undefined;
+  const hasJsonDeliverables = !hasStructured && jsonDeliverables && jsonDeliverables.length > 0;
   const aiDeliverables = (campaign.ai_analysis as Record<string, unknown>)?.deliverables as AiDeliverable[] | undefined;
-  const hasAiDeliverables = !hasStructured && aiDeliverables && aiDeliverables.length > 0;
+  const hasAiDeliverables = !hasStructured && !hasJsonDeliverables && aiDeliverables && aiDeliverables.length > 0;
   const hashtags = campaign.hashtag_requirements?.split(' ').filter(Boolean) ?? [];
 
   return (
@@ -68,6 +70,27 @@ export function ContentRequirementsSection({ campaign, campaignId }: ContentRequ
                     <div>
                       <p className="text-sm font-medium text-gray-800">
                         {contentTypeLabels[d.content_type] ?? d.content_type} · {platformLabels[d.platform] ?? d.platform} · {d.aspect_ratio}
+                      </p>
+                      {d.description && (
+                        <p className="text-xs text-gray-500 mt-0.5">{d.description}</p>
+                      )}
+                      {d.max_duration_seconds && (
+                        <p className="text-xs text-gray-400">Max {d.max_duration_seconds}s</p>
+                      )}
+                    </div>
+                  </div>
+                ))
+              : hasJsonDeliverables
+              ? jsonDeliverables.map((d, i) => (
+                  <div key={d.id ?? i} className="flex gap-3 items-start">
+                    <div className="w-6 h-6 rounded-full bg-dc-teal-btn text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
+                      {i + 1}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-800">
+                        {contentTypeLabels[d.content_type] ?? d.content_type}
+                        {d.platform ? ` · ${platformLabels[d.platform] ?? d.platform}` : ''}
+                        {d.aspect_ratio ? ` · ${d.aspect_ratio}` : ''}
                       </p>
                       {d.description && (
                         <p className="text-xs text-gray-500 mt-0.5">{d.description}</p>
