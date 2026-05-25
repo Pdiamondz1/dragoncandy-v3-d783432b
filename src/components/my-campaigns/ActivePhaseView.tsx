@@ -39,7 +39,7 @@ export function ActivePhaseView({ campaign, enrichedDetail, collaborationId }: A
   const { data: files } = useFileUploads(collaboration?.campaign_id, 'deliverable');
   const { data: deliverables } = useCampaignDeliverables(campaign.id);
 
-  const totalDeliverables = deliverables?.length ?? 0;
+  const totalDeliverables = (deliverables?.length ?? 0) || (campaign.deliverables?.length ?? 0);
   const uploadedCount = deliverables?.filter((d) => {
     const match = files?.find(
       (f) => (f.metadata as Record<string, unknown>)?.deliverable_id === d.id,

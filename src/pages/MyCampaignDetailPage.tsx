@@ -98,7 +98,7 @@ export default function MyCampaignDetailPage() {
 
   return (
     <DashboardLayout userRole="content_creator">
-      <div className="min-h-screen bg-white">
+      <div className="min-h-screen bg-white lg:max-w-2xl lg:mx-auto">
         <CampaignDetailHeader
           campaign={campaign}
           phase={phase}
