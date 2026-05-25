@@ -10,6 +10,7 @@ interface VideoFrameThumbnailProps {
   mimeType: string;
   filename: string;
   className?: string;
+  compact?: boolean;
 }
 
 export const VideoFrameThumbnail: React.FC<VideoFrameThumbnailProps> = ({
@@ -19,6 +20,7 @@ export const VideoFrameThumbnail: React.FC<VideoFrameThumbnailProps> = ({
   mimeType,
   filename,
   className = 'w-full h-full',
+  compact = false,
 }) => {
   const needsCapture = !storedThumbnailUrl;
   const captureUrl = needsCapture ? videoUrl : null;
@@ -50,8 +52,8 @@ export const VideoFrameThumbnail: React.FC<VideoFrameThumbnailProps> = ({
       ) : null}
 
       <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/30 transition-colors">
-        <div className="w-10 h-10 rounded-full bg-black/50 flex items-center justify-center">
-          <Play className="h-5 w-5 text-white fill-white ml-0.5" />
+        <div className={`${compact ? 'w-5 h-5' : 'w-10 h-10'} rounded-full bg-black/50 flex items-center justify-center`}>
+          <Play className={`${compact ? 'h-2.5 w-2.5' : 'h-5 w-5'} text-white fill-white ml-0.5`} />
         </div>
       </div>
 

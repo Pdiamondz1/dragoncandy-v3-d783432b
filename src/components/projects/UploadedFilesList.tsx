@@ -1,7 +1,8 @@
-import { Trash2, Film, Camera, FileIcon } from 'lucide-react';
+import { Trash2, Camera, FileIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useDeleteFileUpload } from '@/hooks/useFileUploadMutations';
+import { VideoFrameThumbnail } from '@/components/content/VideoFrameThumbnail';
 import type { FileUpload } from '@/types/files';
 
 interface UploadedFilesListProps {
@@ -29,7 +30,6 @@ function getThumbnailUrl(file: FileUpload): string | null {
 }
 
 function FileTypeIcon({ mimeType }: { mimeType: string }) {
-  if (mimeType.startsWith('video/')) return <Film className="h-5 w-5 text-gray-500" />;
   if (mimeType.startsWith('image/')) return <Camera className="h-5 w-5 text-gray-500" />;
   return <FileIcon className="h-5 w-5 text-gray-500" />;
 }
@@ -59,7 +59,16 @@ export function UploadedFilesList({ files, canDelete }: UploadedFilesListProps) 
             >
               {/* Thumbnail or icon */}
               <div className="w-10 h-10 rounded-lg overflow-hidden bg-white border border-gray-200 flex items-center justify-center shrink-0">
-                {thumbUrl ? (
+                {file.mime_type.startsWith('video/') ? (
+                  <VideoFrameThumbnail
+                    fileId={file.id}
+                    videoUrl={supabase.storage.from(file.bucket_name).getPublicUrl(file.file_path).data.publicUrl}
+                    storedThumbnailUrl={thumbUrl}
+                    mimeType={file.mime_type}
+                    filename={file.original_filename}
+                    compact
+                  />
+                ) : thumbUrl ? (
                   <img
                     src={thumbUrl}
                     alt=""
