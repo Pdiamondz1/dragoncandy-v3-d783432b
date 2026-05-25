@@ -1,12 +1,108 @@
 
-import React, { useState, useRef } from 'react';
-import TinderCard from 'react-tinder-card';
+import React, { useState, useRef, useCallback } from 'react';
 import { PublicCampaign } from '@/hooks/usePublicCampaigns';
 import { MapPin, Users } from 'lucide-react';
 import logo from '@/assets/Transparent_DragonCandy_logo.webp';
 import { DeliveryBadge } from './DeliveryBadge';
 import { mapDeliveryType, getRelativeTime, formatBudget } from '@/lib/campaignUtils';
 import { useResolvedLogoUrl } from '@/hooks/useSignedUrl';
+
+interface SwipeCardProps {
+  onSwipe: (direction: string) => void;
+  preventSwipe?: string[];
+  swipeThreshold?: number;
+  className?: string;
+  children: React.ReactNode;
+}
+
+const SwipeCard: React.FC<SwipeCardProps> = ({
+  onSwipe,
+  preventSwipe = [],
+  swipeThreshold = 100,
+  className,
+  children,
+}) => {
+  const elementRef = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState({ x: 0, y: 0, rot: 0 });
+  const [animating, setAnimating] = useState(false);
+  const [gone, setGone] = useState(false);
+  const dragState = useRef<{ startX: number; startY: number; dragging: boolean } | null>(null);
+
+  const getDirection = useCallback(
+    (dx: number, dy: number): string | null => {
+      if (Math.abs(dx) > Math.abs(dy)) {
+        if (dx > swipeThreshold && !preventSwipe.includes('right')) return 'right';
+        if (dx < -swipeThreshold && !preventSwipe.includes('left')) return 'left';
+      } else {
+        if (dy > swipeThreshold && !preventSwipe.includes('down')) return 'down';
+        if (dy < -swipeThreshold && !preventSwipe.includes('up')) return 'up';
+      }
+      return null;
+    },
+    [swipeThreshold, preventSwipe],
+  );
+
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
+    if (gone) return;
+    dragState.current = { startX: e.clientX, startY: e.clientY, dragging: true };
+    elementRef.current?.setPointerCapture(e.pointerId);
+  }, [gone]);
+
+  const handlePointerMove = useCallback((e: React.PointerEvent) => {
+    if (!dragState.current?.dragging) return;
+    const dx = e.clientX - dragState.current.startX;
+    const dy = e.clientY - dragState.current.startY;
+    const rot = Math.max(-25, Math.min(25, dx * 0.15));
+    setPos({ x: dx, y: dy, rot });
+  }, []);
+
+  const handlePointerUp = useCallback(
+    (e: React.PointerEvent) => {
+      if (!dragState.current?.dragging) return;
+      dragState.current.dragging = false;
+      elementRef.current?.releasePointerCapture(e.pointerId);
+      const dx = pos.x;
+      const dy = pos.y;
+      const dir = getDirection(dx, dy);
+
+      if (dir) {
+        setAnimating(true);
+        const flyX = dir === 'right' ? window.innerWidth * 1.5 : dir === 'left' ? -window.innerWidth * 1.5 : dx;
+        const flyY = dir === 'down' ? window.innerHeight * 1.5 : dir === 'up' ? -window.innerHeight * 1.5 : dy;
+        setPos({ x: flyX, y: flyY, rot: pos.rot * 3 });
+        setTimeout(() => {
+          setGone(true);
+          onSwipe(dir);
+        }, 300);
+      } else {
+        setAnimating(true);
+        setPos({ x: 0, y: 0, rot: 0 });
+        setTimeout(() => setAnimating(false), 300);
+      }
+    },
+    [pos, getDirection, onSwipe],
+  );
+
+  if (gone) return null;
+
+  return (
+    <div
+      ref={elementRef}
+      className={className}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
+      style={{
+        transform: `translate3d(${pos.x}px, ${pos.y}px, 0) rotate(${pos.rot}deg)`,
+        transition: animating ? 'transform 0.3s ease-out' : 'none',
+        touchAction: 'none',
+      }}
+    >
+      {children}
+    </div>
+  );
+};
 
 interface CampaignSwipeCardProps {
   campaigns: PublicCampaign[];
@@ -94,15 +190,14 @@ export const CampaignSwipeCard: React.FC<CampaignSwipeCardProps> = ({
             }}
           >
             {isFront ? (
-              <TinderCard
+              <SwipeCard
                 onSwipe={(dir) => handleSwipe(dir, campaign, index)}
                 preventSwipe={['up', 'down']}
-                swipeRequirementType="position"
                 swipeThreshold={100}
                 className="w-full h-full"
               >
                 <CardContent campaign={campaign} onViewDetail={onViewDetail} matchInfo={matchScores?.get(campaign.id)} />
-              </TinderCard>
+              </SwipeCard>
             ) : (
               <div className="pointer-events-none w-full h-full">
                 <CardContent campaign={campaign} onViewDetail={onViewDetail} matchInfo={matchScores?.get(campaign.id)} />
