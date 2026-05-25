@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Loader2, RefreshCw, UserPlus } from 'lucide-react';
 import { useResolvedAvatarUrl } from '@/hooks/useSignedUrl';
+import { useAgreedValue } from '@/hooks/useAgreedValue';
 import { useNavigate } from 'react-router-dom';
 import { Campaign } from '@/hooks/useCampaigns';
 import { format } from 'date-fns';
@@ -82,6 +83,7 @@ const CampaignCardComponent: React.FC<CampaignCardProps> = ({ campaign }) => {
   const [isVerifying, setIsVerifying] = useState(false);
   const [showReHireModal, setShowReHireModal] = useState(false);
   const resolvedCreatorAvatar = useResolvedAvatarUrl(campaign.creator_avatar_url);
+  const { data: agreedValue } = useAgreedValue(campaign.id);
 
   const collabShape = campaign.collaboration_status
     ? {
@@ -204,7 +206,7 @@ const CampaignCardComponent: React.FC<CampaignCardProps> = ({ campaign }) => {
 
         {/* Stats line */}
         <p className="text-xs text-gray-500 flex gap-2 flex-wrap">
-          <span>{formatBudget(campaign)}</span>
+          <span>{agreedValue != null ? `$${agreedValue.toLocaleString()}` : formatBudget(campaign)}</span>
           {campaign.deadline && (
             <>
               <span>·</span>
@@ -254,7 +256,7 @@ const CampaignCardComponent: React.FC<CampaignCardProps> = ({ campaign }) => {
         {/* Fee breakdown before payment */}
         {ctaLabel === 'Pay & Publish →' && (
           <EscrowFeeBreakdown
-            baseAmount={campaign.fixed_price || campaign.budget_max || 0}
+            baseAmount={agreedValue ?? campaign.fixed_price ?? campaign.budget_max ?? 0}
             deliveryFee={campaign.delivery_fee || 0}
             deliveryType={campaign.delivery_type || 'standard'}
           />
