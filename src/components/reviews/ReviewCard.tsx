@@ -2,6 +2,7 @@
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useResolvedAvatarUrl } from '@/hooks/useSignedUrl';
 import { StarRating } from './StarRating';
 import { formatDistanceToNow } from 'date-fns';
 import { ReviewWithRelations } from '@/hooks/useReviews';
@@ -11,12 +12,13 @@ interface ReviewCardProps {
 }
 
 const ReviewCardComponent: React.FC<ReviewCardProps> = ({ review }) => {
+  const resolvedAvatarUrl = useResolvedAvatarUrl(review.reviewer.avatar_url);
   return (
     <Card>
       <CardContent className="p-6">
         <div className="flex items-start gap-4">
           <Avatar>
-            <AvatarImage src={review.reviewer.avatar_url} />
+            <AvatarImage src={resolvedAvatarUrl} />
             <AvatarFallback>
               {review.reviewer.full_name?.charAt(0) || 'U'}
             </AvatarFallback>

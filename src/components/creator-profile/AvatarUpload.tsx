@@ -7,7 +7,9 @@ import {
   uploadProfileAsset,
   UploadError,
 } from '@/lib/storage/uploadProfileAsset';
-import { getSignedProfileUrl } from '@/hooks/useSignedUrl';
+import { getSignedProfileUrl, clearSignedUrlCache } from '@/hooks/useSignedUrl';
+import { clearProfileCache } from '@/hooks/useProfileData';
+import { supabase } from '@/integrations/supabase/client';
 import { AvatarCropModal } from '@/components/settings/AvatarCropModal';
 
 interface AvatarUploadProps {
@@ -61,6 +63,22 @@ export const AvatarUpload = ({
       onAvatarFileChange(croppedFile);
       setLocalPreview(URL.createObjectURL(croppedFile));
       onAvatarUrlChange?.(path);
+
+      try {
+        await supabase
+          .from('creator_profiles')
+          .update({ avatar_url: path, updated_at: new Date().toISOString() })
+          .eq('user_id', user.id);
+        await supabase
+          .from('profiles')
+          .update({ avatar_url: path })
+          .eq('id', user.id);
+        clearSignedUrlCache();
+        clearProfileCache(user.id);
+      } catch (e) {
+        console.error('Auto-save avatar failed:', e);
+      }
+
       toast({ title: 'Profile photo uploaded \u2713' });
     } catch (err) {
       const msg = err instanceof UploadError ? err.message : 'Upload failed.';

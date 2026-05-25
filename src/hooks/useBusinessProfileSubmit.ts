@@ -111,6 +111,13 @@ export const useBusinessProfileSubmit = () => {
         if (insertError) throw insertError;
       }
 
+      if (logoUrl) {
+        await supabase
+          .from('profiles')
+          .update({ avatar_url: logoUrl })
+          .eq('id', userId);
+      }
+
       clearSignedUrlCache();
       clearProfileCache(userId);
       queryClient.invalidateQueries({ queryKey: ['restaurant-profile', userId] });

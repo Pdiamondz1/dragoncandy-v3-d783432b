@@ -1,4 +1,5 @@
 import type { CompletionResult } from '@/hooks/useProfileCompletion';
+import { useResolvedAvatarUrl } from '@/hooks/useSignedUrl';
 
 interface ProfileCompletionBarProps {
   avatarUrl: string | null;
@@ -21,6 +22,7 @@ export function ProfileCompletionBar({
   isLocation,
   parentName,
 }: ProfileCompletionBarProps) {
+  const resolvedAvatar = useResolvedAvatarUrl(avatarUrl);
   const gradientClass = isLocation
     ? 'from-dc-teal to-dc-teal-dark'
     : isCreator
@@ -36,9 +38,9 @@ export function ProfileCompletionBar({
   return (
     <div className={`bg-gradient-to-br ${gradientClass} p-5 rounded-2xl text-white mb-4`}>
       <div className="flex items-center gap-3 mb-3">
-        {avatarUrl ? (
+        {resolvedAvatar ? (
           <img
-            src={avatarUrl}
+            src={resolvedAvatar}
             alt={displayName}
             className={`w-12 h-12 object-cover ${isCreator ? 'rounded-full' : 'rounded-xl'}`}
           />

@@ -4,6 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Loader2, RefreshCw, UserPlus } from 'lucide-react';
+import { useResolvedAvatarUrl } from '@/hooks/useSignedUrl';
 import { useNavigate } from 'react-router-dom';
 import { Campaign } from '@/hooks/useCampaigns';
 import { format } from 'date-fns';
@@ -80,6 +81,7 @@ const CampaignCardComponent: React.FC<CampaignCardProps> = ({ campaign }) => {
   const [isPayingEscrow, setIsPayingEscrow] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   const [showReHireModal, setShowReHireModal] = useState(false);
+  const resolvedCreatorAvatar = useResolvedAvatarUrl(campaign.creator_avatar_url);
 
   const collabShape = campaign.collaboration_status
     ? {
@@ -234,9 +236,9 @@ const CampaignCardComponent: React.FC<CampaignCardProps> = ({ campaign }) => {
         {/* Creator row */}
         {campaign.creator_name && (
           <div className="flex items-center gap-2">
-            {campaign.creator_avatar_url ? (
+            {resolvedCreatorAvatar ? (
               <img
-                src={campaign.creator_avatar_url}
+                src={resolvedCreatorAvatar}
                 alt={campaign.creator_name}
                 className="w-7 h-7 rounded-full object-cover ring-1 ring-teal-400"
               />

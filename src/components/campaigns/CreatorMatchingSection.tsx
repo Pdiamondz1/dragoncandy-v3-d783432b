@@ -23,6 +23,7 @@ import {
 import { useCampaignMatches, useGenerateMatches, CreatorMatch } from '@/hooks/useCampaignMatches';
 import { useInviteCreator, useCampaignInvitations } from '@/hooks/useCampaignInvitations';
 import { CreatorMatchCard } from './CreatorMatchCard';
+import { ResolvedAvatar } from '@/components/ui/resolved-avatar';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { formatSkillLabel } from '@/lib/skillUtils';
@@ -355,17 +356,13 @@ export const CreatorMatchingSection: React.FC<CreatorMatchingSectionProps> = ({ 
                     <CardContent className="p-6">
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex items-center gap-4 min-w-0">
-                          {creator.avatar_url ? (
-                            <img
-                              src={creator.avatar_url}
-                              alt={creator.creator_name}
-                              className="w-12 h-12 rounded-full object-cover ring-2 ring-teal-400 shrink-0"
-                            />
-                          ) : (
-                            <div className="w-12 h-12 rounded-full bg-teal-100 dark:bg-teal-900 flex items-center justify-center ring-2 ring-teal-400 shrink-0">
-                              <Users className="h-6 w-6 text-teal-600 dark:text-teal-400" />
-                            </div>
-                          )}
+                          <ResolvedAvatar
+                            path={creator.avatar_url}
+                            alt={creator.creator_name}
+                            fallback={<Users className="h-6 w-6 text-teal-600 dark:text-teal-400" />}
+                            className="w-12 h-12 ring-2 ring-teal-400 shrink-0"
+                            fallbackClassName="bg-teal-100 dark:bg-teal-900"
+                          />
                           <div className="min-w-0">
                             <h3 className="font-semibold text-lg">{creator.creator_name}</h3>
                             <p className="text-muted-foreground text-sm">{creator.location || 'Location not specified'}</p>

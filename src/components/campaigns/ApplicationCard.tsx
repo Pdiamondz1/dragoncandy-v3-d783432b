@@ -12,7 +12,7 @@ import { CounterOfferModal } from './CounterOfferModal';
 import { CounterOfferThread } from './CounterOfferThread';
 import { useCounterOffers, useRespondToCounterOffer } from '@/hooks/useCounterOffers';
 import { useAuth } from '@/hooks/useAuth';
-import { useResolvedLogoUrl } from '@/hooks/useSignedUrl';
+import { useResolvedLogoUrl, useResolvedAvatarUrl } from '@/hooks/useSignedUrl';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { formatSkillLabel } from '@/lib/skillUtils';
@@ -45,6 +45,7 @@ const ApplicationCardComponent: React.FC<ApplicationCardProps> = ({
   const respondToOffer = useRespondToCounterOffer();
   const { user } = useAuth();
   const resolvedPortfolioUrl = useResolvedLogoUrl(application.portfolio_url);
+  const resolvedAvatarUrl = useResolvedAvatarUrl(application.creator_profile?.avatar_url);
 
   const latestCreatorOffer = counterOffers
     .filter(o => o.status === 'pending' && o.sender_id !== user?.id)
@@ -157,7 +158,7 @@ const ApplicationCardComponent: React.FC<ApplicationCardProps> = ({
       <CardHeader>
         <div className="flex items-center gap-3">
           <Avatar className="shrink-0">
-            <AvatarImage src={application.creator_profile?.avatar_url} alt={application.creator_profile?.creator_name || 'Creator avatar'} />
+            <AvatarImage src={resolvedAvatarUrl} alt={application.creator_profile?.creator_name || 'Creator avatar'} />
             <AvatarFallback>
               <User className="h-4 w-4" aria-hidden="true" />
             </AvatarFallback>

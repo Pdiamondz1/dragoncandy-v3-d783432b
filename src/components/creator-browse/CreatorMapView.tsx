@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { GoogleMap, Marker, InfoWindow, useJsApiLoader } from '@react-google-maps/api';
 import { Card, CardContent } from '@/components/ui/card';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { ResolvedAvatar } from '@/components/ui/resolved-avatar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { MapPin, Loader2, AlertCircle } from 'lucide-react';
@@ -217,12 +217,12 @@ export const CreatorMapView: React.FC<CreatorMapViewProps> = ({
                     <InfoWindow onCloseClick={() => setSelectedCreator(null)}>
                       <div className="p-2 max-w-xs">
                         <div className="flex items-start gap-3 mb-3">
-                          <Avatar className="h-12 w-12">
-                            <AvatarImage src={creator.avatar_url} alt={creator.creator_name} />
-                            <AvatarFallback>
-                              {creator.creator_name.substring(0, 2).toUpperCase()}
-                            </AvatarFallback>
-                          </Avatar>
+                          <ResolvedAvatar
+                            path={creator.avatar_url}
+                            alt={creator.creator_name}
+                            fallback={creator.creator_name.substring(0, 2).toUpperCase()}
+                            className="h-12 w-12"
+                          />
                           <div>
                             <h4 className="font-semibold">{creator.creator_name}</h4>
                             {creator.city && creator.country && (

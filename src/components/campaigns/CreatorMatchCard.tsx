@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { useResolvedAvatarUrl } from '@/hooks/useSignedUrl';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -92,6 +93,7 @@ export const CreatorMatchCard: React.FC<CreatorMatchCardProps> = ({ match, isInv
   const [showApplicationForm, setShowApplicationForm] = useState(false);
   const [showBreakdown, setShowBreakdown] = useState(false);
   const { campaign } = useCampaign(match.campaign_id);
+  const resolvedAvatarUrl = useResolvedAvatarUrl(match.creator_profile.avatar_url);
 
   const breakdown = match.match_reasons.score_breakdown;
   const hasBreakdown = breakdown && Object.keys(breakdown).length > 0;
@@ -108,7 +110,7 @@ export const CreatorMatchCard: React.FC<CreatorMatchCardProps> = ({ match, isInv
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
             <Avatar className="h-12 w-12 ring-2 ring-teal-400 flex-shrink-0">
-              <AvatarImage src={match.creator_profile.avatar_url || undefined} alt={match.creator_profile.creator_name} />
+              <AvatarImage src={resolvedAvatarUrl} alt={match.creator_profile.creator_name} />
               <AvatarFallback className="bg-teal-100 text-teal-700 font-semibold">
                 {match.creator_profile.creator_name.charAt(0)}
               </AvatarFallback>

@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { CheckCircle, XCircle, ExternalLink, Loader2 } from 'lucide-react';
+import { ResolvedAvatar } from '@/components/ui/resolved-avatar';
 import type { UserRole } from '@/types/user';
 
 const AdminDragonShareQueue: React.FC = () => {
@@ -69,13 +70,13 @@ const AdminDragonShareQueue: React.FC = () => {
               <div key={post.id} className="rounded-2xl border bg-card p-5 space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    {post.creator?.avatar_url ? (
-                      <img src={post.creator.avatar_url} alt="Creator avatar" className="h-10 w-10 rounded-full ring-2 ring-teal-400" />
-                    ) : (
-                      <div className="h-10 w-10 rounded-full bg-teal-100 flex items-center justify-center text-sm font-bold text-teal-600">
-                        {post.creator?.full_name?.charAt(0) ?? '?'}
-                      </div>
-                    )}
+                    <ResolvedAvatar
+                      path={post.creator?.avatar_url}
+                      alt="Creator avatar"
+                      fallback={<span className="text-sm font-bold text-teal-600">{post.creator?.full_name?.charAt(0) ?? '?'}</span>}
+                      className="h-10 w-10 ring-2 ring-teal-400"
+                      fallbackClassName="bg-teal-100"
+                    />
                     <div>
                       <p className="font-medium">{post.creator?.full_name ?? 'Unknown'}</p>
                       <p className="text-xs text-muted-foreground capitalize">{post.platform} · {post.content_type}</p>

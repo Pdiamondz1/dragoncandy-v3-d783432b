@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useResolvedAvatarUrl } from '@/hooks/useSignedUrl';
 import { 
   MessageSquare, 
   Clock, 
@@ -37,6 +38,7 @@ export const ContactCreatorModal: React.FC<ContactCreatorModalProps> = ({
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState('');
+  const resolvedAvatarUrl = useResolvedAvatarUrl(creator.avatar_url);
 
   const createConversationMutation = useCreateDirectConversation();
   const sendMessageMutation = useSendMessage();
@@ -120,7 +122,7 @@ export const ContactCreatorModal: React.FC<ContactCreatorModalProps> = ({
           {/* Creator Info */}
           <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
             <Avatar className="h-12 w-12">
-              <AvatarImage src={creator.avatar_url} />
+              <AvatarImage src={resolvedAvatarUrl} />
               <AvatarFallback>
                 <User className="h-6 w-6" />
               </AvatarFallback>

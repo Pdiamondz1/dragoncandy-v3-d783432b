@@ -8,6 +8,7 @@ import {
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useResolvedAvatarUrl } from '@/hooks/useSignedUrl';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Clock, DollarSign, User } from 'lucide-react';
@@ -31,6 +32,8 @@ export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
   onReject,
   showActions = false,
 }) => {
+  const resolvedAvatarUrl = useResolvedAvatarUrl(application?.creator_profile?.avatar_url);
+
   if (!application || !application.creator_profile) {
     return null;
   }
@@ -57,7 +60,7 @@ export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
           {/* Header */}
           <div className="flex items-start gap-4">
             <Avatar className="h-16 w-16">
-              <AvatarImage src={creator_profile.avatar_url} />
+              <AvatarImage src={resolvedAvatarUrl} />
               <AvatarFallback>
                 <User className="h-8 w-8" />
               </AvatarFallback>

@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { ResolvedAvatar } from '@/components/ui/resolved-avatar';
 import { Card } from '@/components/ui/card';
 import { MessageSquare, Send, Reply } from 'lucide-react';
 import { useCreateFileComment } from '@/hooks/useFileComments';
@@ -41,12 +41,12 @@ export const FileCommentsPanel: React.FC<FileCommentsPanelProps> = ({
   const renderComment = (comment: FileComment, isReply = false) => (
     <Card key={comment.id} className={`p-4 ${isReply ? 'ml-8 mt-2' : ''}`}>
       <div className="flex gap-3">
-        <Avatar className="h-8 w-8">
-          <AvatarImage src={comment.user_profile?.avatar_url || ''} alt={comment.user_profile?.full_name ?? "User avatar"} />
-          <AvatarFallback>
-            {comment.user_profile?.full_name?.[0] || 'U'}
-          </AvatarFallback>
-        </Avatar>
+        <ResolvedAvatar
+          path={comment.user_profile?.avatar_url}
+          alt={comment.user_profile?.full_name ?? "User avatar"}
+          fallback={comment.user_profile?.full_name?.[0] || 'U'}
+          className="h-8 w-8"
+        />
         
         <div className="flex-1 space-y-2">
           <div className="flex items-center gap-2">
@@ -118,12 +118,12 @@ export const FileCommentsPanel: React.FC<FileCommentsPanelProps> = ({
           )}
           
           <div className="flex gap-3">
-            <Avatar className="h-8 w-8">
-              <AvatarImage src={user?.user_metadata?.avatar_url || ''} alt="User avatar" />
-              <AvatarFallback>
-                {user?.email?.[0]?.toUpperCase() || 'U'}
-              </AvatarFallback>
-            </Avatar>
+            <ResolvedAvatar
+              path={user?.user_metadata?.avatar_url}
+              alt="User avatar"
+              fallback={user?.email?.[0]?.toUpperCase() || 'U'}
+              className="h-8 w-8"
+            />
             
             <div className="flex-1 space-y-3">
               <Textarea

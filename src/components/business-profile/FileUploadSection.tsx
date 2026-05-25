@@ -7,7 +7,9 @@ import {
   uploadProfileAsset,
   UploadError,
 } from '@/lib/storage/uploadProfileAsset';
-import { getSignedProfileUrl } from '@/hooks/useSignedUrl';
+import { getSignedProfileUrl, clearSignedUrlCache } from '@/hooks/useSignedUrl';
+import { clearProfileCache } from '@/hooks/useProfileData';
+import { supabase } from '@/integrations/supabase/client';
 import { AvatarCropModal } from '@/components/settings/AvatarCropModal';
 
 interface FileUploadSectionProps {
@@ -77,6 +79,22 @@ export const FileUploadSection = ({
       onLogoChange(croppedFile);
       setLocalLogoPreview(URL.createObjectURL(croppedFile));
       onLogoUrlChange?.(path);
+
+      try {
+        await supabase
+          .from('business_profiles')
+          .update({ logo_url: path, updated_at: new Date().toISOString() })
+          .eq('user_id', user.id);
+        await supabase
+          .from('profiles')
+          .update({ avatar_url: path })
+          .eq('id', user.id);
+        clearSignedUrlCache();
+        clearProfileCache(user.id);
+      } catch (e) {
+        console.error('Auto-save logo failed:', e);
+      }
+
       toast({ title: 'Logo uploaded \u2713' });
     } catch (err) {
       const msg =

@@ -44,13 +44,16 @@ export function useSignedUrl(
   return url;
 }
 
-export function useResolvedLogoUrl(
-  logoUrl: string | null | undefined
+export function useResolvedStorageUrl(
+  path: string | null | undefined
 ): string | undefined {
-  const isHttp = logoUrl?.startsWith('http');
-  const signedUrl = useSignedUrl('profile-assets', isHttp ? null : logoUrl);
-  return isHttp ? (logoUrl ?? undefined) : signedUrl;
+  const isHttp = path?.startsWith('http');
+  const signedUrl = useSignedUrl('profile-assets', isHttp ? null : path);
+  return isHttp ? (path ?? undefined) : signedUrl;
 }
+
+export const useResolvedAvatarUrl = useResolvedStorageUrl;
+export const useResolvedLogoUrl = useResolvedStorageUrl;
 
 export async function getSignedProfileUrl(
   path: string | null | undefined

@@ -7,7 +7,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { ResolvedAvatar } from '@/components/ui/resolved-avatar';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Loader2, RefreshCw, User } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
@@ -117,12 +117,11 @@ export function ReHireCreatorsModal({
                     checked={selectedIds.has(creator.creator_id)}
                     onCheckedChange={() => toggleCreator(creator.creator_id)}
                   />
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage src={creator.avatar_url ?? undefined} />
-                    <AvatarFallback>
-                      <User className="h-3 w-3" />
-                    </AvatarFallback>
-                  </Avatar>
+                  <ResolvedAvatar
+                    path={creator.avatar_url}
+                    fallback={<User className="h-3 w-3" />}
+                    className="h-8 w-8"
+                  />
                   <span className="text-sm font-medium text-gray-800">
                     {creator.creator_name || 'Creator'}
                   </span>

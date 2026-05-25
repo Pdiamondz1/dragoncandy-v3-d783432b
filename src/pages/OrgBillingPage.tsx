@@ -7,7 +7,7 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { ResolvedAvatar } from '@/components/ui/resolved-avatar';
 import { useAuth } from '@/hooks/useAuth';
 import { useMyOrgRole } from '@/hooks/useOrgData';
 import { useOrgMembers } from '@/hooks/useOrgMembers';
@@ -158,12 +158,12 @@ export default function OrgBillingPage() {
             <div className="space-y-2">
               {activeMembers.map((member) => (
                 <div key={member.id} className="flex items-center gap-3 py-2">
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage src={member.avatar_url ?? undefined} />
-                    <AvatarFallback className="bg-teal-50 text-teal-600 text-xs font-semibold">
-                      {(member.full_name ?? member.email ?? '?').charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
+                  <ResolvedAvatar
+                    path={member.avatar_url}
+                    fallback={<span className="text-xs font-semibold">{(member.full_name ?? member.email ?? '?').charAt(0).toUpperCase()}</span>}
+                    className="h-8 w-8"
+                    fallbackClassName="bg-teal-50 text-teal-600"
+                  />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{member.full_name ?? member.email}</p>
                     <p className="text-xs text-muted-foreground">{member.role}</p>

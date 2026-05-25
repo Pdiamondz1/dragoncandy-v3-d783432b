@@ -103,6 +103,13 @@ export const useCreatorProfileSubmit = () => {
 
       if (error) throw error;
 
+      if (avatarUrl) {
+        await supabase
+          .from('profiles')
+          .update({ avatar_url: avatarUrl })
+          .eq('id', user.id);
+      }
+
       clearSignedUrlCache();
       clearProfileCache(user.id);
       queryClient.invalidateQueries({ queryKey: ['available-creators'] });

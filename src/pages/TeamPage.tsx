@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { ResolvedAvatar } from '@/components/ui/resolved-avatar';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger,
@@ -159,12 +159,12 @@ export default function TeamPage() {
               return (
                 <Card key={member.id} className="border border-border/50">
                   <CardContent className="flex items-center gap-3 p-3">
-                    <Avatar className="h-10 w-10 ring-2 ring-teal-400/50">
-                      <AvatarImage src={member.avatar_url ?? undefined} />
-                      <AvatarFallback className="bg-teal-50 text-teal-600 text-sm font-semibold">
-                        {(member.full_name ?? member.email ?? '?').charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
+                    <ResolvedAvatar
+                      path={member.avatar_url}
+                      fallback={<span className="text-sm font-semibold">{(member.full_name ?? member.email ?? '?').charAt(0).toUpperCase()}</span>}
+                      className="h-10 w-10 ring-2 ring-teal-400/50"
+                      fallbackClassName="bg-teal-50 text-teal-600"
+                    />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <p className="font-medium text-sm truncate">

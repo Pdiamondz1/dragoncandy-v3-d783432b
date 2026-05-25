@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useResolvedAvatarUrl } from '@/hooks/useSignedUrl';
 import { safeUrl } from '@/lib/safeUrl';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -17,14 +18,15 @@ interface Props {
 export function DragonSharePostCard({ post, canBoost, onSkip }: Props) {
   const [selectedTier, setSelectedTier] = useState<{ cents: number; label: BoostTierLabel } | null>(null);
   const isAlreadyBoosted = post.boost_status === 'boosted';
+  const resolvedCreatorAvatar = useResolvedAvatarUrl(post.creator?.avatar_url);
 
   return (
     <>
       <div className="rounded-2xl border bg-card overflow-hidden">
         <div className="p-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            {post.creator?.avatar_url ? (
-              <img src={post.creator.avatar_url} alt="Creator avatar" className="h-10 w-10 rounded-full ring-2 ring-teal-400" />
+            {resolvedCreatorAvatar ? (
+              <img src={resolvedCreatorAvatar} alt="Creator avatar" className="h-10 w-10 rounded-full ring-2 ring-teal-400" />
             ) : (
               <div className="h-10 w-10 rounded-full bg-teal-100 flex items-center justify-center text-sm font-bold text-teal-600">
                 {post.creator?.full_name?.charAt(0) ?? '?'}

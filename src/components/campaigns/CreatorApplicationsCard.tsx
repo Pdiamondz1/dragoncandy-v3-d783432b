@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { ResolvedAvatar } from '@/components/ui/resolved-avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Users, ExternalLink, DollarSign, Calendar } from 'lucide-react';
@@ -88,15 +88,12 @@ export const CreatorApplicationsCard = ({ campaignId }: CreatorApplicationsCardP
           <div className="space-y-4">
             {applications?.map((application) => (
               <div key={application.id} className="flex items-start gap-4 p-4 border rounded-lg hover:bg-muted/50 transition-colors">
-                <Avatar className="h-12 w-12">
-                  <AvatarImage 
-                    src={application.creator_profile?.avatar_url || undefined} 
-                    alt={application.creator_profile?.creator_name || 'Creator'} 
-                  />
-                  <AvatarFallback>
-                    {application.creator_profile?.creator_name?.substring(0, 2).toUpperCase() || 'CR'}
-                  </AvatarFallback>
-                </Avatar>
+                <ResolvedAvatar
+                  path={application.creator_profile?.avatar_url}
+                  alt={application.creator_profile?.creator_name || 'Creator'}
+                  fallback={application.creator_profile?.creator_name?.substring(0, 2).toUpperCase() || 'CR'}
+                  className="h-12 w-12"
+                />
 
                 <div className="flex-1 space-y-2">
                   <div className="flex items-start justify-between">
