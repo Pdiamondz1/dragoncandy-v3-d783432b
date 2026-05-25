@@ -541,6 +541,7 @@ const CampaignDetailsPage: React.FC = () => {
                   campaignId={campaign.id}
                   creatorId={collaborationData.creator_id ?? creatorData?.user_id ?? ''}
                   creatorName={creatorData?.creator_name ?? 'Creator'}
+                  campaignTitle={campaign.title}
                   contentStatus={collaborationData.content_status ?? null}
                   revisionCount={collaborationData.revision_count ?? null}
                   escrowStatus={campaign.escrow_status ?? null}

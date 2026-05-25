@@ -31,7 +31,9 @@ type NotificationType =
   | 'counter_offer_response'
   | 'sponsorship_payment_confirmed'
   | 'campaign_invitation'
-  | 'campaign_invitation_declined';
+  | 'campaign_invitation_declined'
+  | 'content_approved'
+  | 'revision_requested';
 
 interface NotificationEmailRequest {
   to?: string;
@@ -737,6 +739,45 @@ const handler = async (req: Request): Promise<Response> => {
             <a href="${baseUrl}/dashboard/business/campaigns/${data.campaignId}"
                style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block;">
               View Campaign
+            </a>
+          </p>
+        `,
+      },
+      content_approved: {
+        subject: `Your Content Was Approved! - "${esc.campaignTitle}"`,
+        html: `
+          <p>Hi ${esc.rn},</p>
+          <p>Great news! Your content for <strong>"${esc.campaignTitle}"</strong> has been <strong>approved</strong> and payment has been released.</p>
+          <p>The funds will be available in your account shortly. Thank you for your excellent work!</p>
+          <div style="background: #F0FDF4; border-left: 4px solid #10B981; padding: 16px; margin: 24px 0; border-radius: 4px;">
+            <p style="margin: 0; color: #065F46; font-weight: 600;">Payment Released</p>
+            <p style="margin: 8px 0 0 0; color: #065F46;">Your payout is being processed and will arrive in your connected account.</p>
+          </div>
+          <p style="margin-top: 30px;">
+            <a href="${baseUrl}/dashboard/creator/projects"
+               style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block;">
+              View Projects
+            </a>
+          </p>
+          <p style="margin-top: 16px; color: #6B7280; font-size: 14px;">
+            Had a great experience? <a href="${baseUrl}/dashboard/creator/projects" style="color: #8B5CF6; text-decoration: none;">Leave a review</a> to help build trust in the DragonCandy community.
+          </p>
+        `,
+      },
+      revision_requested: {
+        subject: `Revision Requested - "${esc.campaignTitle}"`,
+        html: `
+          <p>Hi ${esc.rn},</p>
+          <p>The business has requested a revision on your content for <strong>"${esc.campaignTitle}"</strong>.</p>
+          ${data.message ? `<div style="background: #FEF3C7; border-left: 4px solid #F59E0B; padding: 16px; margin: 24px 0; border-radius: 4px;">
+            <p style="margin: 0; color: #92400E; font-weight: 600;">Revision Notes</p>
+            <p style="margin: 8px 0 0 0; color: #92400E;">${esc.message}</p>
+          </div>` : ''}
+          <p>Please review the feedback and submit your updated content as soon as possible.</p>
+          <p style="margin-top: 30px;">
+            <a href="${baseUrl}/dashboard/creator/projects"
+               style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block;">
+              View Project
             </a>
           </p>
         `,

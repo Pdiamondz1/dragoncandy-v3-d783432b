@@ -40,7 +40,7 @@ serve(async (req) => {
       .from('campaign_collaborations')
       .select(`
         id, campaign_id, creator_id, content_status, submitted_at, review_extended,
-        campaign:campaigns(id, user_id, delivery_type, escrow_status, fixed_price, budget_max, delivery_fee, pricing_type)
+        campaign:campaigns(id, title, user_id, delivery_type, escrow_status, fixed_price, budget_max, delivery_fee, pricing_type)
       `)
       .eq('content_status', 'submitted')
       .eq('status', 'active')
@@ -159,6 +159,40 @@ serve(async (req) => {
         } else {
           logStep("Auto-approval payout succeeded", { collaborationId: collab.id });
           processed++;
+
+          try {
+            const { data: creatorProfile } = await supabaseClient
+              .from('profiles')
+              .select('email, full_name')
+              .eq('id', collab.creator_id)
+              .single();
+
+            if (creatorProfile?.email) {
+              const campaignTitle = campaign.title || 'your campaign';
+              await fetch(
+                `${Deno.env.get("SUPABASE_URL")}/functions/v1/send-notification-email`,
+                {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+                  },
+                  body: JSON.stringify({
+                    to: creatorProfile.email,
+                    recipientName: creatorProfile.full_name,
+                    type: 'content_approved',
+                    data: {
+                      campaignId: campaign.id,
+                      campaignTitle,
+                    },
+                  }),
+                }
+              );
+              logStep("Content approval email sent", { collaborationId: collab.id });
+            }
+          } catch (emailErr) {
+            logStep("Email notification failed (non-blocking)", { collaborationId: collab.id, error: String(emailErr) });
+          }
         }
       } catch (payoutErr) {
         logStep("ERROR calling release-creator-payout", { collaborationId: collab.id, error: String(payoutErr) });

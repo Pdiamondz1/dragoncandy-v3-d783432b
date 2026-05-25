@@ -40,6 +40,7 @@ interface ContentReviewSectionProps {
   campaignId: string;
   creatorId: string;
   creatorName: string;
+  campaignTitle: string;
   contentStatus: string | null;
   revisionCount: number | null;
   escrowStatus: string | null;
@@ -52,6 +53,7 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
   campaignId,
   creatorId,
   creatorName,
+  campaignTitle,
   contentStatus,
   revisionCount,
   escrowStatus,
@@ -110,7 +112,7 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
               to: creatorProfile.email,
               recipientName: creatorProfile.full_name,
               type: 'content_approved',
-              data: { campaignId, creatorName: creatorName },
+              data: { campaignId, campaignTitle, creatorName },
             },
           });
           if (emailError) {
@@ -237,7 +239,7 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
               to: creatorProfile.email,
               recipientName: creatorProfile.full_name,
               type: 'revision_requested',
-              data: { campaignId, creatorName: creatorName },
+              data: { campaignId, campaignTitle, creatorName, message: feedback },
             },
           });
         }
