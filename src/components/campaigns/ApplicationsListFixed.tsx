@@ -18,7 +18,7 @@ import { useCampaignSponsorship } from '@/hooks/useCampaignSponsorship';
 
 interface ApplicationsListFixedProps {
   campaignId: string;
-  campaign?: { user_id: string; open_for_sponsorship?: boolean | null };
+  campaign?: { user_id: string; open_for_sponsorship?: boolean | null; fixed_price?: number | null; budget_max?: number | null };
 }
 
 export const ApplicationsListFixed: React.FC<ApplicationsListFixedProps> = ({ campaignId, campaign }) => {
@@ -49,6 +49,8 @@ export const ApplicationsListFixed: React.FC<ApplicationsListFixedProps> = ({ ca
   
   // Only consider it sponsored if campaign is open for sponsorship AND has an accepted sponsor
   const isSponsored = (campaign?.open_for_sponsorship && hasActiveSponsor) || false;
+
+  const campaignBudget = campaign?.fixed_price ?? campaign?.budget_max ?? undefined;
 
   if (isLoading) {
     return (
@@ -241,6 +243,7 @@ export const ApplicationsListFixed: React.FC<ApplicationsListFixedProps> = ({ ca
                   showActions={true}
                   isSponsored={isSponsored}
                   userRole={userRole}
+                  campaignBudget={campaignBudget}
                   onViewProfile={() => handleViewProfile(application)}
                 />
               ))}

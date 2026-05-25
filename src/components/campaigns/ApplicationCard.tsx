@@ -25,6 +25,7 @@ interface ApplicationCardProps {
   isSponsored?: boolean;
   userRole?: 'brand' | 'restaurant';
   campaignEscrowStatus?: string | null;
+  campaignBudget?: number | null;
   onViewProfile?: () => void;
 }
 
@@ -34,6 +35,7 @@ const ApplicationCardComponent: React.FC<ApplicationCardProps> = ({
   isSponsored = false,
   userRole,
   campaignEscrowStatus,
+  campaignBudget,
   onViewProfile
 }) => {
   const manageApplication = useManageApplication();
@@ -325,7 +327,7 @@ const ApplicationCardComponent: React.FC<ApplicationCardProps> = ({
                   <Check className="h-4 w-4 mr-2" aria-hidden="true" />
                   Accept ({formatCurrency(effectiveRate ?? null)})
                 </Button>
-                {!application.agreed_rate && (
+                {!application.agreed_rate && (!campaignBudget || effectiveRate == null || effectiveRate > campaignBudget) && (
                   <Button
                     onClick={() => setShowCounterModal(true)}
                     variant="secondary"
