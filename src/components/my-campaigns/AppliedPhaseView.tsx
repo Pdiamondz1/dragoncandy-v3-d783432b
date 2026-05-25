@@ -35,42 +35,44 @@ export function AppliedPhaseView({ campaign, enrichedDetail, application }: Appl
   return (
     <div className="px-4 pb-24 lg:pb-8">
       {/* Two-column on desktop, stacked on mobile */}
-      <div className="space-y-3 lg:grid lg:grid-cols-5 lg:gap-6 lg:space-y-0 lg:pt-4 lg:items-start">
+      <div className="space-y-3 lg:grid lg:grid-cols-2 lg:gap-8 lg:space-y-0 lg:pt-6 lg:items-start">
         {/* Left: Application status + negotiation */}
-        <div className="space-y-3 lg:col-span-2">
-          {/* Application Status Card */}
-          <div className={`bg-white rounded-2xl p-4 border-2 ${isCounterOffer ? 'border-orange-400' : 'border-yellow-400'}`}>
-            <div className="text-sm font-bold text-gray-900 mb-2">YOUR APPLICATION</div>
+        <div className="space-y-3 lg:sticky lg:top-24">
+          <div className="lg:bg-white lg:rounded-2xl lg:shadow-sm lg:border lg:border-gray-100 lg:p-6 space-y-4">
+            {/* Application Status Card */}
+            <div className={`bg-white rounded-2xl p-4 border-2 lg:bg-transparent lg:rounded-none lg:p-0 lg:border-0 ${isCounterOffer ? 'border-orange-400' : 'border-yellow-400'}`}>
+              <div className="text-sm font-bold text-gray-900 mb-2">YOUR APPLICATION</div>
 
-            {application.proposed_rate != null && (
+              {application.proposed_rate != null && (
+                <div className="flex justify-between text-sm text-gray-600 mb-1">
+                  <span>Proposed rate</span>
+                  <span className="font-semibold">${application.proposed_rate}</span>
+                </div>
+              )}
+
               <div className="flex justify-between text-sm text-gray-600 mb-1">
-                <span>Proposed rate</span>
-                <span className="font-semibold">${application.proposed_rate}</span>
+                <span>Applied</span>
+                <span>{new Date(application.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
               </div>
-            )}
 
-            <div className="flex justify-between text-sm text-gray-600 mb-1">
-              <span>Applied</span>
-              <span>{new Date(application.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+              {application.proposed_timeline && (
+                <div className="flex justify-between text-sm text-gray-600 mb-1">
+                  <span>Timeline</span>
+                  <span>{application.proposed_timeline}</span>
+                </div>
+              )}
+
+              {!isCounterOffer && (
+                <div className={`mt-3 p-2 rounded-lg text-xs text-center bg-yellow-50 text-yellow-800 lg:border lg:border-yellow-200`}>
+                  {`Waiting for ${application.business_profile?.business_name || 'the business'} to respond`}
+                </div>
+              )}
             </div>
-
-            {application.proposed_timeline && (
-              <div className="flex justify-between text-sm text-gray-600 mb-1">
-                <span>Timeline</span>
-                <span>{application.proposed_timeline}</span>
-              </div>
-            )}
-
-            {!isCounterOffer && (
-              <div className="mt-3 p-2 rounded-lg text-xs text-center bg-yellow-50 text-yellow-800">
-                {`Waiting for ${application.business_profile?.business_name || 'the business'} to respond`}
-              </div>
-            )}
           </div>
 
           {/* Counter Offer Negotiation */}
           {counterOffers.length > 0 && (
-            <div className="bg-white rounded-2xl p-4 border-2 border-orange-400 space-y-3">
+            <div className="bg-white rounded-2xl p-4 border-2 border-orange-400 space-y-3 lg:shadow-sm">
               <CounterOfferThread counterOffers={counterOffers} currentUserId={user?.id} />
 
               {isCounterOffer && latestPendingOffer && (
@@ -142,9 +144,10 @@ export function AppliedPhaseView({ campaign, enrichedDetail, application }: Appl
         </div>
 
         {/* Right: Campaign brief */}
-        <div className="lg:col-span-3">
-          <div className="bg-white rounded-2xl p-4">
-            <div className="text-sm font-bold text-gray-900 mb-3">CAMPAIGN BRIEF</div>
+        <div>
+          <div className="text-sm font-bold text-gray-900 mb-3 hidden lg:block">CAMPAIGN BRIEF</div>
+          <div className="bg-white rounded-2xl p-4 lg:shadow-sm lg:border lg:border-gray-100">
+            <div className="text-sm font-bold text-gray-900 mb-3 lg:hidden">CAMPAIGN BRIEF</div>
             <CreatorCampaignDetails
               campaign={campaign}
               enrichedDetail={enrichedDetail}

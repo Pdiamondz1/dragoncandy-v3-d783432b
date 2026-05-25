@@ -58,46 +58,51 @@ export function CompletedPhaseView({ campaign, enrichedDetail, collaboration }: 
       </div>
 
       {/* Two-column on desktop, tab-switched on mobile */}
-      <div className="lg:grid lg:grid-cols-5 lg:gap-6 lg:px-4 lg:pt-4 lg:pb-8 lg:items-start">
+      <div className="lg:grid lg:grid-cols-2 lg:gap-8 lg:pt-6 lg:pb-8 lg:items-start">
         {/* Left: Summary */}
-        <div className={`px-4 pt-4 pb-24 space-y-3 lg:col-span-2 lg:px-0 lg:pb-0 ${activeTab !== 'summary' ? 'hidden lg:block' : ''}`}>
-          {/* Delivered Items */}
-          {campaignDeliverables && campaignDeliverables.length > 0 && (
-            <div className="bg-white rounded-2xl p-4 lg:border lg:border-gray-200">
-              <div className="text-sm font-bold text-gray-900 mb-3">DELIVERED</div>
-              <div className="space-y-2">
-                {campaignDeliverables.map((d) => {
-                  const status = deliverablesStatus?.[d.id] || 'pending';
-                  return (
-                    <div key={d.id} className="flex items-center justify-between p-2 bg-green-50 rounded-lg">
-                      <span className="text-sm text-gray-700">
-                        {d.content_type === 'video' ? '\u{1F4F9}' : '\u{1F4F8}'} {d.description || d.content_type}
-                      </span>
-                      <span className="text-xs font-semibold text-green-700">
-                        {status === 'approved' ? '✓ Approved' : status}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+        <div className={`px-4 pt-4 pb-24 space-y-3 lg:px-0 lg:pb-0 lg:sticky lg:top-24 ${activeTab !== 'summary' ? 'hidden lg:block' : ''}`}>
+          <div className="lg:bg-white lg:rounded-2xl lg:shadow-sm lg:border lg:border-gray-100 lg:p-6 space-y-5">
+            {/* Delivered Items */}
+            {campaignDeliverables && campaignDeliverables.length > 0 && (
+              <>
+                <div className="bg-white rounded-2xl p-4 lg:bg-transparent lg:p-0">
+                  <div className="text-sm font-bold text-gray-900 mb-3">DELIVERED</div>
+                  <div className="space-y-2">
+                    {campaignDeliverables.map((d) => {
+                      const status = deliverablesStatus?.[d.id] || 'pending';
+                      return (
+                        <div key={d.id} className="flex items-center justify-between p-2 bg-green-50 rounded-lg">
+                          <span className="text-sm text-gray-700">
+                            {d.content_type === 'video' ? '\u{1F4F9}' : '\u{1F4F8}'} {d.description || d.content_type}
+                          </span>
+                          <span className="text-xs font-semibold text-green-700">
+                            {status === 'approved' ? '✓ Approved' : status}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div className="hidden lg:block border-t border-gray-100" />
+              </>
+            )}
 
-          {/* Payment Breakdown */}
-          <div className="bg-white rounded-2xl p-4 lg:border lg:border-gray-200">
-            <div className="text-sm font-bold text-gray-900 mb-3">PAYMENT</div>
-            <div className="space-y-1">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Campaign fee</span>
-                <span className="font-semibold text-gray-900">${price}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Platform fee (10%)</span>
-                <span className="text-gray-900">-${platformFee}</span>
-              </div>
-              <div className="border-t border-gray-200 mt-2 pt-2 flex justify-between text-sm">
-                <span className="font-bold text-gray-900">Net earnings</span>
-                <span className="font-bold text-dc-teal">${netEarnings}</span>
+            {/* Payment Breakdown */}
+            <div className="bg-white rounded-2xl p-4 lg:bg-transparent lg:p-0">
+              <div className="text-sm font-bold text-gray-900 mb-3">PAYMENT</div>
+              <div className="space-y-1">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Campaign fee</span>
+                  <span className="font-semibold text-gray-900">${price}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Platform fee (10%)</span>
+                  <span className="text-gray-900">-${platformFee}</span>
+                </div>
+                <div className="border-t border-gray-200 mt-2 pt-2 flex justify-between text-sm">
+                  <span className="font-bold text-gray-900">Net earnings</span>
+                  <span className="font-bold text-dc-teal">${netEarnings}</span>
+                </div>
               </div>
             </div>
           </div>
@@ -140,13 +145,15 @@ export function CompletedPhaseView({ campaign, enrichedDetail, collaboration }: 
         </div>
 
         {/* Right: Campaign brief */}
-        <div className={`px-4 pt-4 pb-24 lg:col-span-3 lg:px-0 lg:pb-0 ${activeTab !== 'brief' ? 'hidden lg:block' : ''}`}>
+        <div className={`px-4 pt-4 pb-24 lg:px-0 lg:pb-0 ${activeTab !== 'brief' ? 'hidden lg:block' : ''}`}>
           <div className="text-sm font-bold text-gray-900 mb-3 hidden lg:block">CAMPAIGN BRIEF</div>
-          <CreatorCampaignDetails
-            campaign={campaign}
-            enrichedDetail={enrichedDetail}
-            hasApplied={true}
-          />
+          <div className="lg:shadow-sm lg:rounded-2xl lg:border lg:border-gray-100">
+            <CreatorCampaignDetails
+              campaign={campaign}
+              enrichedDetail={enrichedDetail}
+              hasApplied={true}
+            />
+          </div>
         </div>
       </div>
     </div>

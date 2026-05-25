@@ -35,7 +35,7 @@ export function CampaignDetailHeader({
       : phaseBadges[phase];
 
   return (
-    <div className={`bg-gradient-to-b ${phaseGradients[phase]} px-5 pt-4 pb-4`}>
+    <div className={`bg-gradient-to-b ${phaseGradients[phase]} px-5 pt-4 pb-4 lg:rounded-2xl lg:shadow-sm`}>
       <div className="flex items-center gap-2 mb-2">
         <button
           onClick={() => navigate('/dashboard/creator/my-campaigns')}
