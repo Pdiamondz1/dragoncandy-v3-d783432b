@@ -1,6 +1,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
+import { useResolvedAvatarUrl } from '@/hooks/useSignedUrl';
 
 interface AssignedCreatorCardProps {
   creatorName: string;
@@ -18,14 +19,15 @@ export const AssignedCreatorCard: React.FC<AssignedCreatorCardProps> = ({
   creatorId,
 }) => {
   const navigate = useNavigate();
+  const resolvedAvatarUrl = useResolvedAvatarUrl(avatarUrl);
 
   return (
     <div className="bg-white border border-gray-200 rounded-2xl p-4 space-y-3">
       {/* Creator info row */}
       <div className="flex items-center gap-3">
-        {avatarUrl ? (
+        {resolvedAvatarUrl ? (
           <img
-            src={avatarUrl}
+            src={resolvedAvatarUrl}
             alt={creatorName}
             className="w-10 h-10 rounded-full object-cover ring-2 ring-teal-400 shrink-0"
           />
