@@ -129,7 +129,7 @@ export function CompletedPhaseView({ campaign, enrichedDetail, collaboration }: 
                   ?.map((f) => supabase.storage.from(f.bucket_name).getPublicUrl(f.file_path).data.publicUrl)
                   .filter(Boolean) as string[] ?? []
               }
-              originalCaption=""
+              originalCaption={campaign.title}
             />
           </DragonCandyOutstandProvider>
 

@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useOutstandApi, type Post } from '@outstand-so/ui';
 import { useOutstandConfig } from '@/integrations/outstand/Provider';
-import { isInPublishedFeed } from '@/pages/OutstandManager';
+import { isInPublishedFeed } from '@/lib/outstandUtils';
 
 export interface Comment {
   id: string;

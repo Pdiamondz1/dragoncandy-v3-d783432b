@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Send, CalendarDays, Edit3, Loader2 } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Send, CalendarDays, Edit3, Loader2, RefreshCw } from 'lucide-react';
 import { DragonDashRushButton } from './DragonDashRushButton';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -7,6 +7,8 @@ import { useAccounts } from '@outstand-so/ui';
 import { useOutstandConfig, DragonCandyOutstandProvider } from '@/integrations/outstand/Provider';
 import { useCrossPost } from '@/hooks/outstand/useCrossPost';
 import { DonnyCaptionRewriter } from './DonnyCaptionRewriter';
+import { MediaPreviewGrid, type MediaItem } from './MediaPreviewGrid';
+import { ScheduleConfirmation } from './ScheduleConfirmation';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -18,28 +20,12 @@ export interface SocialPostPromptProps {
   creatorName?: string;
   restaurantName?: string;
   mediaUrls: string[];
+  mediaItems?: MediaItem[];
   originalCaption: string;
   userRole: 'restaurant' | 'creator' | 'brand';
 }
 
-function getDefaultCaption(
-  userRole: string,
-  campaignTitle: string,
-  originalCaption: string,
-): string {
-  switch (userRole) {
-    case 'restaurant':
-      return originalCaption
-        ? `${originalCaption}\n\n#DragonDashed`
-        : `${campaignTitle} — see what our creators captured!\n\n#DragonDashed`;
-    case 'creator':
-      return originalCaption
-        ? `${originalCaption}\n\n#DragonDashed`
-        : `Loved creating content for ${campaignTitle}!\n\n#DragonDashed`;
-    default:
-      return originalCaption || campaignTitle;
-  }
-}
+type SchedulingState = 'composing' | 'scheduling' | 'confirmed';
 
 function formatSuggestedTime(iso: string): string {
   const d = new Date(iso);
@@ -54,6 +40,17 @@ function formatSuggestedTime(iso: string): string {
   return `in ${diffDays} days`;
 }
 
+function getGenericCaption(userRole: string, campaignTitle: string): string {
+  switch (userRole) {
+    case 'restaurant':
+      return `Check out what we've been cooking up!\n\n#DragonDashed`;
+    case 'creator':
+      return `Loved creating this content!\n\n#DragonDashed`;
+    default:
+      return `${campaignTitle}\n\n#DragonDashed`;
+  }
+}
+
 function SocialPostPromptInner({
   open,
   onOpenChange,
@@ -62,6 +59,7 @@ function SocialPostPromptInner({
   creatorName: _creatorName,
   restaurantName: _restaurantName,
   mediaUrls,
+  mediaItems: mediaItemsProp,
   originalCaption,
   userRole,
 }: SocialPostPromptProps) {
@@ -74,7 +72,14 @@ function SocialPostPromptInner({
   const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([]);
   const [isMobile, setIsMobile] = useState(false);
   const [suggestedTime, setSuggestedTime] = useState<string | null>(null);
-  const [loadingDraft, setLoadingDraft] = useState(false);
+  const [loadingCaption, setLoadingCaption] = useState(false);
+  const [captionError, setCaptionError] = useState(false);
+  const [refreshingCaption, setRefreshingCaption] = useState(false);
+  const [schedulingState, setSchedulingState] = useState<SchedulingState>('composing');
+  const [confirmedAt, setConfirmedAt] = useState<string | null>(null);
+  const [confirmedPlatforms, setConfirmedPlatforms] = useState<string[]>([]);
+
+  const resolvedItems: MediaItem[] = mediaItemsProp ?? mediaUrls.map((url) => ({ url }));
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768);
@@ -83,48 +88,97 @@ function SocialPostPromptInner({
     return () => window.removeEventListener('resize', check);
   }, []);
 
+  const generateCaption = useCallback(async () => {
+    if (!campaignId || !user?.id) return null;
+    try {
+      const { data, error } = await supabase.functions.invoke('social-caption', {
+        body: {
+          campaign_title: campaignTitle,
+          campaign_description: originalCaption,
+          content_type: 'video_reel',
+          party_role: userRole === 'restaurant' ? 'restaurant' : userRole,
+          platform: accounts[0]?.network ?? 'instagram',
+          user_id: user.id,
+        },
+      });
+      if (error) throw error;
+      const captionText = data?.caption ?? data?.text ?? '';
+      const hashtags = data?.hashtags ?? [];
+      const hashtagStr = hashtags.length ? `\n\n${hashtags.join(' ')}` : '';
+      return `${captionText}${hashtagStr}`;
+    } catch {
+      return null;
+    }
+  }, [campaignId, campaignTitle, originalCaption, userRole, user?.id, accounts]);
+
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      setSchedulingState('composing');
+      setConfirmedAt(null);
+      setConfirmedPlatforms([]);
+      return;
+    }
 
     setIsEditing(false);
     setSelectedAccountIds(accounts.map((a) => a.id));
+    setCaptionError(false);
 
     if (campaignId && user?.id) {
-      setLoadingDraft(true);
-      Promise.resolve(
-        supabase
-          .from('donny_scheduled_posts')
-          .select('caption, hashtags, scheduled_at, ai_reasoning')
-          .eq('campaign_id', campaignId)
-          .eq('user_id', user.id)
-          .eq('status', 'draft')
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle()
-      )
-        .then(({ data: draft }) => {
+      setLoadingCaption(true);
+      const loadDraft = async () => {
+        try {
+          const { data: draft } = await supabase
+            .from('donny_scheduled_posts')
+            .select('caption, hashtags, scheduled_at, ai_reasoning')
+            .eq('campaign_id', campaignId)
+            .eq('user_id', user.id)
+            .eq('status', 'draft')
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
           if (draft?.caption) {
-            const hashtagStr = draft.hashtags?.length ? `\n\n${draft.hashtags.join(' ')}` : '';
+            const hashtagStr = draft.hashtags?.length ? `\n\n${(draft.hashtags as string[]).join(' ')}` : '';
             setCaption(`${draft.caption}${hashtagStr}`);
           } else {
-            setCaption(getDefaultCaption(userRole, campaignTitle, originalCaption));
+            const aiCaption = await generateCaption();
+            if (aiCaption) {
+              setCaption(aiCaption);
+            } else {
+              setCaption(getGenericCaption(userRole, campaignTitle));
+              setCaptionError(true);
+            }
           }
           if (draft?.scheduled_at) {
             setSuggestedTime(draft.scheduled_at);
           } else {
             setSuggestedTime(null);
           }
-          setLoadingDraft(false);
-        })
-        .catch(() => {
-          setCaption(getDefaultCaption(userRole, campaignTitle, originalCaption));
-          setLoadingDraft(false);
-        });
+        } catch {
+          setCaption(getGenericCaption(userRole, campaignTitle));
+          setCaptionError(true);
+        } finally {
+          setLoadingCaption(false);
+        }
+      };
+      loadDraft();
     } else {
-      setCaption(getDefaultCaption(userRole, campaignTitle, originalCaption));
+      setCaption(getGenericCaption(userRole, campaignTitle));
       setSuggestedTime(null);
     }
-  }, [open, campaignId, user?.id, campaignTitle, originalCaption, userRole, accounts]);
+  }, [open, campaignId, user?.id, campaignTitle, originalCaption, userRole, accounts, generateCaption]);
+
+  const handleRefreshCaption = async () => {
+    setRefreshingCaption(true);
+    setCaptionError(false);
+    const aiCaption = await generateCaption();
+    if (aiCaption) {
+      setCaption(aiCaption);
+    } else {
+      setCaptionError(true);
+    }
+    setRefreshingCaption(false);
+  };
 
   const toggleAccount = (id: string) => {
     setSelectedAccountIds((prev) =>
@@ -132,12 +186,72 @@ function SocialPostPromptInner({
     );
   };
 
+  const syncScheduledPost = async (scheduleTime: string) => {
+    if (!user?.id || !campaignId) return;
+    const platforms = accounts
+      .filter((a) => selectedAccountIds.includes(a.id))
+      .map((a) => a.network ?? 'unknown');
+
+    const existing = await supabase
+      .from('donny_scheduled_posts')
+      .select('id')
+      .eq('campaign_id', campaignId)
+      .eq('user_id', user.id)
+      .eq('status', 'draft')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (existing.data?.id) {
+      await supabase
+        .from('donny_scheduled_posts')
+        .update({
+          status: 'scheduled' as string,
+          scheduled_at: scheduleTime,
+          caption,
+          media_urls: mediaUrls,
+          platform: platforms[0] ?? 'instagram',
+        })
+        .eq('id', existing.data.id);
+    } else {
+      await supabase
+        .from('donny_scheduled_posts')
+        .insert({
+          user_id: user.id,
+          campaign_id: campaignId,
+          platform: platforms[0] ?? 'instagram',
+          content_type: 'video_reel',
+          caption,
+          media_urls: mediaUrls,
+          scheduled_at: scheduleTime,
+          status: 'scheduled' as string,
+          ai_suggested_time: !!suggestedTime,
+          ai_reasoning: suggestedTime ? 'Donny picked the optimal posting time' : null,
+        });
+    }
+  };
+
   const handleScheduleForBestTime = () => {
     if (selectedAccountIds.length === 0) return;
     const scheduleTime = suggestedTime || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    const platforms = accounts
+      .filter((a) => selectedAccountIds.includes(a.id))
+      .map((a) => a.network ?? 'unknown');
+
+    setSchedulingState('scheduling');
     crossPost.mutate(
       { caption, mediaUrls, accountIds: selectedAccountIds, scheduledAt: scheduleTime },
-      { onSuccess: () => onOpenChange(false) },
+      {
+        onSuccess: async () => {
+          await syncScheduledPost(scheduleTime);
+          setConfirmedAt(scheduleTime);
+          setConfirmedPlatforms(platforms);
+          setSchedulingState('confirmed');
+        },
+        onError: () => {
+          setSchedulingState('composing');
+        },
+      },
     );
   };
 
@@ -155,7 +269,17 @@ function SocialPostPromptInner({
     .map((a) => (a.network ?? '').charAt(0).toUpperCase() + (a.network ?? '').slice(1))
     .filter((v, i, arr) => arr.indexOf(v) === i);
 
-  const content = (
+  const confirmedContent = schedulingState === 'confirmed' && confirmedAt ? (
+    <ScheduleConfirmation
+      scheduledAt={confirmedAt}
+      platformNames={confirmedPlatforms}
+      campaignTitle={campaignTitle}
+      fileCount={mediaUrls.length}
+      onDone={() => onOpenChange(false)}
+    />
+  ) : null;
+
+  const composingContent = (
     <div className="space-y-4">
       {connectedCount === 0 ? (
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
@@ -166,13 +290,7 @@ function SocialPostPromptInner({
         </div>
       ) : (
         <>
-          {mediaUrls.length > 0 && (
-            <div className="flex gap-2 overflow-x-auto pb-1">
-              {mediaUrls.slice(0, 3).map((url, i) => (
-                <img key={i} src={url} alt="" className="h-20 w-20 rounded-xl object-cover flex-shrink-0" />
-              ))}
-            </div>
-          )}
+          <MediaPreviewGrid items={resolvedItems} />
 
           <div className="bg-teal-50/50 rounded-xl p-3">
             <div className="flex items-center justify-between mb-2">
@@ -208,21 +326,34 @@ function SocialPostPromptInner({
 
           <div className="bg-teal-50/50 rounded-xl p-3">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-[10px] font-semibold uppercase text-gray-400 tracking-wide">
-                Caption Preview
+              <p className="text-[10px] font-semibold uppercase text-dc-teal tracking-wide">
+                AI Caption
               </p>
-              <button
-                type="button"
-                onClick={() => setIsEditing(!isEditing)}
-                className="text-[10px] font-semibold text-dc-pink-accent hover:underline"
-              >
-                {isEditing ? 'Done' : 'Edit'}
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={handleRefreshCaption}
+                  disabled={refreshingCaption || loadingCaption}
+                  className="flex items-center gap-1 text-[10px] font-semibold text-dc-teal hover:underline disabled:opacity-50"
+                >
+                  <RefreshCw className={`h-3 w-3 ${refreshingCaption ? 'animate-spin' : ''}`} />
+                  Refresh
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsEditing(!isEditing)}
+                  className="text-[10px] font-semibold text-dc-pink-accent hover:underline"
+                >
+                  {isEditing ? 'Done' : 'Edit'}
+                </button>
+              </div>
             </div>
-            {loadingDraft ? (
+            {loadingCaption || refreshingCaption ? (
               <div className="flex items-center gap-2 py-4 justify-center">
                 <Loader2 className="h-4 w-4 animate-spin text-dc-teal" />
-                <p className="text-xs text-gray-400">Loading AI caption...</p>
+                <p className="text-xs text-gray-400">
+                  {refreshingCaption ? 'Refreshing caption...' : 'Donny is writing your caption...'}
+                </p>
               </div>
             ) : isEditing ? (
               <textarea
@@ -232,7 +363,14 @@ function SocialPostPromptInner({
                 autoFocus
               />
             ) : (
-              <p className="text-sm text-gray-700 whitespace-pre-wrap">{caption}</p>
+              <>
+                <p className="text-sm text-gray-700 whitespace-pre-wrap">{caption}</p>
+                {captionError && (
+                  <p className="text-[10px] text-dc-text-muted mt-2">
+                    Caption generation unavailable — edit to customize.
+                  </p>
+                )}
+              </>
             )}
           </div>
 
@@ -262,12 +400,12 @@ function SocialPostPromptInner({
             <button
               type="button"
               onClick={handleScheduleForBestTime}
-              disabled={crossPost.isPending || selectedAccountIds.length === 0}
+              disabled={schedulingState === 'scheduling' || selectedAccountIds.length === 0}
               className="w-full flex items-center justify-center gap-2 bg-dc-teal text-white text-sm font-bold py-3.5 rounded-full hover:bg-teal-500 transition-colors disabled:opacity-50"
             >
               <CalendarDays className="h-4 w-4" />
-              {crossPost.isPending ? 'Scheduling...' : 'Schedule for Best Time'}
-              {suggestedTime && !crossPost.isPending && (
+              {schedulingState === 'scheduling' ? 'Scheduling...' : 'Schedule for Best Time'}
+              {suggestedTime && schedulingState !== 'scheduling' && (
                 <span className="text-xs font-normal opacity-80">
                   ({formatSuggestedTime(suggestedTime)})
                 </span>
@@ -299,13 +437,15 @@ function SocialPostPromptInner({
     </div>
   );
 
+  const content = confirmedContent ?? composingContent;
+
   if (isMobile) {
     return (
       <Sheet open={open} onOpenChange={onOpenChange}>
         <SheetContent side="bottom" className="rounded-t-2xl pb-8">
           <SheetHeader>
             <SheetTitle className="text-sm font-bold text-gray-900">
-              Ready to Share
+              {schedulingState === 'confirmed' ? 'Post Scheduled' : 'Ready to Share'}
             </SheetTitle>
           </SheetHeader>
           <div className="mt-4">{content}</div>
@@ -319,7 +459,7 @@ function SocialPostPromptInner({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-sm font-bold text-gray-900">
-            Ready to Share
+            {schedulingState === 'confirmed' ? 'Post Scheduled' : 'Ready to Share'}
           </DialogTitle>
         </DialogHeader>
         {content}

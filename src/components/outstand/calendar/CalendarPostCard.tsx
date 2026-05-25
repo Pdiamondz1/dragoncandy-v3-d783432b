@@ -1,7 +1,7 @@
 import React from 'react';
 import type { Post } from '@outstand-so/ui';
 import { getCaption, getUniqueNetworks } from '../postUtils';
-import { isScheduled } from '@/pages/OutstandManager';
+import { isScheduled } from '@/lib/outstandUtils';
 
 const NETWORK_COLORS: Record<string, { bg: string; text: string; label: string }> = {
   instagram: { bg: 'bg-[#E1306C]', text: 'text-white', label: 'IG' },

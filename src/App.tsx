@@ -90,6 +90,7 @@ const HelpBriefPage = lazy(() => import("./pages/help/promotions/HelpBriefPage")
 const HelpCenter = lazy(() => import("./pages/help/HelpCenter"));
 const HelpArticlePage = lazy(() => import("./pages/help/HelpArticlePage"));
 const PricingPage = lazy(() => import("./pages/PricingPage"));
+const ContentCalendar = lazy(() => import("./pages/ContentCalendar"));
 const HelpBriefDrawer = lazy(() => import("./features/donny/HelpBriefDrawer").then(m => ({ default: m.HelpBriefDrawer })));
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -215,6 +216,9 @@ function AnimatedRoutes() {
           {/* Social Media (Outstand) Routes — brand */}
           <Route path="/dashboard/brand/social" element={<ProtectedRoute><BrandRoute><OutstandManager /></BrandRoute></ProtectedRoute>} />
           <Route path="/dashboard/brand/social/oauth-callback" element={<ProtectedRoute><BrandRoute><OutstandOAuthCallbackPage /></BrandRoute></ProtectedRoute>} />
+
+          {/* Content Calendar — all roles */}
+          <Route path="/calendar" element={<ProtectedRoute><ContentCalendar /></ProtectedRoute>} />
 
           {/* Business Org Routes */}
           <Route path="/dashboard/business/locations" element={<ProtectedRoute><BusinessRoute><OrgUnitsPage /></BusinessRoute></ProtectedRoute>} />

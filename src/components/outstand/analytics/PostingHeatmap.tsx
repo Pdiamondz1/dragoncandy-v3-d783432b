@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import type { Post } from '@outstand-so/ui';
-import { isInPublishedFeed } from '@/pages/OutstandManager';
+import { isInPublishedFeed } from '@/lib/outstandUtils';
 
 const TIME_SLOTS = ['9a', '12p', '3p', '6p'];
 const DAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];

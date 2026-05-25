@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import type { Post } from '@outstand-so/ui';
 import { getCaption, getUniqueNetworks } from '../postUtils';
-import { isInPublishedFeed } from '@/pages/OutstandManager';
+import { isInPublishedFeed } from '@/lib/outstandUtils';
 
 const NETWORK_COLORS: Record<string, { bg: string; label: string }> = {
   instagram: { bg: 'bg-[#E1306C]', label: 'IG' },

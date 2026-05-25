@@ -19,6 +19,7 @@ import { FirstRunDashboard } from '@/components/first-run/FirstRunDashboard';
 import { PendingActionBanners } from '@/components/dashboard/PendingActionBanners';
 import { useLocationReadiness } from '@/hooks/useLocationReadiness';
 import { LocationBadge } from '@/components/org/LocationBadge';
+import { UpcomingPostsWidget } from '@/components/outstand/UpcomingPostsWidget';
 import { LocationEmptyState } from '@/components/org/LocationEmptyState';
 
 
@@ -191,6 +192,8 @@ const BusinessDashboard = () => {
                 )}
               </div>
             )}
+
+            <UpcomingPostsWidget />
 
           </div>
         </div>

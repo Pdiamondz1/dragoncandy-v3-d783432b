@@ -20,6 +20,7 @@ import { useOrgBoostStats } from '@/hooks/useDragonShare';
 import { useOrg } from '@/hooks/useOrgData';
 import { BrandFreeTrioHero } from '@/components/dashboard/BrandFreeTrioHero';
 import { useDashboardLoadTime } from '@/hooks/useDashboardLoadTime';
+import { UpcomingPostsWidget } from '@/components/outstand/UpcomingPostsWidget';
 
 function formatSpend(amount: number): string {
   if (amount === 0) return '$0';
@@ -233,6 +234,8 @@ const BrandDashboard = () => {
                 )}
               </div>
             </div>
+
+            <UpcomingPostsWidget />
 
           </div>
         </div>

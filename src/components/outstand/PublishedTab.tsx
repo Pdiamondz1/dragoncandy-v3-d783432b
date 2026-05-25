@@ -16,7 +16,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { formatPostDate, getCaption, getMedia, MediaPreviewStrip } from './postUtils';
-import { isInPublishedFeed, postOutcome } from '@/pages/OutstandManager';
+import { isInPublishedFeed, postOutcome } from '@/lib/outstandUtils';
 import { toast } from 'sonner';
 
 interface PublishedTabProps {

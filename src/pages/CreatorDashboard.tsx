@@ -21,6 +21,7 @@ import { QuickActionButtons, type QuickAction } from '@/components/dashboard/Qui
 import { DragonShareStatTile } from '@/components/dragonshare/DragonShareStatTile';
 import { SocialMediaManagerTile } from '@/components/dashboard/SocialMediaManagerTile';
 import { useCreatorDragonShareEarnings } from '@/hooks/useDragonShare';
+import { UpcomingPostsWidget } from '@/components/outstand/UpcomingPostsWidget';
 
 const CreatorDashboard = () => {
   const { profile } = useAuth();
@@ -256,6 +257,8 @@ const CreatorDashboard = () => {
                 <Calendar />
               </div>
             </div>
+
+            <UpcomingPostsWidget />
 
           </div>
         </div>

@@ -213,7 +213,16 @@ export const DeliverablesArchive: React.FC<DeliverablesArchiveProps> = ({
                   mediaUrls={files
                     .filter(f => f.mime_type?.startsWith('image/') || f.mime_type?.startsWith('video/'))
                     .map(f => supabase.storage.from(f.bucket_name).getPublicUrl(f.file_path).data.publicUrl)}
-                  originalCaption={campaignDescription ?? ''}
+                  mediaItems={files
+                    .filter(f => f.mime_type?.startsWith('image/') || f.mime_type?.startsWith('video/'))
+                    .map(f => ({
+                      url: supabase.storage.from(f.bucket_name).getPublicUrl(f.file_path).data.publicUrl,
+                      fileId: f.id,
+                      mimeType: f.mime_type ?? undefined,
+                      filename: f.original_filename ?? undefined,
+                      storedThumbnailUrl: getVideoThumbnailUrl(f.bucket_name, f.metadata as Record<string, unknown>) ?? undefined,
+                    }))}
+                  originalCaption={campaignTitle ?? ''}
                   userRole={userRole === 'business' ? 'restaurant' : userRole ?? 'creator'}
                 />
               )}

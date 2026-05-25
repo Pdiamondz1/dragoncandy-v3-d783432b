@@ -5,7 +5,7 @@ import { Send, CalendarDays, BarChart3, MessageCircle, TrendingUp, Link as LinkI
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DragonCandyOutstandProvider, useOutstandConfig } from '@/integrations/outstand/Provider';
-import { useAccounts, usePosts, type Post } from '@outstand-so/ui';
+import { useAccounts, usePosts } from '@outstand-so/ui';
 import { ComposeTab } from '@/components/outstand/ComposeTab';
 import { CalendarTab } from '@/components/outstand/CalendarTab';
 import { PublishedTab } from '@/components/outstand/PublishedTab';
@@ -27,37 +27,8 @@ import { type SponsorshipEvent } from '@/components/outstand/SponsorshipMarker';
 const VALID_TABS = ['compose', 'drafts', 'calendar', 'published', 'engagement', 'analytics', 'sponsorships', 'accounts'] as const;
 type TabValue = (typeof VALID_TABS)[number];
 
-// A post is "scheduled" if it has a scheduledAt and no account has finished
-// publishing yet. Once any account reports status='published' or the
-// post-level publishedAt is stamped, it moves to the published feed.
-export function isScheduled(p: Post): boolean {
-  if (!p.scheduledAt) return false;
-  if (p.publishedAt) return false;
-  const sas = p.socialAccounts ?? [];
-  return !sas.some((sa) => sa.status === 'published');
-}
-
-// "Published-feed" is anything not currently scheduled — includes successful,
-// in-flight (pending), and failed posts so the user can see outcomes.
-export function isInPublishedFeed(p: Post): boolean {
-  if (isScheduled(p)) return false;
-  const sas = p.socialAccounts ?? [];
-  return sas.length > 0 || !!p.publishedAt;
-}
-
-// Convenience flags used by the Published feed for badges + analytics gating.
-export function postOutcome(p: Post): 'published' | 'pending' | 'failed' | 'mixed' {
-  if (p.publishedAt) return 'published';
-  const sas = p.socialAccounts ?? [];
-  const allPublished = sas.length > 0 && sas.every((sa) => sa.status === 'published');
-  if (allPublished) return 'published';
-  const allFailed = sas.length > 0 && sas.every((sa) => sa.status === 'failed');
-  if (allFailed) return 'failed';
-  if (sas.some((sa) => sa.status === 'failed') && sas.some((sa) => sa.status === 'published')) {
-    return 'mixed';
-  }
-  return 'pending';
-}
+import { isScheduled } from '@/lib/outstandUtils';
+export { isScheduled, isInPublishedFeed, postOutcome } from '@/lib/outstandUtils';
 
 // Match the SDK's internal default (`useAccounts({limit: 100})` inside
 // CreatePostForm; `usePosts({limit: 50})` inside its internal createPost

@@ -8,7 +8,7 @@ import { DCSkeleton } from '@/components/ui/dc-skeleton';
 import { WeekGrid } from './calendar/WeekGrid';
 import { MonthGrid } from './calendar/MonthGrid';
 import { DayStrip } from './calendar/DayStrip';
-import { isScheduled } from '@/pages/OutstandManager';
+import { isScheduled } from '@/lib/outstandUtils';
 import { toast } from 'sonner';
 import { type SponsorshipEvent } from '@/components/outstand/SponsorshipMarker';
 import { DonnyWeeklyPlanner } from './DonnyWeeklyPlanner';
@@ -38,16 +38,18 @@ interface CalendarTabProps {
   onSwitchTab?: (tab: string) => void;
   campaignDeadlines?: CampaignDeadline[];
   sponsorshipEvents?: SponsorshipEvent[];
+  initialDate?: Date;
+  onPostClick?: (post: Post) => void;
 }
 
-export const CalendarTab: React.FC<CalendarTabProps> = ({ posts, isLoading, onChanged, onSwitchTab, campaignDeadlines = [], sponsorshipEvents = [] }) => {
+export const CalendarTab: React.FC<CalendarTabProps> = ({ posts, isLoading, onChanged, onSwitchTab, campaignDeadlines = [], sponsorshipEvents = [], initialDate, onPostClick }) => {
   const { apiKey, baseUrl } = useOutstandConfig();
   const api = useOutstandApi({ apiKey, baseUrl });
   const qc = useQueryClient();
 
   const [view, setView] = useState<CalendarView>('week');
-  const [currentDate, setCurrentDate] = useState(() => new Date());
-  const [selectedDay, setSelectedDay] = useState(() => new Date());
+  const [currentDate, setCurrentDate] = useState(() => initialDate ?? new Date());
+  const [selectedDay, setSelectedDay] = useState(() => initialDate ?? new Date());
   const [platformFilter, setPlatformFilter] = useState<string>('all');
 
   const filteredPosts = useMemo(() => {
@@ -110,10 +112,14 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ posts, isLoading, onCh
   }, [api, qc, onChanged]);
 
   const handlePostClick = useCallback((post: Post) => {
+    if (onPostClick) {
+      onPostClick(post);
+      return;
+    }
     if (isScheduled(post)) {
       toast.info(`Scheduled for ${new Date(post.scheduledAt!).toLocaleString()}. Drag to reschedule (desktop) or click to edit.`);
     }
-  }, []);
+  }, [onPostClick]);
 
   const headerLabel = view === 'week'
     ? (() => {

@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import type { Post } from '@outstand-so/ui';
 import { isSameDay, postsForDay } from './calendarUtils';
-import { isScheduled } from '@/pages/OutstandManager';
+import { isScheduled } from '@/lib/outstandUtils';
 import type { CampaignDeadline } from '@/components/outstand/CalendarTab';
 import { SponsorshipMarkerDot, type SponsorshipEvent } from '@/components/outstand/SponsorshipMarker';
 
