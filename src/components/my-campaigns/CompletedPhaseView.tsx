@@ -58,10 +58,10 @@ export function CompletedPhaseView({ campaign, enrichedDetail, collaboration }: 
       </div>
 
       {/* Two-column on desktop, tab-switched on mobile */}
-      <div className="lg:grid lg:grid-cols-2 lg:gap-8 lg:pt-6 lg:pb-8 lg:items-start">
+      <div className="lg:grid lg:grid-cols-[minmax(340px,_420px)_1fr] lg:gap-8 lg:pt-6 lg:pb-8 lg:items-start">
         {/* Left: Summary */}
         <div className={`px-4 pt-4 pb-24 space-y-3 lg:px-0 lg:pb-0 lg:sticky lg:top-24 ${activeTab !== 'summary' ? 'hidden lg:block' : ''}`}>
-          <div className="lg:bg-white lg:rounded-2xl lg:shadow-sm lg:border lg:border-gray-100 lg:p-6 space-y-5">
+          <div className="lg:bg-white lg:rounded-2xl lg:shadow lg:border lg:border-gray-200 lg:p-6 space-y-5">
             {/* Delivered Items */}
             {campaignDeliverables && campaignDeliverables.length > 0 && (
               <>
@@ -147,7 +147,7 @@ export function CompletedPhaseView({ campaign, enrichedDetail, collaboration }: 
         {/* Right: Campaign brief */}
         <div className={`px-4 pt-4 pb-24 lg:px-0 lg:pb-0 ${activeTab !== 'brief' ? 'hidden lg:block' : ''}`}>
           <div className="text-sm font-bold text-gray-900 mb-3 hidden lg:block">CAMPAIGN BRIEF</div>
-          <div className="lg:shadow-sm lg:rounded-2xl lg:border lg:border-gray-100">
+          <div className="lg:shadow lg:rounded-2xl lg:border lg:border-gray-200">
             <CreatorCampaignDetails
               campaign={campaign}
               enrichedDetail={enrichedDetail}

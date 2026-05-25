@@ -35,10 +35,10 @@ export function AppliedPhaseView({ campaign, enrichedDetail, application }: Appl
   return (
     <div className="px-4 pb-24 lg:pb-8">
       {/* Two-column on desktop, stacked on mobile */}
-      <div className="space-y-3 lg:grid lg:grid-cols-2 lg:gap-8 lg:space-y-0 lg:pt-6 lg:items-start">
+      <div className="space-y-3 lg:grid lg:grid-cols-[minmax(340px,_420px)_1fr] lg:gap-8 lg:space-y-0 lg:pt-6 lg:items-start">
         {/* Left: Application status + negotiation */}
         <div className="space-y-3 lg:sticky lg:top-24">
-          <div className="lg:bg-white lg:rounded-2xl lg:shadow-sm lg:border lg:border-gray-100 lg:p-6 space-y-4">
+          <div className="lg:bg-white lg:rounded-2xl lg:shadow lg:border lg:border-gray-200 lg:p-6 space-y-4">
             {/* Application Status Card */}
             <div className={`bg-white rounded-2xl p-4 border-2 lg:bg-transparent lg:rounded-none lg:p-0 lg:border-0 ${isCounterOffer ? 'border-orange-400' : 'border-yellow-400'}`}>
               <div className="text-sm font-bold text-gray-900 mb-2">YOUR APPLICATION</div>
@@ -146,7 +146,7 @@ export function AppliedPhaseView({ campaign, enrichedDetail, application }: Appl
         {/* Right: Campaign brief */}
         <div>
           <div className="text-sm font-bold text-gray-900 mb-3 hidden lg:block">CAMPAIGN BRIEF</div>
-          <div className="bg-white rounded-2xl p-4 lg:shadow-sm lg:border lg:border-gray-100">
+          <div className="bg-white rounded-2xl p-4 lg:shadow lg:border lg:border-gray-200">
             <div className="text-sm font-bold text-gray-900 mb-3 lg:hidden">CAMPAIGN BRIEF</div>
             <CreatorCampaignDetails
               campaign={campaign}
