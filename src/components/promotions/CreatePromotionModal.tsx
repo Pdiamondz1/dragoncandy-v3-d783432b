@@ -31,6 +31,7 @@ import {
 } from '@/components/ui/select';
 import { usePromotions, CreatePromotionData } from '@/hooks/usePromotions';
 import { Loader2 } from 'lucide-react';
+import { sanitizeNumericInput } from '@/lib/inputUtils';
 
 const formSchema = z.object({
   title: z.string().min(3, 'Title must be at least 3 characters'),
@@ -158,10 +159,16 @@ export const CreatePromotionModal: React.FC<CreatePromotionModalProps> = ({
                   <FormItem>
                     <FormLabel>Discount Value</FormLabel>
                     <FormControl>
-                      <Input 
-                        type="number" 
-                        {...field} 
-                        onChange={e => field.onChange(Number(e.target.value))}
+                      <Input
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        {...field}
+                        value={field.value || ''}
+                        onChange={e => {
+                          const clean = sanitizeNumericInput(e.target.value);
+                          field.onChange(Number(clean) || 0);
+                        }}
                       />
                     </FormControl>
                     <FormMessage />
@@ -232,11 +239,17 @@ export const CreatePromotionModal: React.FC<CreatePromotionModalProps> = ({
                   <FormItem>
                     <FormLabel>Max Redemptions (optional)</FormLabel>
                     <FormControl>
-                      <Input 
-                        type="number" 
+                      <Input
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
                         placeholder="Unlimited"
-                        {...field} 
-                        onChange={e => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
+                        {...field}
+                        value={field.value || ''}
+                        onChange={e => {
+                          const clean = sanitizeNumericInput(e.target.value);
+                          field.onChange(clean ? Number(clean) : undefined);
+                        }}
                       />
                     </FormControl>
                     <FormDescription>Leave empty for unlimited</FormDescription>

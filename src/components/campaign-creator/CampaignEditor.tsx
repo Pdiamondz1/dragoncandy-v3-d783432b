@@ -83,12 +83,15 @@ export function CampaignEditor({
           <div className="relative max-w-xs">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-dc-teal font-bold">$</span>
             <input
-              type="number"
-              value={campaign.fixed_price}
-              onChange={(e) => updateField('fixed_price', Number(e.target.value) || 0)}
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              value={campaign.fixed_price || ''}
+              onChange={(e) => {
+                const clean = sanitizeNumericInput(e.target.value);
+                updateField('fixed_price', Number(clean) || 0);
+              }}
               className="w-full pl-8 pr-3 py-2 border border-gray-200 rounded-xl text-lg font-semibold outline-none focus:border-dc-teal focus:ring-1 focus:ring-dc-teal"
-              min={50}
-              step={25}
             />
           </div>
         </div>

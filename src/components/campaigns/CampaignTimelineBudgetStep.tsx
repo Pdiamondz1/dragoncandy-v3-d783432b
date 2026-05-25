@@ -11,6 +11,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { sanitizeNumericInput } from '@/lib/inputUtils';
 import type { DeliveryTier } from '@/types/campaignMedia';
 
 const timelineBudgetSchema = z.object({
@@ -103,12 +104,15 @@ export const CampaignTimelineBudgetStep: React.FC<CampaignTimelineBudgetStepProp
                 <div className="relative max-w-xs">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-dc-teal font-bold text-lg">$</span>
                   <input
-                    type="number"
-                    value={fixedPrice}
-                    onChange={(e) => setFixedPrice(Number(e.target.value) || 0)}
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    value={fixedPrice || ''}
+                    onChange={(e) => {
+                      const clean = sanitizeNumericInput(e.target.value);
+                      setFixedPrice(Number(clean) || 0);
+                    }}
                     className="w-full pl-8 pr-3 py-3 border border-gray-200 rounded-xl text-lg font-semibold text-gray-800 outline-none focus:border-dc-teal focus:ring-1 focus:ring-dc-teal"
-                    min={50}
-                    step={25}
                   />
                 </div>
                 {fixedPrice < 50 && fixedPrice > 0 && (

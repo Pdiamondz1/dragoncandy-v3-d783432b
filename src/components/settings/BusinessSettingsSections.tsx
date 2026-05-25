@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/select';
 import { SettingsSection } from './SettingsSection';
 import { StripeConnectSetup } from './StripeConnectSetup';
+import { sanitizeNumericInput } from '@/lib/inputUtils';
 import { SocialMediaLinks } from '@/components/business-profile/SocialMediaLinks';
 import { ConnectedAccountsList } from '@/components/outstand/ConnectedAccountsList';
 import { FileUploadSection } from '@/components/business-profile/FileUploadSection';
@@ -184,12 +185,13 @@ export function BusinessSettingsSections({
             <Label htmlFor="sponsorshipBudget">Sponsorship Budget ($)</Label>
             <Input
               id="sponsorshipBudget"
-              type="number"
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
               value={formData.sponsorshipBudget ?? ''}
-              onChange={(e) => onInputChange('sponsorshipBudget', e.target.value)}
+              onChange={(e) => onInputChange('sponsorshipBudget', sanitizeNumericInput(e.target.value))}
               onBlur={onFieldBlur}
               placeholder="0"
-              min="0"
             />
           </div>
         </SettingsSection>
@@ -376,12 +378,13 @@ export function BusinessSettingsSections({
           <Label htmlFor="sponsorshipBudget">Sponsorship Budget ($)</Label>
           <Input
             id="sponsorshipBudget"
-            type="number"
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
             value={formData.sponsorshipBudget ?? ''}
-            onChange={(e) => onInputChange('sponsorshipBudget', e.target.value)}
+            onChange={(e) => onInputChange('sponsorshipBudget', sanitizeNumericInput(e.target.value))}
             onBlur={onFieldBlur}
             placeholder="0"
-            min="0"
           />
         </div>
       </SettingsSection>

@@ -6,6 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useSubmitSponsorshipProposal } from '@/hooks/useSubmitSponsorshipProposal';
 import { Loader2, DollarSign } from 'lucide-react';
+import { sanitizeNumericInput } from '@/lib/inputUtils';
 
 interface SponsorshipProposalModalProps {
   open: boolean;
@@ -67,12 +68,12 @@ export const SponsorshipProposalModal = ({
               <DollarSign className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" aria-hidden="true" />
               <Input
                 id="amount"
-                type="number"
-                min="1"
-                step="0.01"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 placeholder="5000"
                 value={amount}
-                onChange={(e) => setAmount(e.target.value)}
+                onChange={(e) => setAmount(sanitizeNumericInput(e.target.value))}
                 className="pl-9"
                 required
               />

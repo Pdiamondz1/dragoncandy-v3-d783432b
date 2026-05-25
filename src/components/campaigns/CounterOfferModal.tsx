@@ -14,6 +14,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { DollarSign, Calendar, MessageSquare } from 'lucide-react';
 import { useCreateCounterOffer } from '@/hooks/useCounterOffers';
+import { sanitizeNumericInput } from '@/lib/inputUtils';
 
 interface CounterOfferModalProps {
   open: boolean;
@@ -77,11 +78,12 @@ export const CounterOfferModal: React.FC<CounterOfferModalProps> = ({
             <Input
               id="rate"
               name="rate"
-              type="number"
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
               placeholder={currentRate ? `Current: $${currentRate}` : 'Enter proposed rate'}
               value={proposedRate}
-              onChange={(e) => setProposedRate(e.target.value)}
-              min={50}
+              onChange={(e) => setProposedRate(sanitizeNumericInput(e.target.value))}
               required
             />
             {proposedRate && parseFloat(proposedRate) < 50 && parseFloat(proposedRate) > 0 && (

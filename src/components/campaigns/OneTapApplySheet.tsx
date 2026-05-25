@@ -8,6 +8,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from '@/hooks/use-toast';
+import { sanitizeNumericInput } from '@/lib/inputUtils';
 import type { Campaign } from '@/hooks/useCampaignQueries';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
@@ -352,13 +353,13 @@ export function OneTapApplySheet({
                       <div className="relative">
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-dc-teal font-bold text-sm">$</span>
                         <input
-                          type="number"
+                          type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
                           value={counterRate}
-                          onChange={(e) => setCounterRate(e.target.value)}
+                          onChange={(e) => setCounterRate(sanitizeNumericInput(e.target.value))}
                           className="w-full pl-7 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-800 outline-none focus:border-dc-teal focus:ring-1 focus:ring-dc-teal"
                           placeholder="Enter your offer"
-                          min={50}
-                          step={1}
                         />
                       </div>
                       <p className="text-[11px] text-gray-500 mt-1">Minimum offer: $50</p>

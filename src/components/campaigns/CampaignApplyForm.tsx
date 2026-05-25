@@ -5,6 +5,7 @@ import { Loader2 } from 'lucide-react';
 import { PublicCampaign } from '@/hooks/usePublicCampaigns';
 import { getSignedProfileUrl } from '@/hooks/useSignedUrl';
 import { useCreateApplication } from '@/hooks/useCreateApplication';
+import { sanitizeNumericInput } from '@/lib/inputUtils';
 import type { DeliveryTier } from '@/types/campaignMedia';
 import { TIER_LIMITS } from '@/types/campaignMedia';
 import { useAuth } from '@/hooks/useAuth';
@@ -184,13 +185,13 @@ export const CampaignApplyForm: React.FC<CampaignApplyFormProps> = ({
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-dc-teal font-bold text-sm">$</span>
               <input
-                type="number"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 value={proposedRate}
-                onChange={(e) => setProposedRate(e.target.value)}
+                onChange={(e) => setProposedRate(sanitizeNumericInput(e.target.value))}
                 className="w-full pl-7 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-800 outline-none focus:border-dc-teal focus:ring-1 focus:ring-dc-teal"
                 placeholder="Enter your offer"
-                min={50}
-                step={1}
                 required
               />
             </div>

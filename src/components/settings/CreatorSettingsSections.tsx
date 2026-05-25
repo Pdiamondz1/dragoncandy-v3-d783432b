@@ -12,6 +12,7 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { SettingsSection } from './SettingsSection';
 import { StripeConnectSetup } from './StripeConnectSetup';
+import { sanitizeNumericInput } from '@/lib/inputUtils';
 import { SkillsSelection } from '@/components/creator-profile/SkillsSelection';
 import { CreatorSocialMediaLinks } from '@/components/creator-profile/CreatorSocialMediaLinks';
 import { ConnectedAccountsList } from '@/components/outstand/ConnectedAccountsList';
@@ -150,24 +151,26 @@ export function CreatorSettingsSections({
             <Label htmlFor="base_rate_per_hour">Hourly Rate ($)</Label>
             <Input
               id="base_rate_per_hour"
-              type="number"
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
               value={formData.base_rate_per_hour}
-              onChange={(e) => onInputChange('base_rate_per_hour', e.target.value)}
+              onChange={(e) => onInputChange('base_rate_per_hour', sanitizeNumericInput(e.target.value))}
               onBlur={onFieldBlur}
               placeholder="0"
-              min="0"
             />
           </div>
           <div>
             <Label htmlFor="min_project_budget">Min Budget ($)</Label>
             <Input
               id="min_project_budget"
-              type="number"
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
               value={formData.min_project_budget}
-              onChange={(e) => onInputChange('min_project_budget', e.target.value)}
+              onChange={(e) => onInputChange('min_project_budget', sanitizeNumericInput(e.target.value))}
               onBlur={onFieldBlur}
               placeholder="0"
-              min="0"
             />
           </div>
         </div>

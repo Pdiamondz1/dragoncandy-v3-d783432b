@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { DollarSign, Clock, MessageSquare, Calendar } from 'lucide-react';
 import { useCreateApplication } from '@/hooks/useCreateApplication';
+import { sanitizeNumericInput } from '@/lib/inputUtils';
 import { Campaign } from '@/hooks/useCampaignQueries';
 
 interface ApplicationFormProps {
@@ -177,12 +178,15 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({
                 </Label>
                 <Input
                   id="proposed-rate"
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   placeholder="Enter your proposed rate in USD"
                   value={proposedRate || ''}
-                  onChange={(e) => setProposedRate(e.target.value ? Number(e.target.value) : undefined)}
-                  min="0"
-                  step="0.01"
+                  onChange={(e) => {
+                    const clean = sanitizeNumericInput(e.target.value);
+                    setProposedRate(clean ? Number(clean) : undefined);
+                  }}
                   required
                 />
               </div>

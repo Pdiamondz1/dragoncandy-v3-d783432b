@@ -31,6 +31,7 @@ import {
 } from '@/components/ui/select';
 import { Promotion } from '@/hooks/usePromotions';
 import { Loader2 } from 'lucide-react';
+import { sanitizeNumericInput } from '@/lib/inputUtils';
 
 const formSchema = z.object({
   title: z.string().min(3, 'Title must be at least 3 characters'),
@@ -173,10 +174,16 @@ export const EditPromotionModal: React.FC<EditPromotionModalProps> = ({
                   <FormItem>
                     <FormLabel>Discount Value</FormLabel>
                     <FormControl>
-                      <Input 
-                        type="number" 
-                        {...field} 
-                        onChange={e => field.onChange(Number(e.target.value))}
+                      <Input
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        {...field}
+                        value={field.value || ''}
+                        onChange={e => {
+                          const clean = sanitizeNumericInput(e.target.value);
+                          field.onChange(Number(clean) || 0);
+                        }}
                       />
                     </FormControl>
                     <FormMessage />
@@ -207,11 +214,16 @@ export const EditPromotionModal: React.FC<EditPromotionModalProps> = ({
                   <FormItem>
                     <FormLabel>Max Redemptions (optional)</FormLabel>
                     <FormControl>
-                      <Input 
-                        type="number" 
+                      <Input
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
                         placeholder="Unlimited"
                         value={field.value || ''}
-                        onChange={e => field.onChange(e.target.value ? Number(e.target.value) : null)}
+                        onChange={e => {
+                          const clean = sanitizeNumericInput(e.target.value);
+                          field.onChange(clean ? Number(clean) : null);
+                        }}
                       />
                     </FormControl>
                     <FormDescription>Leave empty for unlimited</FormDescription>
