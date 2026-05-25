@@ -9,6 +9,7 @@ import { ProjectStepper, getCreatorStep } from '@/components/projects/ProjectSte
 import { DeliverableCard } from '@/components/projects/DeliverableCard';
 import { ProjectFileUpload } from '@/components/projects/ProjectFileUpload';
 import { SubmitForReviewButton } from '@/components/campaigns/SubmitForReviewButton';
+import { UploadedFilesList } from '@/components/projects/UploadedFilesList';
 import { useCollaboration } from '@/hooks/useCollaboration';
 import { useFileUploads } from '@/hooks/useFileQuery';
 import { useCampaignDeliverables } from '@/hooks/useCampaignDeliverables';
@@ -42,12 +43,7 @@ export function ActivePhaseView({ campaign, enrichedDetail, collaborationId }: A
   const totalDeliverables = (deliverables?.length ?? 0)
     || (campaign.campaign_deliverables?.length ?? 0)
     || (campaign.deliverables?.length ?? 0);
-  const uploadedCount = deliverables?.filter((d) => {
-    const match = files?.find(
-      (f) => (f.metadata as Record<string, unknown>)?.deliverable_id === d.id,
-    );
-    return !!match;
-  }).length ?? 0;
+  const uploadedCount = Math.min(files?.length ?? 0, totalDeliverables);
 
   const tabs: { id: ActiveTab; label: string }[] = [
     { id: 'project', label: 'PROJECT' },
@@ -154,6 +150,14 @@ export function ActivePhaseView({ campaign, enrichedDetail, collaborationId }: A
                 campaignTitle={collaboration.campaign?.title || campaign.title}
               />
             </div>
+
+            {/* Uploaded files list */}
+            {files && (
+              <UploadedFilesList
+                files={files}
+                canDelete={(collaboration.content_status ?? 'pending') === 'pending'}
+              />
+            )}
 
             {/* Submit for Review */}
             <SubmitForReviewButton
