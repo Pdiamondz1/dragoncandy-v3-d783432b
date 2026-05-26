@@ -22,13 +22,13 @@ export const useMessages = (campaignId?: string, conversationId?: string) => {
         throw error;
       }
 
-      // Fetch profiles separately and merge
+      // Fetch profiles and role-specific avatars separately, then merge
       const senderIds = [...new Set(data?.map(m => m.sender_id) || [])];
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, full_name, avatar_url')
-        .in('id', senderIds);
-
+      const [{ data: profiles }, { data: creatorProfiles }, { data: businessProfiles }] = await Promise.all([
+        supabase.from('profiles').select('id, full_name, avatar_url').in('id', senderIds),
+        supabase.from('creator_profiles').select('user_id, avatar_url').in('user_id', senderIds),
+        supabase.from('business_profiles').select('user_id, logo_url').in('user_id', senderIds),
+      ]);
 
       // Fetch parent messages for replies
       const parentMessageIds = [...new Set(data?.filter(m => m.parent_message_id).map(m => m.parent_message_id) || [])];
@@ -53,15 +53,23 @@ export const useMessages = (campaignId?: string, conversationId?: string) => {
         parentProfiles = parentProfilesData || [];
       }
 
-      // Merge profile data with messages
-      const messagesWithProfiles = data?.map(message => ({
-        ...message,
-        sender_profile: profiles?.find(p => p.id === message.sender_id),
-        parent_message: message.parent_message_id ? {
+      // Merge profile data with messages, preferring role-specific avatars
+      const messagesWithProfiles = data?.map(message => {
+        const profile = profiles?.find(p => p.id === message.sender_id);
+        const creatorAvatar = creatorProfiles?.find(cp => cp.user_id === message.sender_id)?.avatar_url;
+        const businessLogo = businessProfiles?.find(bp => bp.user_id === message.sender_id)?.logo_url;
+        return {
+          ...message,
+          sender_profile: profile ? {
+            ...profile,
+            avatar_url: creatorAvatar || businessLogo || profile.avatar_url,
+          } : undefined,
+          parent_message: message.parent_message_id ? {
           content: parentMessages.find(pm => pm.id === message.parent_message_id)?.content || '',
           sender_profile: parentProfiles.find(p => p.id === parentMessages.find(pm => pm.id === message.parent_message_id)?.sender_id)
-        } : undefined
-      })) || [];
+        } : undefined,
+        };
+      }) || [];
 
       return messagesWithProfiles as Message[];
     },
@@ -133,19 +141,27 @@ export const useSearchMessages = (campaignId: string, searchQuery: string) => {
         throw error;
       }
 
-      // Fetch profiles separately and merge
+      // Fetch profiles and role-specific avatars separately, then merge
       const senderIds = [...new Set(data?.map(m => m.sender_id) || [])];
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, full_name, avatar_url')
-        .in('id', senderIds);
+      const [{ data: profiles }, { data: creatorProfiles }, { data: businessProfiles }] = await Promise.all([
+        supabase.from('profiles').select('id, full_name, avatar_url').in('id', senderIds),
+        supabase.from('creator_profiles').select('user_id, avatar_url').in('user_id', senderIds),
+        supabase.from('business_profiles').select('user_id, logo_url').in('user_id', senderIds),
+      ]);
 
-
-      // Merge profile data with messages
-      const messagesWithProfiles = data?.map(message => ({
-        ...message,
-        sender_profile: profiles?.find(p => p.id === message.sender_id)
-      })) || [];
+      // Merge profile data with messages, preferring role-specific avatars
+      const messagesWithProfiles = data?.map(message => {
+        const profile = profiles?.find(p => p.id === message.sender_id);
+        const creatorAvatar = creatorProfiles?.find(cp => cp.user_id === message.sender_id)?.avatar_url;
+        const businessLogo = businessProfiles?.find(bp => bp.user_id === message.sender_id)?.logo_url;
+        return {
+          ...message,
+          sender_profile: profile ? {
+            ...profile,
+            avatar_url: creatorAvatar || businessLogo || profile.avatar_url,
+          } : undefined,
+        };
+      }) || [];
 
       return messagesWithProfiles as Message[];
     },
