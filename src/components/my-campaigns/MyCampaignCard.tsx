@@ -40,6 +40,36 @@ const ctaConfig: Record<CardVariant, { label: string; className: string }> = {
   completed: { label: 'Review →', className: 'text-dc-teal' },
 };
 
+function getActiveOverrides(contentStatus: string | null): {
+  status?: { label: string; className: string };
+  cta?: { label: string; className: string };
+  hint?: string;
+} {
+  switch (contentStatus) {
+    case 'submitted':
+      return {
+        status: { label: '📤 Submitted', className: 'bg-blue-50 text-blue-800' },
+        cta: { label: 'View →', className: 'text-dc-teal' },
+        hint: 'Awaiting review',
+      };
+    case 'revision_requested':
+      return {
+        status: { label: '⚠️ Revision Needed', className: 'bg-amber-50 text-amber-800' },
+        cta: { label: 'Revise →', className: 'text-white bg-amber-500 px-3 py-1.5 rounded-full text-xs' },
+        hint: 'Revision requested',
+      };
+    case 'approved':
+    case 'auto_approved':
+      return {
+        status: { label: '✅ Approved', className: 'bg-green-50 text-green-800' },
+        cta: { label: 'View →', className: 'text-dc-teal' },
+        hint: 'Content approved',
+      };
+    default:
+      return {};
+  }
+}
+
 export function MyCampaignCard({
   variant,
   campaignId,
@@ -53,8 +83,11 @@ export function MyCampaignCard({
   const navigate = useNavigate();
 
   const timeContext = getTimeContext(variant, application, collaboration);
-  const status = statusConfig[variant];
-  const cta = ctaConfig[variant];
+  const activeOverrides: ReturnType<typeof getActiveOverrides> = variant === 'active'
+    ? getActiveOverrides(collaboration?.content_status ?? null)
+    : {};
+  const status = activeOverrides.status ?? statusConfig[variant];
+  const cta = activeOverrides.cta ?? ctaConfig[variant];
   const deliverableProgress = getDeliverableProgress(collaboration);
   const deadlineUrgency = getDeadlineUrgency(collaboration);
 
@@ -77,6 +110,10 @@ export function MyCampaignCard({
 
       {variant === 'accepted' && (
         <p className="text-xs text-amber-600 mb-2">Awaiting project start</p>
+      )}
+
+      {variant === 'active' && activeOverrides.hint && (
+        <p className="text-xs text-amber-600 mb-2">{activeOverrides.hint}</p>
       )}
 
       {variant === 'active' && collaboration?.campaign?.delivery_type && (
