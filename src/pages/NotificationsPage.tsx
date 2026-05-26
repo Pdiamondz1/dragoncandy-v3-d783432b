@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Bell, CheckCheck, Settings } from 'lucide-react';
+import { ArrowLeft, Bell, CheckCheck, Settings, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { NotificationItem } from '@/components/notifications/NotificationItem';
@@ -11,7 +11,19 @@ import {
   useUnreadCountByCategory,
   useMarkNotificationRead,
   useMarkAllNotificationsRead,
+  useDeleteNotification,
+  useClearNotificationsByCategory,
 } from '@/hooks/useNotificationQueries';
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from '@/components/ui/alert-dialog';
 import { useAuth } from '@/hooks/useAuth';
 import { getNotificationRoute } from '@/lib/getNotificationRoute';
 import { getSettingsHref } from '@/lib/navConfig';
@@ -30,6 +42,9 @@ const NotificationsPage = () => {
   const { data: unreadCounts = {} } = useUnreadCountByCategory();
   const markRead = useMarkNotificationRead();
   const markAllRead = useMarkAllNotificationsRead();
+  const deleteNotification = useDeleteNotification();
+  const clearByCategory = useClearNotificationsByCategory();
+  const [showClearDialog, setShowClearDialog] = useState(false);
 
   const totalUnread = Object.values(unreadCounts).reduce((sum, c) => sum + c, 0);
 
@@ -70,6 +85,17 @@ const NotificationsPage = () => {
                   >
                     <CheckCheck className="h-4 w-4" />
                     <span className="text-sm">Mark all read</span>
+                  </Button>
+                )}
+                {notifications.length > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowClearDialog(true)}
+                    className="text-dc-text-muted hover:text-red-500 gap-1.5"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    <span className="text-sm">Clear</span>
                   </Button>
                 )}
                 <Button
@@ -114,6 +140,7 @@ const NotificationsPage = () => {
                       key={notification.id}
                       notification={notification}
                       onClick={() => handleItemClick(notification)}
+                      onDelete={(id) => deleteNotification.mutate(id)}
                     />
                   ))}
                 </div>
@@ -122,6 +149,32 @@ const NotificationsPage = () => {
           </div>
         </div>
       </div>
+      <AlertDialog open={showClearDialog} onOpenChange={setShowClearDialog}>
+        <AlertDialogContent className="max-w-sm rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Clear notifications?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete {notifications.length}{' '}
+              {activeCategory === 'all' ? '' : `${activeCategory} `}
+              notification{notifications.length !== 1 ? 's' : ''}.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-full">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                clearByCategory.mutate(
+                  activeCategory === 'all' ? undefined : activeCategory,
+                );
+                setShowClearDialog(false);
+              }}
+              className="bg-red-500 hover:bg-red-600 text-white rounded-full"
+            >
+              Clear
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DashboardLayout>
   );
 };
