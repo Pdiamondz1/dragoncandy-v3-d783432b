@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Check, X, Clock, DollarSign, User, ArrowRightLeft, CreditCard, Loader2, Eye, ImageIcon } from 'lucide-react';
+import { Check, X, Clock, DollarSign, User, ArrowRightLeft, Eye, ImageIcon } from 'lucide-react';
 import { useManageApplication } from '@/hooks/useManageApplication';
 import { CampaignApplication } from '@/types/applications';
 import { ApplicationStatusBadge } from './ApplicationStatusBadge';
@@ -13,11 +13,7 @@ import { CounterOfferThread } from './CounterOfferThread';
 import { useCounterOffers, useRespondToCounterOffer } from '@/hooks/useCounterOffers';
 import { useAuth } from '@/hooks/useAuth';
 import { useResolvedLogoUrl, useResolvedAvatarUrl } from '@/hooks/useSignedUrl';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/hooks/use-toast';
 import { formatSkillLabel } from '@/lib/skillUtils';
-import { TestModeBanner } from '@/components/payments/TestModeBanner';
-import { StripeTestHelper } from '@/components/payments/StripeTestHelper';
 
 interface ApplicationCardProps {
   application: CampaignApplication;
@@ -38,13 +34,12 @@ const ApplicationCardComponent: React.FC<ApplicationCardProps> = ({
   userRole,
   campaignEscrowStatus,
   campaignBudget,
-  campaignDeliveryFee,
-  campaignDeliveryType,
+  campaignDeliveryFee: _campaignDeliveryFee,
+  campaignDeliveryType: _campaignDeliveryType,
   onViewProfile
 }) => {
   const manageApplication = useManageApplication();
   const [showCounterModal, setShowCounterModal] = useState(false);
-  const [isPayingEscrow, setIsPayingEscrow] = useState(false);
   const { data: counterOffers = [] } = useCounterOffers(application.id);
   const respondToOffer = useRespondToCounterOffer();
   const { user } = useAuth();
@@ -92,54 +87,6 @@ const ApplicationCardComponent: React.FC<ApplicationCardProps> = ({
     }
   };
 
-  const handlePayEscrow = async () => {
-    setIsPayingEscrow(true);
-    try {
-      // Determine the agreed amount from the latest accepted counter-offer or proposed rate
-      const acceptedOffer = counterOffers.find(o => o.status === 'accepted');
-      const agreedAmount = acceptedOffer?.proposed_rate || application.proposed_rate;
-
-      if (!agreedAmount) {
-        toast({ title: 'No agreed amount found', description: 'Cannot proceed with payment.', variant: 'destructive' });
-        return;
-      }
-
-      // Open blank tab synchronously to avoid popup blocker
-      const newTab = window.open('about:blank', '_blank');
-
-      const { data, error } = await supabase.functions.invoke('create-campaign-escrow', {
-        body: {
-          campaignId: application.campaign_id,
-          amount: agreedAmount,
-          deliveryFee: 0,
-          campaignTitle: application.campaign?.title || 'Campaign',
-          deliveryType: 'standard',
-        },
-      });
-
-      if (error) throw error;
-
-      if (data?.alreadyPaid) {
-        toast({ title: 'Already paid', description: 'Escrow has already been paid for this campaign.' });
-        newTab?.close();
-        return;
-      }
-
-      if (data?.url) {
-        if (newTab) {
-          newTab.location.href = data.url;
-        } else {
-          window.location.href = data.url;
-        }
-      }
-    } catch (error) {
-      console.error('Failed to initiate escrow payment:', error);
-      toast({ title: 'Payment failed', description: 'Please try again.', variant: 'destructive' });
-    } finally {
-      setIsPayingEscrow(false);
-    }
-  };
-
   const formatCurrency = (amount: number | null) => {
     if (!amount) return 'Not specified';
     return new Intl.NumberFormat('en-US', {
@@ -152,10 +99,6 @@ const ApplicationCardComponent: React.FC<ApplicationCardProps> = ({
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString();
   };
-
-  // Determine agreed amount for display
-  const acceptedOffer = counterOffers.find(o => o.status === 'accepted');
-  const agreedAmount = application.agreed_rate ?? acceptedOffer?.proposed_rate ?? application.proposed_rate;
 
   return (
     <Card>
@@ -266,48 +209,14 @@ const ApplicationCardComponent: React.FC<ApplicationCardProps> = ({
           <CounterOfferThread counterOffers={counterOffers} currentUserId={user?.id} />
         )}
 
-        {/* Accepted: Show Pay Escrow button if escrow not yet held */}
-        {application.status === 'accepted' && campaignEscrowStatus !== 'held' && campaignEscrowStatus !== 'released' && (() => {
-          const deliveryFee = campaignDeliveryFee ?? 0;
-          const escrowTotal = (agreedAmount || 0) + deliveryFee;
-          const deliveryLabel = campaignDeliveryType === 'dragonrush' ? 'DragonDash Rush' : campaignDeliveryType === 'expedited' ? 'Express Delivery' : 'Standard Delivery';
-          return (
-            <div className="pt-4 border-t space-y-3">
-              <TestModeBanner />
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-                <p className="text-sm font-medium text-amber-800">
-                  💳 Payment required to start the project
-                </p>
-                <p className="text-xs text-amber-700 mt-1">
-                  Creator rate: {formatCurrency(agreedAmount || 0)}
-                  {deliveryFee > 0 && <> + {deliveryLabel}: {formatCurrency(deliveryFee)}</>}
-                </p>
-                <p className="text-xs font-semibold text-amber-800 mt-0.5">
-                  Total: {formatCurrency(escrowTotal)}
-                </p>
-              </div>
-              <StripeTestHelper variant="cards" />
-              <Button
-                onClick={handlePayEscrow}
-                disabled={isPayingEscrow}
-                className="w-full"
-                size="lg"
-              >
-                {isPayingEscrow ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" aria-hidden="true" />
-                    Opening Checkout...
-                  </>
-                ) : (
-                  <>
-                    <CreditCard className="h-4 w-4 mr-2" aria-hidden="true" />
-                    Pay Escrow - {formatCurrency(escrowTotal)}
-                  </>
-                )}
-              </Button>
-            </div>
-          );
-        })()}
+        {application.status === 'accepted' && campaignEscrowStatus !== 'held' && campaignEscrowStatus !== 'released' && (
+          <div className="pt-4 border-t">
+            <Badge className="bg-amber-100 text-amber-800 border-amber-300">
+              <Clock className="h-3 w-3 mr-1" aria-hidden="true" />
+              Accepted — Awaiting Escrow Payment
+            </Badge>
+          </div>
+        )}
 
         {/* Accepted & Escrow paid */}
         {application.status === 'accepted' && (campaignEscrowStatus === 'held' || campaignEscrowStatus === 'released') && (
