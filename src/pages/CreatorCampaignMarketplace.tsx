@@ -178,12 +178,14 @@ const CreatorCampaignMarketplace = () => {
         <PageHeader>
           <div>
             <h1 className="text-xl font-bold text-gray-900 leading-tight">Campaigns</h1>
-            <div className="flex items-center gap-1 mt-0.5">
-              <MapPin className="w-3.5 h-3.5 text-dc-pink-accent flex-shrink-0" aria-hidden="true" />
-              <span className="text-xs text-gray-600">
-                {availableFilteredCount} campaign{availableFilteredCount !== 1 ? 's' : ''} available
-              </span>
-            </div>
+            {availableFilteredCount > 0 && (
+              <div className="flex items-center gap-1 mt-0.5">
+                <MapPin className="w-3.5 h-3.5 text-dc-pink-accent flex-shrink-0" aria-hidden="true" />
+                <span className="text-xs text-gray-600">
+                  {availableFilteredCount} campaign{availableFilteredCount !== 1 ? 's' : ''} available
+                </span>
+              </div>
+            )}
           </div>
         </PageHeader>
 
