@@ -66,7 +66,7 @@ export const PostManagementPanel: React.FC<PostManagementPanelProps> = ({
 
       const { data: match } = await supabase
         .from('donny_scheduled_posts')
-        .select('plan_group_id, campaign_id')
+        .select('plan_group_id, campaign_id, media_urls')
         .eq('user_id', user.id)
         .gte('scheduled_at', windowStart)
         .lte('scheduled_at', windowEnd)
@@ -85,6 +85,7 @@ export const PostManagementPanel: React.FC<PostManagementPanelProps> = ({
       return {
         planGroupId: match.plan_group_id as string,
         siblingCount: siblings?.length ?? 0,
+        mediaUrls: match.media_urls as string[] | null,
       };
     },
     enabled: !!user && !!postScheduledAt && open,
@@ -130,7 +131,7 @@ export const PostManagementPanel: React.FC<PostManagementPanelProps> = ({
         setNewDateTime(local.toISOString().slice(0, 16));
       }
     }
-  }, [post, open]);
+  }, [post, open, planContext?.mediaUrls]);
 
   if (!post) return null;
 
@@ -139,6 +140,10 @@ export const PostManagementPanel: React.FC<PostManagementPanelProps> = ({
   const platforms = post.socialAccounts?.map((sa) => sa.network) ?? [];
   const mediaFiles = post.containers?.[0]?.media ?? [];
   const heroMedia = mediaFiles[0];
+  const localMediaUrl = planContext?.mediaUrls?.[0];
+  const displayUrl = localMediaUrl ?? heroMedia?.url;
+  const isVideo = heroMedia?.contentType?.startsWith('video/')
+    || /\.(mp4|mov|webm|m4v)(\?|$)/i.test(displayUrl ?? '');
 
   const handleSaveCaption = async () => {
     setSaving(true);
@@ -195,24 +200,24 @@ export const PostManagementPanel: React.FC<PostManagementPanelProps> = ({
   const content = (
     <div className="space-y-4 overflow-y-auto max-h-[70vh]">
       {/* Hero media preview */}
-      {heroMedia && (
+      {displayUrl && (
         <div className="w-full aspect-square rounded-xl overflow-hidden bg-gray-100 max-w-[200px] mx-auto lg:max-w-[240px]">
           {heroMediaError ? (
             <div className="w-full h-full bg-gradient-to-br from-dc-teal via-dc-pink/40 to-dc-teal-dark flex items-center justify-center">
               <img src={logo} alt="Dragon Candy" className="w-12 h-12 opacity-70" />
             </div>
-          ) : heroMedia.contentType?.startsWith('video/') ? (
+          ) : isVideo ? (
             <VideoFrameThumbnail
-              fileId={heroMedia.id ?? post.id}
-              videoUrl={heroMedia.url}
+              fileId={heroMedia?.id ?? post.id}
+              videoUrl={displayUrl}
               storedThumbnailUrl={null}
-              mimeType={heroMedia.contentType ?? 'video/mp4'}
-              filename={heroMedia.filename ?? 'video'}
+              mimeType={heroMedia?.contentType ?? 'video/mp4'}
+              filename={heroMedia?.filename ?? 'video'}
               onError={() => setHeroMediaError(true)}
             />
           ) : (
             <img
-              src={heroMedia.url}
+              src={displayUrl}
               alt=""
               className="w-full h-full object-cover"
               onError={() => setHeroMediaError(true)}
