@@ -71,6 +71,7 @@ export const useManageApplication = () => {
     onSuccess: async (data) => {
       queryClient.invalidateQueries({ queryKey: ['campaign-applications'] });
       queryClient.invalidateQueries({ queryKey: ['creator-applications'] });
+      queryClient.invalidateQueries({ queryKey: ['agreed-value'] });
 
       // When accepted, use atomic RPC for collaboration + campaign activation + sibling rejection
       if (data.status === 'accepted' && data.campaign_id) {

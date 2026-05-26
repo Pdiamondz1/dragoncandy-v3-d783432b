@@ -256,7 +256,7 @@ const CampaignCardComponent: React.FC<CampaignCardProps> = ({ campaign }) => {
         {/* Fee breakdown before payment */}
         {ctaLabel === 'Pay & Publish →' && (
           <EscrowFeeBreakdown
-            baseAmount={agreedValue ?? campaign.fixed_price ?? campaign.budget_max ?? 0}
+            creatorRate={agreedValue ?? campaign.fixed_price ?? campaign.budget_max ?? 0}
             deliveryFee={campaign.delivery_fee || 0}
             deliveryType={campaign.delivery_type || 'standard'}
           />
