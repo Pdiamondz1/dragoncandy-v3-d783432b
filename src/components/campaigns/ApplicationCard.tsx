@@ -215,21 +215,11 @@ const ApplicationCardComponent: React.FC<ApplicationCardProps> = ({
         )}
 
         {application.status === 'accepted' && campaignEscrowStatus !== 'held' && campaignEscrowStatus !== 'released' && (
-          <div className="pt-4 border-t space-y-2">
-            <Badge className="bg-amber-100 text-amber-800 border-amber-300">
-              <Clock className="h-3 w-3 mr-1" aria-hidden="true" />
-              Accepted — Awaiting Escrow Payment
+          <div className="pt-4 border-t">
+            <Badge className="bg-teal-100 text-teal-800 border-teal-300">
+              <Check className="h-3 w-3 mr-1" aria-hidden="true" />
+              Accepted
             </Badge>
-            {onPayEscrow && (
-              <Button
-                onClick={onPayEscrow}
-                disabled={isPayingEscrow}
-                className="w-full rounded-full bg-amber-500 hover:bg-amber-600 text-white font-semibold"
-                size="sm"
-              >
-                {isPayingEscrow ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Processing...</> : 'Pay Escrow to Start Project'}
-              </Button>
-            )}
           </div>
         )}
 
