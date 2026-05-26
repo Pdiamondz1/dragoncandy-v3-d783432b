@@ -46,14 +46,22 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") as string;
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!serviceKey) {
+      console.error("SUPABASE_SERVICE_ROLE_KEY is not configured");
+      return new Response(JSON.stringify({ error: "Server misconfiguration" }), {
+        status: 500,
+        headers: { ...corsHeaders(req), "Content-Type": "application/json" },
+      });
+    }
+
     const authHeader = req.headers.get("Authorization") || "";
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") as string;
     const isService = authHeader === `Bearer ${serviceKey}`;
 
     let callerUserId: string | null = null;
 
     if (!isService) {
-      const supabaseUrl = Deno.env.get("SUPABASE_URL") as string;
       const anonKey = Deno.env.get("SUPABASE_ANON_KEY") as string;
       const userClient = createClient(supabaseUrl, anonKey, {
         global: { headers: { Authorization: authHeader } },
@@ -87,7 +95,6 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Service-role client for DB operations
-    const supabaseUrl = Deno.env.get("SUPABASE_URL") as string;
     const admin = createClient(supabaseUrl, serviceKey, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
@@ -120,21 +127,31 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // 2. Check user preferences
-    const { data: prefs } = await admin
+    const defaultMatrix: Record<string, { email: boolean; sms: boolean }> = {
+      campaigns:    { email: true, sms: false },
+      messages:     { email: false, sms: false },
+      transactions: { email: true, sms: false },
+      content:      { email: false, sms: false },
+      account:      { email: true, sms: false },
+    };
+
+    let categoryPrefs = defaultMatrix[category] ?? { email: false, sms: false };
+
+    const { data: prefs, error: prefsError } = await admin
       .from("notification_preferences")
       .select("preferences_matrix")
       .eq("user_id", recipientId)
       .maybeSingle();
 
-    const defaultMatrix = {
-      campaigns:    { in_app: true, email: true, sms: false },
-      messages:     { in_app: true, email: false, sms: false },
-      transactions: { in_app: true, email: true, sms: false },
-      content:      { in_app: true, email: false, sms: false },
-      account:      { in_app: true, email: true, sms: false },
-    };
-    const matrix = (prefs?.preferences_matrix as Record<string, { email: boolean; sms: boolean }>) ?? defaultMatrix;
-    const categoryPrefs = matrix[category] ?? { email: false, sms: false };
+    if (prefsError) {
+      console.error("Failed to fetch preferences, using defaults:", prefsError);
+    } else if (prefs?.preferences_matrix && typeof prefs.preferences_matrix === 'object') {
+      const matrix = prefs.preferences_matrix as Record<string, { email?: boolean; sms?: boolean }>;
+      const userCatPrefs = matrix[category];
+      if (userCatPrefs && typeof userCatPrefs.email === 'boolean') {
+        categoryPrefs = { email: userCatPrefs.email, sms: userCatPrefs.sms ?? false };
+      }
+    }
 
     // 3. Send email if enabled (or forced)
     let emailSent = false;
