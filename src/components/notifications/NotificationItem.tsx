@@ -1,4 +1,5 @@
 import React from 'react';
+import { Trash2 } from 'lucide-react';
 import type { PushNotification, NotificationCategory } from '@/types/notifications';
 import { CATEGORY_META } from '@/types/notifications';
 import { cn } from '@/lib/utils';
@@ -7,6 +8,7 @@ interface NotificationItemProps {
   notification: PushNotification;
   compact?: boolean;
   onClick: () => void;
+  onDelete?: (id: string) => void;
 }
 
 const CATEGORY_BG: Record<string, string> = {
@@ -39,6 +41,7 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({
   notification,
   compact = false,
   onClick,
+  onDelete,
 }) => {
   const isUnread = !notification.read_at;
   const category = notification.category as NotificationCategory | 'legacy';
@@ -52,7 +55,7 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({
       type="button"
       onClick={onClick}
       className={cn(
-        'w-full flex items-start gap-3 text-left transition-colors hover:bg-dc-teal/[0.08] rounded-xl',
+        'group w-full flex items-start gap-3 text-left transition-colors hover:bg-dc-teal/[0.08] rounded-xl',
         compact ? 'px-3 py-2.5' : 'px-4 py-3.5',
         isUnread ? 'bg-dc-teal/[0.06]' : 'bg-transparent',
       )}
@@ -84,6 +87,19 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({
             <span className="text-xs text-dc-text-muted whitespace-nowrap">
               {formatRelativeTime(notification.created_at)}
             </span>
+            {onDelete && !compact && (
+              <button
+                type="button"
+                aria-label="Delete notification"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete(notification.id);
+                }}
+                className="ml-1 text-dc-text-muted hover:text-red-500 transition-colors lg:opacity-0 lg:group-hover:opacity-100"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            )}
           </div>
         </div>
         <p className={cn(
