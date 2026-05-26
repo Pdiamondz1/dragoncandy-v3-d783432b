@@ -50,7 +50,7 @@ export interface PushNotification {
   action_url: string | null;
   actor_id: string | null;
   actor_name: string | null;
-  icon: string;
+  icon: string | null;
   data: Record<string, unknown> | null;
   read_at: string | null;
   sent_at: string | null;
