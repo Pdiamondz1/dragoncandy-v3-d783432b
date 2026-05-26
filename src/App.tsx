@@ -91,6 +91,7 @@ const HelpCenter = lazy(() => import("./pages/help/HelpCenter"));
 const HelpArticlePage = lazy(() => import("./pages/help/HelpArticlePage"));
 const PricingPage = lazy(() => import("./pages/PricingPage"));
 const ContentCalendar = lazy(() => import("./pages/ContentCalendar"));
+const NotificationsPage = lazy(() => import("./pages/NotificationsPage"));
 const HelpBriefDrawer = lazy(() => import("./features/donny/HelpBriefDrawer").then(m => ({ default: m.HelpBriefDrawer })));
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -219,6 +220,9 @@ function AnimatedRoutes() {
 
           {/* Content Calendar — all roles */}
           <Route path="/calendar" element={<ProtectedRoute><ContentCalendar /></ProtectedRoute>} />
+
+          {/* Notifications — all roles */}
+          <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
 
           {/* Business Org Routes */}
           <Route path="/dashboard/business/locations" element={<ProtectedRoute><BusinessRoute><OrgUnitsPage /></BusinessRoute></ProtectedRoute>} />
