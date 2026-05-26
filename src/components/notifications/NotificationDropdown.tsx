@@ -13,11 +13,9 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Bell, CheckCheck } from 'lucide-react';
 import { useNotifications, type Notification } from '@/hooks/useNotifications';
-import { useAuth } from '@/hooks/useAuth';
 
 export const NotificationDropdown: React.FC = () => {
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
-  useAuth();
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = React.useState(false);
 
