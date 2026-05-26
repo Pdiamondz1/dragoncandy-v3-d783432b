@@ -132,7 +132,7 @@ export const useCreateApplication = () => {
           : 'The business owner will review your application.',
       });
 
-      // Fire-and-forget notification to campaign owner via create-notification edge function
+      // Fire-and-forget notification to campaign owner
       try {
         const { data: campaign } = await supabase
           .from('campaigns')
@@ -161,10 +161,10 @@ export const useCreateApplication = () => {
               data: { campaign_id: campaign.id, application_id: data.id },
               emailData: { campaignTitle: campaign.title, applicantName: creatorProfile.creator_name, campaignId: campaign.id },
             },
-          });
+          }).catch((err: unknown) => console.error('Failed to send notification:', err));
         }
       } catch (error) {
-        console.error('Failed to send notification:', error);
+        console.error('Failed to prepare notification:', error);
       }
 
       // Invitation sync is handled atomically by the apply_to_campaign RPC

@@ -101,25 +101,21 @@ export const useManageApplication = () => {
               .eq('id', data.campaign_id)
               .single();
 
-            for (const app of otherApps) {
-              try {
-                if (campaignInfo?.title) {
-                  supabase.functions.invoke('create-notification', {
-                    body: {
-                      recipientId: app.creator_id,
-                      type: 'application_rejected',
-                      category: 'campaigns',
-                      title: 'Application Update',
-                      body: `Your application for "${campaignInfo.title}" was not selected this time.`,
-                      actionUrl: `/dashboard/creator/campaigns`,
-                      icon: 'application',
-                      data: { campaign_id: data.campaign_id, application_id: app.id },
-                      emailData: { campaignTitle: campaignInfo.title, applicationStatus: 'rejected', campaignId: data.campaign_id },
-                    },
-                  });
-                }
-              } catch {
-                // Best-effort notification
+            if (campaignInfo?.title) {
+              for (const app of otherApps) {
+                supabase.functions.invoke('create-notification', {
+                  body: {
+                    recipientId: app.creator_id,
+                    type: 'application_rejected',
+                    category: 'campaigns',
+                    title: 'Application Update',
+                    body: `Your application for "${campaignInfo.title}" was not selected this time.`,
+                    actionUrl: `/dashboard/creator/campaigns`,
+                    icon: 'application',
+                    data: { campaign_id: data.campaign_id, application_id: app.id },
+                    emailData: { campaignTitle: campaignInfo.title, applicationStatus: 'rejected', campaignId: data.campaign_id },
+                  },
+                }).catch(() => { /* best-effort */ });
               }
             }
 
@@ -129,37 +125,38 @@ export const useManageApplication = () => {
         }
       }
 
-      // Notify the creator of the final decision (fire-and-forget)
-      const { data: campaign } = await supabase
-        .from('campaigns')
-        .select('title, id')
-        .eq('id', data.campaign_id)
-        .single()
-        .then(r => r, () => ({ data: null }));
-
+      // Notify the creator of accept/reject (skip counter_offered — different flow)
+      let campaign: { title: string; id: string } | null = null;
       try {
-        if (campaign?.title) {
-          const isAccepted = data.status === 'accepted';
-          supabase.functions.invoke('create-notification', {
-            body: {
-              recipientId: data.creator_id,
-              type: isAccepted ? 'application_accepted' : 'application_rejected',
-              category: 'campaigns',
-              title: isAccepted ? 'Application Accepted!' : 'Application Update',
-              body: isAccepted
-                ? `Congratulations! Your application for "${campaign.title}" was accepted.`
-                : `Your application for "${campaign.title}" was not selected this time.`,
-              actionUrl: isAccepted
-                ? `/dashboard/creator/my-campaigns`
-                : `/dashboard/creator/campaigns`,
-              icon: 'application',
-              data: { campaign_id: data.campaign_id, application_id: data.id },
-              emailData: { campaignTitle: campaign.title, applicationStatus: data.status, campaignId: data.campaign_id },
-            },
-          });
-        }
-      } catch (emailError) {
-        console.error('Failed to send notification:', emailError);
+        const { data: c } = await supabase
+          .from('campaigns')
+          .select('title, id')
+          .eq('id', data.campaign_id)
+          .single();
+        campaign = c;
+      } catch {
+        // Campaign fetch failed — skip notification but continue with toast/nudge
+      }
+
+      if (campaign?.title && (data.status === 'accepted' || data.status === 'rejected')) {
+        const isAccepted = data.status === 'accepted';
+        supabase.functions.invoke('create-notification', {
+          body: {
+            recipientId: data.creator_id,
+            type: isAccepted ? 'application_accepted' : 'application_rejected',
+            category: 'campaigns',
+            title: isAccepted ? 'Application Accepted!' : 'Application Update',
+            body: isAccepted
+              ? `Congratulations! Your application for "${campaign.title}" was accepted.`
+              : `Your application for "${campaign.title}" was not selected this time.`,
+            actionUrl: isAccepted
+              ? `/dashboard/creator/my-campaigns`
+              : `/dashboard/creator/campaigns`,
+            icon: 'application',
+            data: { campaign_id: data.campaign_id, application_id: data.id },
+            emailData: { campaignTitle: campaign.title, applicationStatus: data.status, campaignId: data.campaign_id },
+          },
+        }).catch((err: unknown) => console.error('Failed to send notification:', err));
       }
 
       // Send Donny "you're hired" nudge to creator

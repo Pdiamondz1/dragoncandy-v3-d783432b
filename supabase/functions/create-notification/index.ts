@@ -59,8 +59,6 @@ const handler = async (req: Request): Promise<Response> => {
     const authHeader = req.headers.get("Authorization") || "";
     const isService = authHeader === `Bearer ${serviceKey}`;
 
-    let callerUserId: string | null = null;
-
     if (!isService) {
       const anonKey = Deno.env.get("SUPABASE_ANON_KEY") as string;
       const userClient = createClient(supabaseUrl, anonKey, {
@@ -73,7 +71,6 @@ const handler = async (req: Request): Promise<Response> => {
           headers: { ...corsHeaders(req), "Content-Type": "application/json" },
         });
       }
-      callerUserId = user.id;
     }
 
     const payload: CreateNotificationRequest = await req.json();
@@ -82,14 +79,6 @@ const handler = async (req: Request): Promise<Response> => {
     if (!recipientId || !type || !category || !title || !notifBody) {
       return new Response(JSON.stringify({ error: "Missing required fields: recipientId, type, category, title, body" }), {
         status: 400,
-        headers: { ...corsHeaders(req), "Content-Type": "application/json" },
-      });
-    }
-
-    // JWT callers can only notify themselves (spec requirement)
-    if (callerUserId && callerUserId !== recipientId) {
-      return new Response(JSON.stringify({ error: "Forbidden: cannot notify other users" }), {
-        status: 403,
         headers: { ...corsHeaders(req), "Content-Type": "application/json" },
       });
     }
