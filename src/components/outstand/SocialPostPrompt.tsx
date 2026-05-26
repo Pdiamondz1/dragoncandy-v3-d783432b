@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Send, CalendarDays, Edit3, Loader2, RefreshCw } from 'lucide-react';
 import { DragonDashRushButton } from './DragonDashRushButton';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
@@ -80,6 +80,9 @@ function SocialPostPromptInner({
   const [confirmedPlatforms, setConfirmedPlatforms] = useState<string[]>([]);
 
   const resolvedItems: MediaItem[] = mediaItemsProp ?? mediaUrls.map((url) => ({ url }));
+  const captionLoadedRef = useRef<string | null>(null);
+  const accountsRef = useRef(accounts);
+  accountsRef.current = accounts;
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768);
@@ -97,7 +100,7 @@ function SocialPostPromptInner({
           campaign_description: originalCaption,
           content_type: 'video_reel',
           party_role: userRole === 'restaurant' ? 'restaurant' : userRole,
-          platform: accounts[0]?.network ?? 'instagram',
+          platform: accountsRef.current[0]?.network ?? 'instagram',
           user_id: user.id,
         },
       });
@@ -109,18 +112,22 @@ function SocialPostPromptInner({
     } catch {
       return null;
     }
-  }, [campaignId, campaignTitle, originalCaption, userRole, user?.id, accounts]);
+  }, [campaignId, campaignTitle, originalCaption, userRole, user?.id]);
 
   useEffect(() => {
     if (!open) {
       setSchedulingState('composing');
       setConfirmedAt(null);
       setConfirmedPlatforms([]);
+      captionLoadedRef.current = null;
       return;
     }
 
+    const loadKey = `${campaignId}-${user?.id}`;
+    if (captionLoadedRef.current === loadKey) return;
+    captionLoadedRef.current = loadKey;
+
     setIsEditing(false);
-    setSelectedAccountIds(accounts.map((a) => a.id));
     setCaptionError(false);
 
     if (campaignId && user?.id) {
@@ -166,7 +173,13 @@ function SocialPostPromptInner({
       setCaption(getGenericCaption(userRole, campaignTitle));
       setSuggestedTime(null);
     }
-  }, [open, campaignId, user?.id, campaignTitle, originalCaption, userRole, accounts, generateCaption]);
+  }, [open, campaignId, user?.id, campaignTitle, originalCaption, userRole, generateCaption]);
+
+  useEffect(() => {
+    if (open && accounts.length > 0) {
+      setSelectedAccountIds((prev) => prev.length === 0 ? accounts.map((a) => a.id) : prev);
+    }
+  }, [open, accounts]);
 
   const handleRefreshCaption = async () => {
     setRefreshingCaption(true);
@@ -442,13 +455,13 @@ function SocialPostPromptInner({
   if (isMobile) {
     return (
       <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent side="bottom" className="rounded-t-2xl pb-8">
-          <SheetHeader>
+        <SheetContent side="bottom" className="rounded-t-2xl pb-8 max-h-[85vh] flex flex-col">
+          <SheetHeader className="shrink-0">
             <SheetTitle className="text-sm font-bold text-gray-900">
               {schedulingState === 'confirmed' ? 'Post Scheduled' : 'Ready to Share'}
             </SheetTitle>
           </SheetHeader>
-          <div className="mt-4">{content}</div>
+          <div className="mt-4 overflow-y-auto flex-1 min-h-0">{content}</div>
         </SheetContent>
       </Sheet>
     );
@@ -456,13 +469,13 @@ function SocialPostPromptInner({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-md max-h-[85vh] flex flex-col">
+        <DialogHeader className="shrink-0">
           <DialogTitle className="text-sm font-bold text-gray-900">
             {schedulingState === 'confirmed' ? 'Post Scheduled' : 'Ready to Share'}
           </DialogTitle>
         </DialogHeader>
-        {content}
+        <div className="overflow-y-auto flex-1 min-h-0">{content}</div>
       </DialogContent>
     </Dialog>
   );
