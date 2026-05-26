@@ -3,13 +3,11 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
-import { useEmailNotifications } from '@/hooks/useEmailNotifications';
 import { useFirstRunMissions } from '@/hooks/useFirstRunMissions';
 
 export const useCreateApplication = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const { sendNotification } = useEmailNotifications();
   const { completeMission } = useFirstRunMissions();
 
   return useMutation({
@@ -134,7 +132,7 @@ export const useCreateApplication = () => {
           : 'The business owner will review your application.',
       });
 
-      // Send email notification to campaign owner
+      // Fire-and-forget notification to campaign owner via create-notification edge function
       try {
         const { data: campaign } = await supabase
           .from('campaigns')
@@ -149,20 +147,24 @@ export const useCreateApplication = () => {
           .single();
 
         if (campaign && creatorProfile) {
-          await sendNotification(
-            'new_application',
-            undefined,
-            undefined,
-            {
-              recipientUserId: campaign.user_id,
-              campaignTitle: campaign.title,
-              campaignId: campaign.id,
-              applicantName: creatorProfile.creator_name
-            }
-          );
+          supabase.functions.invoke('create-notification', {
+            body: {
+              recipientId: campaign.user_id,
+              type: 'application_received',
+              category: 'campaigns',
+              title: 'New Application',
+              body: `${creatorProfile.creator_name} applied to your "${campaign.title}" campaign`,
+              actionUrl: `/dashboard/business/campaigns/${campaign.id}`,
+              actorId: user!.id,
+              actorName: creatorProfile.creator_name,
+              icon: 'application',
+              data: { campaign_id: campaign.id, application_id: data.id },
+              emailData: { campaignTitle: campaign.title, applicantName: creatorProfile.creator_name, campaignId: campaign.id },
+            },
+          });
         }
       } catch (error) {
-        console.error('Failed to send notification email:', error);
+        console.error('Failed to send notification:', error);
       }
 
       // Invitation sync is handled atomically by the apply_to_campaign RPC

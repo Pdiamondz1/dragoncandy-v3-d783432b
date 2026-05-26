@@ -2,11 +2,9 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { useEmailNotifications } from '@/hooks/useEmailNotifications';
 
 export const useManageApplication = () => {
   const queryClient = useQueryClient();
-  const { sendNotification } = useEmailNotifications();
 
   return useMutation({
     mutationFn: async ({
@@ -99,26 +97,26 @@ export const useManageApplication = () => {
           if (otherApps && otherApps.length > 0) {
             const { data: campaignInfo } = await supabase
               .from('campaigns')
-              .select('title')
+              .select('title, id')
               .eq('id', data.campaign_id)
               .single();
 
-            const { fetchRecipientEmail } = await import('@/lib/recipientEmail');
             for (const app of otherApps) {
               try {
-                const profile = await fetchRecipientEmail(app.creator_id);
-
-                if (profile?.email && campaignInfo?.title) {
-                  await sendNotification(
-                    'application_status',
-                    profile.email,
-                    profile.full_name,
-                    {
-                      campaignTitle: campaignInfo.title,
-                      applicationStatus: 'rejected',
-                      campaignId: data.campaign_id,
-                    }
-                  );
+                if (campaignInfo?.title) {
+                  supabase.functions.invoke('create-notification', {
+                    body: {
+                      recipientId: app.creator_id,
+                      type: 'application_rejected',
+                      category: 'campaigns',
+                      title: 'Application Update',
+                      body: `Your application for "${campaignInfo.title}" was not selected this time.`,
+                      actionUrl: `/dashboard/creator/campaigns`,
+                      icon: 'application',
+                      data: { campaign_id: data.campaign_id, application_id: app.id },
+                      emailData: { campaignTitle: campaignInfo.title, applicationStatus: 'rejected', campaignId: data.campaign_id },
+                    },
+                  });
                 }
               } catch {
                 // Best-effort notification
@@ -131,33 +129,37 @@ export const useManageApplication = () => {
         }
       }
 
-      // Send email notification to creator via gated RPC
-      const { fetchRecipientEmail } = await import('@/lib/recipientEmail');
-      const creatorProfile = await fetchRecipientEmail(data.creator_id);
-
-
+      // Notify the creator of the final decision (fire-and-forget)
       const { data: campaign } = await supabase
         .from('campaigns')
-        .select('title')
+        .select('title, id')
         .eq('id', data.campaign_id)
         .single()
         .then(r => r, () => ({ data: null }));
 
       try {
-        if (creatorProfile?.email && campaign?.title) {
-          await sendNotification(
-            'application_status',
-            creatorProfile.email,
-            creatorProfile.full_name,
-            {
-              campaignTitle: campaign.title,
-              applicationStatus: data.status,
-              campaignId: data.campaign_id,
-            }
-          );
+        if (campaign?.title) {
+          const isAccepted = data.status === 'accepted';
+          supabase.functions.invoke('create-notification', {
+            body: {
+              recipientId: data.creator_id,
+              type: isAccepted ? 'application_accepted' : 'application_rejected',
+              category: 'campaigns',
+              title: isAccepted ? 'Application Accepted!' : 'Application Update',
+              body: isAccepted
+                ? `Congratulations! Your application for "${campaign.title}" was accepted.`
+                : `Your application for "${campaign.title}" was not selected this time.`,
+              actionUrl: isAccepted
+                ? `/dashboard/creator/my-campaigns`
+                : `/dashboard/creator/campaigns`,
+              icon: 'application',
+              data: { campaign_id: data.campaign_id, application_id: data.id },
+              emailData: { campaignTitle: campaign.title, applicationStatus: data.status, campaignId: data.campaign_id },
+            },
+          });
         }
       } catch (emailError) {
-        console.error('Failed to send email notification:', emailError);
+        console.error('Failed to send notification:', emailError);
       }
 
       // Send Donny "you're hired" nudge to creator
