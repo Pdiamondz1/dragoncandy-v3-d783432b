@@ -43,6 +43,7 @@ import { ErrorBoundary } from '@/components/ErrorBoundary';
 import type { UserRole } from '@/types/user';
 import { getSidebarNav, getSettingsHref, getDashboardLabel } from '@/lib/navConfig';
 import { useTotalUnreadCount } from '@/hooks/useUnreadCounts';
+import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -146,6 +147,7 @@ const AppSidebar: React.FC<AppSidebarProps> = ({ userRole }) => {
 };
 
 const DashboardLayoutInner: React.FC<DashboardLayoutProps> = ({ children, userRole }) => {
+  useRealtimeRefresh();
   const { user, activeOrg } = useAuth();
   const logout = useLogout();
   const { avatarUrl, displayName } = useProfileData();

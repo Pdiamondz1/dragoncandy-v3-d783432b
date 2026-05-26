@@ -41,38 +41,45 @@ export const NotificationDropdown: React.FC = () => {
 
   const handleNotificationClick = (notification: Notification) => {
     markAsRead(notification.id);
-    
-    // Navigate based on notification type
-    if (notification.type === 'sponsorship_proposal_received') {
-      navigate(notification.data?.campaign_id
-        ? `/dashboard/business/campaigns/${notification.data.campaign_id}`
+    const notifData = notification.data as Record<string, unknown> | null;
+
+    // Use action_url when available (set by create-notification edge function)
+    if (notification.action_url) {
+      navigate(notification.action_url);
+      return;
+    }
+
+    // Fallback: navigate based on notification type + embedded data
+    if (notification.type === 'sponsorship_proposal') {
+      navigate(notifData?.campaign_id
+        ? `/dashboard/business/campaigns/${notifData.campaign_id}`
         : '/dashboard/business/campaigns');
-    } else if (notification.type === 'sponsorship_status_changed') {
+    } else if (notification.type === 'sponsorship_accepted' || notification.type === 'sponsorship_rejected') {
       navigate('/dashboard/brand/sponsorships');
     } else if (notification.type === 'application_received') {
-      if (notification.data?.campaign_id) {
-        navigate(`/dashboard/business/campaigns/${notification.data.campaign_id}`);
+      if (notifData?.campaign_id) {
+        navigate(`/dashboard/business/campaigns/${notifData.campaign_id}`);
       }
-    } else if (notification.type === 'application_status_changed') {
+    } else if (notification.type === 'application_accepted' || notification.type === 'application_rejected') {
       navigate('/dashboard/creator/applications');
     } else if (notification.type === 'content_liked') {
       navigate('/dashboard/creator/dragon-feed');
     } else if (notification.type === 'campaign_invitation') {
-      if (notification.data?.campaign_id) {
-        navigate(`/dashboard/creator/campaigns/${notification.data.campaign_id}?invited=true`);
+      if (notifData?.campaign_id) {
+        navigate(`/dashboard/creator/campaigns/${notifData.campaign_id}?invited=true`);
       }
     } else if (notification.type === 'message_received') {
-      if (notification.data?.conversation_id) {
-        navigate(`/dashboard/messages/${notification.data.conversation_id}`);
-      } else if (notification.data?.campaign_id) {
-        navigate(`/messages/${notification.data.campaign_id}`);
+      if (notifData?.conversation_id) {
+        navigate(`/dashboard/messages/${notifData.conversation_id}`);
+      } else if (notifData?.campaign_id) {
+        navigate(`/messages/${notifData.campaign_id}`);
       }
     } else if (notification.type === 'counter_offer_received' || notification.type === 'counter_offer_responded') {
-      if (notification.data?.campaign_id) {
-        const isCreatorView = notification.data.sender_role === 'business';
+      if (notifData?.campaign_id) {
+        const isCreatorView = notifData.sender_role === 'business';
         navigate(isCreatorView
-          ? `/dashboard/creator/my-campaigns/${notification.data.campaign_id}`
-          : `/dashboard/business/campaigns/${notification.data.campaign_id}`);
+          ? `/dashboard/creator/my-campaigns/${notifData.campaign_id}`
+          : `/dashboard/business/campaigns/${notifData.campaign_id}`);
       }
     }
   };
@@ -121,14 +128,14 @@ export const NotificationDropdown: React.FC = () => {
               <DropdownMenuItem
                 key={notification.id}
                 className={`flex flex-col items-start gap-1 p-3 cursor-pointer ${
-                  !notification.read ? 'bg-blue-50' : ''
+                  !notification.read_at ? 'bg-blue-50' : ''
                 }`}
                 onClick={() => handleNotificationClick(notification)}
               >
                 <div className="flex items-center justify-between w-full">
                   <span className="font-medium text-sm">{notification.title}</span>
                   <div className="flex items-center gap-2">
-                    {!notification.read && (
+                    {!notification.read_at && (
                       <div className="h-2 w-2 bg-blue-600 rounded-full" />
                     )}
                     <span className="text-xs text-muted-foreground">
@@ -136,7 +143,7 @@ export const NotificationDropdown: React.FC = () => {
                     </span>
                   </div>
                 </div>
-                <span className="text-sm text-muted-foreground">{notification.message}</span>
+                <span className="text-sm text-muted-foreground">{notification.body}</span>
               </DropdownMenuItem>
             ))}
           </div>
