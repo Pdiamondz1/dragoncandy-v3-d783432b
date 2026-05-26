@@ -43,8 +43,9 @@ export function deriveCurrentStep(collaboration: {
   ) return 'payment';
   if (collaboration.content_status === 'submitted') return 'review';
   if (collaboration.content_status === 'approved') return 'payment';
+  if (collaboration.content_status === 'auto_approved') return 'payment';
   if (collaboration.content_status === 'rejected') return 'payment';
-  // pending, in_progress, revision_requested, or null → creator is still working
+  if (collaboration.content_status === 'revision_requested') return 'submitted';
   return 'hired';
 }
 
