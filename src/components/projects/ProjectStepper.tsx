@@ -19,6 +19,8 @@ export function getCreatorStep(contentStatus: string | null, hasUploadedFiles: b
       return 4;
     case 'submitted':
       return 3;
+    case 'revision_requested':
+      return 2;
     case 'in_progress':
       return hasUploadedFiles ? 2 : 1;
     default:
