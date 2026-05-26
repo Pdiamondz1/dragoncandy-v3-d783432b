@@ -114,6 +114,12 @@ const CampaignDetailsPage: React.FC = () => {
   const applicationCount = applicationCounts?.total ?? 0;
   const { data: agreedValue } = useAgreedValue(id ?? '');
 
+  // Must call before early returns to keep hook count stable
+  const { data: existingReview } = useHasReviewedCollaboration(
+    projectData?.collaboration?.id,
+    user?.id,
+  );
+
   // Escrow payment state
   const [isPayingEscrow, setIsPayingEscrow] = useState(false);
 
@@ -429,10 +435,6 @@ const CampaignDetailsPage: React.FC = () => {
   const phase = deriveCampaignPhase(campaign.status, collaborationData);
   const currentStep = collaborationData ? deriveCurrentStep(collaborationData) : null;
 
-  const { data: existingReview } = useHasReviewedCollaboration(
-    collaborationData?.id,
-    user?.id,
-  );
   const hasReviewed = !!existingReview;
 
   // Show project loading spinner only when in active/completed phase where we need collaboration data

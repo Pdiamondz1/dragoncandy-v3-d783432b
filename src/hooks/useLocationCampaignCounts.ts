@@ -14,7 +14,7 @@ export function useLocationCampaignCounts(orgId?: string | null) {
         .from('campaigns')
         .select('org_unit_id')
         .eq('org_id', orgId!)
-        .in('status', ['active', 'in_progress']);
+        .in('status', ['active', 'published']);
 
       if (error) throw error;
 
