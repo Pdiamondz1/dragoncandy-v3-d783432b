@@ -29,8 +29,10 @@ export default function MyCampaignsPage() {
   );
 
   const acceptedApps = useMemo(
-    () => applications.filter((a) => a.status === 'accepted'),
-    [applications],
+    () => applications.filter(
+      (a) => a.status === 'accepted' && !activeCollabs.some((c) => c.campaign_id === a.campaign_id)
+    ),
+    [applications, activeCollabs],
   );
 
   const defaultTab: TabId = activeCollabs.length > 0 ? 'active' : 'applied';
