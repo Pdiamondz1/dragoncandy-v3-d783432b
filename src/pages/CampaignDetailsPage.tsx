@@ -118,17 +118,31 @@ const CampaignDetailsPage: React.FC = () => {
   const [isPayingEscrow, setIsPayingEscrow] = useState(false);
 
   useEffect(() => {
-    const paymentParam = searchParams.get('payment');
+    const params = new URLSearchParams(location.search);
+    const paymentParam = params.get('payment');
     if (!paymentParam || !id) return;
 
+    const cleanUrl = () => navigate(location.pathname, { replace: true });
+
     if (paymentParam === 'success') {
+      const sessionId = params.get('session_id') ?? undefined;
+
+      const verifyOnce = async (): Promise<boolean> => {
+        const { data, error } = await supabase.functions.invoke('verify-campaign-escrow', {
+          body: { campaignId: id, sessionId },
+        });
+        if (error) throw error;
+        return !!data?.success;
+      };
+
       const verify = async () => {
         try {
-          const { data, error } = await supabase.functions.invoke('verify-campaign-escrow', {
-            body: { campaignId: id },
-          });
-          if (error) throw error;
-          if (data?.success) {
+          let ok = await verifyOnce();
+          if (!ok) {
+            await new Promise(r => setTimeout(r, 3000));
+            ok = await verifyOnce();
+          }
+          if (ok) {
             const pendingApproval = localStorage.getItem('autoApproveAfterPayment');
             if (pendingApproval) {
               const { collaborationId, campaignId: storedCampaignId } = JSON.parse(pendingApproval);
@@ -158,14 +172,14 @@ const CampaignDetailsPage: React.FC = () => {
         } catch {
           toast({ variant: 'destructive', title: 'Verification Failed', description: 'Could not verify payment. Please refresh.' });
         }
+        cleanUrl();
       };
       void verify();
     } else if (paymentParam === 'cancelled') {
       localStorage.removeItem('autoApproveAfterPayment');
       toast({ title: 'Payment Cancelled', description: 'Your campaign was saved as a draft. You can pay escrow later.' });
+      cleanUrl();
     }
-
-    navigate(location.pathname, { replace: true });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -487,6 +501,7 @@ const CampaignDetailsPage: React.FC = () => {
           onLeaveReview={() => setShowRatingModal(true)}
           isPayingEscrow={isPayingEscrow}
           agreedValue={agreedValue}
+          hasAcceptedCreator={(applicationCounts?.accepted ?? 0) > 0}
         />
 
         {/* Desktop: 2-column layout for workflow + details; Mobile: stacked */}

@@ -41,6 +41,7 @@ import {
 type BannerState =
   | 'draft'
   | 'payment_pending'
+  | 'payment_pending_project'
   | 'published'
   | 'pending_review'
   | 'action_needed'
@@ -81,6 +82,7 @@ interface CampaignStatusBannerProps {
   onLeaveReview: () => void;
   isPayingEscrow?: boolean;
   agreedValue?: number | null;
+  hasAcceptedCreator?: boolean;
 }
 
 function deriveBannerState(
@@ -89,6 +91,7 @@ function deriveBannerState(
   escrowStatus: string | null | undefined,
   applicationCount: number,
   step: ProjectStep | null,
+  hasAcceptedCreator?: boolean,
 ): BannerState {
   if (phase === 'cancelled') return 'cancelled';
   if (phase === 'completed') return 'completed';
@@ -97,6 +100,7 @@ function deriveBannerState(
   }
   // pre_hire
   if (status === 'draft') return 'draft';
+  if (escrowStatus === 'pending' && hasAcceptedCreator) return 'payment_pending_project';
   if (escrowStatus === 'pending') return 'payment_pending';
   if (applicationCount > 0) return 'pending_review';
   return 'published';
@@ -105,6 +109,7 @@ function deriveBannerState(
 const bannerStyles: Record<BannerState, string> = {
   draft: 'bg-teal-50 border-2 border-teal-300',
   payment_pending: 'bg-amber-50 border-2 border-amber-400',
+  payment_pending_project: 'bg-amber-50 border-2 border-amber-400',
   published: 'bg-teal-50 border-2 border-teal-300',
   pending_review: 'bg-amber-50 border-2 border-amber-400',
   action_needed: 'bg-pink-50 border-2 border-pink-400',
@@ -116,6 +121,7 @@ const bannerStyles: Record<BannerState, string> = {
 const bannerIcons: Record<BannerState, React.ReactNode> = {
   draft: <Pencil className="h-5 w-5 text-teal-600" />,
   payment_pending: <AlertTriangle className="h-5 w-5 text-amber-600" />,
+  payment_pending_project: <AlertTriangle className="h-5 w-5 text-amber-600" />,
   published: <Megaphone className="h-5 w-5 text-teal-600" />,
   pending_review: <Clock className="h-5 w-5 text-amber-600" />,
   action_needed: <Eye className="h-5 w-5 text-pink-600" />,
@@ -148,6 +154,7 @@ export const CampaignStatusBanner: React.FC<CampaignStatusBannerProps> = ({
   onLeaveReview,
   isPayingEscrow,
   agreedValue,
+  hasAcceptedCreator,
 }) => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
@@ -166,7 +173,7 @@ export const CampaignStatusBanner: React.FC<CampaignStatusBannerProps> = ({
     );
   }
 
-  const state = deriveBannerState(phase, campaign.status, campaign.escrow_status, applicationCount, currentStep);
+  const state = deriveBannerState(phase, campaign.status, campaign.escrow_status, applicationCount, currentStep, hasAcceptedCreator);
 
   const canDelete = (phase === 'pre_hire' || phase === 'cancelled') && campaign.escrow_status !== 'held';
   const canEdit = phase === 'pre_hire';
@@ -177,6 +184,7 @@ export const CampaignStatusBanner: React.FC<CampaignStatusBannerProps> = ({
     switch (state) {
       case 'draft': return 'Draft — Not Published';
       case 'payment_pending': return 'Payment Required to Publish';
+      case 'payment_pending_project': return 'Payment Required to Start Project';
       case 'published': return 'Campaign Published — Awaiting Applications';
       case 'pending_review':
         return applicationCount === 1
@@ -196,6 +204,7 @@ export const CampaignStatusBanner: React.FC<CampaignStatusBannerProps> = ({
     switch (state) {
       case 'draft': return 'This campaign hasn\'t been published yet. Review and publish when ready.';
       case 'payment_pending': return 'Complete your Stripe checkout to make this campaign visible to creators.';
+      case 'payment_pending_project': return 'Complete your Stripe checkout to fund escrow and activate this campaign.';
       case 'published': return 'Your campaign is live. Creators can now discover and apply.';
       case 'pending_review':
         if (applicationCount === 1 && oldestApplicantName) {
@@ -238,6 +247,19 @@ export const CampaignStatusBanner: React.FC<CampaignStatusBannerProps> = ({
             />
             <Button onClick={onPayEscrow} disabled={isPayingEscrow} className="rounded-full bg-amber-500 hover:bg-amber-600 text-white font-semibold w-full">
               {isPayingEscrow ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Processing…</> : 'Pay & Publish'}
+            </Button>
+          </div>
+        );
+      case 'payment_pending_project':
+        return (
+          <div className="space-y-2 w-full lg:w-auto">
+            <EscrowFeeBreakdown
+              creatorRate={agreedValue ?? campaign.fixed_price ?? campaign.budget_max ?? 0}
+              deliveryFee={campaign.delivery_fee || 0}
+              deliveryType={campaign.delivery_type || 'standard'}
+            />
+            <Button onClick={onPayEscrow} disabled={isPayingEscrow} className="rounded-full bg-amber-500 hover:bg-amber-600 text-white font-semibold w-full">
+              {isPayingEscrow ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Processing…</> : 'Pay Escrow'}
             </Button>
           </div>
         );
