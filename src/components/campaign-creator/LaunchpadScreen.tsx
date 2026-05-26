@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom';
+import { AlertTriangle } from 'lucide-react';
 import type { CampaignIdea, EditableCampaign, BrandFields } from '@/types/campaignCreator';
 import { IdeaCarousel } from './IdeaCarousel';
 import { RegenerateButton } from './RegenerateButton';
@@ -31,11 +33,27 @@ export function LaunchpadScreen({
   onLaunch, onSaveDraft, onAuthRequired,
 }: LaunchpadScreenProps) {
   const selectedIdea = ideas.find((i) => i.id === selectedIdeaId);
+  const noPlatformsConnected = ideas.length > 0 && ideas.every(i => i.content_strategy === null);
+  const settingsPath = userRole === 'brand' ? '/dashboard/brand/settings' : '/dashboard/business/settings';
 
   return (
     <div className="space-y-4 px-4 pb-8">
       <ExtractionFeed messages={extractionMessages} isExtracting={isExtracting} />
       <IdeaCarousel ideas={ideas} selectedId={selectedIdeaId} onSelect={onSelectIdea} />
+      {noPlatformsConnected && (
+        <div className="flex items-start gap-2.5 bg-amber-50 border border-amber-200 rounded-xl p-3">
+          <AlertTriangle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-xs text-amber-800 font-semibold">No social accounts connected</p>
+            <p className="text-[11px] text-amber-700 mt-0.5">
+              Connect a social account in Settings to unlock auto-scheduling and content strategy.
+            </p>
+            <Link to={settingsPath} className="text-[11px] text-amber-600 font-semibold hover:underline mt-1 inline-block">
+              Go to Settings →
+            </Link>
+          </div>
+        </div>
+      )}
       <div className="flex justify-center">
         <RegenerateButton onRegenerate={onRegenerate} isLoading={isExtracting} />
       </div>

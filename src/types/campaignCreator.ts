@@ -45,6 +45,7 @@ export interface CampaignIdea {
   target_creator_persona: string[];
   key_messages: string[];
   hashtags: string[];
+  content_strategy?: ContentStrategy | null;
 }
 
 export interface EditableCampaign {
@@ -81,6 +82,36 @@ export interface BrandFields {
   tagline?: string;
 }
 
+export type StrategyPurpose =
+  | 'hero_showcase'
+  | 'behind_scenes'
+  | 'teaser_hype'
+  | 'follow_up'
+  | 'testimonial'
+  | 'menu_highlight'
+  | 'ambient_vibe'
+  | 'event_coverage';
+
+export interface ContentStrategyPost {
+  content_type: ContentType;
+  platform: Platform;
+  purpose: StrategyPurpose;
+  description: string;
+  day_offset: number;
+}
+
+export interface ContentStrategy {
+  posts: ContentStrategyPost[];
+  cadence: 'spread' | 'burst' | 'ramp';
+  duration_days: number;
+  reasoning: string;
+}
+
+export interface ConnectedPlatform {
+  platform: string;
+  platform_handle: string | null;
+}
+
 export interface DonnyGenerateRequest {
   source_url?: string;
   source_type: BusinessContext['source_type'];
@@ -88,6 +119,7 @@ export interface DonnyGenerateRequest {
   manual_text?: string;
   role: 'business_client' | 'brand' | null;
   inspiration_refs?: InspirationRef[];
+  connected_platforms?: ConnectedPlatform[];
 }
 
 export interface DonnyGenerateResponse {

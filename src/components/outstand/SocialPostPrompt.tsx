@@ -40,14 +40,19 @@ function formatSuggestedTime(iso: string): string {
   return `in ${diffDays} days`;
 }
 
-function getGenericCaption(userRole: string, campaignTitle: string): string {
+function stripTrailingHashtags(text: string): string {
+  return text.replace(/(\n\n|\n)?(#\w+[\s]*)+$/g, '').trimEnd();
+}
+
+function getGenericCaption(userRole: string, campaignTitle: string): { text: string; tags: string[] } {
+  const tags = ['#DragonDashed'];
   switch (userRole) {
     case 'restaurant':
-      return `Check out what we've been cooking up!\n\n#DragonDashed`;
+      return { text: 'Check out what we\'ve been cooking up!', tags };
     case 'creator':
-      return `Loved creating this content!\n\n#DragonDashed`;
+      return { text: 'Loved creating this content!', tags };
     default:
-      return `${campaignTitle}\n\n#DragonDashed`;
+      return { text: campaignTitle, tags };
   }
 }
 
@@ -68,6 +73,7 @@ function SocialPostPromptInner({
   const crossPost = useCrossPost();
   const { user } = useAuth();
   const [caption, setCaption] = useState('');
+  const [hashtags, setHashtags] = useState<string[]>([]);
   const [isEditing, setIsEditing] = useState(false);
   const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([]);
   const [isMobile, setIsMobile] = useState(false);
@@ -91,7 +97,7 @@ function SocialPostPromptInner({
     return () => window.removeEventListener('resize', check);
   }, []);
 
-  const generateCaption = useCallback(async () => {
+  const generateCaption = useCallback(async (): Promise<{ text: string; tags: string[] } | null> => {
     if (!campaignId || !user?.id) return null;
     try {
       const { data, error } = await supabase.functions.invoke('social-caption', {
@@ -105,10 +111,9 @@ function SocialPostPromptInner({
         },
       });
       if (error) throw error;
-      const captionText = data?.caption ?? data?.text ?? '';
-      const hashtags = data?.hashtags ?? [];
-      const hashtagStr = hashtags.length ? `\n\n${hashtags.join(' ')}` : '';
-      return `${captionText}${hashtagStr}`;
+      const rawCaption = data?.caption ?? data?.text ?? '';
+      const tags: string[] = data?.hashtags ?? [];
+      return { text: stripTrailingHashtags(rawCaption), tags };
     } catch {
       return null;
     }
@@ -145,14 +150,17 @@ function SocialPostPromptInner({
             .maybeSingle();
 
           if (draft?.caption) {
-            const hashtagStr = draft.hashtags?.length ? `\n\n${(draft.hashtags as string[]).join(' ')}` : '';
-            setCaption(`${draft.caption}${hashtagStr}`);
+            setCaption(stripTrailingHashtags(draft.caption));
+            setHashtags(draft.hashtags?.length ? (draft.hashtags as string[]) : []);
           } else {
-            const aiCaption = await generateCaption();
-            if (aiCaption) {
-              setCaption(aiCaption);
+            const aiResult = await generateCaption();
+            if (aiResult) {
+              setCaption(aiResult.text);
+              setHashtags(aiResult.tags);
             } else {
-              setCaption(getGenericCaption(userRole, campaignTitle));
+              const fallback = getGenericCaption(userRole, campaignTitle);
+              setCaption(fallback.text);
+              setHashtags(fallback.tags);
               setCaptionError(true);
             }
           }
@@ -162,7 +170,9 @@ function SocialPostPromptInner({
             setSuggestedTime(null);
           }
         } catch {
-          setCaption(getGenericCaption(userRole, campaignTitle));
+          const fallback = getGenericCaption(userRole, campaignTitle);
+          setCaption(fallback.text);
+          setHashtags(fallback.tags);
           setCaptionError(true);
         } finally {
           setLoadingCaption(false);
@@ -170,7 +180,9 @@ function SocialPostPromptInner({
       };
       loadDraft();
     } else {
-      setCaption(getGenericCaption(userRole, campaignTitle));
+      const fallback = getGenericCaption(userRole, campaignTitle);
+      setCaption(fallback.text);
+      setHashtags(fallback.tags);
       setSuggestedTime(null);
     }
   }, [open, campaignId, user?.id, campaignTitle, originalCaption, userRole, generateCaption]);
@@ -184,9 +196,10 @@ function SocialPostPromptInner({
   const handleRefreshCaption = async () => {
     setRefreshingCaption(true);
     setCaptionError(false);
-    const aiCaption = await generateCaption();
-    if (aiCaption) {
-      setCaption(aiCaption);
+    const aiResult = await generateCaption();
+    if (aiResult) {
+      setCaption(aiResult.text);
+      setHashtags(aiResult.tags);
     } else {
       setCaptionError(true);
     }
@@ -198,6 +211,10 @@ function SocialPostPromptInner({
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
   };
+
+  const fullCaption = hashtags.length > 0
+    ? `${caption}\n\n${hashtags.join(' ')}`
+    : caption;
 
   const syncScheduledPost = async (scheduleTime: string) => {
     if (!user?.id || !campaignId) return;
@@ -222,6 +239,7 @@ function SocialPostPromptInner({
           status: 'scheduled' as string,
           scheduled_at: scheduleTime,
           caption,
+          hashtags,
           media_urls: mediaUrls,
           platform: platforms[0] ?? 'instagram',
         })
@@ -235,6 +253,7 @@ function SocialPostPromptInner({
           platform: platforms[0] ?? 'instagram',
           content_type: 'video_reel',
           caption,
+          hashtags,
           media_urls: mediaUrls,
           scheduled_at: scheduleTime,
           status: 'scheduled' as string,
@@ -253,7 +272,7 @@ function SocialPostPromptInner({
 
     setSchedulingState('scheduling');
     crossPost.mutate(
-      { caption, mediaUrls, accountIds: selectedAccountIds, scheduledAt: scheduleTime },
+      { caption: fullCaption, mediaUrls, accountIds: selectedAccountIds, scheduledAt: scheduleTime },
       {
         onSuccess: async () => {
           await syncScheduledPost(scheduleTime);
@@ -271,7 +290,7 @@ function SocialPostPromptInner({
   const handlePostNow = () => {
     if (selectedAccountIds.length === 0) return;
     crossPost.mutate(
-      { caption, mediaUrls, accountIds: selectedAccountIds },
+      { caption: fullCaption, mediaUrls, accountIds: selectedAccountIds },
       { onSuccess: () => onOpenChange(false) },
     );
   };
@@ -369,15 +388,27 @@ function SocialPostPromptInner({
                 </p>
               </div>
             ) : isEditing ? (
-              <textarea
-                value={caption}
-                onChange={(e) => setCaption(e.target.value)}
-                className="w-full text-sm text-gray-700 bg-white border border-gray-200 rounded-lg p-2 min-h-[120px] resize-none focus:outline-none focus:ring-2 focus:ring-dc-teal"
-                autoFocus
-              />
+              <div className="space-y-2">
+                <textarea
+                  value={caption}
+                  onChange={(e) => setCaption(e.target.value)}
+                  className="w-full text-sm text-gray-700 bg-white border border-gray-200 rounded-lg p-2 min-h-[100px] resize-none focus:outline-none focus:ring-2 focus:ring-dc-teal"
+                  autoFocus
+                />
+                <input
+                  type="text"
+                  value={hashtags.join(' ')}
+                  onChange={(e) => setHashtags(e.target.value.split(/\s+/).filter(Boolean))}
+                  placeholder="#hashtags"
+                  className="w-full text-xs text-dc-teal bg-white border border-gray-200 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-dc-teal"
+                />
+              </div>
             ) : (
               <>
                 <p className="text-sm text-gray-700 whitespace-pre-wrap">{caption}</p>
+                {hashtags.length > 0 && (
+                  <p className="text-xs text-dc-teal font-medium mt-2">{hashtags.join(' ')}</p>
+                )}
                 {captionError && (
                   <p className="text-[10px] text-dc-text-muted mt-2">
                     Caption generation unavailable — edit to customize.
@@ -389,10 +420,12 @@ function SocialPostPromptInner({
 
           {user?.id && userRole === 'creator' && (
             <DonnyCaptionRewriter
-              originalCaption={caption}
+              originalCaption={fullCaption}
               platform={selectedAccountIds[0] ?? 'social'}
               creatorId={user.id}
-              onAccept={(rewritten) => setCaption(rewritten)}
+              onAccept={(rewritten) => {
+                setCaption(stripTrailingHashtags(rewritten));
+              }}
             />
           )}
 

@@ -191,10 +191,30 @@ export function useCampaignCreator() {
         manualText = value;
       }
 
+      let connectedPlatforms: DonnyGenerateRequest['connected_platforms'];
+      if (user) {
+        try {
+          const { data: accts } = await supabase
+            .from('business_outstand_accounts')
+            .select('platform, platform_handle')
+            .eq('user_id', user.id)
+            .eq('status', 'active');
+          if (accts?.length) {
+            connectedPlatforms = accts.map((a) => ({
+              platform: a.platform,
+              platform_handle: a.platform_handle,
+            }));
+          }
+        } catch {
+          // non-blocking — proceed without platform info
+        }
+      }
+
       const request: DonnyGenerateRequest = {
         source_type: mode === 'url' && sourceUrl ? detectUrlType(sourceUrl) : mode === 'photo' ? 'photo' : 'manual',
         role: userRole,
         inspiration_refs: inspirationRefs.length > 0 ? inspirationRefs : undefined,
+        connected_platforms: connectedPlatforms,
       };
 
       if (sourceUrl) request.source_url = sourceUrl;

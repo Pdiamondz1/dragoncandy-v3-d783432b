@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Download, FileText, Loader2, Share2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -10,6 +10,7 @@ import { WatermarkedLightbox } from '@/components/content/WatermarkedLightbox';
 import { VideoFrameThumbnail } from '@/components/content/VideoFrameThumbnail';
 import { SocialPostPrompt } from '@/components/outstand/SocialPostPrompt';
 import { SponsorshipAmplificationPrompt } from '@/components/outstand/SponsorshipAmplificationPrompt';
+import { PostingPlanReview } from '@/components/outstand/PostingPlanReview';
 import { DragonCandyOutstandProvider } from '@/integrations/outstand/Provider';
 
 interface DeliverablesArchiveProps {
@@ -37,6 +38,22 @@ export const DeliverablesArchive: React.FC<DeliverablesArchiveProps> = ({
   const [downloadingAll, setDownloadingAll] = useState(false);
   const [selectedFileIndex, setSelectedFileIndex] = useState<number | null>(null);
   const [showShareModal, setShowShareModal] = useState(false);
+  const [hasContentStrategy, setHasContentStrategy] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    supabase
+      .from('campaigns')
+      .select('ai_analysis')
+      .eq('id', campaignId)
+      .single()
+      .then(({ data }) => {
+        if (!cancelled) {
+          setHasContentStrategy(!!data?.ai_analysis?.content_strategy);
+        }
+      });
+    return () => { cancelled = true; };
+  }, [campaignId]);
 
   const downloadFile = async (file: {
     id: string;
@@ -201,6 +218,24 @@ export const DeliverablesArchive: React.FC<DeliverablesArchiveProps> = ({
                     .filter(f => f.mime_type?.startsWith('image/') || f.mime_type?.startsWith('video/'))
                     .map(f => supabase.storage.from(f.bucket_name).getPublicUrl(f.file_path).data.publicUrl)}
                   originalCaption={campaignDescription ?? ''}
+                />
+              ) : hasContentStrategy ? (
+                <PostingPlanReview
+                  open={showShareModal}
+                  onOpenChange={setShowShareModal}
+                  campaignId={campaignId}
+                  campaignTitle={campaignTitle ?? ''}
+                  campaignDescription={campaignDescription}
+                  mediaItems={files
+                    .filter(f => f.mime_type?.startsWith('image/') || f.mime_type?.startsWith('video/'))
+                    .map(f => ({
+                      url: supabase.storage.from(f.bucket_name).getPublicUrl(f.file_path).data.publicUrl,
+                      fileId: f.id,
+                      mimeType: f.mime_type ?? undefined,
+                      filename: f.original_filename ?? undefined,
+                      storedThumbnailUrl: getVideoThumbnailUrl(f.bucket_name, f.metadata as Record<string, unknown>) ?? undefined,
+                    }))}
+                  userRole={userRole === 'business' ? 'restaurant' : userRole ?? 'creator'}
                 />
               ) : (
                 <SocialPostPrompt

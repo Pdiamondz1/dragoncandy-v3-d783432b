@@ -56,6 +56,7 @@ const FUNCTION_ROUTING: Record<string, FunctionRouting> = {
   "donny-orchestrator": { config: SONNET, canDowngrade: false },
   "donny-chat": { config: SONNET_EXTENDED, canDowngrade: false },
   "social-caption": { config: HAIKU, canDowngrade: false },
+  "content-posting-plan": { config: HAIKU, canDowngrade: false },
   "social-analysis": { config: SONNET, canDowngrade: true },
 };
 

@@ -37,6 +37,13 @@ export function IdeaCard({ idea, isSelected, onSelect }: IdeaCardProps) {
           </span>
         ))}
       </div>
+      {idea.content_strategy && (
+        <p className="text-xs text-dc-teal font-medium mt-2">
+          {idea.content_strategy.posts.length} posts over {idea.content_strategy.duration_days} days
+          {' · '}
+          {idea.content_strategy.cadence} cadence
+        </p>
+      )}
     </button>
   );
 }

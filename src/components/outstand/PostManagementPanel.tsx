@@ -2,16 +2,18 @@ import React, { useState, useEffect } from 'react';
 import type { Post } from '@outstand-so/ui';
 import { useOutstandApi } from '@outstand-so/ui';
 import { useOutstandConfig } from '@/integrations/outstand/Provider';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Calendar, Clock, Trash2, RefreshCw, Pencil, ExternalLink, Loader2 } from 'lucide-react';
+import { Calendar, Clock, Trash2, RefreshCw, Pencil, ExternalLink, Loader2, Layers } from 'lucide-react';
 import { toast } from 'sonner';
 import { VideoFrameThumbnail } from '@/components/content/VideoFrameThumbnail';
 import { isScheduled } from '@/lib/outstandUtils';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 
 interface PostManagementPanelProps {
   post: Post | null;
@@ -40,6 +42,7 @@ export const PostManagementPanel: React.FC<PostManagementPanelProps> = ({
   const { apiKey, baseUrl } = useOutstandConfig();
   const api = useOutstandApi({ apiKey, baseUrl });
   const qc = useQueryClient();
+  const { user } = useAuth();
 
   const [editingCaption, setEditingCaption] = useState(false);
   const [caption, setCaption] = useState('');
@@ -47,6 +50,70 @@ export const PostManagementPanel: React.FC<PostManagementPanelProps> = ({
   const [removing, setRemoving] = useState(false);
   const [rescheduling, setRescheduling] = useState(false);
   const [newDateTime, setNewDateTime] = useState('');
+  const [cancellingPlan, setCancellingPlan] = useState(false);
+
+  // Look up plan context from donny_scheduled_posts by matching scheduled time
+  const postScheduledAt = post?.scheduledAt;
+  const { data: planContext } = useQuery({
+    queryKey: ['plan-context', postScheduledAt, user?.id],
+    queryFn: async () => {
+      if (!user || !postScheduledAt) return null;
+      const schedDate = new Date(postScheduledAt);
+      const windowStart = new Date(schedDate.getTime() - 60_000).toISOString();
+      const windowEnd = new Date(schedDate.getTime() + 60_000).toISOString();
+
+      const { data: match } = await supabase
+        .from('donny_scheduled_posts')
+        .select('plan_group_id, campaign_id')
+        .eq('user_id', user.id)
+        .gte('scheduled_at', windowStart)
+        .lte('scheduled_at', windowEnd)
+        .not('plan_group_id', 'is', null)
+        .limit(1)
+        .maybeSingle();
+
+      if (!match?.plan_group_id) return null;
+
+      const { data: siblings } = await supabase
+        .from('donny_scheduled_posts')
+        .select('id, status')
+        .eq('plan_group_id', match.plan_group_id)
+        .neq('status', 'cancelled');
+
+      return {
+        planGroupId: match.plan_group_id as string,
+        siblingCount: siblings?.length ?? 0,
+      };
+    },
+    enabled: !!user && !!postScheduledAt && open,
+    staleTime: 60_000,
+  });
+
+  const handleCancelPlan = async () => {
+    if (!planContext?.planGroupId || !user) return;
+    const confirmed = window.confirm(`Cancel all ${planContext.siblingCount} posts in this plan?`);
+    if (!confirmed) return;
+
+    setCancellingPlan(true);
+    try {
+      const { error } = await supabase
+        .from('donny_scheduled_posts')
+        .update({ status: 'cancelled' })
+        .eq('plan_group_id', planContext.planGroupId)
+        .eq('user_id', user.id);
+      if (error) throw error;
+      toast.success(`Plan cancelled (${planContext.siblingCount} posts)`);
+      onOpenChange(false);
+      qc.invalidateQueries({ queryKey: ['outstand'] });
+      qc.invalidateQueries({ queryKey: ['draft-posts'] });
+      qc.invalidateQueries({ queryKey: ['plan-context'] });
+      onChanged?.();
+    } catch {
+      toast.error('Failed to cancel plan');
+    } finally {
+      setCancellingPlan(false);
+    }
+  };
 
   useEffect(() => {
     if (post && open) {
@@ -156,6 +223,16 @@ export const PostManagementPanel: React.FC<PostManagementPanelProps> = ({
             </p>
             <p className="text-[10px] text-dc-teal font-medium">Scheduled by Donny</p>
           </div>
+        </div>
+      )}
+
+      {/* Plan context */}
+      {planContext && planContext.siblingCount > 1 && (
+        <div className="flex items-center gap-2 bg-purple-50 border border-purple-200 rounded-xl p-3">
+          <Layers className="h-4 w-4 text-purple-500 flex-shrink-0" />
+          <p className="text-[11px] text-purple-700 font-medium">
+            Part of a posting plan ({planContext.siblingCount} posts)
+          </p>
         </div>
       )}
 
@@ -281,6 +358,19 @@ export const PostManagementPanel: React.FC<PostManagementPanelProps> = ({
             {removing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Trash2 className="h-4 w-4 mr-2" />}
             Remove from Schedule
           </Button>
+
+          {/* Cancel Plan */}
+          {planContext && planContext.siblingCount > 1 && (
+            <Button
+              variant="outline"
+              onClick={handleCancelPlan}
+              disabled={cancellingPlan}
+              className="w-full rounded-full border-purple-300 text-purple-600 hover:bg-purple-50 font-semibold text-sm"
+            >
+              {cancellingPlan ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Layers className="h-4 w-4 mr-2" />}
+              Cancel Plan ({planContext.siblingCount} posts)
+            </Button>
+          )}
         </div>
       )}
 
