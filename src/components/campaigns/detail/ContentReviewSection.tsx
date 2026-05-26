@@ -35,6 +35,11 @@ import { WatermarkedLightbox } from '@/components/content/WatermarkedLightbox';
 import { VideoFrameThumbnail } from '@/components/content/VideoFrameThumbnail';
 import { getVideoThumbnailUrl } from '@/lib/fileUtils';
 
+interface RevisionPayload {
+  items: Record<string, string>;
+  general?: string;
+}
+
 interface ContentReviewSectionProps {
   collaborationId: string;
   campaignId: string;
@@ -62,6 +67,8 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
   const queryClient = useQueryClient();
   const [showRevisionInput, setShowRevisionInput] = useState(false);
   const [feedback, setFeedback] = useState('');
+  const [checkedFiles, setCheckedFiles] = useState<Set<string>>(new Set());
+  const [perItemFeedback, setPerItemFeedback] = useState<Record<string, string>>({});
   const [selectedFileIndex, setSelectedFileIndex] = useState<number | null>(null);
   const safeRevisionCount = revisionCount ?? 0;
   const [isPayingEscrow, setIsPayingEscrow] = useState(false);
@@ -192,23 +199,38 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
   };
 
   const requestRevision = useMutation({
-    mutationFn: async (revisionFeedback: string) => {
+    mutationFn: async (payload: RevisionPayload) => {
       const { error: updateError } = await supabase
         .from('campaign_collaborations')
         .update({
           content_status: 'revision_requested',
           revision_count: safeRevisionCount + 1,
+          revision_feedback: payload.items,
           updated_at: new Date().toISOString(),
         })
         .eq('id', collaborationId);
       if (updateError) throw updateError;
+
+      // Build structured message
+      const itemLines = Object.entries(payload.items)
+        .filter(([key]) => key !== 'general')
+        .map(([key, text]) => {
+          const file = files?.find(
+            (f) => (f.metadata as Record<string, unknown>)?.deliverable_id === key || f.id === key
+          );
+          const label = file?.original_filename ?? key;
+          return `• **${label}:** ${text}`;
+        })
+        .join('\n');
+      const generalLine = payload.general ? `\n\n**General notes:** ${payload.general}` : '';
+      const messageContent = `📝 **Revision Requested**\n\n${itemLines}${generalLine}`;
 
       const { data: authData } = await supabase.auth.getUser();
       const { error: messageError } = await supabase.from('messages').insert({
         sender_id: authData.user?.id,
         recipient_id: creatorId,
         campaign_id: campaignId,
-        content: `📝 **Revision Requested**\n\n${revisionFeedback}`,
+        content: messageContent,
         category: 'revision_request',
       });
       if (messageError) throw messageError;
@@ -218,12 +240,14 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
         p_entity_type: 'collaboration',
         p_entity_id: collaborationId,
         p_campaign_id: campaignId,
-        p_metadata: { notes: revisionFeedback, revision_number: safeRevisionCount + 1 },
+        p_metadata: { notes: messageContent, revision_number: safeRevisionCount + 1, items: payload.items },
       }).then(() => {}, () => {});
     },
     onSuccess: async () => {
       toast({ title: 'Revision request sent to creator.' });
       setFeedback('');
+      setCheckedFiles(new Set());
+      setPerItemFeedback({});
       setShowRevisionInput(false);
       queryClient.invalidateQueries({ queryKey: ['campaigns'] });
       queryClient.invalidateQueries({ queryKey: ['campaign', campaignId] });
@@ -246,7 +270,6 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
       } catch (e) {
         console.error('Failed to send revision request email:', e);
       }
-
     },
     onError: (err: Error) => {
       toast({ variant: 'destructive', title: 'Request Failed', description: err.message });
@@ -500,32 +523,98 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
               )}
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-3">
+              <p className="text-xs font-semibold text-gray-700">Select items that need revision:</p>
+
+              {/* Per-file checkboxes */}
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {files?.map((file) => {
+                  const fileKey = (file.metadata as Record<string, unknown>)?.deliverable_id as string ?? file.id;
+                  const isChecked = checkedFiles.has(fileKey);
+                  const isImage = file.mime_type?.startsWith('image/');
+                  const isVideo = file.mime_type?.startsWith('video/');
+                  const thumbUrl = isImage
+                    ? supabase.storage.from(file.bucket_name).getPublicUrl(file.file_path).data.publicUrl
+                    : null;
+                  return (
+                    <div key={file.id} className="space-y-1">
+                      <label className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-50 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => {
+                            setCheckedFiles((prev) => {
+                              const next = new Set(prev);
+                              if (next.has(fileKey)) next.delete(fileKey);
+                              else next.add(fileKey);
+                              return next;
+                            });
+                          }}
+                          className="rounded border-gray-300 text-dc-teal focus:ring-dc-teal"
+                        />
+                        {thumbUrl ? (
+                          <img src={thumbUrl} alt="" className="w-10 h-10 rounded object-cover" />
+                        ) : (
+                          <div className="w-10 h-10 rounded bg-gray-100 flex items-center justify-center">
+                            {isVideo ? <Eye className="h-4 w-4 text-gray-400" /> : <FileCheck className="h-4 w-4 text-gray-400" />}
+                          </div>
+                        )}
+                        <span className="text-sm text-gray-700 truncate flex-1">{file.original_filename}</span>
+                      </label>
+                      {isChecked && (
+                        <Textarea
+                          placeholder="What needs to change?"
+                          value={perItemFeedback[fileKey] ?? ''}
+                          onChange={(e) => setPerItemFeedback((prev) => ({ ...prev, [fileKey]: e.target.value }))}
+                          rows={1}
+                          className="text-xs rounded-lg ml-8"
+                        />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* General notes */}
               <Textarea
-                placeholder="Describe the changes you need…"
+                placeholder="General notes (optional)"
                 value={feedback}
-                onChange={e => setFeedback(e.target.value)}
+                onChange={(e) => setFeedback(e.target.value)}
                 rows={2}
                 className="text-sm rounded-xl"
               />
+
+              {/* Actions */}
               <div className="flex gap-2">
                 <Button
-                  onClick={() => requestRevision.mutate(feedback)}
-                  disabled={!feedback.trim() || requestRevision.isPending}
+                  onClick={() => {
+                    const items: Record<string, string> = {};
+                    checkedFiles.forEach((key) => {
+                      items[key] = perItemFeedback[key]?.trim() || 'Revision needed';
+                    });
+                    if (feedback.trim()) items['general'] = feedback.trim();
+                    requestRevision.mutate({ items, general: feedback.trim() || undefined });
+                  }}
+                  disabled={checkedFiles.size === 0 || requestRevision.isPending}
                   size="sm"
                   className="rounded-full bg-teal-400 hover:bg-teal-500 text-white"
                 >
                   {requestRevision.isPending ? (
                     <><Loader2 className="h-3 w-3 mr-1 animate-spin" />Sending…</>
                   ) : (
-                    <><Send className="h-3 w-3 mr-1" />Send</>
+                    <><Send className="h-3 w-3 mr-1" />Send Revision Request</>
                   )}
                 </Button>
                 <Button
                   variant="ghost"
                   size="sm"
                   className="rounded-full"
-                  onClick={() => { setShowRevisionInput(false); setFeedback(''); }}
+                  onClick={() => {
+                    setShowRevisionInput(false);
+                    setFeedback('');
+                    setCheckedFiles(new Set());
+                    setPerItemFeedback({});
+                  }}
                 >
                   Cancel
                 </Button>
