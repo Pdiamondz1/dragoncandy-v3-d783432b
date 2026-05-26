@@ -130,3 +130,55 @@ export const useMarkAllNotificationsRead = () => {
     },
   });
 };
+
+export const useDeleteNotification = () => {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (notificationId: string) => {
+      if (!user) throw new Error('Not authenticated');
+
+      const { error } = await supabase
+        .from('push_notifications')
+        .delete()
+        .eq('id', notificationId)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['notification-unread-count'] });
+      queryClient.invalidateQueries({ queryKey: ['notification-unread-by-category'] });
+    },
+  });
+};
+
+export const useClearNotificationsByCategory = () => {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (category?: string) => {
+      if (!user) throw new Error('Not authenticated');
+
+      let query = supabase
+        .from('push_notifications')
+        .delete()
+        .eq('user_id', user.id);
+
+      if (category && category !== 'all') {
+        query = query.eq('category', category);
+      }
+
+      const { error } = await query;
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['notification-unread-count'] });
+      queryClient.invalidateQueries({ queryKey: ['notification-unread-by-category'] });
+    },
+  });
+};

@@ -77,6 +77,16 @@ export const useNotifications = () => {
         queryClient.invalidateQueries({ queryKey: ['notification-unread-count'] });
         queryClient.invalidateQueries({ queryKey: ['notification-unread-by-category'] });
       })
+      .on('postgres_changes', {
+        event: 'DELETE',
+        schema: 'public',
+        table: 'push_notifications',
+        filter: `user_id=eq.${user.id}`,
+      }, () => {
+        queryClient.invalidateQueries({ queryKey: ['notifications'] });
+        queryClient.invalidateQueries({ queryKey: ['notification-unread-count'] });
+        queryClient.invalidateQueries({ queryKey: ['notification-unread-by-category'] });
+      })
       .subscribe();
 
     return () => {
