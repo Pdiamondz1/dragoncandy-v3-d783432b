@@ -1,7 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { safeUrl } from '@/lib/safeUrl';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import logo from '@/assets/Transparent_DragonCandy_logo.webp';
+import { ResolvedAvatar } from '@/components/ui/resolved-avatar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -99,12 +98,13 @@ export const MessageBubbleEnhanced: React.FC<MessageBubbleEnhancedProps> = ({
       {/* Avatar — only for other people's messages */}
       {!isOwnMessage && (
         showAvatar ? (
-          <Avatar className="h-7 w-7 flex-shrink-0 mt-1 ring-2 ring-dc-teal">
-            <AvatarImage src={senderAvatar || logo} alt={senderName} />
-            <AvatarFallback className="bg-gradient-to-br from-dc-pink to-dc-pink-accent text-white text-[10px] font-bold">
-              {initials}
-            </AvatarFallback>
-          </Avatar>
+          <ResolvedAvatar
+            path={senderAvatar}
+            alt={senderName}
+            fallback={initials}
+            className="h-7 w-7 flex-shrink-0 mt-1 ring-2 ring-dc-teal"
+            fallbackClassName="bg-gradient-to-br from-dc-pink to-dc-pink-accent text-white text-[10px] font-bold"
+          />
         ) : (
           <div className="w-7 flex-shrink-0" />
         )
