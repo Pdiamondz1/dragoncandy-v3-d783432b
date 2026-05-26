@@ -31,6 +31,7 @@ function formatSuggestedTime(iso: string): string {
   const d = new Date(iso);
   const now = new Date();
   const diffMs = d.getTime() - now.getTime();
+  if (diffMs < 0) return 'auto-pick';
   const diffHours = Math.round(diffMs / (1000 * 60 * 60));
 
   if (diffHours < 1) return 'soon';
@@ -38,6 +39,19 @@ function formatSuggestedTime(iso: string): string {
   const diffDays = Math.round(diffHours / 24);
   if (diffDays === 1) return 'tomorrow';
   return `in ${diffDays} days`;
+}
+
+function getValidScheduleTime(suggestedTime: string | null): string {
+  const MIN_FUTURE_MS = 10 * 60 * 1000;
+  const FALLBACK_MS = 24 * 60 * 60 * 1000;
+
+  if (suggestedTime) {
+    const suggested = new Date(suggestedTime);
+    if (!isNaN(suggested.getTime()) && suggested.getTime() > Date.now() + MIN_FUTURE_MS) {
+      return suggested.toISOString();
+    }
+  }
+  return new Date(Date.now() + FALLBACK_MS).toISOString();
 }
 
 function stripTrailingHashtags(text: string): string {
@@ -265,7 +279,7 @@ function SocialPostPromptInner({
 
   const handleScheduleForBestTime = () => {
     if (selectedAccountIds.length === 0) return;
-    const scheduleTime = suggestedTime || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    const scheduleTime = getValidScheduleTime(suggestedTime);
     const platforms = accounts
       .filter((a) => selectedAccountIds.includes(a.id))
       .map((a) => a.network ?? 'unknown');

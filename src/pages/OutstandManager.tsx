@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Send, CalendarDays, BarChart3, MessageCircle, TrendingUp, Link as LinkIcon, RefreshCw, Handshake, FileText } from 'lucide-react';
 import { DashboardLayout } from '@/components/DashboardLayout';
@@ -15,7 +15,7 @@ import { AnalyticsTab } from '@/components/outstand/AnalyticsTab';
 import { DraftsTab } from '@/components/outstand/DraftsTab';
 import { useDraftPosts } from '@/hooks/useDraftPosts';
 import { CrossPartyAnalytics } from '@/components/outstand/CrossPartyAnalytics';
-import { DonnyAutoPilot } from '@/components/outstand/DonnyAutoPilot';
+import { toast } from 'sonner';
 import { useSanitizeFileInputs } from '@/hooks/outstand/useSanitizeFileInputs';
 import { useAuth } from '@/hooks/useAuth';
 import type { UserRole } from '@/types/user';
@@ -142,9 +142,18 @@ const OutstandManagerInner: React.FC = () => {
     [posts],
   );
 
-  const refreshAll = () => {
-    refetchPosts();
-    refetchAccounts();
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const refreshAll = async () => {
+    setIsRefreshing(true);
+    try {
+      await Promise.all([refetchPosts(), refetchAccounts()]);
+      toast.success('Social accounts refreshed');
+    } catch {
+      toast.error('Refresh failed — please try again');
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
   return (
@@ -159,18 +168,15 @@ const OutstandManagerInner: React.FC = () => {
               Compose, schedule, and engage across Facebook, Instagram, TikTok, X, and YouTube.
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <DonnyAutoPilot />
-            <button
-              type="button"
-              onClick={refreshAll}
-              disabled={postsLoading || accountsLoading}
-              className="rounded-full border border-dc-teal text-dc-teal text-xs font-semibold px-3 py-1.5 inline-flex items-center gap-1 hover:bg-dc-teal/10 disabled:opacity-50"
-            >
-              <RefreshCw className={`h-3 w-3 ${postsLoading || accountsLoading ? 'animate-spin' : ''}`} />
-              Refresh
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={refreshAll}
+            disabled={isRefreshing}
+            className="rounded-full border border-dc-teal text-dc-teal text-xs font-semibold px-3 py-1.5 inline-flex items-center gap-1 hover:bg-dc-teal/10 disabled:opacity-50"
+          >
+            <RefreshCw className={`h-3 w-3 ${isRefreshing ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
         </div>
         <div className="grid grid-cols-2 gap-3 mt-4">
           <div className="bg-white rounded-2xl p-4 border-2 border-dc-teal">

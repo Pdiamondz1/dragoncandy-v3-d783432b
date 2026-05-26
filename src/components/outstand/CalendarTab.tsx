@@ -5,6 +5,7 @@ import { useOutstandApi } from '@outstand-so/ui';
 import { useOutstandConfig } from '@/integrations/outstand/Provider';
 import { useQueryClient } from '@tanstack/react-query';
 import { DCSkeleton } from '@/components/ui/dc-skeleton';
+import { DayGrid } from './calendar/DayGrid';
 import { WeekGrid } from './calendar/WeekGrid';
 import { MonthGrid } from './calendar/MonthGrid';
 import { DayStrip } from './calendar/DayStrip';
@@ -13,7 +14,7 @@ import { toast } from 'sonner';
 import { type SponsorshipEvent } from '@/components/outstand/SponsorshipMarker';
 import { DonnyWeeklyPlanner } from './DonnyWeeklyPlanner';
 
-type CalendarView = 'week' | 'month';
+type CalendarView = 'day' | 'week' | 'month';
 
 export interface CampaignDeadline {
   id: string;
@@ -75,16 +76,30 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ posts, isLoading, onCh
     });
   }, []);
 
+  const navigateDay = useCallback((delta: number) => {
+    setCurrentDate((prev) => {
+      const d = new Date(prev);
+      d.setDate(d.getDate() + delta);
+      return d;
+    });
+    setSelectedDay((prev) => {
+      const d = new Date(prev);
+      d.setDate(d.getDate() + delta);
+      return d;
+    });
+  }, []);
+
   const goToToday = useCallback(() => {
     const today = new Date();
     setCurrentDate(today);
     setSelectedDay(today);
+    setView('day');
   }, []);
 
   const handleDayClick = useCallback((day: Date) => {
     setSelectedDay(day);
     setCurrentDate(day);
-    setView('week');
+    setView('day');
   }, []);
 
   const handleReschedule = useCallback(async (post: Post, newDate: Date) => {
@@ -121,18 +136,20 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ posts, isLoading, onCh
     }
   }, [onPostClick]);
 
-  const headerLabel = view === 'week'
-    ? (() => {
-        const d = new Date(currentDate);
-        const day = d.getDay();
-        const mondayOffset = day === 0 ? -6 : 1 - day;
-        const monday = new Date(d);
-        monday.setDate(d.getDate() + mondayOffset);
-        const sunday = new Date(monday);
-        sunday.setDate(monday.getDate() + 6);
-        return `${monday.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} — ${sunday.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}`;
-      })()
-    : currentDate.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+  const headerLabel = view === 'day'
+    ? currentDate.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
+    : view === 'week'
+      ? (() => {
+          const d = new Date(currentDate);
+          const day = d.getDay();
+          const mondayOffset = day === 0 ? -6 : 1 - day;
+          const monday = new Date(d);
+          monday.setDate(d.getDate() + mondayOffset);
+          const sunday = new Date(monday);
+          sunday.setDate(monday.getDate() + 6);
+          return `${monday.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} — ${sunday.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}`;
+        })()
+      : currentDate.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
 
   if (isLoading) {
     return <DCSkeleton variant="card" count={3} className="mb-3" />;
@@ -145,8 +162,8 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ posts, isLoading, onCh
         <div className="flex items-center gap-2">
           <button
             type="button"
-            aria-label={view === 'week' ? 'Previous week' : 'Previous month'}
-            onClick={() => (view === 'week' ? navigateWeek(-1) : navigateMonth(-1))}
+            aria-label={view === 'day' ? 'Previous day' : view === 'week' ? 'Previous week' : 'Previous month'}
+            onClick={() => (view === 'day' ? navigateDay(-1) : view === 'week' ? navigateWeek(-1) : navigateMonth(-1))}
             className="p-1.5 rounded-lg border border-gray-200 hover:bg-gray-50"
           >
             <ChevronLeft className="h-4 w-4 text-gray-600" />
@@ -154,14 +171,21 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ posts, isLoading, onCh
           <span className="text-sm font-bold text-gray-900 min-w-[160px] text-center">{headerLabel}</span>
           <button
             type="button"
-            aria-label={view === 'week' ? 'Next week' : 'Next month'}
-            onClick={() => (view === 'week' ? navigateWeek(1) : navigateMonth(1))}
+            aria-label={view === 'day' ? 'Next day' : view === 'week' ? 'Next week' : 'Next month'}
+            onClick={() => (view === 'day' ? navigateDay(1) : view === 'week' ? navigateWeek(1) : navigateMonth(1))}
             className="p-1.5 rounded-lg border border-gray-200 hover:bg-gray-50"
           >
             <ChevronRight className="h-4 w-4 text-gray-600" />
           </button>
         </div>
         <div className="hidden md:flex gap-1">
+          <button
+            type="button"
+            onClick={() => setView('day')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${view === 'day' ? 'bg-dc-teal text-white' : 'bg-gray-100 text-gray-600'}`}
+          >
+            Day
+          </button>
           <button
             type="button"
             onClick={() => setView('week')}
@@ -203,7 +227,16 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ posts, isLoading, onCh
       </div>
 
       {/* Desktop views */}
-      {view === 'week' ? (
+      {view === 'day' ? (
+        <DayGrid
+          posts={filteredPosts}
+          day={selectedDay}
+          onReschedule={handleReschedule}
+          onPostClick={handlePostClick}
+          campaignDeadlines={campaignDeadlines}
+          sponsorshipEvents={sponsorshipEvents}
+        />
+      ) : view === 'week' ? (
         <WeekGrid
           posts={filteredPosts}
           weekStart={currentDate}

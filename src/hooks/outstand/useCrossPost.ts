@@ -43,9 +43,12 @@ export function useCrossPost(options?: { onPublished?: () => void }) {
 
       const data = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
       if (!res.ok) {
-        const errMsg = Array.isArray(data?.error)
+        let errMsg = Array.isArray(data?.error)
           ? data.error[0]?.message ?? JSON.stringify(data.error)
           : data?.error || data?.message || `Post failed (${res.status})`;
+        if (/invalid datetime/i.test(errMsg)) {
+          errMsg = 'The scheduled time is invalid or in the past. Please try again.';
+        }
         throw new Error(errMsg);
       }
       return data;

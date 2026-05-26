@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useCallback } from 'react';
 import { PublicCampaign } from '@/hooks/usePublicCampaigns';
-import { MapPin, Users } from 'lucide-react';
+import { MapPin, Users, Target } from 'lucide-react';
 import logo from '@/assets/Transparent_DragonCandy_logo.webp';
 import { DeliveryBadge } from './DeliveryBadge';
 import { mapDeliveryType, getRelativeTime, formatBudget } from '@/lib/campaignUtils';
@@ -144,18 +144,20 @@ export const CampaignSwipeCard: React.FC<CampaignSwipeCardProps> = ({
   if (!campaigns.length) {
     return (
       <div className="flex flex-col items-center justify-center h-[calc(100dvh-220px)] max-h-[680px] px-6 text-center">
-        <img src={logo} alt="Dragon Candy" className="w-20 h-20 mb-4 opacity-60" />
-        <p className="text-white/70 text-sm mb-4">
-          Hey! There are no available campaigns to view at this time! Please check back later!
-        </p>
-        {(skippedCount ?? 0) > 0 && onShowSkipped && (
-          <button
-            onClick={onShowSkipped}
-            className="bg-dc-teal text-white font-semibold py-2.5 px-6 rounded-full text-sm hover:bg-dc-teal/90 transition-colors"
-          >
-            Show Skipped ({skippedCount})
-          </button>
-        )}
+        <div className="border-2 border-dc-teal rounded-2xl p-8 text-center max-w-xs">
+          <Target className="h-10 w-10 text-dc-teal mx-auto mb-3" aria-hidden="true" />
+          <p className="text-sm text-gray-500">
+            Hey! There are no available campaigns to view at this time! Please check back later!
+          </p>
+          {(skippedCount ?? 0) > 0 && onShowSkipped && (
+            <button
+              onClick={onShowSkipped}
+              className="mt-4 bg-dc-teal text-white font-semibold py-2.5 px-6 rounded-full text-sm hover:bg-dc-teal/90 transition-colors"
+            >
+              Show Skipped ({skippedCount})
+            </button>
+          )}
+        </div>
       </div>
     );
   }
