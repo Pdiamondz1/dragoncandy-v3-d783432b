@@ -11,6 +11,7 @@ import {
   useMarkNotificationRead,
   useMarkAllNotificationsRead,
 } from '@/hooks/useNotificationQueries';
+import { getNotificationRoute } from '@/lib/getNotificationRoute';
 import type { NotificationCategory } from '@/types/notifications';
 
 const NotificationsPage = () => {
@@ -30,9 +31,8 @@ const NotificationsPage = () => {
     if (!notification.read_at) {
       markRead.mutate(notification.id);
     }
-    if (notification.action_url) {
-      navigate(notification.action_url);
-    }
+    const route = getNotificationRoute(notification);
+    if (route) navigate(route);
   };
 
   return (

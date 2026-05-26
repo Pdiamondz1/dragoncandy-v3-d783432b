@@ -12,6 +12,7 @@ import {
 import { Bell, CheckCheck, ChevronRight } from 'lucide-react';
 import { NotificationItem } from '@/components/notifications/NotificationItem';
 import { useNotificationsList, useUnreadNotificationCount, useMarkNotificationRead, useMarkAllNotificationsRead } from '@/hooks/useNotificationQueries';
+import { getNotificationRoute } from '@/lib/getNotificationRoute';
 import type { PushNotification } from '@/types/notifications';
 
 export const NotificationDropdown: React.FC = () => {
@@ -28,46 +29,8 @@ export const NotificationDropdown: React.FC = () => {
     }
     setIsOpen(false);
 
-    if (notification.action_url) {
-      navigate(notification.action_url);
-      return;
-    }
-
-    // Fallback: navigate based on notification type + embedded data
-    const notifData = notification.data as Record<string, unknown> | null;
-
-    if (notification.type === 'sponsorship_proposal') {
-      navigate(notifData?.campaign_id
-        ? `/dashboard/business/campaigns/${notifData.campaign_id}`
-        : '/dashboard/business/campaigns');
-    } else if (notification.type === 'sponsorship_accepted' || notification.type === 'sponsorship_rejected') {
-      navigate('/dashboard/brand/sponsorships');
-    } else if (notification.type === 'application_received') {
-      if (notifData?.campaign_id) {
-        navigate(`/dashboard/business/campaigns/${notifData.campaign_id}`);
-      }
-    } else if (notification.type === 'application_accepted' || notification.type === 'application_rejected') {
-      navigate('/dashboard/creator/my-campaigns?tab=applied');
-    } else if (notification.type === 'content_liked') {
-      navigate('/dashboard/creator/dragon-feed');
-    } else if (notification.type === 'campaign_invitation') {
-      if (notifData?.campaign_id) {
-        navigate(`/dashboard/creator/campaigns/${notifData.campaign_id}?invited=true`);
-      }
-    } else if (notification.type === 'message_received') {
-      if (notifData?.conversation_id) {
-        navigate(`/dashboard/messages/${notifData.conversation_id}`);
-      } else if (notifData?.campaign_id) {
-        navigate(`/messages/${notifData.campaign_id}`);
-      }
-    } else if (notification.type === 'counter_offer_received' || notification.type === 'counter_offer_responded') {
-      if (notifData?.campaign_id) {
-        const isCreatorView = notifData.sender_role === 'business';
-        navigate(isCreatorView
-          ? `/dashboard/creator/my-campaigns/${notifData.campaign_id}`
-          : `/dashboard/business/campaigns/${notifData.campaign_id}`);
-      }
-    }
+    const route = getNotificationRoute(notification);
+    if (route) navigate(route);
   };
 
   const recentNotifications = notifications.slice(0, 5);
@@ -96,6 +59,7 @@ export const NotificationDropdown: React.FC = () => {
               size="sm"
               onClick={() => markAllRead.mutate()}
               className="h-auto p-1 text-dc-teal hover:text-dc-teal-dark"
+              aria-label="Mark all as read"
             >
               <CheckCheck className="h-4 w-4" />
             </Button>

@@ -14,7 +14,7 @@ const CATEGORY_BG: Record<string, string> = {
   messages: 'bg-dc-pink',
   transactions: 'bg-dc-teal-btn',
   content: 'bg-dc-pink-accent',
-  account: 'bg-indigo-500',
+  account: 'bg-dc-dark',
 };
 
 function formatRelativeTime(dateString: string): string {
@@ -73,7 +73,7 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({
         <div className="flex items-start justify-between gap-2">
           <p className={cn(
             'font-semibold text-dc-text truncate',
-            compact ? 'text-sm' : 'text-sm',
+            compact ? 'text-sm' : 'text-base',
           )}>
             {notification.title}
           </p>
