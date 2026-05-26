@@ -79,7 +79,7 @@ export function NotificationPreferencesSection() {
           return (
             <div
               key={category}
-              className="flex items-center gap-2 py-2 border-b border-gray-100 last:border-0 lg:gap-4"
+              className="flex items-center gap-2 py-2 border-b border-dc-teal/15 last:border-0 lg:gap-4"
             >
               {/* Category info */}
               <div className="flex-1 min-w-0 flex items-center gap-2 lg:gap-3">
@@ -109,6 +109,7 @@ export function NotificationPreferencesSection() {
                         isSms ? undefined : (v) => handleToggle(category, channel.key, v)
                       }
                       disabled={isSms || updateMatrix.isPending}
+                      aria-label={`${meta.label} ${channel.label.toLowerCase()} notifications${isSms ? ' — coming soon' : ''}`}
                       className={
                         isSms
                           ? 'opacity-40 cursor-not-allowed data-[state=checked]:bg-dc-teal'
@@ -116,7 +117,7 @@ export function NotificationPreferencesSection() {
                       }
                     />
                     {isSms && (
-                      <span className="text-[9px] font-semibold text-dc-text-muted uppercase tracking-wide">
+                      <span className="text-[9px] font-semibold text-dc-text-muted uppercase tracking-wide" aria-hidden="true">
                         Soon
                       </span>
                     )}
