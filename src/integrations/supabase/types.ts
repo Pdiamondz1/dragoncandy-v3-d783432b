@@ -3425,6 +3425,7 @@ export type Database = {
           push_notifications: boolean | null
           updated_at: string
           user_id: string
+          preferences_matrix: Json | null
         }
         Insert: {
           campaign_notifications?: boolean | null
@@ -3435,6 +3436,7 @@ export type Database = {
           push_notifications?: boolean | null
           updated_at?: string
           user_id: string
+          preferences_matrix?: Json | null
         }
         Update: {
           campaign_notifications?: boolean | null
@@ -3445,6 +3447,7 @@ export type Database = {
           push_notifications?: boolean | null
           updated_at?: string
           user_id?: string
+          preferences_matrix?: Json | null
         }
         Relationships: []
       }
@@ -4148,6 +4151,12 @@ export type Database = {
           sent_at: string | null
           title: string
           user_id: string
+          type: string | null
+          category: string | null
+          action_url: string | null
+          actor_id: string | null
+          actor_name: string | null
+          icon: string | null
         }
         Insert: {
           body: string
@@ -4158,6 +4167,12 @@ export type Database = {
           sent_at?: string | null
           title: string
           user_id: string
+          type?: string | null
+          category?: string | null
+          action_url?: string | null
+          actor_id?: string | null
+          actor_name?: string | null
+          icon?: string | null
         }
         Update: {
           body?: string
@@ -4168,6 +4183,12 @@ export type Database = {
           sent_at?: string | null
           title?: string
           user_id?: string
+          type?: string | null
+          category?: string | null
+          action_url?: string | null
+          actor_id?: string | null
+          actor_name?: string | null
+          icon?: string | null
         }
         Relationships: []
       }
