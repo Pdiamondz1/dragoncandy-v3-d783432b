@@ -201,28 +201,31 @@ export const useDeclineInvitation = () => {
 
       if (error) throw error;
 
-      // Send decline notification email to the inviter
-      try {
-        const { data: creatorProfile } = await supabase
-          .from('profiles')
-          .select('full_name')
-          .eq('id', user.id)
-          .single();
+      // Notify the inviter that the invitation was declined
+      const { data: creatorProfile } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', user.id)
+        .single();
 
-        await supabase.functions.invoke('send-notification-email', {
-          body: {
-            type: 'campaign_invitation_declined',
-            data: {
-              recipientUserId: invitation.invited_by,
-              senderName: creatorProfile?.full_name ?? 'A creator',
-              campaignTitle: (invitation.campaigns as { title?: string } | null)?.title ?? 'your campaign',
-              campaignId: invitation.campaign_id,
-            },
-          },
-        });
-      } catch (emailErr) {
-        console.error('Failed to send decline notification:', emailErr);
-      }
+      const campaignTitle = (invitation.campaigns as { title?: string } | null)?.title ?? 'your campaign';
+      const creatorName = creatorProfile?.full_name ?? 'A creator';
+
+      supabase.functions.invoke('create-notification', {
+        body: {
+          recipientId: invitation.invited_by,
+          type: 'invitation_declined',
+          category: 'campaigns',
+          title: 'Invitation Declined',
+          body: `${creatorName} declined your invitation to "${campaignTitle}"`,
+          actionUrl: `/dashboard/business/campaigns/${invitation.campaign_id}`,
+          actorId: user.id,
+          actorName: creatorName,
+          icon: 'invitation',
+          data: { campaign_id: invitation.campaign_id, invitation_id: invitationId },
+          emailData: { campaignTitle, senderName: creatorName, campaignId: invitation.campaign_id },
+        },
+      }).catch((err: unknown) => console.error('Failed to send decline notification:', err));
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['creator-pending-invitations'] });
