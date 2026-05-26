@@ -201,11 +201,16 @@ export const useDeclineInvitation = () => {
 
       if (error) throw error;
 
-      // Notify the inviter that the invitation was declined
+      return { invitation, invitationId };
+    },
+    onSuccess: async ({ invitation, invitationId }) => {
+      queryClient.invalidateQueries({ queryKey: ['creator-pending-invitations'] });
+      toast({ title: 'Invitation declined' });
+
       const { data: creatorProfile } = await supabase
         .from('profiles')
         .select('full_name')
-        .eq('id', user.id)
+        .eq('id', user!.id)
         .single();
 
       const campaignTitle = (invitation.campaigns as { title?: string } | null)?.title ?? 'your campaign';
@@ -219,17 +224,13 @@ export const useDeclineInvitation = () => {
           title: 'Invitation Declined',
           body: `${creatorName} declined your invitation to "${campaignTitle}"`,
           actionUrl: `/dashboard/business/campaigns/${invitation.campaign_id}`,
-          actorId: user.id,
+          actorId: user!.id,
           actorName: creatorName,
           icon: 'invitation',
           data: { campaign_id: invitation.campaign_id, invitation_id: invitationId },
           emailData: { campaignTitle, senderName: creatorName, campaignId: invitation.campaign_id },
         },
       }).catch((err: unknown) => console.error('Failed to send decline notification:', err));
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['creator-pending-invitations'] });
-      toast({ title: 'Invitation declined' });
     },
     onError: () => {
       toast({ title: 'Failed to decline invitation', variant: 'destructive' });

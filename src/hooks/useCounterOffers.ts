@@ -108,10 +108,12 @@ export const useCreateCounterOffer = () => {
               category: 'campaigns',
               title: 'Counter Offer Received',
               body: `New counter offer on "${campaign.title}"${data.proposed_rate ? ` — $${data.proposed_rate}` : ''}`,
-              actionUrl: `/dashboard/creator/campaigns`,
+              actionUrl: senderRole === 'business'
+                ? `/dashboard/creator/my-campaigns/${application.campaign_id}`
+                : `/dashboard/business/campaigns/${application.campaign_id}`,
               actorId: user?.id,
               icon: 'counter_offer',
-              data: { campaign_id: application.campaign_id, application_id: applicationId },
+              data: { campaign_id: application.campaign_id, application_id: applicationId, sender_role: senderRole },
               emailData: { campaignTitle: campaign.title, campaignId: application.campaign_id, message: data.message, amount: data.proposed_rate || undefined },
             },
           }).catch((err: unknown) => console.error('Failed to send notification:', err));
@@ -239,10 +241,12 @@ export const useRespondToCounterOffer = () => {
             body: isAccepted
               ? `Your counter offer on "${campaign.title}" was accepted`
               : `Your counter offer on "${campaign.title}" was declined`,
-            actionUrl: `/dashboard/creator/campaigns`,
+            actionUrl: recipientUserId === application.creator_id
+              ? `/dashboard/creator/my-campaigns/${application.campaign_id}`
+              : `/dashboard/business/campaigns/${application.campaign_id}`,
             actorId: user.id,
             icon: 'counter_offer',
-            data: { campaign_id: application.campaign_id, application_id: applicationId },
+            data: { campaign_id: application.campaign_id, application_id: applicationId, sender_role: currentUserRole },
             emailData: { campaignTitle: campaign.title, campaignId: application.campaign_id, applicationStatus: response },
           },
         }).catch((err: unknown) => console.error('Failed to send notification:', err));
