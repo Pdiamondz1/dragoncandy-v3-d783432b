@@ -1,27 +1,21 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-
-interface NotificationPreferences {
-  id: string;
-  user_id: string;
-  email_notifications: boolean;
-  push_notifications: boolean;
-  message_notifications: boolean;
-  campaign_notifications: boolean;
-}
+import type { PreferencesMatrix } from '@/types/notifications';
+import { DEFAULT_PREFERENCES_MATRIX } from '@/types/notifications';
 
 export const useNotificationPreferences = () => {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
 
-  return useQuery({
+  const query = useQuery({
     queryKey: ['notification-preferences', user?.id],
     queryFn: async () => {
       if (!user) return null;
 
       const { data, error } = await supabase
         .from('notification_preferences')
-        .select('id, user_id, email_notifications, push_notifications, message_notifications, campaign_notifications')
+        .select('id, user_id, preferences_matrix')
         .eq('user_id', user.id)
         .maybeSingle();
 
@@ -30,40 +24,34 @@ export const useNotificationPreferences = () => {
         throw error;
       }
 
-      return data as NotificationPreferences | null;
+      return data;
     },
     enabled: !!user,
-    staleTime: 5 * 60_000,
   });
-};
 
-export const useUpdateNotificationPreferences = () => {
-  const { user } = useAuth();
-  const queryClient = useQueryClient();
+  const matrix: PreferencesMatrix =
+    (query.data?.preferences_matrix as PreferencesMatrix) ?? DEFAULT_PREFERENCES_MATRIX;
 
-  return useMutation({
-    mutationFn: async (updates: Partial<Pick<NotificationPreferences, 'email_notifications' | 'push_notifications' | 'message_notifications' | 'campaign_notifications'>>) => {
+  const updateMatrix = useMutation({
+    mutationFn: async (newMatrix: PreferencesMatrix) => {
       if (!user) throw new Error('Not authenticated');
 
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('notification_preferences')
-        .upsert({
-          user_id: user.id,
-          ...updates,
-          updated_at: new Date().toISOString(),
-        }, { onConflict: 'user_id' })
-        .select('id, user_id, email_notifications, push_notifications, message_notifications, campaign_notifications')
-        .single();
+        .upsert(
+          { user_id: user.id, preferences_matrix: newMatrix as unknown as Record<string, unknown>, updated_at: new Date().toISOString() },
+          { onConflict: 'user_id' }
+        );
 
       if (error) {
         console.error('Error updating notification preferences:', error);
         throw error;
       }
-
-      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notification-preferences'] });
     },
   });
+
+  return { matrix, isLoading: query.isLoading, updateMatrix };
 };
