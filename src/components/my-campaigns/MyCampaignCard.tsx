@@ -3,7 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import type { CreatorApplication } from '@/hooks/useCreatorApplications';
 import type { CreatorCollaboration } from '@/hooks/useCreatorCollaborations';
 
-type CardVariant = 'applied' | 'counter_offered' | 'active' | 'completed';
+type CardVariant = 'applied' | 'counter_offered' | 'accepted' | 'active' | 'completed';
 
 interface MyCampaignCardProps {
   variant: CardVariant;
@@ -19,6 +19,7 @@ interface MyCampaignCardProps {
 const borderColors: Record<CardVariant, string> = {
   applied: 'border-l-yellow-400',
   counter_offered: 'border-l-orange-500',
+  accepted: 'border-l-teal-400',
   active: 'border-l-dc-teal',
   completed: 'border-l-green-500',
 };
@@ -26,6 +27,7 @@ const borderColors: Record<CardVariant, string> = {
 const statusConfig: Record<CardVariant, { label: string; className: string }> = {
   applied: { label: '⏳ Pending', className: 'bg-yellow-50 text-yellow-800' },
   counter_offered: { label: '💬 Counter Offer', className: 'bg-orange-50 text-orange-800' },
+  accepted: { label: '✅ Accepted', className: 'bg-teal-50 text-teal-800' },
   active: { label: 'Active', className: 'bg-teal-50 text-teal-800' },
   completed: { label: '✅ Completed', className: 'bg-green-50 text-green-800' },
 };
@@ -33,6 +35,7 @@ const statusConfig: Record<CardVariant, { label: string; className: string }> = 
 const ctaConfig: Record<CardVariant, { label: string; className: string }> = {
   applied: { label: 'View →', className: 'text-dc-teal' },
   counter_offered: { label: 'Respond →', className: 'text-pink-500' },
+  accepted: { label: 'View →', className: 'text-dc-teal' },
   active: { label: 'Upload →', className: 'text-white bg-dc-teal px-3 py-1.5 rounded-full text-xs' },
   completed: { label: 'Review →', className: 'text-dc-teal' },
 };
@@ -71,6 +74,10 @@ export function MyCampaignCard({
           {status.label}
         </Badge>
       </div>
+
+      {variant === 'accepted' && (
+        <p className="text-xs text-amber-600 mb-2">Awaiting project start</p>
+      )}
 
       {variant === 'active' && collaboration?.campaign?.delivery_type && (
         <Badge className="mb-2 bg-green-50 text-green-800 text-[11px]">
@@ -119,6 +126,11 @@ function getTimeContext(
     if (!application?.created_at) return null;
     const days = Math.floor((Date.now() - new Date(application.created_at).getTime()) / 86400000);
     return days === 0 ? 'Applied today' : `Applied ${days}d ago`;
+  }
+  if (variant === 'accepted') {
+    if (!application?.updated_at) return null;
+    const days = Math.floor((Date.now() - new Date(application.updated_at).getTime()) / 86400000);
+    return days === 0 ? 'Accepted today' : `Accepted ${days}d ago`;
   }
   if (variant === 'completed') {
     if (!collaboration?.completed_at) return null;

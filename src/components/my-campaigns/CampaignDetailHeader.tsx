@@ -32,7 +32,9 @@ export function CampaignDetailHeader({
   const badge =
     applicationStatus === 'counter_offered'
       ? { label: '💬 Counter Offer', className: 'bg-orange-50 text-orange-800' }
-      : phaseBadges[phase];
+      : applicationStatus === 'accepted'
+        ? { label: '✅ Accepted', className: 'bg-teal-50 text-teal-800' }
+        : phaseBadges[phase];
 
   return (
     <div className={`bg-gradient-to-b ${phaseGradients[phase]} px-5 pt-4 pb-4 lg:rounded-2xl lg:shadow-sm`}>

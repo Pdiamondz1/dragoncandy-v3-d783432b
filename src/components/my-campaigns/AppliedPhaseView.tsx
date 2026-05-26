@@ -18,6 +18,7 @@ interface AppliedPhaseViewProps {
 
 export function AppliedPhaseView({ campaign, enrichedDetail, application }: AppliedPhaseViewProps) {
   const isCounterOffer = application.status === 'counter_offered';
+  const isAccepted = application.status === 'accepted';
   const { user } = useAuth();
   const { data: counterOffers = [] } = useCounterOffers(application.id);
   const respondToOffer = useRespondToCounterOffer();
@@ -40,7 +41,7 @@ export function AppliedPhaseView({ campaign, enrichedDetail, application }: Appl
         <div className="space-y-3 lg:sticky lg:top-24">
           <div className="lg:bg-white lg:rounded-2xl lg:shadow lg:border lg:border-gray-200 lg:p-6 space-y-4">
             {/* Application Status Card */}
-            <div className={`bg-white rounded-2xl p-4 border-2 lg:bg-transparent lg:rounded-none lg:p-0 lg:border-0 ${isCounterOffer ? 'border-orange-400' : 'border-yellow-400'}`}>
+            <div className={`bg-white rounded-2xl p-4 border-2 lg:bg-transparent lg:rounded-none lg:p-0 lg:border-0 ${isAccepted ? 'border-teal-400' : isCounterOffer ? 'border-orange-400' : 'border-yellow-400'}`}>
               <div className="text-sm font-bold text-gray-900 mb-2">YOUR APPLICATION</div>
 
               {application.proposed_rate != null && (
@@ -62,8 +63,13 @@ export function AppliedPhaseView({ campaign, enrichedDetail, application }: Appl
                 </div>
               )}
 
-              {!isCounterOffer && (
-                <div className={`mt-3 p-2 rounded-lg text-xs text-center bg-yellow-50 text-yellow-800 lg:border lg:border-yellow-200`}>
+              {isAccepted && (
+                <div className="mt-3 p-2 rounded-lg text-xs text-center bg-teal-50 text-teal-800 lg:border lg:border-teal-200">
+                  You've been accepted! Awaiting project start.
+                </div>
+              )}
+              {!isCounterOffer && !isAccepted && (
+                <div className="mt-3 p-2 rounded-lg text-xs text-center bg-yellow-50 text-yellow-800 lg:border lg:border-yellow-200">
                   {`Waiting for ${application.business_profile?.business_name || 'the business'} to respond`}
                 </div>
               )}

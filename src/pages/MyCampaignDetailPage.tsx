@@ -94,7 +94,10 @@ export default function MyCampaignDetailPage() {
 
   // Phase detection: active > completed > applied
   const phase: Phase = activeCollab ? 'active' : completedCollab ? 'completed' : 'applied';
-  const stats = buildStats(phase, campaign, activeCollab, completedCollab, agreedValue);
+  const isAcceptedNoCollab = !activeCollab && !completedCollab && application?.status === 'accepted';
+  const stats = isAcceptedNoCollab
+    ? [{ label: 'Agreed Value', value: `$${(agreedValue ?? application.proposed_rate ?? campaign.fixed_price ?? 0).toLocaleString()}` }]
+    : buildStats(phase, campaign, activeCollab, completedCollab, agreedValue);
 
   return (
     <DashboardLayout userRole="content_creator">

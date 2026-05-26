@@ -28,6 +28,11 @@ export default function MyCampaignsPage() {
     [applications],
   );
 
+  const acceptedApps = useMemo(
+    () => applications.filter((a) => a.status === 'accepted'),
+    [applications],
+  );
+
   const defaultTab: TabId = activeCollabs.length > 0 ? 'active' : 'applied';
   const activeTab = (searchParams.get('tab') as TabId) || defaultTab;
 
@@ -37,7 +42,7 @@ export default function MyCampaignsPage() {
 
   const tabs: { id: TabId; label: string; count: number }[] = [
     { id: 'applied', label: 'Applied', count: pendingApps.length },
-    { id: 'active', label: 'Active', count: activeCollabs.length },
+    { id: 'active', label: 'Active', count: activeCollabs.length + acceptedApps.length },
     { id: 'done', label: 'Done', count: completedCollabs.length },
   ];
 
@@ -112,20 +117,34 @@ export default function MyCampaignsPage() {
               )}
 
               {activeTab === 'active' && (
-                activeCollabs.length === 0 ? (
+                activeCollabs.length === 0 && acceptedApps.length === 0 ? (
                   <EmptyState message="No active projects" sub="Applied campaigns will appear here once accepted" />
                 ) : (
-                  activeCollabs.map((collab) => (
-                    <MyCampaignCard
-                      key={collab.id}
-                      variant="active"
-                      campaignId={collab.campaign_id}
-                      title={collab.campaign?.title || 'Untitled Campaign'}
-                      businessName={collab.business_profile?.business_name || 'Unknown Business'}
-                      price={collab.campaign?.fixed_price ?? null}
-                      collaboration={collab}
-                    />
-                  ))
+                  <>
+                    {acceptedApps.map((app) => (
+                      <MyCampaignCard
+                        key={app.id}
+                        variant="accepted"
+                        campaignId={app.campaign_id}
+                        title={app.campaign?.title || 'Untitled Campaign'}
+                        businessName={app.business_profile?.business_name || 'Unknown Business'}
+                        businessLocation={app.business_profile?.city}
+                        price={app.agreed_rate ?? app.proposed_rate ?? app.campaign?.fixed_price ?? null}
+                        application={app}
+                      />
+                    ))}
+                    {activeCollabs.map((collab) => (
+                      <MyCampaignCard
+                        key={collab.id}
+                        variant="active"
+                        campaignId={collab.campaign_id}
+                        title={collab.campaign?.title || 'Untitled Campaign'}
+                        businessName={collab.business_profile?.business_name || 'Unknown Business'}
+                        price={collab.campaign?.fixed_price ?? null}
+                        collaboration={collab}
+                      />
+                    ))}
+                  </>
                 )
               )}
 
