@@ -52,6 +52,41 @@ serve(async (req) => {
     logStep("Campaign found", { escrowStatus: campaign.escrow_status });
 
     if (campaign.escrow_status === 'held' || campaign.escrow_status === 'released') {
+      // Ensure collaboration exists even if a prior call set escrow_status but failed before creating it
+      const { data: acceptedAppForRecovery } = await supabaseClient
+        .from('campaign_applications')
+        .select('id, creator_id')
+        .eq('campaign_id', campaignId)
+        .eq('status', 'accepted')
+        .limit(1)
+        .maybeSingle();
+
+      if (acceptedAppForRecovery) {
+        const { data: existingCollabCheck } = await supabaseClient
+          .from('campaign_collaborations')
+          .select('id')
+          .eq('campaign_id', campaignId)
+          .eq('creator_id', acceptedAppForRecovery.creator_id)
+          .maybeSingle();
+
+        if (!existingCollabCheck) {
+          logStep("Recovery: creating missing collaboration", { creatorId: acceptedAppForRecovery.creator_id });
+          await supabaseClient
+            .from('campaign_collaborations')
+            .insert({
+              campaign_id: campaignId,
+              creator_id: acceptedAppForRecovery.creator_id,
+              application_id: acceptedAppForRecovery.id,
+              status: 'active',
+            });
+          await supabaseClient
+            .from('campaigns')
+            .update({ status: 'active' })
+            .eq('id', campaignId)
+            .in('status', ['published', 'draft']);
+        }
+      }
+
       return new Response(JSON.stringify({ success: true, message: "Escrow already verified", status: campaign.escrow_status }), {
         headers: { ...corsHeaders(req), "Content-Type": "application/json" },
       });
@@ -144,52 +179,8 @@ serve(async (req) => {
       stripe_id: actualPaymentIntentId,
     }, '[VERIFY-CAMPAIGN-ESCROW]');
 
-    // Budget validation
-    const { data: application } = await supabaseClient
-      .from('campaign_applications')
-      .select('proposed_rate')
-      .eq('campaign_id', campaignId)
-      .eq('status', 'accepted')
-      .order('updated_at', { ascending: false })
-      .limit(1)
-      .single();
-
+    // Creator count validation (prevent over-hiring)
     const ai = campaign.ai_analysis as Record<string, unknown> | null;
-    const perCreatorCap = (ai?.per_creator_cap as number) ?? null;
-
-    if (application && perCreatorCap && application.proposed_rate > perCreatorCap) {
-      logStep("Per-creator cap exceeded", {
-        proposed: application.proposed_rate,
-        cap: perCreatorCap,
-      });
-      if (actualPaymentIntentId) {
-        await stripe.refunds.create({ payment_intent: actualPaymentIntentId });
-      }
-      return new Response(
-        JSON.stringify({ error: `Creator's rate ($${application.proposed_rate}) exceeds per-creator cap ($${perCreatorCap})` }),
-        { headers: { ...corsHeaders(req), "Content-Type": "application/json" }, status: 400 }
-      );
-    }
-
-    const budgetMax = campaign.budget_max || campaign.fixed_price || 0;
-    const budgetSpent = 0;
-    const proposedRate = application?.proposed_rate || 0;
-
-    if (budgetMax > 0 && budgetSpent + proposedRate > budgetMax) {
-      logStep("Budget pool exceeded", {
-        budgetSpent,
-        proposedRate,
-        budgetMax,
-      });
-      if (actualPaymentIntentId) {
-        await stripe.refunds.create({ payment_intent: actualPaymentIntentId });
-      }
-      return new Response(
-        JSON.stringify({ error: `Accepting at $${proposedRate} would exceed remaining budget ($${budgetMax - budgetSpent} remaining)` }),
-        { headers: { ...corsHeaders(req), "Content-Type": "application/json" }, status: 400 }
-      );
-    }
-
     const creatorCount = (ai?.creator_count as number) ?? null;
     if (creatorCount) {
       const { count } = await supabaseClient
@@ -203,6 +194,7 @@ serve(async (req) => {
         if (actualPaymentIntentId) {
           await stripe.refunds.create({ payment_intent: actualPaymentIntentId });
         }
+        await supabaseClient.from('campaigns').update({ escrow_status: 'pending' }).eq('id', campaignId);
         return new Response(
           JSON.stringify({ error: `Campaign already has ${creatorCount} active creators` }),
           { headers: { ...corsHeaders(req), "Content-Type": "application/json" }, status: 400 }
@@ -210,24 +202,24 @@ serve(async (req) => {
       }
     }
 
-    // Create collaboration from accepted application (using service role - no RLS issues)
+    // Create collaboration from accepted application
     const { data: acceptedApp } = await supabaseClient
       .from('campaign_applications')
-      .select('id, creator_id, campaign_id')
+      .select('id, creator_id, campaign_id, agreed_rate, proposed_rate')
       .eq('campaign_id', campaignId)
       .eq('status', 'accepted')
       .limit(1)
-      .single();
+      .maybeSingle();
+
+    const settledRate = acceptedApp?.agreed_rate ?? acceptedApp?.proposed_rate ?? 0;
 
     if (acceptedApp) {
-      // Check if collaboration already exists
       const { data: existingCollab } = await supabaseClient
         .from('campaign_collaborations')
         .select('id')
         .eq('campaign_id', campaignId)
         .eq('creator_id', acceptedApp.creator_id)
-        .limit(1)
-        .single();
+        .maybeSingle();
 
       if (!existingCollab) {
         const { error: collabError } = await supabaseClient
@@ -244,13 +236,14 @@ serve(async (req) => {
         } else {
           logStep("Collaboration created successfully", { creatorId: acceptedApp.creator_id });
 
-          // Track budget spend
-          if (proposedRate > 0) {
+          await supabaseClient.from('campaigns').update({ status: 'active' }).eq('id', campaignId);
+
+          if (settledRate > 0) {
             await supabaseClient.rpc('increment_budget_spent', {
               p_campaign_id: campaignId,
-              p_amount: proposedRate,
+              p_amount: settledRate,
             });
-            logStep("Budget incremented", { amount: proposedRate });
+            logStep("Budget incremented", { amount: settledRate });
           }
         }
       } else {
@@ -260,9 +253,9 @@ serve(async (req) => {
       logStep("No accepted application found for collaboration creation");
     }
 
-    logStep("Campaign published successfully", { campaignId, paymentIntentId: actualPaymentIntentId });
+    logStep("Campaign escrow verified", { campaignId, paymentIntentId: actualPaymentIntentId });
 
-    return new Response(JSON.stringify({ success: true, message: "Payment verified! Campaign is now published.", status: 'held' }), {
+    return new Response(JSON.stringify({ success: true, message: "Payment verified! Campaign is now active.", status: 'held' }), {
       headers: { ...corsHeaders(req), "Content-Type": "application/json" },
     });
   } catch (error) {
