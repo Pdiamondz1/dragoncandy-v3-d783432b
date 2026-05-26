@@ -278,9 +278,10 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
 
   const isSubmitted = contentStatus === 'submitted';
   const isApproved = contentStatus === 'approved';
+  const isRevisionRequested = contentStatus === 'revision_requested';
   const hasFiles = files && files.length > 0;
 
-  if (!isSubmitted && !isApproved && !hasFiles && !filesLoading) return null;
+  if (!isSubmitted && !isApproved && !isRevisionRequested && !hasFiles && !filesLoading) return null;
 
   if (!hasFiles && !filesLoading) {
     return (
@@ -311,12 +312,12 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
   const canRequestRevision = safeRevisionCount < MAX_REVISIONS;
 
   return (
-    <div className={`bg-white border-2 ${isSubmitted ? 'border-pink-400' : 'border-dc-teal'} rounded-2xl p-4 space-y-3`}>
+    <div className={`bg-white border-2 ${isSubmitted ? 'border-pink-400' : isRevisionRequested ? 'border-amber-300' : 'border-dc-teal'} rounded-2xl p-4 space-y-3`}>
       {/* Header */}
       <div className="flex items-center gap-2 flex-wrap">
-        <FileCheck className={`h-4 w-4 ${isSubmitted ? 'text-pink-500' : 'text-dc-teal'}`} />
+        <FileCheck className={`h-4 w-4 ${isSubmitted ? 'text-pink-500' : isRevisionRequested ? 'text-amber-500' : 'text-dc-teal'}`} />
         <span className="text-sm font-semibold text-gray-900">
-          {isSubmitted ? `Content ready for review from ${creatorName}` : `Content uploaded by ${creatorName}`}
+          {isSubmitted ? `Content ready for review from ${creatorName}` : isRevisionRequested ? `Content under revision from ${creatorName}` : `Content uploaded by ${creatorName}`}
         </span>
         {safeRevisionCount > 0 && (
           <Badge variant="outline" className="text-xs rounded-full">
@@ -440,15 +441,28 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
       {/* Actions — show for both pre-submitted (uploaded) and submitted states */}
       {!isApproved && hasFiles && (
         <>
-          {!isSubmitted && (
+          {isRevisionRequested ? (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 space-y-1">
+              <div className="flex items-center gap-2">
+                <RotateCcw className="h-3.5 w-3.5 text-amber-600" />
+                <span className="text-sm font-semibold text-amber-800">Revision Requested</span>
+                <Badge variant="outline" className="text-xs rounded-full border-amber-300 text-amber-700">
+                  {safeRevisionCount}/{MAX_REVISIONS} revisions used
+                </Badge>
+              </div>
+              <p className="text-xs text-amber-700">
+                Waiting for {creatorName} to update and resubmit revised content.
+              </p>
+            </div>
+          ) : !isSubmitted ? (
             <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-3">
               <p className="text-xs text-gray-600">
                 Files uploaded but not yet formally submitted for review. You can preview them above and provide early feedback.
               </p>
             </div>
-          )}
+          ) : null}
 
-          {!showRevisionInput ? (
+          {isRevisionRequested ? null : !showRevisionInput ? (
             <div className="flex gap-2 flex-wrap">
               <AlertDialog>
                 <AlertDialogTrigger asChild>
