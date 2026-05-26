@@ -87,7 +87,7 @@ export const CATEGORY_META: Record<NotificationCategory, { label: string; icon: 
   account:      { label: 'Account',      icon: '🏢', description: 'Team members, locations, settings, account' },
 };
 
-export const NOTIFICATION_TYPE_TO_EMAIL_TYPE: Record<string, string> = {
+export const NOTIFICATION_TYPE_TO_EMAIL_TYPE: Partial<Record<NotificationType, string>> = {
   application_received: 'new_application',
   application_accepted: 'application_status',
   application_rejected: 'application_status',
