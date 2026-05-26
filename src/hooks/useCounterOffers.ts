@@ -186,6 +186,7 @@ export const useRespondToCounterOffer = () => {
       queryClient.invalidateQueries({ queryKey: ['counter-offers'] });
       queryClient.invalidateQueries({ queryKey: ['campaign-applications'] });
       queryClient.invalidateQueries({ queryKey: ['creator-applications'] });
+      queryClient.invalidateQueries({ queryKey: ['agreed-value'] });
       toast({
         title: response === 'accepted'
           ? currentUserRole === 'business'

@@ -18,7 +18,7 @@ import { useCampaignSponsorship } from '@/hooks/useCampaignSponsorship';
 
 interface ApplicationsListFixedProps {
   campaignId: string;
-  campaign?: { user_id: string; open_for_sponsorship?: boolean | null; fixed_price?: number | null; budget_max?: number | null };
+  campaign?: { user_id: string; open_for_sponsorship?: boolean | null; fixed_price?: number | null; budget_max?: number | null; delivery_fee?: number | null; delivery_type?: string | null; escrow_status?: string | null };
 }
 
 export const ApplicationsListFixed: React.FC<ApplicationsListFixedProps> = ({ campaignId, campaign }) => {
@@ -244,6 +244,9 @@ export const ApplicationsListFixed: React.FC<ApplicationsListFixedProps> = ({ ca
                   isSponsored={isSponsored}
                   userRole={userRole}
                   campaignBudget={campaignBudget}
+                  campaignDeliveryFee={campaign?.delivery_fee}
+                  campaignDeliveryType={campaign?.delivery_type}
+                  campaignEscrowStatus={campaign?.escrow_status}
                   onViewProfile={() => handleViewProfile(application)}
                 />
               ))}

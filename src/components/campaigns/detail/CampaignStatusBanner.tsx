@@ -80,6 +80,7 @@ interface CampaignStatusBannerProps {
   onViewDeliverables: () => void;
   onLeaveReview: () => void;
   isPayingEscrow?: boolean;
+  agreedValue?: number | null;
 }
 
 function deriveBannerState(
@@ -146,6 +147,7 @@ export const CampaignStatusBanner: React.FC<CampaignStatusBannerProps> = ({
   onViewDeliverables,
   onLeaveReview,
   isPayingEscrow,
+  agreedValue,
 }) => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
@@ -230,7 +232,7 @@ export const CampaignStatusBanner: React.FC<CampaignStatusBannerProps> = ({
         return (
           <div className="space-y-2 w-full lg:w-auto">
             <EscrowFeeBreakdown
-              baseAmount={campaign.fixed_price || campaign.budget_max || 0}
+              creatorRate={agreedValue ?? campaign.fixed_price ?? campaign.budget_max ?? 0}
               deliveryFee={campaign.delivery_fee || 0}
               deliveryType={campaign.delivery_type || 'standard'}
             />

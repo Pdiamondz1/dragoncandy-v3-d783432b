@@ -18,7 +18,7 @@ export const useCreateApplication = () => {
       introMessage,
       proposedTimeline,
       proposedRate,
-      portfolioUrl: _portfolioUrl,
+      portfolioUrl,
       isCounterOffer,
       isInvited,
     }: {
@@ -94,6 +94,7 @@ export const useCreateApplication = () => {
             p_intro_message: introMessage,
             p_proposed_timeline: proposedTimeline ?? null,
             p_is_counter_offer: isCounterOffer ?? false,
+            p_portfolio_url: portfolioUrl ?? null,
           });
 
         if (rpcError) {

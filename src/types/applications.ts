@@ -25,6 +25,8 @@ export interface CampaignApplication {
     title: string;
     description?: string;
     user_id?: string;
+    delivery_fee?: number | null;
+    delivery_type?: string | null;
     business_profile?: {
       business_name: string;
       logo_url?: string;

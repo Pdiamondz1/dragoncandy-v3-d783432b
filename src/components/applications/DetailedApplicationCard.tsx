@@ -167,12 +167,16 @@ export const DetailedApplicationCard: React.FC<DetailedApplicationCardProps> = (
               onClick={() => window.open(resolvedPortfolioUrl, '_blank')}
               className="w-20 h-20 rounded-lg overflow-hidden border-2 border-gray-200 hover:border-dc-teal transition-colors"
             >
-              <img
-                src={resolvedPortfolioUrl}
-                alt="Portfolio sample"
-                className="w-full h-full object-cover"
-                loading="lazy"
-              />
+              {/\.(mp4|mov|webm|avi)(\?|$)/i.test(application.portfolio_url || '') ? (
+                <video src={resolvedPortfolioUrl} preload="metadata" muted className="w-full h-full object-cover" />
+              ) : (
+                <img
+                  src={resolvedPortfolioUrl}
+                  alt="Portfolio sample"
+                  className="w-full h-full object-cover"
+                  loading="lazy"
+                />
+              )}
             </button>
           </div>
         )}

@@ -272,7 +272,11 @@ export const CampaignApplyForm: React.FC<CampaignApplyFormProps> = ({
                       : 'border-gray-200 hover:border-gray-300'
                   }`}
                 >
-                  <img src={toThumbnailUrl(url)} alt={`Portfolio sample ${i + 1}`} className="w-full h-full object-cover" loading="lazy" />
+                  {/\.(mp4|mov|webm|avi)(\?|$)/i.test(url) ? (
+                    <video src={url} preload="metadata" muted className="w-full h-full object-cover" />
+                  ) : (
+                    <img src={toThumbnailUrl(url)} alt={`Portfolio sample ${i + 1}`} className="w-full h-full object-cover" loading="lazy" />
+                  )}
                 </button>
               ))}
             </div>

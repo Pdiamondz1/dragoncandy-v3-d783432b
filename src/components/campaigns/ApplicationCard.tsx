@@ -26,6 +26,8 @@ interface ApplicationCardProps {
   userRole?: 'brand' | 'restaurant';
   campaignEscrowStatus?: string | null;
   campaignBudget?: number | null;
+  campaignDeliveryFee?: number | null;
+  campaignDeliveryType?: string | null;
   onViewProfile?: () => void;
 }
 
@@ -36,6 +38,8 @@ const ApplicationCardComponent: React.FC<ApplicationCardProps> = ({
   userRole,
   campaignEscrowStatus,
   campaignBudget,
+  campaignDeliveryFee,
+  campaignDeliveryType,
   onViewProfile
 }) => {
   const manageApplication = useManageApplication();
@@ -222,12 +226,16 @@ const ApplicationCardComponent: React.FC<ApplicationCardProps> = ({
               onClick={() => window.open(resolvedPortfolioUrl, '_blank')}
               className="w-20 h-20 rounded-lg overflow-hidden border-2 border-gray-200 hover:border-dc-teal transition-colors"
             >
-              <img
-                src={resolvedPortfolioUrl}
-                alt="Portfolio sample"
-                className="w-full h-full object-cover"
-                loading="lazy"
-              />
+              {/\.(mp4|mov|webm|avi)(\?|$)/i.test(application.portfolio_url || '') ? (
+                <video src={resolvedPortfolioUrl} preload="metadata" muted className="w-full h-full object-cover" />
+              ) : (
+                <img
+                  src={resolvedPortfolioUrl}
+                  alt="Portfolio sample"
+                  className="w-full h-full object-cover"
+                  loading="lazy"
+                />
+              )}
             </button>
           </div>
         )}
@@ -259,38 +267,47 @@ const ApplicationCardComponent: React.FC<ApplicationCardProps> = ({
         )}
 
         {/* Accepted: Show Pay Escrow button if escrow not yet held */}
-        {application.status === 'accepted' && campaignEscrowStatus !== 'held' && campaignEscrowStatus !== 'released' && (
-          <div className="pt-4 border-t space-y-3">
-            <TestModeBanner />
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-              <p className="text-sm font-medium text-amber-800">
-                💳 Payment required to start the project
-              </p>
-              <p className="text-xs text-amber-700 mt-1">
-                Pay the agreed amount of {formatCurrency(agreedAmount || 0)} into escrow. The creator will begin work after payment is confirmed.
-              </p>
+        {application.status === 'accepted' && campaignEscrowStatus !== 'held' && campaignEscrowStatus !== 'released' && (() => {
+          const deliveryFee = campaignDeliveryFee ?? 0;
+          const escrowTotal = (agreedAmount || 0) + deliveryFee;
+          const deliveryLabel = campaignDeliveryType === 'dragonrush' ? 'DragonDash Rush' : campaignDeliveryType === 'expedited' ? 'Express Delivery' : 'Standard Delivery';
+          return (
+            <div className="pt-4 border-t space-y-3">
+              <TestModeBanner />
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                <p className="text-sm font-medium text-amber-800">
+                  💳 Payment required to start the project
+                </p>
+                <p className="text-xs text-amber-700 mt-1">
+                  Creator rate: {formatCurrency(agreedAmount || 0)}
+                  {deliveryFee > 0 && <> + {deliveryLabel}: {formatCurrency(deliveryFee)}</>}
+                </p>
+                <p className="text-xs font-semibold text-amber-800 mt-0.5">
+                  Total: {formatCurrency(escrowTotal)}
+                </p>
+              </div>
+              <StripeTestHelper variant="cards" />
+              <Button
+                onClick={handlePayEscrow}
+                disabled={isPayingEscrow}
+                className="w-full"
+                size="lg"
+              >
+                {isPayingEscrow ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" aria-hidden="true" />
+                    Opening Checkout...
+                  </>
+                ) : (
+                  <>
+                    <CreditCard className="h-4 w-4 mr-2" aria-hidden="true" />
+                    Pay Escrow - {formatCurrency(escrowTotal)}
+                  </>
+                )}
+              </Button>
             </div>
-            <StripeTestHelper variant="cards" />
-            <Button
-              onClick={handlePayEscrow}
-              disabled={isPayingEscrow}
-              className="w-full"
-              size="lg"
-            >
-              {isPayingEscrow ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" aria-hidden="true" />
-                  Opening Checkout...
-                </>
-              ) : (
-                <>
-                  <CreditCard className="h-4 w-4 mr-2" aria-hidden="true" />
-                  Pay Escrow {agreedAmount ? `- ${formatCurrency(agreedAmount)}` : ''}
-                </>
-              )}
-            </Button>
-          </div>
-        )}
+          );
+        })()}
 
         {/* Accepted & Escrow paid */}
         {application.status === 'accepted' && (campaignEscrowStatus === 'held' || campaignEscrowStatus === 'released') && (

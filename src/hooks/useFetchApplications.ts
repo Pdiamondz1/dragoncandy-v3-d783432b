@@ -91,7 +91,9 @@ export const useCreatorApplications = () => {
             budget_min,
             budget_max,
             deadline,
-            user_id
+            user_id,
+            delivery_fee,
+            delivery_type
           )
         `)
         .eq('creator_id', user.id)
@@ -107,7 +109,7 @@ export const useCreatorApplications = () => {
       }
 
       // Collect unique campaign owner IDs
-      type CampaignJoin = { title: string; description: string | null; budget_min: number | null; budget_max: number | null; deadline: string | null; user_id: string };
+      type CampaignJoin = { title: string; description: string | null; budget_min: number | null; budget_max: number | null; deadline: string | null; user_id: string; delivery_fee: number | null; delivery_type: string | null };
       const getCampaign = (app: typeof data[0]): CampaignJoin | undefined => {
         const c = app.campaign;
         return Array.isArray(c) ? c[0] : (c as CampaignJoin | null) ?? undefined;

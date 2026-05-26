@@ -42,6 +42,7 @@ import { useCampaignApplicationsCount } from '@/hooks/useCampaignApplicationsCou
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { SocialNudgeBanner } from '@/components/campaigns/SocialNudgeBanner';
+import { useAgreedValue } from '@/hooks/useAgreedValue';
 
 const CampaignDetailsPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -111,6 +112,7 @@ const CampaignDetailsPage: React.FC = () => {
   // Application count for the status banner
   const { data: applicationCounts } = useCampaignApplicationsCount(id ?? '');
   const applicationCount = applicationCounts?.total ?? 0;
+  const { data: agreedValue } = useAgreedValue(id ?? '');
 
   // Escrow payment state
   const [isPayingEscrow, setIsPayingEscrow] = useState(false);
@@ -484,6 +486,7 @@ const CampaignDetailsPage: React.FC = () => {
           }}
           onLeaveReview={() => setShowRatingModal(true)}
           isPayingEscrow={isPayingEscrow}
+          agreedValue={agreedValue}
         />
 
         {/* Desktop: 2-column layout for workflow + details; Mobile: stacked */}
