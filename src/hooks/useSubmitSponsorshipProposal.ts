@@ -2,7 +2,6 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
-import { useEmailNotifications } from '@/hooks/useEmailNotifications';
 
 interface SubmitSponsorshipProposalParams {
   campaignId: string;
@@ -15,8 +14,6 @@ interface SubmitSponsorshipProposalParams {
 export const useSubmitSponsorshipProposal = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const { sendNotification } = useEmailNotifications();
-
   return useMutation({
     mutationFn: async (params: SubmitSponsorshipProposalParams) => {
       if (!user) throw new Error('User not authenticated');
@@ -89,70 +86,42 @@ export const useSubmitSponsorshipProposal = () => {
         queryKey: ['sponsorship-campaigns']
       });
       
-      // Send email notification to restaurant owner
+      // Send notification to restaurant owner
       try {
-        // Get campaign details
-        const { data: campaign, error: campaignError } = await supabase
+        const { data: campaign } = await supabase
           .from('campaigns')
           .select('id, title, user_id')
           .eq('id', variables.campaignId)
           .single();
 
-        if (campaignError) {
-          throw campaignError;
-        }
-
-        // Get restaurant owner's profile
-        const { data: restaurantProfile, error: restaurantProfileError } = await supabase
-          .from('business_profiles')
-          .select('business_name, user_id')
-          .eq('user_id', campaign?.user_id)
-          .eq('account_type', 'restaurant')
-          .maybeSingle();
-
-        if (restaurantProfileError) {
-          console.error('Error fetching restaurant profile:', restaurantProfileError);
-        }
-
-        const { fetchRecipientEmail } = await import('@/lib/recipientEmail');
-        const restaurantUser = restaurantProfile?.user_id
-          ? await fetchRecipientEmail(restaurantProfile.user_id)
-          : null;
-
-
-        // Get brand name
-        const { data: brandProfile, error: brandProfileError } = await supabase
+        const { data: brandProfile } = await supabase
           .from('business_profiles')
           .select('business_name')
           .eq('user_id', user?.id)
           .eq('account_type', 'brand')
           .maybeSingle();
 
-        if (brandProfileError) {
-          console.error('Error fetching brand profile:', brandProfileError);
-        }
+        const brandName = brandProfile?.business_name || 'A brand';
 
-        // Always attempt to send the email; server will resolve recipient if email is missing
-        const recipientEmail = restaurantUser?.email || undefined;
-        const recipientName = restaurantUser?.full_name || restaurantProfile?.business_name || 'Restaurant Owner';
-        
-        await sendNotification(
-          'sponsorship_proposal',
-          recipientEmail,
-          recipientName,
-          {
-            campaignTitle: campaign.title,
-            brandName: brandProfile?.business_name || 'A brand',
-            sponsorshipAmount: variables.sponsorshipAmount,
-            message: variables.proposalMessage,
-            recipientUserId: restaurantProfile?.user_id,
-            campaignId: campaign.id,
-          }
-        );
-        
+        if (campaign) {
+          supabase.functions.invoke('create-notification', {
+            body: {
+              recipientId: campaign.user_id,
+              type: 'sponsorship_proposal',
+              category: 'campaigns',
+              title: 'New Sponsorship Proposal',
+              body: `${brandName} proposed $${variables.sponsorshipAmount} sponsorship for "${campaign.title}"`,
+              actionUrl: `/dashboard/business/campaigns/${campaign.id}`,
+              actorId: user?.id,
+              actorName: brandName,
+              icon: 'sponsorship',
+              data: { campaign_id: campaign.id, sponsorship_amount: variables.sponsorshipAmount },
+              emailData: { campaignTitle: campaign.title, brandName, sponsorshipAmount: variables.sponsorshipAmount, message: variables.proposalMessage, campaignId: campaign.id },
+            },
+          }).catch((err: unknown) => console.error('Failed to send notification:', err));
+        }
       } catch (error) {
-        console.error('Failed to send email notification:', error);
-        // Don't block the success flow if email fails
+        console.error('Failed to send notification:', error);
       }
 
       toast({

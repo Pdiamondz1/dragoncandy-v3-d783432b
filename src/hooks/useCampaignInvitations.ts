@@ -68,8 +68,39 @@ export const useInviteCreator = () => {
 
       return result as { invitation: CampaignInvitation; already_invited: boolean };
     },
-    onSuccess: (data, variables) => {
+    onSuccess: async (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['campaign-invitations', variables.campaignId] });
+
+      // Send notification to the creator (only for new invitations)
+      if (!data.already_invited) {
+        try {
+          const { data: campaign } = await supabase
+            .from('campaigns')
+            .select('title')
+            .eq('id', variables.campaignId)
+            .single();
+
+          const campaignTitle = campaign?.title || 'a campaign';
+
+          supabase.functions.invoke('create-notification', {
+            body: {
+              recipientId: variables.creatorId,
+              type: 'campaign_invitation',
+              category: 'campaigns',
+              title: 'Campaign Invitation',
+              body: `You've been invited to "${campaignTitle}"`,
+              actionUrl: `/dashboard/creator/campaigns/${variables.campaignId}?invited=true`,
+              actorId: user!.id,
+              icon: 'invitation',
+              data: { campaign_id: variables.campaignId },
+              emailData: { campaignTitle, campaignId: variables.campaignId },
+            },
+          }).catch((err: unknown) => console.error('Failed to send notification:', err));
+        } catch (error) {
+          console.error('Failed to prepare invitation notification:', error);
+        }
+      }
+
       toast({
         title: data.already_invited ? 'Already invited' : 'Invitation sent!',
         description: data.already_invited

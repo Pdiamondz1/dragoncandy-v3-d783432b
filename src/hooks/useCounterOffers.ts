@@ -2,7 +2,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { useEmailNotifications } from '@/hooks/useEmailNotifications';
 
 
 
@@ -40,7 +39,6 @@ export const useCounterOffers = (applicationId: string | undefined) => {
 
 export const useCreateCounterOffer = () => {
   const queryClient = useQueryClient();
-  const { sendNotification } = useEmailNotifications();
 
   return useMutation({
     mutationFn: async ({
@@ -80,7 +78,7 @@ export const useCreateCounterOffer = () => {
       queryClient.invalidateQueries({ queryKey: ['creator-applications'] });
       toast({ title: 'Counter offer sent!', description: 'The other party will be notified.' });
 
-      // Send email notification to the other party
+      // Send notification to the other party
       try {
         const { data: application } = await supabase
           .from('campaign_applications')
@@ -97,18 +95,26 @@ export const useCreateCounterOffer = () => {
           .single();
 
         // Determine recipient: if sender is business, notify creator; vice versa
-        const recipientUserId = senderRole === 'business' 
-          ? application.creator_id 
+        const recipientUserId = senderRole === 'business'
+          ? application.creator_id
           : campaign?.user_id;
 
         if (recipientUserId && campaign) {
-          await sendNotification('counter_offer', undefined, undefined, {
-            campaignTitle: campaign.title,
-            campaignId: application.campaign_id,
-            recipientUserId,
-            message: data.message,
-            amount: data.proposed_rate || undefined,
-          });
+          const { data: { user } } = await supabase.auth.getUser();
+          supabase.functions.invoke('create-notification', {
+            body: {
+              recipientId: recipientUserId,
+              type: 'counter_offer_received',
+              category: 'campaigns',
+              title: 'Counter Offer Received',
+              body: `New counter offer on "${campaign.title}"${data.proposed_rate ? ` — $${data.proposed_rate}` : ''}`,
+              actionUrl: `/dashboard/creator/campaigns`,
+              actorId: user?.id,
+              icon: 'counter_offer',
+              data: { campaign_id: application.campaign_id, application_id: applicationId },
+              emailData: { campaignTitle: campaign.title, campaignId: application.campaign_id, message: data.message, amount: data.proposed_rate || undefined },
+            },
+          }).catch((err: unknown) => console.error('Failed to send notification:', err));
         }
       } catch (e) {
         console.error('Failed to send counter-offer notification:', e);
@@ -123,7 +129,6 @@ export const useCreateCounterOffer = () => {
 
 export const useRespondToCounterOffer = () => {
   const queryClient = useQueryClient();
-  const { sendNotification } = useEmailNotifications();
 
   return useMutation({
     mutationFn: async ({
@@ -200,7 +205,7 @@ export const useRespondToCounterOffer = () => {
           : 'The other party will be notified.',
       });
 
-      // Send email notification
+      // Send notification
       try {
         const { data: application } = await supabase
           .from('campaign_applications')
@@ -224,12 +229,23 @@ export const useRespondToCounterOffer = () => {
           ? campaign.user_id
           : application.creator_id;
 
-        await sendNotification('counter_offer_response', undefined, undefined, {
-          campaignTitle: campaign.title,
-          campaignId: application.campaign_id,
-          recipientUserId,
-          applicationStatus: response,
-        });
+        const isAccepted = response === 'accepted';
+        supabase.functions.invoke('create-notification', {
+          body: {
+            recipientId: recipientUserId,
+            type: 'counter_offer_responded',
+            category: 'campaigns',
+            title: isAccepted ? 'Counter Offer Accepted!' : 'Counter Offer Declined',
+            body: isAccepted
+              ? `Your counter offer on "${campaign.title}" was accepted`
+              : `Your counter offer on "${campaign.title}" was declined`,
+            actionUrl: `/dashboard/creator/campaigns`,
+            actorId: user.id,
+            icon: 'counter_offer',
+            data: { campaign_id: application.campaign_id, application_id: applicationId },
+            emailData: { campaignTitle: campaign.title, campaignId: application.campaign_id, applicationStatus: response },
+          },
+        }).catch((err: unknown) => console.error('Failed to send notification:', err));
 
         if (response === 'accepted' && currentUserRole === 'business') {
           const { error: nudgeError } = await supabase.from('donny_nudges').insert({

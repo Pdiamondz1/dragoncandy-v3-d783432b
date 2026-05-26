@@ -2,7 +2,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
-import { useEmailNotifications } from '@/hooks/useEmailNotifications';
 
 export interface SponsorshipProposal {
   id: string;
@@ -38,7 +37,6 @@ export interface SponsorshipProposal {
 export const useSponsorshipProposals = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const { sendNotification } = useEmailNotifications();
 
   const { data: proposals, isLoading } = useQuery({
     queryKey: ['sponsorship-proposals', user?.id],
@@ -101,27 +99,32 @@ export const useSponsorshipProposals = () => {
     },
     onSuccess: async (_, { proposalId, status }) => {
       queryClient.invalidateQueries({ queryKey: ['sponsorship-proposals'] });
-      
-      // Get the proposal data to send notification
+
+      // Send notification to the brand
       const proposal = proposals?.find(p => p.id === proposalId);
-      
+
       if (proposal?.brand_profile?.user_id && proposal?.campaigns) {
-        await sendNotification(
-          'sponsorship_status',
-          undefined, // Let edge function resolve email
-          undefined, // Let edge function resolve name
-          {
-            recipientUserId: proposal.brand_profile.user_id,
-            campaignTitle: proposal.campaigns.title,
-            proposalStatus: status,
-          }
-        );
-        
+        const isAccepted = status === 'accepted';
+        supabase.functions.invoke('create-notification', {
+          body: {
+            recipientId: proposal.brand_profile.user_id,
+            type: isAccepted ? 'sponsorship_accepted' : 'sponsorship_rejected',
+            category: 'campaigns',
+            title: isAccepted ? 'Sponsorship Accepted!' : 'Sponsorship Declined',
+            body: isAccepted
+              ? `Your sponsorship for "${proposal.campaigns.title}" was accepted`
+              : `Your sponsorship for "${proposal.campaigns.title}" was declined`,
+            actionUrl: `/dashboard/brand/sponsorships`,
+            icon: 'sponsorship',
+            data: { campaign_id: proposal.campaign_id, sponsorship_id: proposal.id },
+            emailData: { campaignTitle: proposal.campaigns.title, proposalStatus: status },
+          },
+        }).catch((err: unknown) => console.error('Failed to send notification:', err));
       }
-      
+
       toast({
         title: status === 'accepted' ? 'Proposal accepted' : 'Proposal rejected',
-        description: status === 'accepted' 
+        description: status === 'accepted'
           ? 'The brand has been notified of your acceptance.'
           : 'The brand has been notified of your decision.',
       });

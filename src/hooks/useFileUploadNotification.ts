@@ -30,9 +30,7 @@ export const useFileUploadNotification = () => {
         .eq('status', 'active')
         .single();
 
-      if (!collaboration) {
-        return;
-      }
+      if (!collaboration) return;
 
       // Get uploader profile
       const { data: uploaderProfile } = await supabase
@@ -42,43 +40,29 @@ export const useFileUploadNotification = () => {
         .single();
 
       const uploaderName = uploaderProfile?.full_name || 'A user';
+      const fileLabel = fileCount === 1 ? '1 file' : `${fileCount} files`;
+      const title = campaign.title || campaignTitle;
 
       // Determine recipient based on uploader role
-      let recipientId: string;
-      let notificationType: string;
+      const recipientId = uploaderRole === 'creator'
+        ? campaign.user_id
+        : collaboration.creator_id;
 
-      if (uploaderRole === 'creator') {
-        // Creator uploaded → notify restaurant owner
-        recipientId = campaign.user_id;
-        notificationType = 'file_uploaded_by_creator';
-      } else {
-        // Restaurant uploaded → notify creator
-        recipientId = collaboration.creator_id;
-        notificationType = 'file_uploaded_by_restaurant';
-      }
-
-      // Resolve recipient email via gated RPC
-      const { fetchRecipientEmail } = await import('@/lib/recipientEmail');
-      const recipientProfile = await fetchRecipientEmail(recipientId);
-
-      if (!recipientProfile?.email) return;
-
-
-      // Send email notification
-      await supabase.functions.invoke('send-notification-email', {
+      supabase.functions.invoke('create-notification', {
         body: {
-          to: recipientProfile.email,
-          recipientName: recipientProfile.full_name,
-          type: notificationType,
-          data: {
-            campaignTitle: campaign.title || campaignTitle,
-            campaignId,
-            collaborationId: collaboration.id,
-            uploaderName,
-            fileCount,
-          },
+          recipientId,
+          type: 'file_uploaded',
+          category: 'content',
+          title: 'New File Upload',
+          body: `${uploaderName} uploaded ${fileLabel} to "${title}"`,
+          actionUrl: `/dashboard/business/campaigns/${campaignId}`,
+          actorId: user.id,
+          actorName: uploaderName,
+          icon: 'file',
+          data: { campaign_id: campaignId, collaboration_id: collaboration.id, file_count: fileCount },
+          emailData: { campaignTitle: title, campaignId, collaborationId: collaboration.id, uploaderName, fileCount },
         },
-      });
+      }).catch((err: unknown) => console.error('Failed to send notification:', err));
 
     } catch (error) {
       console.error('Failed to send file upload notification:', error);

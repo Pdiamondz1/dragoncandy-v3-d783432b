@@ -109,27 +109,19 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
       queryClient.invalidateQueries({ queryKey: ['campaign', campaignId] });
       queryClient.invalidateQueries({ queryKey: ['campaign-project', campaignId] });
 
-      try {
-        const { fetchRecipientEmail } = await import('@/lib/recipientEmail');
-        const creatorProfile = await fetchRecipientEmail(creatorId);
-
-        if (creatorProfile?.email) {
-          const { error: emailError } = await supabase.functions.invoke('send-notification-email', {
-            body: {
-              to: creatorProfile.email,
-              recipientName: creatorProfile.full_name,
-              type: 'content_approved',
-              data: { campaignId, campaignTitle, creatorName },
-            },
-          });
-          if (emailError) {
-            toast({ variant: 'default', title: 'Content approved', description: 'Email notification to creator failed. They may not be notified immediately.' });
-          }
-        }
-      } catch (e) {
-        console.error('Failed to send content approval email:', e);
-        toast({ variant: 'default', title: 'Content approved', description: 'Email notification to creator failed. They may not be notified immediately.' });
-      }
+      supabase.functions.invoke('create-notification', {
+        body: {
+          recipientId: creatorId,
+          type: 'content_approved',
+          category: 'content',
+          title: 'Content Approved!',
+          body: `Your content for "${campaignTitle}" was approved`,
+          actionUrl: `/dashboard/creator/my-campaigns`,
+          icon: 'content',
+          data: { campaign_id: campaignId, collaboration_id: collaborationId },
+          emailData: { campaignId, campaignTitle, creatorName },
+        },
+      }).catch((err: unknown) => console.error('Failed to send notification:', err));
 
 
       // Trigger social hook with one retry + visible failure toast
@@ -253,23 +245,19 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
       queryClient.invalidateQueries({ queryKey: ['campaign', campaignId] });
       queryClient.invalidateQueries({ queryKey: ['campaign-project', campaignId] });
 
-      try {
-        const { fetchRecipientEmail } = await import('@/lib/recipientEmail');
-        const creatorProfile = await fetchRecipientEmail(creatorId);
-
-        if (creatorProfile?.email) {
-          await supabase.functions.invoke('send-notification-email', {
-            body: {
-              to: creatorProfile.email,
-              recipientName: creatorProfile.full_name,
-              type: 'revision_requested',
-              data: { campaignId, campaignTitle, creatorName, message: feedback },
-            },
-          });
-        }
-      } catch (e) {
-        console.error('Failed to send revision request email:', e);
-      }
+      supabase.functions.invoke('create-notification', {
+        body: {
+          recipientId: creatorId,
+          type: 'revision_requested',
+          category: 'content',
+          title: 'Revision Requested',
+          body: `A revision was requested for "${campaignTitle}"`,
+          actionUrl: `/dashboard/creator/my-campaigns`,
+          icon: 'content',
+          data: { campaign_id: campaignId, collaboration_id: collaborationId },
+          emailData: { campaignId, campaignTitle, creatorName, message: feedback },
+        },
+      }).catch((err: unknown) => console.error('Failed to send notification:', err));
     },
     onError: (err: Error) => {
       toast({ variant: 'destructive', title: 'Request Failed', description: err.message });

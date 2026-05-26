@@ -111,13 +111,13 @@ export const useSendMessage = () => {
       });
     },
     onSuccess: async (_data, variables) => {
-      const queryKey = variables.campaignId 
+      const queryKey = variables.campaignId
         ? ['messages', variables.campaignId, undefined]
         : ['messages', undefined, variables.conversationId];
-      
+
       queryClient.invalidateQueries({ queryKey });
-      
-      // Send email notification to recipient(s)
+
+      // Send notification to recipient(s) via create-notification
       try {
         const { data: senderProfile } = await supabase
           .from('profiles')
@@ -128,22 +128,22 @@ export const useSendMessage = () => {
         const senderName = senderProfile?.full_name || 'A user';
         const messagePreview = variables.content.substring(0, 100) + (variables.content.length > 100 ? '...' : '');
 
-        const { fetchRecipientEmail } = await import('@/lib/recipientEmail');
-
         if (variables.conversationId && variables.recipientId) {
-          const recipientProfile = await fetchRecipientEmail(variables.recipientId);
-
-          if (recipientProfile?.email) {
-            const { error: fnError } = await supabase.functions.invoke('send-notification-email', {
-              body: {
-                to: recipientProfile.email,
-                recipientName: recipientProfile.full_name,
-                type: 'new_message',
-                data: { senderName, message: messagePreview },
-              },
-            });
-            if (fnError) console.warn('Email notification failed:', fnError);
-          }
+          supabase.functions.invoke('create-notification', {
+            body: {
+              recipientId: variables.recipientId,
+              type: 'message_received',
+              category: 'messages',
+              title: 'New Message',
+              body: `${senderName}: ${messagePreview}`,
+              actionUrl: `/dashboard/messages/${_data.conversation_id}`,
+              actorId: user!.id,
+              actorName: senderName,
+              icon: 'message',
+              data: { conversation_id: _data.conversation_id, campaign_id: variables.campaignId },
+              emailData: { senderName, message: messagePreview },
+            },
+          }).catch((err: unknown) => console.error('Failed to send notification:', err));
         } else if (variables.campaignId) {
           const { data: participants } = await supabase
             .from('conversation_participants')
@@ -155,23 +155,26 @@ export const useSendMessage = () => {
             .filter(id => id !== user!.id);
 
           for (const rid of recipientIds) {
-            const recipient = await fetchRecipientEmail(rid);
-            if (recipient?.email) {
-              const { error: fnError } = await supabase.functions.invoke('send-notification-email', {
-                body: {
-                  to: recipient.email,
-                  recipientName: recipient.full_name,
-                  type: 'new_message',
-                  data: { senderName, message: messagePreview },
-                },
-              });
-              if (fnError) console.warn('Campaign email notification failed:', fnError);
-            }
+            supabase.functions.invoke('create-notification', {
+              body: {
+                recipientId: rid,
+                type: 'message_received',
+                category: 'messages',
+                title: 'New Message',
+                body: `${senderName}: ${messagePreview}`,
+                actionUrl: `/dashboard/messages/${_data.conversation_id}`,
+                actorId: user!.id,
+                actorName: senderName,
+                icon: 'message',
+                data: { conversation_id: _data.conversation_id, campaign_id: variables.campaignId },
+                emailData: { senderName, message: messagePreview },
+              },
+            }).catch((err: unknown) => console.error('Failed to send notification:', err));
           }
         }
 
       } catch (error) {
-        console.warn('Failed to send message notification email:', error);
+        console.warn('Failed to send message notification:', error);
       }
     },
   });
