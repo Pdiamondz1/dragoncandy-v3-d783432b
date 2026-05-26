@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, CheckCheck } from 'lucide-react';
+import { Bell, CheckCheck, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { NotificationItem } from '@/components/notifications/NotificationItem';
 import { NotificationCategoryTabs } from '@/components/notifications/NotificationCategoryTabs';
@@ -42,17 +42,28 @@ const NotificationsPage = () => {
           {/* Header */}
           <div className="flex items-center justify-between px-4 pt-5 pb-3 lg:px-6 lg:pt-6">
             <h1 className="text-xl font-bold text-dc-text">Notifications</h1>
-            {totalUnread > 0 && (
+            <div className="flex items-center gap-1">
+              {totalUnread > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => markAllRead.mutate()}
+                  className="text-dc-teal hover:text-dc-teal-dark gap-1.5"
+                >
+                  <CheckCheck className="h-4 w-4" />
+                  <span className="text-sm">Mark all read</span>
+                </Button>
+              )}
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => markAllRead.mutate()}
-                className="text-dc-teal hover:text-dc-teal-dark gap-1.5"
+                onClick={() => navigate('/settings')}
+                className="hidden lg:inline-flex text-dc-text-muted hover:text-dc-text"
+                aria-label="Notification settings"
               >
-                <CheckCheck className="h-4 w-4" />
-                <span className="text-sm">Mark all read</span>
+                <Settings className="h-4 w-4" />
               </Button>
-            )}
+            </div>
           </div>
 
           {/* Category tabs */}
