@@ -181,7 +181,7 @@ export const useManageApplication = () => {
       toast({
         title: `Application ${data.status}!`,
         description: data.status === 'accepted'
-          ? 'The project is now active — the creator can start uploading content.'
+          ? 'Redirecting to payment to start the project...'
           : 'The creator has been notified.',
       });
     },

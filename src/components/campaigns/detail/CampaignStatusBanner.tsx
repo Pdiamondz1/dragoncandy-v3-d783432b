@@ -100,7 +100,7 @@ function deriveBannerState(
   }
   // pre_hire
   if (status === 'draft') return 'draft';
-  if (escrowStatus === 'pending' && hasAcceptedCreator) return 'payment_pending_project';
+  if (hasAcceptedCreator && escrowStatus !== 'held' && escrowStatus !== 'released') return 'payment_pending_project';
   if (escrowStatus === 'pending') return 'payment_pending';
   if (applicationCount > 0) return 'pending_review';
   return 'published';

@@ -15,6 +15,7 @@ import { CampaignApplication } from '@/types/applications';
 import { useManageApplication } from '@/hooks/useManageApplication';
 import { useAuth } from '@/hooks/useAuth';
 import { useCampaignSponsorship } from '@/hooks/useCampaignSponsorship';
+import { useEscrowCheckout } from '@/hooks/useEscrowCheckout';
 
 interface ApplicationsListFixedProps {
   campaignId: string;
@@ -28,6 +29,7 @@ export const ApplicationsListFixed: React.FC<ApplicationsListFixedProps> = ({ ca
   const [selectedApplication, setSelectedApplication] = useState<CampaignApplication | null>(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const manageApplication = useManageApplication();
+  const { initiateCheckout, isPayingEscrow } = useEscrowCheckout();
   const { profile } = useAuth();
   
   // Check if campaign has an active sponsorship
@@ -97,6 +99,7 @@ export const ApplicationsListFixed: React.FC<ApplicationsListFixedProps> = ({ ca
       });
       setShowProfileModal(false);
       setSelectedApplication(null);
+      initiateCheckout(campaignId);
     }
   };
 
@@ -248,6 +251,8 @@ export const ApplicationsListFixed: React.FC<ApplicationsListFixedProps> = ({ ca
                   campaignDeliveryType={campaign?.delivery_type}
                   campaignEscrowStatus={campaign?.escrow_status}
                   onViewProfile={() => handleViewProfile(application)}
+                  onPayEscrow={() => initiateCheckout(campaignId)}
+                  isPayingEscrow={isPayingEscrow}
                 />
               ))}
             </div>

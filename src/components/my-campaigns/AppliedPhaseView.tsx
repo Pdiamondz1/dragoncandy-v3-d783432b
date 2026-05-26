@@ -65,7 +65,7 @@ export function AppliedPhaseView({ campaign, enrichedDetail, application }: Appl
 
               {isAccepted && (
                 <div className="mt-3 p-2 rounded-lg text-xs text-center bg-teal-50 text-teal-800 lg:border lg:border-teal-200">
-                  You've been accepted! Awaiting project start.
+                  You've been accepted! The restaurant is completing payment — you'll be notified when the project starts.
                 </div>
               )}
               {!isCounterOffer && !isAccepted && (

@@ -207,7 +207,6 @@ export const useRespondToCounterOffer = () => {
           : 'The other party will be notified.',
       });
 
-      // Send notification
       try {
         const { data: application } = await supabase
           .from('campaign_applications')
@@ -217,6 +216,17 @@ export const useRespondToCounterOffer = () => {
 
         if (!application) return;
 
+        // Create collaboration + reject siblings (best-effort — verify-campaign-escrow also handles this)
+        if (response === 'accepted' && currentUserRole === 'business') {
+          try {
+            await supabase.rpc('accept_application_with_collaboration', { p_application_id: applicationId });
+            queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+            queryClient.invalidateQueries({ queryKey: ['campaign-project'] });
+          } catch (rpcErr) {
+            console.error('RPC accept_application_with_collaboration failed (will retry at escrow verification):', rpcErr);
+          }
+        }
+
         const { data: campaign } = await supabase
           .from('campaigns')
           .select('title, user_id')
@@ -225,8 +235,6 @@ export const useRespondToCounterOffer = () => {
 
         const { data: { user } } = await supabase.auth.getUser();
         if (!user || !campaign) return;
-
-        // Notify the counter-offer sender (the other party)
         const recipientUserId = user.id === application.creator_id
           ? campaign.user_id
           : application.creator_id;

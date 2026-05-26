@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Check, X, Clock, DollarSign, User, ArrowRightLeft, Eye, ImageIcon } from 'lucide-react';
+import { Check, X, Clock, DollarSign, User, ArrowRightLeft, Eye, ImageIcon, Loader2 } from 'lucide-react';
 import { useManageApplication } from '@/hooks/useManageApplication';
 import { CampaignApplication } from '@/types/applications';
 import { ApplicationStatusBadge } from './ApplicationStatusBadge';
@@ -25,6 +25,8 @@ interface ApplicationCardProps {
   campaignDeliveryFee?: number | null;
   campaignDeliveryType?: string | null;
   onViewProfile?: () => void;
+  onPayEscrow?: () => void;
+  isPayingEscrow?: boolean;
 }
 
 const ApplicationCardComponent: React.FC<ApplicationCardProps> = ({
@@ -36,7 +38,9 @@ const ApplicationCardComponent: React.FC<ApplicationCardProps> = ({
   campaignBudget,
   campaignDeliveryFee: _campaignDeliveryFee,
   campaignDeliveryType: _campaignDeliveryType,
-  onViewProfile
+  onViewProfile,
+  onPayEscrow,
+  isPayingEscrow,
 }) => {
   const manageApplication = useManageApplication();
   const [showCounterModal, setShowCounterModal] = useState(false);
@@ -69,6 +73,7 @@ const ApplicationCardComponent: React.FC<ApplicationCardProps> = ({
         status: 'accepted',
       });
     }
+    onPayEscrow?.();
   };
 
   const handleReject = async () => {
@@ -210,11 +215,21 @@ const ApplicationCardComponent: React.FC<ApplicationCardProps> = ({
         )}
 
         {application.status === 'accepted' && campaignEscrowStatus !== 'held' && campaignEscrowStatus !== 'released' && (
-          <div className="pt-4 border-t">
+          <div className="pt-4 border-t space-y-2">
             <Badge className="bg-amber-100 text-amber-800 border-amber-300">
               <Clock className="h-3 w-3 mr-1" aria-hidden="true" />
               Accepted — Awaiting Escrow Payment
             </Badge>
+            {onPayEscrow && (
+              <Button
+                onClick={onPayEscrow}
+                disabled={isPayingEscrow}
+                className="w-full rounded-full bg-amber-500 hover:bg-amber-600 text-white font-semibold"
+                size="sm"
+              >
+                {isPayingEscrow ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Processing...</> : 'Pay Escrow to Start Project'}
+              </Button>
+            )}
           </div>
         )}
 

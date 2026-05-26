@@ -109,7 +109,7 @@ export function MyCampaignCard({
       </div>
 
       {variant === 'accepted' && (
-        <p className="text-xs text-amber-600 mb-2">Awaiting project start</p>
+        <p className="text-xs text-amber-600 mb-2">The restaurant is completing payment — you'll be notified when the project starts.</p>
       )}
 
       {variant === 'active' && activeOverrides.hint && (
