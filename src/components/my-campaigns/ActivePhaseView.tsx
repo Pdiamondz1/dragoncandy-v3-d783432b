@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MessageSquare } from 'lucide-react';
+import { MessageSquare, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import type { Campaign } from '@/hooks/useCampaignQueries';
 import type { EnrichedCampaignDetail } from '@/hooks/useCampaignDetailEnriched';
 import { CreatorCampaignDetails } from '@/components/campaign-details/CreatorCampaignDetails';
@@ -86,6 +87,41 @@ export function ActivePhaseView({ campaign, enrichedDetail, collaborationId }: A
         <div className={`px-4 pt-4 pb-24 space-y-3 lg:px-0 lg:pb-0 lg:sticky lg:top-24 ${activeTab !== 'project' ? 'hidden lg:block' : ''}`}>
           <div className="lg:bg-white lg:rounded-2xl lg:shadow lg:border lg:border-gray-200 lg:p-6 space-y-5">
             <div className="text-sm font-bold text-gray-900 hidden lg:block">PROJECT WORKFLOW</div>
+
+            {/* Revision banner */}
+            {collaboration.content_status === 'revision_requested' && collaboration.revision_feedback && (
+              <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-4 space-y-2">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4 text-amber-600" />
+                  <span className="text-sm font-bold text-amber-800">Revision Requested</span>
+                  <Badge variant="outline" className="text-xs rounded-full border-amber-300 text-amber-700">
+                    {collaboration.revision_count}/{2} revisions used
+                  </Badge>
+                </div>
+                <ul className="space-y-1.5">
+                  {Object.entries(collaboration.revision_feedback).map(([key, text]) => {
+                    let label: string;
+                    if (key === 'general') {
+                      label = 'General Feedback';
+                    } else {
+                      const deliverable = campaignDeliverables?.find((d) => d.id === key);
+                      const file = files?.find((f) => f.id === key);
+                      label = deliverable
+                        ? `${deliverable.platform ?? ''} ${deliverable.content_type}`.trim().replace(/_/g, ' ')
+                        : file?.original_filename ?? key;
+                    }
+                    return (
+                      <li key={key} className="text-xs text-amber-900">
+                        <span className="font-semibold capitalize">{label}:</span> {text}
+                      </li>
+                    );
+                  })}
+                </ul>
+                <p className="text-xs text-amber-700 italic">
+                  Address the feedback above, then resubmit for review.
+                </p>
+              </div>
+            )}
 
             {/* Stepper */}
             <div className="bg-white rounded-2xl p-4 lg:bg-transparent lg:p-0">
