@@ -2,6 +2,7 @@
 import React from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { useResolvedAvatarUrl } from '@/hooks/useSignedUrl';
 
 interface UserPresenceIndicatorProps {
   userId: string;
@@ -20,6 +21,8 @@ export const UserPresenceIndicator: React.FC<UserPresenceIndicatorProps> = ({
   showLabel = false,
   size = 'md'
 }) => {
+  const resolvedUrl = useResolvedAvatarUrl(avatarUrl);
+
   // Presence functionality temporarily disabled
   const getDisplayName = () => {
     return userEmail || 'Unknown User';
@@ -67,7 +70,7 @@ export const UserPresenceIndicator: React.FC<UserPresenceIndicatorProps> = ({
     <div className="flex items-center gap-2">
       <div className="relative">
         <Avatar className={sizeClasses[size]}>
-          <AvatarImage src={avatarUrl} alt={userName} />
+          <AvatarImage src={resolvedUrl} alt={userName} />
           <AvatarFallback>{userEmail?.[0]?.toUpperCase()}</AvatarFallback>
         </Avatar>
         <div
