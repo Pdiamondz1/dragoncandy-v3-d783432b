@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { VideoFrameThumbnail } from '@/components/content/VideoFrameThumbnail';
+import logo from '@/assets/Transparent_DragonCandy_logo.webp';
 
 export interface MediaItem {
   url: string;
@@ -29,6 +30,17 @@ function getContentTypeLabel(item: MediaItem): string {
 
 export const MediaPreviewGrid: React.FC<MediaPreviewGridProps> = ({ items, className }) => {
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [heroError, setHeroError] = useState(false);
+  const [thumbErrors, setThumbErrors] = useState<Set<number>>(new Set());
+
+  useEffect(() => {
+    setHeroError(false);
+    setThumbErrors(new Set());
+  }, [items]);
+
+  useEffect(() => {
+    setHeroError(false);
+  }, [selectedIndex]);
 
   if (items.length === 0) return null;
 
@@ -41,7 +53,11 @@ export const MediaPreviewGrid: React.FC<MediaPreviewGridProps> = ({ items, class
       {/* Hero frame — 1:1 square */}
       <div className="flex justify-center mb-2">
         <div className="w-[200px] h-[200px] lg:w-[200px] lg:h-[200px] w-full aspect-square max-w-[280px] rounded-xl overflow-hidden relative bg-gray-900">
-          {isVideo ? (
+          {heroError ? (
+            <div className="w-full h-full bg-gradient-to-br from-dc-teal via-dc-pink/40 to-dc-teal-dark flex items-center justify-center">
+              <img src={logo} alt="Dragon Candy" className="w-12 h-12 opacity-70" />
+            </div>
+          ) : isVideo ? (
             <VideoFrameThumbnail
               fileId={featured.fileId ?? `media-${selectedIndex}`}
               videoUrl={featured.url}
@@ -49,12 +65,14 @@ export const MediaPreviewGrid: React.FC<MediaPreviewGridProps> = ({ items, class
               mimeType={featured.mimeType ?? 'video/mp4'}
               filename={featured.filename ?? 'video'}
               className="w-full h-full"
+              onError={() => setHeroError(true)}
             />
           ) : (
             <img
               src={featured.url}
               alt={featured.filename ?? 'Content preview'}
               className="w-full h-full object-cover"
+              onError={() => setHeroError(true)}
             />
           )}
           <div className="absolute top-2 left-2 bg-black/45 rounded px-2 py-0.5">
@@ -78,7 +96,11 @@ export const MediaPreviewGrid: React.FC<MediaPreviewGridProps> = ({ items, class
                   active ? 'ring-2 ring-dc-teal' : 'ring-1 ring-gray-200'
                 }`}
               >
-                {itemIsVideo ? (
+                {thumbErrors.has(i) ? (
+                  <div className="w-full h-full bg-gradient-to-br from-dc-teal via-dc-pink/40 to-dc-teal-dark flex items-center justify-center">
+                    <img src={logo} alt="Dragon Candy" className="w-4 h-4 opacity-70" />
+                  </div>
+                ) : itemIsVideo ? (
                   <VideoFrameThumbnail
                     fileId={item.fileId ?? `thumb-${i}`}
                     videoUrl={item.url}
@@ -87,12 +109,14 @@ export const MediaPreviewGrid: React.FC<MediaPreviewGridProps> = ({ items, class
                     filename={item.filename ?? 'video'}
                     className="w-full h-full"
                     compact
+                    onError={() => setThumbErrors(prev => new Set(prev).add(i))}
                   />
                 ) : (
                   <img
                     src={item.url}
                     alt=""
                     className="w-full h-full object-cover"
+                    onError={() => setThumbErrors(prev => new Set(prev).add(i))}
                   />
                 )}
               </button>

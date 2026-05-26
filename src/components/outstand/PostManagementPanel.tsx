@@ -12,6 +12,7 @@ import { Calendar, Clock, Trash2, RefreshCw, Pencil, ExternalLink, Loader2, Laye
 import { toast } from 'sonner';
 import { VideoFrameThumbnail } from '@/components/content/VideoFrameThumbnail';
 import { isScheduled } from '@/lib/outstandUtils';
+import logo from '@/assets/Transparent_DragonCandy_logo.webp';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -51,6 +52,7 @@ export const PostManagementPanel: React.FC<PostManagementPanelProps> = ({
   const [rescheduling, setRescheduling] = useState(false);
   const [newDateTime, setNewDateTime] = useState('');
   const [cancellingPlan, setCancellingPlan] = useState(false);
+  const [heroMediaError, setHeroMediaError] = useState(false);
 
   // Look up plan context from donny_scheduled_posts by matching scheduled time
   const postScheduledAt = post?.scheduledAt;
@@ -120,6 +122,7 @@ export const PostManagementPanel: React.FC<PostManagementPanelProps> = ({
       setCaption(post.containers?.[0]?.content ?? '');
       setEditingCaption(false);
       setRescheduling(false);
+      setHeroMediaError(false);
       if (post.scheduledAt) {
         const d = new Date(post.scheduledAt);
         const offset = d.getTimezoneOffset();
@@ -194,19 +197,25 @@ export const PostManagementPanel: React.FC<PostManagementPanelProps> = ({
       {/* Hero media preview */}
       {heroMedia && (
         <div className="w-full aspect-square rounded-xl overflow-hidden bg-gray-100 max-w-[200px] mx-auto lg:max-w-[240px]">
-          {heroMedia.contentType?.startsWith('video/') ? (
+          {heroMediaError ? (
+            <div className="w-full h-full bg-gradient-to-br from-dc-teal via-dc-pink/40 to-dc-teal-dark flex items-center justify-center">
+              <img src={logo} alt="Dragon Candy" className="w-12 h-12 opacity-70" />
+            </div>
+          ) : heroMedia.contentType?.startsWith('video/') ? (
             <VideoFrameThumbnail
               fileId={heroMedia.id ?? post.id}
               videoUrl={heroMedia.url}
               storedThumbnailUrl={null}
               mimeType={heroMedia.contentType ?? 'video/mp4'}
               filename={heroMedia.filename ?? 'video'}
+              onError={() => setHeroMediaError(true)}
             />
           ) : (
             <img
               src={heroMedia.url}
               alt=""
               className="w-full h-full object-cover"
+              onError={() => setHeroMediaError(true)}
             />
           )}
         </div>

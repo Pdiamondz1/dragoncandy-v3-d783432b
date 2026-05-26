@@ -9,7 +9,7 @@ interface CrossPostInput {
   scheduledAt?: string;
 }
 
-export function useCrossPost() {
+export function useCrossPost(options?: { onPublished?: () => void }) {
   const { apiKey, baseUrl } = useOutstandConfig();
   const qc = useQueryClient();
   const { toast } = useToast();
@@ -52,6 +52,12 @@ export function useCrossPost() {
     },
     onSuccess: (_data, variables) => {
       qc.invalidateQueries({ queryKey: ['outstand'] });
+      if (!variables.scheduledAt) {
+        setTimeout(() => {
+          qc.refetchQueries({ queryKey: ['outstand'] });
+          options?.onPublished?.();
+        }, 3000);
+      }
       toast({
         title: variables.scheduledAt ? 'Cross-post scheduled!' : 'Cross-post published!',
       });

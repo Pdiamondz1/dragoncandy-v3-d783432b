@@ -293,8 +293,9 @@ const CreatorCampaignMarketplace = () => {
               {availableCampaigns.length === 0 && donnyPicks.length === 0 ? (
                 <div className="border-2 border-dc-teal rounded-2xl p-10 text-center max-w-md mx-auto">
                   <Target className="h-10 w-10 text-dc-teal mx-auto mb-3" aria-hidden="true" />
-                  <h3 className="font-bold text-gray-900 mb-1">No campaigns available</h3>
-                  <p className="text-sm text-gray-500">You've reviewed all available campaigns. Check back soon for new opportunities!</p>
+                  <p className="text-sm text-gray-500">
+                    Hey! There are no available campaigns to view at this time! Please check back later!
+                  </p>
                 </div>
               ) : (
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 max-w-6xl mx-auto">

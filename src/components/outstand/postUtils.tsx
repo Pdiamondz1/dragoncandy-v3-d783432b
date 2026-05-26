@@ -1,6 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
-import React from 'react';
+import React, { useState } from 'react';
 import type { Post } from '@outstand-so/ui';
+import logo from '@/assets/Transparent_DragonCandy_logo.webp';
 
 export function formatPostDate(iso: string | null): string {
   if (!iso) return '';
@@ -61,21 +62,40 @@ function isVideoMedia(m: PostMedia): boolean {
   return /\.(mp4|mov|webm|m4v)(?:\?|$)/i.test(m.url);
 }
 
+const MediaStripItem: React.FC<{ media: PostMedia }> = ({ media: m }) => {
+  const [error, setError] = useState(false);
+  return (
+    <div className="relative shrink-0 w-20 h-20 rounded-xl overflow-hidden bg-gray-100 border border-gray-200">
+      {error ? (
+        <div className="w-full h-full bg-gradient-to-br from-dc-teal via-dc-pink/40 to-dc-teal-dark flex items-center justify-center">
+          <img src={logo} alt="Dragon Candy" className="w-6 h-6 opacity-70" />
+        </div>
+      ) : isVideoMedia(m) ? (
+        <video
+          src={m.url}
+          className="w-full h-full object-cover"
+          muted
+          playsInline
+          onError={() => setError(true)}
+        />
+      ) : (
+        <img
+          src={m.url}
+          alt={m.filename ?? 'media'}
+          className="w-full h-full object-cover"
+          onError={() => setError(true)}
+        />
+      )}
+    </div>
+  );
+};
+
 export const MediaPreviewStrip: React.FC<{ media: PostMedia[] }> = ({ media }) => {
   if (media.length === 0) return null;
   return (
     <div className="flex gap-2 overflow-x-auto -mx-1 px-1 pt-1">
       {media.map((m, i) => (
-        <div
-          key={`${m.url}-${i}`}
-          className="relative shrink-0 w-20 h-20 rounded-xl overflow-hidden bg-gray-100 border border-gray-200"
-        >
-          {isVideoMedia(m) ? (
-            <video src={m.url} className="w-full h-full object-cover" muted playsInline />
-          ) : (
-            <img src={m.url} alt={m.filename ?? 'media'} className="w-full h-full object-cover" />
-          )}
-        </div>
+        <MediaStripItem key={`${m.url}-${i}`} media={m} />
       ))}
     </div>
   );

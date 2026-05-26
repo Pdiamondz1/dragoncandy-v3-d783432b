@@ -145,13 +145,10 @@ export const CampaignSwipeCard: React.FC<CampaignSwipeCardProps> = ({
     return (
       <div className="flex flex-col items-center justify-center h-[calc(100dvh-220px)] max-h-[680px] px-6 text-center">
         <img src={logo} alt="Dragon Candy" className="w-20 h-20 mb-4 opacity-60" />
-        <p className="text-white font-bold text-xl mb-2">All caught up!</p>
         <p className="text-white/70 text-sm mb-4">
-          {skippedCount && skippedCount > 0
-            ? "You've seen all new campaigns. Want to revisit the ones you skipped?"
-            : "No more campaigns available right now. Check back soon."}
+          Hey! There are no available campaigns to view at this time! Please check back later!
         </p>
-        {skippedCount && skippedCount > 0 && onShowSkipped && (
+        {(skippedCount ?? 0) > 0 && onShowSkipped && (
           <button
             onClick={onShowSkipped}
             className="bg-dc-teal text-white font-semibold py-2.5 px-6 rounded-full text-sm hover:bg-dc-teal/90 transition-colors"

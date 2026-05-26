@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { BarChart3, AlertCircle, Loader2, CheckCircle2, Trash2 } from 'lucide-react';
+import { BarChart3, AlertCircle, Loader2, CheckCircle2, Trash2, RefreshCw } from 'lucide-react';
 import { PostMetrics, useOutstandApi, type Post } from '@outstand-so/ui';
 import { useOutstandConfig } from '@/integrations/outstand/Provider';
 import { Button } from '@/components/ui/button';
@@ -132,7 +132,7 @@ export const PublishedTab: React.FC<PublishedTabProps> = ({ posts, isLoading, on
               <p className="text-xs text-gray-500">
                 {outcome === 'published' ? 'Published' : 'Created'} {formatPostDate(stamp)}
               </p>
-              <PostStatusBadge outcome={outcome} />
+              <PostStatusBadge outcome={outcome} createdAt={stamp} />
             </div>
 
             <p className="text-sm text-gray-900 whitespace-pre-wrap break-words">
@@ -143,7 +143,7 @@ export const PublishedTab: React.FC<PublishedTabProps> = ({ posts, isLoading, on
 
             <div className="flex flex-wrap gap-1.5">
               {(post.socialAccounts ?? []).map((sa) => (
-                <AccountStatusPill key={sa.id} sa={sa} />
+                <AccountStatusPill key={sa.id} sa={sa} createdAt={stamp} />
               ))}
             </div>
 
@@ -202,9 +202,10 @@ export const PublishedTab: React.FC<PublishedTabProps> = ({ posts, isLoading, on
   );
 };
 
-const PostStatusBadge: React.FC<{ outcome: 'published' | 'pending' | 'failed' | 'mixed' }> = ({
-  outcome,
-}) => {
+const PostStatusBadge: React.FC<{
+  outcome: 'published' | 'pending' | 'failed' | 'mixed';
+  createdAt?: string | null;
+}> = ({ outcome, createdAt }) => {
   if (outcome === 'mixed') {
     return (
       <span className="inline-flex items-center gap-1 text-[10px] font-semibold rounded-full px-2 py-0.5 bg-amber-100 text-amber-700">
@@ -213,6 +214,21 @@ const PostStatusBadge: React.FC<{ outcome: 'published' | 'pending' | 'failed' | 
       </span>
     );
   }
+
+  const isStale =
+    outcome === 'pending' &&
+    createdAt &&
+    Date.now() - new Date(createdAt).getTime() > 60_000;
+
+  if (isStale) {
+    return (
+      <span className="inline-flex items-center gap-1 text-[10px] font-semibold rounded-full px-2 py-0.5 bg-dc-teal/10 text-dc-teal">
+        <RefreshCw className="h-3 w-3" />
+        Status updating…
+      </span>
+    );
+  }
+
   const cfg = STATUS_BADGE[outcome];
   if (!cfg) return null;
   const Icon = cfg.Icon;
@@ -228,13 +244,21 @@ const PostStatusBadge: React.FC<{ outcome: 'published' | 'pending' | 'failed' | 
 
 const AccountStatusPill: React.FC<{
   sa: NonNullable<Post['socialAccounts']>[number];
-}> = ({ sa }) => {
+  createdAt?: string | null;
+}> = ({ sa, createdAt }) => {
+  const isStale =
+    sa.status === 'pending' &&
+    createdAt &&
+    Date.now() - new Date(createdAt).getTime() > 60_000;
+
   const tone =
     sa.status === 'published'
       ? 'bg-dc-teal/10 text-dc-teal'
       : sa.status === 'failed'
         ? 'bg-red-50 text-red-700 border border-red-200'
-        : 'bg-amber-50 text-amber-700 border border-amber-200';
+        : isStale
+          ? 'bg-dc-teal/10 text-dc-teal'
+          : 'bg-amber-50 text-amber-700 border border-amber-200';
   return (
     <span
       className={`text-[10px] uppercase tracking-wide rounded-full px-2 py-0.5 font-semibold inline-flex items-center gap-1 ${tone}`}
@@ -242,7 +266,8 @@ const AccountStatusPill: React.FC<{
     >
       {sa.network}
       {sa.status === 'failed' && <AlertCircle className="h-3 w-3" />}
-      {sa.status === 'pending' && <Loader2 className="h-3 w-3 animate-spin" />}
+      {sa.status === 'pending' && !isStale && <Loader2 className="h-3 w-3 animate-spin" />}
+      {isStale && <RefreshCw className="h-3 w-3" />}
       {sa.error && (
         <span className="font-normal normal-case ml-1 max-w-[180px] truncate">
           {sa.error}

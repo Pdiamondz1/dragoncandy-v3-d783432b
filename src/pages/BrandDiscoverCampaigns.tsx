@@ -172,7 +172,7 @@ const BrandDiscoverCampaigns = () => {
                 <h3 className="font-bold text-gray-900 mb-2">No campaigns found</h3>
                 <p className="text-gray-500 text-sm mb-4">
                   {campaigns.length === 0
-                    ? 'No campaigns are currently open for sponsorship'
+                    ? 'Hey! There are no available campaigns to view at this time! Please check back later!'
                     : 'Try adjusting your filters to see more campaigns'}
                 </p>
                 {campaigns.length > 0 && (

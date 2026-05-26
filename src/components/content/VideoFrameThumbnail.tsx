@@ -11,6 +11,7 @@ interface VideoFrameThumbnailProps {
   filename: string;
   className?: string;
   compact?: boolean;
+  onError?: () => void;
 }
 
 export const VideoFrameThumbnail: React.FC<VideoFrameThumbnailProps> = ({
@@ -21,6 +22,7 @@ export const VideoFrameThumbnail: React.FC<VideoFrameThumbnailProps> = ({
   filename,
   className = 'w-full h-full',
   compact = false,
+  onError,
 }) => {
   const needsCapture = !storedThumbnailUrl;
   const captureUrl = needsCapture ? videoUrl : null;
@@ -35,6 +37,12 @@ export const VideoFrameThumbnail: React.FC<VideoFrameThumbnailProps> = ({
   }, [frameDataUrl, fileId]);
 
   const thumbnailSrc = storedThumbnailUrl ?? frameDataUrl;
+
+  useEffect(() => {
+    if (!thumbnailSrc && !loading && error) {
+      onError?.();
+    }
+  }, [thumbnailSrc, loading, error, onError]);
 
   return (
     <div className={`${className} relative bg-gray-900`}>

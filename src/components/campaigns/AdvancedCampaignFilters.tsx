@@ -92,9 +92,11 @@ export const AdvancedCampaignFilters: React.FC<AdvancedCampaignFiltersProps> = (
       <div className="flex items-center justify-between">
         <div>
           <h3 className="font-semibold text-lg">Filters</h3>
-          <p className="text-sm text-muted-foreground mt-1">
-            {filteredCount} of {totalCount} campaigns
-          </p>
+          {(filteredCount > 0 || totalCount > 0) && (
+            <p className="text-sm text-muted-foreground mt-1">
+              {filteredCount} of {totalCount} campaigns
+            </p>
+          )}
         </div>
         {hasActiveFilters && (
           <Button variant="ghost" size="sm" onClick={onReset}>

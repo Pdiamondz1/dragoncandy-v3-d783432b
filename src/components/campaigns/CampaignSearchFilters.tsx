@@ -318,9 +318,11 @@ export const CampaignSearchFilters: React.FC<CampaignSearchFiltersProps> = ({
         </div>
       )}
 
-      <p className="text-xs text-gray-500 px-1">
-        {filteredCount} campaign{filteredCount !== 1 ? 's' : ''} available
-      </p>
+      {(filteredCount > 0 || hasActiveFilters) && (
+        <p className="text-xs text-gray-500 px-1">
+          {filteredCount} campaign{filteredCount !== 1 ? 's' : ''} available
+        </p>
+      )}
     </div>
   );
 };
