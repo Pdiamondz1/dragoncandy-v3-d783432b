@@ -41,6 +41,8 @@ import { useHasReviewedCollaboration } from '@/hooks/useHasReviewedCollaboration
 import { useCampaignApplicationsCount } from '@/hooks/useCampaignApplicationsCount';
 import { useToast } from '@/hooks/use-toast';
 import { SocialNudgeBanner } from '@/components/campaigns/SocialNudgeBanner';
+import { CampaignScheduleSection } from '@/components/schedule/CampaignScheduleSection';
+import { ScheduleReviewScreen } from '@/components/schedule/ScheduleReviewScreen';
 import { useAgreedValue } from '@/hooks/useAgreedValue';
 import { useEscrowCheckout } from '@/hooks/useEscrowCheckout';
 
@@ -94,6 +96,7 @@ const CampaignDetailsPage: React.FC = () => {
 
   // Business view state
   const [showRatingModal, setShowRatingModal] = useState(false);
+  const [scheduleReviewOpen, setScheduleReviewOpen] = useState(false);
 
   const businessName =
     enrichedDetail?.businessProfile?.business_name ??
@@ -517,6 +520,7 @@ const CampaignDetailsPage: React.FC = () => {
                   contentStatus={collaborationData.content_status ?? null}
                   revisionCount={collaborationData.revision_count ?? null}
                   escrowStatus={campaign.escrow_status ?? null}
+                  postingScheduleStatus={campaign.posting_schedule_status ?? null}
                 />
               </div>
             )}
@@ -538,6 +542,19 @@ const CampaignDetailsPage: React.FC = () => {
                   completedAt={collaborationData.completed_at ?? null}
                   budgetMin={campaign.budget_min}
                   budgetMax={campaign.budget_max}
+                />
+                <CampaignScheduleSection
+                  campaignId={campaign.id}
+                  campaignTitle={campaign.title}
+                  postingScheduleStatus={campaign.posting_schedule_status ?? null}
+                  onOpenScheduleReview={() => setScheduleReviewOpen(true)}
+                />
+                <ScheduleReviewScreen
+                  open={scheduleReviewOpen}
+                  onOpenChange={setScheduleReviewOpen}
+                  campaignId={campaign.id}
+                  campaignTitle={campaign.title}
+                  connectedPlatformCount={3}
                 />
                 <SocialNudgeBanner
                   campaignId={campaign.id}

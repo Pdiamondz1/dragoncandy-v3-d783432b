@@ -34,6 +34,8 @@ import { SocialPostStatus } from '@/components/campaigns/SocialPostStatus';
 import { WatermarkedLightbox } from '@/components/content/WatermarkedLightbox';
 import { VideoFrameThumbnail } from '@/components/content/VideoFrameThumbnail';
 import { getVideoThumbnailUrl } from '@/lib/fileUtils';
+import { PostApprovalScheduleCTA } from '@/components/schedule/PostApprovalScheduleCTA';
+import { ScheduleReviewScreen } from '@/components/schedule/ScheduleReviewScreen';
 
 interface RevisionPayload {
   items: Record<string, string>;
@@ -49,6 +51,7 @@ interface ContentReviewSectionProps {
   contentStatus: string | null;
   revisionCount: number | null;
   escrowStatus: string | null;
+  postingScheduleStatus?: string | null;
 }
 
 const MAX_REVISIONS = 2;
@@ -62,6 +65,7 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
   contentStatus,
   revisionCount,
   escrowStatus,
+  postingScheduleStatus,
 }) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -72,6 +76,7 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
   const [selectedFileIndex, setSelectedFileIndex] = useState<number | null>(null);
   const safeRevisionCount = revisionCount ?? 0;
   const [isPayingEscrow, setIsPayingEscrow] = useState(false);
+  const [scheduleReviewOpen, setScheduleReviewOpen] = useState(false);
   const needsEscrowPayment = escrowStatus !== 'held';
 
   // Clean up stale autoApproveAfterPayment flags (older than 1 hour)
@@ -390,33 +395,53 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
 
       {/* Approved state — actionable card to review/schedule social drafts */}
       {isApproved && (
-        <div className="bg-teal-50 border border-teal-200 rounded-2xl p-4 space-y-3">
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="h-5 w-5 text-emerald-500" />
-            <p className="font-semibold text-dc-text">Content Approved!</p>
-          </div>
-          {draftCount > 0 && (
-            <p className="text-sm text-dc-text-muted">
-              Donny prepared {draftCount} draft {draftCount === 1 ? 'post' : 'posts'} for you
-            </p>
+        <>
+          {postingScheduleStatus === 'pending_review' ? (
+            <>
+              <PostApprovalScheduleCTA
+                campaignId={campaignId}
+                campaignTitle={campaignTitle}
+                postingScheduleStatus={postingScheduleStatus}
+                onReviewSchedule={() => setScheduleReviewOpen(true)}
+              />
+              <ScheduleReviewScreen
+                open={scheduleReviewOpen}
+                onOpenChange={setScheduleReviewOpen}
+                campaignId={campaignId}
+                campaignTitle={campaignTitle}
+                connectedPlatformCount={3}
+              />
+            </>
+          ) : (
+            <div className="bg-teal-50 border border-teal-200 rounded-2xl p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                <p className="font-semibold text-dc-text">Content Approved!</p>
+              </div>
+              {draftCount > 0 && (
+                <p className="text-sm text-dc-text-muted">
+                  Donny prepared {draftCount} draft {draftCount === 1 ? 'post' : 'posts'} for you
+                </p>
+              )}
+              <div className="flex gap-2">
+                <Button
+                  className="flex-1 rounded-full bg-dc-teal-btn hover:bg-dc-teal-btn-hover text-white font-bold text-sm"
+                  onClick={() => navigate('/dashboard/business/social?tab=drafts')}
+                >
+                  <Eye className="h-4 w-4 mr-1" />
+                  Review &amp; Schedule
+                </Button>
+                <Button
+                  variant="outline"
+                  className="flex-1 rounded-full border-dc-teal text-dc-teal font-semibold text-sm"
+                  onClick={() => {/* no-op dismiss */}}
+                >
+                  Skip for Now
+                </Button>
+              </div>
+            </div>
           )}
-          <div className="flex gap-2">
-            <Button
-              className="flex-1 rounded-full bg-dc-teal-btn hover:bg-dc-teal-btn-hover text-white font-bold text-sm"
-              onClick={() => navigate('/dashboard/business/social?tab=drafts')}
-            >
-              <Eye className="h-4 w-4 mr-1" />
-              Review &amp; Schedule
-            </Button>
-            <Button
-              variant="outline"
-              className="flex-1 rounded-full border-dc-teal text-dc-teal font-semibold text-sm"
-              onClick={() => {/* no-op dismiss */}}
-            >
-              Skip for Now
-            </Button>
-          </div>
-        </div>
+        </>
       )}
 
       {isApproved && (
