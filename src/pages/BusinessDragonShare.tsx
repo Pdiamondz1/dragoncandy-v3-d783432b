@@ -38,10 +38,6 @@ export function BusinessDragonSharePage({ userRole }: { userRole: UserRole }) {
     { key: 'all', label: 'All Time' },
   ];
 
-  function handleSkip(_postId: string) {
-    // no-op: skip action acknowledged
-  }
-
   return (
     <DashboardLayout userRole={userRole}>
       <PrerequisiteGate feature="use DragonShare">
@@ -104,7 +100,6 @@ export function BusinessDragonSharePage({ userRole }: { userRole: UserRole }) {
                 key={post.id}
                 post={post}
                 canBoost={canBoost}
-                onSkip={handleSkip}
               />
             ))}
           </div>

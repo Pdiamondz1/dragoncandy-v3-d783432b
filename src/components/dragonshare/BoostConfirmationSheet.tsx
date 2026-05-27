@@ -3,11 +3,10 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Sparkles, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { DRAGONSHARE_FEE_RATE } from '@/types/dragonshare';
 import type { DragonSharePostWithRelations, BoostTierLabel } from '@/types/dragonshare';
-import { Coachmark } from '@/components/guidance/Coachmark';
-import { WhyExpander } from '@/components/guidance/WhyExpander';
+import { useAmplificationPreview } from '@/hooks/useAmplificationPreview';
 
 interface Props {
   open: boolean;
@@ -15,14 +14,29 @@ interface Props {
   post: DragonSharePostWithRelations;
   amountCents: number;
   tierLabel: BoostTierLabel;
+  creatorId: string;
+  orgId: string;
 }
 
-export function BoostConfirmationSheet({ open, onOpenChange, post, amountCents, tierLabel }: Props) {
+export function BoostConfirmationSheet({ open, onOpenChange, post, amountCents, tierLabel, creatorId, orgId }: Props) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { data: platforms } = useAmplificationPreview(creatorId, orgId);
 
   const platformFeeCents = Math.round(amountCents * DRAGONSHARE_FEE_RATE);
   const creatorPayoutCents = amountCents - platformFeeCents;
+  const creatorName = post.creator?.full_name ?? 'the creator';
+
+  const creatorPlatforms = platforms?.filter((p) => p.ownerType === 'creator') ?? [];
+  const orgPlatforms = platforms?.filter((p) => p.ownerType === 'business') ?? [];
+
+  const formatPlatformList = (list: typeof creatorPlatforms): string => {
+    if (list.length === 0) return 'connected platforms';
+    const names = list.map((p) => p.platform.charAt(0).toUpperCase() + p.platform.slice(1));
+    if (names.length === 1) return names[0];
+    if (names.length === 2) return `${names[0]} & ${names[1]}`;
+    return `${names.slice(0, -1).join(', ')} & ${names[names.length - 1]}`;
+  };
 
   const boostMutation = useMutation({
     mutationFn: async () => {
@@ -36,7 +50,7 @@ export function BoostConfirmationSheet({ open, onOpenChange, post, amountCents, 
       return res.data;
     },
     onSuccess: () => {
-      toast({ title: 'Boost confirmed!', description: `$${(creatorPayoutCents / 100).toFixed(0)} is on its way to ${post.creator?.full_name}.` });
+      toast({ title: 'Boost confirmed!', description: `$${(creatorPayoutCents / 100).toFixed(0)} is on its way to ${creatorName}.` });
       queryClient.invalidateQueries({ queryKey: ['dragonshare-posts'] });
       onOpenChange(false);
     },
@@ -55,40 +69,62 @@ export function BoostConfirmationSheet({ open, onOpenChange, post, amountCents, 
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="bottom" className="rounded-t-3xl">
         <SheetHeader>
-          <SheetTitle className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-teal-500" />
-            Confirm Boost
+          <SheetTitle className="text-dc-text">
+            Boost This Post
           </SheetTitle>
         </SheetHeader>
 
         <div className="mt-6 space-y-4">
           <div className="text-center">
-            <p className="text-2xl font-bold">${(amountCents / 100).toFixed(0)}</p>
-            <p className="text-sm text-muted-foreground">boost to {post.creator?.full_name}</p>
+            <p className="text-2xl font-bold text-dc-text">${(amountCents / 100).toFixed(0)}</p>
+            <p className="text-sm text-dc-text-muted">boost to {creatorName}</p>
           </div>
 
-          <Coachmark coachmarkKey="boost_tier_recommended" title="Donny's recommendation" body="Based on the post's estimated reach and engagement.">
-            <div className="rounded-xl bg-muted p-4 space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Creator gets</span>
-                <span className="font-medium">${(creatorPayoutCents / 100).toFixed(2)} (80%)</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground flex items-center">
-                  DragonCandy fee
-                  <WhyExpander expanderKey="take_rate" title="Where does the money go?" body="Creator receives 80%. DragonCandy's 20% covers payment processing, verification, and platform costs." />
+          {/* What happens when you boost */}
+          <div className="rounded-xl bg-dc-teal/5 border border-dc-teal/20 p-4 space-y-3">
+            <p className="text-xs font-bold text-teal-700 uppercase tracking-wider">What happens when you boost</p>
+            <ol className="space-y-2 text-sm text-dc-text">
+              <li className="flex gap-2">
+                <span className="flex-shrink-0 h-5 w-5 rounded-full bg-dc-teal text-white flex items-center justify-center text-[11px] font-bold">1</span>
+                <span>
+                  Auto-posted to <span className="font-medium">{creatorName}</span>'s{' '}
+                  <span className="font-medium">{formatPlatformList(creatorPlatforms)}</span> with AI caption
                 </span>
-                <span className="font-medium">${(platformFeeCents / 100).toFixed(2)} (20%)</span>
-              </div>
-              <div className="border-t pt-2 flex justify-between font-semibold">
-                <span>You pay</span>
-                <span>${(amountCents / 100).toFixed(2)}</span>
-              </div>
+              </li>
+              <li className="flex gap-2">
+                <span className="flex-shrink-0 h-5 w-5 rounded-full bg-dc-teal text-white flex items-center justify-center text-[11px] font-bold">2</span>
+                <span>
+                  Auto-posted to your <span className="font-medium">{formatPlatformList(orgPlatforms)}</span>
+                </span>
+              </li>
+              <li className="flex gap-2">
+                <span className="flex-shrink-0 h-5 w-5 rounded-full bg-dc-teal text-white flex items-center justify-center text-[11px] font-bold">3</span>
+                <span>
+                  <span className="font-medium">{creatorName}</span> gets{' '}
+                  <span className="font-medium text-teal-700">${(creatorPayoutCents / 100).toFixed(0)}</span> for their great content
+                </span>
+              </li>
+            </ol>
+          </div>
+
+          {/* Payment breakdown */}
+          <div className="rounded-xl bg-muted p-4 space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-dc-text-muted">Creator gets</span>
+              <span className="font-medium">${(creatorPayoutCents / 100).toFixed(2)} (80%)</span>
             </div>
-          </Coachmark>
+            <div className="flex justify-between">
+              <span className="text-dc-text-muted">DragonCandy fee</span>
+              <span className="font-medium">${(platformFeeCents / 100).toFixed(2)} (20%)</span>
+            </div>
+            <div className="border-t pt-2 flex justify-between font-semibold text-dc-text">
+              <span>You pay</span>
+              <span>${(amountCents / 100).toFixed(2)}</span>
+            </div>
+          </div>
 
           <Button
-            className="w-full rounded-full"
+            className="w-full rounded-full bg-dc-teal-btn hover:bg-dc-teal-btn-hover text-white"
             onClick={() => boostMutation.mutate()}
             disabled={boostMutation.isPending}
           >
