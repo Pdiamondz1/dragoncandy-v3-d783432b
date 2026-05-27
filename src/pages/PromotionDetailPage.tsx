@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { usePromotions, Promotion, PromotionSubmission } from '@/hooks/usePromotions';
+import { usePromotions, Promotion, PromotionSubmission, UpdatePromotionData } from '@/hooks/usePromotions';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -14,12 +14,14 @@ import { Skeleton } from '@/components/ui/skeleton';
 import {
   ArrowLeft, Calendar, Gift, Users, Copy, Check, X,
   Download, Pause, Play, Clock, Mail, Phone, User, Loader2,
-  Video, AlertTriangle,
+  Video, AlertTriangle, Pencil, QrCode,
 } from 'lucide-react';
 import { format, isAfter, isBefore } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
 import { useVideoUrl } from '@/hooks/useVideoUrl';
 import { SocialHandleChips } from '@/features/promotions/review/SubmissionRow';
+import { QRCodeCanvas } from 'qrcode.react';
+import { EditPromotionModal, EditPromotionFormData } from '@/components/promotions/EditPromotionModal';
 
 function MediaPreviewButton({ submission }: { submission: PromotionSubmission }) {
   const [open, setOpen] = useState(false);
@@ -194,9 +196,14 @@ const PromotionDetailPage: React.FC = () => {
   const { promotionId } = useParams<{ promotionId: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { reviewSubmission, updatePromotionStatus } = usePromotions();
+  const { reviewSubmission, updatePromotionStatus, updatePromotion } = usePromotions();
+  const queryClient = useQueryClient();
   const [copied, setCopied] = useState(false);
   const [tab, setTab] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
+  const [showQR, setShowQR] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [showPauseConfirm, setShowPauseConfirm] = useState(false);
+  const qrRef = useRef<HTMLDivElement>(null);
 
   const { data: promotion, isLoading: promoLoading } = useQuery({
     queryKey: ['promotion-detail', promotionId],
@@ -262,7 +269,6 @@ const PromotionDetailPage: React.FC = () => {
   const isPaused = promotion.status === 'paused';
 
   const promotionUrl = `${window.location.origin}/promo/${promotion.id}`;
-  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(promotionUrl)}`;
   const discountDisplay = promotion.discount_type === 'percentage'
     ? `${promotion.discount_value}% off`
     : `$${promotion.discount_value} off`;
@@ -278,21 +284,35 @@ const PromotionDetailPage: React.FC = () => {
     }
   };
 
-  const downloadQR = async () => {
-    try {
-      const res = await fetch(qrCodeUrl);
-      const blob = await res.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `qr-${promotion.title.replace(/\s+/g, '-').toLowerCase()}.png`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
-    } catch {
+  const downloadQR = useCallback(() => {
+    const canvas = qrRef.current?.querySelector('canvas');
+    if (!canvas) {
       toast({ title: 'Failed to download', variant: 'destructive' });
+      return;
     }
+    const url = canvas.toDataURL('image/png');
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `qr-${promotion.title.replace(/\s+/g, '-').toLowerCase()}.png`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }, [promotion.title]);
+
+  const handleEditSave = async (data: EditPromotionFormData) => {
+    const updateData: UpdatePromotionData = {
+      title: data.title,
+      description: data.description,
+      discount_type: data.discount_type,
+      discount_value: data.discount_value,
+      end_date: data.end_date,
+      max_redemptions: data.max_redemptions,
+      video_max_duration: data.video_max_duration,
+      terms_conditions: data.terms_conditions,
+    };
+    await updatePromotion.mutateAsync({ id: promotion.id, data: updateData });
+    queryClient.invalidateQueries({ queryKey: ['promotion-detail', promotionId] });
+    setEditOpen(false);
   };
 
   const filtered = submissions?.filter((s) => tab === 'all' || s.status === tab) ?? [];
@@ -373,14 +393,17 @@ const PromotionDetailPage: React.FC = () => {
               {copied ? <Check className="w-4 h-4 mr-1" /> : <Copy className="w-4 h-4 mr-1" />}
               {copied ? 'Copied' : 'Copy Link'}
             </Button>
-            <Button variant="outline" size="sm" onClick={downloadQR}>
-              <Download className="w-4 h-4 mr-1" /> QR Code
+            <Button variant="outline" size="sm" onClick={() => setShowQR(true)}>
+              <QrCode className="w-4 h-4 mr-1" /> QR Code
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
+              <Pencil className="w-4 h-4 mr-1" /> Edit
             </Button>
             {isActive && (
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => updatePromotionStatus.mutate({ id: promotion.id, status: 'paused' })}
+                onClick={() => setShowPauseConfirm(true)}
               >
                 <Pause className="w-4 h-4 mr-1" /> Pause
               </Button>
@@ -456,6 +479,68 @@ const PromotionDetailPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* QR Code Modal */}
+      <Dialog open={showQR} onOpenChange={setShowQR}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Promotion QR Code</DialogTitle>
+            <DialogDescription>
+              Customers scan this to submit content and get {discountDisplay}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col items-center space-y-4">
+            <div ref={qrRef} className="bg-white p-4 rounded-lg">
+              <QRCodeCanvas value={promotionUrl} size={256} />
+            </div>
+            <div className="flex gap-2 w-full">
+              <Button variant="outline" className="flex-1" onClick={copyLink}>
+                {copied ? <Check className="h-4 w-4 mr-2" /> : <Copy className="h-4 w-4 mr-2" />}
+                {copied ? 'Copied!' : 'Copy Link'}
+              </Button>
+              <Button className="flex-1" onClick={downloadQR}>
+                <Download className="h-4 w-4 mr-2" />
+                Download QR
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Pause Confirmation Dialog */}
+      <Dialog open={showPauseConfirm} onOpenChange={setShowPauseConfirm}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Pause Promotion?</DialogTitle>
+            <DialogDescription>
+              Pausing this promotion will disable the customer-facing page. Customers who scan
+              your QR code or visit the link will see "This promotion is no longer active" until
+              you resume it.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowPauseConfirm(false)}>Cancel</Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                updatePromotionStatus.mutate({ id: promotion.id, status: 'paused' });
+                setShowPauseConfirm(false);
+              }}
+            >
+              Pause Promotion
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Modal */}
+      <EditPromotionModal
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        promotion={promotion}
+        onSave={handleEditSave}
+        isSaving={updatePromotion.isPending}
+      />
     </DashboardLayout>
   );
 };
