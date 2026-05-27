@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { safeUrl } from '@/lib/safeUrl';
 import { DashboardLayout } from '@/components/DashboardLayout';
-import { useCreatorDragonSharePosts, useCreatorMonthlySubmissionCount } from '@/hooks/useDragonShare';
+import { useCreatorDragonSharePosts } from '@/hooks/useDragonShare';
 import { DragonShareSubmitSheet } from '@/components/dragonshare/DragonShareSubmitSheet';
 import { DragonShareExplainer } from '@/components/dragonshare/DragonShareExplainer';
 import { Button } from '@/components/ui/button';
@@ -18,10 +18,6 @@ const CreatorDragonShare: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>('submitted');
   const [submitOpen, setSubmitOpen] = useState(false);
   const { data: posts, isLoading } = useCreatorDragonSharePosts();
-  const { data: monthlyCount } = useCreatorMonthlySubmissionCount();
-
-  const FREE_LIMIT = 5;
-  const canSubmit = (monthlyCount ?? 0) < FREE_LIMIT;
 
   const filteredPosts = (posts ?? []).filter((p) => {
     if (activeTab === 'submitted') return p.status === 'pending_verification' || p.status === 'verified';
@@ -46,12 +42,9 @@ const CreatorDragonShare: React.FC = () => {
               Submit your organic posts and earn when brands boost them
             </p>
           </div>
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-muted-foreground font-medium">
-              {monthlyCount ?? 0}/{FREE_LIMIT} this month
-            </span>
+          <div className="flex items-center justify-end">
             <Coachmark coachmarkKey="dragonshare_submit" title="Paste a link, tag a brand, get paid" body="Submit posts you've already made about brands you love.">
-              <Button onClick={() => setSubmitOpen(true)} disabled={!canSubmit} className="rounded-full bg-dc-teal-btn hover:bg-dc-teal-btn-hover text-white font-semibold px-6">
+              <Button onClick={() => setSubmitOpen(true)} className="rounded-full bg-dc-teal-btn hover:bg-dc-teal-btn-hover text-white font-semibold px-6">
                 <Sparkles className="mr-2 h-4 w-4" />
                 Submit Post
               </Button>
