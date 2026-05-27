@@ -144,28 +144,71 @@ async function listOwnedAccountIds(
   return new Set(rows.map((r) => r.outstand_social_account_id));
 }
 
-// For paths like /posts/{id}, look up which social_account_ids the post
-// targets so we can verify the caller owns at least one of them.
+async function listOwnedPlatforms(
+  admin: SupabaseClient,
+  userId: string,
+  orgUnitId?: string | null,
+): Promise<Set<string>> {
+  let query = admin
+    .from("business_outstand_accounts")
+    .select("platform")
+    .eq("user_id", userId)
+    .neq("status", "revoked");
+
+  if (orgUnitId) {
+    query = query.eq("org_unit_id", orgUnitId);
+  }
+
+  const { data } = await query;
+  const rows = (data ?? []) as Array<{ platform: string }>;
+  return new Set(rows.map((r) => r.platform.toLowerCase()));
+}
+
+function extractSocialAccountIds(post: any): string[] {
+  if (!post) return [];
+  const ids: string[] = [];
+  const arrayFields = ['socialAccounts', 'social_accounts', 'connectedAccounts', 'accounts'];
+  for (const field of arrayFields) {
+    if (Array.isArray(post[field])) {
+      for (const sa of post[field]) {
+        if (sa?.id) ids.push(String(sa.id));
+        if (sa?.social_account_id) ids.push(String(sa.social_account_id));
+        if (sa?.socialAccountId) ids.push(String(sa.socialAccountId));
+      }
+    }
+  }
+  if (post.social_account_id) ids.push(String(post.social_account_id));
+  if (post.socialAccountId) ids.push(String(post.socialAccountId));
+  if (post.account_id) ids.push(String(post.account_id));
+  return [...new Set(ids)];
+}
+
+function extractPostPlatform(post: any): string | null {
+  if (!post) return null;
+  const val = post.platform ?? post.network ?? null;
+  return val ? String(val).toLowerCase() : null;
+}
+
 async function fetchPostAccountIds(
   postId: string,
   outstandKey: string,
-): Promise<string[]> {
+): Promise<{ ids: string[]; platform: string | null }> {
   const res = await fetch(`${OUTSTAND_BASE_URL}/posts/${postId}`, {
     headers: { Authorization: `Bearer ${outstandKey}` },
   });
-  if (!res.ok) return [];
+  if (!res.ok) {
+    console.warn(`outstand-proxy: fetchPostAccountIds failed for ${postId}: ${res.status}`);
+    return { ids: [], platform: null };
+  }
   const body = await res.json().catch(() => null);
   const post = body?.data?.post ?? body?.post ?? body?.data ?? body;
-  const ids: string[] = [];
-  if (Array.isArray(post?.socialAccounts)) {
-    for (const sa of post.socialAccounts) {
-      if (sa?.id) ids.push(String(sa.id));
-    }
+  const ids = extractSocialAccountIds(post);
+  const platform = extractPostPlatform(post);
+  if (ids.length === 0) {
+    const postKeys = post ? Object.keys(post).join(', ') : 'null';
+    console.warn(`outstand-proxy: fetchPostAccountIds returned empty for ${postId}. Post keys: ${postKeys}`);
   }
-  // Fallback to legacy single-id shapes just in case.
-  if (post?.social_account_id) ids.push(String(post.social_account_id));
-  if (post?.socialAccountId) ids.push(String(post.socialAccountId));
-  return ids;
+  return { ids, platform };
 }
 
 // Default-deny scope check. Returns null on allow, a Response on deny.
@@ -195,8 +238,10 @@ async function enforceScope(args: {
   bodyText: string;
   ownedIds: Set<string>;
   outstandKey: string;
+  admin: SupabaseClient;
+  ctx: TenantContext;
 }): Promise<Response | null> {
-  const { method, path, bodyText, ownedIds, outstandKey } = args;
+  const { method, path, bodyText, ownedIds, outstandKey, admin, ctx } = args;
 
   // Strip query string AND a trailing slash for matching; the original path
   // is still passed unchanged to Outstand. (The SDK calls POST /posts/ with
@@ -271,8 +316,14 @@ async function enforceScope(args: {
   if (/^\/posts\/[^/]+(\/[a-z]+)?$/.test(pathOnly)) {
     const postId = pathOnly.split("/")[2];
     if (!postId) return jsonResponse(400, { error: "missing_post_id" });
-    const accountIds = await fetchPostAccountIds(postId, outstandKey);
-    const allowed = accountIds.some((id) => ownedIds.has(id));
+    const { ids: accountIds, platform } = await fetchPostAccountIds(postId, outstandKey);
+    let allowed = accountIds.some((id) => ownedIds.has(id));
+    if (!allowed && platform) {
+      const ownedPlatforms = await listOwnedPlatforms(admin, ctx.userId, ctx.orgUnitId);
+      if (ownedPlatforms.has(platform)) {
+        allowed = true;
+      }
+    }
     if (!allowed) {
       return jsonResponse(403, { error: "forbidden_post" });
     }
@@ -303,12 +354,7 @@ function filterListBody(
     return id !== undefined && ownedIds.has(String(id));
   };
   const filterPost = (item: any) => {
-    const ids: string[] = [];
-    if (Array.isArray(item?.socialAccounts)) {
-      for (const sa of item.socialAccounts) if (sa?.id) ids.push(String(sa.id));
-    }
-    if (item?.social_account_id) ids.push(String(item.social_account_id));
-    if (item?.socialAccountId) ids.push(String(item.socialAccountId));
+    const ids = extractSocialAccountIds(item);
     return ids.some((id) => ownedIds.has(id));
   };
 
@@ -540,6 +586,8 @@ serve(async (req: Request) => {
     bodyText,
     ownedIds,
     outstandKey: OUTSTAND_API_KEY,
+    admin,
+    ctx,
   });
   if (denied) return denied;
 
