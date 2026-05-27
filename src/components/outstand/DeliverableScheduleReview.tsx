@@ -1,6 +1,7 @@
 import React from 'react';
 import { CalendarDays, Loader2 } from 'lucide-react';
 import { VideoFrameThumbnail } from '@/components/content/VideoFrameThumbnail';
+import { toDatetimeLocal } from '@/lib/dateUtils';
 import type { MediaItem } from './MediaPreviewGrid';
 
 export interface DeliverableSlot {
@@ -28,12 +29,6 @@ function getFilename(item: MediaItem): string {
   if (item.filename) return item.filename;
   const name = item.url.split('/').pop()?.split('?')[0] ?? 'file';
   return decodeURIComponent(name);
-}
-
-function toDatetimeLocal(iso: string): string {
-  const d = new Date(iso);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 function formatSlotTime(iso: string): string {
@@ -139,7 +134,7 @@ export const DeliverableScheduleReview: React.FC<DeliverableScheduleReviewProps>
                 <CalendarDays className="h-3.5 w-3.5 text-dc-teal flex-shrink-0" />
                 <input
                   type="datetime-local"
-                  value={toDatetimeLocal(slot.scheduledAt)}
+                  value={toDatetimeLocal(new Date(slot.scheduledAt))}
                   onChange={(e) => handleTimeChange(index, e.target.value)}
                   className="text-[11px] text-gray-700 border border-gray-200 rounded-lg px-2 py-1.5 w-full focus:outline-none focus:ring-1 focus:ring-dc-teal"
                 />

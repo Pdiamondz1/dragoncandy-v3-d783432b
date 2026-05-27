@@ -9,7 +9,7 @@ import { useCrossPost } from '@/hooks/outstand/useCrossPost';
 import { DonnyCaptionRewriter } from './DonnyCaptionRewriter';
 import { MediaPreviewGrid, type MediaItem } from './MediaPreviewGrid';
 import { DeliverableScheduleReview, type DeliverableSlot } from './DeliverableScheduleReview';
-import { ScheduleConfirmation } from './ScheduleConfirmation';
+import { ScheduleConfirmation, type ScheduledPostInfo } from './ScheduleConfirmation';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -97,8 +97,7 @@ function SocialPostPromptInner({
   const [captionError, setCaptionError] = useState(false);
   const [refreshingCaption, setRefreshingCaption] = useState(false);
   const [schedulingState, setSchedulingState] = useState<SchedulingState>('composing');
-  const [confirmedAt, setConfirmedAt] = useState<string | null>(null);
-  const [confirmedPlatforms, setConfirmedPlatforms] = useState<string[]>([]);
+  const [confirmedPosts, setConfirmedPosts] = useState<ScheduledPostInfo[]>([]);
   const [deliverableSlots, setDeliverableSlots] = useState<DeliverableSlot[]>([]);
   const [sameDay, setSameDay] = useState(false);
 
@@ -139,8 +138,7 @@ function SocialPostPromptInner({
   useEffect(() => {
     if (!open) {
       setSchedulingState('composing');
-      setConfirmedAt(null);
-      setConfirmedPlatforms([]);
+      setConfirmedPosts([]);
       setDeliverableSlots([]);
       setSameDay(false);
       captionLoadedRef.current = null;
@@ -319,8 +317,11 @@ function SocialPostPromptInner({
         onSuccess: async (data) => {
           const outstandPostId = data?._outstandPostId ?? null;
           await syncScheduledPost(scheduleTime, outstandPostId, selectedAccountIds);
-          setConfirmedAt(scheduleTime);
-          setConfirmedPlatforms(platforms);
+          setConfirmedPosts([{
+            scheduledAt: scheduleTime,
+            platformNames: platforms,
+            fileCount: mediaUrls.length,
+          }]);
           setSchedulingState('confirmed');
         },
         onError: () => {
@@ -349,8 +350,11 @@ function SocialPostPromptInner({
         const outstandPostId = result?._outstandPostId ?? null;
         await syncScheduledPost(slot.scheduledAt, outstandPostId, selectedAccountIds);
       }
-      setConfirmedAt(deliverableSlots[0].scheduledAt);
-      setConfirmedPlatforms(platforms);
+      setConfirmedPosts(deliverableSlots.map(slot => ({
+        scheduledAt: slot.scheduledAt,
+        platformNames: platforms,
+        fileCount: 1,
+      })));
       setSchedulingState('confirmed');
     } catch {
       setSchedulingState('multi-review');
@@ -371,12 +375,10 @@ function SocialPostPromptInner({
     .map((a) => (a.network ?? '').charAt(0).toUpperCase() + (a.network ?? '').slice(1))
     .filter((v, i, arr) => arr.indexOf(v) === i);
 
-  const confirmedContent = schedulingState === 'confirmed' && confirmedAt ? (
+  const confirmedContent = schedulingState === 'confirmed' && confirmedPosts.length > 0 ? (
     <ScheduleConfirmation
-      scheduledAt={confirmedAt}
-      platformNames={confirmedPlatforms}
+      posts={confirmedPosts}
       campaignTitle={campaignTitle}
-      fileCount={mediaUrls.length}
       onDone={() => onOpenChange(false)}
     />
   ) : null;

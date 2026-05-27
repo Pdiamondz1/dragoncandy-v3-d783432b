@@ -7,6 +7,7 @@ import { useOutstandConfig } from '@/integrations/outstand/Provider';
 import { useCrossPost } from '@/hooks/outstand/useCrossPost';
 import { VideoFrameThumbnail } from '@/components/content/VideoFrameThumbnail';
 import { ScheduleConfirmation } from './ScheduleConfirmation';
+import { toDatetimeLocal } from '@/lib/dateUtils';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -289,14 +290,15 @@ function PostingPlanReviewInner({
     }
 
     if (viewState === 'confirmed') {
-      const firstPost = posts[0];
-      const platforms = [...new Set(posts.map(p => p.platform))];
+      const confirmedPosts = posts.map(p => ({
+        scheduledAt: p.scheduled_at,
+        platformNames: [p.platform],
+        fileCount: p.media_urls.length,
+      }));
       return (
         <ScheduleConfirmation
-          scheduledAt={firstPost?.scheduled_at ?? new Date().toISOString()}
-          platformNames={platforms}
-          campaignTitle={`${campaignTitle} — ${posts.length} posts`}
-          fileCount={posts.reduce((acc, p) => acc + p.media_urls.length, 0)}
+          posts={confirmedPosts}
+          campaignTitle={campaignTitle}
           onDone={() => onOpenChange(false)}
         />
       );
@@ -421,7 +423,7 @@ function PostingPlanReviewInner({
                       <CalendarDays className="h-3.5 w-3.5 text-dc-teal flex-shrink-0" />
                       <input
                         type="datetime-local"
-                        value={new Date(post.scheduled_at).toISOString().slice(0, 16)}
+                        value={toDatetimeLocal(new Date(post.scheduled_at))}
                         onChange={e => handleUpdateTime(index, e.target.value)}
                         className="text-[11px] text-dc-text border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-dc-teal"
                       />

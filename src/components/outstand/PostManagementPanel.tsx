@@ -12,6 +12,7 @@ import { Calendar, Clock, Trash2, RefreshCw, Pencil, ExternalLink, Loader2, Laye
 import { toast } from 'sonner';
 import { VideoFrameThumbnail } from '@/components/content/VideoFrameThumbnail';
 import { isScheduled } from '@/lib/outstandUtils';
+import { toDatetimeLocal } from '@/lib/dateUtils';
 import logo from '@/assets/Transparent_DragonCandy_logo.webp';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -125,10 +126,7 @@ export const PostManagementPanel: React.FC<PostManagementPanelProps> = ({
       setRescheduling(false);
       setHeroMediaError(false);
       if (post.scheduledAt) {
-        const d = new Date(post.scheduledAt);
-        const offset = d.getTimezoneOffset();
-        const local = new Date(d.getTime() - offset * 60000);
-        setNewDateTime(local.toISOString().slice(0, 16));
+        setNewDateTime(toDatetimeLocal(new Date(post.scheduledAt)));
       }
     }
   }, [post, open, planContext?.mediaUrls]);
@@ -328,7 +326,7 @@ export const PostManagementPanel: React.FC<PostManagementPanelProps> = ({
                 type="datetime-local"
                 value={newDateTime}
                 onChange={(e) => setNewDateTime(e.target.value)}
-                min={new Date().toISOString().slice(0, 16)}
+                min={toDatetimeLocal(new Date())}
                 className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-dc-teal"
               />
               <div className="flex gap-2">

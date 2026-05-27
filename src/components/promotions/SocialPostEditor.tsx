@@ -3,6 +3,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Download, Copy, ExternalLink } from 'lucide-react';
+import { toDatetimeLocal } from '@/lib/dateUtils';
 
 interface ConnectedAccount {
   id: string;
@@ -184,7 +185,7 @@ export function SocialPostEditor({
           </Label>
           <input
             type="datetime-local"
-            value={(scheduledAt || suggestedTime).slice(0, 16)}
+            value={toDatetimeLocal(new Date(scheduledAt || suggestedTime))}
             onChange={e => onScheduledAtChange(new Date(e.target.value).toISOString())}
             className="w-full rounded-xl border border-dc-teal/20 px-3 py-2 text-sm"
           />
