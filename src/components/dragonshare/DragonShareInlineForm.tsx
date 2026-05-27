@@ -26,6 +26,7 @@ export function DragonShareInlineForm({ preselectedOrg }: Props) {
     if (preselectedOrg && !form.selectedOrg) {
       form.setSelectedOrg(preselectedOrg);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [preselectedOrg]);
 
   return (
