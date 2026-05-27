@@ -30,7 +30,7 @@ serve(async (req) => {
 
     const { data: campaign } = await supabase
       .from('campaigns')
-      .select('id, title, description, goals, user_id, status, org_unit_id, delivery_type, platforms')
+      .select('id, title, description, goals, user_id, status, org_unit_id, delivery_type, platforms, posting_preferences')
       .eq('id', campaign_id)
       .single();
 
@@ -92,11 +92,12 @@ serve(async (req) => {
       status: 'pending',
       content_template: template.replace('{title}', campaign.title),
       prompted_at: new Date().toISOString(),
+      deliverable_id: null,
     }));
 
     const { error: hookError } = await supabase
       .from('campaign_social_hooks')
-      .upsert(rows, { onConflict: 'campaign_id,stage,user_id', ignoreDuplicates: true });
+      .upsert(rows, { onConflict: 'campaign_id,stage,user_id,deliverable_id', ignoreDuplicates: true });
 
     if (hookError) throw hookError;
 
@@ -122,7 +123,9 @@ serve(async (req) => {
 
     // --- Stage 4 auto-draft: create scheduled post drafts + nudges ---
     if (stage === 4) {
+      const hasAutoSchedule = campaign.posting_preferences?.auto_schedule_on_approval === true;
       for (const party of parties) {
+        if (hasAutoSchedule && party.role === 'restaurant') continue;
         try {
           let accountQuery = supabase
             .from('business_outstand_accounts')
