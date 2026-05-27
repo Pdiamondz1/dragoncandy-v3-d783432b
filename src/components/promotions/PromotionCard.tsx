@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -17,6 +17,7 @@ import { toast } from '@/hooks/use-toast';
 import { SyncStatusBadge } from '@/features/promotions/components/SyncStatusBadge';
 import { useToastSyncStatus } from '@/features/promotions/hooks/useToastSyncStatus';
 import { RedemptionMetrics } from '@/features/promotions/components/RedemptionMetrics';
+import { QRCodeCanvas } from 'qrcode.react';
 
 interface PromotionCardProps {
   promotion: Promotion;
@@ -36,8 +37,10 @@ export const PromotionCard: React.FC<PromotionCardProps> = ({
 }) => {
   const [showQRModal, setShowQRModal] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showPauseConfirm, setShowPauseConfirm] = useState(false);
   const [copied, setCopied] = useState(false);
   const { data: syncStatus } = useToastSyncStatus(promotion.id);
+  const qrRef = useRef<HTMLDivElement>(null);
   
   const now = new Date();
   const startDate = new Date(promotion.start_date);
@@ -48,11 +51,7 @@ export const PromotionCard: React.FC<PromotionCardProps> = ({
   const isActive = promotion.status === 'active' && !isUpcoming && !isExpired;
   const isPaused = promotion.status === 'paused';
 
-  // Generate the public promotion URL
   const promotionUrl = `${window.location.origin}/promo/${promotion.id}`;
-  
-  // Generate QR code URL using a free QR code API
-  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(promotionUrl)}`;
 
   const getStatusBadge = () => {
     if (isPaused) return <Badge variant="secondary">Paused</Badge>;
@@ -77,23 +76,21 @@ export const PromotionCard: React.FC<PromotionCardProps> = ({
     }
   };
 
-  const downloadQRCode = async () => {
-    try {
-      const response = await fetch(qrCodeUrl);
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `promotion-qr-${promotion.title.replace(/\s+/g, '-').toLowerCase()}.png`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-      toast({ title: "QR Code downloaded!" });
-    } catch {
+  const downloadQRCode = useCallback(() => {
+    const canvas = qrRef.current?.querySelector('canvas');
+    if (!canvas) {
       toast({ title: "Failed to download QR code", variant: "destructive" });
+      return;
     }
-  };
+    const url = canvas.toDataURL('image/png');
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `promotion-qr-${promotion.title.replace(/\s+/g, '-').toLowerCase()}.png`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    toast({ title: "QR Code downloaded!" });
+  }, [promotion.title]);
 
   const isNearlyFull = promotion.max_redemptions != null &&
     (promotion.current_redemptions || 0) >= promotion.max_redemptions * 0.8;
@@ -179,7 +176,7 @@ export const PromotionCard: React.FC<PromotionCardProps> = ({
               View QR
             </Button>
             {isActive && onPause && (
-              <Button variant="outline" size="sm" onClick={onPause}>
+              <Button variant="outline" size="sm" onClick={() => setShowPauseConfirm(true)}>
                 <Pause className="h-4 w-4" />
               </Button>
             )}
@@ -233,13 +230,8 @@ export const PromotionCard: React.FC<PromotionCardProps> = ({
             <DialogTitle>Promotion QR Code</DialogTitle>
           </DialogHeader>
           <div className="flex flex-col items-center space-y-4">
-            <div className="bg-white p-4 rounded-lg">
-              <img
-                src={qrCodeUrl}
-                alt="Promotion QR Code"
-                className="w-64 h-64"
-                loading="lazy"
-              />
+            <div ref={qrRef} className="bg-white p-4 rounded-lg">
+              <QRCodeCanvas value={promotionUrl} size={256} />
             </div>
             <p className="text-sm text-muted-foreground text-center">
               Customers can scan this QR code to submit their video and get {discountDisplay}
@@ -262,6 +254,32 @@ export const PromotionCard: React.FC<PromotionCardProps> = ({
               </Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Pause Confirmation Dialog */}
+      <Dialog open={showPauseConfirm} onOpenChange={setShowPauseConfirm}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Pause Promotion?</DialogTitle>
+            <DialogDescription>
+              Pausing this promotion will disable the customer-facing page. Customers who scan
+              your QR code or visit the link will see "This promotion is no longer active" until
+              you resume it.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowPauseConfirm(false)}>Cancel</Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                onPause?.();
+                setShowPauseConfirm(false);
+              }}
+            >
+              Pause Promotion
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>
