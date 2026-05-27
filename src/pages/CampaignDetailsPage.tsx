@@ -517,6 +517,7 @@ const CampaignDetailsPage: React.FC = () => {
                   contentStatus={collaborationData.content_status ?? null}
                   revisionCount={collaborationData.revision_count ?? null}
                   escrowStatus={campaign.escrow_status ?? null}
+                  postingScheduleStatus={campaign.posting_schedule_status ?? null}
                 />
               </div>
             )}
