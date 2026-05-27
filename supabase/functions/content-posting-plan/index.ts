@@ -148,6 +148,48 @@ function pickScheduledTime(
   return targetDate.toISOString();
 }
 
+function findNextAvailableDay(
+  platform: string,
+  contentType: string,
+  collidingDate: Date,
+  occupiedDays: Set<string>,
+  _timezone: string,
+): string {
+  const key = `${platform}:${contentType}`;
+  const rules = TIME_RULES[key] ?? TIME_RULES[`${platform}:photo`] ?? FALLBACK_TIMES;
+
+  for (let i = 1; i <= 14; i++) {
+    const candidate = new Date(collidingDate);
+    candidate.setDate(candidate.getDate() + i);
+    const dow = candidate.getDay();
+    const rule = rules.find(([d]) => d === dow);
+    if (rule && !occupiedDays.has(candidate.toDateString())) {
+      const [, hourStart, hourEnd] = rule;
+      const hour = hourStart + Math.floor(Math.random() * (hourEnd - hourStart));
+      const minute = Math.floor(Math.random() * 4) * 15;
+      candidate.setHours(hour, minute, 0, 0);
+      return candidate.toISOString();
+    }
+  }
+
+  for (let i = 1; i <= 30; i++) {
+    const candidate = new Date(collidingDate);
+    candidate.setDate(candidate.getDate() + i);
+    if (!occupiedDays.has(candidate.toDateString())) {
+      const [, hourStart, hourEnd] = FALLBACK_TIMES[0];
+      const hour = hourStart + Math.floor(Math.random() * (hourEnd - hourStart));
+      const minute = Math.floor(Math.random() * 4) * 15;
+      candidate.setHours(hour, minute, 0, 0);
+      return candidate.toISOString();
+    }
+  }
+
+  const fallback = new Date(collidingDate);
+  fallback.setDate(fallback.getDate() + 1);
+  fallback.setHours(12, 0, 0, 0);
+  return fallback.toISOString();
+}
+
 function assignDatesFromPreferences(
   deliverables: PlanRequest['deliverables'],
   preferences: PlanRequest['posting_preferences'],
@@ -471,6 +513,31 @@ Generate exactly ${planSlots.length} posts in the same order as listed below.${s
     const baseDate = new Date();
     const aiPosts: Array<{ caption: string; hashtags: string[]; ai_reasoning: string }> = parsed.posts ?? [];
 
+    // Two-pass: compute collision-free times, then build post objects
+    const candidates = planSlots.map((slot, i) => ({
+      index: i,
+      time: pickScheduledTime(slot.platform, slot.content_type, slot.day_offset, baseDate, timezone),
+    }));
+    candidates.sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
+
+    const occupiedDays = new Set<string>();
+    for (const candidate of candidates) {
+      const candidateDay = new Date(candidate.time).toDateString();
+      if (occupiedDays.has(candidateDay)) {
+        candidate.time = findNextAvailableDay(
+          planSlots[candidate.index].platform,
+          planSlots[candidate.index].content_type,
+          new Date(candidate.time),
+          occupiedDays,
+          timezone,
+        );
+      }
+      occupiedDays.add(new Date(candidate.time).toDateString());
+    }
+
+    const spreadTimes = new Array<string>(planSlots.length);
+    for (const c of candidates) spreadTimes[c.index] = c.time;
+
     const posts: PlannedPost[] = planSlots.map((slot, i) => {
       const aiPost = aiPosts[i] ?? { caption: campaign.title, hashtags: ["#DragonDashed"], ai_reasoning: "Default caption" };
       const hashtags = aiPost.hashtags ?? ["#DragonDashed"];
@@ -484,7 +551,7 @@ Generate exactly ${planSlots.length} posts in the same order as listed below.${s
         caption: aiPost.caption ?? "",
         hashtags,
         media_urls: slot.media_urls,
-        scheduled_at: pickScheduledTime(slot.platform, slot.content_type, slot.day_offset, baseDate, timezone),
+        scheduled_at: spreadTimes[i],
         ai_reasoning: aiPost.ai_reasoning ?? "",
         plan_order: i + 1,
         purpose: slot.purpose,
@@ -492,7 +559,7 @@ Generate exactly ${planSlots.length} posts in the same order as listed below.${s
       };
     });
 
-    // Sort by scheduled_at
+    // Re-sort by final scheduled_at and reassign plan_order
     posts.sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime());
     posts.forEach((p, i) => { p.plan_order = i + 1; });
 
