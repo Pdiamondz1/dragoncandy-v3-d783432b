@@ -27,6 +27,7 @@ import { DeleteUserSheet } from '@/components/org/DeleteUserSheet';
 import { Coachmark } from '@/components/guidance/Coachmark';
 import { WhyExpander } from '@/components/guidance/WhyExpander';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { CGCPostingPreferences } from '@/components/promotions/CGCPostingPreferences';
 
 const BusinessSettings = () => {
   const { user, activeOrg, activeOrgUnit } = useAuth();
@@ -239,6 +240,10 @@ const BusinessSettings = () => {
           <Accordion type="single" collapsible className="mt-3">
             <NotificationPreferencesSection />
           </Accordion>
+
+          <div className="mt-3">
+            <CGCPostingPreferences />
+          </div>
 
           <Accordion type="single" collapsible className="mt-3">
             <AccordionItem value="danger" className="border-red-200">
