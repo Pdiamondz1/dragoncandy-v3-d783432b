@@ -31,6 +31,7 @@ interface DeliverableInput {
   mime_type: string;
   filename?: string;
   file_id?: string;
+  deliverable_id?: string;
 }
 
 interface PlanRequest {
@@ -48,6 +49,11 @@ interface PlanRequest {
   };
   user_id: string;
   timezone?: string;
+  posting_preferences?: {
+    spread_strategy: 'auto' | 'even' | 'front_loaded' | 'custom';
+    spread_window_days: number;
+    preferred_days?: string[];
+  };
 }
 
 interface PlannedPost {
@@ -60,6 +66,7 @@ interface PlannedPost {
   ai_reasoning: string;
   plan_order: number;
   purpose: string;
+  deliverable_id?: string;
 }
 
 // Static best-practice posting time rules per platform + content type.
@@ -141,6 +148,56 @@ function pickScheduledTime(
   return targetDate.toISOString();
 }
 
+function assignDatesFromPreferences(
+  deliverables: PlanRequest['deliverables'],
+  preferences: PlanRequest['posting_preferences'],
+  _timezone: string
+): Array<{ deliverable_id?: string; target_date: string }> {
+  if (!preferences) return deliverables.map(d => ({ deliverable_id: d.deliverable_id }));
+
+  const now = new Date();
+  const windowDays = preferences.spread_window_days || 14;
+
+  if (preferences.spread_strategy === 'custom' && preferences.preferred_days?.length) {
+    const dayMap: Record<string, number> = {
+      sunday: 0, monday: 1, tuesday: 2, wednesday: 3,
+      thursday: 4, friday: 5, saturday: 6
+    };
+    const targetDayNumbers = preferences.preferred_days.map(d => dayMap[d.toLowerCase()]).filter(n => n !== undefined);
+    const dates: Date[] = [];
+    for (let i = 1; i <= windowDays && dates.length < deliverables.length; i++) {
+      const candidate = new Date(now.getTime() + i * 86400000);
+      if (targetDayNumbers.includes(candidate.getDay())) {
+        dates.push(candidate);
+      }
+    }
+    return deliverables.map((d, i) => ({
+      deliverable_id: d.deliverable_id,
+      target_date: dates[i]?.toISOString().split('T')[0] ?? '',
+    }));
+  }
+
+  if (preferences.spread_strategy === 'even') {
+    const gap = Math.floor(windowDays / deliverables.length);
+    return deliverables.map((d, i) => ({
+      deliverable_id: d.deliverable_id,
+      target_date: new Date(now.getTime() + (i * gap + 1) * 86400000).toISOString().split('T')[0],
+    }));
+  }
+
+  if (preferences.spread_strategy === 'front_loaded') {
+    const frontWindow = Math.ceil(windowDays / 3);
+    const gap = Math.max(1, Math.floor(frontWindow / deliverables.length));
+    return deliverables.map((d, i) => ({
+      deliverable_id: d.deliverable_id,
+      target_date: new Date(now.getTime() + (i * gap + 1) * 86400000).toISOString().split('T')[0],
+    }));
+  }
+
+  // 'auto' — let AI decide
+  return deliverables.map(d => ({ deliverable_id: d.deliverable_id }));
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders(req) });
@@ -155,25 +212,41 @@ serve(async (req) => {
       );
     }
 
-    const supabaseUser = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      global: { headers: { Authorization: authHeader } },
-    });
     const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    const { data: { user }, error: authError } = await supabaseUser.auth.getUser();
-    if (!user || authError) {
-      return new Response(
-        JSON.stringify({ error: "Unauthorized" }),
-        { status: 401, headers: { ...corsHeaders(req), "Content-Type": "application/json" } }
-      );
-    }
+    const isServiceRole = authHeader === `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`;
+    let userId: string;
 
-    const hourlyCheck = await checkHourlyRateLimit(supabaseAdmin, user.id);
-    if (!hourlyCheck.allowed) {
-      return new Response(
-        JSON.stringify({ error: "rate_limited", retry_after: hourlyCheck.retryAfterSeconds }),
-        { status: 429, headers: { ...corsHeaders(req), "Content-Type": "application/json", "Retry-After": String(hourlyCheck.retryAfterSeconds) } }
-      );
+    if (isServiceRole) {
+      // Service-role calls pass user_id in the body
+      const bodyPeek = await req.clone().json();
+      userId = bodyPeek.user_id;
+      if (!userId) {
+        return new Response(
+          JSON.stringify({ error: "user_id required for service-role calls" }),
+          { status: 400, headers: { ...corsHeaders(req), "Content-Type": "application/json" } }
+        );
+      }
+    } else {
+      const supabaseUser = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        global: { headers: { Authorization: authHeader } },
+      });
+      const { data: { user }, error: authError } = await supabaseUser.auth.getUser();
+      if (!user || authError) {
+        return new Response(
+          JSON.stringify({ error: "Unauthorized" }),
+          { status: 401, headers: { ...corsHeaders(req), "Content-Type": "application/json" } }
+        );
+      }
+      userId = user.id;
+
+      const hourlyCheck = await checkHourlyRateLimit(supabaseAdmin, userId);
+      if (!hourlyCheck.allowed) {
+        return new Response(
+          JSON.stringify({ error: "rate_limited", retry_after: hourlyCheck.retryAfterSeconds }),
+          { status: 429, headers: { ...corsHeaders(req), "Content-Type": "application/json", "Retry-After": String(hourlyCheck.retryAfterSeconds) } }
+        );
+      }
     }
 
     const body = (await req.json()) as PlanRequest;
@@ -204,6 +277,10 @@ serve(async (req) => {
       const state = campaignRow?.ai_analysis?.business_context?.location?.state;
       timezone = resolveTimezone(state);
     }
+
+    const dateAssignments = assignDatesFromPreferences(
+      deliverables, body.posting_preferences, timezone
+    );
 
     const platformNames = connected_platforms.map(p => p.platform);
     const defaultPlatform = platformNames[0];
@@ -300,8 +377,17 @@ serve(async (req) => {
       ? `Include these campaign hashtags where appropriate: ${campaign.hashtags.join(" ")}. Always include #DragonDashed.`
       : "Always include #DragonDashed.";
 
-    const usageStage = await getUserUsageStage(supabaseAdmin, user.id);
+    const usageStage = await getUserUsageStage(supabaseAdmin, userId);
     const modelConfig = getModelConfig("social-caption", usageStage);
+
+    let scheduleConstraint = '';
+    if (body.posting_preferences && body.posting_preferences.spread_strategy !== 'auto') {
+      const assignments = dateAssignments
+        .filter(a => a.target_date)
+        .map((a, i) => `Deliverable ${i + 1}: post on ${a.target_date}`)
+        .join('\n');
+      scheduleConstraint = `\n\nSCHEDULING CONSTRAINTS:\n${assignments}\nUse the platform-optimal time of day for each date. Spread window: ${body.posting_preferences.spread_window_days} days.`;
+    }
 
     const systemPrompt = `You are Donny, a social media strategist for DragonCandy. Generate captions for a multi-post content plan.
 
@@ -333,7 +419,7 @@ Respond ONLY with valid JSON:
   "strategy_summary": "<one sentence overview of the posting plan>"
 }
 
-Generate exactly ${planSlots.length} posts in the same order as listed below.`;
+Generate exactly ${planSlots.length} posts in the same order as listed below.${scheduleConstraint}`;
 
     const userMessage = `Generate captions for this posting plan:\n\n${postDescriptions}`;
 
@@ -372,14 +458,14 @@ Generate exactly ${planSlots.length} posts in the same order as listed below.`;
     const parsed = JSON.parse(cleaned);
 
     await logCost(supabaseAdmin, {
-      userId: user.id,
+      userId: userId,
       edgeFunction: "content-posting-plan",
       model: modelConfig.model,
       tier: modelConfig.tier,
       inputTokens: aiData.usage?.input_tokens ?? 0,
       outputTokens: aiData.usage?.output_tokens ?? 0,
     });
-    await incrementUsage(supabaseAdmin, user.id, modelConfig.actionCost);
+    await incrementUsage(supabaseAdmin, userId, modelConfig.actionCost);
 
     const planGroupId = crypto.randomUUID();
     const baseDate = new Date();
@@ -402,6 +488,7 @@ Generate exactly ${planSlots.length} posts in the same order as listed below.`;
         ai_reasoning: aiPost.ai_reasoning ?? "",
         plan_order: i + 1,
         purpose: slot.purpose,
+        deliverable_id: dateAssignments[i]?.deliverable_id ?? null,
       };
     });
 
