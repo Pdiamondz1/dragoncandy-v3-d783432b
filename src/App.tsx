@@ -84,8 +84,6 @@ const CreatorDragonShare = lazy(() => import("./pages/CreatorDragonShare"));
 const BusinessDragonShare = lazy(() => import("./pages/BusinessDragonShare").then(m => ({ default: m.BusinessDragonShare })));
 const BrandDragonShare = lazy(() => import("./pages/BusinessDragonShare").then(m => ({ default: m.BrandDragonShare })));
 const BrandStylePicker = lazy(() => import("./pages/BrandStylePicker"));
-const AdminDragonShareQueue = lazy(() => import("./pages/AdminDragonShareQueue"));
-const AdminDragonShareLedger = lazy(() => import("./pages/AdminDragonShareLedger"));
 const HelpBriefPage = lazy(() => import("./pages/help/promotions/HelpBriefPage"));
 const HelpCenter = lazy(() => import("./pages/help/HelpCenter"));
 const HelpArticlePage = lazy(() => import("./pages/help/HelpArticlePage"));
@@ -301,10 +299,6 @@ function AnimatedRoutes() {
           {/* Restore Account & Invite Routes */}
           <Route path="/restore-account" element={<ProtectedRoute><RestoreAccountPage /></ProtectedRoute>} />
           <Route path="/invite/accept" element={<InviteAcceptPage />} />
-
-          {/* Admin DragonShare Routes */}
-          <Route path="/admin/dragonshare-queue" element={<ProtectedRoute><AdminRoute><AdminDragonShareQueue /></AdminRoute></ProtectedRoute>} />
-          <Route path="/admin/dragonshare-ledger" element={<ProtectedRoute><AdminRoute><AdminDragonShareLedger /></AdminRoute></ProtectedRoute>} />
 
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />

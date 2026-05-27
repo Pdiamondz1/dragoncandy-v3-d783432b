@@ -12,8 +12,6 @@ const KEYS = {
   orgPosts: (orgId?: string) => ['dragonshare-posts', 'org', orgId],
   post: (postId?: string) => ['dragonshare-post', postId],
   creatorPayouts: (userId?: string) => ['dragonshare-payouts', userId],
-  adminQueue: () => ['dragonshare-admin-queue'],
-  creatorMonthlyCount: (userId?: string) => ['dragonshare-monthly-count', userId],
   orgBoostStats: (orgId?: string) => ['dragonshare-boost-stats', orgId],
   creatorEarningsStats: (userId?: string) => ['dragonshare-earnings-stats', userId],
 };
@@ -56,25 +54,6 @@ export function useOrgDragonSharePosts(orgId?: string | null) {
   });
 }
 
-export function useCreatorMonthlySubmissionCount() {
-  const { user } = useAuth();
-  return useQuery({
-    queryKey: KEYS.creatorMonthlyCount(user?.id),
-    queryFn: async () => {
-      const startOfMonth = new Date();
-      startOfMonth.setDate(1);
-      startOfMonth.setHours(0, 0, 0, 0);
-      const { count, error } = await supabase
-        .from('dragonshare_posts')
-        .select('id', { count: 'exact', head: true })
-        .eq('creator_id', user!.id)
-        .gte('submitted_at', startOfMonth.toISOString());
-      if (error) throw error;
-      return count ?? 0;
-    },
-    enabled: !!user,
-  });
-}
 
 export function useSubmitDragonSharePost() {
   const { user } = useAuth();
@@ -98,61 +77,13 @@ export function useSubmitDragonSharePost() {
       if (error) throw error;
       return data as DragonSharePost;
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: KEYS.creatorPosts(user?.id) });
-      queryClient.invalidateQueries({ queryKey: KEYS.creatorMonthlyCount(user?.id) });
-      supabase.functions.invoke('donny-dragonshare-score', {
-        body: { post_id: data.id },
-      }).catch(() => {});
     },
     onError: () => { toast.error('Failed to submit DragonShare post'); },
   });
 }
 
-export function useAdminDragonShareQueue() {
-  return useQuery({
-    queryKey: KEYS.adminQueue(),
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('dragonshare_posts')
-        .select(`
-          *,
-          creator:profiles!dragonshare_posts_creator_id_fkey(id, full_name, avatar_url, email),
-          target_org:organizations(id, name, logo_url)
-        `)
-        .eq('status', 'pending_verification')
-        .order('submitted_at', { ascending: true });
-      if (error) throw error;
-      return data as DragonSharePostWithRelations[];
-    },
-  });
-}
-
-export function useVerifyDragonSharePost() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({
-      postId,
-      action,
-      rejectionReason,
-    }: {
-      postId: string;
-      action: 'approve' | 'reject';
-      rejectionReason?: string;
-    }) => {
-      const { error } = await supabase.rpc('verify_dragonshare_post', {
-        p_post_id: postId,
-        p_action: action,
-        p_rejection_reason: rejectionReason ?? null,
-      });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: KEYS.adminQueue() });
-    },
-    onError: () => { toast.error('Failed to verify DragonShare post'); },
-  });
-}
 
 export function useOrgBoostStats(orgId?: string | null) {
   return useQuery({
