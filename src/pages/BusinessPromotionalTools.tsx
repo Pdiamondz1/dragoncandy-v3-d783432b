@@ -83,6 +83,16 @@ const BusinessPromotionalTools = () => {
             </TabsList>
 
             <TabsContent value="promotions">
+              {(!promotions || promotions.length === 0) && (
+                <div className="bg-dc-teal/5 border border-dc-teal/20 rounded-2xl p-4 text-center space-y-2 mb-4">
+                  <p className="text-sm font-medium text-dc-text">
+                    Turn your customers into content creators
+                  </p>
+                  <p className="text-xs text-dc-text-muted">
+                    Create a promotion → Customers scan your QR code → Record content → Get a discount. Their content posts to your social media automatically.
+                  </p>
+                </div>
+              )}
               <ActivePromotionsTab />
             </TabsContent>
 
