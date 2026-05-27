@@ -106,11 +106,11 @@
 
 | Table | Purpose |
 |-|-|
-| `dragonshare_boosts` | Content boost campaigns |
-| `dragonshare_engagement` | Engagement tracking on shared content |
-| `dragonshare_events` | DragonShare lifecycle events |
-| `dragonshare_payouts` | Creator payouts from DragonShare |
-| `dragonshare_posts` | Shared content posts |
+| `dragonshare_boosts` | Boost payments from restaurants to creators (Stripe Connect, 80/20 split) |
+| `dragonshare_engagement` | Engagement tracking on shared content (schema only, not populated) |
+| `dragonshare_events` | DragonShare lifecycle events (data flywheel for future AI training) |
+| `dragonshare_payouts` | Creator payouts from DragonShare boosts |
+| `dragonshare_posts` | Creator-submitted content posts. `post_url`/`platform` nullable (direct uploads). `content_file_path` for uploaded content. `flagged_at`/`flagged_by` for report mechanism. Default status: `verified` (trust-then-flag model) |
 
 ## Payments & Revenue
 
