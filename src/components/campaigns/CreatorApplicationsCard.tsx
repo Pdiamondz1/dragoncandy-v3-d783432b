@@ -10,6 +10,7 @@ import { CampaignApplication } from '@/types/applications';
 import { useCampaign } from '@/hooks/useCampaigns';
 import { useAuth } from '@/hooks/useAuth';
 import { useCampaignSponsorship } from '@/hooks/useCampaignSponsorship';
+import { BRAND_ROLE_ENABLED } from '@/lib/featureConfig';
 
 interface CreatorApplicationsCardProps {
   campaignId: string;
@@ -38,7 +39,7 @@ export const CreatorApplicationsCard = ({ campaignId }: CreatorApplicationsCardP
   const userRole = getUserRole();
   
   // Only consider it sponsored if campaign is open for sponsorship AND has an accepted sponsor
-  const isSponsored = (campaign?.open_for_sponsorship && hasActiveSponsor) || false;
+  const isSponsored = (BRAND_ROLE_ENABLED && campaign?.open_for_sponsorship && hasActiveSponsor) || false;
 
   if (isLoading) {
     return (

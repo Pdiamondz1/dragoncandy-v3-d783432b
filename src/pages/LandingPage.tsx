@@ -7,6 +7,7 @@ import { HowItWorks } from "@/components/landing/HowItWorks";
 import { FeatureSection } from "@/components/landing/FeatureSection";
 import { BrandSection } from "@/components/landing/BrandSection";
 import { BottomCTA } from "@/components/landing/BottomCTA";
+import { BRAND_ROLE_ENABLED } from '@/lib/featureConfig';
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { lazy, Suspense, useEffect } from "react";
@@ -35,7 +36,7 @@ export default function LandingPage() {
           <Suspense fallback={null}><BriefGeneratorPreview /></Suspense>
           <HowItWorks />
           <FeatureSection />
-          <BrandSection />
+          {BRAND_ROLE_ENABLED && <BrandSection />}
           <BottomCTA />
         </section>
       </div>

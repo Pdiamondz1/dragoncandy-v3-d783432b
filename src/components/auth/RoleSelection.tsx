@@ -1,4 +1,5 @@
 import { Store, Camera, Megaphone } from "lucide-react";
+import { BRAND_ROLE_ENABLED } from '@/lib/featureConfig';
 
 interface RoleSelectionProps {
   onSelectRole: (role: "business_client" | "content_creator" | "brand") => void;
@@ -34,23 +35,25 @@ export const RoleSelection = ({ onSelectRole, onBackToLogin }: RoleSelectionProp
           <span className="text-dc-teal text-xl flex-shrink-0">&#8250;</span>
         </button>
 
-        {/* Brand/Sponsor card */}
-        <button
-          type="button"
-          onClick={() => onSelectRole("brand")}
-          className="w-full bg-white rounded-2xl border-2 border-pink-400 p-6 flex items-center gap-5 shadow-md hover:shadow-lg transition-shadow text-left"
-        >
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-pink-50 to-pink-200 flex items-center justify-center flex-shrink-0">
-            <Megaphone className="w-7 h-7 text-pink-500" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="text-lg font-bold text-gray-900">I'm a Brand/Sponsor</div>
-            <div className="text-sm text-gray-500 leading-snug">
-              Brands running sponsored creator campaigns
+        {/* Brand/Sponsor card — hidden behind feature flag */}
+        {BRAND_ROLE_ENABLED && (
+          <button
+            type="button"
+            onClick={() => onSelectRole("brand")}
+            className="w-full bg-white rounded-2xl border-2 border-pink-400 p-6 flex items-center gap-5 shadow-md hover:shadow-lg transition-shadow text-left"
+          >
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-pink-50 to-pink-200 flex items-center justify-center flex-shrink-0">
+              <Megaphone className="w-7 h-7 text-pink-500" />
             </div>
-          </div>
-          <span className="text-pink-400 text-xl flex-shrink-0">&#8250;</span>
-        </button>
+            <div className="flex-1 min-w-0">
+              <div className="text-lg font-bold text-gray-900">I'm a Brand/Sponsor</div>
+              <div className="text-sm text-gray-500 leading-snug">
+                Brands running sponsored creator campaigns
+              </div>
+            </div>
+            <span className="text-pink-400 text-xl flex-shrink-0">&#8250;</span>
+          </button>
+        )}
 
         {/* Creator card — outlined/gray style to distinguish from the two primary roles */}
         <button

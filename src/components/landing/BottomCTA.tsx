@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
+import { BRAND_ROLE_ENABLED } from '@/lib/featureConfig';
 
 export const BottomCTA = () => {
   const navigate = useNavigate();
@@ -11,7 +12,9 @@ export const BottomCTA = () => {
         Ready to Get Started?
       </h2>
       <p className="text-base md:text-lg lg:text-xl text-dc-text-muted mb-8 md:mb-12 max-w-xl mx-auto leading-relaxed">
-        Whether you're a restaurant, a brand, or a creator — DragonCandy has you covered.
+        {BRAND_ROLE_ENABLED
+          ? "Whether you're a restaurant, a brand, or a creator — DragonCandy has you covered."
+          : "Whether you're a restaurant or a creator — DragonCandy has you covered."}
       </p>
       <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
         <Button
@@ -21,13 +24,15 @@ export const BottomCTA = () => {
           I'm a Restaurant — Get Started
           <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
         </Button>
-        <Button
-          className="w-full sm:w-auto sm:px-8 rounded-full bg-dc-pink-accent-btn text-white font-bold py-3 text-base lg:text-lg hover:bg-dc-pink-accent-btn-hover hover:shadow-lg transition-all duration-300 group"
-          onClick={() => navigate('/auth?mode=signup')}
-        >
-          I'm a Brand/Sponsor — Launch Campaigns
-          <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
-        </Button>
+        {BRAND_ROLE_ENABLED && (
+          <Button
+            className="w-full sm:w-auto sm:px-8 rounded-full bg-dc-pink-accent-btn text-white font-bold py-3 text-base lg:text-lg hover:bg-dc-pink-accent-btn-hover hover:shadow-lg transition-all duration-300 group"
+            onClick={() => navigate('/auth?mode=signup')}
+          >
+            I'm a Brand/Sponsor — Launch Campaigns
+            <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
+          </Button>
+        )}
         <Button
           variant="outline"
           className="w-full sm:w-auto sm:px-8 rounded-full bg-white text-dc-pink-accent-btn font-semibold py-3 text-base lg:text-lg border border-gray-200 hover:border-dc-teal hover:text-dc-teal transition-all duration-300"
