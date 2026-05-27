@@ -1,28 +1,33 @@
 import { useState } from 'react';
-import { useResolvedAvatarUrl } from '@/hooks/useSignedUrl';
+import { useResolvedAvatarUrl, useSignedUrl } from '@/hooks/useSignedUrl';
 import { safeUrl } from '@/lib/safeUrl';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Sparkles, ExternalLink, SkipForward } from 'lucide-react';
+import { ExternalLink, Flag } from 'lucide-react';
 import { BoostConfirmationSheet } from './BoostConfirmationSheet';
+import { AmplificationPreview } from './AmplificationPreview';
 import { BOOST_TIERS } from '@/types/dragonshare';
-import { WhyExpander } from '@/components/guidance/WhyExpander';
+import { useFlagDragonSharePost } from '@/hooks/useFlagDragonSharePost';
 import type { DragonSharePostWithRelations, BoostTierLabel } from '@/types/dragonshare';
 
 interface Props {
   post: DragonSharePostWithRelations;
   canBoost: boolean;
-  onSkip: (postId: string) => void;
 }
 
-export function DragonSharePostCard({ post, canBoost, onSkip }: Props) {
+export function DragonSharePostCard({ post, canBoost }: Props) {
   const [selectedTier, setSelectedTier] = useState<{ cents: number; label: BoostTierLabel } | null>(null);
   const isAlreadyBoosted = post.boost_status === 'boosted';
   const resolvedCreatorAvatar = useResolvedAvatarUrl(post.creator?.avatar_url);
+  const contentImageUrl = useSignedUrl('dragonshare-content', post.content_file_path);
+  const flagMutation = useFlagDragonSharePost();
+
+  const postUrl = safeUrl(post.post_url);
 
   return (
     <>
-      <div className="rounded-2xl border bg-card overflow-hidden">
+      <div className="rounded-2xl border bg-dc-card overflow-hidden">
+        {/* Header: creator info */}
         <div className="p-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             {resolvedCreatorAvatar ? (
@@ -33,76 +38,98 @@ export function DragonSharePostCard({ post, canBoost, onSkip }: Props) {
               </div>
             )}
             <div>
-              <p className="font-medium">{post.creator?.full_name ?? 'Unknown Creator'}</p>
-              <p className="text-xs text-muted-foreground capitalize">{post.platform} · {post.content_type}</p>
+              <p className="font-medium text-dc-text">{post.creator?.full_name ?? 'Unknown Creator'}</p>
+              <p className="text-xs text-dc-text-muted capitalize">{post.platform} · {post.content_type}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <a href={safeUrl(post.post_url) ?? '#'} target="_blank" rel="noopener noreferrer">
-              <ExternalLink className="h-4 w-4 text-muted-foreground hover:text-foreground" />
-            </a>
-            <span className="text-xs text-muted-foreground">
+            {postUrl && (
+              <a href={postUrl} target="_blank" rel="noopener noreferrer">
+                <ExternalLink className="h-4 w-4 text-dc-text-muted hover:text-dc-text" />
+              </a>
+            )}
+            <span className="text-xs text-dc-text-muted">
               {new Date(post.submitted_at).toLocaleDateString()}
             </span>
           </div>
         </div>
 
+        {/* Caption */}
         {post.caption && (
           <div className="px-4 pb-3">
-            <p className="text-sm text-muted-foreground line-clamp-3">{post.caption}</p>
+            <p className="text-sm text-dc-text-muted line-clamp-3">{post.caption}</p>
           </div>
         )}
 
-        {post.donny_recommended_tier && !isAlreadyBoosted && (
-          <div className="mx-4 mb-3 rounded-xl bg-teal-50 border border-teal-200 p-3 space-y-1">
-            <div className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-teal-500" />
-              <span className="text-sm font-medium text-teal-700">
-                Donny recommends: ${post.donny_recommended_tier} boost
-              </span>
-              <WhyExpander expanderKey="donny_score" title="What is Donny's score?" body="Donny estimates reach and engagement potential. Higher scores get higher boost recommendations." />
-            </div>
-            {post.donny_reach_estimate && (
-              <p className="text-xs text-teal-600">
-                Estimated reach: {post.donny_reach_estimate.toLocaleString()} views
-              </p>
-            )}
+        {/* Content image preview */}
+        {contentImageUrl && (
+          <div className="px-4 pb-3">
+            <img
+              src={contentImageUrl}
+              alt="Content preview"
+              className="w-full rounded-xl object-cover max-h-48"
+            />
           </div>
         )}
 
-        <div className="px-4 pb-4">
+        {/* Amplification Preview */}
+        {!isAlreadyBoosted && (
+          <div className="px-4 pb-3">
+            <AmplificationPreview
+              creatorId={post.creator_id}
+              orgId={post.target_org_id}
+              creatorName={post.creator?.full_name}
+              orgName={post.target_org?.name}
+            />
+          </div>
+        )}
+
+        {/* Boost tiers / status */}
+        <div className="px-4 pb-3">
           {isAlreadyBoosted ? (
             <Badge className="bg-teal-100 text-teal-700 border-teal-200">
               Boosted · ${((post.boosts?.[0]?.amount_cents ?? 0) / 100).toFixed(0)}
             </Badge>
           ) : canBoost ? (
-            <div className="flex items-center gap-2">
-              {BOOST_TIERS.map((tier) => (
-                <Button
-                  key={tier.label}
-                  variant={tier.cents / 100 === post.donny_recommended_tier ? 'default' : 'outline'}
-                  size="sm"
-                  className="rounded-full flex-1"
-                  onClick={() => setSelectedTier({ cents: tier.cents, label: tier.label })}
-                >
-                  {tier.display}
-                  {tier.cents / 100 === post.donny_recommended_tier && (
-                    <Sparkles className="ml-1 h-3 w-3" />
-                  )}
-                </Button>
-              ))}
-              <Button
-                variant="ghost"
-                size="sm"
-                className="rounded-full"
-                onClick={() => onSkip(post.id)}
-              >
-                <SkipForward className="h-4 w-4" />
-              </Button>
+            <div className="flex items-center gap-1.5">
+              {BOOST_TIERS.map((tier) => {
+                const isPopular = tier.label === '50';
+                return (
+                  <div key={tier.label} className="flex-1 flex flex-col items-center gap-0.5">
+                    {isPopular ? (
+                      <span className="text-[10px] font-bold text-dc-teal uppercase tracking-wide">POPULAR</span>
+                    ) : (
+                      <span className="text-[10px] invisible">POPULAR</span>
+                    )}
+                    <Button
+                      variant={isPopular ? 'default' : 'outline'}
+                      size="sm"
+                      className={`rounded-full w-full ${isPopular ? 'bg-dc-teal-btn hover:bg-dc-teal-btn-hover text-white' : ''}`}
+                      onClick={() => setSelectedTier({ cents: tier.cents, label: tier.label })}
+                    >
+                      {tier.display}
+                    </Button>
+                  </div>
+                );
+              })}
             </div>
           ) : (
-            <p className="text-xs text-muted-foreground">Ask an admin to boost this.</p>
+            <p className="text-xs text-dc-text-muted">Ask an admin to boost this.</p>
           )}
+        </div>
+
+        {/* Footer: Report button */}
+        <div className="px-4 pb-4 flex justify-end">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="rounded-full text-dc-text-muted hover:text-dc-pink-accent h-7 px-2 gap-1"
+            onClick={() => flagMutation.mutate(post.id)}
+            disabled={flagMutation.isPending || post.flagged_at !== null}
+          >
+            <Flag className="h-3 w-3" />
+            <span className="text-xs">Report</span>
+          </Button>
         </div>
       </div>
 
@@ -113,6 +140,8 @@ export function DragonSharePostCard({ post, canBoost, onSkip }: Props) {
           post={post}
           amountCents={selectedTier.cents}
           tierLabel={selectedTier.label}
+          creatorId={post.creator_id}
+          orgId={post.target_org_id}
         />
       )}
     </>
