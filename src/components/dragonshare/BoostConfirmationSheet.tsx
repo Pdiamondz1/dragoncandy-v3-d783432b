@@ -82,7 +82,7 @@ export function BoostConfirmationSheet({ open, onOpenChange, post, amountCents, 
 
           {/* What happens when you boost */}
           <div className="rounded-xl bg-dc-teal/5 border border-dc-teal/20 p-4 space-y-3">
-            <p className="text-xs font-bold text-teal-700 uppercase tracking-wider">What happens when you boost</p>
+            <p className="text-xs font-bold text-dc-teal uppercase tracking-wider">What happens when you boost</p>
             <ol className="space-y-2 text-sm text-dc-text">
               <li className="flex gap-2">
                 <span className="flex-shrink-0 h-5 w-5 rounded-full bg-dc-teal text-white flex items-center justify-center text-[11px] font-bold">1</span>
@@ -101,14 +101,14 @@ export function BoostConfirmationSheet({ open, onOpenChange, post, amountCents, 
                 <span className="flex-shrink-0 h-5 w-5 rounded-full bg-dc-teal text-white flex items-center justify-center text-[11px] font-bold">3</span>
                 <span>
                   <span className="font-medium">{creatorName}</span> gets{' '}
-                  <span className="font-medium text-teal-700">${(creatorPayoutCents / 100).toFixed(0)}</span> for their great content
+                  <span className="font-medium text-dc-teal">${(creatorPayoutCents / 100).toFixed(0)}</span> for their great content
                 </span>
               </li>
             </ol>
           </div>
 
           {/* Payment breakdown */}
-          <div className="rounded-xl bg-muted p-4 space-y-2 text-sm">
+          <div className="rounded-xl bg-dc-teal/5 border border-dc-teal/10 p-4 space-y-2 text-sm">
             <div className="flex justify-between">
               <span className="text-dc-text-muted">Creator gets</span>
               <span className="font-medium">${(creatorPayoutCents / 100).toFixed(2)} (80%)</span>

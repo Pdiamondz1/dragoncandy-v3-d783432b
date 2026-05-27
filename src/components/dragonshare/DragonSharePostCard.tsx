@@ -39,7 +39,7 @@ export function DragonSharePostCard({ post, canBoost }: Props) {
             )}
             <div>
               <p className="font-medium text-dc-text">{post.creator?.full_name ?? 'Unknown Creator'}</p>
-              <p className="text-xs text-dc-text-muted capitalize">{post.platform} · {post.content_type}</p>
+              <p className="text-xs text-dc-text-muted capitalize">{post.platform ?? 'direct upload'} · {post.content_type}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -91,7 +91,7 @@ export function DragonSharePostCard({ post, canBoost }: Props) {
               Boosted · ${((post.boosts?.[0]?.amount_cents ?? 0) / 100).toFixed(0)}
             </Badge>
           ) : canBoost ? (
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 lg:gap-2">
               {BOOST_TIERS.map((tier) => {
                 const isPopular = tier.label === '50';
                 return (
