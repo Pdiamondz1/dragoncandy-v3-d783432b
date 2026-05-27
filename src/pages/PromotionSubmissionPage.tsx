@@ -2,17 +2,19 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { VideoUploader } from '@/components/promotions/VideoUploader';
-import { CustomerInfoForm, CustomerInfoFormData } from '@/components/promotions/CustomerInfoForm';
 import { usePromotionSubmission } from '@/hooks/usePromotionSubmission';
-import { Gift, Video, User, CheckCircle, AlertCircle, ArrowRight, ArrowLeft, Loader2 } from 'lucide-react';
+import { Gift, Video, Mail, CheckCircle, AlertCircle, ArrowLeft, Loader2, ChevronDown } from 'lucide-react';
 import { SocialHandleFields, useSocialHandles } from '@/features/promotions/submission/SubmissionForm';
 import { SEO } from '@/components/SEO';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { PrerequisiteGate } from '@/components/PrerequisiteGate';
 import { useResolvedLogoUrl } from '@/hooks/useSignedUrl';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { useToast } from '@/hooks/use-toast';
 
-type Step = 'welcome' | 'video' | 'info' | 'success' | 'error';
+type Step = 'welcome' | 'capture' | 'email' | 'success' | 'error';
 
 interface Promotion {
   id: string;
@@ -41,10 +43,17 @@ export default function PromotionSubmissionPage() {
   const [error, setError] = useState<string | null>(null);
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const isPhoto = videoFile?.type.startsWith('image/') ?? false;
-  
+
+  // Inline form state
+  const [email, setEmail] = useState('');
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [consent, setConsent] = useState(false); // Must default to false — legal compliance
+
   const { submitPromotion, isSubmitting } = usePromotionSubmission();
   const { handles, setHandles, getSanitized } = useSocialHandles();
   const resolvedLogoUrl = useResolvedLogoUrl(promotion?.business_profiles?.logo_url);
+  const { toast } = useToast();
 
   useEffect(() => {
     const fetchPromotion = async () => {
@@ -110,19 +119,19 @@ export default function PromotionSubmissionPage() {
 
   const handleVideoSelected = (file: File) => {
     setVideoFile(file);
-    setStep('info');
+    setStep('email');
   };
 
-  const handleInfoSubmit = async (data: CustomerInfoFormData) => {
-    if (!videoFile || !promotionId) return;
+  const handleSubmit = async () => {
+    if (!videoFile || !promotionId || !email) return;
 
     const result = await submitPromotion({
       promotionId,
-      customerName: data.customerName,
-      customerEmail: data.customerEmail,
-      customerPhone: data.customerPhone,
+      customerName: name || undefined,
+      customerEmail: email,
+      customerPhone: phone || undefined,
       videoFile,
-      marketingRightsAccepted: data.marketingRightsAccepted,
+      marketingRightsAccepted: consent,
       socialHandles: getSanitized(),
     });
 
@@ -132,7 +141,7 @@ export default function PromotionSubmissionPage() {
       setError('You have already submitted for this promotion');
       setStep('error');
     } else {
-      setError('Something went wrong with your submission. Please try again.');
+      setError('Something went wrong. Please try again.');
       setStep('error');
     }
   };
@@ -150,7 +159,7 @@ export default function PromotionSubmissionPage() {
       <div className="min-h-screen bg-white flex items-center justify-center p-4">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="w-8 h-8 animate-spin text-dc-teal" />
-          <p className="text-gray-500 text-sm">Loading promotion...</p>
+          <p className="text-dc-text-muted text-sm">Loading promotion...</p>
         </div>
       </div>
     );
@@ -161,8 +170,8 @@ export default function PromotionSubmissionPage() {
       <div className="min-h-screen bg-white flex items-center justify-center p-4">
         <div className="w-full max-w-md border-2 border-dc-teal rounded-2xl p-6 text-center">
           <AlertCircle className="w-16 h-16 text-dc-pink-accent mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Oops!</h2>
-          <p className="text-gray-500 text-sm">{error}</p>
+          <h2 className="text-xl font-bold text-dc-text mb-2">Oops!</h2>
+          <p className="text-dc-text-muted text-sm">{error}</p>
         </div>
       </div>
     );
@@ -183,7 +192,7 @@ export default function PromotionSubmissionPage() {
       {/* Template C header */}
       <PageHeader>
         <div className="flex-1 text-center">
-          <h1 className="font-sans text-base font-bold text-gray-900 uppercase tracking-wide">Promotion</h1>
+          <h1 className="font-sans text-base font-bold text-dc-text uppercase tracking-wide">Promotion</h1>
         </div>
       </PageHeader>
 
@@ -201,7 +210,7 @@ export default function PromotionSubmissionPage() {
               <Gift className="w-10 h-10 text-dc-teal" />
             </div>
           )}
-          <h2 className="text-lg font-bold text-gray-900">{businessName}</h2>
+          <h2 className="text-lg font-bold text-dc-text">{businessName}</h2>
           <Badge className="mt-2 text-base px-4 py-1 bg-dc-teal-btn text-white rounded-full">
             {formatDiscount()}
           </Badge>
@@ -209,47 +218,51 @@ export default function PromotionSubmissionPage() {
 
         {/* Step Content */}
         {step === 'welcome' && (
-          <div className="border-2 border-dc-teal rounded-2xl p-4 space-y-4">
-            <h3 className="font-bold text-gray-900 text-center">{promotion.title}</h3>
-            {promotion.description && (
-              <p className="text-gray-500 text-sm text-center">{promotion.description}</p>
-            )}
-
-            <div className="space-y-3">
-              <div className="flex items-start gap-3 p-3 bg-dc-teal/5 rounded-xl">
-                <Video className="w-5 h-5 text-dc-teal mt-0.5 shrink-0" />
-                <div>
-                  <p className="font-medium text-gray-900 text-sm">Record a video or snap a photo</p>
-                  <p className="text-xs text-gray-500">Video: {promotion.video_max_duration || 30}s max • Photo: JPG, PNG, HEIC</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3 p-3 bg-dc-teal/5 rounded-xl">
-                <User className="w-5 h-5 text-dc-teal mt-0.5 shrink-0" />
-                <div>
-                  <p className="font-medium text-gray-900 text-sm">Enter your details</p>
-                  <p className="text-xs text-gray-500">We'll send your discount code via email & SMS</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3 p-3 bg-dc-teal/5 rounded-xl">
-                <Gift className="w-5 h-5 text-dc-teal mt-0.5 shrink-0" />
-                <div>
-                  <p className="font-medium text-gray-900 text-sm">Get your discount</p>
-                  <p className="text-xs text-gray-500">Show the code to redeem {formatDiscount()}</p>
-                </div>
-              </div>
+          <div className="space-y-4">
+            <div className="text-center">
+              <h3 className="text-xl font-bold text-dc-text">
+                Record your experience → Get {formatDiscount()}
+              </h3>
             </div>
 
             <button
-              onClick={() => setStep('video')}
-              className="w-full rounded-full bg-dc-teal-btn text-white font-bold py-3 flex items-center justify-center gap-2 hover:bg-dc-teal-btn-hover transition-colors"
+              onClick={() => setStep('capture')}
+              className="w-full rounded-full bg-dc-teal-btn text-white font-bold py-4 flex items-center justify-center gap-2 hover:bg-dc-teal-btn-hover transition-colors text-lg"
             >
-              Let's Start
-              <ArrowRight className="w-4 h-4" />
+              <Video className="w-5 h-5" />
+              Record
             </button>
+
+            <p className="text-center text-dc-text-muted text-sm">
+              <button
+                onClick={() => setStep('capture')}
+                className="underline text-dc-pink-accent hover:text-dc-pink-accent/80 transition-colors"
+              >
+                Upload a photo/video instead
+              </button>
+            </p>
+
+            <Collapsible>
+              <CollapsibleTrigger className="flex items-center gap-1 text-dc-text-muted text-sm mx-auto w-full justify-center">
+                Details
+                <ChevronDown className="w-4 h-4" />
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="mt-3 p-4 border border-dc-teal/30 rounded-2xl space-y-2">
+                  <h4 className="font-semibold text-dc-text text-sm">{promotion.title}</h4>
+                  {promotion.description && (
+                    <p className="text-dc-text-muted text-xs">{promotion.description}</p>
+                  )}
+                  <p className="text-dc-text-muted text-xs">
+                    Video: {promotion.video_max_duration || 30}s max · Photo: JPG, PNG, HEIC
+                  </p>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
           </div>
         )}
 
-        {step === 'video' && (
+        {step === 'capture' && (
           <div className="space-y-4">
             <button
               onClick={() => setStep('welcome')}
@@ -259,8 +272,8 @@ export default function PromotionSubmissionPage() {
               Back
             </button>
             <div className="border-2 border-dc-teal rounded-2xl p-4">
-              <p className="font-sans text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">Share Your Experience</p>
-              <p className="text-xs text-gray-500 mb-4">
+              <p className="font-sans text-xs font-semibold uppercase tracking-wider text-dc-text-muted mb-1">Share Your Experience</p>
+              <p className="text-xs text-dc-text-muted mb-4">
                 Record a {promotion.video_max_duration || 30}-second video or upload a photo
               </p>
               <VideoUploader
@@ -272,26 +285,87 @@ export default function PromotionSubmissionPage() {
           </div>
         )}
 
-        {step === 'info' && (
+        {step === 'email' && (
           <div className="space-y-4">
             <button
-              onClick={() => setStep('video')}
+              onClick={() => setStep('capture')}
               className="flex items-center gap-1 text-dc-pink-accent text-lg font-medium"
             >
               <ArrowLeft className="w-4 h-4" />
               Back
             </button>
-            <div className="border-2 border-dc-teal rounded-2xl p-4">
-              <p className="font-sans text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">Almost Done!</p>
-              <p className="text-xs text-gray-500 mb-4">Enter your details to receive your discount code</p>
-              <div className="mb-5">
-                <SocialHandleFields value={handles} onChange={setHandles} />
+            <div className="border-2 border-dc-teal rounded-2xl p-4 space-y-4">
+              <div>
+                <p className="font-sans text-xs font-semibold uppercase tracking-wider text-dc-text-muted mb-1">Almost Done!</p>
+                <p className="text-xs text-dc-text-muted">Enter your email to receive your discount code</p>
               </div>
-              <CustomerInfoForm
-                onSubmit={handleInfoSubmit}
-                isSubmitting={isSubmitting}
-                businessName={businessName}
-              />
+
+              {/* Email — required */}
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-dc-teal" />
+                <Input
+                  type="email"
+                  placeholder="your@email.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="pl-9 rounded-full border-dc-teal/50 focus:border-dc-teal"
+                  required
+                />
+              </div>
+
+              {/* Optional details collapsible */}
+              <Collapsible>
+                <CollapsibleTrigger className="flex items-center gap-1 text-dc-text-muted text-sm">
+                  Add more details (optional)
+                  <ChevronDown className="w-4 h-4" />
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="mt-3 space-y-3">
+                    <Input
+                      type="text"
+                      placeholder="Your name (optional)"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className="rounded-full border-dc-teal/50 focus:border-dc-teal"
+                    />
+                    <Input
+                      type="tel"
+                      placeholder="Phone number (optional)"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      className="rounded-full border-dc-teal/50 focus:border-dc-teal"
+                    />
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+
+              {/* Marketing consent — must default to unchecked */}
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={consent}
+                  onChange={(e) => setConsent(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 accent-dc-teal shrink-0"
+                />
+                <span className="text-xs text-dc-text-muted">
+                  I agree to let {businessName} use my content on social media
+                </span>
+              </label>
+
+              <button
+                onClick={handleSubmit}
+                disabled={!email || isSubmitting}
+                className="w-full rounded-full bg-dc-teal-btn text-white font-bold py-3 flex items-center justify-center gap-2 hover:bg-dc-teal-btn-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Submitting...
+                  </>
+                ) : (
+                  'Submit & Get Your Discount'
+                )}
+              </button>
             </div>
           </div>
         )}
@@ -301,17 +375,35 @@ export default function PromotionSubmissionPage() {
             <div className="w-20 h-20 rounded-full bg-dc-teal/10 flex items-center justify-center mx-auto">
               <CheckCircle className="w-10 h-10 text-dc-teal" />
             </div>
-            <h2 className="text-xl font-bold text-gray-900">Submission Received!</h2>
-            <p className="text-gray-500 text-sm">
-              Your {isPhoto ? 'photo' : 'video'} is now pending review. Once approved, you'll receive your discount code via email and SMS.
+            <h2 className="text-xl font-bold text-dc-text">Submission Received!</h2>
+            <p className="text-dc-text-muted text-sm">
+              Your {isPhoto ? 'photo' : 'video'} is now pending review. Once approved, you'll receive your discount code via email.
             </p>
             <div className="p-4 bg-dc-teal/5 rounded-xl text-left">
-              <p className="text-sm font-semibold text-gray-900">What happens next?</p>
-              <ul className="text-xs text-gray-500 mt-2 space-y-1">
+              <p className="text-sm font-semibold text-dc-text">What happens next?</p>
+              <ul className="text-xs text-dc-text-muted mt-2 space-y-1">
                 <li>• {businessName} will review your submission</li>
                 <li>• You'll receive your unique discount code</li>
                 <li>• Show the code when you visit to redeem</li>
               </ul>
+            </div>
+
+            <div className="mt-6 p-4 bg-dc-teal/5 rounded-2xl text-left">
+              <p className="text-sm font-medium text-dc-text mb-2">
+                Want to be featured on {businessName}'s social media?
+              </p>
+              <SocialHandleFields value={handles} onChange={setHandles} />
+              <button
+                onClick={() => {
+                  const sanitized = getSanitized();
+                  if (Object.values(sanitized).some(v => v)) {
+                    toast({ title: 'Social handles saved!' });
+                  }
+                }}
+                className="mt-2 rounded-full bg-dc-teal-btn text-white text-sm font-semibold px-4 py-2 hover:bg-dc-teal-btn-hover transition-colors"
+              >
+                Save
+              </button>
             </div>
           </div>
         )}
