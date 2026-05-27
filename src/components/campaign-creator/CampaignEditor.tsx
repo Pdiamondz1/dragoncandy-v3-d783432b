@@ -5,6 +5,7 @@ import { DeliverablesList } from './DeliverablesList';
 import { TimelinePicker } from './TimelinePicker';
 import { TierBadge } from './TierBadge';
 import { EditorSection } from './EditorSection';
+import { PostingPreferencesSection } from './PostingPreferencesSection';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { CostBreakdown } from '@/components/campaigns/CostBreakdown';
@@ -143,6 +144,19 @@ export function CampaignEditor({
             })}
           </div>
         </div>
+      </EditorSection>
+
+      {/* Posting Schedule */}
+      <EditorSection title="Posting Schedule" id="section-posting-schedule" defaultOpen={false}>
+        <PostingPreferencesSection
+          preferences={campaign.posting_preferences ?? {
+            spread_strategy: 'auto',
+            spread_window_days: 14,
+            auto_schedule_on_approval: true,
+          }}
+          onChange={(prefs) => updateField('posting_preferences', prefs)}
+          deliverableCount={campaign.deliverables.length}
+        />
       </EditorSection>
 
       {/* Brand-only panel */}
