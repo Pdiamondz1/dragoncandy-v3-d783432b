@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { CalendarDays, Loader2, RefreshCw, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -103,7 +103,7 @@ function PostingPlanReviewInner({
   const [isMobile, setIsMobile] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [retryCount, setRetryCount] = useState(0);
-  const [confirmedPlanId, setConfirmedPlanId] = useState<string | null>(null);
+  const [_confirmedPlanId, setConfirmedPlanId] = useState<string | null>(null);
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768);
@@ -336,11 +336,11 @@ function PostingPlanReviewInner({
                   <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
                     {isVideo && post.media_urls[0] ? (
                       <VideoFrameThumbnail
-                        fileId={mediaItem?.fileId}
+                        fileId={mediaItem?.fileId ?? ''}
                         videoUrl={post.media_urls[0]}
-                        storedThumbnailUrl={mediaItem?.storedThumbnailUrl}
-                        mimeType={mediaItem?.mimeType}
-                        filename={mediaItem?.filename}
+                        storedThumbnailUrl={mediaItem?.storedThumbnailUrl ?? null}
+                        mimeType={mediaItem?.mimeType ?? 'video/mp4'}
+                        filename={mediaItem?.filename ?? ''}
                       />
                     ) : post.media_urls[0] ? (
                       <img src={post.media_urls[0]} alt="" className="w-full h-full object-cover" />

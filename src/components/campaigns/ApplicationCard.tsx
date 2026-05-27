@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Check, X, Clock, DollarSign, User, ArrowRightLeft, Eye, ImageIcon, Loader2 } from 'lucide-react';
+import { Check, X, Clock, DollarSign, User, ArrowRightLeft, Eye, ImageIcon } from 'lucide-react';
 import { useManageApplication } from '@/hooks/useManageApplication';
 import { CampaignApplication } from '@/types/applications';
 import { ApplicationStatusBadge } from './ApplicationStatusBadge';
@@ -40,7 +40,7 @@ const ApplicationCardComponent: React.FC<ApplicationCardProps> = ({
   campaignDeliveryType: _campaignDeliveryType,
   onViewProfile,
   onPayEscrow,
-  isPayingEscrow,
+  isPayingEscrow: _isPayingEscrow,
 }) => {
   const manageApplication = useManageApplication();
   const [showCounterModal, setShowCounterModal] = useState(false);
