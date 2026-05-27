@@ -114,7 +114,11 @@ function SocialPostPromptInner({
     return () => window.removeEventListener('resize', check);
   }, []);
 
-  const generateCaption = useCallback(async (): Promise<{ text: string; tags: string[] } | null> => {
+  const generateCaption = useCallback(async (opts?: {
+    deliverableNumber?: number;
+    totalDeliverables?: number;
+    filename?: string;
+  }): Promise<{ text: string; tags: string[] } | null> => {
     if (!campaignId || !user?.id) return null;
     try {
       const { data, error } = await supabase.functions.invoke('social-caption', {
@@ -125,6 +129,9 @@ function SocialPostPromptInner({
           party_role: userRole === 'restaurant' ? 'restaurant' : userRole,
           platform: accountsRef.current[0]?.network ?? 'instagram',
           user_id: user.id,
+          deliverable_number: opts?.deliverableNumber,
+          total_deliverables: opts?.totalDeliverables,
+          filename: opts?.filename,
         },
       });
       if (error) throw error;
@@ -290,17 +297,31 @@ function SocialPostPromptInner({
     }
   };
 
-  const handleScheduleForBestTime = () => {
+  const handleScheduleForBestTime = async () => {
     if (selectedAccountIds.length === 0) return;
     const scheduleTime = getValidScheduleTime(suggestedTime);
 
     if (resolvedItems.length > 1) {
       const baseTime = new Date(scheduleTime).getTime();
       const DAY_MS = 24 * 60 * 60 * 1000;
+
+      setSchedulingState('scheduling');
+      const captionPromises = resolvedItems.map((item, i) => {
+        const fname = item.filename ?? item.url.split('/').pop()?.split('?')[0] ?? `file-${i + 1}`;
+        return generateCaption({
+          deliverableNumber: i + 1,
+          totalDeliverables: resolvedItems.length,
+          filename: decodeURIComponent(fname),
+        });
+      });
+      const captionResults = await Promise.all(captionPromises);
+
       const slots: DeliverableSlot[] = resolvedItems.map((item, i) => ({
         mediaUrl: item.url,
         mediaItem: item,
         scheduledAt: new Date(baseTime + i * DAY_MS).toISOString(),
+        caption: captionResults[i]?.text ?? caption,
+        hashtags: captionResults[i]?.tags ?? hashtags,
       }));
       setDeliverableSlots(slots);
       setSameDay(false);
@@ -339,8 +360,14 @@ function SocialPostPromptInner({
     setSchedulingState('scheduling');
     try {
       for (const slot of deliverableSlots) {
+        const slotCaption = sameDay
+          ? fullCaption
+          : (slot.hashtags?.length
+              ? `${slot.caption}\n\n${slot.hashtags.join(' ')}`
+              : slot.caption ?? fullCaption);
+
         const result = await crossPost.mutateAsync({
-          caption: fullCaption,
+          caption: slotCaption,
           mediaUrls: [slot.mediaUrl],
           accountIds: selectedAccountIds,
           scheduledAt: slot.scheduledAt,

@@ -316,12 +316,31 @@ async function enforceScope(args: {
   if (/^\/posts\/[^/]+(\/[a-z]+)?$/.test(pathOnly)) {
     const postId = pathOnly.split("/")[2];
     if (!postId) return jsonResponse(400, { error: "missing_post_id" });
-    const { ids: accountIds, platform } = await fetchPostAccountIds(postId, outstandKey);
-    let allowed = accountIds.some((id) => ownedIds.has(id));
-    if (!allowed && platform) {
-      const ownedPlatforms = await listOwnedPlatforms(admin, ctx.userId, ctx.orgUnitId);
-      if (ownedPlatforms.has(platform)) {
-        allowed = true;
+
+    let allowed = false;
+
+    // For mutating requests, check body for social_account_ids passed by the client
+    if (bodyText && (method === "PATCH" || method === "PUT" || method === "DELETE")) {
+      try {
+        const body = JSON.parse(bodyText);
+        const bodyIds: string[] = [
+          ...(Array.isArray(body?.social_account_ids) ? body.social_account_ids : []),
+          ...(Array.isArray(body?.accounts) ? body.accounts : []),
+        ].map(String);
+        if (bodyIds.some((id) => ownedIds.has(id))) {
+          allowed = true;
+        }
+      } catch { /* ignore parse errors */ }
+    }
+
+    if (!allowed) {
+      const { ids: accountIds, platform } = await fetchPostAccountIds(postId, outstandKey);
+      allowed = accountIds.some((id) => ownedIds.has(id));
+      if (!allowed && platform) {
+        const ownedPlatforms = await listOwnedPlatforms(admin, ctx.userId, ctx.orgUnitId);
+        if (ownedPlatforms.has(platform)) {
+          allowed = true;
+        }
       }
     }
     if (!allowed) {

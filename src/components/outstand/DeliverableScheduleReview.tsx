@@ -7,6 +7,8 @@ export interface DeliverableSlot {
   mediaUrl: string;
   mediaItem: MediaItem;
   scheduledAt: string;
+  caption?: string;
+  hashtags?: string[];
 }
 
 interface DeliverableScheduleReviewProps {
@@ -144,6 +146,13 @@ export const DeliverableScheduleReview: React.FC<DeliverableScheduleReviewProps>
                   className="text-[11px] text-gray-700 border border-gray-200 rounded-lg px-2 py-1.5 w-full focus:outline-none focus:ring-1 focus:ring-dc-teal"
                 />
               </div>
+
+              {/* Caption preview (only when scheduled separately) */}
+              {!sameDay && slot.caption && (
+                <p className="text-[10px] text-gray-500 mt-1.5 line-clamp-2 italic">
+                  {slot.caption}
+                </p>
+              )}
             </div>
           );
         })}

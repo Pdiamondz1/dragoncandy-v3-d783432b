@@ -24,6 +24,9 @@ interface CaptionRequest {
   deliverable_types?: string[];
   campaign_goals?: string;
   deliverable_descriptions?: string[];
+  deliverable_number?: number;
+  total_deliverables?: number;
+  filename?: string;
 }
 
 const PLATFORM_CONFIG: Record<string, { maxLength: number; hashtagCount: string; tone: string }> = {
@@ -70,6 +73,7 @@ serve(async (req) => {
       campaign_title, campaign_description, content_type, party_role, platform,
       user_id, source, context, business_name, business_location,
       business_category, deliverable_types, campaign_goals, deliverable_descriptions,
+      deliverable_number, total_deliverables, filename,
     } = body;
 
     if (!party_role || !platform || !user_id) {
@@ -116,6 +120,10 @@ serve(async (req) => {
       ? `Include location-relevant hashtags for ${business_location} (e.g., #${business_location.replace(/[^a-zA-Z]/g, "")}Eats, #${business_location.replace(/[^a-zA-Z]/g, "")}Food).`
       : "";
 
+    const multiDeliverableHint = (total_deliverables ?? 0) > 1
+      ? `\nThis is deliverable ${deliverable_number} of ${total_deliverables} in a multi-post series for the same campaign. The file is "${filename ?? "unknown"}". Create a caption that stands on its own and uses a different hook/angle than sibling posts. Vary opening lines and tone while staying on-brand.\n`
+      : "";
+
     const response = await anthropicFetch(
       "https://api.anthropic.com/v1/messages",
       {
@@ -140,7 +148,7 @@ ${deliverableContext}
 Content type: ${content_type}
 Platform: ${platform}
 
-Write an engaging, platform-native caption optimized for ${platform} (aim for under ${platformCfg.maxLength} characters). Tone: ${platformCfg.tone}.
+Write an engaging, platform-native caption optimized for ${platform} (aim for under ${platformCfg.maxLength} characters). Tone: ${platformCfg.tone}.${multiDeliverableHint}
 
 Generate ${platformCfg.hashtagCount} relevant hashtags. Always include #DragonDashed as one of the hashtags. ${locationHashtagHint}
 

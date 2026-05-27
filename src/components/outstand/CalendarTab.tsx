@@ -110,8 +110,12 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ posts, isLoading, onCh
 
   const executeReschedule = useCallback(async (post: Post, newDate: Date) => {
     if (!isScheduled(post)) return;
+    const accountIds = (post.socialAccounts ?? []).map((sa: { id?: string }) => sa.id).filter(Boolean);
     try {
-      const patchRes = await api.patch(`/posts/${post.id}`, { scheduledAt: newDate.toISOString() });
+      const patchRes = await api.patch(`/posts/${post.id}`, {
+        scheduledAt: newDate.toISOString(),
+        social_account_ids: accountIds,
+      });
       if (!patchRes.success) {
         const delRes = await api.delete(`/posts/${post.id}`);
         if (!delRes.success) throw new Error(delRes.error || 'Failed to delete post for reschedule');
@@ -119,6 +123,7 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ posts, isLoading, onCh
           ...post,
           id: undefined,
           scheduledAt: newDate.toISOString(),
+          social_account_ids: accountIds,
         });
         if (!createRes.success) throw new Error(createRes.error || 'Failed to recreate post');
       }
