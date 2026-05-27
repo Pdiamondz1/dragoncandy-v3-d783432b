@@ -22,6 +22,7 @@ interface ConfirmRequest {
 
 interface DraftPost {
   id: string;
+  user_id: string;
   platform: string;
   content_type: string;
   caption: string | null;
@@ -74,7 +75,7 @@ serve(async (req: Request) => {
     // Fetch all draft posts in this plan group
     const { data: drafts, error: fetchError } = await admin
       .from('donny_scheduled_posts')
-      .select('id, platform, content_type, caption, media_urls, hashtags, scheduled_at, metadata')
+      .select('id, user_id, platform, content_type, caption, media_urls, hashtags, scheduled_at, metadata')
       .eq('plan_group_id', plan_group_id)
       .eq('status', 'draft');
 
@@ -93,12 +94,49 @@ serve(async (req: Request) => {
       );
     }
 
+    // Look up the campaign owner's user_id from the drafts
+    const draftOwnerId = (drafts[0] as DraftPost).user_id;
+
+    // Fetch connected Outstand accounts for the campaign owner
+    const { data: accounts, error: accountsError } = await admin
+      .from('business_outstand_accounts')
+      .select('outstand_social_account_id, platform')
+      .eq('user_id', draftOwnerId)
+      .neq('status', 'revoked');
+
+    if (accountsError) {
+      console.error('[confirm-posting-schedule] Failed to fetch accounts:', accountsError);
+    }
+
+    const platformAccountMap: Record<string, string> = {};
+    for (const acct of (accounts ?? [])) {
+      platformAccountMap[acct.platform] = acct.outstand_social_account_id;
+    }
+
     const posts = drafts as DraftPost[];
     let scheduledCount = 0;
     let failedCount = 0;
+    const failedPosts: Array<{ id: string; platform: string; reason: string }> = [];
 
     // Queue each draft post with Outstand via outstand-proxy
     for (const post of posts) {
+      if (!platformAccountMap[post.platform]) {
+        await admin
+          .from('donny_scheduled_posts')
+          .update({
+            status: 'failed',
+            metadata: {
+              ...(post.metadata ?? {}),
+              outstand_error: 'no_connected_account_for_platform',
+              failed_at: new Date().toISOString(),
+            },
+          })
+          .eq('id', post.id);
+        failedPosts.push({ id: post.id, platform: post.platform, reason: 'no_connected_account_for_platform' });
+        failedCount++;
+        continue;
+      }
+
       try {
         const outstandResp = await fetch(`${SUPABASE_URL}/functions/v1/outstand-proxy/v1/posts`, {
           method: 'POST',
@@ -113,11 +151,13 @@ serve(async (req: Request) => {
             content_type: post.content_type,
             scheduled_at: post.scheduled_at,
             hashtags: post.hashtags,
+            social_account_ids: [platformAccountMap[post.platform]],
           }),
         });
 
         if (outstandResp.ok) {
           const outstandData = await outstandResp.json().catch(() => null);
+          const outstandPostId = outstandData?.data?.post?.id ?? outstandData?.post?.id ?? null;
 
           const { error: updateError } = await admin
             .from('donny_scheduled_posts')
@@ -126,6 +166,7 @@ serve(async (req: Request) => {
               metadata: {
                 ...(post.metadata ?? {}),
                 outstand_response: outstandData,
+                outstand_post_id: outstandPostId,
                 confirmed_at: new Date().toISOString(),
               },
             })
@@ -197,6 +238,7 @@ serve(async (req: Request) => {
         success: true,
         scheduled_count: scheduledCount,
         failed_count: failedCount,
+        failed_posts: failedPosts,
         campaign_status: campaignStatus,
       }),
       { status: 200, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } }
