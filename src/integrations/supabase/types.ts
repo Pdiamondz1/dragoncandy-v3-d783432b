@@ -397,6 +397,7 @@ export type Database = {
           country: string | null
           created_at: string | null
           description: string | null
+          disconnected_stripe_account_id: string | null
           employee_count_range: string | null
           facebook_url: string | null
           founded_year: number | null
@@ -439,6 +440,7 @@ export type Database = {
           country?: string | null
           created_at?: string | null
           description?: string | null
+          disconnected_stripe_account_id?: string | null
           employee_count_range?: string | null
           facebook_url?: string | null
           founded_year?: number | null
@@ -481,6 +483,7 @@ export type Database = {
           country?: string | null
           created_at?: string | null
           description?: string | null
+          disconnected_stripe_account_id?: string | null
           employee_count_range?: string | null
           facebook_url?: string | null
           founded_year?: number | null
@@ -1053,6 +1056,7 @@ export type Database = {
           campaign_id: string
           content_template: string | null
           created_at: string | null
+          deliverable_id: string | null
           id: string
           party_role: string
           prompted_at: string | null
@@ -1065,6 +1069,7 @@ export type Database = {
           campaign_id: string
           content_template?: string | null
           created_at?: string | null
+          deliverable_id?: string | null
           id?: string
           party_role: string
           prompted_at?: string | null
@@ -1077,6 +1082,7 @@ export type Database = {
           campaign_id?: string
           content_template?: string | null
           created_at?: string | null
+          deliverable_id?: string | null
           id?: string
           party_role?: string
           prompted_at?: string | null
@@ -1090,6 +1096,13 @@ export type Database = {
             columns: ["campaign_id"]
             isOneToOne: false
             referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_social_hooks_deliverable_id_fkey"
+            columns: ["deliverable_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_deliverables"
             referencedColumns: ["id"]
           },
         ]
@@ -1244,6 +1257,7 @@ export type Database = {
           delivery_type: string | null
           description: string | null
           duplicated_from: string | null
+          escrow_checkout_session_id: string | null
           escrow_payment_intent_id: string | null
           escrow_status: string | null
           estimated_creation_minutes: number | null
@@ -1254,6 +1268,8 @@ export type Database = {
           org_id: string | null
           org_unit_id: string | null
           platforms: string[] | null
+          posting_preferences: Json | null
+          posting_schedule_status: string | null
           pricing_type: string | null
           status: Database["public"]["Enums"]["campaign_status"]
           style: string | null
@@ -1279,6 +1295,7 @@ export type Database = {
           delivery_type?: string | null
           description?: string | null
           duplicated_from?: string | null
+          escrow_checkout_session_id?: string | null
           escrow_payment_intent_id?: string | null
           escrow_status?: string | null
           estimated_creation_minutes?: number | null
@@ -1289,6 +1306,8 @@ export type Database = {
           org_id?: string | null
           org_unit_id?: string | null
           platforms?: string[] | null
+          posting_preferences?: Json | null
+          posting_schedule_status?: string | null
           pricing_type?: string | null
           status?: Database["public"]["Enums"]["campaign_status"]
           style?: string | null
@@ -1314,6 +1333,7 @@ export type Database = {
           delivery_type?: string | null
           description?: string | null
           duplicated_from?: string | null
+          escrow_checkout_session_id?: string | null
           escrow_payment_intent_id?: string | null
           escrow_status?: string | null
           estimated_creation_minutes?: number | null
@@ -1324,6 +1344,8 @@ export type Database = {
           org_id?: string | null
           org_unit_id?: string | null
           platforms?: string[] | null
+          posting_preferences?: Json | null
+          posting_schedule_status?: string | null
           pricing_type?: string | null
           status?: Database["public"]["Enums"]["campaign_status"]
           style?: string | null
@@ -1532,6 +1554,7 @@ export type Database = {
           country: string | null
           created_at: string | null
           creator_name: string
+          disconnected_stripe_account_id: string | null
           facebook_url: string | null
           id: string
           instagram_url: string | null
@@ -1574,6 +1597,7 @@ export type Database = {
           country?: string | null
           created_at?: string | null
           creator_name: string
+          disconnected_stripe_account_id?: string | null
           facebook_url?: string | null
           id?: string
           instagram_url?: string | null
@@ -1616,6 +1640,7 @@ export type Database = {
           country?: string | null
           created_at?: string | null
           creator_name?: string
+          disconnected_stripe_account_id?: string | null
           facebook_url?: string | null
           id?: string
           instagram_url?: string | null
@@ -2252,6 +2277,80 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "donny_oauth_clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      donny_scheduled_posts: {
+        Row: {
+          ai_reasoning: string | null
+          ai_suggested_time: boolean | null
+          campaign_id: string | null
+          caption: string | null
+          content_type: string
+          created_at: string | null
+          deliverable_id: string | null
+          hashtags: string[] | null
+          id: string
+          media_urls: string[] | null
+          metadata: Json | null
+          plan_group_id: string | null
+          plan_order: number | null
+          platform: string
+          published_at: string | null
+          scheduled_at: string
+          status: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          ai_reasoning?: string | null
+          ai_suggested_time?: boolean | null
+          campaign_id?: string | null
+          caption?: string | null
+          content_type: string
+          created_at?: string | null
+          deliverable_id?: string | null
+          hashtags?: string[] | null
+          id?: string
+          media_urls?: string[] | null
+          metadata?: Json | null
+          plan_group_id?: string | null
+          plan_order?: number | null
+          platform: string
+          published_at?: string | null
+          scheduled_at: string
+          status?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          ai_reasoning?: string | null
+          ai_suggested_time?: boolean | null
+          campaign_id?: string | null
+          caption?: string | null
+          content_type?: string
+          created_at?: string | null
+          deliverable_id?: string | null
+          hashtags?: string[] | null
+          id?: string
+          media_urls?: string[] | null
+          metadata?: Json | null
+          plan_group_id?: string | null
+          plan_order?: number | null
+          platform?: string
+          published_at?: string | null
+          scheduled_at?: string
+          status?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "donny_scheduled_posts_deliverable_id_fkey"
+            columns: ["deliverable_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_deliverables"
             referencedColumns: ["id"]
           },
         ]
@@ -3422,10 +3521,10 @@ export type Database = {
           email_notifications: boolean | null
           id: string
           message_notifications: boolean | null
+          preferences_matrix: Json | null
           push_notifications: boolean | null
           updated_at: string
           user_id: string
-          preferences_matrix: Json | null
         }
         Insert: {
           campaign_notifications?: boolean | null
@@ -3433,10 +3532,10 @@ export type Database = {
           email_notifications?: boolean | null
           id?: string
           message_notifications?: boolean | null
+          preferences_matrix?: Json | null
           push_notifications?: boolean | null
           updated_at?: string
           user_id: string
-          preferences_matrix?: Json | null
         }
         Update: {
           campaign_notifications?: boolean | null
@@ -3444,10 +3543,10 @@ export type Database = {
           email_notifications?: boolean | null
           id?: string
           message_notifications?: boolean | null
+          preferences_matrix?: Json | null
           push_notifications?: boolean | null
           updated_at?: string
           user_id?: string
-          preferences_matrix?: Json | null
         }
         Relationships: []
       }
@@ -3545,6 +3644,7 @@ export type Database = {
           created_at: string
           deleted_at: string | null
           description: string | null
+          disconnected_stripe_account_id: string | null
           facebook_url: string | null
           id: string
           instagram_url: string | null
@@ -3574,6 +3674,7 @@ export type Database = {
           created_at?: string
           deleted_at?: string | null
           description?: string | null
+          disconnected_stripe_account_id?: string | null
           facebook_url?: string | null
           id?: string
           instagram_url?: string | null
@@ -3603,6 +3704,7 @@ export type Database = {
           created_at?: string
           deleted_at?: string | null
           description?: string | null
+          disconnected_stripe_account_id?: string | null
           facebook_url?: string | null
           id?: string
           instagram_url?: string | null
@@ -4143,54 +4245,76 @@ export type Database = {
       }
       push_notifications: {
         Row: {
+          action_url: string | null
+          actor_id: string | null
+          actor_name: string | null
           body: string
+          category: string | null
           created_at: string
           data: Json | null
+          icon: string | null
           id: string
           read_at: string | null
           sent_at: string | null
           title: string
-          user_id: string
           type: string | null
-          category: string | null
-          action_url: string | null
-          actor_id: string | null
-          actor_name: string | null
-          icon: string | null
+          user_id: string
         }
         Insert: {
+          action_url?: string | null
+          actor_id?: string | null
+          actor_name?: string | null
           body: string
+          category?: string | null
           created_at?: string
           data?: Json | null
+          icon?: string | null
           id?: string
           read_at?: string | null
           sent_at?: string | null
           title: string
-          user_id: string
           type?: string | null
-          category?: string | null
+          user_id: string
+        }
+        Update: {
           action_url?: string | null
           actor_id?: string | null
           actor_name?: string | null
-          icon?: string | null
-        }
-        Update: {
           body?: string
+          category?: string | null
           created_at?: string
           data?: Json | null
+          icon?: string | null
           id?: string
           read_at?: string | null
           sent_at?: string | null
           title?: string
-          user_id?: string
           type?: string | null
-          category?: string | null
-          action_url?: string | null
-          actor_id?: string | null
-          actor_name?: string | null
-          icon?: string | null
+          user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "push_notifications_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "message_participant_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "push_notifications_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "push_notifications_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "safe_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       review_responses: {
         Row: {
@@ -4903,17 +5027,30 @@ export type Database = {
         Args: { p_application_id: string }
         Returns: Json
       }
-      apply_to_campaign: {
-        Args: {
-          p_campaign_id: string
-          p_creator_id: string
-          p_intro_message: string
-          p_is_counter_offer?: boolean
-          p_proposed_rate: number
-          p_proposed_timeline?: string
-        }
-        Returns: Json
-      }
+      apply_to_campaign:
+        | {
+            Args: {
+              p_campaign_id: string
+              p_creator_id: string
+              p_intro_message: string
+              p_is_counter_offer?: boolean
+              p_proposed_rate: number
+              p_proposed_timeline?: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_campaign_id: string
+              p_creator_id: string
+              p_intro_message: string
+              p_is_counter_offer?: boolean
+              p_portfolio_url?: string
+              p_proposed_rate: number
+              p_proposed_timeline?: string
+            }
+            Returns: Json
+          }
       can_create_application: {
         Args: { p_campaign_id: string; p_creator_id: string }
         Returns: boolean
