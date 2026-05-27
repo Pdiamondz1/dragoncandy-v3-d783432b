@@ -46,6 +46,7 @@ export function useOrgDragonSharePosts(orgId?: string | null) {
         `)
         .eq('target_org_id', orgId!)
         .eq('status', 'verified')
+        .is('flagged_at', null)
         .order('submitted_at', { ascending: false });
       if (error) throw error;
       return data as DragonSharePostWithRelations[];

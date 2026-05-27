@@ -3,16 +3,25 @@ import { safeUrl } from '@/lib/safeUrl';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { useCreatorDragonSharePosts } from '@/hooks/useDragonShare';
 import { DragonShareSubmitSheet } from '@/components/dragonshare/DragonShareSubmitSheet';
-import { DragonShareExplainer } from '@/components/dragonshare/DragonShareExplainer';
+import { DragonShareHowItWorks } from '@/components/dragonshare/DragonShareHowItWorks';
+import { DragonShareQuickTip } from '@/components/dragonshare/DragonShareQuickTip';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Sparkles, ExternalLink, Clock, CheckCircle, XCircle } from 'lucide-react';
-import type { DragonSharePostWithRelations, PostStatus } from '@/types/dragonshare';
-import { Coachmark } from '@/components/guidance/Coachmark';
+import { ExternalLink, Clock, CheckCircle } from 'lucide-react';
+import type { DragonSharePostWithRelations } from '@/types/dragonshare';
 import { PrerequisiteGate } from '@/components/PrerequisiteGate';
-import { useResolvedLogoUrl } from '@/hooks/useSignedUrl';
+import { useResolvedLogoUrl, useSignedUrl } from '@/hooks/useSignedUrl';
 
 type Tab = 'submitted' | 'boosted' | 'expired';
+
+// Statuses that can currently occur (pending_verification removed — all posts start as verified now)
+type ActivePostStatus = 'verified' | 'rejected' | 'expired';
+
+const statusConfig: Record<ActivePostStatus, { label: string; className: string; icon: React.ElementType }> = {
+  verified: { label: 'Verified', className: 'bg-green-100 text-green-800', icon: CheckCircle },
+  rejected: { label: 'Rejected', className: 'bg-red-100 text-red-800', icon: Clock },
+  expired: { label: 'Expired', className: 'bg-dc-teal/10 text-dc-teal', icon: Clock },
+};
 
 const CreatorDragonShare: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>('submitted');
@@ -20,13 +29,13 @@ const CreatorDragonShare: React.FC = () => {
   const { data: posts, isLoading } = useCreatorDragonSharePosts();
 
   const filteredPosts = (posts ?? []).filter((p) => {
-    if (activeTab === 'submitted') return p.status === 'pending_verification' || p.status === 'verified';
+    if (activeTab === 'submitted') return p.status === 'verified';
     if (activeTab === 'boosted') return p.boost_status === 'boosted';
     return p.status === 'expired' || p.boost_status === 'expired';
   });
 
   const tabs: { key: Tab; label: string; count: number }[] = [
-    { key: 'submitted', label: 'Submitted', count: (posts ?? []).filter((p) => p.status === 'pending_verification' || p.status === 'verified').length },
+    { key: 'submitted', label: 'Submitted', count: (posts ?? []).filter((p) => p.status === 'verified').length },
     { key: 'boosted', label: 'Boosted', count: (posts ?? []).filter((p) => p.boost_status === 'boosted').length },
     { key: 'expired', label: 'Expired', count: (posts ?? []).filter((p) => p.status === 'expired' || p.boost_status === 'expired').length },
   ];
@@ -43,12 +52,12 @@ const CreatorDragonShare: React.FC = () => {
             </p>
           </div>
           <div className="flex items-center justify-end">
-            <Coachmark coachmarkKey="dragonshare_submit" title="Paste a link, tag a brand, get paid" body="Submit posts you've already made about brands you love.">
-              <Button onClick={() => setSubmitOpen(true)} className="rounded-full bg-dc-teal-btn hover:bg-dc-teal-btn-hover text-white font-semibold px-6">
-                <Sparkles className="mr-2 h-4 w-4" />
-                Submit Post
-              </Button>
-            </Coachmark>
+            <Button
+              onClick={() => setSubmitOpen(true)}
+              className="rounded-full bg-dc-teal-btn hover:bg-dc-teal-btn-hover text-white font-semibold px-6"
+            >
+              + Share Content
+            </Button>
           </div>
         </div>
 
@@ -59,8 +68,8 @@ const CreatorDragonShare: React.FC = () => {
               onClick={() => setActiveTab(tab.key)}
               className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
                 activeTab === tab.key
-                  ? 'bg-teal-500 text-white'
-                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                  ? 'bg-dc-teal-btn text-white'
+                  : 'bg-dc-teal/10 text-dc-text-muted hover:bg-dc-teal/20'
               }`}
             >
               {tab.label}
@@ -74,19 +83,22 @@ const CreatorDragonShare: React.FC = () => {
         {isLoading ? (
           <div className="space-y-4">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-24 animate-pulse rounded-2xl bg-muted" />
+              <div key={i} className="h-24 animate-pulse rounded-2xl bg-dc-teal/10" />
             ))}
           </div>
         ) : filteredPosts.length === 0 ? (
-          <DragonShareExplainer role="creator" onSubmit={() => setSubmitOpen(true)} />
+          <div className="space-y-4">
+            <DragonShareHowItWorks role="creator" />
+            <DragonShareQuickTip role="creator" />
+          </div>
         ) : (
           <div className="space-y-4">
-            <div className="flex justify-end">
-              <DragonShareExplainer role="creator" collapsed />
+            <DragonShareHowItWorks role="creator" />
+            <div className="grid gap-4 lg:grid-cols-2">
+              {filteredPosts.map((post) => (
+                <CreatorPostCard key={post.id} post={post} />
+              ))}
             </div>
-            {filteredPosts.map((post) => (
-              <CreatorPostCard key={post.id} post={post} />
-            ))}
           </div>
         )}
       </div>
@@ -99,22 +111,28 @@ const CreatorDragonShare: React.FC = () => {
 
 function CreatorPostCard({ post }: { post: DragonSharePostWithRelations }) {
   const resolvedLogoUrl = useResolvedLogoUrl(post.target_org?.logo_url);
-  const statusConfig: Record<PostStatus, { label: string; className: string; icon: React.ElementType }> = {
-    pending_verification: { label: 'Awaiting verification', className: 'bg-yellow-100 text-yellow-800', icon: Clock },
-    verified: { label: 'Verified', className: 'bg-green-100 text-green-800', icon: CheckCircle },
-    rejected: { label: 'Rejected', className: 'bg-red-100 text-red-800', icon: XCircle },
-    expired: { label: 'Expired', className: 'bg-gray-100 text-gray-800', icon: Clock },
-  };
+  const contentImageUrl = useSignedUrl('dragonshare-content', post.content_file_path);
 
-  const config = statusConfig[post.status];
+  const status = post.status as ActivePostStatus;
+  const config = statusConfig[status] ?? statusConfig.verified;
   const StatusIcon = config.icon;
   const boost = post.boosts?.[0];
 
+  const platformLabel = post.platform ?? 'direct upload';
+
   return (
     <div className="rounded-2xl border bg-card p-4 space-y-3">
+      {contentImageUrl && (
+        <img
+          src={contentImageUrl}
+          alt="Submitted content"
+          className="w-full rounded-xl object-cover max-h-48"
+        />
+      )}
+
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium capitalize">{post.platform}</span>
+          <span className="text-sm font-medium capitalize">{platformLabel}</span>
           <span className="text-xs text-muted-foreground capitalize">{post.content_type}</span>
         </div>
         <div className={`flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium ${config.className}`}>
@@ -130,7 +148,7 @@ function CreatorPostCard({ post }: { post: DragonSharePostWithRelations }) {
       <div className="flex items-center justify-between text-sm">
         <div className="flex items-center gap-2">
           {resolvedLogoUrl && (
-            <img src={resolvedLogoUrl} alt="Brand logo" className="h-5 w-5 rounded-full" />
+            <img src={resolvedLogoUrl} alt="Brand logo" className="h-5 w-5 rounded-full ring-2 ring-teal-400" />
           )}
           <span className="text-muted-foreground">{post.target_org?.name ?? 'Unknown org'}</span>
         </div>
@@ -140,23 +158,18 @@ function CreatorPostCard({ post }: { post: DragonSharePostWithRelations }) {
               +${(boost.creator_payout_cents / 100).toFixed(0)}
             </span>
           )}
-          <a href={safeUrl(post.post_url) ?? '#'} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground">
-            <ExternalLink className="h-4 w-4" />
-          </a>
+          {post.post_url && (
+            <a
+              href={safeUrl(post.post_url) ?? undefined}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <ExternalLink className="h-4 w-4" />
+            </a>
+          )}
         </div>
       </div>
-
-      {post.status === 'rejected' && post.rejection_reason && (
-        <p className="text-xs text-red-600 bg-red-50 rounded-lg p-2">{post.rejection_reason}</p>
-      )}
-
-      {post.donny_recommended_tier && post.status !== 'rejected' && (
-        <div className="flex items-center gap-2 text-xs text-teal-600">
-          <Sparkles className="h-3 w-3" />
-          Donny recommends ${post.donny_recommended_tier} boost
-          {post.donny_reach_estimate && ` · Est. reach: ${post.donny_reach_estimate.toLocaleString()}`}
-        </div>
-      )}
     </div>
   );
 }
