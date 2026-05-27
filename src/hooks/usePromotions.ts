@@ -27,9 +27,9 @@ export interface Promotion {
 export interface PromotionSubmission {
   id: string;
   promotion_id: string;
-  customer_name: string;
+  customer_name: string | null;
   customer_email: string;
-  customer_phone: string;
+  customer_phone: string | null;
   video_url: string;
   video_duration: number | null;
   marketing_rights_accepted: boolean;
@@ -49,7 +49,7 @@ export interface DiscountCode {
   submission_id: string;
   code: string;
   customer_email: string;
-  customer_phone: string;
+  customer_phone: string | null;
   is_redeemed: boolean;
   redeemed_at: string | null;
   redeemed_by: string | null;
@@ -234,6 +234,29 @@ export const usePromotions = () => {
     totalCodes: discountCodes?.length || 0,
   };
 
+  const { data: socialPostStats } = useQuery({
+    queryKey: ['cgc-social-stats'],
+    queryFn: async () => {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) return { total: 0, byPlatform: {}, publishedSubmissionIds: [] as string[] };
+      const { data } = await supabase
+        .from('donny_scheduled_posts')
+        .select('id, platform, metadata')
+        .eq('user_id', authUser.id)
+        .eq('status', 'published')
+        .filter('metadata->>source', 'eq', 'promotion');
+      const byPlatform: Record<string, number> = {};
+      const publishedSubmissionIds: string[] = [];
+      (data || []).forEach(post => {
+        const p = post.platform || 'unknown';
+        byPlatform[p] = (byPlatform[p] || 0) + 1;
+        const subId = (post.metadata as Record<string, unknown>)?.submission_id;
+        if (typeof subId === 'string') publishedSubmissionIds.push(subId);
+      });
+      return { total: data?.length || 0, byPlatform, publishedSubmissionIds };
+    },
+  });
+
   // Create promotion mutation
   const createPromotion = useMutation({
     mutationFn: async (data: CreatePromotionData) => {
@@ -324,14 +347,24 @@ export const usePromotions = () => {
 
   // Review submission (approve/reject)
   const reviewSubmission = useMutation({
-    mutationFn: async ({ 
-      submissionId, 
-      status, 
-      rejectionReason 
-    }: { 
-      submissionId: string; 
-      status: 'approved' | 'rejected'; 
+    mutationFn: async ({
+      submissionId,
+      status,
+      rejectionReason,
+      socialAction,
+      platforms,
+      caption,
+      hashtags,
+      scheduledAt,
+    }: {
+      submissionId: string;
+      status: 'approved' | 'rejected';
       rejectionReason?: string;
+      socialAction?: 'post_now' | 'schedule' | 'skip';
+      platforms?: string[];
+      caption?: string;
+      hashtags?: string[];
+      scheduledAt?: string;
     }) => {
       const submission = pendingSubmissions?.find(s => s.id === submissionId);
       if (!submission) throw new Error('Submission not found');
@@ -426,6 +459,29 @@ export const usePromotions = () => {
         // Don't throw - the approval still succeeded
       }
 
+      // Record social posting outcome
+      const normalizePlatform = (p: string) => p === 'x' ? 'twitter' : p;
+
+      if (socialAction && socialAction !== 'skip' && platforms && platforms.length > 0) {
+        const postStatus = socialAction === 'post_now' ? 'published' : 'scheduled';
+        await supabase.from('donny_scheduled_posts').insert({
+          user_id: (await supabase.auth.getUser()).data.user?.id,
+          status: postStatus,
+          caption: caption || '',
+          hashtags: hashtags || [],
+          media_urls: submission.video_url ? [submission.video_url] : [],
+          platform: normalizePlatform(platforms[0]),
+          content_type: 'video',
+          scheduled_at: scheduledAt || new Date().toISOString(),
+          metadata: {
+            source: 'promotion',
+            promotion_id: submission.promotion_id,
+            submission_id: submissionId,
+            platforms: platforms.map(normalizePlatform),
+          },
+        });
+      }
+
       return { status, discountCode };
     },
     onSuccess: (result) => {
@@ -433,6 +489,7 @@ export const usePromotions = () => {
       queryClient.invalidateQueries({ queryKey: ['approved-submissions'] });
       queryClient.invalidateQueries({ queryKey: ['rejected-submissions'] });
       queryClient.invalidateQueries({ queryKey: ['discount-codes'] });
+      queryClient.invalidateQueries({ queryKey: ['cgc-social-stats'] });
       
       if (result.status === 'approved') {
         toast.success('Submission approved! Discount code sent to customer.');
@@ -502,6 +559,7 @@ export const usePromotions = () => {
     discountCodes,
     businessProfile,
     stats,
+    socialPostStats,
     isLoading: promotionsLoading || submissionsLoading || codesLoading || approvedLoading || rejectedLoading,
     isError: promotionsError,
     refetch: refetchPromotions,
