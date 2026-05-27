@@ -1,4 +1,3 @@
-export type MonetizationType = 'brand_boost' | 'performance_bounty' | 'affiliate';
 export type ContentType = 'photo' | 'video' | 'reel' | 'story' | 'carousel';
 export type PostPlatform = 'instagram' | 'tiktok' | 'youtube' | 'x' | 'facebook' | 'other';
 export type PostStatus = 'pending_verification' | 'verified' | 'rejected' | 'expired';
@@ -21,23 +20,18 @@ export interface DragonSharePost {
   creator_id: string;
   target_org_id: string;
   target_org_unit_id: string | null;
-  monetization_type: MonetizationType;
   content_type: ContentType;
-  platform: PostPlatform;
-  post_url: string;
+  platform: PostPlatform | null;
+  post_url: string | null;
+  content_file_path: string | null;
   screenshot_url: string | null;
   caption: string | null;
   hashtags: string[];
   mentions: string[];
   status: PostStatus;
-  verification_method: string | null;
-  verified_at: string | null;
-  verified_by: string | null;
-  rejection_reason: string | null;
-  donny_recommended_tier: number | null;
-  donny_score: number | null;
-  donny_reach_estimate: number | null;
   boost_status: BoostStatus;
+  flagged_at: string | null;
+  flagged_by: string | null;
   submitted_at: string;
   expires_at: string;
   created_at: string;
@@ -76,11 +70,4 @@ export interface DragonSharePayout {
   status: PayoutStatus;
   failure_reason: string | null;
   processed_at: string | null;
-}
-
-export interface DonnyScoreResult {
-  estimated_reach: number;
-  recommended_tier: 25 | 50 | 100 | 250;
-  match_quality: number;
-  rationale: string;
 }
