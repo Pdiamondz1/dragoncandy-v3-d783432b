@@ -16,9 +16,9 @@ import {
 import { User, Mail, Phone } from 'lucide-react';
 
 const formSchema = z.object({
-  customerName: z.string().min(2, 'Name must be at least 2 characters'),
+  customerName: z.string().optional(),
   customerEmail: z.string().email('Please enter a valid email address'),
-  customerPhone: z.string().min(10, 'Please enter a valid phone number'),
+  customerPhone: z.string().optional(),
   marketingRightsAccepted: z.boolean().refine(val => val === true, {
     message: 'You must agree to the marketing rights to receive your discount',
   }),
@@ -55,12 +55,12 @@ export const CustomerInfoForm: React.FC<CustomerInfoFormProps> = ({
           name="customerName"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Your Name</FormLabel>
+              <FormLabel>Your Name <span className="text-dc-text-muted font-normal">(optional)</span></FormLabel>
               <FormControl>
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
-                    placeholder="John Doe"
+                    placeholder="Name (optional)"
                     className="pl-10"
                     {...field}
                   />
@@ -98,13 +98,13 @@ export const CustomerInfoForm: React.FC<CustomerInfoFormProps> = ({
           name="customerPhone"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Phone Number</FormLabel>
+              <FormLabel>Phone Number <span className="text-dc-text-muted font-normal">(optional)</span></FormLabel>
               <FormControl>
                 <div className="relative">
                   <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
                     type="tel"
-                    placeholder="+1 (555) 000-0000"
+                    placeholder="Phone (optional)"
                     className="pl-10"
                     {...field}
                   />

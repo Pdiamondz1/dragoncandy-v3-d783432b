@@ -43,7 +43,7 @@ const VideoCard: React.FC<VideoCardProps> = ({ submission }) => {
       a.href = url;
       const ext = submission.video_url?.split('.').pop()?.split('?')[0] || 'mp4';
       const prefix = isImageUrl(submission.video_url) ? 'photo' : 'video';
-      a.download = `${prefix}-${submission.customer_name.replace(/\s+/g, '-')}-${format(new Date(submission.created_at), 'yyyy-MM-dd')}.${ext}`;
+      a.download = `${prefix}-${(submission.customer_name ?? 'customer').replace(/\s+/g, '-')}-${format(new Date(submission.created_at), 'yyyy-MM-dd')}.${ext}`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);

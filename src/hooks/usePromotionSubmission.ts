@@ -4,9 +4,9 @@ import { toast } from '@/hooks/use-toast';
 
 interface SubmissionData {
   promotionId: string;
-  customerName: string;
+  customerName?: string;
   customerEmail: string;
-  customerPhone: string;
+  customerPhone?: string;
   videoFile: File;
   marketingRightsAccepted: boolean;
   socialHandles?: Record<string, string>;
@@ -18,15 +18,15 @@ export const usePromotionSubmission = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCheckingDuplicate, setIsCheckingDuplicate] = useState(false);
 
-  const checkExistingSubmission = async (promotionId: string, email: string, phone: string) => {
+  const checkExistingSubmission = async (promotionId: string, email: string) => {
     setIsCheckingDuplicate(true);
     try {
       const { data, error } = await supabase
         .from('promotion_submissions')
         .select('id')
         .eq('promotion_id', promotionId)
+        .eq('customer_email', email)
         .in('status', ['pending', 'approved'])
-        .or(`customer_email.eq.${email},customer_phone.eq.${phone}`)
         .maybeSingle();
 
       if (error) throw error;
@@ -45,8 +45,7 @@ export const usePromotionSubmission = () => {
       // Check for existing submission
       const hasExisting = await checkExistingSubmission(
         data.promotionId,
-        data.customerEmail,
-        data.customerPhone
+        data.customerEmail
       );
 
       if (hasExisting) {
@@ -87,9 +86,9 @@ export const usePromotionSubmission = () => {
         .from('promotion_submissions')
         .insert({
           promotion_id: data.promotionId,
-          customer_name: data.customerName,
+          customer_name: data.customerName || null,
           customer_email: data.customerEmail,
-          customer_phone: data.customerPhone,
+          customer_phone: data.customerPhone || null,
           video_url: urlData.publicUrl,
           video_duration: videoDuration,
           marketing_rights_accepted: data.marketingRightsAccepted,

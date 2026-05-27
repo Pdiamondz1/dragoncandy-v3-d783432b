@@ -7,8 +7,8 @@ import { htmlEscape } from "../_shared/htmlEscape.ts";
 interface PromotionNotificationRequest {
   type: 'video_approved' | 'video_rejected';
   customerEmail: string;
-  customerPhone: string;
-  customerName: string;
+  customerPhone?: string;
+  customerName?: string;
   discountCode?: string;
   businessName: string;
   discountType: string;
@@ -45,8 +45,9 @@ const handler = async (req: Request): Promise<Response> => {
     const data: PromotionNotificationRequest = await req.json();
     console.log("Received notification request:", { ...data, customerPhone: "***" });
 
+    const displayName = data.customerName || 'there';
     const esc = {
-      customerName: htmlEscape(data.customerName),
+      customerName: htmlEscape(displayName),
       businessName: htmlEscape(data.businessName),
       discountCode: htmlEscape(data.discountCode ?? ''),
       rejectionReason: htmlEscape(data.rejectionReason ?? ''),
@@ -194,58 +195,63 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send SMS via Twilio (only for approvals)
     if (data.type === 'video_approved' && data.discountCode) {
-      const twilioSid = Deno.env.get("TWILIO_ACCOUNT_SID");
-      const twilioToken = Deno.env.get("TWILIO_AUTH_TOKEN");
-      const twilioPhone = Deno.env.get("TWILIO_PHONE_NUMBER");
-
-      if (twilioSid && twilioToken && twilioPhone && data.customerPhone) {
-        try {
-          const discountDisplay = data.discountType === 'percentage' 
-            ? `${data.discountValue}%` 
-            : `$${data.discountValue}`;
-
-          const smsBody = `🎉 ${data.businessName}: Your discount code is ${data.discountCode} for ${discountDisplay} OFF! Show this at checkout. Thank you!`;
-
-          // Format phone number (ensure it has country code)
-          let formattedPhone = data.customerPhone.replace(/\D/g, '');
-          if (!formattedPhone.startsWith('1') && formattedPhone.length === 10) {
-            formattedPhone = '1' + formattedPhone;
-          }
-          if (!formattedPhone.startsWith('+')) {
-            formattedPhone = '+' + formattedPhone;
-          }
-
-          const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${twilioSid}/Messages.json`;
-          const authHeader = btoa(`${twilioSid}:${twilioToken}`);
-
-          const smsResponse = await fetch(twilioUrl, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Basic ${authHeader}`,
-              'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: new URLSearchParams({
-              To: formattedPhone,
-              From: twilioPhone,
-              Body: smsBody,
-            }),
-          });
-
-          const smsResult = await smsResponse.json();
-          
-          if (smsResponse.ok) {
-            console.log("SMS sent successfully:", smsResult.sid);
-            results.smsSent = true;
-          } else {
-            console.error("Twilio error:", smsResult);
-            results.errors.push(`SMS error: ${smsResult.message || 'Unknown error'}`);
-          }
-        } catch (smsError: any) {
-          console.error("Error sending SMS:", smsError);
-          results.errors.push(`SMS error: ${smsError.message}`);
-        }
+      // Skip SMS if no phone number provided
+      if (!data.customerPhone || data.customerPhone.trim() === '') {
+        console.warn('No customer phone provided, skipping SMS');
       } else {
-        console.log("Skipping SMS: Missing Twilio credentials or phone number");
+        const twilioSid = Deno.env.get("TWILIO_ACCOUNT_SID");
+        const twilioToken = Deno.env.get("TWILIO_AUTH_TOKEN");
+        const twilioPhone = Deno.env.get("TWILIO_PHONE_NUMBER");
+
+        if (twilioSid && twilioToken && twilioPhone) {
+          try {
+            const discountDisplay = data.discountType === 'percentage'
+              ? `${data.discountValue}%`
+              : `$${data.discountValue}`;
+
+            const smsBody = `🎉 ${data.businessName}: Your discount code is ${data.discountCode} for ${discountDisplay} OFF! Show this at checkout. Thank you!`;
+
+            // Format phone number (ensure it has country code)
+            let formattedPhone = data.customerPhone.replace(/\D/g, '');
+            if (!formattedPhone.startsWith('1') && formattedPhone.length === 10) {
+              formattedPhone = '1' + formattedPhone;
+            }
+            if (!formattedPhone.startsWith('+')) {
+              formattedPhone = '+' + formattedPhone;
+            }
+
+            const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${twilioSid}/Messages.json`;
+            const authHeader = btoa(`${twilioSid}:${twilioToken}`);
+
+            const smsResponse = await fetch(twilioUrl, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Basic ${authHeader}`,
+                'Content-Type': 'application/x-www-form-urlencoded',
+              },
+              body: new URLSearchParams({
+                To: formattedPhone,
+                From: twilioPhone,
+                Body: smsBody,
+              }),
+            });
+
+            const smsResult = await smsResponse.json();
+
+            if (smsResponse.ok) {
+              console.log("SMS sent successfully:", smsResult.sid);
+              results.smsSent = true;
+            } else {
+              console.error("Twilio error:", smsResult);
+              results.errors.push(`SMS error: ${smsResult.message || 'Unknown error'}`);
+            }
+          } catch (smsError: any) {
+            console.error("Error sending SMS:", smsError);
+            results.errors.push(`SMS error: ${smsError.message}`);
+          }
+        } else {
+          console.log("Skipping SMS: Missing Twilio credentials or phone number");
+        }
       }
     }
 
