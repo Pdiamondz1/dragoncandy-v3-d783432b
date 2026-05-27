@@ -23,31 +23,12 @@ export function useRestaurantSearch(searchTerm: string, enabled = true) {
   return useQuery({
     queryKey: ['restaurant-search', debouncedTerm],
     queryFn: async (): Promise<RestaurantSearchResult[]> => {
-      const query = supabase
-        .from('organizations')
-        .select(`
-          id, name, logo_url, org_type,
-          org_units ( address, brand_category )
-        `)
-        .is('deleted_at', null)
-        .eq('org_units.is_primary', true)
-        .ilike('name', `%${debouncedTerm}%`)
-        .limit(8);
-
-      const { data, error } = await query;
-      if (error) throw error;
-
-      return (data ?? []).map((org) => {
-        const unit = Array.isArray(org.org_units) ? org.org_units[0] : org.org_units;
-        return {
-          id: org.id,
-          name: org.name,
-          logo_url: org.logo_url,
-          org_type: org.org_type,
-          address: unit?.address ?? null,
-          brand_category: unit?.brand_category ?? null,
-        };
+      const { data, error } = await supabase.rpc('search_restaurants', {
+        search_term: debouncedTerm,
+        result_limit: 8,
       });
+      if (error) throw error;
+      return (data ?? []) as RestaurantSearchResult[];
     },
     enabled: enabled && debouncedTerm.trim().length > 0,
     staleTime: 30_000,

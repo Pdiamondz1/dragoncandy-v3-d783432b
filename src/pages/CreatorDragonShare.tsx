@@ -35,22 +35,11 @@ function usePreselectedOrg() {
     queryKey: ['preselected-org', restaurantId],
     queryFn: async (): Promise<RestaurantSearchResult | null> => {
       if (!restaurantId) return null;
-      const { data, error } = await supabase
-        .from('organizations')
-        .select('id, name, logo_url, org_type, org_units ( address, brand_category )')
-        .eq('id', restaurantId)
-        .eq('org_units.is_primary', true)
-        .maybeSingle();
-      if (error || !data) return null;
-      const unit = Array.isArray(data.org_units) ? data.org_units[0] : data.org_units;
-      return {
-        id: data.id,
-        name: data.name,
-        logo_url: data.logo_url,
-        org_type: data.org_type,
-        address: unit?.address ?? null,
-        brand_category: unit?.brand_category ?? null,
-      };
+      const { data, error } = await supabase.rpc('get_restaurant_by_org_id', {
+        target_org_id: restaurantId,
+      });
+      if (error || !data || data.length === 0) return null;
+      return data[0] as RestaurantSearchResult;
     },
     enabled: !!restaurantId,
   });
