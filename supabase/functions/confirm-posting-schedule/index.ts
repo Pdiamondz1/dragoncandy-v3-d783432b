@@ -100,23 +100,19 @@ serve(async (req: Request) => {
     // Queue each draft post with Outstand via outstand-proxy
     for (const post of posts) {
       try {
-        const outstandResp = await fetch(`${SUPABASE_URL}/functions/v1/outstand-proxy`, {
+        const outstandResp = await fetch(`${SUPABASE_URL}/functions/v1/outstand-proxy/v1/posts`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': authHeader,
           },
           body: JSON.stringify({
-            path: '/v1/posts',
-            method: 'POST',
-            payload: {
-              caption: post.caption,
-              media_urls: post.media_urls,
-              platform: post.platform,
-              content_type: post.content_type,
-              scheduled_at: post.scheduled_at,
-              hashtags: post.hashtags,
-            },
+            caption: post.caption,
+            media_urls: post.media_urls,
+            platform: post.platform,
+            content_type: post.content_type,
+            scheduled_at: post.scheduled_at,
+            hashtags: post.hashtags,
           }),
         });
 
