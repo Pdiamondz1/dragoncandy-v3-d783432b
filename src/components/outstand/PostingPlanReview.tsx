@@ -223,12 +223,14 @@ function PostingPlanReviewInner({
           ? `${post.caption}\n\n${post.hashtags.join(' ')}`
           : post.caption;
 
-        await crossPost.mutateAsync({
+        const result = await crossPost.mutateAsync({
           caption: fullCaption,
           mediaUrls: post.media_urls,
           accountIds,
           scheduledAt: post.scheduled_at,
         });
+
+        const outstandPostId = result?._outstandPostId ?? null;
 
         await supabase.from('donny_scheduled_posts').insert({
           user_id: user!.id,
@@ -242,6 +244,10 @@ function PostingPlanReviewInner({
           status: 'scheduled',
           plan_group_id: planGroupId,
           plan_order: post.plan_order,
+          metadata: {
+            outstand_post_id: outstandPostId,
+            social_account_ids: accountIds,
+          },
         });
       }
 

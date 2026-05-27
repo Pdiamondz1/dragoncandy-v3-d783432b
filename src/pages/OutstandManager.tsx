@@ -1,6 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import type { Post } from '@outstand-so/ui';
 import { Send, CalendarDays, BarChart3, MessageCircle, TrendingUp, Link as LinkIcon, RefreshCw, Handshake, FileText } from 'lucide-react';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -8,6 +9,7 @@ import { DragonCandyOutstandProvider, useOutstandConfig } from '@/integrations/o
 import { useAccounts, usePosts } from '@outstand-so/ui';
 import { ComposeTab } from '@/components/outstand/ComposeTab';
 import { CalendarTab } from '@/components/outstand/CalendarTab';
+import { PostManagementPanel } from '@/components/outstand/PostManagementPanel';
 import { PublishedTab } from '@/components/outstand/PublishedTab';
 import { EngagementTab } from '@/components/outstand/EngagementTab';
 import { AccountsTab } from '@/components/outstand/AccountsTab';
@@ -142,6 +144,13 @@ const OutstandManagerInner: React.FC = () => {
     [posts],
   );
 
+  const [selectedPost, setSelectedPost] = useState<Post | null>(null);
+  const [panelOpen, setPanelOpen] = useState(false);
+  const handlePostClick = useCallback((post: Post) => {
+    setSelectedPost(post);
+    setPanelOpen(true);
+  }, []);
+
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const refreshAll = async () => {
@@ -266,6 +275,7 @@ const OutstandManagerInner: React.FC = () => {
               onSwitchTab={setActiveTab}
               campaignDeadlines={campaignDeadlines ?? []}
               sponsorshipEvents={sponsorshipEvents ?? []}
+              onPostClick={handlePostClick}
             />
           </TabsContent>
           <TabsContent value="published">
@@ -287,6 +297,13 @@ const OutstandManagerInner: React.FC = () => {
           </TabsContent>
         </Tabs>
       </div>
+
+      <PostManagementPanel
+        post={selectedPost}
+        open={panelOpen}
+        onOpenChange={setPanelOpen}
+        onChanged={refetchPosts}
+      />
     </div>
   );
 };

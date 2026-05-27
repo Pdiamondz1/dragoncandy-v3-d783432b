@@ -13,6 +13,7 @@ import { isScheduled } from '@/lib/outstandUtils';
 import { toast } from 'sonner';
 import { type SponsorshipEvent } from '@/components/outstand/SponsorshipMarker';
 import { DonnyWeeklyPlanner } from './DonnyWeeklyPlanner';
+import { RescheduleConfirmDialog } from './RescheduleConfirmDialog';
 
 type CalendarView = 'day' | 'week' | 'month';
 
@@ -52,6 +53,11 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ posts, isLoading, onCh
   const [currentDate, setCurrentDate] = useState(() => initialDate ?? new Date());
   const [selectedDay, setSelectedDay] = useState(() => initialDate ?? new Date());
   const [platformFilter, setPlatformFilter] = useState<string>('all');
+  const [pendingReschedule, setPendingReschedule] = useState<{
+    post: Post;
+    newDate: Date;
+    isPast: boolean;
+  } | null>(null);
 
   const filteredPosts = useMemo(() => {
     if (platformFilter === 'all') return posts;
@@ -102,12 +108,11 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ posts, isLoading, onCh
     setView('day');
   }, []);
 
-  const handleReschedule = useCallback(async (post: Post, newDate: Date) => {
+  const executeReschedule = useCallback(async (post: Post, newDate: Date) => {
     if (!isScheduled(post)) return;
     try {
       const patchRes = await api.patch(`/posts/${post.id}`, { scheduledAt: newDate.toISOString() });
       if (!patchRes.success) {
-        // Fallback: delete + recreate
         const delRes = await api.delete(`/posts/${post.id}`);
         if (!delRes.success) throw new Error(delRes.error || 'Failed to delete post for reschedule');
         const createRes = await api.post('/posts', {
@@ -125,6 +130,19 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ posts, isLoading, onCh
       toast.error(`Reschedule failed: ${message}`);
     }
   }, [api, qc, onChanged]);
+
+  const handleReschedule = useCallback((post: Post, newDate: Date) => {
+    if (!isScheduled(post)) return;
+    const originalTime = post.scheduledAt ? new Date(post.scheduledAt) : new Date();
+    const isPast = originalTime.getTime() < Date.now();
+    setPendingReschedule({ post, newDate, isPast });
+  }, []);
+
+  const confirmReschedule = useCallback(async () => {
+    if (!pendingReschedule) return;
+    await executeReschedule(pendingReschedule.post, pendingReschedule.newDate);
+    setPendingReschedule(null);
+  }, [pendingReschedule, executeReschedule]);
 
   const handlePostClick = useCallback((post: Post) => {
     if (onPostClick) {
@@ -277,6 +295,15 @@ export const CalendarTab: React.FC<CalendarTabProps> = ({ posts, isLoading, onCh
       </div>
 
       <DonnyWeeklyPlanner />
+
+      <RescheduleConfirmDialog
+        open={!!pendingReschedule}
+        onOpenChange={(open) => { if (!open) setPendingReschedule(null); }}
+        post={pendingReschedule?.post ?? null}
+        newDate={pendingReschedule?.newDate ?? null}
+        isPast={pendingReschedule?.isPast ?? false}
+        onConfirm={confirmReschedule}
+      />
     </div>
   );
 };

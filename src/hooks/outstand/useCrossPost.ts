@@ -51,7 +51,8 @@ export function useCrossPost(options?: { onPublished?: () => void }) {
         }
         throw new Error(errMsg);
       }
-      return data;
+      const outstandPostId = data?.data?.post?.id ?? data?.post?.id ?? data?.id ?? null;
+      return { ...data, _outstandPostId: outstandPostId };
     },
     onSuccess: (_data, variables) => {
       qc.invalidateQueries({ queryKey: ['outstand'] });

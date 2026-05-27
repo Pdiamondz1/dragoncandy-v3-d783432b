@@ -8,6 +8,7 @@ import { useOutstandConfig, DragonCandyOutstandProvider } from '@/integrations/o
 import { useCrossPost } from '@/hooks/outstand/useCrossPost';
 import { DonnyCaptionRewriter } from './DonnyCaptionRewriter';
 import { MediaPreviewGrid, type MediaItem } from './MediaPreviewGrid';
+import { DeliverableScheduleReview, type DeliverableSlot } from './DeliverableScheduleReview';
 import { ScheduleConfirmation } from './ScheduleConfirmation';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -25,7 +26,7 @@ export interface SocialPostPromptProps {
   userRole: 'restaurant' | 'creator' | 'brand';
 }
 
-type SchedulingState = 'composing' | 'scheduling' | 'confirmed';
+type SchedulingState = 'composing' | 'multi-review' | 'scheduling' | 'confirmed';
 
 function formatSuggestedTime(iso: string): string {
   const d = new Date(iso);
@@ -98,6 +99,8 @@ function SocialPostPromptInner({
   const [schedulingState, setSchedulingState] = useState<SchedulingState>('composing');
   const [confirmedAt, setConfirmedAt] = useState<string | null>(null);
   const [confirmedPlatforms, setConfirmedPlatforms] = useState<string[]>([]);
+  const [deliverableSlots, setDeliverableSlots] = useState<DeliverableSlot[]>([]);
+  const [sameDay, setSameDay] = useState(false);
 
   const resolvedItems: MediaItem[] = mediaItemsProp ?? mediaUrls.map((url) => ({ url }));
   const captionLoadedRef = useRef<string | null>(null);
@@ -138,6 +141,8 @@ function SocialPostPromptInner({
       setSchedulingState('composing');
       setConfirmedAt(null);
       setConfirmedPlatforms([]);
+      setDeliverableSlots([]);
+      setSameDay(false);
       captionLoadedRef.current = null;
       return;
     }
@@ -230,7 +235,7 @@ function SocialPostPromptInner({
     ? `${caption}\n\n${hashtags.join(' ')}`
     : caption;
 
-  const syncScheduledPost = async (scheduleTime: string) => {
+  const syncScheduledPost = async (scheduleTime: string, outstandPostId?: string | null, socialAccountIds?: string[]) => {
     if (!user?.id || !campaignId) return;
     const platforms = accounts
       .filter((a) => selectedAccountIds.includes(a.id))
@@ -256,6 +261,10 @@ function SocialPostPromptInner({
           hashtags,
           media_urls: mediaUrls,
           platform: platforms[0] ?? 'instagram',
+          metadata: {
+            outstand_post_id: outstandPostId ?? null,
+            social_account_ids: socialAccountIds ?? selectedAccountIds,
+          },
         })
         .eq('id', existing.data.id);
     } else {
@@ -273,6 +282,10 @@ function SocialPostPromptInner({
           status: 'scheduled' as string,
           ai_suggested_time: !!suggestedTime,
           ai_reasoning: suggestedTime ? 'Donny picked the optimal posting time' : null,
+          metadata: {
+            outstand_post_id: outstandPostId ?? null,
+            social_account_ids: socialAccountIds ?? selectedAccountIds,
+          },
         });
     }
   };
@@ -280,6 +293,21 @@ function SocialPostPromptInner({
   const handleScheduleForBestTime = () => {
     if (selectedAccountIds.length === 0) return;
     const scheduleTime = getValidScheduleTime(suggestedTime);
+
+    if (resolvedItems.length > 1) {
+      const baseTime = new Date(scheduleTime).getTime();
+      const DAY_MS = 24 * 60 * 60 * 1000;
+      const slots: DeliverableSlot[] = resolvedItems.map((item, i) => ({
+        mediaUrl: item.url,
+        mediaItem: item,
+        scheduledAt: new Date(baseTime + i * DAY_MS).toISOString(),
+      }));
+      setDeliverableSlots(slots);
+      setSameDay(false);
+      setSchedulingState('multi-review');
+      return;
+    }
+
     const platforms = accounts
       .filter((a) => selectedAccountIds.includes(a.id))
       .map((a) => a.network ?? 'unknown');
@@ -288,8 +316,9 @@ function SocialPostPromptInner({
     crossPost.mutate(
       { caption: fullCaption, mediaUrls, accountIds: selectedAccountIds, scheduledAt: scheduleTime },
       {
-        onSuccess: async () => {
-          await syncScheduledPost(scheduleTime);
+        onSuccess: async (data) => {
+          const outstandPostId = data?._outstandPostId ?? null;
+          await syncScheduledPost(scheduleTime, outstandPostId, selectedAccountIds);
           setConfirmedAt(scheduleTime);
           setConfirmedPlatforms(platforms);
           setSchedulingState('confirmed');
@@ -299,6 +328,33 @@ function SocialPostPromptInner({
         },
       },
     );
+  };
+
+  const handleScheduleAllDeliverables = async () => {
+    if (selectedAccountIds.length === 0 || deliverableSlots.length === 0) return;
+    const platforms = accounts
+      .filter((a) => selectedAccountIds.includes(a.id))
+      .map((a) => a.network ?? 'unknown');
+
+    setSchedulingState('scheduling');
+    try {
+      for (const slot of deliverableSlots) {
+        const result = await crossPost.mutateAsync({
+          caption: fullCaption,
+          mediaUrls: [slot.mediaUrl],
+          accountIds: selectedAccountIds,
+          scheduledAt: slot.scheduledAt,
+        });
+
+        const outstandPostId = result?._outstandPostId ?? null;
+        await syncScheduledPost(slot.scheduledAt, outstandPostId, selectedAccountIds);
+      }
+      setConfirmedAt(deliverableSlots[0].scheduledAt);
+      setConfirmedPlatforms(platforms);
+      setSchedulingState('confirmed');
+    } catch {
+      setSchedulingState('multi-review');
+    }
   };
 
   const handlePostNow = () => {
@@ -322,6 +378,26 @@ function SocialPostPromptInner({
       campaignTitle={campaignTitle}
       fileCount={mediaUrls.length}
       onDone={() => onOpenChange(false)}
+    />
+  ) : null;
+
+  const multiReviewContent = schedulingState === 'multi-review' ? (
+    <DeliverableScheduleReview
+      slots={deliverableSlots}
+      onSlotsChange={setDeliverableSlots}
+      sameDay={sameDay}
+      onSameDayChange={setSameDay}
+      onScheduleAll={handleScheduleAllDeliverables}
+      isScheduling={false}
+    />
+  ) : schedulingState === 'scheduling' && deliverableSlots.length > 1 ? (
+    <DeliverableScheduleReview
+      slots={deliverableSlots}
+      onSlotsChange={setDeliverableSlots}
+      sameDay={sameDay}
+      onSameDayChange={setSameDay}
+      onScheduleAll={handleScheduleAllDeliverables}
+      isScheduling={true}
     />
   ) : null;
 
@@ -497,7 +573,7 @@ function SocialPostPromptInner({
     </div>
   );
 
-  const content = confirmedContent ?? composingContent;
+  const content = confirmedContent ?? multiReviewContent ?? composingContent;
 
   if (isMobile) {
     return (
@@ -505,7 +581,7 @@ function SocialPostPromptInner({
         <SheetContent side="bottom" className="rounded-t-2xl pb-8 max-h-[85vh] flex flex-col">
           <SheetHeader className="shrink-0">
             <SheetTitle className="text-sm font-bold text-gray-900">
-              {schedulingState === 'confirmed' ? 'Post Scheduled' : 'Ready to Share'}
+              {schedulingState === 'confirmed' ? 'Post Scheduled' : schedulingState === 'multi-review' || (schedulingState === 'scheduling' && deliverableSlots.length > 1) ? 'Schedule Deliverables' : 'Ready to Share'}
             </SheetTitle>
           </SheetHeader>
           <div className="mt-4 overflow-y-auto flex-1 min-h-0">{content}</div>
@@ -519,7 +595,7 @@ function SocialPostPromptInner({
       <DialogContent className="sm:max-w-md max-h-[85vh] flex flex-col">
         <DialogHeader className="shrink-0">
           <DialogTitle className="text-sm font-bold text-gray-900">
-            {schedulingState === 'confirmed' ? 'Post Scheduled' : 'Ready to Share'}
+            {schedulingState === 'confirmed' ? 'Post Scheduled' : schedulingState === 'multi-review' || (schedulingState === 'scheduling' && deliverableSlots.length > 1) ? 'Schedule Deliverables' : 'Ready to Share'}
           </DialogTitle>
         </DialogHeader>
         <div className="overflow-y-auto flex-1 min-h-0">{content}</div>

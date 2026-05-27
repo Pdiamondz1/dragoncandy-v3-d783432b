@@ -325,6 +325,17 @@ async function enforceScope(args: {
       }
     }
     if (!allowed) {
+      const { data: localPost } = await admin
+        .from("donny_scheduled_posts")
+        .select("user_id")
+        .eq("metadata->>outstand_post_id", postId)
+        .limit(1)
+        .maybeSingle();
+      if (localPost && localPost.user_id === ctx.userId) {
+        allowed = true;
+      }
+    }
+    if (!allowed) {
       return jsonResponse(403, { error: "forbidden_post" });
     }
     return null;
