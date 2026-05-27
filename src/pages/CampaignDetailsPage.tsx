@@ -541,8 +541,7 @@ const CampaignDetailsPage: React.FC = () => {
                 </div>
                 <PaymentSummary
                   completedAt={collaborationData.completed_at ?? null}
-                  budgetMin={campaign.budget_min}
-                  budgetMax={campaign.budget_max}
+                  amountPaid={agreedValue ?? null}
                 />
                 <CampaignScheduleSection
                   campaignId={campaign.id}
