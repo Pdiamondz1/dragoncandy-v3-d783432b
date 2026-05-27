@@ -21,39 +21,13 @@ export function useRestaurantBrowse() {
   const { data: restaurants, isLoading } = useQuery({
     queryKey: ['restaurant-browse', debouncedSearch, filters.cuisine],
     queryFn: async (): Promise<RestaurantSearchResult[]> => {
-      let query = supabase
-        .from('organizations')
-        .select('id, name, logo_url, org_type, org_units ( address, brand_category )')
-        .is('deleted_at', null)
-        .eq('org_units.is_primary', true)
-        .limit(30);
-
-      if (debouncedSearch.trim()) {
-        query = query.ilike('name', `%${debouncedSearch}%`);
-      }
-
-      const { data, error } = await query;
-      if (error) throw error;
-
-      let results: RestaurantSearchResult[] = (data ?? []).map((org) => {
-        const unit = Array.isArray(org.org_units) ? org.org_units[0] : org.org_units;
-        return {
-          id: org.id,
-          name: org.name,
-          logo_url: org.logo_url,
-          org_type: org.org_type,
-          address: unit?.address ?? null,
-          brand_category: unit?.brand_category ?? null,
-        };
+      const { data, error } = await supabase.rpc('search_restaurants', {
+        search_term: debouncedSearch,
+        cuisine_filter: filters.cuisine ?? undefined,
+        result_limit: 30,
       });
-
-      if (filters.cuisine) {
-        results = results.filter(
-          (r) => r.brand_category?.toLowerCase() === filters.cuisine!.toLowerCase()
-        );
-      }
-
-      return results;
+      if (error) throw error;
+      return (data ?? []) as RestaurantSearchResult[];
     },
     staleTime: 30_000,
   });
@@ -61,14 +35,9 @@ export function useRestaurantBrowse() {
   const { data: cuisines } = useQuery({
     queryKey: ['restaurant-cuisines'],
     queryFn: async (): Promise<string[]> => {
-      const { data, error } = await supabase
-        .from('org_units')
-        .select('brand_category')
-        .eq('is_primary', true)
-        .not('brand_category', 'is', null);
+      const { data, error } = await supabase.rpc('list_restaurant_cuisines');
       if (error) throw error;
-      const unique = [...new Set((data ?? []).map((u) => u.brand_category!).filter(Boolean))];
-      return unique.sort();
+      return (data ?? []).map((row: { cuisine: string }) => row.cuisine);
     },
     staleTime: 60_000,
   });
