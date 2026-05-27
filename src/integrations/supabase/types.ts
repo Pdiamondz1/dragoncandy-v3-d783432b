@@ -1,4 +1,4 @@
-export type Json =
+﻿export type Json =
   | string
   | number
   | boolean
@@ -392,6 +392,7 @@ export type Database = {
           brand_social_guidelines: Json | null
           budget_range: string | null
           business_name: string
+          cgc_posting_preferences: Json | null
           city: string | null
           company_size: string | null
           country: string | null
@@ -435,6 +436,7 @@ export type Database = {
           brand_social_guidelines?: Json | null
           budget_range?: string | null
           business_name: string
+          cgc_posting_preferences?: Json | null
           city?: string | null
           company_size?: string | null
           country?: string | null
@@ -478,6 +480,7 @@ export type Database = {
           brand_social_guidelines?: Json | null
           budget_range?: string | null
           business_name?: string
+          cgc_posting_preferences?: Json | null
           city?: string | null
           company_size?: string | null
           country?: string | null
@@ -1719,7 +1722,7 @@ export type Database = {
           code: string
           created_at: string
           customer_email: string
-          customer_phone: string
+          customer_phone: string | null
           email_sent: boolean | null
           expires_at: string | null
           id: string
@@ -1734,7 +1737,7 @@ export type Database = {
           code: string
           created_at?: string
           customer_email: string
-          customer_phone: string
+          customer_phone?: string | null
           email_sent?: boolean | null
           expires_at?: string | null
           id?: string
@@ -1749,7 +1752,7 @@ export type Database = {
           code?: string
           created_at?: string
           customer_email?: string
-          customer_phone?: string
+          customer_phone?: string | null
           email_sent?: boolean | null
           expires_at?: string | null
           id?: string
@@ -4107,8 +4110,8 @@ export type Database = {
         Row: {
           created_at: string
           customer_email: string
-          customer_name: string
-          customer_phone: string
+          customer_name: string | null
+          customer_phone: string | null
           id: string
           marketing_rights_accepted: boolean
           promotion_id: string
@@ -4123,8 +4126,8 @@ export type Database = {
         Insert: {
           created_at?: string
           customer_email: string
-          customer_name: string
-          customer_phone: string
+          customer_name?: string | null
+          customer_phone?: string | null
           id?: string
           marketing_rights_accepted?: boolean
           promotion_id: string
@@ -4139,8 +4142,8 @@ export type Database = {
         Update: {
           created_at?: string
           customer_email?: string
-          customer_name?: string
-          customer_phone?: string
+          customer_name?: string | null
+          customer_phone?: string | null
           id?: string
           marketing_rights_accepted?: boolean
           promotion_id?: string
@@ -5436,3 +5439,4 @@ export const Constants = {
     },
   },
 } as const
+
