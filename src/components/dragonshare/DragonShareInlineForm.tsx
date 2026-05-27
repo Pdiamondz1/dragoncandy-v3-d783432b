@@ -1,0 +1,147 @@
+// src/components/dragonshare/DragonShareInlineForm.tsx
+import { useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Upload, Link, X, Loader2 } from 'lucide-react';
+import { useDragonShareSubmitForm } from '@/hooks/useDragonShareSubmitForm';
+import { RestaurantTypeahead } from '@/components/dragonshare/RestaurantTypeahead';
+import type { RestaurantSearchResult } from '@/hooks/useRestaurantSearch';
+
+const PLATFORM_LABELS: Record<string, string> = {
+  instagram: 'Instagram',
+  tiktok: 'TikTok',
+  youtube: 'YouTube',
+  x: 'X',
+  facebook: 'Facebook',
+};
+
+interface Props {
+  preselectedOrg?: RestaurantSearchResult | null;
+}
+
+export function DragonShareInlineForm({ preselectedOrg }: Props) {
+  const form = useDragonShareSubmitForm();
+
+  useEffect(() => {
+    if (preselectedOrg && !form.selectedOrg) {
+      form.setSelectedOrg(preselectedOrg);
+    }
+  }, [preselectedOrg]);
+
+  return (
+    <div className="bg-white border-2 border-dc-teal/30 rounded-2xl p-5 sticky top-6 space-y-4">
+      <div>
+        <h2 className="text-base font-bold text-dc-teal">Share Your Content</h2>
+        <p className="text-xs text-dc-text-muted mt-0.5">Upload your content, tag the restaurant, get paid.</p>
+      </div>
+
+      {/* Upload area */}
+      <div>
+        <label className="text-[11px] text-dc-text-muted uppercase tracking-wide font-medium block mb-1.5">
+          Content
+        </label>
+        <input
+          ref={form.fileInputRef}
+          type="file"
+          accept="image/*,video/*"
+          className="hidden"
+          onChange={form.handleFileSelect}
+        />
+        {!form.uploadedUrl ? (
+          <button
+            onClick={() => form.fileInputRef.current?.click()}
+            disabled={form.uploading}
+            className="w-full border-2 border-dashed border-dc-teal/30 rounded-2xl p-6 text-center hover:border-dc-teal/60 transition-colors bg-dc-teal/[0.03]"
+          >
+            {form.uploading ? (
+              <Loader2 className="h-8 w-8 mx-auto text-dc-teal animate-spin mb-2" />
+            ) : (
+              <Upload className="h-8 w-8 mx-auto text-dc-teal mb-2" />
+            )}
+            <p className="font-semibold text-sm text-dc-text">
+              {form.uploading ? 'Uploading...' : 'Tap to upload photo or video'}
+            </p>
+            <p className="text-xs text-dc-text-muted mt-1">from your camera roll or files</p>
+          </button>
+        ) : (
+          <div className="border border-dc-teal/30 rounded-2xl overflow-hidden bg-dc-teal/5">
+            {form.uploadedFileType?.startsWith('video/') ? (
+              <div className="h-32 bg-dc-dark/10 flex items-center justify-center">
+                <span className="text-3xl">🎬</span>
+              </div>
+            ) : (
+              <img src={form.uploadedUrl} alt="Upload preview" className="h-32 w-full object-cover" />
+            )}
+            <div className="px-3 py-2 flex items-center justify-between">
+              <span className="text-xs text-dc-teal font-medium truncate">✓ {form.uploadedFileName}</span>
+              <button onClick={form.removeUpload} className="text-dc-text-muted hover:text-dc-text">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Post link (optional) */}
+      <div>
+        <label className="text-[11px] text-dc-text-muted uppercase tracking-wide font-medium block mb-1.5">
+          Post Link <span className="text-dc-text-muted/60">(optional)</span>
+        </label>
+        <div className="relative">
+          <Link className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-dc-text-muted" />
+          <Input
+            placeholder="Paste social media link..."
+            value={form.postUrl}
+            onChange={(e) => form.setPostUrl(e.target.value)}
+            className="rounded-xl pl-9"
+          />
+        </div>
+        {form.detectedPlatform && (
+          <div className="flex items-center gap-1.5 mt-1.5">
+            <span className="text-xs font-semibold text-dc-teal">
+              {PLATFORM_LABELS[form.detectedPlatform] ?? form.detectedPlatform} detected
+            </span>
+            <span className="text-[10px] text-dc-text-muted">· from link</span>
+          </div>
+        )}
+        <p className="text-[10px] text-dc-text-muted/70 mt-1">
+          Adds credibility — restaurants boost linked posts more often
+        </p>
+      </div>
+
+      {/* Tag restaurant */}
+      <div>
+        <label className="text-[11px] text-dc-text-muted uppercase tracking-wide font-medium block mb-1.5">
+          Tag Restaurant
+        </label>
+        <RestaurantTypeahead
+          selectedOrg={form.selectedOrg}
+          onSelect={form.setSelectedOrg}
+          onClear={() => form.setSelectedOrg(null)}
+        />
+      </div>
+
+      {/* Submit button */}
+      <Button
+        className="w-full rounded-full bg-dc-teal-btn hover:bg-dc-teal-btn-hover text-white font-bold"
+        disabled={!form.canSubmit}
+        onClick={form.handleSubmit}
+      >
+        {form.submitting ? (
+          <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Submitting…</>
+        ) : (
+          'Submit'
+        )}
+      </Button>
+
+      {/* Quick tip */}
+      <div className="bg-dc-pink/10 border border-dc-teal/10 rounded-xl p-3">
+        <p className="text-[11px] text-dc-pink-accent font-semibold mb-1">⚡ Quick tip</p>
+        <p className="text-[11px] text-dc-text-muted leading-relaxed">
+          When a restaurant boosts your post, it gets cross-posted to all your connected platforms — and theirs.
+          More platforms connected = more reach = higher boost value.
+        </p>
+      </div>
+    </div>
+  );
+}
