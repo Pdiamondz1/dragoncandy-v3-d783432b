@@ -234,6 +234,21 @@ const PromotionDetailPage: React.FC = () => {
     enabled: !!promotionId,
   });
 
+  const downloadQR = useCallback(() => {
+    const canvas = qrRef.current?.querySelector('canvas');
+    if (!canvas) {
+      toast({ title: 'Failed to download', variant: 'destructive' });
+      return;
+    }
+    const url = canvas.toDataURL('image/png');
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `qr-${(promotion?.title ?? 'promotion').replace(/\s+/g, '-').toLowerCase()}.png`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }, [promotion?.title]);
+
   if (promoLoading) {
     return (
       <DashboardLayout userRole="business_client">
@@ -283,21 +298,6 @@ const PromotionDetailPage: React.FC = () => {
       toast({ title: 'Failed to copy', variant: 'destructive' });
     }
   };
-
-  const downloadQR = useCallback(() => {
-    const canvas = qrRef.current?.querySelector('canvas');
-    if (!canvas) {
-      toast({ title: 'Failed to download', variant: 'destructive' });
-      return;
-    }
-    const url = canvas.toDataURL('image/png');
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `qr-${promotion.title.replace(/\s+/g, '-').toLowerCase()}.png`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-  }, [promotion.title]);
 
   const handleEditSave = async (data: EditPromotionFormData) => {
     const updateData: UpdatePromotionData = {
