@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { safeUrl } from '@/lib/safeUrl';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { useCreatorDragonSharePosts } from '@/hooks/useDragonShare';
 import { DragonShareSubmitSheet } from '@/components/dragonshare/DragonShareSubmitSheet';
+import { DragonShareInlineForm } from '@/components/dragonshare/DragonShareInlineForm';
 import { DragonShareHowItWorks } from '@/components/dragonshare/DragonShareHowItWorks';
 import { DragonShareQuickTip } from '@/components/dragonshare/DragonShareQuickTip';
 import { Button } from '@/components/ui/button';
@@ -11,10 +13,12 @@ import { ExternalLink, Clock, CheckCircle } from 'lucide-react';
 import type { DragonSharePostWithRelations } from '@/types/dragonshare';
 import { PrerequisiteGate } from '@/components/PrerequisiteGate';
 import { useResolvedLogoUrl, useSignedUrl } from '@/hooks/useSignedUrl';
+import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from '@tanstack/react-query';
+import type { RestaurantSearchResult } from '@/hooks/useRestaurantSearch';
 
 type Tab = 'submitted' | 'boosted' | 'expired';
 
-// Statuses that can currently occur (pending_verification removed — all posts start as verified now)
 type ActivePostStatus = 'verified' | 'rejected' | 'expired';
 
 const statusConfig: Record<ActivePostStatus, { label: string; className: string; icon: React.ElementType }> = {
@@ -23,10 +27,54 @@ const statusConfig: Record<ActivePostStatus, { label: string; className: string;
   expired: { label: 'Expired', className: 'bg-dc-teal/10 text-dc-teal', icon: Clock },
 };
 
+function usePreselectedOrg() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const restaurantId = searchParams.get('restaurant');
+
+  const { data: org } = useQuery({
+    queryKey: ['preselected-org', restaurantId],
+    queryFn: async (): Promise<RestaurantSearchResult | null> => {
+      if (!restaurantId) return null;
+      const { data, error } = await supabase
+        .from('organizations')
+        .select('id, name, logo_url, org_type, org_units ( address, brand_category )')
+        .eq('id', restaurantId)
+        .eq('org_units.is_primary', true)
+        .maybeSingle();
+      if (error || !data) return null;
+      const unit = Array.isArray(data.org_units) ? data.org_units[0] : data.org_units;
+      return {
+        id: data.id,
+        name: data.name,
+        logo_url: data.logo_url,
+        org_type: data.org_type,
+        address: unit?.address ?? null,
+        brand_category: unit?.brand_category ?? null,
+      };
+    },
+    enabled: !!restaurantId,
+  });
+
+  useEffect(() => {
+    if (restaurantId && org) {
+      const next = new URLSearchParams(searchParams);
+      next.delete('restaurant');
+      setSearchParams(next, { replace: true });
+    }
+  }, [org, restaurantId, searchParams, setSearchParams]);
+
+  return org ?? null;
+}
+
 const CreatorDragonShare: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>('submitted');
   const [submitOpen, setSubmitOpen] = useState(false);
   const { data: posts, isLoading } = useCreatorDragonSharePosts();
+  const preselectedOrg = usePreselectedOrg();
+
+  useEffect(() => {
+    if (preselectedOrg) setSubmitOpen(true);
+  }, [preselectedOrg]);
 
   const filteredPosts = (posts ?? []).filter((p) => {
     if (activeTab === 'submitted') return p.status === 'verified';
@@ -43,67 +91,81 @@ const CreatorDragonShare: React.FC = () => {
   return (
     <DashboardLayout userRole="content_creator">
       <PrerequisiteGate feature="use DragonShare">
-      <div className="space-y-6 pt-4 max-w-3xl mx-auto">
-        <div className="rounded-2xl bg-gradient-to-br from-dc-teal/10 to-pink-50 border border-dc-teal/15 p-5 space-y-4">
-          <div>
+        <div className="space-y-6 pt-4">
+          {/* Page header */}
+          <div className="rounded-2xl bg-gradient-to-br from-dc-teal/10 to-pink-50 border border-dc-teal/15 p-5">
             <h1 className="text-2xl font-bold tracking-tight">DragonShare</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Submit your organic posts and earn when brands boost them
+              Submit your organic posts and earn when restaurants boost them
             </p>
-          </div>
-          <div className="flex items-center justify-end">
-            <Button
-              onClick={() => setSubmitOpen(true)}
-              className="rounded-full bg-dc-teal-btn hover:bg-dc-teal-btn-hover text-white font-semibold px-6"
-            >
-              + Share Content
-            </Button>
-          </div>
-        </div>
-
-        <div className="flex gap-2">
-          {tabs.map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
-              className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
-                activeTab === tab.key
-                  ? 'bg-dc-teal-btn text-white'
-                  : 'bg-dc-teal/10 text-dc-text-muted hover:bg-dc-teal/20'
-              }`}
-            >
-              {tab.label}
-              {tab.count > 0 && (
-                <Badge variant="secondary" className="ml-2">{tab.count}</Badge>
-              )}
-            </button>
-          ))}
-        </div>
-
-        {isLoading ? (
-          <div className="space-y-4">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="h-24 animate-pulse rounded-2xl bg-dc-teal/10" />
-            ))}
-          </div>
-        ) : filteredPosts.length === 0 ? (
-          <div className="space-y-4">
-            <DragonShareHowItWorks role="creator" />
-            <DragonShareQuickTip role="creator" />
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <DragonShareHowItWorks role="creator" />
-            <div className="grid gap-4 lg:grid-cols-2">
-              {filteredPosts.map((post) => (
-                <CreatorPostCard key={post.id} post={post} />
-              ))}
+            {/* Mobile-only: show Share Content button */}
+            <div className="flex items-center justify-end mt-3 lg:hidden">
+              <Button
+                onClick={() => setSubmitOpen(true)}
+                className="rounded-full bg-dc-teal-btn hover:bg-dc-teal-btn-hover text-white font-semibold px-6"
+              >
+                + Share Content
+              </Button>
             </div>
           </div>
-        )}
-      </div>
 
-      <DragonShareSubmitSheet open={submitOpen} onOpenChange={setSubmitOpen} />
+          {/* Desktop: side-by-side / Mobile: single column */}
+          <div className="flex flex-col lg:flex-row lg:gap-6 lg:items-start">
+            {/* Left: Inline form (desktop only) */}
+            <div className="hidden lg:block lg:w-[440px] lg:flex-shrink-0">
+              <DragonShareInlineForm preselectedOrg={preselectedOrg} />
+            </div>
+
+            {/* Right: Post history */}
+            <div className="flex-1 min-w-0 space-y-4">
+              <div className="flex gap-2">
+                {tabs.map((tab) => (
+                  <button
+                    key={tab.key}
+                    onClick={() => setActiveTab(tab.key)}
+                    className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+                      activeTab === tab.key
+                        ? 'bg-dc-teal-btn text-white'
+                        : 'bg-dc-teal/10 text-dc-text-muted hover:bg-dc-teal/20'
+                    }`}
+                  >
+                    {tab.label}
+                    {tab.count > 0 && (
+                      <Badge variant="secondary" className="ml-2">{tab.count}</Badge>
+                    )}
+                  </button>
+                ))}
+              </div>
+
+              {isLoading ? (
+                <div className="space-y-4">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="h-24 animate-pulse rounded-2xl bg-dc-teal/10" />
+                  ))}
+                </div>
+              ) : filteredPosts.length === 0 ? (
+                <div className="space-y-4">
+                  <DragonShareHowItWorks role="creator" />
+                  <DragonShareQuickTip role="creator" />
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <DragonShareHowItWorks role="creator" />
+                  <div className="grid gap-4 lg:grid-cols-2">
+                    {filteredPosts.map((post) => (
+                      <CreatorPostCard key={post.id} post={post} />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Mobile-only: bottom sheet */}
+        <div className="lg:hidden">
+          <DragonShareSubmitSheet open={submitOpen} onOpenChange={setSubmitOpen} />
+        </div>
       </PrerequisiteGate>
     </DashboardLayout>
   );
