@@ -407,17 +407,6 @@ export const usePromotions = () => {
           throw codeError;
         }
 
-        // Fire social hook for auto-draft (fire-and-forget)
-        try {
-          await supabase.functions.invoke('fire-promotion-social-hook', {
-            body: {
-              promotion_id: submission.promotion_id,
-              submission_id: submissionId,
-            },
-          });
-        } catch (socialHookErr) {
-          console.warn('[usePromotions] Social hook failed (non-blocking):', socialHookErr);
-        }
       }
 
       // Send notification via edge function
