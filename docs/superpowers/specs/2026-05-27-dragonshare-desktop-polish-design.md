@@ -72,9 +72,9 @@ Replace the current `OrgPickerButton` grid with a typeahead autocomplete dropdow
 
 1. Creator focuses the "Tag Restaurant" input field.
 2. On idle (no text typed), show nothing or a "Start typing to search..." hint.
-3. As the creator types, fire a debounced (300ms) query to `organizations` joined with `business_profiles` for location data.
-4. A dropdown appears below the input showing up to 8 matching results.
-5. Each result row shows: restaurant logo (or initial fallback), name, city/state, and a cuisine/category badge.
+3. As the creator types, fire a debounced (300ms) query to `organizations` joined with `org_units` (filtered to `is_primary = true`) for location and category data.
+4. A dropdown appears below the input showing up to 8 matching results. While the query is in flight, show a loading spinner or skeleton rows in the dropdown.
+5. Each result row shows: restaurant logo (or initial fallback), name, location (from `org_units.address`), and a cuisine/category badge (from `org_units.brand_category`).
 6. Clicking a result selects it, closes the dropdown, and shows the selected restaurant as a chip in the input area.
 7. The chip has an `×` button to clear the selection and re-enable search.
 8. At the bottom of the dropdown, a persistent "Browse all restaurants →" link navigates to the browse page.
@@ -84,16 +84,15 @@ Replace the current `OrgPickerButton` grid with a typeahead autocomplete dropdow
 
 ```sql
 SELECT o.id, o.name, o.logo_url, o.org_type,
-       bp.city, bp.postal_code, bp.brand_category, bp.industry
+       ou.address, ou.brand_category, ou.lat, ou.lng
 FROM organizations o
-JOIN business_profiles bp ON bp.id = o.owner_id
+LEFT JOIN org_units ou ON ou.org_id = o.id AND ou.is_primary = true
 WHERE o.deleted_at IS NULL
-  AND o.name ILIKE '%search_term%'
-  OR bp.city ILIKE '%search_term%'
+  AND (o.name ILIKE '%search_term%' OR ou.address ILIKE '%search_term%')
 LIMIT 8
 ```
 
-The query searches both restaurant name and city, so typing "Hoboken" surfaces all Hoboken restaurants.
+The query joins `org_units` (the location table) directly via `org_id`. Uses `LEFT JOIN` so orgs without units still appear. Searches both restaurant name and address, so typing "Hoboken" surfaces all Hoboken restaurants. Parentheses around the `OR` prevent returning soft-deleted orgs that match only by address.
 
 **Selected state UI:**
 
@@ -134,7 +133,7 @@ Wrapped in `DashboardLayout` with `userRole="content_creator"`. Follows the same
 **Components:**
 
 - **Back link**: Teal text with left arrow, navigates to `/dashboard/creator/dragonshare`.
-- **Search bar**: Full-width rounded pill input. Filters by restaurant name or city. Debounced 300ms.
+- **Search bar**: Full-width rounded pill input. Filters by restaurant name or address (via `org_units`). Debounced 300ms.
 - **Cuisine filter pills**: Horizontal scrollable row of pill buttons. "All" is active by default (dc-teal-btn fill). Other pills show dynamically populated `brand_category` values from the data. Active pill gets `bg-dc-teal-btn text-white`, inactive gets `bg-dc-teal/10 text-dc-text-muted`.
 - **Result count**: Shows total matching restaurants.
 - **Filters button**: Opens a side sheet (right-aligned) with Location filter — city input and postal code input, matching the `AdvancedCreatorFilters` pattern.
@@ -148,13 +147,13 @@ Wrapped in `DashboardLayout` with `userRole="content_creator"`. Follows the same
 │              [Cuisine] ← │  badge, top-right
 ├──────────────────────────┤
 │  Restaurant Name         │
-│  📍 City, State          │
-│  ★★★★☆ 4.2    Select → │
+│  📍 Location             │
+│               Select →   │
 └──────────────────────────┘
 ```
 
-- **Header area**: Gradient background (color derived from first letter or logo), restaurant logo centered (56px rounded square), cuisine badge top-right.
-- **Body**: Restaurant name (bold), city/state with pin icon, star rating (from `business_profiles.average_rating`) and "Select →" link.
+- **Header area**: Gradient background (color derived from first letter or logo), restaurant logo centered (56px rounded square), cuisine badge top-right (from `org_units.brand_category`).
+- **Body**: Restaurant name (bold), location with pin icon (from `org_units.address`, parsed to city/state), and "Select →" link. Star ratings omitted for now — `average_rating` lives on `business_profiles` and requires a multi-hop join; can be added later when review data is meaningful.
 - **Grid**: `grid-cols-3` on desktop (`lg:`), `grid-cols-2` on tablet (`md:`), `grid-cols-1` on mobile.
 - **Interaction**: Clicking the card or "Select" navigates back to `/dashboard/creator/dragonshare?restaurant={orgId}`, where the page reads the query param and pre-fills the form with the selected restaurant.
 
@@ -183,8 +182,9 @@ On mobile, the same flow works: the browse page navigates back, the DragonShare 
 | `src/components/dragonshare/RestaurantBrowseHeader.tsx` | Search bar + cuisine pills + filter controls |
 | `src/components/dragonshare/RestaurantBrowseFilters.tsx` | Side sheet with location filters |
 | `src/pages/DragonShareBrowseRestaurants.tsx` | Browse restaurants page |
-| `src/hooks/useRestaurantSearch.ts` | Debounced search hook querying orgs + business_profiles |
+| `src/hooks/useRestaurantSearch.ts` | Debounced search hook querying orgs + org_units |
 | `src/hooks/useRestaurantBrowse.ts` | Browse page state: filters, sorting, pagination |
+| `src/hooks/useDragonShareSubmitForm.ts` | Shared form logic (upload, URL parsing, restaurant selection, submission) for desktop inline form and mobile sheet |
 
 **Modified files:**
 
@@ -202,8 +202,7 @@ The submit form logic (file upload, URL parsing, restaurant selection, submissio
 
 | Viewport | Layout |
 |----------|--------|
-| Mobile (< `md`) | Current layout: single column, "+ Share Content" button opens bottom sheet. Sheet gets typeahead search. |
-| Tablet (`md` to `lg`) | Transitional: could use stacked layout (form above, history below) with constrained form width. |
+| Mobile (< `lg`) | Current layout: single column, "+ Share Content" button opens bottom sheet. Sheet gets typeahead search. This includes tablet viewports — the bottom sheet pattern works well up to `lg`. |
 | Desktop (`lg`+) | Side-by-side: form left (440px), history right (flex-1). Inline form, no sheet. |
 
 ### 7. Empty States
@@ -219,7 +218,7 @@ Show `DragonShareHowItWorks` component explaining the flow, followed by `DragonS
 
 ## Files Affected
 
-### New (8 files)
+### New (9 files)
 - `src/components/dragonshare/DragonShareInlineForm.tsx`
 - `src/components/dragonshare/RestaurantTypeahead.tsx`
 - `src/components/dragonshare/RestaurantCard.tsx`
@@ -228,6 +227,7 @@ Show `DragonShareHowItWorks` component explaining the flow, followed by `DragonS
 - `src/pages/DragonShareBrowseRestaurants.tsx`
 - `src/hooks/useRestaurantSearch.ts`
 - `src/hooks/useRestaurantBrowse.ts`
+- `src/hooks/useDragonShareSubmitForm.ts`
 
 ### Modified (3 files)
 - `src/pages/CreatorDragonShare.tsx`
@@ -235,4 +235,4 @@ Show `DragonShareHowItWorks` component explaining the flow, followed by `DragonS
 - Routes configuration (App.tsx or equivalent)
 
 ### No database migrations required
-All data fields already exist: `organizations.name`, `organizations.logo_url`, `business_profiles.city`, `business_profiles.postal_code`, `business_profiles.brand_category`, `business_profiles.industry`, `business_profiles.average_rating`.
+All data fields already exist: `organizations.name`, `organizations.logo_url`, `org_units.org_id`, `org_units.address`, `org_units.brand_category`, `org_units.lat`, `org_units.lng`, `org_units.is_primary`.
