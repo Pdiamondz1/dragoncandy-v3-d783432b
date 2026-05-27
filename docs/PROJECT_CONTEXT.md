@@ -70,6 +70,11 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   relative timestamps, status synchronization across roles.
 - RLS compliance and query optimization — resolving infinite recursion in
   Supabase RLS policies, removing nested profile joins blocked by RLS.
+- DragonShare amplification engine — creators upload organic content about
+  restaurants, restaurants boost it to cross-post across all connected social
+  channels via Outstand. Upload-first submit flow, trust-then-flag model
+  (no admin verification), in-app education per role. Stripe Connect
+  payment flow with 80/20 creator/platform split.
 - GTM Capital & CAC Playbook structured across Phase 0–3 with explicit
   budget gates and kill-switches. Creators onboarded before restaurants in
   each new market.
