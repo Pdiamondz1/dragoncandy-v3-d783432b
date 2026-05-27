@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { CalendarClock, Send, Loader2 } from 'lucide-react';
+import { toDatetimeLocal, fromDatetimeLocal } from '@/lib/dateUtils';
 import {
   PostComposer,
   MediaUploader,
@@ -22,33 +23,21 @@ interface CustomComposeFormProps {
 
 const SCHEDULE_MAX_DAYS = 30;
 
-function toDatetimeLocalValue(date: Date): string {
-  const tzOffsetMs = date.getTimezoneOffset() * 60_000;
-  const local = new Date(date.getTime() - tzOffsetMs);
-  return local.toISOString().slice(0, 16);
-}
-
-function fromDatetimeLocalValue(value: string): Date | null {
-  if (!value) return null;
-  const date = new Date(value);
-  return isNaN(date.getTime()) ? null : date;
-}
-
 function defaultScheduledLocal(): string {
   const date = new Date(Date.now() + 60 * 60_000);
   date.setSeconds(0, 0);
-  return toDatetimeLocalValue(date);
+  return toDatetimeLocal(date);
 }
 
 function maxScheduledLocal(): string {
   const date = new Date();
   date.setDate(date.getDate() + SCHEDULE_MAX_DAYS);
-  return toDatetimeLocalValue(date);
+  return toDatetimeLocal(date);
 }
 
 function minScheduledLocal(): string {
   const date = new Date(Date.now() + 5 * 60_000);
-  return toDatetimeLocalValue(date);
+  return toDatetimeLocal(date);
 }
 
 export const CustomComposeForm: React.FC<CustomComposeFormProps> = ({ accounts, onPosted }) => {
@@ -85,7 +74,7 @@ export const CustomComposeForm: React.FC<CustomComposeFormProps> = ({ accounts, 
   ]);
   const configurableNetworks = uniqueNetworks.filter((n) => CONFIGURABLE_NETWORKS.has(n));
 
-  const scheduledAt = scheduleEnabled ? fromDatetimeLocalValue(scheduledLocal) : null;
+  const scheduledAt = scheduleEnabled ? fromDatetimeLocal(scheduledLocal) : null;
   const hasContentOrMedia = content.trim().length > 0 || media.length > 0;
   const hasAccounts = selectedAccountIds.length > 0;
   const scheduleValid = !scheduleEnabled || (!!scheduledAt && scheduledAt.getTime() > Date.now());
