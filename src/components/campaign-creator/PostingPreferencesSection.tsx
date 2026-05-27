@@ -150,17 +150,12 @@ export function PostingPreferencesSection({
               {DAY_OPTIONS.map((day) => {
                 const isSelected = (preferences.preferred_days ?? []).includes(day.value);
                 return (
-                  <div
+                  <button
                     key={day.value}
-                    role="button"
-                    tabIndex={0}
+                    type="button"
+                    aria-label={day.value}
+                    aria-pressed={isSelected}
                     onClick={() => handleDayToggle(day.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        handleDayToggle(day.value);
-                      }
-                    }}
                     className={cn(
                       'w-10 h-10 rounded-full flex items-center justify-center text-sm select-none',
                       isSelected
@@ -169,7 +164,7 @@ export function PostingPreferencesSection({
                     )}
                   >
                     {day.label}
-                  </div>
+                  </button>
                 );
               })}
             </div>
