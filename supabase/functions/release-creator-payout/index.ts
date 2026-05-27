@@ -11,6 +11,108 @@ const logStep = (step: string, details?: any) => {
   console.log(`[RELEASE-CREATOR-PAYOUT] ${step}${detailsStr}`);
 };
 
+// Auto Cross-Scheduling: generate posting schedule if campaign preferences enable it.
+// This is non-blocking — any failure is caught and logged without affecting the payout response.
+async function generateAutoSchedule(
+  supabaseClient: ReturnType<typeof createClient>,
+  campaign: Record<string, unknown>,
+  collaborationCreatorId: string,
+): Promise<void> {
+  const postingPrefs = campaign.posting_preferences as Record<string, unknown> | null | undefined;
+  if (!postingPrefs?.auto_schedule_on_approval) return;
+
+  const { data: deliverables } = await supabaseClient
+    .from('file_uploads')
+    .select('id, file_path, mime_type, original_filename, metadata')
+    .eq('campaign_id', campaign.id)
+    .eq('uploaded_by', collaborationCreatorId)
+    .eq('file_category', 'deliverable')
+    .eq('upload_status', 'completed');
+
+  if (!deliverables || deliverables.length === 0) return;
+
+  const { data: accounts } = await supabaseClient
+    .from('business_outstand_accounts')
+    .select('platform, platform_handle')
+    .eq('user_id', campaign.user_id);
+
+  const connectedPlatforms = (accounts ?? []).map((a: Record<string, unknown>) => ({
+    platform: a.platform,
+    platform_handle: a.platform_handle,
+  }));
+
+  if (connectedPlatforms.length === 0) return;
+
+  const deliverableInputs = await Promise.all(
+    deliverables.map(async (d: Record<string, unknown>) => {
+      const { data: signedUrl } = await supabaseClient.storage
+        .from('campaign-deliverables')
+        .createSignedUrl(d.file_path as string, 3600);
+      return {
+        url: signedUrl?.signedUrl ?? '',
+        mime_type: d.mime_type,
+        filename: d.original_filename,
+        deliverable_id: (d.metadata as Record<string, unknown>)?.deliverable_id as string ?? d.id,
+      };
+    }),
+  );
+
+  const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+
+  const planResponse = await fetch(`${supabaseUrl}/functions/v1/content-posting-plan`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${serviceKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      deliverables: deliverableInputs,
+      posting_preferences: postingPrefs,
+      connected_platforms: connectedPlatforms,
+      campaign: { id: campaign.id, title: campaign.title },
+      user_id: campaign.user_id,
+    }),
+  });
+
+  if (!planResponse.ok) {
+    const errText = await planResponse.text();
+    logStep('Auto-schedule plan generation failed', { status: planResponse.status, error: errText.slice(0, 200) });
+    return;
+  }
+
+  const planData = await planResponse.json();
+  const planGroupId = crypto.randomUUID();
+
+  const draftRows = (planData.posts ?? []).map((post: Record<string, unknown>, i: number) => ({
+    id: crypto.randomUUID(),
+    user_id: campaign.user_id,
+    campaign_id: campaign.id,
+    platform: post.platform,
+    content_type: post.content_type,
+    caption: post.caption,
+    media_urls: post.media_urls,
+    hashtags: post.hashtags,
+    scheduled_at: post.scheduled_at,
+    status: 'draft',
+    ai_suggested_time: true,
+    ai_reasoning: post.ai_reasoning,
+    metadata: { source: 'auto_cross_schedule', strategy_summary: planData.strategy_summary },
+    plan_group_id: planGroupId,
+    plan_order: i,
+    deliverable_id: post.deliverable_id ?? null,
+  }));
+
+  if (draftRows.length > 0) {
+    await supabaseClient.from('donny_scheduled_posts').insert(draftRows);
+    await supabaseClient
+      .from('campaigns')
+      .update({ posting_schedule_status: 'pending_review' })
+      .eq('id', campaign.id);
+    logStep('Auto-schedule generated', { postCount: draftRows.length, planGroupId });
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders(req) });
@@ -241,6 +343,13 @@ serve(async (req) => {
         });
       }
 
+      // Auto Cross-Scheduling: generate posting schedule if preferences exist (non-blocking)
+      try {
+        await generateAutoSchedule(supabaseClient, campaign, collaboration.creator_id);
+      } catch (scheduleError) {
+        logStep('Auto-schedule generation failed (non-blocking)', { error: scheduleError instanceof Error ? scheduleError.message : String(scheduleError) });
+      }
+
       return new Response(JSON.stringify({
         success: true,
         transferId: transfer.id,
@@ -307,7 +416,14 @@ serve(async (req) => {
         .update({ escrow_status: 'released' })
         .eq('id', campaign.id);
 
-      return new Response(JSON.stringify({ 
+      // Auto Cross-Scheduling: generate posting schedule if preferences exist (non-blocking)
+      try {
+        await generateAutoSchedule(supabaseClient, campaign, collaboration.creator_id);
+      } catch (scheduleError) {
+        logStep('Auto-schedule generation failed (non-blocking)', { error: scheduleError instanceof Error ? scheduleError.message : String(scheduleError) });
+      }
+
+      return new Response(JSON.stringify({
         success: true,
         amount: creatorPayout,
         method: 'pending_balance',
