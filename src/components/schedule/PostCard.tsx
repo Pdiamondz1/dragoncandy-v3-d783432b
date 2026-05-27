@@ -36,7 +36,7 @@ function getPlatformBadgeClass(platform: string): string {
     case 'facebook':
       return 'bg-blue-600 text-white';
     default:
-      return 'bg-gray-200 text-gray-700';
+      return 'bg-dc-teal/15 text-dc-teal';
   }
 }
 
