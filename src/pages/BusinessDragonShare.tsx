@@ -7,9 +7,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { DragonSharePostCard } from '@/components/dragonshare/DragonSharePostCard';
 import { DragonShareHowItWorks } from '@/components/dragonshare/DragonShareHowItWorks';
 import { DragonShareQuickTip } from '@/components/dragonshare/DragonShareQuickTip';
-import { Users } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { useNavigate } from 'react-router-dom';
 import type { UserRole } from '@/types/user';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { PrerequisiteGate } from '@/components/PrerequisiteGate';
@@ -21,7 +18,6 @@ export function BusinessDragonSharePage({ userRole }: { userRole: UserRole }) {
   const { data: org } = useOrg();
   const { data: myRole } = useMyOrgRole(org?.id);
   const { data: posts, isLoading } = useOrgDragonSharePosts(org?.id);
-  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<Tab>('available');
 
   const canBoost = myRole?.role === 'owner' || myRole?.role === 'admin';
@@ -72,21 +68,10 @@ export function BusinessDragonSharePage({ userRole }: { userRole: UserRole }) {
             ))}
           </div>
         ) : filteredPosts.length === 0 ? (
-          <div className="space-y-6">
-            <div className="rounded-2xl border border-dashed border-teal-300 p-8 text-center">
-              <Users className="mx-auto h-10 w-10 text-teal-400 mb-3" />
-              <p className="font-medium">No DragonShare posts yet</p>
-              <p className="text-sm text-muted-foreground mt-1 max-w-sm mx-auto">
-                Creators post about you organically all the time — when they submit those posts here, you'll see them. Want to invite your favorite creators directly?
-              </p>
-              <Button
-                variant="outline"
-                className="mt-4 rounded-full"
-                onClick={() => navigate(userRole === 'business_client' ? '/dashboard/business/creators' : '/dashboard/brand/creators')}
-              >
-                Invite a Creator
-              </Button>
-            </div>
+          <div className="space-y-4">
+            <p className="text-sm text-dc-text-muted text-center">
+              When creators share content about your restaurant, it'll show up here.
+            </p>
             <DragonShareHowItWorks role="business" />
             <DragonShareQuickTip role="business" />
           </div>
