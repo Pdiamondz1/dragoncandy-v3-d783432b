@@ -113,9 +113,33 @@ Share your handle:" — optional Instagram/TikTok/X input. Social handle
 collection moves here, after commitment, when completion psychology favors
 optional fields (expected 30-40% fill rate vs. near-zero from abandonment).
 
-**Database impact:** None. `promotion_submissions` already has
-`customer_name`, `customer_phone`, and `social_handles` as nullable. UI
-change only.
+**Database impact:** Requires migration. `customer_name` and
+`customer_phone` are currently `NOT NULL` on `promotion_submissions`.
+Making them optional in the UI requires:
+
+```sql
+ALTER TABLE promotion_submissions ALTER COLUMN customer_name DROP NOT NULL;
+ALTER TABLE promotion_submissions ALTER COLUMN customer_phone DROP NOT NULL;
+```
+
+Additionally, `discount_codes.customer_phone` is `NOT NULL`. The approval
+flow in `reviewSubmission` passes `submission.customer_phone` to the
+`discount_codes` insert. Two cascading changes required:
+
+1. `discount_codes.customer_phone` must also become nullable:
+   ```sql
+   ALTER TABLE discount_codes ALTER COLUMN customer_phone DROP NOT NULL;
+   ```
+2. `send-promotion-notification` must handle null/empty phone gracefully
+   — skip SMS delivery when phone is absent (the edge function already
+   skips SMS when Twilio keys are missing; add the same guard for null
+   phone).
+
+**Marketing consent note:** The spec describes a pre-checked checkbox.
+Pre-checked consent has legal implications under GDPR and some US state
+privacy laws. Flag for legal review before implementation. Alternative:
+keep the checkbox unchecked by default but with simplified single-line
+copy ("I agree to let {Restaurant} use my content").
 
 **Deduplication adjustment:** Currently checks email + phone per promotion.
 With phone optional, deduplicate by email + promotion_id only.
@@ -169,12 +193,20 @@ Without Outstand:
 - **"Approve Only"** (secondary outline)
 - **"Reject"** (text link)
 
-**Batch review mode (swipe):**
-When multiple submissions are pending, the review sheet supports horizontal
-swiping. Swipe right = approve (with current social settings), swipe left
-= reject. Counter: "3 of 7 pending." Batch mode inherits social settings
-from the first review — subsequent swipe-approves reuse the same
-platforms and timing. Tap into any submission to customize before swiping.
+**Batch review mode:**
+When multiple submissions are pending, the review sheet supports
+navigation between submissions.
+
+- **Desktop (side panel):** Horizontal swipe or arrow buttons to navigate
+  between submissions. Approve/reject via buttons.
+- **Mobile (bottom sheet):** Button-based navigation only (prev/next
+  arrows). No horizontal swipe gestures — these conflict with the bottom
+  sheet's vertical dismiss gesture and cause UX ambiguity. Approve/reject
+  via the Zone 3 buttons.
+
+Counter: "3 of 7 pending." Batch mode inherits social settings from the
+first review — subsequent approvals reuse the same platforms and timing.
+Tap into any submission to customize before approving.
 
 **Platform awareness:** Social posting targets ONLY the platforms the
 restaurant has connected via Outstand. If Harbormill connected X and
@@ -190,7 +222,7 @@ Videos, Codes).
 
 **Priority Banner (conditional):**
 Only appears when pending submissions exist. "You have {N} videos to
-review" + "Review Now" button → opens swipe review sheet. Disappears
+review" + "Review Now" button → opens review sheet. Disappears
 when queue is empty.
 
 **Stats Row (3 cards):**
@@ -199,7 +231,7 @@ when queue is empty.
 |------|---------|--------|
 | Pending | Count | "Review" link → review sheet |
 | Approved | Count | "View library" link |
-| Posted to Social | Count + platform icons | New metric, shows value chain |
+| Posted to Social | Count + platform icons | Query: `donny_scheduled_posts` WHERE `metadata->>'source' = 'promotion'` AND `status = 'published'`, grouped by platform. Uses `idx_donny_scheduled_posts_promotion` index. |
 
 **Two tabs:**
 
@@ -265,19 +297,25 @@ captions).
 ```
 Restaurant taps "Approve & Post"
   ├─ 1. UPDATE promotion_submissions → status: 'approved'
-  ├─ 2. INSERT discount_codes → generate code
-  ├─ 3. INVOKE send-promotion-notification → email + SMS (non-blocking)
-  ├─ 4. READ cgc_posting_preferences
-  │     ├─ auto_post + "Approve & Post" clicked
+  ├─ 2. INSERT discount_codes → generate code (phone nullable)
+  ├─ 3. INVOKE send-promotion-notification → email + SMS (non-blocking,
+  │     SMS skipped if phone is null)
+  ├─ 4. READ business_profiles.cgc_posting_preferences
+  │     ├─ "Approve & Post" + Zone 2 toggle = "Post now"
   │     │   → INVOKE useCrossPost → post to Outstand
-  │     │   → INSERT donny_scheduled_posts (status: 'posted')
-  │     ├─ "Approve & Schedule" clicked
-  │     │   → INVOKE donny-schedule (create)
+  │     │   → INSERT donny_scheduled_posts (status: 'published')
+  │     ├─ "Approve & Post" + Zone 2 toggle = "Schedule for best time"
+  │     │   → INVOKE donny-schedule (create) with suggested time
   │     │   → INSERT donny_scheduled_posts (status: 'scheduled')
-  │     └─ no accounts / "Approve Only"
-  │         → skip social posting
+  │     └─ no accounts / "Approve Only" button clicked
+  │         → skip social posting entirely
   └─ 5. INVALIDATE React Query caches
 ```
+
+Note: There is no separate "Approve & Schedule" button. The scheduling
+behavior is controlled by the "Post now / Schedule for best time" toggle
+in Zone 2 of the review sheet. The "Approve & Post" button executes
+whichever option is selected.
 
 ### 4.2 Two-Phase Review Sheet
 
@@ -313,14 +351,25 @@ provided.
 
 ### 4.3 Database Changes
 
-**Migration 1 — Preferences column:**
+**Migration 1 — Make customer fields nullable for simplified submission:**
+
+```sql
+ALTER TABLE promotion_submissions
+  ALTER COLUMN customer_name DROP NOT NULL;
+ALTER TABLE promotion_submissions
+  ALTER COLUMN customer_phone DROP NOT NULL;
+ALTER TABLE discount_codes
+  ALTER COLUMN customer_phone DROP NOT NULL;
+```
+
+**Migration 2 — Preferences column:**
 
 ```sql
 ALTER TABLE business_profiles
 ADD COLUMN cgc_posting_preferences JSONB DEFAULT NULL;
 ```
 
-**Migration 2 — Performance index:**
+**Migration 3 — Performance index:**
 
 ```sql
 CREATE INDEX idx_donny_scheduled_posts_promotion
@@ -328,7 +377,8 @@ ON donny_scheduled_posts (user_id, status)
 WHERE metadata->>'source' = 'promotion';
 ```
 
-No new tables. No changes to existing table structures.
+No new tables. Three migrations total: nullable columns, preferences
+column, performance index.
 
 ### 4.4 Edge Function Changes
 
@@ -336,7 +386,7 @@ No new tables. No changes to existing table structures.
 |----------|--------|--------|
 | `social-caption` | None | Already supports `source: 'promotion'` |
 | `donny-schedule` | None | `suggest_times` and `create` work as-is |
-| `send-promotion-notification` | None | Email + SMS unchanged |
+| `send-promotion-notification` | Minor | (a) Update TypeScript interface: make `customerPhone` and `customerName` optional. (b) Skip SMS when phone is null/empty (same pattern as existing Twilio-key-missing guard). (c) Add email greeting fallback: "Hi there" when name is null. |
 | `fire-promotion-social-hook` | Deprecated for CGC | Replaced by inline posting |
 | `outstand-proxy` | None | `useCrossPost` already uses it |
 
@@ -390,10 +440,10 @@ to `promotion.end_date` (may be short-lived).
 + placeholder "Write a caption or tap Generate to try again." Never block
 approval on AI failures.
 
-**Batch swipe mixed outcomes:** All approvals succeed independently. Social
-posting results summarized in toast: "5 approved. 3 posted, 2 failed —
-view in Content Library." Failed posts get status 'failed' with retry
-in Content Library.
+**Batch review mixed outcomes:** All approvals succeed independently.
+Social posting results summarized in toast: "5 approved. 3 posted, 2
+failed — view in Content Library." Failed posts get status 'failed' with
+retry in Content Library.
 
 **Zero accounts + auto_post enabled:** `useCGCReviewSheet` detects zero
 accounts, silently downgrades to no-Outstand flow (download + copy
@@ -405,30 +455,35 @@ this page." Failed uploads offer retry with same file kept in memory.
 ## 6. Migration Path
 
 **Phase 1 — Backend (zero user impact):**
-1. Add `cgc_posting_preferences` column to `business_profiles` (nullable)
-2. Add `idx_donny_scheduled_posts_promotion` index
-3. Deploy
+1. Make `customer_name`, `customer_phone` nullable on
+   `promotion_submissions`; make `customer_phone` nullable on
+   `discount_codes`
+2. Add `cgc_posting_preferences` column to `business_profiles` (nullable)
+3. Add `idx_donny_scheduled_posts_promotion` index
+4. Update `send-promotion-notification` to skip SMS when phone is null
+5. Deploy
 
 **Phase 2 — New components (zero user impact):**
-4. Build `CGCReviewSheet`, `SocialPostEditor`, `CGCContentLibrary`,
+6. Build `CGCReviewSheet`, `SocialPostEditor`, `CGCContentLibrary`,
    `CGCPostingPreferences`
-5. Build `useCGCReviewSheet` hook
-6. Extend `reviewSubmission` with optional social params
+7. Build `useCGCReviewSheet` hook
+8. Extend `reviewSubmission` with optional social params
    (backward-compatible)
-7. Deploy
+9. Deploy
 
 **Phase 3 — UI swap (visible change):**
-8. Update `BusinessPromotionalTools` — new layout, 2 tabs, banner
-9. Update `CreatePromotionModal` — simplified fields
-10. Update `PromotionSubmissionPage` — camera-first, email-only
-11. Wire `CGCReviewSheet` into Content Library
-12. Add `CGCPostingPreferences` to Settings page
-13. Deploy
+10. Update `BusinessPromotionalTools` — new layout, 2 tabs, banner
+11. Update `CreatePromotionModal` — simplified fields
+12. Update `PromotionSubmissionPage` — camera-first, email-only
+13. Wire `CGCReviewSheet` into Content Library
+14. Add `CGCPostingPreferences` to Settings page
+15. Update help article `customer-flow.mdx` (deduplication copy change)
+16. Deploy
 
 **Phase 4 — Cleanup:**
-14. Stop calling `fire-promotion-social-hook` from `reviewSubmission`
-15. Clean up orphaned `donny_nudges` for CGC content
-16. Keep edge function deployed 30 days, then remove
+17. Stop calling `fire-promotion-social-hook` from `reviewSubmission`
+18. Clean up orphaned `donny_nudges` for CGC content
+19. Keep edge function deployed 30 days, then remove
 
 **Rollback:** Each phase is independently revertible. Phase 3 is one
 commit that swaps page components — one revert restores everything.
@@ -442,7 +497,7 @@ commit that swaps page components — one revert restores everything.
 | Approve & Post | Approve with Outstand. Verify: code, email, post to correct platforms. |
 | Approve Only | Approve without posting. Verify: code + email, no social post. |
 | No-Outstand fallback | Disconnect Outstand, approve. Verify download + copy caption. |
-| Batch swipe | 3+ pending, swipe-approve all. Verify codes + social + summary toast. |
+| Batch review | 3+ pending. Desktop: swipe through and approve. Mobile: navigate via buttons and approve. Verify codes + social + summary toast. |
 | Preferences | Set defaults in Settings. Open review sheet. Verify pre-populated. |
 | Platform awareness | Connect X + Facebook only. Verify only those chips appear. |
 | Expired promotion | Approve on expired promotion. Verify success with short-lived code. |
@@ -456,7 +511,7 @@ commit that swaps page components — one revert restores everything.
 | Creation completion rate | Unknown | >80% | Modal open → promotion created |
 | Submission completion rate | Unknown | >60% | QR scan → submit |
 | Time to approval | Unknown | <24h avg | `created_at` → `reviewed_at` |
-| Approved → posted rate | ~0% | >70% | `donny_scheduled_posts` posted / approvals |
+| Approved → published rate | ~0% | >70% | `donny_scheduled_posts` published / approvals |
 | Restaurant retention | Unknown | >50% create 2+ | Distinct promotions per business/month |
 
 ## 9. Explicitly Deferred (Phase 2)
