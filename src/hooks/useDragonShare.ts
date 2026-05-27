@@ -60,22 +60,33 @@ export function useSubmitDragonSharePost() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (post: {
-      platform: string;
-      content_type: string;
-      post_url: string;
-      caption?: string;
       target_org_id: string;
+      content_type: string;
+      post_url?: string | null;
+      platform?: string | null;
+      content_file_path?: string | null;
+      caption?: string;
       target_org_unit_id?: string;
       hashtags?: string[];
       mentions?: string[];
     }) => {
       const { data, error } = await supabase
         .from('dragonshare_posts')
-        .insert({ ...post, creator_id: user!.id })
-        .select('id, creator_id, platform, content_type, post_url, caption, target_org_id, target_org_unit_id, hashtags, mentions, status, submitted_at')
+        .insert({
+          creator_id: user!.id,
+          target_org_id: post.target_org_id,
+          content_type: post.content_type,
+          post_url: post.post_url ?? null,
+          platform: post.platform ?? null,
+          content_file_path: post.content_file_path ?? null,
+          caption: post.caption ?? null,
+          status: 'verified',
+          boost_status: 'available',
+        })
+        .select('id, creator_id, platform, content_type, post_url, content_file_path, caption, target_org_id, status, boost_status, submitted_at')
         .single();
       if (error) throw error;
-      return data as DragonSharePost;
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: KEYS.creatorPosts(user?.id) });
