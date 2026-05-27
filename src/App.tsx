@@ -81,6 +81,7 @@ const OrgBillingPage = lazy(() => import("./pages/OrgBillingPage"));
 const RestoreAccountPage = lazy(() => import("./pages/RestoreAccountPage"));
 const InviteAcceptPage = lazy(() => import("./pages/InviteAcceptPage"));
 const CreatorDragonShare = lazy(() => import("./pages/CreatorDragonShare"));
+const DragonShareBrowseRestaurants = lazy(() => import("./pages/DragonShareBrowseRestaurants"));
 const BusinessDragonShare = lazy(() => import("./pages/BusinessDragonShare").then(m => ({ default: m.BusinessDragonShare })));
 const BrandDragonShare = lazy(() => import("./pages/BusinessDragonShare").then(m => ({ default: m.BrandDragonShare })));
 const BrandStylePicker = lazy(() => import("./pages/BrandStylePicker"));
@@ -269,6 +270,7 @@ function AnimatedRoutes() {
           {/* Creator Dragon Feed Route */}
           <Route path="/dashboard/creator/dragon-feed" element={<ProtectedRoute><CreatorDragonFeed /></ProtectedRoute>} />
           <Route path="/dashboard/creator/dragonshare" element={<ProtectedRoute><CreatorDragonShare /></ProtectedRoute>} />
+          <Route path="/dashboard/creator/dragonshare/browse" element={<ProtectedRoute><DragonShareBrowseRestaurants /></ProtectedRoute>} />
 
           {/* Creator Messages Route */}
           <Route path="/dashboard/creator/messages" element={<ProtectedRoute><DirectMessagesPage /></ProtectedRoute>} />
