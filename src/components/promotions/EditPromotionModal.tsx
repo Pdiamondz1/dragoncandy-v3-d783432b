@@ -84,7 +84,7 @@ export const EditPromotionModal: React.FC<EditPromotionModalProps> = ({
         description: promotion.description || '',
         discount_type: promotion.discount_type as 'percentage' | 'fixed',
         discount_value: promotion.discount_value,
-        end_date: promotion.end_date.split('T')[0],
+        end_date: promotion.end_date?.split('T')[0] ?? '',
         max_redemptions: promotion.max_redemptions || undefined,
         video_max_duration: promotion.video_max_duration || 30,
         terms_conditions: promotion.terms_conditions || '',
@@ -93,7 +93,7 @@ export const EditPromotionModal: React.FC<EditPromotionModalProps> = ({
   }, [promotion, open, form]);
 
   const onSubmit = async (values: EditPromotionFormData) => {
-    if (promotion && values.end_date < promotion.start_date.split('T')[0]) {
+    if (promotion && values.end_date < (promotion.start_date?.split('T')[0] ?? '')) {
       form.setError('end_date', { message: 'End date must be on or after the start date' });
       return;
     }

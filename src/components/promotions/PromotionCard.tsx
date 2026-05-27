@@ -97,9 +97,8 @@ export const PromotionCard: React.FC<PromotionCardProps> = ({
 
   return (
     <>
-      <Link to={`/dashboard/business/promotions/${promotion.id}`} className="block">
       <Card
-        className="hover:shadow-md transition-shadow cursor-pointer"
+        className="hover:shadow-md transition-shadow"
       >
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between">
@@ -112,7 +111,7 @@ export const PromotionCard: React.FC<PromotionCardProps> = ({
               {syncStatus && <SyncStatusBadge status={syncStatus} />}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => e.stopPropagation()}>
+                  <Button variant="ghost" size="icon" className="h-8 w-8">
                     <MoreVertical className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
@@ -165,7 +164,7 @@ export const PromotionCard: React.FC<PromotionCardProps> = ({
             </div>
           </div>
 
-          <div className="flex gap-2 pt-2" onClick={(e) => e.stopPropagation()}>
+          <div className="flex gap-2 pt-2">
             <Button
               variant="outline"
               size="sm"
@@ -194,7 +193,6 @@ export const PromotionCard: React.FC<PromotionCardProps> = ({
           </Link>
         </CardContent>
       </Card>
-      </Link>
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
