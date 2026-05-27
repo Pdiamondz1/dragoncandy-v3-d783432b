@@ -48,6 +48,13 @@ export interface CampaignIdea {
   content_strategy?: ContentStrategy | null;
 }
 
+export interface PostingPreferences {
+  spread_strategy: 'auto' | 'even' | 'front_loaded' | 'custom';
+  spread_window_days: 7 | 14 | 21 | 30;
+  preferred_days?: string[];
+  auto_schedule_on_approval: boolean;
+}
+
 export interface EditableCampaign {
   title: string;
   description: string;
@@ -70,6 +77,7 @@ export interface EditableCampaign {
   tier_reasoning: string;
   emoji: string;
   original_idea_id: string;
+  posting_preferences?: PostingPreferences;
 }
 
 export interface BrandFields {

@@ -57,6 +57,11 @@ function ideaToEditableCampaign(idea: CampaignIdea): EditableCampaign {
     tier_reasoning: idea.tier_reasoning,
     emoji: idea.emoji,
     original_idea_id: idea.id,
+    posting_preferences: {
+      spread_strategy: 'auto' as const,
+      spread_window_days: 14 as const,
+      auto_schedule_on_approval: true,
+    },
   };
 }
 
@@ -351,6 +356,8 @@ export function useCampaignCreator() {
         deadline: validated.deadline,
         delivery_type: validated.delivery_type,
         delivery_fee: resolveTierFee(editedCampaign.delivery_type),
+        posting_preferences: editedCampaign.posting_preferences ?? null,
+        posting_schedule_status: editedCampaign.posting_preferences ? 'configured' : 'not_configured',
         style: editedCampaign.style_direction,
         status: 'published' as const,
         campaign_deliverables: editedCampaign.deliverables.map((d) => ({

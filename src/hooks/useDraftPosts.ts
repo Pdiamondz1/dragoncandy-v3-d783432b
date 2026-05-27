@@ -20,6 +20,7 @@ export interface DraftPost {
   created_at: string;
   plan_group_id: string | null;
   plan_order: number | null;
+  deliverable_id: string | null;
 }
 
 export function useDraftPosts() {
@@ -33,7 +34,7 @@ export function useDraftPosts() {
 
       const { data, error } = await supabase
         .from('donny_scheduled_posts')
-        .select('id, user_id, campaign_id, platform, content_type, caption, media_urls, hashtags, scheduled_at, status, ai_suggested_time, ai_reasoning, metadata, created_at, plan_group_id, plan_order')
+        .select('id, user_id, campaign_id, platform, content_type, caption, media_urls, hashtags, scheduled_at, status, ai_suggested_time, ai_reasoning, metadata, created_at, plan_group_id, plan_order, deliverable_id')
         .eq('user_id', user.id)
         .eq('status', 'draft')
         .order('created_at', { ascending: false });
