@@ -4,6 +4,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { HelpCircle } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { BRAND_ROLE_ENABLED } from '@/lib/featureConfig';
 
 interface CampaignSponsorshipToggleProps {
   openForSponsorship: boolean;
@@ -14,6 +15,8 @@ export const CampaignSponsorshipToggle: React.FC<CampaignSponsorshipToggleProps>
   openForSponsorship,
   onToggle,
 }) => {
+  if (!BRAND_ROLE_ENABLED) return null;
+
   return (
     <Card className="border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50">
       <CardHeader>

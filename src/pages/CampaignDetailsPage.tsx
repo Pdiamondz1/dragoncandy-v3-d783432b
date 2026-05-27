@@ -33,6 +33,7 @@ import { DeliverablesArchive } from '@/components/campaigns/detail/DeliverablesA
 import { PaymentSummary } from '@/components/campaigns/detail/PaymentSummary';
 import { CollapsibleCampaignDetails } from '@/components/campaigns/detail/CollapsibleCampaignDetails';
 import { SponsorshipCard } from '@/components/campaigns/detail/SponsorshipCard';
+import { BRAND_ROLE_ENABLED } from '@/lib/featureConfig';
 import { useCampaignProject } from '@/hooks/useCampaignProject';
 import { useProjectComplete } from '@/hooks/useProjectComplete';
 import { useDeleteCampaign, useDuplicateCampaign } from '@/hooks/useCampaigns';
@@ -479,7 +480,7 @@ const CampaignDetailsPage: React.FC = () => {
               />
             )}
 
-            {campaign.open_for_sponsorship && (
+            {BRAND_ROLE_ENABLED && campaign.open_for_sponsorship && (
               <SponsorshipCard campaignId={campaign.id} />
             )}
 

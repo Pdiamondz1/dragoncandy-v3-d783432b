@@ -1,6 +1,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { BRAND_ROLE_ENABLED } from '@/lib/featureConfig';
 
 export const HeroSection: React.FC = () => {
   const navigate = useNavigate();
@@ -29,12 +30,14 @@ export const HeroSection: React.FC = () => {
         >
           I'm a Restaurant — Get Started
         </Button>
-        <Button
-          className="w-full h-12 rounded-full bg-dc-pink-accent-btn text-white font-bold text-base hover:bg-dc-pink-accent-btn-hover hover:shadow-lg transition-all duration-300"
-          onClick={() => navigate('/auth?mode=signup')}
-        >
-          I'm a Brand/Sponsor — Launch Campaigns
-        </Button>
+        {BRAND_ROLE_ENABLED && (
+          <Button
+            className="w-full h-12 rounded-full bg-dc-pink-accent-btn text-white font-bold text-base hover:bg-dc-pink-accent-btn-hover hover:shadow-lg transition-all duration-300"
+            onClick={() => navigate('/auth?mode=signup')}
+          >
+            I'm a Brand/Sponsor — Launch Campaigns
+          </Button>
+        )}
       </div>
     </div>
   );

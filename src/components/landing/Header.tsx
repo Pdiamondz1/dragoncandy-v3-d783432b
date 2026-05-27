@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Menu } from "lucide-react";
+import { BRAND_ROLE_ENABLED } from '@/lib/featureConfig';
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
@@ -17,6 +18,10 @@ const navLinks = [
   { label: "For Brands", target: "brands" },
   { label: "For Creators", target: "cta" },
 ];
+
+const visibleNavLinks = BRAND_ROLE_ENABLED
+  ? navLinks
+  : navLinks.filter((l) => l.target !== 'brands');
 
 export const Header: React.FC = () => {
   const navigate = useNavigate();
@@ -47,7 +52,7 @@ export const Header: React.FC = () => {
 
       {/* Desktop nav links — hidden on mobile */}
       <nav aria-label="Primary" className="hidden md:flex items-center gap-8">
-        {navLinks.map((link) => (
+        {visibleNavLinks.map((link) => (
           <button
             key={link.target}
             onClick={() => scrollToSection(link.target)}
@@ -84,7 +89,7 @@ export const Header: React.FC = () => {
           </SheetTrigger>
           <SheetContent side="right" className="w-64 pt-8">
             <div className="flex flex-col gap-3">
-              {navLinks.map((link) => (
+              {visibleNavLinks.map((link) => (
                 <button
                   key={link.target}
                   onClick={() => handleNavClick(link.target)}
