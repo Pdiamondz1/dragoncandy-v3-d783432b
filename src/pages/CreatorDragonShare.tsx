@@ -62,7 +62,10 @@ const CreatorDragonShare: React.FC = () => {
   const preselectedOrg = usePreselectedOrg();
 
   useEffect(() => {
-    if (preselectedOrg) setSubmitOpen(true);
+    if (preselectedOrg) {
+      const isDesktop = window.matchMedia('(min-width: 1024px)').matches;
+      if (!isDesktop) setSubmitOpen(true);
+    }
   }, [preselectedOrg]);
 
   const filteredPosts = (posts ?? []).filter((p) => {

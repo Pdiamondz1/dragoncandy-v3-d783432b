@@ -26,7 +26,7 @@ export function DragonShareSubmitSheet({ open, onOpenChange }: Props) {
 
   return (
     <Sheet open={open} onOpenChange={(v) => { if (!v) form.reset(); onOpenChange(v); }}>
-      <SheetContent side="bottom" className="h-[85vh] rounded-t-3xl overflow-y-auto">
+      <SheetContent side="bottom" className="h-[85vh] rounded-t-3xl overflow-y-auto lg:max-w-lg lg:mx-auto lg:rounded-3xl lg:bottom-6 lg:h-auto lg:max-h-[80vh] lg:shadow-2xl lg:border lg:border-dc-teal/15">
         <SheetHeader>
           <SheetTitle className="text-dc-teal font-bold">Share Your Content</SheetTitle>
           <p className="text-xs text-dc-text-muted">Upload your content, tag the restaurant, get paid.</p>
