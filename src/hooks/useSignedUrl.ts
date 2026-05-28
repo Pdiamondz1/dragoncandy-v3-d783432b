@@ -47,9 +47,10 @@ export function useSignedUrl(
 export function useResolvedStorageUrl(
   path: string | null | undefined
 ): string | undefined {
-  const isHttp = path?.startsWith('http');
-  const signedUrl = useSignedUrl('profile-assets', isHttp ? null : path);
-  return isHttp ? (path ?? undefined) : signedUrl;
+  if (!path) return undefined;
+  if (path.startsWith('http')) return path;
+  const { data } = supabase.storage.from('profile-assets').getPublicUrl(path);
+  return data?.publicUrl;
 }
 
 export const useResolvedAvatarUrl = useResolvedStorageUrl;
@@ -60,23 +61,8 @@ export async function getSignedProfileUrl(
 ): Promise<string | undefined> {
   if (!path) return undefined;
   if (path.startsWith('http://') || path.startsWith('https://')) return path;
-
-  const cacheKey = `profile-assets/${path}`;
-  const cached = signedUrlCache.get(cacheKey);
-  if (cached && cached.expiresAt > Date.now()) return cached.url;
-
-  const { data } = await supabase.storage
-    .from('profile-assets')
-    .createSignedUrl(path, SIGNED_URL_TTL);
-
-  if (data?.signedUrl) {
-    signedUrlCache.set(cacheKey, {
-      url: data.signedUrl,
-      expiresAt: Date.now() + (SIGNED_URL_TTL - 60) * 1000,
-    });
-    return data.signedUrl;
-  }
-  return undefined;
+  const { data } = supabase.storage.from('profile-assets').getPublicUrl(path);
+  return data?.publicUrl;
 }
 
 export function clearSignedUrlCache(): void {
