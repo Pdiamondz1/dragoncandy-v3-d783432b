@@ -51,10 +51,19 @@ because browsers suspend long timeouts in background tabs.
   whether the interval was suspended.
 - The warning dialog and "I'm still here" button work identically to today.
   Clicking the button resets `dc_last_activity` to `Date.now()`.
-- Activity events do NOT reset the timer while the warning is showing (same
-  as current behavior).
+- Activity event listeners MUST check the warning state before writing to
+  `dc_last_activity`. During the warning phase, only the "I'm still here"
+  button writes to `dc_last_activity` and resets the timer. Mouse movement,
+  keystrokes, and scrolling while the warning is showing are ignored — same
+  as current behavior, but explicitly: don't write to localStorage either.
 - On logout, `dc_last_activity` is cleaned up alongside existing auth keys
   in `src/lib/authCleanup.ts`.
+
+**Multi-tab behavior:** Activity in any tab resets the inactivity timer for
+all tabs via the shared `dc_last_activity` localStorage key. This is
+intentional — if a user is active anywhere in DragonCandy, no tab should
+log them out. The shared timestamp inherently provides cross-tab
+synchronization of activity state.
 
 **Constants (unchanged):**
 - Warning threshold: 165 minutes (2 hours 45 minutes)
@@ -108,6 +117,10 @@ New file: `src/hooks/useAppVersion.ts`
 - If the fetch fails (network error, 404 during deploy), silently retries
   on the next interval. No error UI — a failed version check is not
   user-actionable.
+- Only runs in production mode (`import.meta.env.PROD`). In dev mode, the
+  hook returns `{ updateAvailable: false }` immediately — no polling, no
+  fetches. To test the feature locally, run `npm run build` and
+  `npm run preview`.
 - Exports: `{ updateAvailable: boolean }`.
 
 ### 3. Update Available UI
@@ -126,12 +139,20 @@ New file: `src/components/UpdateBanner.tsx`
 
 **Force-reload on navigation:**
 
-When `updateAvailable` is true and the user navigates to a new route (React
-Router), intercept the navigation and perform a full page reload to the
-target URL instead of a client-side route change. This uses React Router's
-`useBlocker` or a navigation listener. The reload fetches fresh `index.html`
-(which has `max-age=0, must-revalidate`) and loads new content-hashed JS
-bundles.
+When `updateAvailable` is true and the user navigates to a new route, a
+`useBlocker` hook (inside a component that is a descendant of
+`<BrowserRouter>` — placed in `AppShell`) intercepts the navigation. The
+blocker reads the target pathname and search from the blocked transition
+object, then performs `window.location.href = transition.location.pathname +
+transition.location.search` — a full page reload to the target URL. The
+blocker never calls `proceed()` (no client-side navigation). The reload
+fetches fresh `index.html` (which has `max-age=0, must-revalidate`) and
+loads new content-hashed JS bundles.
+
+Dismissing the banner via the X button hides the visual banner but does NOT
+prevent the force-reload on navigation. The X button is cosmetic — once
+`updateAvailable` is true, any navigation triggers a full reload regardless
+of whether the banner is visible.
 
 This is the most seamless forced-update path — it happens at a natural break
 point where the user was already expecting a page transition.
@@ -142,9 +163,22 @@ point where the user was already expecting a page transition.
 alongside the existing `useInactivityTimeout`. Only authenticated users get
 version polling — unauthenticated users get fresh code on next page load.
 
+**Data flow via context:** `AuthenticatedShell` receives `AppShell` as
+opaque `children`, so props cannot be injected. A small `AppVersionContext`
+solves this:
+
+- New file: `src/contexts/AppVersionContext.tsx` — exports
+  `AppVersionProvider` and `useAppVersionContext`.
+- `AuthenticatedShell` wraps its `children` in `<AppVersionProvider>`.
+  The provider calls `useAppVersion` internally and provides
+  `{ updateAvailable }` to consumers.
+- `UpdateBanner` (inside `AppShell`) calls `useAppVersionContext()` to
+  read `updateAvailable`.
+- The `useBlocker` for force-reload on navigation also lives inside
+  `AppShell` and reads from the same context.
+
 **`UpdateBanner`** renders inside `AppShell`, positioned above
-`AnimatedRoutes`. It receives `updateAvailable` from the version hook via
-context or prop drilling through the shell components.
+`AnimatedRoutes`.
 
 **React Query:** Version polling deliberately avoids React Query to prevent
 interaction with the app's global query settings.
@@ -160,8 +194,9 @@ active user).
 |------|--------|
 | `src/hooks/useInactivityTimeout.ts` | Rewrite: `setTimeout` → timestamp + `setInterval` + `visibilitychange` |
 | `src/hooks/useAppVersion.ts` | New: build hash polling hook |
-| `src/components/UpdateBanner.tsx` | New: update available banner UI |
-| `src/App.tsx` | Add `useAppVersion` to `AuthenticatedShell`, add `UpdateBanner` to `AppShell` |
+| `src/contexts/AppVersionContext.tsx` | New: context provider bridging `AuthenticatedShell` → `AppShell` |
+| `src/components/UpdateBanner.tsx` | New: update available banner UI + `useBlocker` for force-reload |
+| `src/App.tsx` | Wrap `AuthenticatedShell` children in `AppVersionProvider`, add `UpdateBanner` to `AppShell` |
 | `src/lib/authCleanup.ts` | Add `dc_last_activity` to cleanup list |
 | `vite.config.ts` | Add inline plugin to generate `version.json` on production build |
 | `public/_headers` | Add `version.json` cache rule |
@@ -171,8 +206,9 @@ active user).
 - No service worker, PWA offline support, or push notifications.
 - No server-side session expiry changes (Supabase JWT config unchanged).
 - No hard maximum session duration for active users.
-- No multi-tab session synchronization beyond the shared `dc_last_activity`
-  localStorage key (which naturally gives basic cross-tab awareness).
+- Multi-tab activity is intentionally shared via `dc_last_activity` in
+  localStorage — activity in any tab keeps all tabs alive. This is a
+  feature, not a limitation.
 
 ## Testing
 
