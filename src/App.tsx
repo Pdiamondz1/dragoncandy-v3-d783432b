@@ -30,6 +30,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useLogout } from "@/hooks/useLogout";
 import { useInactivityTimeout } from "@/hooks/useInactivityTimeout";
 import { InactivityWarningDialog } from "@/components/InactivityWarningDialog";
+import { AppVersionProvider } from "@/contexts/AppVersionContext";
+import { UpdateBanner } from "@/components/UpdateBanner";
 import { PageTransition } from "@/components/PageTransition";
 import type { UserRole } from "@/types/user";
 
@@ -326,10 +328,10 @@ function AuthenticatedShell({ children }: { children: React.ReactNode }) {
   const { showWarning, confirmActive } = useInactivityTimeout(logout, isAuthenticated);
 
   return (
-    <>
+    <AppVersionProvider>
       {children}
       <InactivityWarningDialog open={showWarning} onConfirm={confirmActive} />
-    </>
+    </AppVersionProvider>
   );
 }
 
@@ -341,6 +343,7 @@ function AppShell() {
     <div className="flex h-screen">
       <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:p-4 focus:bg-white focus:text-black focus:underline">Skip to main content</a>
       <main id="main-content" className="flex-1 overflow-auto">
+        <UpdateBanner />
         <SiteGateGuard>
           <AnimatedRoutes />
         </SiteGateGuard>
