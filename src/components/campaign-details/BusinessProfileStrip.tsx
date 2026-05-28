@@ -1,7 +1,8 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Star, ChevronRight } from 'lucide-react';
 import type { BusinessProfile } from '@/hooks/useCampaignDetailEnriched';
-import { useSignedUrl } from '@/hooks/useSignedUrl';
+import { useResolvedLogoUrl } from '@/hooks/useSignedUrl';
 
 interface BusinessProfileStripProps {
   profile: BusinessProfile;
@@ -10,9 +11,8 @@ interface BusinessProfileStripProps {
 
 export function BusinessProfileStrip({ profile, completedCampaignCount }: BusinessProfileStripProps) {
   const navigate = useNavigate();
-  const isHttp = profile.logo_url?.startsWith('http');
-  const signedLogoUrl = useSignedUrl('profile-assets', isHttp ? null : profile.logo_url);
-  const resolvedLogoUrl = isHttp ? profile.logo_url : signedLogoUrl;
+  const resolvedLogoUrl = useResolvedLogoUrl(profile.logo_url);
+  const [logoError, setLogoError] = useState(false);
 
   const profilePath = profile.profile_slug
     ? `/business/${profile.profile_slug}`
@@ -23,11 +23,12 @@ export function BusinessProfileStrip({ profile, completedCampaignCount }: Busine
       onClick={() => navigate(profilePath)}
       className="w-full flex items-center gap-3 bg-white border border-gray-200 rounded-xl p-3 hover:border-dc-teal transition-colors text-left"
     >
-      {resolvedLogoUrl ? (
+      {resolvedLogoUrl && !logoError ? (
         <img
           src={resolvedLogoUrl}
           alt={profile.business_name}
           className="w-10 h-10 rounded-full object-cover ring-2 ring-teal-400"
+          onError={() => setLogoError(true)}
         />
       ) : (
         <div className="w-10 h-10 rounded-full bg-teal-100 ring-2 ring-teal-400 flex items-center justify-center">

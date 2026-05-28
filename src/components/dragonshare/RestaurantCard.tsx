@@ -1,4 +1,5 @@
 // src/components/dragonshare/RestaurantCard.tsx
+import { useState } from 'react';
 import { useResolvedLogoUrl } from '@/hooks/useSignedUrl';
 import { MapPin } from 'lucide-react';
 import type { RestaurantSearchResult } from '@/hooks/useRestaurantSearch';
@@ -24,6 +25,7 @@ function getGradient(name: string): string {
 
 export function RestaurantCard({ restaurant, onSelect }: Props) {
   const resolvedLogo = useResolvedLogoUrl(restaurant.logo_url);
+  const [imgError, setImgError] = useState(false);
   const gradient = getGradient(restaurant.name);
 
   return (
@@ -33,8 +35,8 @@ export function RestaurantCard({ restaurant, onSelect }: Props) {
     >
       {/* Header with gradient + logo */}
       <div className={`relative h-28 bg-gradient-to-br ${gradient} flex items-center justify-center`}>
-        {resolvedLogo ? (
-          <img src={resolvedLogo} alt="" className="h-14 w-14 rounded-xl object-cover shadow-sm" />
+        {resolvedLogo && !imgError ? (
+          <img src={resolvedLogo} alt="" className="h-14 w-14 rounded-xl object-cover shadow-sm" onError={() => setImgError(true)} />
         ) : (
           <div className="h-14 w-14 rounded-xl bg-dc-teal/20 flex items-center justify-center text-2xl font-bold text-dc-teal">
             {restaurant.name.charAt(0).toUpperCase()}

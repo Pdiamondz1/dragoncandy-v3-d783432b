@@ -163,6 +163,7 @@ const CreatorDragonShare: React.FC = () => {
 function CreatorPostCard({ post }: { post: DragonSharePostWithRelations }) {
   const resolvedLogoUrl = useResolvedLogoUrl(post.target_org?.logo_url);
   const contentImageUrl = useSignedUrl('dragonshare-content', post.content_file_path);
+  const [logoError, setLogoError] = useState(false);
 
   const status = post.status as ActivePostStatus;
   const config = statusConfig[status] ?? statusConfig.verified;
@@ -198,8 +199,12 @@ function CreatorPostCard({ post }: { post: DragonSharePostWithRelations }) {
 
       <div className="flex items-center justify-between text-sm">
         <div className="flex items-center gap-2">
-          {resolvedLogoUrl && (
-            <img src={resolvedLogoUrl} alt="Brand logo" className="h-5 w-5 rounded-full ring-2 ring-teal-400" />
+          {resolvedLogoUrl && !logoError ? (
+            <img src={resolvedLogoUrl} alt="Brand logo" className="h-5 w-5 rounded-full ring-2 ring-teal-400" onError={() => setLogoError(true)} />
+          ) : (
+            <div className="h-5 w-5 rounded-full bg-dc-teal/20 flex items-center justify-center text-[8px] font-bold text-dc-teal ring-2 ring-teal-400">
+              {(post.target_org?.name ?? '?').charAt(0).toUpperCase()}
+            </div>
           )}
           <span className="text-muted-foreground">{post.target_org?.name ?? 'Unknown org'}</span>
         </div>

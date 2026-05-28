@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import type { DonnyRichCard as RichCardType } from '@/types/donny';
 import { useNavigate } from 'react-router-dom';
@@ -13,6 +14,7 @@ export function DonnyRichCard({ card }: DonnyRichCardProps) {
   const { sendMessage } = useDonnyContext();
   const avatarPath = card.type === 'creator_profile' ? card.data.avatar_url : null;
   const resolvedAvatarUrl = useResolvedAvatarUrl(avatarPath);
+  const [avatarError, setAvatarError] = useState(false);
 
   switch (card.type) {
     case 'creator_profile':
@@ -20,8 +22,8 @@ export function DonnyRichCard({ card }: DonnyRichCardProps) {
         <div className="bg-white rounded-xl p-3 border-2 border-teal-300 mt-1.5">
           <div className="flex gap-2 items-center">
             <div className="w-10 h-10 rounded-full bg-gray-200 ring-2 ring-teal-400 overflow-hidden flex-shrink-0">
-              {resolvedAvatarUrl ? (
-                <img src={resolvedAvatarUrl} alt={card.data.name} className="w-full h-full object-cover" loading="lazy" />
+              {resolvedAvatarUrl && !avatarError ? (
+                <img src={resolvedAvatarUrl} alt={card.data.name} className="w-full h-full object-cover" loading="lazy" onError={() => setAvatarError(true)} />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm">
                   {card.data.name.charAt(0)}

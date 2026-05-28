@@ -82,6 +82,7 @@ const CampaignCardComponent: React.FC<CampaignCardProps> = ({ campaign }) => {
   const [isPayingEscrow, setIsPayingEscrow] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   const [showReHireModal, setShowReHireModal] = useState(false);
+  const [avatarError, setAvatarError] = useState(false);
   const resolvedCreatorAvatar = useResolvedAvatarUrl(campaign.creator_avatar_url);
   const { data: agreedValue } = useAgreedValue(campaign.id);
 
@@ -238,11 +239,12 @@ const CampaignCardComponent: React.FC<CampaignCardProps> = ({ campaign }) => {
         {/* Creator row */}
         {campaign.creator_name && (
           <div className="flex items-center gap-2">
-            {resolvedCreatorAvatar ? (
+            {resolvedCreatorAvatar && !avatarError ? (
               <img
                 src={resolvedCreatorAvatar}
                 alt={campaign.creator_name}
                 className="w-7 h-7 rounded-full object-cover ring-1 ring-teal-400"
+                onError={() => setAvatarError(true)}
               />
             ) : (
               <div className="w-7 h-7 rounded-full bg-teal-400 flex items-center justify-center text-white text-xs font-bold ring-1 ring-teal-400">
