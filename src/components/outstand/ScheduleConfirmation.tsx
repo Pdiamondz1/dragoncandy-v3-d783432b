@@ -6,6 +6,7 @@ export interface ScheduledPostInfo {
   scheduledAt: string;
   platformNames: string[];
   fileCount: number;
+  aiSuggested?: boolean;
 }
 
 interface ScheduleConfirmationProps {
@@ -65,7 +66,9 @@ export const ScheduleConfirmation: React.FC<ScheduleConfirmationProps> = ({
               <CalendarDays className="h-4 w-4 text-dc-teal flex-shrink-0" />
               <div>
                 <p className="text-[13px] font-semibold text-dc-text">{formatScheduledTime(post.scheduledAt)}</p>
-                <p className="text-[10px] text-dc-teal font-medium mt-0.5">Donny picked peak engagement time</p>
+                {post.aiSuggested !== false && (
+                  <p className="text-[10px] text-dc-teal font-medium mt-0.5">Donny picked peak engagement time</p>
+                )}
               </div>
             </div>
 

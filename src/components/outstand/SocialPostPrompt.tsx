@@ -11,6 +11,7 @@ import { MediaPreviewGrid, type MediaItem } from './MediaPreviewGrid';
 import { DeliverableScheduleReview, type DeliverableSlot } from './DeliverableScheduleReview';
 import { ScheduleConfirmation, type ScheduledPostInfo } from './ScheduleConfirmation';
 import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
 export interface SocialPostPromptProps {
@@ -87,6 +88,7 @@ function SocialPostPromptInner({
   const { accounts } = useAccounts({ apiKey, baseUrl, limit: 100 });
   const crossPost = useCrossPost();
   const { user } = useAuth();
+  const { toast } = useToast();
   const [caption, setCaption] = useState('');
   const [hashtags, setHashtags] = useState<string[]>([]);
   const [isEditing, setIsEditing] = useState(false);
@@ -103,6 +105,7 @@ function SocialPostPromptInner({
 
   const resolvedItems: MediaItem[] = mediaItemsProp ?? mediaUrls.map((url) => ({ url }));
   const captionLoadedRef = useRef<string | null>(null);
+  const schedulingFlowRef = useRef<'single' | 'multi' | null>(null);
   const accountsRef = useRef(accounts);
   accountsRef.current = accounts;
 
@@ -149,6 +152,7 @@ function SocialPostPromptInner({
       setDeliverableSlots([]);
       setSameDay(false);
       captionLoadedRef.current = null;
+      schedulingFlowRef.current = null;
       return;
     }
 
@@ -300,6 +304,7 @@ function SocialPostPromptInner({
     const scheduleTime = getValidScheduleTime(suggestedTime);
 
     if (resolvedItems.length > 1) {
+      schedulingFlowRef.current = 'multi';
       const baseTime = new Date(scheduleTime).getTime();
       const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -327,6 +332,7 @@ function SocialPostPromptInner({
       return;
     }
 
+    schedulingFlowRef.current = 'single';
     const platforms = accounts
       .filter((a) => selectedAccountIds.includes(a.id))
       .map((a) => a.network ?? 'unknown');
@@ -336,12 +342,14 @@ function SocialPostPromptInner({
       { caption: fullCaption, mediaUrls, accountIds: selectedAccountIds, scheduledAt: scheduleTime },
       {
         onSuccess: async (data) => {
+          if (schedulingFlowRef.current !== 'single') return;
           const outstandPostId = data?._outstandPostId ?? null;
           await syncScheduledPost(scheduleTime, outstandPostId, selectedAccountIds);
           setConfirmedPosts([{
             scheduledAt: scheduleTime,
             platformNames: platforms,
             fileCount: mediaUrls.length,
+            aiSuggested: true,
           }]);
           setSchedulingState('confirmed');
         },
@@ -354,11 +362,21 @@ function SocialPostPromptInner({
 
   const handleScheduleAllDeliverables = async () => {
     if (selectedAccountIds.length === 0 || deliverableSlots.length === 0) return;
+    if (!user?.id || !campaignId) return;
     const platforms = accounts
       .filter((a) => selectedAccountIds.includes(a.id))
       .map((a) => a.network ?? 'unknown');
 
     setSchedulingState('scheduling');
+
+    await supabase
+      .from('donny_scheduled_posts')
+      .delete()
+      .eq('campaign_id', campaignId)
+      .eq('user_id', user.id)
+      .eq('status', 'draft');
+
+    const succeededUrls = new Set<string>();
     try {
       for (const slot of deliverableSlots) {
         const slotCaption = sameDay
@@ -372,18 +390,47 @@ function SocialPostPromptInner({
           mediaUrls: [slot.mediaUrl],
           accountIds: selectedAccountIds,
           scheduledAt: slot.scheduledAt,
+          silent: true,
         });
 
-        const outstandPostId = result?._outstandPostId ?? null;
-        await syncScheduledPost(slot.scheduledAt, outstandPostId, selectedAccountIds);
+        await supabase.from('donny_scheduled_posts').insert({
+          user_id: user.id,
+          campaign_id: campaignId,
+          platform: platforms[0] ?? 'instagram',
+          content_type: 'video_reel',
+          caption,
+          hashtags,
+          media_urls: [slot.mediaUrl],
+          scheduled_at: slot.scheduledAt,
+          status: 'scheduled' as string,
+          ai_suggested_time: false,
+          metadata: {
+            outstand_post_id: result?._outstandPostId ?? null,
+            social_account_ids: selectedAccountIds,
+          },
+        });
+
+        succeededUrls.add(slot.mediaUrl);
       }
+
+      if (schedulingFlowRef.current !== 'multi') return;
       setConfirmedPosts(deliverableSlots.map(slot => ({
         scheduledAt: slot.scheduledAt,
         platformNames: platforms,
         fileCount: 1,
+        aiSuggested: false,
       })));
       setSchedulingState('confirmed');
     } catch {
+      if (succeededUrls.size > 0) {
+        const remaining = deliverableSlots.filter(s => !succeededUrls.has(s.mediaUrl));
+        setDeliverableSlots(remaining);
+        toast({
+          variant: 'destructive',
+          title: 'Partial scheduling failure',
+          description: `${succeededUrls.size} posted, ${remaining.length} failed. Retry the remaining.`,
+        });
+      }
       setSchedulingState('multi-review');
     }
   };
@@ -604,13 +651,19 @@ function SocialPostPromptInner({
 
   const content = confirmedContent ?? multiReviewContent ?? composingContent;
 
+  const dialogTitle = schedulingState === 'confirmed'
+    ? confirmedPosts.length > 1 ? 'Posts Scheduled' : 'Post Scheduled'
+    : schedulingState === 'multi-review' || (schedulingState === 'scheduling' && deliverableSlots.length > 1)
+      ? 'Schedule Deliverables'
+      : 'Ready to Share';
+
   if (isMobile) {
     return (
       <Sheet open={open} onOpenChange={onOpenChange}>
         <SheetContent side="bottom" className="rounded-t-2xl pb-8 max-h-[85vh] flex flex-col">
           <SheetHeader className="shrink-0">
             <SheetTitle className="text-sm font-bold text-gray-900">
-              {schedulingState === 'confirmed' ? 'Post Scheduled' : schedulingState === 'multi-review' || (schedulingState === 'scheduling' && deliverableSlots.length > 1) ? 'Schedule Deliverables' : 'Ready to Share'}
+              {dialogTitle}
             </SheetTitle>
           </SheetHeader>
           <div className="mt-4 overflow-y-auto flex-1 min-h-0">{content}</div>
@@ -624,7 +677,7 @@ function SocialPostPromptInner({
       <DialogContent className="sm:max-w-md max-h-[85vh] flex flex-col">
         <DialogHeader className="shrink-0">
           <DialogTitle className="text-sm font-bold text-gray-900">
-            {schedulingState === 'confirmed' ? 'Post Scheduled' : schedulingState === 'multi-review' || (schedulingState === 'scheduling' && deliverableSlots.length > 1) ? 'Schedule Deliverables' : 'Ready to Share'}
+            {dialogTitle}
           </DialogTitle>
         </DialogHeader>
         <div className="overflow-y-auto flex-1 min-h-0">{content}</div>
