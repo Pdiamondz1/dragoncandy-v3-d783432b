@@ -23,13 +23,14 @@ function OrgInitial({ name }: { name: string }) {
 
 function ResultRow({ org, onSelect }: { org: RestaurantSearchResult; onSelect: () => void }) {
   const resolvedLogo = useResolvedLogoUrl(org.logo_url);
+  const [imgError, setImgError] = useState(false);
   return (
     <button
       onClick={onSelect}
       className="flex items-center gap-2.5 w-full rounded-lg px-2.5 py-2 text-left hover:bg-dc-teal/5 transition-colors"
     >
-      {resolvedLogo ? (
-        <img src={resolvedLogo} alt="" className="h-8 w-8 rounded-lg object-cover flex-shrink-0" />
+      {resolvedLogo && !imgError ? (
+        <img src={resolvedLogo} alt="" className="h-8 w-8 rounded-lg object-cover flex-shrink-0" onError={() => setImgError(true)} />
       ) : (
         <OrgInitial name={org.name} />
       )}
@@ -130,10 +131,11 @@ export function RestaurantTypeahead({ selectedOrg, onSelect, onClear }: Props) {
 
 function SelectedChip({ org, onClear }: { org: RestaurantSearchResult; onClear: () => void }) {
   const resolvedLogo = useResolvedLogoUrl(org.logo_url);
+  const [imgError, setImgError] = useState(false);
   return (
     <div className="flex items-center gap-2 rounded-xl border border-dc-teal/30 bg-dc-teal/5 px-3 py-2">
-      {resolvedLogo ? (
-        <img src={resolvedLogo} alt="" className="h-6 w-6 rounded-full ring-1 ring-dc-teal/30 object-cover" />
+      {resolvedLogo && !imgError ? (
+        <img src={resolvedLogo} alt="" className="h-6 w-6 rounded-full ring-1 ring-dc-teal/30 object-cover" onError={() => setImgError(true)} />
       ) : (
         <div className="h-6 w-6 rounded-full bg-dc-teal/20 flex items-center justify-center text-[10px] font-bold text-dc-teal">
           {org.name.charAt(0).toUpperCase()}

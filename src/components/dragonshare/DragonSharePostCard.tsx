@@ -17,6 +17,7 @@ interface Props {
 
 export function DragonSharePostCard({ post, canBoost }: Props) {
   const [selectedTier, setSelectedTier] = useState<{ cents: number; label: BoostTierLabel } | null>(null);
+  const [avatarError, setAvatarError] = useState(false);
   const isAlreadyBoosted = post.boost_status === 'boosted';
   const resolvedCreatorAvatar = useResolvedAvatarUrl(post.creator?.avatar_url);
   const contentImageUrl = useSignedUrl('dragonshare-content', post.content_file_path);
@@ -30,8 +31,8 @@ export function DragonSharePostCard({ post, canBoost }: Props) {
         {/* Header: creator info */}
         <div className="p-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            {resolvedCreatorAvatar ? (
-              <img src={resolvedCreatorAvatar} alt="Creator avatar" className="h-10 w-10 rounded-full ring-2 ring-teal-400" />
+            {resolvedCreatorAvatar && !avatarError ? (
+              <img src={resolvedCreatorAvatar} alt="Creator avatar" className="h-10 w-10 rounded-full ring-2 ring-teal-400" onError={() => setAvatarError(true)} />
             ) : (
               <div className="h-10 w-10 rounded-full bg-teal-100 flex items-center justify-center text-sm font-bold text-teal-600">
                 {post.creator?.full_name?.charAt(0) ?? '?'}

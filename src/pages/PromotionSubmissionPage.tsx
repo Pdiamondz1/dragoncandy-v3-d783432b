@@ -45,6 +45,7 @@ export default function PromotionSubmissionPage() {
   const { submitPromotion, isSubmitting } = usePromotionSubmission();
   const { handles, setHandles, getSanitized } = useSocialHandles();
   const resolvedLogoUrl = useResolvedLogoUrl(promotion?.business_profiles?.logo_url);
+  const [logoError, setLogoError] = useState(false);
 
   useEffect(() => {
     const fetchPromotion = async () => {
@@ -190,11 +191,12 @@ export default function PromotionSubmissionPage() {
       <div className="max-w-md mx-auto p-4">
         {/* Business identity */}
         <div className="text-center py-6">
-          {resolvedLogoUrl ? (
+          {resolvedLogoUrl && !logoError ? (
             <img
               src={resolvedLogoUrl}
               alt={businessName}
               className="w-20 h-20 rounded-full object-cover mx-auto mb-4 ring-2 ring-dc-teal"
+              onError={() => setLogoError(true)}
             />
           ) : (
             <div className="w-20 h-20 rounded-full bg-dc-teal/10 flex items-center justify-center mx-auto mb-4 ring-2 ring-dc-teal">

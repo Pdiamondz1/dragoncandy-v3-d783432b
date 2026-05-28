@@ -57,18 +57,20 @@ interface UnitCardProps {
 
 function UnitCard({ unit, canManage, isLastUnit, onEdit, onDelete }: UnitCardProps) {
   const resolvedLogoUrl = useResolvedLogoUrl(unit.logo_url);
+  const [logoError, setLogoError] = useState(false);
   const subtext = getUnitSubtext(unit);
   const Icon = unit.unit_type === 'location' ? MapPin : Tag;
 
   return (
     <Card className="border border-teal-300 rounded-2xl hover:shadow-md transition-shadow">
       <CardContent className="flex items-center gap-4 p-4">
-        {resolvedLogoUrl ? (
+        {resolvedLogoUrl && !logoError ? (
           <img
             src={resolvedLogoUrl}
             alt={unit.name}
             className="h-12 w-12 rounded-full object-cover ring-2 ring-teal-400 flex-shrink-0"
             loading="lazy"
+            onError={() => setLogoError(true)}
           />
         ) : (
           <div className="h-12 w-12 rounded-full bg-teal-100 ring-2 ring-teal-400 flex items-center justify-center flex-shrink-0">

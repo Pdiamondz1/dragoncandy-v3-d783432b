@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { useResolvedAvatarUrl } from '@/hooks/useSignedUrl';
@@ -20,16 +20,18 @@ export const AssignedCreatorCard: React.FC<AssignedCreatorCardProps> = ({
 }) => {
   const navigate = useNavigate();
   const resolvedAvatarUrl = useResolvedAvatarUrl(avatarUrl);
+  const [avatarError, setAvatarError] = useState(false);
 
   return (
     <div className="bg-white border border-gray-200 rounded-2xl p-4 space-y-3">
       {/* Creator info row */}
       <div className="flex items-center gap-3">
-        {resolvedAvatarUrl ? (
+        {resolvedAvatarUrl && !avatarError ? (
           <img
             src={resolvedAvatarUrl}
             alt={creatorName}
             className="w-10 h-10 rounded-full object-cover ring-2 ring-teal-400 shrink-0"
+            onError={() => setAvatarError(true)}
           />
         ) : (
           <div className="w-10 h-10 rounded-full bg-teal-400 ring-2 ring-teal-400 flex items-center justify-center text-white font-bold text-sm shrink-0">
