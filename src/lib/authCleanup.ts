@@ -10,6 +10,7 @@ export const cleanupAuthState = () => {
       }
     });
     localStorage.removeItem('dc_site_unlocked_until');
+    localStorage.removeItem('dc_last_activity');
 
     // Remove keys from sessionStorage if present
     try {
