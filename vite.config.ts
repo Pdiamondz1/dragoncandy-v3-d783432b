@@ -4,6 +4,7 @@ import mdx from "@mdx-js/rollup";
 import remarkFrontmatter from "remark-frontmatter";
 import remarkGfm from "remark-gfm";
 import path from "path";
+import { writeFileSync } from 'fs';
 import { componentTagger } from "lovable-tagger";
 
 // https://vitejs.dev/config/
@@ -17,6 +18,14 @@ export default defineConfig(({ mode }) => ({
     react(),
     mode === 'development' &&
     componentTagger(),
+    mode === 'production' && {
+      name: 'generate-version-json',
+      closeBundle() {
+        const hash = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+        const content = JSON.stringify({ hash, built: new Date().toISOString() });
+        writeFileSync(path.resolve(__dirname, 'dist/version.json'), content);
+      },
+    },
   ].filter(Boolean),
   resolve: {
     alias: {

@@ -10,6 +10,9 @@
 /index.html
   Cache-Control: public, s-maxage=3600, max-age=0, must-revalidate
 
+/version.json
+  Cache-Control: no-cache, must-revalidate
+
 /*
   X-Content-Type-Options: nosniff
   X-Frame-Options: DENY
