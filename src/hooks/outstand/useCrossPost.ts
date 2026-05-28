@@ -7,6 +7,7 @@ interface CrossPostInput {
   mediaUrls: string[];
   accountIds: string[];
   scheduledAt?: string;
+  silent?: boolean;
 }
 
 export function useCrossPost(options?: { onPublished?: () => void }) {
@@ -62,9 +63,11 @@ export function useCrossPost(options?: { onPublished?: () => void }) {
           options?.onPublished?.();
         }, 3000);
       }
-      toast({
-        title: variables.scheduledAt ? 'Cross-post scheduled!' : 'Cross-post published!',
-      });
+      if (!variables.silent) {
+        toast({
+          title: variables.scheduledAt ? 'Cross-post scheduled!' : 'Cross-post published!',
+        });
+      }
     },
     onError: (error: Error) => {
       toast({
