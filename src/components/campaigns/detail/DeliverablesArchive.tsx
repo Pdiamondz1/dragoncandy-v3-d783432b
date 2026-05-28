@@ -62,6 +62,7 @@ export const DeliverablesArchive: React.FC<DeliverablesArchiveProps> = ({
     original_filename: string;
   }) => {
     setDownloadingId(file.id);
+    let signedUrl: string | null = null;
     try {
       const response = await supabase.functions.invoke('get-watermarked-preview', {
         body: {
@@ -76,7 +77,7 @@ export const DeliverablesArchive: React.FC<DeliverablesArchiveProps> = ({
         return;
       }
 
-      const signedUrl = response.data.signed_url;
+      signedUrl = response.data.signed_url;
       if (!signedUrl) {
         toast({ variant: 'destructive', title: 'Download Failed', description: 'Could not generate download URL.' });
         return;
@@ -84,7 +85,11 @@ export const DeliverablesArchive: React.FC<DeliverablesArchiveProps> = ({
 
       await downloadBlob(signedUrl, file.original_filename);
     } catch {
-      toast({ variant: 'destructive', title: 'Download Failed', description: 'Could not download file.' });
+      if (signedUrl) {
+        window.open(signedUrl, '_blank');
+      } else {
+        toast({ variant: 'destructive', title: 'Download Failed', description: 'Could not download file.' });
+      }
     } finally {
       setDownloadingId(null);
     }
@@ -94,7 +99,10 @@ export const DeliverablesArchive: React.FC<DeliverablesArchiveProps> = ({
     if (!files || files.length === 0) return;
     setDownloadingAll(true);
     try {
-      await Promise.allSettled(files.map(downloadFile));
+      for (const file of files) {
+        await downloadFile(file);
+        await new Promise(r => setTimeout(r, 500));
+      }
     } finally {
       setDownloadingAll(false);
     }
