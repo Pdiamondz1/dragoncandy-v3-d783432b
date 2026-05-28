@@ -44,7 +44,6 @@ export function useAppVersion(): { updateAvailable: boolean } {
         if (info && info.hash !== initialHash) {
           setUpdateAvailable(true);
         }
-        // Only reschedule if not already updated
         poll();
       }, VERSION_POLL_MS);
     };

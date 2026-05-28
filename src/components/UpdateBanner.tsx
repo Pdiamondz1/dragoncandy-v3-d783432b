@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { useBlocker, useLocation } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useAppVersionContext } from '@/contexts/AppVersionContext';
 import { X, RefreshCw } from 'lucide-react';
 
@@ -7,18 +7,19 @@ export function UpdateBanner() {
   const { updateAvailable } = useAppVersionContext();
   const [dismissed, setDismissed] = useState(false);
   const location = useLocation();
+  const prevPathnameRef = useRef(location.pathname);
+
+  useEffect(() => {
+    if (updateAvailable && location.pathname !== prevPathnameRef.current) {
+      window.location.reload();
+      return;
+    }
+    prevPathnameRef.current = location.pathname;
+  }, [location.pathname, updateAvailable]);
 
   useEffect(() => {
     if (updateAvailable) setDismissed(false);
   }, [location.pathname, updateAvailable]);
-
-  useBlocker(({ nextLocation }) => {
-    if (updateAvailable && nextLocation.pathname !== location.pathname) {
-      window.location.href = nextLocation.pathname + (nextLocation.search || '');
-      return true;
-    }
-    return false;
-  });
 
   if (!updateAvailable || dismissed) return null;
 
