@@ -180,6 +180,7 @@ serve(async (req) => {
         .from("donny_conversations" as any)
         .select("id")
         .eq("user_id", creator_id)
+        .is("archived_at", null)
         .order("last_message_at", { ascending: false })
         .limit(1)
         .maybeSingle();

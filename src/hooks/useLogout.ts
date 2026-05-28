@@ -6,12 +6,12 @@ import { useDonnyContext } from '@/contexts/DonnyProvider';
 export const useLogout = () => {
   const navigate = useNavigate();
   const { signOut } = useAuth();
-  const { clearChat } = useDonnyContext();
+  const { archiveConversation } = useDonnyContext();
   const queryClient = useQueryClient();
 
   const logout = async () => {
     try {
-      await clearChat();
+      await archiveConversation();
       await signOut();
       queryClient.clear();
       navigate('/landing');

@@ -55,6 +55,7 @@ export function useDonny(options?: UseDonnyOptions) {
         .from('donny_conversations')
         .select('id, user_id, created_at, last_message_at, context_snapshot')
         .eq('user_id', user.id)
+        .is('archived_at', null)
         .order('last_message_at', { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -323,6 +324,22 @@ export function useDonny(options?: UseDonnyOptions) {
     queryClient.invalidateQueries({ queryKey: ['donny-messages', conversation.id] });
   }, [conversation, queryClient]);
 
+  const archiveConversation = useCallback(async () => {
+    if (!conversation || !user) return;
+
+    await supabase
+      .from('donny_conversations')
+      .update({ archived_at: new Date().toISOString() })
+      .eq('id', conversation.id);
+
+    await supabase
+      .from('donny_nudges')
+      .update({ dismissed_at: new Date().toISOString() })
+      .eq('user_id', user.id)
+      .is('acted_at', null)
+      .is('dismissed_at', null);
+  }, [conversation, user]);
+
   const retry = useCallback(() => {
     if (lastUserMessage.current && !isSendingRef.current) {
       setError(null);
@@ -345,6 +362,7 @@ export function useDonny(options?: UseDonnyOptions) {
     ...state,
     sendMessage,
     clearChat,
+    archiveConversation,
     quickChips,
     retry,
   };

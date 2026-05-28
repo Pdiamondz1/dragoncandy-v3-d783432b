@@ -1900,6 +1900,7 @@ export type Database = {
       }
       donny_conversations: {
         Row: {
+          archived_at: string | null
           context_metadata: Json | null
           context_snapshot: Json | null
           context_url: string | null
@@ -1911,6 +1912,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          archived_at?: string | null
           context_metadata?: Json | null
           context_snapshot?: Json | null
           context_url?: string | null
@@ -1922,6 +1924,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          archived_at?: string | null
           context_metadata?: Json | null
           context_snapshot?: Json | null
           context_url?: string | null

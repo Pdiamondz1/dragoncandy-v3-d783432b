@@ -34,6 +34,7 @@ interface DonnyContextValue {
   sendMessage: (msg: string) => void;
   retry: () => void;
   clearChat: () => Promise<void>;
+  archiveConversation: () => Promise<void>;
   publishDraft: (scheduledPostId: string) => Promise<void>;
 
   // Context
@@ -67,6 +68,7 @@ const DONNY_FALLBACK: DonnyContextValue = {
   sendMessage: noop,
   retry: noop,
   clearChat: asyncNoop,
+  archiveConversation: asyncNoop,
   publishDraft: asyncNoop,
   currentPage: '/',
   userRole: 'content_creator' as UserRole,
@@ -302,6 +304,7 @@ export function DonnyProvider({ children, userRole }: DonnyProviderProps) {
       sendMessage,
       retry: donny.retry,
       clearChat: donny.clearChat,
+      archiveConversation: donny.archiveConversation,
       publishDraft,
       currentPage: location.pathname,
       userRole,
@@ -312,7 +315,7 @@ export function DonnyProvider({ children, userRole }: DonnyProviderProps) {
     [
       stage, open, expand, collapse, close,
       nudges, unreadCount, executeAction, dismissNudge,
-      donny.messages, donny.conversation, donny.avatarState, donny.isStreaming, donny.error, donny.streamingContent, donny.retry, donny.clearChat,
+      donny.messages, donny.conversation, donny.avatarState, donny.isStreaming, donny.error, donny.streamingContent, donny.retry, donny.clearChat, donny.archiveConversation,
       sendMessage, location.pathname, userRole, quickChips, campaignContext,
       openDonnyWithContext, publishDraft,
     ]
