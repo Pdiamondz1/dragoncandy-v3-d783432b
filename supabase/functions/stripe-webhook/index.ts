@@ -2,10 +2,28 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { writePaymentEvent } from "../_shared/payment-events.ts";
+import { fulfillBoost } from "../_shared/fulfill-boost.ts";
 
 const logStep = (step: string, details?: any) => {
   console.log(`[STRIPE-WEBHOOK] ${step}${details ? ' - ' + JSON.stringify(details) : ''}`);
 };
+
+async function setDefaultPaymentMethodIfUnset(
+  stripe: Stripe,
+  customerId: string,
+  paymentIntentId: string | null,
+): Promise<void> {
+  if (!paymentIntentId) return;
+  const customer = await stripe.customers.retrieve(customerId);
+  if ("deleted" in customer && customer.deleted) return;
+  if ((customer as Stripe.Customer).invoice_settings?.default_payment_method) return;
+  const pi = await stripe.paymentIntents.retrieve(paymentIntentId);
+  const pm = pi.payment_method;
+  if (!pm) return;
+  await stripe.customers.update(customerId, {
+    invoice_settings: { default_payment_method: typeof pm === "string" ? pm : pm.id },
+  });
+}
 
 serve(async (req) => {
   // Webhooks must be POST
@@ -76,6 +94,35 @@ serve(async (req) => {
 
         const metadata = session.metadata ?? {};
         const paymentIntentId = session.payment_intent as string | null;
+
+        // Save the card as the customer's default so the next boost is one-tap.
+        if (session.customer && paymentIntentId) {
+          try {
+            await setDefaultPaymentMethodIfUnset(
+              stripe,
+              typeof session.customer === "string" ? session.customer : session.customer.id,
+              paymentIntentId,
+            );
+          } catch (e) {
+            logStep("Non-fatal: failed to set default payment method", { error: String(e) });
+          }
+        }
+
+        // DragonShare boost paid via hosted checkout
+        if (metadata.type === "dragonshare_boost" && metadata.boost_id) {
+          if (!session.amount_total) {
+            logStep("Boost session missing amount_total — skipping fulfill", { boostId: metadata.boost_id });
+            break;
+          }
+          await fulfillBoost(stripe, supabase, {
+            boostId: metadata.boost_id,
+            postId: metadata.post_id,
+            creatorId: metadata.creator_id,
+            amountCents: session.amount_total,
+            paymentIntentId: paymentIntentId ?? "",
+          });
+          logStep("DragonShare boost fulfilled via checkout webhook", { boostId: metadata.boost_id });
+        }
 
         // Campaign escrow payment
         if (metadata.type === "campaign_escrow" && metadata.campaign_id) {
@@ -299,6 +346,22 @@ serve(async (req) => {
             .eq("id", metadata.sponsorship_id)
             .eq("payment_status", "pending");
           logStep("Sponsorship reset after session expiry", { sponsorshipId: metadata.sponsorship_id });
+        }
+
+        if (metadata.type === "dragonshare_boost" && metadata.boost_id) {
+          await supabase
+            .from("dragonshare_boosts")
+            .update({ status: "failed" })
+            .eq("id", metadata.boost_id)
+            .eq("status", "pending");
+          await supabase.from("dragonshare_events").insert({
+            event_type: "boost_failed",
+            actor_org_id: metadata.boosting_org_id,
+            post_id: metadata.post_id,
+            boost_id: metadata.boost_id,
+            payload: { reason: "checkout_session_expired" },
+          });
+          logStep("DragonShare boost reset after session expiry", { boostId: metadata.boost_id });
         }
         break;
       }
