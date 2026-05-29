@@ -7,6 +7,7 @@ import { Loader2 } from 'lucide-react';
 import { DRAGONSHARE_FEE_RATE } from '@/types/dragonshare';
 import type { DragonSharePostWithRelations, BoostTierLabel } from '@/types/dragonshare';
 import { useAmplificationPreview } from '@/hooks/useAmplificationPreview';
+import { resolveBoostOutcome } from './boostOutcome';
 
 interface Props {
   open: boolean;
@@ -43,25 +44,41 @@ export function BoostConfirmationSheet({ open, onOpenChange, post, amountCents, 
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('Not authenticated');
 
+      // Pre-open a blank tab synchronously to dodge pop-up blockers (may be unused).
+      const checkoutTab = window.open('about:blank', '_blank');
+
       const res = await supabase.functions.invoke('boost-payment', {
         body: { post_id: post.id, amount_cents: amountCents, tier_label: tierLabel },
       });
-      if (res.error) throw new Error(res.error.message);
-      return res.data;
+      if (res.error) {
+        checkoutTab?.close();
+        throw new Error(res.error.message);
+      }
+      return { data: res.data, checkoutTab };
     },
-    onSuccess: () => {
-      toast({ title: 'Boost confirmed!', description: `$${(creatorPayoutCents / 100).toFixed(0)} is on its way to ${creatorName}.` });
+    onSuccess: ({ data, checkoutTab }) => {
+      const outcome = resolveBoostOutcome(data);
+      if (outcome.kind === 'checkout') {
+        if (checkoutTab) checkoutTab.location.href = outcome.url;
+        else window.open(outcome.url, '_blank');
+        toast({ title: 'Complete your payment', description: 'Finish the boost in the new tab.' });
+        onOpenChange(false);
+        return;
+      }
+      checkoutTab?.close();
+      if (outcome.kind === 'queued') {
+        toast({ title: 'Boost queued', description: "We've notified the creator to finish setup. You won't be charged until it's processed." });
+        onOpenChange(false);
+        return;
+      }
+      const paidCents = outcome.creatorPayoutCents ?? creatorPayoutCents;
+      toast({ title: 'Boost confirmed!', description: `$${(paidCents / 100).toFixed(0)} is on its way to ${creatorName}.` });
       queryClient.invalidateQueries({ queryKey: ['dragonshare-posts'] });
       onOpenChange(false);
     },
     onError: (err) => {
       const msg = err instanceof Error ? err.message : String(err);
-      if (msg.includes('CREATOR_PAYOUT_NOT_READY')) {
-        toast({ title: 'Boost queued', description: "We've notified the creator to finish setup. Your boost is queued — you won't be charged until it's processed." });
-        onOpenChange(false);
-      } else {
-        toast({ title: 'Boost failed', description: msg, variant: 'destructive' });
-      }
+      toast({ title: 'Boost failed', description: msg, variant: 'destructive' });
     },
   });
 
