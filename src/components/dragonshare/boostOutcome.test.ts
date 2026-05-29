@@ -13,12 +13,17 @@ describe('resolveBoostOutcome', () => {
       .toEqual({ kind: 'queued' });
   });
 
+  it('returns queued when the queued flag is set', () => {
+    expect(resolveBoostOutcome({ queued: true, boost_id: 'b1' }))
+      .toEqual({ kind: 'queued' });
+  });
+
   it('returns success when the off-session charge settled', () => {
     expect(resolveBoostOutcome({ success: true, boost_id: 'b1', creator_payout_cents: 800 }))
       .toEqual({ kind: 'success', creatorPayoutCents: 800 });
   });
 
-  it('treats null/empty data as success-less unknown -> success fallback only on success flag', () => {
+  it('falls back to success with undefined payout for empty/unknown data', () => {
     expect(resolveBoostOutcome({})).toEqual({ kind: 'success', creatorPayoutCents: undefined });
   });
 });
