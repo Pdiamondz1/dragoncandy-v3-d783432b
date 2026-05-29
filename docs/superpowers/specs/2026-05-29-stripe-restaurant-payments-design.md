@@ -120,16 +120,26 @@ Both `create-campaign-escrow` and `create-sponsorship-checkout`:
 `boost-payment/index.ts`:
 
 1. Resolve the org customer via `getOrCreateOrgCustomer`.
-2. **Concurrent-pending guard:** before creating a new boost, check for an
-   existing `dragonshare_boosts` row for this `post_id` + `boosting_org_id`
-   with `status = 'pending'`. If one exists, do not mint a second
-   PaymentIntent/session — return the existing pending boost (and its
-   `checkout_url` if it was a checkout-path boost). (Note: `post.boost_status`
-   stays `'available'` while a checkout is pending, so the `create_boost` RPC
-   guard alone does not prevent a double-tap; this explicit check does.)
+2. **Concurrent-pending guard — runs BEFORE the `create_boost` RPC.** Check for
+   an existing `dragonshare_boosts` row for this `post_id` + `boosting_org_id`
+   with `status = 'pending'`. (`post.boost_status` stays `'available'` while a
+   checkout is pending, so the `create_boost` guard alone would let a double-tap
+   insert a second pending row — this explicit check, ordered first, is what
+   prevents it.)
+   - **If a pending row exists →** do **not** call `create_boost` or mint a
+     second boost. Instead **regenerate** a fresh hosted Checkout session for
+     that same boost row and return its `checkout_url`. This avoids the
+     trap where an abandoned checkout (Stripe's `checkout.session.expired`
+     can take up to ~24h to fire) would otherwise block the user from
+     retrying. The user always gets a working URL; fulfillment is still keyed
+     to the single pending boost row.
+   - **If none exists →** call `create_boost` (status `pending`) and continue.
 3. Resolve the reusable card: read `customer.invoice_settings.
    default_payment_method`; if absent, `customer.listPaymentMethods({ type:
-   'card' })` and take the first. Capture the concrete `pm_...` id.
+   'card' })` and take the first. Capture the concrete `pm_...` id. (The
+   `listPaymentMethods` fallback also covers the race where a user completes a
+   card-saving checkout and immediately re-boosts before the webhook has set
+   the default — the freshly attached card is still found.)
 4. **Card on file →** create + confirm a PaymentIntent with an **explicit**
    `payment_method: pm_id`, `off_session: true`, `confirm: true`, `customer`.
    Do **not** pass `automatic_payment_methods` when pinning a payment method.
@@ -232,8 +242,9 @@ boost_status`, enum `available|boosted|expired|withdrawn`) transitions:
 | `create_boost` RPC (requires post `available`) | `pending` | `available` |
 | Off-session charge succeeds | `transferred` | `boosted` |
 | Hosted checkout opened | `pending` | `available` (unchanged) |
+| Re-tap while `pending` (retry) | `pending` (same row; new checkout session) | `available` (unchanged) |
 | `checkout.session.completed` (fulfill) | `transferred` | `boosted` |
-| `checkout.session.expired` | `failed` | `available` (unchanged) |
+| `checkout.session.expired` (slow, ~24h) | `failed` | `available` (unchanged) |
 | `payment_intent.payment_failed` | `failed` | `available` |
 | `transfer.updated` reversed | `failed` | `available` |
 
