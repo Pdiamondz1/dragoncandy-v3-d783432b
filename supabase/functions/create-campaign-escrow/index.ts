@@ -5,6 +5,8 @@ import { writePaymentEvent } from "../_shared/payment-events.ts";
 import { getOrgTakeRate } from "../_shared/platform-fee.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 import { resolvePayoutAmount } from "../_shared/pricing-utils.ts";
+import { getOrCreateOrgCustomer } from "../_shared/stripe-customer.ts";
+import { testModeCustomText } from "../_shared/test-mode-text.ts";
 
 const logStep = (step: string, details?: any) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
@@ -54,7 +56,7 @@ serve(async (req) => {
     // Verify campaign ownership and load authoritative pricing from DB
     const { data: campaign, error: campaignError } = await supabaseClient
       .from('campaigns')
-      .select('id, user_id, escrow_status, budget_max, fixed_price, pricing_type, delivery_fee, delivery_type, title')
+      .select('id, user_id, org_id, escrow_status, budget_max, fixed_price, pricing_type, delivery_fee, delivery_type, title')
       .eq('id', campaignId)
       .single();
 
@@ -97,12 +99,9 @@ serve(async (req) => {
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
 
-    // Check if customer exists
-    const customers = await stripe.customers.list({ email: user.email, limit: 1 });
-    const customerId = customers.data.length > 0 ? customers.data[0].id : undefined;
-    if (customerId) {
-      logStep("Found existing customer", { customerId });
-    }
+    if (!campaign.org_id) throw new Error("Campaign has no org_id");
+    const customerId = await getOrCreateOrgCustomer(stripe, supabaseClient, campaign.org_id, user.email);
+    logStep("Resolved org customer", { customerId, orgId: campaign.org_id });
 
     const takeRate = await getOrgTakeRate(supabaseClient, user.id);
     const platformFee = Math.round(totalAmount * takeRate * 100); // Convert to cents
@@ -124,7 +123,7 @@ serve(async (req) => {
     // Create checkout session with correct return URLs
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
-      customer_email: customerId ? undefined : user.email,
+      custom_text: testModeCustomText(stripeKey),
       line_items: [
         {
           price_data: {
@@ -151,6 +150,7 @@ serve(async (req) => {
         type: 'campaign_escrow',
       },
       payment_intent_data: {
+        setup_future_usage: 'off_session',
         metadata: {
           campaign_id: campaignId,
           platform_fee: platformFee.toString(),
