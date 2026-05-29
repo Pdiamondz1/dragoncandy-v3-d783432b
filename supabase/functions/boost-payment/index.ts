@@ -1,13 +1,15 @@
 // supabase/functions/boost-payment/index.ts
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
-import { calculateDragonShareFee } from "../_shared/dragonshare-fee.ts";
 import { corsHeaders } from "../_shared/cors.ts";
+import { getOrCreateOrgCustomer } from "../_shared/stripe-customer.ts";
+import { fulfillBoost } from "../_shared/fulfill-boost.ts";
+import { testModeCustomText } from "../_shared/test-mode-text.ts";
+import { calculateDragonShareFee } from "../_shared/dragonshare-fee.ts";
 
 const logStep = (step: string, details?: unknown) => {
-  console.log(`[BOOST-PAYMENT] ${step}${details ? ' - ' + JSON.stringify(details) : ''}`);
+  console.log(`[BOOST-PAYMENT] ${step}${details ? " - " + JSON.stringify(details) : ""}`);
 };
 
 serve(async (req) => {
@@ -18,30 +20,35 @@ serve(async (req) => {
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL") ?? "",
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-    { auth: { persistSession: false } }
+    { auth: { persistSession: false } },
   );
+
+  const json = (body: unknown, status = 200) =>
+    new Response(JSON.stringify(body), {
+      headers: { ...corsHeaders(req), "Content-Type": "application/json" },
+      status,
+    });
 
   try {
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
     if (!stripeKey) throw new Error("STRIPE_SECRET_KEY not configured");
 
-    // Auth: verify the caller
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) throw new Error("No authorization header");
     const token = authHeader.replace("Bearer ", "");
     const { data: userData, error: userError } = await supabase.auth.getUser(token);
     if (userError || !userData.user) throw new Error(`Auth failed: ${userError?.message}`);
     const userId = userData.user.id;
+    const userEmail = userData.user.email;
 
     const { post_id, amount_cents, tier_label } = await req.json();
     if (!post_id || !amount_cents || !tier_label) throw new Error("Missing required fields");
-    if (typeof amount_cents !== 'number' || amount_cents < 500 || amount_cents > 50000) {
+    if (typeof amount_cents !== "number" || amount_cents < 500 || amount_cents > 50000) {
       throw new Error("Boost amount must be between $5 and $500");
     }
 
     logStep("Boost requested", { post_id, amount_cents, tier_label, userId });
 
-    // Fetch the post to get creator_id
     const { data: post, error: postError } = await supabase
       .from("dragonshare_posts")
       .select("id, creator_id, target_org_id, status, boost_status")
@@ -49,7 +56,6 @@ serve(async (req) => {
       .single();
     if (postError || !post) throw new Error(`Post not found: ${postError?.message}`);
 
-    // Determine the boosting org from user's membership on the target org
     const { data: membership, error: memError } = await supabase
       .from("org_members")
       .select("org_id, role")
@@ -58,149 +64,165 @@ serve(async (req) => {
       .eq("invitation_status", "active")
       .single();
     if (memError || !membership) throw new Error("Not a member of the target organization");
-    if (!['owner', 'admin'].includes(membership.role)) throw new Error("Only owners and admins can boost");
+    if (!["owner", "admin"].includes(membership.role)) throw new Error("Only owners and admins can boost");
 
-    // Call create_boost security definer
-    const { data: boostId, error: boostError } = await supabase.rpc("create_boost", {
-      p_post_id: post_id,
-      p_boosting_org_id: membership.org_id,
-      p_amount_cents: amount_cents,
-      p_tier: tier_label,
-    });
-    if (boostError) throw new Error(`create_boost failed: ${boostError.message}`);
+    // User-scoped client: the SECURITY DEFINER create_boost RPC reads auth.uid()
+    // for its membership check and boosting_user_id. The service-role client has
+    // a null auth.uid(), which makes create_boost raise — so the RPC MUST be
+    // called through a client carrying the caller's JWT.
+    const authedClient = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      { global: { headers: { Authorization: authHeader } }, auth: { persistSession: false } },
+    );
 
-    logStep("Boost row created", { boostId });
+    const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
+    const customerId = await getOrCreateOrgCustomer(stripe, supabase, membership.org_id, userEmail);
 
-    // Check if creator has Stripe Connect
-    const { data: creatorProfile, error: creatorError } = await supabase
+    // Creator payout readiness
+    const { data: creatorProfile } = await supabase
       .from("creator_profiles")
       .select("stripe_account_id, stripe_onboarding_complete")
       .eq("user_id", post.creator_id)
       .single();
+    const creatorReady = !!creatorProfile?.stripe_account_id && !!creatorProfile?.stripe_onboarding_complete;
 
-    if (creatorError || !creatorProfile?.stripe_account_id || !creatorProfile?.stripe_onboarding_complete) {
-      logStep("Creator payout not ready — parking boost", { creatorId: post.creator_id });
-      return new Response(JSON.stringify({
+    // Concurrent-pending guard — BEFORE create_boost.
+    const { data: existingPending } = await supabase
+      .from("dragonshare_boosts")
+      .select("id, amount_cents")
+      .eq("post_id", post_id)
+      .eq("boosting_org_id", membership.org_id)
+      .eq("status", "pending")
+      .maybeSingle();
+
+    let boostId: string;
+    let boostAmountCents: number;
+    if (existingPending) {
+      boostId = existingPending.id;
+      boostAmountCents = existingPending.amount_cents ?? amount_cents;
+      logStep("Reusing pending boost (charging its stored amount)", { boostId, boostAmountCents });
+    } else {
+      const { data: createdId, error: boostError } = await authedClient.rpc("create_boost", {
+        p_post_id: post_id,
+        p_boosting_org_id: membership.org_id,
+        p_amount_cents: amount_cents,
+        p_tier: tier_label,
+      });
+      if (boostError) throw new Error(`create_boost failed: ${boostError.message}`);
+      boostId = createdId as string;
+      boostAmountCents = amount_cents;
+      logStep("Boost row created", { boostId });
+    }
+
+    if (!creatorReady) {
+      logStep("Creator payout not ready — parking boost", { creatorId: post.creator_id, boostId });
+      return json({
         error: "CREATOR_PAYOUT_NOT_READY",
         boost_id: boostId,
         message: "Creator hasn't finished payout setup. Boost is queued.",
-      }), {
-        headers: { ...corsHeaders(req), "Content-Type": "application/json" },
-        status: 202,
-      });
+      }, 202);
     }
 
-    const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
-    const { platformFeeCents, creatorPayoutCents } = calculateDragonShareFee(amount_cents);
+    const origin = req.headers.get("origin")
+      || Deno.env.get("PUBLIC_SITE_URL")
+      || "https://dragoncandy.io";
 
-    // Fetch org's Stripe customer for charging
-    const { data: org } = await supabase
-      .from("organizations")
-      .select("stripe_customer_id")
-      .eq("id", membership.org_id)
-      .single();
-
-    // Create PaymentIntent
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: amount_cents,
-      currency: "usd",
-      customer: org?.stripe_customer_id ?? undefined,
-      confirm: true,
-      automatic_payment_methods: { enabled: true, allow_redirects: "never" },
-      metadata: {
-        type: "dragonshare_boost",
-        boost_id: boostId,
-        post_id: post_id,
-        boosting_org_id: membership.org_id,
-        creator_id: post.creator_id,
-      },
-    }, { idempotencyKey: `boost_pi_${boostId}` });
-
-    logStep("PaymentIntent created", { piId: paymentIntent.id, status: paymentIntent.status });
-
-    if (paymentIntent.status !== "succeeded") {
-      await supabase
-        .from("dragonshare_boosts")
-        .update({ status: "failed", stripe_payment_intent_id: paymentIntent.id })
-        .eq("id", boostId);
-      throw new Error(`Payment not succeeded: ${paymentIntent.status}`);
-    }
-
-    // Transfer to creator
-    const transfer = await stripe.transfers.create({
-      amount: creatorPayoutCents,
-      currency: "usd",
-      destination: creatorProfile.stripe_account_id,
-      metadata: {
-        type: "dragonshare_boost",
-        boost_id: boostId,
-        post_id: post_id,
-      },
-    }, { idempotencyKey: `boost_tr_${boostId}` });
-
-    logStep("Transfer created", { transferId: transfer.id, amount: creatorPayoutCents });
-
-    // Update boost row
-    await supabase
-      .from("dragonshare_boosts")
-      .update({
-        status: "transferred",
-        stripe_payment_intent_id: paymentIntent.id,
-        stripe_transfer_id: transfer.id,
-        captured_at: new Date().toISOString(),
-        transferred_at: new Date().toISOString(),
-      })
-      .eq("id", boostId);
-
-    // Insert payout record
-    await supabase
-      .from("dragonshare_payouts")
-      .insert({
-        boost_id: boostId,
-        creator_id: post.creator_id,
-        amount_cents: creatorPayoutCents,
-        stripe_transfer_id: transfer.id,
-        status: "succeeded",
-        processed_at: new Date().toISOString(),
-      });
-
-    // Update post status
-    await supabase
-      .from("dragonshare_posts")
-      .update({ boost_status: "boosted" })
-      .eq("id", post_id);
-
-    logStep("Boost complete", { boostId, piId: paymentIntent.id, transferId: transfer.id });
-
-    // Fire social hook for auto-draft (fire-and-forget)
-    try {
-      await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/fire-dragonshare-social-hook`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+    const openBoostCheckout = async () => {
+      const session = await stripe.checkout.sessions.create({
+        customer: customerId,
+        mode: "payment",
+        line_items: [{
+          price_data: {
+            currency: "usd",
+            product_data: { name: "DragonShare boost" },
+            unit_amount: boostAmountCents,
+          },
+          quantity: 1,
+        }],
+        payment_intent_data: {
+          setup_future_usage: "off_session",
+          metadata: {
+            type: "dragonshare_boost",
+            boost_id: boostId,
+            post_id: post_id,
+            creator_id: post.creator_id,
+            boosting_org_id: membership.org_id,
+          },
         },
-        body: JSON.stringify({ boost_id: boostId, post_id: post_id }),
+        metadata: {
+          type: "dragonshare_boost",
+          boost_id: boostId,
+          post_id: post_id,
+          creator_id: post.creator_id,
+          boosting_org_id: membership.org_id,
+        },
+        custom_text: testModeCustomText(stripeKey),
+        success_url: `${origin}/dashboard/business/dragonshare?boost=success`,
+        cancel_url: `${origin}/dashboard/business/dragonshare?boost=cancelled`,
       });
-    } catch (socialHookErr) {
-      console.warn('[boost-payment] Social hook failed (non-blocking):', socialHookErr);
+      logStep("Boost checkout session created", { sessionId: session.id, boostId });
+      return json({ checkout_url: session.url, boost_id: boostId });
+    };
+
+    // Resolve a reusable default card.
+    const customer = await stripe.customers.retrieve(customerId);
+    let defaultPm: string | undefined;
+    if (!("deleted" in customer && customer.deleted)) {
+      const dpm = (customer as Stripe.Customer).invoice_settings?.default_payment_method;
+      defaultPm = typeof dpm === "string" ? dpm : dpm?.id;
+    }
+    if (!defaultPm) {
+      const pms = await stripe.paymentMethods.list({ customer: customerId, type: "card", limit: 1 });
+      defaultPm = pms.data[0]?.id;
     }
 
-    return new Response(JSON.stringify({
-      success: true,
-      boost_id: boostId,
-      transfer_id: transfer.id,
-      creator_payout_cents: creatorPayoutCents,
-    }), {
-      headers: { ...corsHeaders(req), "Content-Type": "application/json" },
-      status: 200,
-    });
+    if (defaultPm) {
+      try {
+        const pi = await stripe.paymentIntents.create({
+          amount: boostAmountCents,
+          currency: "usd",
+          customer: customerId,
+          payment_method: defaultPm,
+          off_session: true,
+          confirm: true,
+          metadata: {
+            type: "dragonshare_boost",
+            boost_id: boostId,
+            post_id: post_id,
+            boosting_org_id: membership.org_id,
+            creator_id: post.creator_id,
+          },
+        }, { idempotencyKey: `boost_pi_${boostId}` });
+
+        if (pi.status !== "succeeded") {
+          logStep("Off-session PI not succeeded — falling back to checkout", { status: pi.status });
+          return await openBoostCheckout();
+        }
+
+        await fulfillBoost(stripe, supabase, {
+          boostId,
+          postId: post_id,
+          creatorId: post.creator_id,
+          amountCents: boostAmountCents,
+          paymentIntentId: pi.id,
+        });
+        logStep("Boost complete (off-session)", { boostId, piId: pi.id });
+
+        const { creatorPayoutCents } = calculateDragonShareFee(boostAmountCents);
+        return json({ success: true, boost_id: boostId, creator_payout_cents: creatorPayoutCents });
+      } catch (err) {
+        // authentication_required / card needs SCA → collect via hosted checkout
+        logStep("Off-session charge failed — falling back to checkout", { message: String(err) });
+        return await openBoostCheckout();
+      }
+    }
+
+    // No card on file → hosted checkout collects + saves it.
+    return await openBoostCheckout();
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
     logStep("ERROR", { message: msg });
-    return new Response(JSON.stringify({ error: msg }), {
-      headers: { ...corsHeaders(req), "Content-Type": "application/json" },
-      status: 500,
-    });
+    return json({ error: msg }, 500);
   }
 });
