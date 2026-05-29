@@ -69,7 +69,7 @@ Link wallet, and payout accounts would never belong there regardless.
 
 ## 4. Design
 
-### 4.1 One Stripe customer per org, with a saved card
+### 4.1 One Stripe customer per org, with a saved default card
 
 New shared helper: `supabase/functions/_shared/stripe-customer.ts`
 
@@ -77,54 +77,108 @@ New shared helper: `supabase/functions/_shared/stripe-customer.ts`
 getOrCreateOrgCustomer(stripe, supabase, orgId, email) -> customerId
 ```
 
-- Reads `organizations.stripe_customer_id`. If present, returns it.
-- Otherwise lists customers by email (reuse if found) or creates a new
-  customer with `metadata: { org_id }`, then **persists** the id to
-  `organizations.stripe_customer_id`.
+- Reads `organizations.stripe_customer_id`. **If present, returns it** (this is
+  the single canonical anchor).
+- If null: list customers by `email` and reuse the first match if found;
+  otherwise `stripe.customers.create({ email, metadata: { org_id } })`. Either
+  way, **persist** the id to `organizations.stripe_customer_id` so all flows
+  converge.
 
-`create-campaign-escrow` and `create-sponsorship-checkout`:
-- Resolve the paying org for the authenticated user and use the helper so all
-  three flows converge on the **same** Stripe customer.
-- Add `payment_intent_data.setup_future_usage: 'off_session'` so the card used
-  to pay a campaign/sponsorship is **saved** to the customer for reuse.
+> **Reconciliation note.** Today only `create-checkout-session` (subscription)
+> persists `stripe_customer_id`, and it does so without email dedup; escrow and
+> sponsorship look up by email and never persist. The result is that a single
+> org can already hold two Stripe customers. After this change, the persisted
+> `organizations.stripe_customer_id` is authoritative for all new payments. We
+> do **not** attempt to merge pre-existing duplicate customers (test mode,
+> pre-revenue — not worth it); we just stop creating divergence going forward.
 
-> Open implementation detail to verify: the mapping from the campaign/
-> sponsorship-owning user to their org. The boost flow already resolves
-> `membership.org_id` via `org_members`. Escrow uses `campaign.user_id`. The
-> implementation must resolve the same org for the same business so the saved
-> card is shared. If a clean user→org resolution does not exist for the escrow
-> path, anchor on the org that owns the campaign.
+**Org resolution is concrete (no longer "to verify"):**
+- `campaigns` already has an auto-populated `org_id` column (trigger
+  `trg_campaigns_auto_org_fn`, security definer). `create-campaign-escrow`
+  selects `campaign.org_id` and anchors the customer there.
+- The boost flow already resolves the restaurant's org as
+  `membership.org_id` on `post.target_org_id`. For a restaurant, the campaign
+  it owns (`campaign.org_id`) and the org it boosts from (`target_org_id`) are
+  the **same** org, so the card saved during a campaign payment is found during
+  a boost. This is the load-bearing guarantee and it holds.
+- `create-sponsorship-checkout` is a brand flow (brand role currently hidden
+  behind a flag). It resolves the brand's org via the same helper when an org
+  is resolvable; if none, it falls back to the current email-based customer
+  (no regression). Cross-flow card reuse is only *required* restaurant-side.
+
+Both `create-campaign-escrow` and `create-sponsorship-checkout`:
+- Use `getOrCreateOrgCustomer`.
+- Add `payment_intent_data.setup_future_usage: 'off_session'` so the card is
+  **attached** to the customer for reuse.
+- Note: `setup_future_usage` attaches the card but does **not** make it the
+  default. Setting the default payment method happens in the webhook on
+  `checkout.session.completed` (see §4.3) so the off-session boost path has a
+  deterministic card to charge.
 
 ### 4.2 Boost becomes two-path
 
 `boost-payment/index.ts`:
 
 1. Resolve the org customer via `getOrCreateOrgCustomer`.
-2. Determine whether a reusable card exists (customer
-   `invoice_settings.default_payment_method`, or a listed card payment method).
-3. **Card on file →** confirm a PaymentIntent `off_session` against the saved
-   card (today's one-tap behavior). On success, fulfill (see 4.4).
-   - If the off-session charge returns `requires_action` /
-     `authentication_required`, fall back to path 4 (hosted checkout).
-4. **No card on file →** create a Stripe hosted Checkout session
-   (`mode: 'payment'`, `setup_future_usage: 'off_session'`, customer set,
-   metadata `{ type: 'dragonshare_boost', boost_id, post_id, creator_id,
-   boosting_org_id }`) and return `{ checkout_url }`. The boost row is left in
-   `pending`; fulfillment happens in the webhook on completion.
+2. **Concurrent-pending guard:** before creating a new boost, check for an
+   existing `dragonshare_boosts` row for this `post_id` + `boosting_org_id`
+   with `status = 'pending'`. If one exists, do not mint a second
+   PaymentIntent/session — return the existing pending boost (and its
+   `checkout_url` if it was a checkout-path boost). (Note: `post.boost_status`
+   stays `'available'` while a checkout is pending, so the `create_boost` RPC
+   guard alone does not prevent a double-tap; this explicit check does.)
+3. Resolve the reusable card: read `customer.invoice_settings.
+   default_payment_method`; if absent, `customer.listPaymentMethods({ type:
+   'card' })` and take the first. Capture the concrete `pm_...` id.
+4. **Card on file →** create + confirm a PaymentIntent with an **explicit**
+   `payment_method: pm_id`, `off_session: true`, `confirm: true`, `customer`.
+   Do **not** pass `automatic_payment_methods` when pinning a payment method.
+   On success, fulfill (see §4.4). One tap, no UI.
+   - If Stripe throws `authentication_required` (or the PI comes back
+     `requires_action`), fall back to path 5.
+5. **No card on file (or off-session needs auth) →** create a Stripe hosted
+   Checkout session (`mode: 'payment'`, `customer`,
+   `payment_intent_data.setup_future_usage: 'off_session'`, metadata
+   `{ type: 'dragonshare_boost', boost_id, post_id, creator_id,
+   boosting_org_id }`) and return `{ checkout_url }`. The boost row stays
+   `pending`; `post.boost_status` stays `available`; fulfillment happens in the
+   webhook on completion (§4.3).
+
+> Why no off-session "today" behavior: the current code passes `customer` +
+> `confirm` with **no `payment_method`**, which is exactly why it fails. The
+> fix is the explicit `payment_method` + `off_session` in step 4 — there is no
+> working one-tap path to preserve.
 
 `BoostConfirmationSheet.tsx`:
-- On `boost-payment` response, if a `checkout_url` is returned, open it in a
-  pre-opened blank tab (same anti-popup-blocker pattern as
-  `useSponsorshipPayment`). Otherwise keep the existing success toast.
+- On `boost-payment` response:
+  - If `checkout_url` is returned → open it in a pre-opened blank tab (same
+    anti-popup-blocker pattern as `useSponsorshipPayment`) and show a
+    **"Complete payment in the new tab"** toast — **not** the success toast
+    (money has not moved yet).
+  - If a success payload is returned (off-session charge already settled) →
+    keep the existing "Boost confirmed! $X is on its way" toast.
 - Preserve the existing `CREATOR_PAYOUT_NOT_READY` (202) handling.
 
-### 4.3 Webhook finishes a boost paid via checkout
+### 4.3 Webhook finishes a boost + sets the default card
 
 `stripe-webhook/index.ts`, in `checkout.session.completed` (only when
-`payment_status === 'paid'`): add a branch for
-`metadata.type === 'dragonshare_boost'` that runs boost fulfillment (4.4).
-Optionally set the customer's `invoice_settings.default_payment_method` from
-the session's payment method so the next boost is one-tap.
+`payment_status === 'paid'`):
+
+- **Set the default payment method (all checkout types).** Whenever a session
+  saved a card (escrow, sponsorship, or boost — all now use
+  `setup_future_usage: 'off_session'`), read the resulting payment method
+  (retrieve the session's PaymentIntent → `payment_method`) and set it as the
+  customer's `invoice_settings.default_payment_method` **if the customer has no
+  default yet**. This is what makes the *next* boost deterministically one-tap.
+  This is **required**, not optional.
+- **New boost branch.** For `metadata.type === 'dragonshare_boost'` with
+  `metadata.boost_id`, run boost fulfillment (§4.4), guarded for idempotency
+  (skip if the boost row is already `transferred`).
+
+Add a boost branch to `checkout.session.expired` (currently has none): set the
+`dragonshare_boosts` row `status = 'failed'` where it is still `pending`, and
+write a `dragonshare_events` `boost_failed` record. `post.boost_status` is
+already `available`, so nothing to revert there.
 
 Existing boost failure handling (`payment_intent.payment_failed`,
 `transfer.updated` reversed) is unchanged.
@@ -141,34 +195,56 @@ there is exactly one fulfillment code path. Keep transfer idempotency keys
 
 ### 4.5 Test-mode clarity note (frontend)
 
-A small informational note on the payment-trigger and boost surfaces:
+A small informational note shown **only in test mode** (gate on publishable key
+prefix `pk_test_`), placed on surfaces where the user is **about to enter card
+details** — i.e. the campaign/sponsorship pay triggers and the **first-boost
+(no-card) confirmation** before the hosted-checkout redirect:
 
-> Test mode — pay with card `4242 4242 4242 4242` (any future expiry, any CVC).
-> Your linked test bank accounts are payout accounts and won't appear here.
+> Test mode — you'll pay with card `4242 4242 4242 4242` (any future expiry,
+> any CVC). Your linked test bank accounts are payout accounts and won't appear
+> here.
 
-- Shown only in test mode (gate on the publishable key prefix `pk_test_` or an
-  existing env/flag).
+- **Do not** show the "use 4242" instruction on the one-tap (card-on-file)
+  boost path — there is no card field there, so it would confuse. The note is
+  conditional on the no-card / checkout-bound path.
 - Built for **both** desktop (`lg:` classes) and mobile (base classes) per the
   design system. Use teal (`dc-teal`) styling — **never gray**.
+- The hosted Stripe checkout already shows Stripe's own test-mode banner, so
+  the in-app note is purely to pre-empt the payout-account confusion.
 
 ## 5. Data Flow
 
 - **First boost ever:** Confirm Boost → no card → hosted checkout tab →
   pay + save card → webhook transfers payout to creator → post `boosted`.
-- **Every boost after:** Confirm Boost → off-session charge on saved card →
-  instant fulfillment.
-- **Campaign / sponsorship:** unchanged hosted checkout, now also saves the
-  card so a subsequent boost is one-tap with zero extra setup.
+- **Every boost after:** Confirm Boost → off-session charge on the customer's
+  default card → instant fulfillment.
+- **Campaign / sponsorship:** unchanged hosted checkout, now saves the card and
+  the webhook sets it as the customer default — so a subsequent boost on the
+  same org is one-tap with zero extra setup.
 
-## 6. Error Handling & Idempotency
+## 6. Boost State Machine & Idempotency
 
-- Boost row creation via `create_boost` RPC; transfers use idempotency keys.
-- Webhook idempotent via `stripe_webhook_events` PK claim (existing).
-- Off-session `authentication_required` → graceful fallback to hosted checkout.
-- Hosted-checkout abandonment / failure handled by existing
-  `checkout.session.expired` and `payment_intent.payment_failed` branches
-  (extend the boost branch to reset the boost row to `failed`/`pending` as
-  appropriate).
+Boost row (`dragonshare_boosts.status`) and post (`dragonshare_posts.
+boost_status`, enum `available|boosted|expired|withdrawn`) transitions:
+
+| Event | boost.status | post.boost_status |
+|-------|-------------|-------------------|
+| `create_boost` RPC (requires post `available`) | `pending` | `available` |
+| Off-session charge succeeds | `transferred` | `boosted` |
+| Hosted checkout opened | `pending` | `available` (unchanged) |
+| `checkout.session.completed` (fulfill) | `transferred` | `boosted` |
+| `checkout.session.expired` | `failed` | `available` (unchanged) |
+| `payment_intent.payment_failed` | `failed` | `available` |
+| `transfer.updated` reversed | `failed` | `available` |
+
+- **No new enum value needed.** `post.boost_status` stays `available` during a
+  pending checkout; the concurrent-pending guard (§4.2 step 2) — not the
+  `create_boost` check — is what prevents duplicate pending boosts.
+- Transfers use idempotency keys (`boost_tr_${boostId}`, existing).
+- Webhook idempotent via `stripe_webhook_events` PK claim (existing); boost
+  fulfillment additionally skips if the boost row is already `transferred`.
+- Off-session `authentication_required` → graceful fallback to hosted checkout
+  (§4.2 step 4 → 5).
 
 ## 7. Testing & Verification
 
