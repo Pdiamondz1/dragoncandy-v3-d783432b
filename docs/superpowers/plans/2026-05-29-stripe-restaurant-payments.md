@@ -43,6 +43,7 @@ Genuine TDD applies to the one pure frontend unit extracted in **Task 7** (`reso
 - **No merge of pre-existing duplicate Stripe customers** (test mode, pre-revenue). The persisted `organizations.stripe_customer_id` becomes authoritative going forward.
 - **Sponsorship kept "as-is"** — only the test-mode `custom_text` clarification is added; its customer model is unchanged (brands don't boost, so no card-reuse need).
 - **Two completed boost checkouts** (user pays in two tabs) could double-charge; `fulfillBoost` is idempotent on the transfer but cannot un-capture a second payment. Low risk; not mitigated (would need a schema column). Documented, not solved.
+- **Spec §4.5 deviation:** the spec's in-app, pre-redirect teal note is intentionally replaced by Stripe Checkout `custom_text` (set only in test mode) on all three hosted checkouts. No in-app note component is built — the clarification lands directly on the Stripe payment screen, which is where the payout-account confusion occurs. This is a deliberate, faithful simplification of §4.5's mechanism (same message, better placement, less frontend surface).
 
 ---
 
@@ -279,6 +280,7 @@ import { corsHeaders } from "../_shared/cors.ts";
 import { getOrCreateOrgCustomer } from "../_shared/stripe-customer.ts";
 import { fulfillBoost } from "../_shared/fulfill-boost.ts";
 import { testModeCustomText } from "../_shared/test-mode-text.ts";
+import { calculateDragonShareFee } from "../_shared/dragonshare-fee.ts";
 
 const logStep = (step: string, details?: unknown) => {
   console.log(`[BOOST-PAYMENT] ${step}${details ? " - " + JSON.stringify(details) : ""}`);
@@ -338,6 +340,16 @@ serve(async (req) => {
     if (memError || !membership) throw new Error("Not a member of the target organization");
     if (!["owner", "admin"].includes(membership.role)) throw new Error("Only owners and admins can boost");
 
+    // User-scoped client: the SECURITY DEFINER create_boost RPC reads auth.uid()
+    // for its membership check and boosting_user_id. The service-role client has
+    // a null auth.uid(), which makes create_boost raise — so the RPC MUST be
+    // called through a client carrying the caller's JWT.
+    const authedClient = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      { global: { headers: { Authorization: authHeader } }, auth: { persistSession: false } },
+    );
+
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
     const customerId = await getOrCreateOrgCustomer(stripe, supabase, membership.org_id, userEmail);
 
@@ -363,9 +375,9 @@ serve(async (req) => {
     if (existingPending) {
       boostId = existingPending.id;
       boostAmountCents = existingPending.amount_cents ?? amount_cents;
-      logStep("Reusing pending boost", { boostId });
+      logStep("Reusing pending boost (charging its stored amount)", { boostId, boostAmountCents });
     } else {
-      const { data: createdId, error: boostError } = await supabase.rpc("create_boost", {
+      const { data: createdId, error: boostError } = await authedClient.rpc("create_boost", {
         p_post_id: post_id,
         p_boosting_org_id: membership.org_id,
         p_amount_cents: amount_cents,
@@ -471,8 +483,7 @@ serve(async (req) => {
         });
         logStep("Boost complete (off-session)", { boostId, piId: pi.id });
 
-        const { creatorPayoutCents } = await import("../_shared/dragonshare-fee.ts")
-          .then((m) => m.calculateDragonShareFee(boostAmountCents));
+        const { creatorPayoutCents } = calculateDragonShareFee(boostAmountCents);
         return json({ success: true, boost_id: boostId, creator_payout_cents: creatorPayoutCents });
       } catch (err) {
         // authentication_required / card needs SCA → collect via hosted checkout
@@ -490,10 +501,6 @@ serve(async (req) => {
   }
 });
 ```
-
-> Note: the `import("../_shared/dragonshare-fee.ts")` for the payout amount in the
-> success response is only for the toast number; if you prefer, add a static
-> `import { calculateDragonShareFee }` at the top instead and drop the dynamic import.
 
 - [ ] **Step 2: Optional `deno check supabase/functions/boost-payment/index.ts`**
 
@@ -545,14 +552,21 @@ with:
     logStep("Resolved org customer", { customerId, orgId: campaign.org_id });
 ```
 
-- [ ] **Step 4: Save the card + add custom_text on the session**
+- [ ] **Step 4: Save the card + add custom_text** — three discrete surgical edits in the `stripe.checkout.sessions.create({ ... })` call (current lines ~125-161). Do NOT create a second `payment_intent_data` block.
 
-In the `stripe.checkout.sessions.create({ ... })` call, (a) remove `customer_email: customerId ? undefined : user.email,` (customer is always set now), (b) add `custom_text`, and (c) add `setup_future_usage` inside `payment_intent_data`:
-
+**4a.** Delete this line (current line 127):
 ```ts
-      customer: customerId,
+      customer_email: customerId ? undefined : user.email,
+```
+(The customer is always set now, so `customer_email` is redundant.)
+
+**4b.** Immediately after the `customer: customerId,` line, add:
+```ts
       custom_text: testModeCustomText(stripeKey),
-      // ...existing line_items, mode, success_url, cancel_url, metadata...
+```
+
+**4c.** Inside the **existing** `payment_intent_data: { ... }` object (current lines 153-160), add `setup_future_usage` as the first key — do not add a second `payment_intent_data`:
+```ts
       payment_intent_data: {
         setup_future_usage: 'off_session',
         metadata: {
@@ -651,11 +665,15 @@ Right after the existing `const paymentIntentId = session.payment_intent as stri
 
         // DragonShare boost paid via hosted checkout
         if (metadata.type === "dragonshare_boost" && metadata.boost_id) {
+          if (!session.amount_total) {
+            logStep("Boost session missing amount_total — skipping fulfill", { boostId: metadata.boost_id });
+            break;
+          }
           await fulfillBoost(stripe, supabase, {
             boostId: metadata.boost_id,
             postId: metadata.post_id,
             creatorId: metadata.creator_id,
-            amountCents: session.amount_total ?? 0,
+            amountCents: session.amount_total,
             paymentIntentId: paymentIntentId ?? "",
           });
           logStep("DragonShare boost fulfilled via checkout webhook", { boostId: metadata.boost_id });
@@ -815,7 +833,8 @@ Replace the existing `boostMutation` definition with:
         onOpenChange(false);
         return;
       }
-      toast({ title: 'Boost confirmed!', description: `$${(creatorPayoutCents / 100).toFixed(0)} is on its way to ${creatorName}.` });
+      const paidCents = outcome.creatorPayoutCents ?? creatorPayoutCents;
+      toast({ title: 'Boost confirmed!', description: `$${(paidCents / 100).toFixed(0)} is on its way to ${creatorName}.` });
       queryClient.invalidateQueries({ queryKey: ['dragonshare-posts'] });
       onOpenChange(false);
     },
@@ -873,7 +892,7 @@ git push
 Use the test logins from project memory. For each, screenshot + open Chrome DevTools console (expect no errors), and check Supabase function logs:
 
 1. **Campaign escrow** (restaurant `dwilliams@harbormill.net`): pay a campaign via hosted checkout using card `4242 4242 4242 4242`. Verify: checkout shows the test-mode `custom_text` note; escrow becomes `held`; the card is saved to the org customer (Stripe dashboard → customer → payment methods).
-2. **First boost, no card** — only if the org has no saved card yet: tap Confirm Boost → verify it opens a hosted-checkout tab (not a silent failure) → pay → verify creator transfer in Stripe and post `boost_status = boosted`.
+2. **First boost, no card** — only if the org has no saved card yet: tap Confirm Boost → verify it opens a hosted-checkout tab (not a silent failure) → pay → verify creator transfer in Stripe and post `boost_status = boosted`. In the `boost-payment` Supabase logs, confirm `create_boost` succeeds (no `'Only org owners or admins can boost posts'` exception) — this validates the `auth.uid()`/user-scoped-client fix.
 3. **Repeat boost** (card now on file): tap Confirm Boost → verify it charges off-session with **no** tab and the success toast fires; creator transfer recorded.
 4. **Sponsorship** (brand `damesonpoint@gmail.com`, if brand flow reachable): verify the test-mode note appears on its checkout.
 
