@@ -199,7 +199,7 @@ Extract the post-charge logic currently inline in `boost-payment`
 (transfer to creator, insert `dragonshare_payouts`, update
 `dragonshare_boosts` to `transferred`, set post `boost_status = 'boosted'`,
 fire the social hook) into `supabase/functions/_shared/fulfill-boost.ts`.
-Used by **both** the off-session path (4.2 step 3) and the webhook (4.3) so
+Used by **both** the off-session path (4.2 step 4) and the webhook (4.3) so
 there is exactly one fulfillment code path. Keep transfer idempotency keys
 (`boost_tr_${boostId}`).
 
