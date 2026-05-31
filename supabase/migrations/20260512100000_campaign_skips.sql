@@ -10,11 +10,12 @@ CREATE TABLE IF NOT EXISTS public.campaign_skips (
 
 ALTER TABLE public.campaign_skips ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can manage their own skips" ON public.campaign_skips;
 CREATE POLICY "Users can manage their own skips"
   ON public.campaign_skips
   FOR ALL
   USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
 
-CREATE INDEX idx_campaign_skips_user ON public.campaign_skips(user_id);
-CREATE INDEX idx_campaign_skips_campaign ON public.campaign_skips(campaign_id);
+CREATE INDEX IF NOT EXISTS idx_campaign_skips_user ON public.campaign_skips(user_id);
+CREATE INDEX IF NOT EXISTS idx_campaign_skips_campaign ON public.campaign_skips(campaign_id);

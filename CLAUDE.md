@@ -159,3 +159,19 @@ Never commit actual values. Reference `.env.local` locally.
 ## Deployment
 
 Push to `main` on GitHub → Lovable auto-deploys to dragoncandy.io. Test locally with `npm run dev` before pushing. No staging environment.
+
+**Lovable deploys frontend only.** Database migrations (`supabase/migrations/`) and edge functions are NOT deployed by a push — they must be applied separately. Skipping this causes silent drift: repo code expects schema/functions that production doesn't have. (See `docs/migration-drift-audit-2026-05-31.md` — a back-dated migration left `campaign_skips` missing in prod while its frontend hook shipped.)
+
+**Deployment checklist (every change touching `supabase/`):**
+1. Push code to `main` (Lovable deploys frontend).
+2. **Apply migrations** to production: MCP `apply_migration`, or `supabase db push --linked`.
+3. **Deploy edge functions**: MCP `deploy_edge_function`, or `supabase functions deploy <name>`.
+4. **Mirror back**: any change applied directly in prod (Lovable UI / dashboard) must be written
+   into a repo migration file — otherwise the repo can't reproduce prod.
+5. **Verify the ledger**: `npm run migrations:audit` (local lint) + `supabase migration list --linked`.
+6. Verify the feature in production (Chrome DevTools, desktop + mobile).
+
+**Avoid drift:** never back-date a migration's timestamp (a version older than an already-applied
+one gets silently skipped by `db push`); never reuse a version prefix (the ledger keys on it). Run
+`npm run migrations:audit` before every push — it flags duplicates, back-dated, and malformed
+migration filenames and exits non-zero on hard anomalies.

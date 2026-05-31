@@ -28,9 +28,12 @@
 - [[Content Delivery State Machine]](concepts/content-delivery-state-machine.md) — 9-status flow from pending through resolved
 - [[Data Flywheel]](concepts/data-flywheel.md) — Primary competitive moat via accumulated match data
 - [[Error Handling Patterns]](concepts/error-handling-patterns.md) — ErrorBoundary levels, QueryClient throwOnError, async patterns
+- [[Migration Deployment Process]](concepts/migration-deployment-process.md) — How schema changes reach prod; the Lovable frontend-only gap; drift prevention
 - [[Musk's Algorithm]](concepts/musks-algorithm.md) — Question → Delete → Simplify → Accelerate → Automate
 - [[Pricing Architecture]](concepts/pricing-architecture.md) — Four stacked revenue streams per customer
 - [[Take-Rate Ladder]](concepts/take-rate-ladder.md) — Tiered platform fees from 10% (Free) to 2% (Enterprise)
 - [[TypeScript Patterns]](concepts/typescript-patterns.md) — Strict mode, type safety, export conventions
 
 ## Analyses
+
+- [[Migration Drift Audit 2026-05]](../migration-drift-audit-2026-05-31.md) — Repo vs production ledger + object verification; 1 true drift (`campaign_skips`), 51 prod-only entries, two parallel histories (2026-05-31)

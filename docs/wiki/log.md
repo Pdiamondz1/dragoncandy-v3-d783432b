@@ -1,5 +1,15 @@
 # Wiki Log
 
+## [2026-05-31] analysis | Migration Drift Audit
+
+Read-only audit of repo `supabase/migrations/` vs production `schema_migrations` ledger plus
+object-existence verification. Found 1 true drift (`campaign_skips` missing in prod, breaking a
+live frontend hook), 55 repo-versions-not-in-ledger (mostly applied under re-stamped versions),
+51 prod-only ledger entries, and duplicate version `20260526200000`.
+Pages created: [[Migration Deployment Process]]
+Analyses added: [[Migration Drift Audit 2026-05]] (report at `docs/migration-drift-audit-2026-05-31.md`)
+Pages updated: [[Wiki Index]]
+
 ## [2026-05-24] ingest | Session Handoff Backfill — 6 Source Pages
 
 Backfill of 6 session handoff source pages from accumulated sessions:
