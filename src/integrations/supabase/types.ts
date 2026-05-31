@@ -5144,6 +5144,12 @@ export type Database = {
           full_name: string
         }[]
       }
+      get_unavailable_campaign_ids: {
+        Args: never
+        Returns: {
+          campaign_id: string
+        }[]
+      }
       get_unread_message_counts: {
         Args: { user_uuid: string }
         Returns: {

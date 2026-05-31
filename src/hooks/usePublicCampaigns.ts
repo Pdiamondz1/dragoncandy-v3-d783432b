@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Campaign, hydrateCampaignFromAnalysis } from '@/hooks/useCampaignQueries';
 import { getCoverImageUrl } from '@/lib/campaignUtils';
+import { toExcludedCampaignIds, buildExcludedIdsFilter } from '@/hooks/campaignAvailability';
 
 export interface PublicCampaign extends Campaign {
   business_profile?: {
@@ -27,34 +28,20 @@ export const usePublicCampaigns = (userId?: string) => {
   return useQuery({
     queryKey: ['public-campaigns', userId],
     queryFn: async () => {
-      // First, get campaigns that have active or completed collaborations
-      const { data: assignedCampaigns, error: assignedError } = await supabase
-        .from('campaign_collaborations')
-        .select('campaign_id')
-        .in('status', ['active', 'completed']);
+      // Get campaign IDs that are already taken (accepted application or
+      // active/completed collaboration). This runs server-side via a
+      // SECURITY DEFINER RPC because RLS on campaign_collaborations /
+      // campaign_applications hides other creators' rows — computing the
+      // exclusion list client-side would let taken campaigns leak through.
+      const { data: unavailable, error: unavailableError } = await supabase
+        .rpc('get_unavailable_campaign_ids');
 
-      if (assignedError) {
-        console.error('Error fetching assigned campaigns:', assignedError);
-        throw assignedError;
+      if (unavailableError) {
+        console.error('Error fetching unavailable campaigns:', unavailableError);
+        throw unavailableError;
       }
 
-      // Also get campaigns with accepted applications (before collaboration is created)
-      const { data: acceptedApplications, error: acceptedError } = await supabase
-        .from('campaign_applications')
-        .select('campaign_id')
-        .eq('status', 'accepted');
-
-      if (acceptedError) {
-        console.error('Error fetching accepted applications:', acceptedError);
-        throw acceptedError;
-      }
-
-      // Combine and deduplicate campaign IDs that should be excluded
-      const assignedCampaignIds = [
-        ...(assignedCampaigns || []).map(c => c.campaign_id),
-        ...(acceptedApplications || []).map(a => a.campaign_id)
-      ];
-      const uniqueAssignedIds = [...new Set(assignedCampaignIds)];
+      const uniqueAssignedIds = toExcludedCampaignIds(unavailable);
       // Get published campaigns excluding assigned ones
       let query = supabase
         .from('campaigns')
@@ -62,8 +49,9 @@ export const usePublicCampaigns = (userId?: string) => {
         .eq('status', 'published');
 
       // Only add the not.in filter if there are campaigns to exclude
-      if (uniqueAssignedIds.length > 0) {
-        query = query.not('id', 'in', `(${uniqueAssignedIds.join(',')})`);
+      const excludeFilter = buildExcludedIdsFilter(uniqueAssignedIds);
+      if (excludeFilter) {
+        query = query.not('id', 'in', excludeFilter);
       }
 
       const { data: campaigns, error: campaignsError } = await query

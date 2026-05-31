@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { toExcludedCampaignIds, buildExcludedIdsFilter } from '@/hooks/campaignAvailability';
 
 export interface SponsorshipCampaign {
   id: string;
@@ -31,12 +32,32 @@ export const useSponsorshipCampaigns = (brandUserId?: string) => {
   return useQuery({
     queryKey: ['sponsorship-campaigns', brandUserId],
     queryFn: async () => {
+      // Exclude campaigns already taken by a creator (accepted application or
+      // active/completed collaboration). Runs server-side via SECURITY DEFINER
+      // RPC because RLS hides other creators' collaboration/application rows.
+      const { data: unavailable, error: unavailableError } = await supabase
+        .rpc('get_unavailable_campaign_ids');
+
+      if (unavailableError) {
+        console.error('Error fetching unavailable campaigns:', unavailableError);
+        throw unavailableError;
+      }
+
+      const unavailableIds = toExcludedCampaignIds(unavailable);
+
       // Get campaigns open for sponsorship
-      const { data: campaigns, error: campaignsError } = await supabase
+      let query = supabase
         .from('campaigns')
         .select('id, user_id, title, description, goals, deliverables, platforms, budget_min, budget_max, deadline, status, created_at, open_for_sponsorship')
         .eq('status', 'published')
-        .eq('open_for_sponsorship', true)
+        .eq('open_for_sponsorship', true);
+
+      const excludeFilter = buildExcludedIdsFilter(unavailableIds);
+      if (excludeFilter) {
+        query = query.not('id', 'in', excludeFilter);
+      }
+
+      const { data: campaigns, error: campaignsError } = await query
         .order('created_at', { ascending: false });
 
       if (campaignsError) {
