@@ -27,6 +27,7 @@ import {
   CheckCircle,
   XCircle,
   Loader2,
+  ChevronDown,
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EscrowFeeBreakdown } from '@/components/payments/EscrowFeeBreakdown';
@@ -149,7 +150,6 @@ export const CampaignStatusBanner: React.FC<CampaignStatusBannerProps> = ({
   onPayEscrow,
   onReviewApplications,
   onReviewContent,
-  onRequestRevision,
   onViewDeliverables,
   onLeaveReview,
   isPayingEscrow,
@@ -273,14 +273,14 @@ export const CampaignStatusBanner: React.FC<CampaignStatusBannerProps> = ({
         );
       case 'action_needed':
         return (
-          <div className="flex flex-col sm:flex-row flex-wrap gap-2 w-full lg:w-auto">
-            <Button onClick={onReviewContent} className="rounded-full bg-teal-400 hover:bg-teal-500 text-white font-semibold w-full sm:flex-1 lg:flex-none">
-              Review & Approve
-            </Button>
-            <Button onClick={onRequestRevision} variant="outline" className="rounded-full border-pink-400 text-pink-600 hover:bg-pink-50 font-semibold w-full sm:flex-1 lg:flex-none">
-              Request Revision
-            </Button>
-          </div>
+          <Button
+            onClick={onReviewContent}
+            variant="link"
+            className="h-auto p-0 font-semibold text-pink-600 hover:text-pink-700"
+          >
+            Review content
+            <ChevronDown className="h-4 w-4 ml-1" />
+          </Button>
         );
       case 'active':
         return null;

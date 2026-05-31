@@ -46,6 +46,7 @@ import { CampaignScheduleSection } from '@/components/schedule/CampaignScheduleS
 import { ScheduleReviewScreen } from '@/components/schedule/ScheduleReviewScreen';
 import { useAgreedValue } from '@/hooks/useAgreedValue';
 import { useEscrowCheckout } from '@/hooks/useEscrowCheckout';
+import { useFileUploads } from '@/hooks/useFileQuery';
 
 const CampaignDetailsPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -122,6 +123,14 @@ const CampaignDetailsPage: React.FC = () => {
   const { data: existingReview } = useHasReviewedCollaboration(
     projectData?.collaboration?.id,
     user?.id,
+  );
+
+  // Deliverable count for the status banner — same args as ContentReviewSection
+  // so React Query serves a cache hit rather than refetching.
+  const { data: deliverableFiles } = useFileUploads(
+    id ?? '',
+    'deliverable',
+    projectData?.collaboration?.creator_id ?? projectData?.creator?.user_id ?? '',
   );
 
   const { initiateCheckout, isPayingEscrow } = useEscrowCheckout();
@@ -434,6 +443,7 @@ const CampaignDetailsPage: React.FC = () => {
           currentStep={currentStep}
           applicationCount={applicationCount}
           creatorName={creatorData?.creator_name}
+          deliverableCount={deliverableFiles?.length ?? 0}
           hasReviewed={hasReviewed}
           isLoading={false}
           onEdit={() => navigate(`/dashboard/business/campaigns/${id}/edit`)}

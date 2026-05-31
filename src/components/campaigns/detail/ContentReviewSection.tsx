@@ -23,7 +23,6 @@ import {
   AlertCircle,
   Eye,
   MessageSquare,
-  CreditCard,
 } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -486,8 +485,6 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
                   >
                     {(approveContent.isPending || isPayingEscrow) ? (
                       <><Loader2 className="h-3 w-3 mr-1 animate-spin" />{isPayingEscrow ? 'Setting up payment…' : 'Approving…'}</>
-                    ) : needsEscrowPayment ? (
-                      <><CreditCard className="h-3 w-3 mr-1" />Pay & Approve</>
                     ) : (
                       <><CheckCircle2 className="h-3 w-3 mr-1" />Approve & Pay</>
                     )}
@@ -512,7 +509,7 @@ export const ContentReviewSection: React.FC<ContentReviewSectionProps> = ({
                       className="bg-teal-400 hover:bg-teal-500"
                       onClick={() => needsEscrowPayment ? handlePayAndApprove() : approveContent.mutate()}
                     >
-                      {needsEscrowPayment ? 'Pay & Approve' : 'Yes, Approve & Pay'}
+                      Approve &amp; Pay
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
