@@ -5,6 +5,35 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import type { FileUpload } from '@/types/files';
 
+/**
+ * Lightweight count of uploaded files for a campaign/category/uploader.
+ * Unlike useFileUploads, this does NOT open a realtime channel, so it is safe
+ * to mount alongside useFileUploads for the same campaign (a second realtime
+ * subscription to the same channel topic throws "subscribe can only be called
+ * a single time per channel instance").
+ */
+export const useFileUploadCount = (campaignId?: string, category?: string, uploadedBy?: string) => {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ['file-upload-count', campaignId, category, uploadedBy],
+    queryFn: async () => {
+      let query = supabase
+        .from('file_uploads')
+        .select('id', { count: 'exact', head: true });
+      if (campaignId) query = query.eq('campaign_id', campaignId);
+      if (category) query = query.eq('file_category', category);
+      if (uploadedBy) query = query.eq('uploaded_by', uploadedBy);
+      const { count, error } = await query;
+      if (error) {
+        console.error('Error counting file uploads:', error);
+        throw error;
+      }
+      return count ?? 0;
+    },
+    enabled: !!user && !!campaignId,
+  });
+};
+
 export const useFileUploads = (campaignId?: string, category?: string, uploadedBy?: string) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
