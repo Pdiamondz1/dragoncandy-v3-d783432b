@@ -48,10 +48,11 @@ paid campaign in under 60 seconds.
 ## 4. Current State
 
 Pre-revenue by choice. ~30 organic users, $0 paying customers, ~$295/mo
-operating cost, Stripe in test mode. Production launch date TBD — blocked
-on content delivery system stability and bug resolution.
+operating cost, Stripe in test mode. Production launch date TBD. The content
+delivery system stabilization that gated launch landed in late May 2026;
+remaining blockers are final bug resolution and payment-flow hardening.
 
-**Codebase scale** (as of 2026-05-20): 59 pages, 162 hooks, 67 edge functions.
+**Codebase scale** (as of 2026-06-01): 60 pages, 183 hooks, 71 edge functions.
 **Repo**: `C:\GIT\dragoncandy-v3-d783432b`
 **Active integrations**: Toast POS, Stripe Connect, Outstand.so (social media —
 Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
@@ -70,11 +71,17 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   relative timestamps, status synchronization across roles.
 - RLS compliance and query optimization — resolving infinite recursion in
   Supabase RLS policies, removing nested profile joins blocked by RLS.
-- DragonShare amplification engine — creators upload organic content about
-  restaurants, restaurants boost it to cross-post across all connected social
-  channels via Outstand. Upload-first submit flow, trust-then-flag model
-  (no admin verification), in-app education per role. Stripe Connect
-  payment flow with 80/20 creator/platform split.
+- DragonShare amplification engine — **live (web).** Creators upload organic
+  content about restaurants; restaurants boost it to cross-post across all
+  connected social channels via Outstand. Shipped: upload-first single-screen
+  submit with URL-to-platform auto-detection, trust-then-flag model (no admin
+  verification — admin queue/scoring removed), in-app education per role,
+  real photo/video-frame thumbnails across all surfaces, watermarked content
+  preview before payment, custom boost amount ($5–$500), boost-or-pass
+  decision with post-payment download, success confirmation dialog,
+  side-by-side desktop layout + restaurant browse/typeahead. Payments run on
+  Stripe Connect with a two-path charge (off-session saved card or hosted
+  checkout), idempotent fulfillment, and an 80/20 creator/platform split.
 - GTM Capital & CAC Playbook structured across Phase 0–3 with explicit
   budget gates and kill-switches. Creators onboarded before restaurants in
   each new market.
@@ -83,7 +90,12 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   downloadable iPhone app. Payments split by surface (Stripe for marketplace
   + web-only subscriptions to avoid Apple's 30%), native value-adds
   (push/camera/share) for guideline 4.2, then TestFlight → review → live.
-  **Status: design + Phase 1 plan written and reviewed; no code yet.**
+  **Status: Phase 1 (Capacitor foundation) shipped.** Landed: Capacitor 6
+  core/cli/ios packages, `capacitor.config.ts` (appId `io.dragoncandy.app`),
+  iOS native project scaffold, `useNativePlatform` hook + platform-detection
+  utility, CSP allowance for the `capacitor://` WebView scheme, and
+  `cap:sync`/`cap:open`/`cap:copy` npm scripts (see iOS build & sync runbook).
+  Next: native value-add plugins (push/camera/share), then TestFlight.
   Spec: `docs/superpowers/specs/2026-06-01-apple-app-store-design.md`.
   Hard prerequisite: macOS/cloud-Mac build + Apple Developer account ($99/yr).
 
@@ -201,7 +213,7 @@ Apply to every recommendation, every prompt, every PR:
 
 **Frontend**: React 18 / TypeScript (strict), Vite, Tailwind CSS, shadcn/ui,
 Framer Motion, Lovable.dev (hosting/preview), GitHub.
-**Backend**: Supabase (70+ tables, 67 Deno Edge Functions, RLS, realtime),
+**Backend**: Supabase (70+ tables, 71 Deno Edge Functions, RLS, realtime),
 Stripe Connect (test mode).
 **AI**: Claude Sonnet 4 + Haiku (cost routing via edge functions, backend
 only). Model routing and cost ledger in `_shared/`.

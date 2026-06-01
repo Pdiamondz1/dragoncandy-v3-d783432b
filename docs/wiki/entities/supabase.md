@@ -18,8 +18,12 @@ Realtime subscriptions, and Storage.
 - Always use `.select()` with explicit field lists — no `select *`
 - All tables have Row Level Security (RLS) — assume it
 - Type-safe queries via `Database['public']['Tables']['x']['Row']`
-- 70+ tables, 67 Deno edge functions, shared utils in `_shared/`
-- Realtime used for `messages` and `user_presence`
+- 70+ tables, 71 Deno edge functions, shared utils in `_shared/`
+- Realtime used for `messages`, `user_presence`, and (since the 2026-05 notification
+  system) `push_notifications` + campaign tables for dashboard refresh
+- Security-definer RPCs are the standard way to read across RLS boundaries — e.g.
+  `has_role()` (RBAC via `user_roles`), and `resolve_dragonshare_orgs` /
+  `get_org_connected_platforms` for [[DragonShare]]
 
 ## Query Conventions (React Query)
 
@@ -48,3 +52,5 @@ Realtime subscriptions, and Storage.
 - [[Code Architecture Audit Session]]
 - [[Realtime Edge Cases Session]]
 - [[Counter-Offer Enum Fix Session]]
+- [[Campaign Delivery, Scheduling & Notifications Session]]
+- [[DragonShare Amplification Engine Session]]

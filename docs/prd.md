@@ -1172,6 +1172,8 @@ Not applicable for v1. DragonCandy uses per-transaction marketplace fees, not su
 
 **Mobile native apps:** Web-responsive covers v1. Native apps deferred to month 4–6 after PMF validation.
 
+> **Update (2026-06-01):** Superseded by the Capacitor wrapper approach (one web codebase serving both dragoncandy.io and an iPhone app). **Phase 1 (Capacitor foundation) has shipped** — see the Apple App Store workstream in `PROJECT_CONTEXT.md`.
+
 **Content auto-posting:** Social media API integrations (Instagram Graph, TikTok) are complex and fragile. Deferred to month 2–3. v1 delivers content to the business for manual posting.
 
 **Advanced attribution:** POS integration, foot traffic correlation, and sales lift modeling require partnerships with POS providers. Deferred to month 3–4.

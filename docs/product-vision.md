@@ -197,6 +197,8 @@ For MVP, the creator and business magic moments are the priority. Brand magic mo
 
 **Mobile native apps.** v1 is web-only with responsive design. Mobile apps (iOS/Android) are deferred to month 4–6 after validating product-market fit on web. Tempting because creators live on their phones, but building and maintaining native apps doubles the engineering effort. Mobile-responsive web covers 80% of the need.
 
+> **Update (2026-06-01):** This stance evolved. Rather than a separate native build, DragonCandy adopted a **Capacitor wrapper** — one web codebase serving both dragoncandy.io and a downloadable iPhone app, which sidesteps the "double the engineering effort" concern above. **Phase 1 (Capacitor foundation) has shipped.** See the Apple App Store workstream in `PROJECT_CONTEXT.md` and the [[Capacitor Native Shell]] wiki entity.
+
 **Advanced analytics / attribution modeling.** v1 shows basic engagement metrics (impressions, likes, comments, shares). Advanced attribution (foot traffic correlation, sales lift modeling) is deferred to month 3–4. Tempting because brands want ROI data, but accurate attribution requires integration with POS systems and foot traffic data that are complex to build and validate.
 
 **Content scheduling and auto-posting.** v1 focuses on content delivery to the business — the business or creator posts manually. Auto-scheduling via social media API integrations (Instagram Graph API, TikTok API) is deferred to month 2–3. Tempting because it completes the loop, but social media API integrations are notoriously finicky and would delay launch.

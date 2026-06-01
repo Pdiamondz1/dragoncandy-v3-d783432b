@@ -143,15 +143,40 @@ A daily scheduled agent (`/schedule`) that:
 
 Schedule: Daily at 8:00 AM ET (after overnight Lovable deploys settle).
 
-### 1.5B. Wiki Lint Agent
+### 1.5B. Weekly Wiki-Sync Agent — IMPLEMENTED 2026-06-01
 
-A weekly scheduled agent that:
-- Runs the wiki-ops lint check
-- Reports: contradictions between pages, stale claims, orphan pages, missing concept pages, thin coverage areas
-- Cross-references recent git activity (`git log --since="1 week ago"`) to identify code areas that changed but lack wiki coverage
-- Suggests specific pages that need updating
+**Status: implemented.** Originally scoped as a lint-only agent; expanded into a full
+drift-detection-and-sync safety net after a multi-week lapse (DragonShare + Capacitor
+workstreams shipped without ingested handoffs, leaving the wiki and core docs stale).
+The handoff-driven pipeline (Phase 1C) is the primary path; this agent is the backstop that
+catches lapses regardless of whether handoffs were written.
 
-Schedule: Weekly on Monday at 9:00 AM ET.
+**Cadence:** Weekly, Monday 9:00 AM ET (a recurring routine created via the `/schedule` skill).
+
+**What it does each run:**
+1. Read the most recent date in `docs/wiki/log.md`.
+2. `git log --since=<that date>` and cluster the commits into workstreams.
+3. For each workstream with no wiki coverage, draft a session extract in
+   `docs/wiki/raw/sessions/` and run the `wiki-ops` ingest flow (source/entity/concept pages,
+   cross-references, index, log).
+4. Run `npm run docs:scale` (the deterministic scale-number script, added 2026-06-01) to
+   refresh PROJECT_CONTEXT.md counts.
+5. Run the `wiki-ops` lint check (contradictions, stale claims, orphans, missing pages, thin
+   coverage) and include findings in the report.
+6. **Land changes on a branch and open a PR** (never commit doc/wiki synthesis straight to
+   `main`) — synthesis can be wrong, so a human gate is required. The PR body summarizes what
+   was synced and lists the lint findings.
+
+**Why branch + PR, not auto-commit:** docs don't trigger the Lovable deploy, but an
+autonomous agent doing synthesis must not pollute `main` history unreviewed. A weekly PR is a
+cheap, reversible review surface.
+
+### 1.5B-note. Deterministic Scale Script (companion to 1.5B)
+
+`scripts/update-scale-numbers.mjs` (`npm run docs:scale`) counts pages/hooks/edge-functions and
+rewrites the Codebase-scale + Backend lines in PROJECT_CONTEXT.md with today's date. It is the
+deterministic half of the hybrid safety net — humans no longer hand-count, and the weekly agent
+calls it as step 4. Runnable manually anytime; idempotent; exits non-zero if the doc format drifts.
 
 ### 1.5C. Session-Start Context Recovery (Hook, not Scheduled Agent)
 
