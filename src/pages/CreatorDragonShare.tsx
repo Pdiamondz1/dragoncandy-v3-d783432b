@@ -3,6 +3,8 @@ import { useSearchParams } from 'react-router-dom';
 import { safeUrl } from '@/lib/safeUrl';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { useCreatorDragonSharePosts } from '@/hooks/useDragonShare';
+import { useResolveDragonShareOrgs } from '@/hooks/useResolveDragonShareOrgs';
+import { mergeResolvedOrgs } from '@/lib/dragonshareOrgs';
 import { DragonShareSubmitSheet } from '@/components/dragonshare/DragonShareSubmitSheet';
 import { DragonShareInlineForm } from '@/components/dragonshare/DragonShareInlineForm';
 import { DragonShareHowItWorks } from '@/components/dragonshare/DragonShareHowItWorks';
@@ -61,6 +63,9 @@ const CreatorDragonShare: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>('submitted');
   const [submitOpen, setSubmitOpen] = useState(false);
   const { data: posts, isLoading } = useCreatorDragonSharePosts();
+  const orgIds = (posts ?? []).map((p) => p.target_org_id);
+  const { data: resolvedOrgs } = useResolveDragonShareOrgs(orgIds);
+  const postsWithOrg = mergeResolvedOrgs(posts ?? [], resolvedOrgs ?? []);
   const preselectedOrg = usePreselectedOrg();
 
   useEffect(() => {
@@ -70,16 +75,16 @@ const CreatorDragonShare: React.FC = () => {
     }
   }, [preselectedOrg]);
 
-  const filteredPosts = (posts ?? []).filter((p) => {
+  const filteredPosts = postsWithOrg.filter((p) => {
     if (activeTab === 'submitted') return p.status === 'verified';
     if (activeTab === 'boosted') return p.boost_status === 'boosted';
     return p.status === 'expired' || p.boost_status === 'expired';
   });
 
   const tabs: { key: Tab; label: string; count: number }[] = [
-    { key: 'submitted', label: 'Submitted', count: (posts ?? []).filter((p) => p.status === 'verified').length },
-    { key: 'boosted', label: 'Boosted', count: (posts ?? []).filter((p) => p.boost_status === 'boosted').length },
-    { key: 'expired', label: 'Expired', count: (posts ?? []).filter((p) => p.status === 'expired' || p.boost_status === 'expired').length },
+    { key: 'submitted', label: 'Submitted', count: postsWithOrg.filter((p) => p.status === 'verified').length },
+    { key: 'boosted', label: 'Boosted', count: postsWithOrg.filter((p) => p.boost_status === 'boosted').length },
+    { key: 'expired', label: 'Expired', count: postsWithOrg.filter((p) => p.status === 'expired' || p.boost_status === 'expired').length },
   ];
 
   return (

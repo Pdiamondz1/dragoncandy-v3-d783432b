@@ -22,7 +22,7 @@ export function useCreatorDragonSharePosts() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('dragonshare_posts')
-        .select('*, boosts:dragonshare_boosts(*), target_org:organizations(id, name, logo_url)')
+        .select('*, boosts:dragonshare_boosts(*)')
         .eq('creator_id', user!.id)
         .order('submitted_at', { ascending: false });
       if (error) throw error;

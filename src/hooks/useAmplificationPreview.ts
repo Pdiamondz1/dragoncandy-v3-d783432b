@@ -32,20 +32,13 @@ export function useAmplificationPreview(creatorId?: string, orgId?: string) {
       }
 
       if (orgId) {
-        const { data: orgAccounts } = await supabase
-          .from('business_outstand_accounts')
-          .select('platform, platform_handle')
-          .eq('business_id', orgId)
-          .eq('status', 'active');
-
-        if (orgAccounts) {
-          for (const acct of orgAccounts) {
-            platforms.push({
-              platform: acct.platform,
-              ownerName: acct.platform_handle ?? 'Business',
-              ownerType: 'business',
-            });
-          }
+        const { data: orgAccounts } = await supabase.rpc('get_org_connected_platforms', { p_org_id: orgId });
+        for (const acct of (orgAccounts ?? []) as { platform: string; platform_handle: string | null }[]) {
+          platforms.push({
+            platform: acct.platform,
+            ownerName: acct.platform_handle ?? 'Business',
+            ownerType: 'business',
+          });
         }
       }
 
