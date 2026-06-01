@@ -5,8 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { validateCustomBoost } from '@/lib/boostAmount';
-import { ExternalLink, Flag, Download } from 'lucide-react';
+import { ExternalLink, Flag, Download, Share2 } from 'lucide-react';
+import { downloadBlob } from '@/lib/downloadUtils';
 import { BoostConfirmationSheet } from './BoostConfirmationSheet';
+import { DragonShareSharePanel } from './DragonShareSharePanel';
 import { AmplificationPreview } from './AmplificationPreview';
 import { WatermarkedMedia } from './WatermarkedMedia';
 import { BOOST_TIERS, isVideoPost } from '@/types/dragonshare';
@@ -25,12 +27,14 @@ export function DragonSharePostCard({ post, canBoost }: Props) {
   const [customVal, setCustomVal] = useState('');
   const [customError, setCustomError] = useState<string | null>(null);
   const [avatarError, setAvatarError] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const isAlreadyBoosted = post.boost_status === 'boosted';
   const resolvedCreatorAvatar = useResolvedAvatarUrl(post.creator?.avatar_url);
   const contentUrl = post.content_file_path;
   const downloadUrl = contentUrl
     ? `${contentUrl}${contentUrl.includes('?') ? '&' : '?'}download`
     : null;
+  const downloadName = contentUrl?.split('/').pop()?.split('?')[0] || 'dragonshare-content';
   const flagMutation = useFlagDragonSharePost();
   const declineMutation = useDeclineDragonSharePost();
 
@@ -99,17 +103,25 @@ export function DragonSharePostCard({ post, canBoost }: Props) {
               <Badge className="bg-teal-100 text-teal-700 border-teal-200">
                 Boosted · ${((post.boosts?.[0]?.amount_cents ?? 0) / 100).toFixed(0)}
               </Badge>
-              {downloadUrl && (
-                <a
-                  href={downloadUrl}
-                  download
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-xs font-semibold text-dc-teal hover:text-dc-teal-dark"
+              <div className="flex items-center gap-2">
+                {downloadUrl && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="rounded-full gap-1"
+                    onClick={() => downloadBlob(downloadUrl, downloadName)}
+                  >
+                    <Download className="h-3.5 w-3.5" /> Download
+                  </Button>
+                )}
+                <Button
+                  size="sm"
+                  className="rounded-full gap-1 bg-dc-teal-btn hover:bg-dc-teal-btn-hover text-white"
+                  onClick={() => setShareOpen(true)}
                 >
-                  <Download className="h-3.5 w-3.5" /> Download
-                </a>
-              )}
+                  <Share2 className="h-3.5 w-3.5" /> Share
+                </Button>
+              </div>
             </div>
           ) : canBoost ? (
             <div className="space-y-2">
@@ -216,6 +228,13 @@ export function DragonSharePostCard({ post, canBoost }: Props) {
           orgId={post.target_org_id}
         />
       )}
+
+      <DragonShareSharePanel
+        open={shareOpen}
+        onOpenChange={setShareOpen}
+        post={post}
+        creatorName={post.creator?.full_name}
+      />
     </>
   );
 }
