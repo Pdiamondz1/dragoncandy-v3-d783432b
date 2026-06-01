@@ -71,7 +71,6 @@ export async function extractThumbnail(file: File): Promise<Blob | null> {
     const video = document.createElement('video');
     const objectUrl = URL.createObjectURL(file);
     let settled = false;
-    let timeout: ReturnType<typeof setTimeout>;
 
     const cleanup = () => {
       clearTimeout(timeout);
@@ -87,7 +86,7 @@ export async function extractThumbnail(file: File): Promise<Blob | null> {
       resolve(null);
     };
 
-    timeout = setTimeout(fail, 10_000);
+    const timeout = setTimeout(fail, 10_000);
 
     video.muted = true;
     video.playsInline = true;

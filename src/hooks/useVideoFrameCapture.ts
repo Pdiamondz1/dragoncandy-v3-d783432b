@@ -37,7 +37,6 @@ export function useVideoFrameCapture(
     video.preload = 'metadata';
 
     let settled = false;
-    let timeout: ReturnType<typeof setTimeout>;
 
     const cleanup = () => {
       clearTimeout(timeout);
@@ -55,7 +54,7 @@ export function useVideoFrameCapture(
       }
     };
 
-    timeout = setTimeout(fail, 10_000);
+    const timeout = setTimeout(fail, 10_000);
 
     video.addEventListener('error', fail, { once: true });
 
