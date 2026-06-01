@@ -5,7 +5,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { corsHeaders } from "../_shared/cors.ts";
 import { getOrCreateOrgCustomer } from "../_shared/stripe-customer.ts";
 import { fulfillBoost } from "../_shared/fulfill-boost.ts";
-import { testModeCustomText } from "../_shared/test-mode-text.ts";
+import { testModeCustomText, testModePaymentMethodTypes } from "../_shared/test-mode-text.ts";
 import { calculateDragonShareFee } from "../_shared/dragonshare-fee.ts";
 
 const logStep = (step: string, details?: unknown) => {
@@ -77,7 +77,7 @@ serve(async (req) => {
     );
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
-    const customerId = await getOrCreateOrgCustomer(stripe, supabase, membership.org_id, userEmail);
+    const customerId = await getOrCreateOrgCustomer(stripe, supabase, membership.org_id, userEmail, stripeKey);
 
     // Creator payout readiness
     const { data: creatorProfile } = await supabase
@@ -132,6 +132,7 @@ serve(async (req) => {
       const session = await stripe.checkout.sessions.create({
         customer: customerId,
         mode: "payment",
+        ...testModePaymentMethodTypes(stripeKey),
         line_items: [{
           price_data: {
             currency: "usd",

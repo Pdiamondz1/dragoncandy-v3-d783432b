@@ -2,6 +2,7 @@ import { serve } from 'https://deno.land/std@0.190.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import Stripe from 'https://esm.sh/stripe@18.5.0';
 import { corsHeaders } from "../_shared/cors.ts";
+import { testModeCustomText, testModePaymentMethodTypes } from "../_shared/test-mode-text.ts";
 
 // Base price IDs per tier and billing period
 const BASE_PRICES: Record<string, Record<string, string>> = {
@@ -125,6 +126,8 @@ serve(async (req) => {
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       mode: 'subscription',
+      ...testModePaymentMethodTypes(stripeSecretKey),
+      custom_text: testModeCustomText(stripeSecretKey),
       line_items: lineItems,
       metadata: { tier, billing_period, org_id },
       success_url: `${siteUrl}/dashboard/business?checkout=success`,

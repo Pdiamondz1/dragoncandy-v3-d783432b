@@ -6,7 +6,7 @@ import { getOrgTakeRate } from "../_shared/platform-fee.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 import { resolvePayoutAmount } from "../_shared/pricing-utils.ts";
 import { getOrCreateOrgCustomer } from "../_shared/stripe-customer.ts";
-import { testModeCustomText } from "../_shared/test-mode-text.ts";
+import { testModeCustomText, testModePaymentMethodTypes } from "../_shared/test-mode-text.ts";
 
 const logStep = (step: string, details?: any) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
@@ -100,7 +100,7 @@ serve(async (req) => {
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
 
     if (!campaign.org_id) throw new Error("Campaign has no org_id");
-    const customerId = await getOrCreateOrgCustomer(stripe, supabaseClient, campaign.org_id, user.email);
+    const customerId = await getOrCreateOrgCustomer(stripe, supabaseClient, campaign.org_id, user.email, stripeKey);
     logStep("Resolved org customer", { customerId, orgId: campaign.org_id });
 
     const takeRate = await getOrgTakeRate(supabaseClient, user.id);
@@ -123,6 +123,7 @@ serve(async (req) => {
     // Create checkout session with correct return URLs
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
+      ...testModePaymentMethodTypes(stripeKey),
       custom_text: testModeCustomText(stripeKey),
       line_items: [
         {
