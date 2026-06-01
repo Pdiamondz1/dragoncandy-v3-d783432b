@@ -19,6 +19,7 @@
 | `user_onboarding_progress` | Tracks per-user onboarding completion |
 | `email_verification_tokens` | Email verification flow |
 | `feature_flags` | Per-user or global feature toggles |
+| `user_roles` | RBAC role assignments (`app_role` enum). Queried via the `has_role()` security-definer function so RLS policies stay non-recursive. |
 
 ## Campaigns & Marketplace
 
@@ -101,6 +102,7 @@
 | `donny_oauth_clients` | OAuth client registrations for Donny API |
 | `donny_oauth_codes` | OAuth authorization codes |
 | `donny_oauth_tokens` | OAuth access/refresh tokens |
+| `donny_scheduled_posts` | Cross-platform posting schedule (auto cross-scheduling). Per-platform caption/media/hashtags, `scheduled_at`, status lifecycle, and `ai_suggested_time`/`ai_reasoning` for Donny-proposed slots. |
 
 ## DragonShare
 
