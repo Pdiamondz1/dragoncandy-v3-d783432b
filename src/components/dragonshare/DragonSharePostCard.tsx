@@ -2,7 +2,9 @@ import { useState } from 'react';
 import { useResolvedAvatarUrl } from '@/hooks/useSignedUrl';
 import { safeUrl } from '@/lib/safeUrl';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { validateCustomBoost } from '@/lib/boostAmount';
 import { ExternalLink, Flag, Play } from 'lucide-react';
 import { BoostConfirmationSheet } from './BoostConfirmationSheet';
 import { AmplificationPreview } from './AmplificationPreview';
@@ -18,6 +20,9 @@ interface Props {
 
 export function DragonSharePostCard({ post, canBoost }: Props) {
   const [selectedTier, setSelectedTier] = useState<{ cents: number; label: BoostTierLabel } | null>(null);
+  const [customOpen, setCustomOpen] = useState(false);
+  const [customVal, setCustomVal] = useState('');
+  const [customError, setCustomError] = useState<string | null>(null);
   const [avatarError, setAvatarError] = useState(false);
   const isAlreadyBoosted = post.boost_status === 'boosted';
   const resolvedCreatorAvatar = useResolvedAvatarUrl(post.creator?.avatar_url);
@@ -102,27 +107,68 @@ export function DragonSharePostCard({ post, canBoost }: Props) {
               Boosted · ${((post.boosts?.[0]?.amount_cents ?? 0) / 100).toFixed(0)}
             </Badge>
           ) : canBoost ? (
-            <div className="flex items-center gap-1.5 lg:gap-2">
-              {BOOST_TIERS.map((tier) => {
-                const isPopular = tier.label === '50';
-                return (
-                  <div key={tier.label} className="flex-1 flex flex-col items-center gap-0.5">
-                    {isPopular ? (
-                      <span className="text-[10px] font-bold text-dc-teal uppercase tracking-wide">POPULAR</span>
-                    ) : (
-                      <span className="text-[10px] invisible">POPULAR</span>
-                    )}
-                    <Button
-                      variant={isPopular ? 'default' : 'outline'}
-                      size="sm"
-                      className={`rounded-full w-full ${isPopular ? 'bg-dc-teal-btn hover:bg-dc-teal-btn-hover text-white' : ''}`}
-                      onClick={() => setSelectedTier({ cents: tier.cents, label: tier.label })}
-                    >
-                      {tier.display}
-                    </Button>
+            <div className="space-y-2">
+              <div className="flex items-center gap-1.5 lg:gap-2">
+                {BOOST_TIERS.map((tier) => {
+                  const isPopular = tier.label === '50';
+                  return (
+                    <div key={tier.label} className="flex-1 flex flex-col items-center gap-0.5">
+                      {isPopular ? (
+                        <span className="text-[10px] font-bold text-dc-teal uppercase tracking-wide">POPULAR</span>
+                      ) : (
+                        <span className="text-[10px] invisible">POPULAR</span>
+                      )}
+                      <Button
+                        variant={isPopular ? 'default' : 'outline'}
+                        size="sm"
+                        className={`rounded-full w-full ${isPopular ? 'bg-dc-teal-btn hover:bg-dc-teal-btn-hover text-white' : ''}`}
+                        onClick={() => setSelectedTier({ cents: tier.cents, label: tier.label })}
+                      >
+                        {tier.display}
+                      </Button>
+                    </div>
+                  );
+                })}
+                <div className="flex-1 flex flex-col items-center gap-0.5">
+                  <span className="text-[10px] invisible">POPULAR</span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="rounded-full w-full"
+                    onClick={() => { setCustomOpen((o) => !o); setCustomError(null); }}
+                  >
+                    Custom
+                  </Button>
+                </div>
+              </div>
+              {customOpen && (
+                <div className="flex items-start gap-2">
+                  <div className="flex-1">
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-dc-text-muted">$</span>
+                      <Input
+                        type="number" min={5} max={500} inputMode="decimal"
+                        placeholder="5–500"
+                        value={customVal}
+                        onChange={(e) => { setCustomVal(e.target.value); setCustomError(null); }}
+                        className="rounded-full pl-6"
+                      />
+                    </div>
+                    {customError && <p className="text-[11px] text-dc-pink-accent mt-1">{customError}</p>}
                   </div>
-                );
-              })}
+                  <Button
+                    size="sm"
+                    className="rounded-full bg-dc-teal-btn hover:bg-dc-teal-btn-hover text-white"
+                    onClick={() => {
+                      const v = validateCustomBoost(parseFloat(customVal));
+                      if (v.ok) { setSelectedTier({ cents: v.cents, label: 'custom' }); setCustomOpen(false); }
+                      else setCustomError(v.reason);
+                    }}
+                  >
+                    Boost
+                  </Button>
+                </div>
+              )}
             </div>
           ) : (
             <p className="text-xs text-dc-text-muted">Ask an admin to boost this.</p>
