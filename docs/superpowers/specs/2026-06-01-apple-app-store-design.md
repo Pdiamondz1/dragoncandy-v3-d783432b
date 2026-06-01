@@ -76,7 +76,8 @@ A bare website wrapper is rejected. The app must provide genuine native value. T
 | Account deletion | New self-serve "Delete my account" flow in user settings (Creator + Business settings sections), writing to `account_deletion_requests`. |
 | UGC moderation | Add block-user capability and ensure report/flag is reachable on all UGC surfaces; publish EULA. |
 | iOS payment gating | Hide in-app subscription/credit *purchase* entry points when `isNativePlatform()`; keep Stripe marketplace flows. |
-| `Info.plist` (via iOS project) | Permission usage strings: `NSCameraUsageDescription`, `NSPhotoLibraryUsageDescription`, push entitlement. |
+| `Info.plist` (via iOS project) | Permission usage strings: `NSCameraUsageDescription`, `NSPhotoLibraryUsageDescription`, push + associated-domains entitlements. |
+| `apple-app-site-association` | New — served from dragoncandy.io root for universal links (paired with the associated-domains entitlement). |
 
 ### What does not change
 
@@ -97,6 +98,8 @@ Apple polices only money flows **inside the iOS app**. Split by surface:
 | SaaS subscriptions (Starter/Growth/Pro) + Donny AI credit overages | Stripe | **Not sold in-app at launch.** Users subscribe on the web; the iPhone app reflects whatever tier the account already holds. Avoids Apple's 30% and the most common rejection reason. |
 
 The iOS app must not contain buttons/links whose purpose is to purchase the digital subscription elsewhere (beyond what Apple's external-purchase entitlements explicitly permit). Tier status is read-only in-app; upgrade prompts route to "manage your plan on the web" without an in-app buy CTA. Revisit Apple IAP only if in-app subscription conversion is later judged worth the cut.
+
+The detailed plan must **enumerate every in-app purchase/upgrade CTA to gate** — at minimum the pricing page, tier-upgrade prompts, and Donny AI credit-overage nudges. A single missed in-app buy CTA is a common rejection cause, so this enumeration is a planning deliverable, not an afterthought.
 
 ---
 
@@ -125,7 +128,7 @@ Enroll Apple Developer Program ($99/yr). Choose cloud Mac CI (Codemagic). Decide
 Add Capacitor deps, `capacitor.config.ts`, `npx cap add ios`, wire `webDir: dist`, `useNativePlatform()` helper. Verify the existing web build runs in the iOS WebView (testable via browser + later on device).
 
 **Phase 2 — Native value-adds (guideline 4.2).**
-Push notifications (APNs registration → Supabase token storage → existing notification triggers), native camera capture in the content-upload flow, native share sheet, deep links/universal links.
+Push notifications (APNs registration → device-token storage in Supabase → server-side send path; **confirm during planning whether an APNs delivery edge function exists or is net-new** — the existing notification triggers fire in-app, but device-token→APNs delivery is a distinct backend piece). Native camera capture in the content-upload flow; native share sheet; deep links / universal links (requires the `apple-app-site-association` file served from dragoncandy.io plus the associated-domains entitlement).
 
 **Phase 3 — Compliance build-out.**
 Self-serve account-deletion UI; UGC block-user + filtering completeness; iOS payment gating (`isNativePlatform()` hides subscription/credit purchase); Info.plist permission strings.
@@ -157,6 +160,7 @@ Metadata (name, subtitle, description, keywords, category), per-device screensho
 4. **Build environment friction** — first iOS signing setup on Windows-via-cloud-Mac is the highest-friction step; budget extra time in Phase 4.
 5. **Open: privacy policy** — confirm a hosted, current privacy policy + terms exist, or author them in Phase 0.
 6. **Open: EULA** — Apple's standard EULA may suffice, or a custom one for UGC; decide in Phase 0.
+7. **Open: UGC content filtering (1.2)** — "filtering" is the least-specified compliance item. Clarify in planning what it means for DragonShare beyond the existing trust-then-flag + report model (e.g. whether Apple expects proactive text/image moderation). Apple frequently probes UGC apps here.
 
 ---
 
