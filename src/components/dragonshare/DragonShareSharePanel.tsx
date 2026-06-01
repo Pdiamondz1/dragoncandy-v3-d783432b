@@ -24,7 +24,7 @@ function SharePanelInner({ open, onOpenChange, post, creatorName, businessName }
   const { user } = useAuth();
   const { apiKey, baseUrl } = useOutstandConfig();
   const { accounts } = useAccounts({ apiKey, baseUrl, limit: 100 });
-  const crossPost = useCrossPost({ onPublished: () => onOpenChange(false) });
+  const crossPost = useCrossPost();
 
   const [caption, setCaption] = useState('');
   const [genLoading, setGenLoading] = useState(false);
@@ -76,7 +76,10 @@ function SharePanelInner({ open, onOpenChange, post, creatorName, businessName }
   const canPost = selectedAccountIds.length > 0 && !!mediaUrl && !crossPost.isPending;
 
   const submitPost = (scheduledAt?: string) =>
-    crossPost.mutate({ caption, mediaUrls: [mediaUrl], accountIds: selectedAccountIds, scheduledAt });
+    crossPost.mutate(
+      { caption, mediaUrls: [mediaUrl], accountIds: selectedAccountIds, scheduledAt },
+      { onSuccess: () => onOpenChange(false) },
+    );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

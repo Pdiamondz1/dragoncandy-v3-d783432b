@@ -229,12 +229,14 @@ export function DragonSharePostCard({ post, canBoost }: Props) {
         />
       )}
 
-      <DragonShareSharePanel
-        open={shareOpen}
-        onOpenChange={setShareOpen}
-        post={post}
-        creatorName={post.creator?.full_name}
-      />
+      {shareOpen && (
+        <DragonShareSharePanel
+          open={shareOpen}
+          onOpenChange={setShareOpen}
+          post={post}
+          creatorName={post.creator?.full_name}
+        />
+      )}
     </>
   );
 }
