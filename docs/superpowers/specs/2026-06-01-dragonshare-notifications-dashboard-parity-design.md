@@ -28,22 +28,39 @@ Confirmed by code exploration:
   and sends email via `send-notification-email` when the category's `email`
   channel is enabled (or when `forceDelivery` is set). The realtime subscription
   in `src/hooks/useNotifications.ts` pushes the bell + toast live.
-- **Donny nudges:** `notify_donny_nudge()` (migration
-  `20260411000001_donny_nudge_triggers.sql`) is an `AFTER INSERT` trigger that
-  calls the `donny-nudge-frame` edge function via `pg_net`
-  (`extensions.http_post`, using `app.settings.supabase_url` +
-  `app.settings.service_role_key`). `donny-nudge-frame` upserts a `donny_nudges`
-  row (unique on `user_id, source_table, source_id`).
+- **Donny nudges (campaign path is BROKEN in prod — see §2.1):**
+  `notify_donny_nudge()` (migration `20260411000001_donny_nudge_triggers.sql`) is
+  an `AFTER INSERT` trigger meant to call the `donny-nudge-frame` edge function
+  via `pg_net` (`extensions.http_post`, using `app.settings.supabase_url` +
+  `app.settings.service_role_key`) to upsert a `donny_nudges` row.
 - **Donny proactive chat message:** for the highest-value moment only (campaign
-  invitation, `send-campaign-invitation/index.ts`), the edge function also writes
-  a `donny_messages` row (`role: 'assistant'`, `quick_actions: [...]`) into the
+  invitation, `send-campaign-invitation/index.ts`), the edge function writes a
+  `donny_messages` row (`role: 'assistant'`, `quick_actions: [...]`) into the
   user's `donny_conversations` thread.
 - **Dashboards:** a `Recent Activity` feed on the creator dashboard
   (`useCreatorRecentActivity`) and an `Active Campaigns` feed on the business
   dashboard (`useBusinessActiveCampaigns`), each rendered with `ActivityFeedCard`.
 
-`pg_net`, `http`, and `pg_cron` are all enabled on the project, so the
-trigger → edge-function pattern is available.
+### 2.1 Two pre-existing facts that shape the mechanism (verified live)
+
+1. **The `pg_net`-from-trigger path is a silent no-op today.** Both
+   `app.settings.supabase_url` and `app.settings.service_role_key` are **unset**
+   on the production database (verified via `current_setting(...)`). Every
+   `notify_donny_nudge()` call therefore builds `url := NULL || '/functions/...'`
+   and the `http_post` fails inside a swallowed `EXCEPTION` — so **campaign Donny
+   nudges via DB trigger are not firing in production.** We will **not** depend on
+   `pg_net`/GUCs for DragonShare (and we note the campaign-nudge gap as a
+   discovered issue in §12).
+2. **`donny-nudge-frame` cannot target an arbitrary recipient.** It derives the
+   user from the auth token (`const user_id = caller.id`, line 45) and discards
+   the body `user_id`. Called with a service-role bearer, `getUser()` won't
+   resolve to the intended recipient. So it is **not reusable** for nudging the
+   restaurant owner / creator. DragonShare will insert `donny_nudges` rows
+   **directly** (service-role, explicit `actions`) instead.
+
+**Conclusion:** the faithful way to mirror campaigns is their *working* path —
+invoke `create-notification` from the **application layer** (frontend hooks /
+server-side fulfillment), not from SQL triggers. That is the mechanism below.
 
 ## 3. Scope (confirmed decisions)
 
@@ -87,59 +104,79 @@ trigger → edge-function pattern is available.
 
 ## 5. Delivery mechanism
 
-A new SQL trigger function **`notify_dragonshare()`** (sibling to
-`notify_donny_nudge()`), `SECURITY DEFINER`, reads `app.settings.supabase_url` +
-`app.settings.service_role_key`, and uses `extensions.http_post` (`pg_net`) to
-fan out per event. All HTTP calls are fire-and-forget and wrapped so a failure
-**never** affects post state or money transfer.
+One new **service-role edge function `dragonshare-notify`** owns all DragonShare
+fanout. For a given `{ event, post_id, boost_id? }` it resolves recipients +
+names, calls `create-notification` (server-to-server, service bearer) for each
+recipient (bell + email + preference-aware), inserts `donny_nudges` rows
+**directly** (service-role; explicit `actions`; existing-valid `type`), and — for
+new submissions only — writes the proactive Donny chat message. No `pg_net`, no
+GUCs, no `donny-nudge-frame`. All fanout is best-effort and never blocks the
+caller's primary action.
 
-### Per-event flow
+`create-notification` is already callable both from the frontend (user JWT —
+campaigns do this) and server-to-server (service bearer via its `isService`
+path); `dragonshare-notify` uses the latter.
 
-1. **New submission — `AFTER INSERT ON dragonshare_posts`:**
-   - Resolve restaurant owner: `org_members` where `org_id = NEW.target_org_id`,
-     `role = 'owner'`, `invitation_status = 'active'` (the established resolver
-     pattern). If none, return.
-   - Resolve creator name (`profiles.full_name`) and clean business name
-     (coalesce `business_profiles.business_name`, mirroring
-     `resolve_dragonshare_orgs`).
-   - `POST create-notification` → `{ recipientId: owner, type:
-     'dragonshare_submission', category: 'dragonshare', title, body, actionUrl:
-     '/dashboard/business/dragonshare?highlight=<post_id>', icon: 'star', data:
-     { post_id, creator_name, content_type } }`.
-   - `POST donny-nudge-frame` → nudge (`type: 'content'`, `source_table:
-     'dragonshare_posts'`, `source_id: post_id`, actions: Review / Boost).
-   - **Proactive Donny chat message:** find-or-create the owner's
-     `donny_conversations` thread and insert a `donny_messages` row
-     (`role: 'assistant'`, content names the creator + content type,
-     `quick_actions: [{label:'Review & boost', action:'navigate', url:
-     '/dashboard/business/dragonshare?highlight=<post_id>'}, {label:'Later',
-     action:'dismiss'}]`), then bump `last_message_at`. This is the **only**
-     event that writes a chat message.
+### Invocation points (each event fires once, at its natural origin)
 
-2. **Boost paid — boost `status → transferred`:**
-   - This currently fires `trg_ds_boost_accepted_fn`. That function keeps its
-     `dragonshare_events` insert and the clean-business-name lookup, but its raw
-     `push_notifications` insert is **removed**; instead it `POST`s
-     `create-notification` twice:
-     - Creator: `dragonshare_boost` (payout), category `dragonshare`, actionUrl
-       `/dashboard/creator/dragonshare?highlight=<post_id>`, icon `dollar`.
-     - Restaurant owner: `dragonshare_boost_receipt` (drafted for posting),
-       category `dragonshare`, actionUrl `/dashboard/business/dragonshare`.
-   - Each recipient also gets a `donny-nudge-frame` nudge (no chat message).
+1. **New submission → restaurant.** `useSubmitDragonSharePost` `onSuccess`
+   invokes `dragonshare-notify({ event:'submission', post_id })` (creator's JWT).
+   The function:
+   - Resolves the restaurant owner (`org_members` owner, `invitation_status =
+     'active'`), creator name (`profiles.full_name`), and clean business name
+     (coalesce `business_profiles.business_name`, like `resolve_dragonshare_orgs`).
+   - `create-notification` → owner: `dragonshare_submission`, category
+     `dragonshare`, actionUrl `/dashboard/business/dragonshare?highlight=<post_id>`,
+     icon `star`, data `{ post_id, creator_name, content_type }`.
+   - Inserts a `donny_nudges` row for the owner (`type:'content'`, `source_table:
+     'dragonshare_posts'`, `source_id:post_id`, explicit `actions`: Review & boost
+     / Later — `onConflict (user_id, source_table, source_id)` ignore-dup).
+   - **Proactive Donny chat message (this event only):** find-or-create the
+     owner's `donny_conversations` thread, insert a `donny_messages` row
+     (`role:'assistant'`, names the creator + content type, `quick_actions:
+     [{label:'Review & boost', action:'navigate', url:'/dashboard/business/
+     dragonshare?highlight=<post_id>'},{label:'Later', action:'dismiss'}]`), bump
+     `last_message_at`.
 
-3. **Decline — `decline_dragonshare_post(p_post_id)`:**
-   - Keeps its membership guard, the in-progress-boost guard, `declined_at`
-     update, and `dragonshare_events` insert. Its raw `push_notifications` insert
-     is **removed**; instead it `POST`s `create-notification` (creator,
-     `dragonshare_declined`, gentle copy, category `dragonshare`) and a nudge.
+2. **Boost paid → creator + restaurant.** Invoked **server-side from the boost
+   fulfillment path** (the code that sets `dragonshare_boosts.status =
+   'transferred'`; the plan must confirm this is the sole completion point) →
+   `dragonshare-notify({ event:'boost_paid', boost_id })`:
+   - `create-notification` → creator: `dragonshare_boost` (payout), category
+     `dragonshare`, actionUrl `/dashboard/creator/dragonshare?highlight=<post_id>`,
+     icon `dollar`.
+   - `create-notification` → restaurant owner: `dragonshare_boost_receipt`
+     (drafted for posting), category `dragonshare`, actionUrl
+     `/dashboard/business/dragonshare`.
+   - A `donny_nudges` row for each (`type:'payment'` creator, `type:'content'`
+     restaurant; explicit actions). No chat message.
+   - `trg_ds_boost_accepted_fn` is reduced to its `dragonshare_events` insert
+     (its raw `push_notifications` insert is **removed** to avoid a double bell).
 
-### Why centralize on `create-notification`
+3. **Decline → creator.** `useDeclineDragonSharePost` `onSuccess` invokes
+   `dragonshare-notify({ event:'declined', post_id })`:
+   - `create-notification` → creator: `dragonshare_declined`, gentle copy,
+     category `dragonshare`. Plus a `donny_nudges` row (`type:'content'`).
+   - `decline_dragonshare_post` keeps its membership guard, in-progress-boost
+     guard, `declined_at` update, and `dragonshare_events` insert; its raw
+     `push_notifications` insert is **removed**.
 
-Single source of truth for bell + email + preference-respecting delivery; no
-double-notify; identical-or-better in-app behavior than today, plus email + Donny.
-State transitions stay transactional in SQL; only the *notification* leaves the
-transaction (best-effort, matching the existing `BEGIN..EXCEPTION` philosophy and
-campaigns' best-effort frontend calls).
+### Why this shape
+
+- **Mirrors the campaign path that actually works** (application-layer invocation
+  of `create-notification`), not the broken trigger path.
+- **Single source of truth** for bell + email + prefs (`create-notification`); no
+  double-notify; no `pg_net`/GUC dependency.
+- **Sidesteps all three nudge pitfalls:** direct `donny_nudges` inserts use
+  existing-valid `type` values (`content`/`payment`, satisfying the table CHECK)
+  with `actions` set explicitly in the row, so we never rely on
+  `donny-nudge-frame`'s token-derived recipient or its hardcoded
+  `getActionsForType`. **No CHECK-constraint migration is required.**
+- **Regression guard:** removing the raw push inserts changes a just-verified
+  path, so re-verifying the creator boost + decline bell after the change is a
+  mandatory step (§11). The bell row still lands via `create-notification`; only
+  its category changes (`content` → `dragonshare`), which the bell renders
+  regardless of preferences.
 
 ## 6. Email templates
 
@@ -195,13 +232,18 @@ correctly even if `action_url` is absent:
 
 ## 10. Error handling
 
-- Every `pg_net` call in `notify_dragonshare()` is fire-and-forget; the trigger
-  returns `NEW` regardless. A notification/email/Donny failure must never roll
-  back a submission insert, a boost transfer, or a decline.
-- `create-notification` already swallows email failures (the bell row still
-  lands). The dedicated card and feed hooks must handle loading/error/empty
-  without breaking the dashboard (follow the widget-level `ErrorBoundary`
-  pattern where applicable).
+- `dragonshare-notify` is best-effort and isolated from the caller's primary
+  action: the submit mutation, the boost transfer, and the decline RPC all
+  **succeed regardless** of whether the notify invocation succeeds (invoke
+  without `await`-blocking the user flow, or catch + ignore). A notify failure
+  never rolls back a submission, a boost transfer, or a decline.
+- Inside `dragonshare-notify`, each recipient's `create-notification` call and
+  each `donny_nudges`/`donny_messages` insert is wrapped independently so one
+  failure doesn't abort the others. `create-notification` already swallows email
+  failures (the bell row still lands).
+- The dedicated card and feed hooks must handle loading/error/empty without
+  breaking the dashboard (follow the widget-level `ErrorBoundary` pattern where
+  applicable).
 - The notification-preferences matrix may lack a `dragonshare` key for existing
   users — both the edge function and the settings UI must fall back to
   `DEFAULT_PREFERENCES_MATRIX` (email on).
@@ -215,9 +257,13 @@ correctly even if `action_url` is absent:
     (pure functions: shape `dragonshare_events` rows → `ActivityItem`s, ordering,
     labels).
 - **Backend:** apply migrations via Supabase MCP **and** commit them as files;
-  redeploy `create-notification`, `send-notification-email`, and
-  `donny-nudge-frame` if changed, preserving each function's `verify_jwt` flag.
-  Smoke-test `notify_dragonshare()` paths in SQL.
+  deploy the new `dragonshare-notify` function and redeploy `create-notification`
+  + `send-notification-email`, preserving each function's `verify_jwt` flag.
+  Smoke-test each `dragonshare-notify` event path.
+- **Regression re-verify (mandatory):** removing the raw push inserts from
+  `trg_ds_boost_accepted_fn` / `decline_dragonshare_post` touches a just-verified
+  path — confirm the creator still gets the boost-paid bell and the decline bell
+  after the change (use the test accounts).
 - **Production verification** (per project workflow, after Lovable deploy; poll
   bundle hash first):
   - Creator (`damewillie@gmail.com`) submits a post to Harbormill → restaurant
@@ -238,6 +284,16 @@ correctly even if `action_url` is absent:
 - Backfilling historical DragonShare events into notifications.
 - Re-categorizing existing `content` DragonShare notifications.
 
+### Discovered issue (out of scope, flag to stakeholder)
+
+The campaign Donny-nudge trigger path (`notify_donny_nudge()` →
+`donny-nudge-frame` via `pg_net`) is **not firing in production** because
+`app.settings.supabase_url` / `app.settings.service_role_key` are unset (§2.1).
+Fixing it (set the GUCs out-of-band and patch `donny-nudge-frame` to honor a
+body `user_id` on service-role calls) is a separate campaign-side concern and is
+**not** required for this DragonShare work — DragonShare deliberately avoids that
+path. Recommend tracking it as its own ticket.
+
 ## 13. Files touched (summary)
 
 - **Types/FE:** `src/types/notifications.ts`, `src/lib/getNotificationRoute.ts`,
@@ -246,9 +302,17 @@ correctly even if `action_url` is absent:
   `useBusinessDragonShareActivity.ts`, new
   `src/components/dragonshare/DragonShareActivityCard.tsx`,
   `src/pages/CreatorDashboard.tsx`, `src/pages/BusinessDashboard.tsx`.
-- **Edge functions:** `create-notification/index.ts` (type map),
-  `send-notification-email/index.ts` (4 templates). `donny-nudge-frame` reused
-  as-is if it already accepts arbitrary `type/source_table`.
-- **Migrations:** new `notify_dragonshare()` + triggers; edits to
-  `trg_ds_boost_accepted_fn` and `decline_dragonshare_post` to drop raw push
-  inserts and POST `create-notification` instead.
+- **Edge functions:** **new** `dragonshare-notify/index.ts` (the fanout: resolves
+  recipients, calls `create-notification`, inserts `donny_nudges`, and writes the
+  submission chat message); `create-notification/index.ts` (add the 4 DragonShare
+  entries to its type→email map + `dragonshare` category default);
+  `send-notification-email/index.ts` (4 templates). `donny-nudge-frame` is **not**
+  used or modified by this work.
+- **Invocation wiring:** `src/hooks/useDragonShare.ts`
+  (`useSubmitDragonSharePost` `onSuccess`) and `src/hooks/useDeclineDragonSharePost.ts`
+  (`onSuccess`) invoke `dragonshare-notify`; the boost-fulfillment server path
+  invokes it on the `transferred` transition.
+- **Migrations:** edits to `trg_ds_boost_accepted_fn` and
+  `decline_dragonshare_post` to **remove** their raw `push_notifications` inserts
+  (keep state changes + `dragonshare_events` logging). No new triggers; no
+  `donny_nudges` CHECK-constraint change.
