@@ -16,15 +16,16 @@ through a hybrid marketplace model.
 ## Architecture
 
 - Frontend: React 18 / TypeScript (strict), Vite, Tailwind CSS, shadcn/ui
-- Backend: Supabase (70+ tables, 67 Deno Edge Functions, RLS, realtime)
+- Backend: Supabase (70+ tables, 71 Deno Edge Functions, RLS, realtime)
 - AI: Claude Sonnet 4 + Haiku (cost routing via edge functions)
 - Social: Outstand.so (Instagram, TikTok, YouTube)
 - Payments: [[Stripe Connect]] (test mode)
 - Hosting: Lovable.dev → dragoncandy.io
+- iOS: [[Capacitor Native Shell]] (Phase 1 foundation shipped)
 
-## Scale (as of 2026-05-20)
+## Scale (as of 2026-06-01)
 
-- 59 pages, 162 hooks, 67 edge functions
+- 60 pages, 184 hooks, 71 edge functions
 - Pre-revenue: ~30 organic users, $0 paying, ~$295/mo operating cost
 - Three user roles: business_client, content_creator, brand
 
@@ -34,9 +35,12 @@ through a hybrid marketplace model.
 - [[Supabase]] — database, auth, edge functions, realtime
 - [[Donny AI]] — intelligence layer
 - [[DragonDash]] — premium content delivery
+- [[DragonShare]] — organic-content amplification engine
+- [[Capacitor Native Shell]] — iOS delivery surface
 
 ## See Also
 
 - [[Campaign Lifecycle]]
 - [[Content Delivery State Machine]]
 - [[Take-Rate Ladder]]
+- [[Payments Split by Surface]]

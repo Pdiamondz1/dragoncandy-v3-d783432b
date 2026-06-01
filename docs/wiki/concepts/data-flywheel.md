@@ -23,11 +23,15 @@ More campaigns → better matching data → better [[Donny AI]] recommendations
 - Fine-tuning [[Donny AI]] on proprietary data planned once 1,000-5,000
   campaigns accumulate (LoRA on open-source models)
 - Ledger-first architecture ensures all data is captured (payment_events,
-  donny_actions, analytics_events)
+  donny_actions, analytics_events, dragonshare_events)
 - Defensible because competitors can't replicate accumulated match data
+- [[DragonShare]] is an additional flywheel input: every boost logs a
+  `dragonshare_events` row, turning creators' organic posting behavior into
+  proprietary matching signal (the strategic rationale for shipping it)
 
 ## See Also
 
 - [[Donny AI]]
 - [[Musk's Algorithm]]
 - [[DragonCandy Platform]]
+- [[DragonShare]]

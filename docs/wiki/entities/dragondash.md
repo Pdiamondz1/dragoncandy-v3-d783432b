@@ -49,3 +49,4 @@ by [[Donny AI]]. "#DragonDashed" is the brand verb seeded from launch.
 - [[Content Delivery State Machine]]
 - [[Stripe Connect]]
 - [[Pricing Architecture]]
+- [[DragonShare]] — the organic-content amplification engine (distinct revenue stream)

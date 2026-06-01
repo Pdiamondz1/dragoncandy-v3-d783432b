@@ -1,5 +1,20 @@
 # Wiki Log
 
+## [2026-06-01] ingest | Repo-State Sync — DragonShare, Capacitor, Delivery Cluster
+
+Full session-extract ingest closing the gap since the 2026-05-24 backfill. Three new raw
+session extracts synthesized from specs/plans/commits (2026-04-27 → 2026-06-01), then ingested.
+Pages created: [[DragonShare]], [[Capacitor Native Shell]] (entities);
+[[Trust-Then-Flag Model]], [[Two-Path Boost Payment]], [[Payments Split by Surface]] (concepts);
+[[DragonShare Amplification Engine Session]], [[Apple App Store Capacitor Phase 1 Session]],
+[[Campaign Delivery, Scheduling & Notifications Session]] (sources).
+Pages updated: [[DragonDash]], [[Stripe Connect]], [[Supabase]], [[Donny AI]],
+[[DragonCandy Platform]] (entities); [[Data Flywheel]] (concept); index.md (8 new entries).
+Contradiction flagged: the DragonShare admin-queue/Donny-scoring model from the original
+2026-04-27 spec was superseded by the trust-then-flag model — recorded in [[Trust-Then-Flag Model]].
+Also synced core docs: PROJECT_CONTEXT scale (60/184/71) + DragonShare/Capacitor status,
+DATABASE_SCHEMA (`user_roles`, `donny_scheduled_posts`), prd/product-vision native-app note.
+
 ## [2026-05-24] ingest | Session Handoff Backfill — 6 Source Pages
 
 Backfill of 6 session handoff source pages from accumulated sessions:

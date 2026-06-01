@@ -27,11 +27,21 @@ Campaign payments use escrow: pending → held → released. Fixed-price
 campaigns require escrow before publishing. Payment released on content
 approval or auto-approval timer expiry.
 
+## DragonShare Boost Payments
+
+Restaurants/brands pay creators for boosts via the [[Two-Path Boost Payment]] flow: hosted
+checkout on the first boost (saves + sets a default card), one-tap off-session charge on
+repeats, with a 3DS fallback to hosted checkout. An idempotent `fulfillBoost` helper handles
+the transfer + payout (80/20 split). The org's `stripe_customer_id` (on `organizations`) is
+reused across escrow, sponsorship, and boost flows. On iOS this coexists with
+[[Payments Split by Surface]].
+
 ## Database Tables
 
 - `payment_events` — payment lifecycle ledger
 - `stripe_webhook_events` — raw webhook event log
 - `rush_surcharge_log` — DragonDash surcharge records
+- `dragonshare_boosts` / `dragonshare_payouts` — boost charges and creator payouts
 
 ## Implementation Files
 
@@ -50,3 +60,6 @@ approval or auto-approval timer expiry.
 - [[Take-Rate Ladder]]
 - [[DragonDash]]
 - [[Campaign Lifecycle]]
+- [[Two-Path Boost Payment]]
+- [[Payments Split by Surface]]
+- [[DragonShare]]
