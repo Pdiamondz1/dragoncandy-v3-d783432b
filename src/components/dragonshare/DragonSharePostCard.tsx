@@ -5,11 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { validateCustomBoost } from '@/lib/boostAmount';
-import { ExternalLink, Flag, Play } from 'lucide-react';
+import { ExternalLink, Flag } from 'lucide-react';
 import { BoostConfirmationSheet } from './BoostConfirmationSheet';
 import { AmplificationPreview } from './AmplificationPreview';
+import { WatermarkedMedia } from './WatermarkedMedia';
 import { BOOST_TIERS, isVideoPost } from '@/types/dragonshare';
-import { VideoThumbnail } from '@/components/shared/VideoThumbnail';
 import { useFlagDragonSharePost } from '@/hooks/useFlagDragonSharePost';
 import type { DragonSharePostWithRelations, BoostTierLabel } from '@/types/dragonshare';
 
@@ -71,20 +71,7 @@ export function DragonSharePostCard({ post, canBoost }: Props) {
         {/* Content preview */}
         {contentUrl && (
           <div className="px-4 pb-3">
-            <div className="relative h-48 w-full overflow-hidden rounded-xl">
-              {isVideoPost(post) ? (
-                <>
-                  <VideoThumbnail src={contentUrl} className="w-full h-full object-cover" />
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <div className="w-10 h-10 rounded-full bg-black/50 flex items-center justify-center">
-                      <Play className="h-5 w-5 text-white fill-white ml-0.5" />
-                    </div>
-                  </div>
-                </>
-              ) : (
-                <img src={contentUrl} alt="Content preview" className="w-full h-full object-cover" />
-              )}
-            </div>
+            <WatermarkedMedia src={contentUrl} isVideo={isVideoPost(post)} watermark={!isAlreadyBoosted} />
           </div>
         )}
 
@@ -148,6 +135,7 @@ export function DragonSharePostCard({ post, canBoost }: Props) {
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-dc-text-muted">$</span>
                       <Input
                         type="number" min={5} max={500} inputMode="decimal"
+                        aria-label="Custom boost amount in dollars"
                         placeholder="5–500"
                         value={customVal}
                         onChange={(e) => { setCustomVal(e.target.value); setCustomError(null); }}
