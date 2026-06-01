@@ -36,7 +36,7 @@ function pillFor(item: DSActivityItem, role: 'creator' | 'business') {
   switch (item.kind) {
     case 'paid':
       return {
-        text: `Paid +$${Math.floor((item.payoutCents ?? 0) / 100)}`,
+        text: `Paid +$${((item.payoutCents ?? 0) / 100).toFixed(0)}`,
         className: 'bg-emerald-100 text-emerald-700',
       };
     case 'not_selected':
