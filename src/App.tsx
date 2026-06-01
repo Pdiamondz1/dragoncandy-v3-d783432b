@@ -31,6 +31,7 @@ import { useInactivityTimeout } from "@/hooks/useInactivityTimeout";
 import { InactivityWarningDialog } from "@/components/InactivityWarningDialog";
 import { AppVersionProvider } from "@/contexts/AppVersionContext";
 import { UpdateBanner } from "@/components/UpdateBanner";
+import { StagingBanner } from "@/components/StagingBanner";
 import { PageTransition } from "@/components/PageTransition";
 import type { UserRole } from "@/types/user";
 
@@ -382,6 +383,7 @@ const App = () => {
   return (
     <ErrorBoundary>
       <ThemeProvider>
+        <StagingBanner />
       <QueryClientProvider client={queryClient}>
         <LazyMotion features={loadMotionFeatures} strict>
         <AuthProvider>
