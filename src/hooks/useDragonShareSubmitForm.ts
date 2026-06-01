@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import type { ContentType } from '@/types/dragonshare';
 import type { RestaurantSearchResult } from '@/hooks/useRestaurantSearch';
 
-export function useDragonShareSubmitForm(_options?: { onSuccess?: () => void }) {
+export function useDragonShareSubmitForm() {
   const submitMutation = useSubmitDragonSharePost();
   const { upload, uploading } = useDragonShareUpload();
   const fileInputRef = useRef<HTMLInputElement>(null);

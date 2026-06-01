@@ -14,20 +14,13 @@ export function useAmplificationPreview(creatorId?: string, orgId?: string) {
       const platforms: ConnectedPlatform[] = [];
 
       if (creatorId) {
-        const { data: creatorAccounts } = await supabase
-          .from('business_outstand_accounts')
-          .select('platform, platform_handle')
-          .eq('user_id', creatorId)
-          .eq('status', 'active');
-
-        if (creatorAccounts) {
-          for (const acct of creatorAccounts) {
-            platforms.push({
-              platform: acct.platform,
-              ownerName: acct.platform_handle ?? 'Creator',
-              ownerType: 'creator',
-            });
-          }
+        const { data: creatorAccounts } = await supabase.rpc('get_creator_connected_platforms', { p_creator_id: creatorId });
+        for (const acct of (creatorAccounts ?? []) as { platform: string; platform_handle: string | null }[]) {
+          platforms.push({
+            platform: acct.platform,
+            ownerName: acct.platform_handle ?? 'Creator',
+            ownerType: 'creator',
+          });
         }
       }
 

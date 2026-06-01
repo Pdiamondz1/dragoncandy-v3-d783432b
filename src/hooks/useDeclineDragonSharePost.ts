@@ -10,7 +10,7 @@ export function useDeclineDragonSharePost() {
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Passed — the creator won't be charged.");
+      toast.success('Passed — no payment made. The creator keeps their post.');
       queryClient.invalidateQueries({ queryKey: ['dragonshare-posts'] });
     },
     onError: () => toast.error('Could not pass on this post. Please try again.'),

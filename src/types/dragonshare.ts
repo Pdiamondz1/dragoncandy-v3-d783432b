@@ -42,7 +42,7 @@ export interface DragonSharePost {
 
 export interface DragonSharePostWithRelations extends DragonSharePost {
   creator?: { id: string; full_name: string; avatar_url: string | null };
-  target_org?: { id: string; name: string; logo_url: string | null };
+  target_org?: { id: string; name: string; logo_url: string | null; org_type?: string };
   boosts?: DragonShareBoost[];
 }
 

@@ -141,7 +141,7 @@ export function DragonShareInlineForm({ preselectedOrg }: Props) {
       <div className="bg-dc-pink/10 border border-dc-teal/10 rounded-xl p-3">
         <p className="text-[11px] text-dc-pink-accent font-semibold mb-1">⚡ Quick tip</p>
         <p className="text-[11px] text-dc-text-muted leading-relaxed">
-          When a restaurant boosts your post, it gets cross-posted to all your connected platforms — and theirs.
+          When a restaurant boosts your post, we prep a ready-to-post draft for your connected platforms — and theirs — to share in one tap.
           More platforms connected = more reach = higher boost value.
         </p>
       </div>

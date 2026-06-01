@@ -104,14 +104,14 @@ export function BoostConfirmationSheet({ open, onOpenChange, post, amountCents, 
               <li className="flex gap-2">
                 <span className="flex-shrink-0 h-5 w-5 rounded-full bg-dc-teal text-white flex items-center justify-center text-[11px] font-bold">1</span>
                 <span>
-                  Auto-posted to <span className="font-medium">{creatorName}</span>'s{' '}
-                  <span className="font-medium">{formatPlatformList(creatorPlatforms)}</span> with AI caption
+                  Drafted for one-tap posting to <span className="font-medium">{creatorName}</span>'s{' '}
+                  <span className="font-medium">{formatPlatformList(creatorPlatforms)}</span>, with an AI caption
                 </span>
               </li>
               <li className="flex gap-2">
                 <span className="flex-shrink-0 h-5 w-5 rounded-full bg-dc-teal text-white flex items-center justify-center text-[11px] font-bold">2</span>
                 <span>
-                  Auto-posted to your <span className="font-medium">{formatPlatformList(orgPlatforms)}</span>
+                  Drafted for your <span className="font-medium">{formatPlatformList(orgPlatforms)}</span>
                 </span>
               </li>
               <li className="flex gap-2">

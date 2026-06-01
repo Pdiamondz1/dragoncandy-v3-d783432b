@@ -188,9 +188,9 @@ export function DragonSharePostCard({ post, canBoost }: Props) {
                 </div>
               )}
               <Button
-                variant="ghost"
+                variant="outline"
                 size="sm"
-                className="w-full rounded-full text-dc-text-muted hover:text-dc-text mt-1"
+                className="w-full rounded-full border-dc-pink-accent/40 text-dc-pink-accent hover:bg-dc-pink/10 hover:text-dc-pink-accent mt-1"
                 disabled={declineMutation.isPending || selectedTier !== null}
                 onClick={() => declineMutation.mutate(post.id)}
               >
