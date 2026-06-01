@@ -137,6 +137,13 @@ role reuses the same card components as the restaurant role
 
 Foundational; resolves two visible bugs through backend mapping.
 
+- **Step 0 — verify live schema before writing SQL:** confirm (a) whether a
+  `public_organizations` view already exists live exposing safe columns, and
+  (b) the canonical way to find a restaurant org's owner. `org_members`
+  owner-role and `profiles.org_id` can disagree for multi-member orgs;
+  `get_org_connected_platforms` must use one unambiguous source. Resolve this
+  first, then encode a single mapping (do not hardcode both as a fallback
+  chain).
 - New security-definer RPC `resolve_dragonshare_orgs(p_org_ids uuid[])`
   returning only `(id, name, logo_url, org_type)` for non-deleted orgs. This is
   preferred over a broad `organizations` SELECT policy, which (being row-level)
@@ -217,8 +224,18 @@ type is needed.
   `dragonshare_posts` (additive). New security-definer RPC
   `decline_dragonshare_post(p_post_id uuid)` that sets the decline fields, logs a
   `dragonshare_events` row, and inserts the creator notification (see Task 7).
+  The RPC **must reject** when the post is already `boost_status = 'boosted'`
+  (or a boost is in flight) — Pass cannot override a completed/initiated boost.
+- **Decline → re-submit mechanics (decided):** declining marks the **existing**
+  post row (`declined_at`/`declined_by`) — it is never deleted, so the creator
+  keeps visibility and the notification trail. The original row stays declined
+  forever. "Re-submitting" creates a **new** `dragonshare_posts` row via the
+  normal submit flow (the Task 7 creator-card "Share again" CTA pre-fills the
+  same restaurant). This keeps the org-queue filter (`declined_at IS NULL`)
+  simple and avoids un-declining rows.
 - **Org query:** `useOrgDragonSharePosts` adds `.is('declined_at', null)` so a
-  passed post leaves the queue.
+  passed post leaves the queue. The card also disables **Pass** once a boost has
+  been initiated, to avoid a boosted-then-declined race.
 - **UI:** in `DragonSharePostCard`, the primary actions become **Boost**
   (presets/custom) and **Pass** (calls the decline RPC, optimistic removal).
   Keep a small, de-emphasized **Report** (existing `useFlagDragonSharePost`) for
@@ -239,6 +256,10 @@ new decline hook; `DragonSharePostCard.tsx`.
 - **Declined:** the `decline_dragonshare_post` RPC (Task 6) inserts an
   encouraging creator notification ("{Restaurant} passed this time — your
   content's still great, share more!"). Copy is intentionally non-discouraging.
+  Notification `type`: add a new `dragonshare_declined` value under the existing
+  `content` category (update the type union in `src/types/notifications.ts` and
+  any DB check constraint on the notifications table). Both the boost-paid
+  (`dragonshare_boost`) and decline notifications route to the in-app bell.
 - **Card status:** `CreatorPostCard` (in `CreatorDragonShare.tsx`) reflects
   outcomes — "Paid +$X" (verify the existing transferred-boost display) and a
   soft "Not selected — share again" state when `declined_at` is set. Adjust the
@@ -288,11 +309,14 @@ Per task, after the Lovable deploy completes:
 
 ## Risks & Open Questions
 
-- **Resolver RPC vs existing view:** confirm whether `public_organizations`
-  already exists before adding `resolve_dragonshare_orgs`, to avoid duplication.
-- **Org → business_profiles ownership mapping:** confirm the canonical way to
-  find a restaurant's owner (`org_members` owner role vs `profiles.org_id`); the
-  social-by-org RPC depends on this being unambiguous for multi-member orgs.
+- **Resolver RPC vs existing view / org-owner mapping:** both are resolved up
+  front by Task 1 Step 0 (verify `public_organizations`; pick one canonical
+  org-owner source). Flagged here because `get_org_connected_platforms`
+  correctness depends on getting the owner mapping right for multi-member orgs.
 - **Watermark is a deterrent, not protection:** the clean file stays publicly
   reachable; this is an accepted trade-off for this iteration and should be
-  tracked as a follow-up.
+  tracked as a follow-up (private bucket + signed URLs + server-baked
+  watermark).
+- **Decline is one-way on a row:** declining never un-declines; re-engagement is
+  always a new post row (see Task 6). Intentional, to keep the queue filter
+  simple.
