@@ -5,12 +5,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { validateCustomBoost } from '@/lib/boostAmount';
-import { ExternalLink, Flag } from 'lucide-react';
+import { ExternalLink, Flag, Download } from 'lucide-react';
 import { BoostConfirmationSheet } from './BoostConfirmationSheet';
 import { AmplificationPreview } from './AmplificationPreview';
 import { WatermarkedMedia } from './WatermarkedMedia';
 import { BOOST_TIERS, isVideoPost } from '@/types/dragonshare';
 import { useFlagDragonSharePost } from '@/hooks/useFlagDragonSharePost';
+import { useDeclineDragonSharePost } from '@/hooks/useDeclineDragonSharePost';
 import type { DragonSharePostWithRelations, BoostTierLabel } from '@/types/dragonshare';
 
 interface Props {
@@ -28,6 +29,7 @@ export function DragonSharePostCard({ post, canBoost }: Props) {
   const resolvedCreatorAvatar = useResolvedAvatarUrl(post.creator?.avatar_url);
   const contentUrl = post.content_file_path;
   const flagMutation = useFlagDragonSharePost();
+  const declineMutation = useDeclineDragonSharePost();
 
   const postUrl = safeUrl(post.post_url);
 
@@ -90,9 +92,22 @@ export function DragonSharePostCard({ post, canBoost }: Props) {
         {/* Boost tiers / status */}
         <div className="px-4 pb-3">
           {isAlreadyBoosted ? (
-            <Badge className="bg-teal-100 text-teal-700 border-teal-200">
-              Boosted · ${((post.boosts?.[0]?.amount_cents ?? 0) / 100).toFixed(0)}
-            </Badge>
+            <div className="flex items-center justify-between gap-2">
+              <Badge className="bg-teal-100 text-teal-700 border-teal-200">
+                Boosted · ${((post.boosts?.[0]?.amount_cents ?? 0) / 100).toFixed(0)}
+              </Badge>
+              {contentUrl && (
+                <a
+                  href={contentUrl}
+                  download
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-dc-teal hover:text-dc-teal-dark"
+                >
+                  <Download className="h-3.5 w-3.5" /> Download
+                </a>
+              )}
+            </div>
           ) : canBoost ? (
             <div className="space-y-2">
               <div className="flex items-center gap-1.5 lg:gap-2">
@@ -157,6 +172,15 @@ export function DragonSharePostCard({ post, canBoost }: Props) {
                   </Button>
                 </div>
               )}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full rounded-full text-dc-text-muted hover:text-dc-text mt-1"
+                disabled={declineMutation.isPending || selectedTier !== null}
+                onClick={() => declineMutation.mutate(post.id)}
+              >
+                Pass — not a fit right now
+              </Button>
             </div>
           ) : (
             <p className="text-xs text-dc-text-muted">Ask an admin to boost this.</p>
@@ -173,7 +197,7 @@ export function DragonSharePostCard({ post, canBoost }: Props) {
             disabled={flagMutation.isPending || post.flagged_at !== null}
           >
             <Flag className="h-3 w-3" />
-            <span className="text-xs">Report</span>
+            <span className="text-[10px]">Report</span>
           </Button>
         </div>
       </div>
