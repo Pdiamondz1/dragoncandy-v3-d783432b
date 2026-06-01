@@ -18,7 +18,9 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # Match local dev (Node 24 / npm 11). npm 10 (Node 20) rejects the
+          # npm-11-generated lockfile with a spurious "missing from lock file".
+          node-version: 24
           cache: npm
 
       - run: npm ci
