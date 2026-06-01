@@ -17,6 +17,10 @@ describe('deriveCreatorActivity', () => {
     const out = deriveCreatorActivity(rows);
     expect(out[0]).toMatchObject({ kind: 'paid', payoutCents: 2400, postId: 'p1' });
   });
+  it('boosted post with no transferred boost falls back to payout 0 and submitted_at', () => {
+    const out = deriveCreatorActivity([{ ...base, boost_status: 'boosted', submitted_at: '2026-06-03T00:00:00Z', boosts: [] }]);
+    expect(out[0]).toMatchObject({ kind: 'paid', payoutCents: 0, postId: 'p1', timestamp: '2026-06-03T00:00:00Z' });
+  });
   it('marks a declined post as not_selected', () => {
     const out = deriveCreatorActivity([{ ...base, declined_at: '2026-06-02T10:00:00Z' }]);
     expect(out[0]).toMatchObject({ kind: 'not_selected', postId: 'p1' });

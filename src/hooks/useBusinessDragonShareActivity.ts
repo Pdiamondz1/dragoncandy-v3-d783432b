@@ -32,15 +32,17 @@ export function useBusinessDragonShareActivity(orgId?: string | null) {
           'useBusinessDragonShareActivity awaiting query failed:',
           awaitingRes.error,
         );
+        throw awaitingRes.error;
       }
       if (boostsRes.error) {
         console.error(
           'useBusinessDragonShareActivity boosts query failed:',
           boostsRes.error,
         );
+        throw boostsRes.error;
       }
 
-      const awaiting = (awaitingRes.data ?? []) as unknown as DSBusinessPostRow[];
+      const awaiting = (awaitingRes.data ?? []) as DSBusinessPostRow[];
       const boostsMade = ((boostsRes.data ?? []) as unknown as {
         post_id: string;
         amount_cents: number;
