@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { ExternalLink, Clock, CheckCircle } from 'lucide-react';
 import { isVideoPost } from '@/types/dragonshare';
 import type { DragonSharePostWithRelations } from '@/types/dragonshare';
+import { deriveCreatorPostState } from '@/lib/dragonsharePostState';
 import { WatermarkedMedia } from '@/components/dragonshare/WatermarkedMedia';
 import { PrerequisiteGate } from '@/components/PrerequisiteGate';
 import { useResolvedLogoUrl } from '@/hooks/useSignedUrl';
@@ -178,7 +179,7 @@ function CreatorPostCard({ post }: { post: DragonSharePostWithRelations }) {
   const status = post.status as ActivePostStatus;
   const config = statusConfig[status] ?? statusConfig.verified;
   const StatusIcon = config.icon;
-  const boost = post.boosts?.[0];
+  const state = deriveCreatorPostState(post);
 
   const platformLabel = post.platform ?? 'direct upload';
 
@@ -193,10 +194,16 @@ function CreatorPostCard({ post }: { post: DragonSharePostWithRelations }) {
           <span className="text-sm font-medium capitalize">{platformLabel}</span>
           <span className="text-xs text-muted-foreground capitalize">{post.content_type}</span>
         </div>
-        <div className={`flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium ${config.className}`}>
-          <StatusIcon className="h-3 w-3" />
-          {config.label}
-        </div>
+        {state.kind === 'declined' ? (
+          <div className="flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium bg-dc-pink/10 text-dc-pink-accent">
+            Not selected — share again
+          </div>
+        ) : (
+          <div className={`flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium ${config.className}`}>
+            <StatusIcon className="h-3 w-3" />
+            {config.label}
+          </div>
+        )}
       </div>
 
       {post.caption && (
@@ -215,10 +222,8 @@ function CreatorPostCard({ post }: { post: DragonSharePostWithRelations }) {
           <span className="text-muted-foreground">{post.target_org?.name ?? 'Unknown org'}</span>
         </div>
         <div className="flex items-center gap-3">
-          {boost && boost.status === 'transferred' && (
-            <span className="font-semibold text-teal-600">
-              +${(boost.creator_payout_cents / 100).toFixed(0)}
-            </span>
+          {state.kind === 'paid' && (
+            <span className="font-semibold text-teal-600">+${(state.payoutCents / 100).toFixed(0)}</span>
           )}
           {post.post_url && (
             <a

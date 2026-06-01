@@ -32,6 +32,8 @@ export interface DragonSharePost {
   boost_status: BoostStatus;
   flagged_at: string | null;
   flagged_by: string | null;
+  declined_at: string | null;
+  declined_by: string | null;
   submitted_at: string;
   expires_at: string;
   created_at: string;

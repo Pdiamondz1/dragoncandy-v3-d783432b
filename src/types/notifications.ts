@@ -24,6 +24,7 @@ export type NotificationType =
   | 'content_approved'
   | 'file_uploaded'
   | 'dragonshare_boost'
+  | 'dragonshare_declined'
   | 'social_post_published'
   | 'social_post_failed'
   | 'social_draft_ready'
