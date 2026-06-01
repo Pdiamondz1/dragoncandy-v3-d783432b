@@ -122,9 +122,11 @@ path); `dragonshare-notify` uses the latter.
 1. **New submission → restaurant.** `useSubmitDragonSharePost` `onSuccess`
    invokes `dragonshare-notify({ event:'submission', post_id })` (creator's JWT).
    The function:
-   - Resolves the restaurant owner (`org_members` owner, `invitation_status =
-     'active'`), creator name (`profiles.full_name`), and clean business name
-     (coalesce `business_profiles.business_name`, like `resolve_dragonshare_orgs`).
+   - Resolves the restaurant **owner** (`org_members`, `role = 'owner'`,
+     `invitation_status = 'active'`; owner-only is intended for the bell +
+     email + chat-message recipient — admins are not separately notified),
+     creator name (`profiles.full_name`), and clean business name (coalesce
+     `business_profiles.business_name`, like `resolve_dragonshare_orgs`).
    - `create-notification` → owner: `dragonshare_submission`, category
      `dragonshare`, actionUrl `/dashboard/business/dragonshare?highlight=<post_id>`,
      icon `star`, data `{ post_id, creator_name, content_type }`.
@@ -138,10 +140,16 @@ path); `dragonshare-notify` uses the latter.
      dragonshare?highlight=<post_id>'},{label:'Later', action:'dismiss'}]`), bump
      `last_message_at`.
 
-2. **Boost paid → creator + restaurant.** Invoked **server-side from the boost
-   fulfillment path** (the code that sets `dragonshare_boosts.status =
-   'transferred'`; the plan must confirm this is the sole completion point) →
-   `dragonshare-notify({ event:'boost_paid', boost_id })`:
+2. **Boost paid → creator + restaurant.** Invoked **inside
+   `supabase/functions/_shared/fulfill-boost.ts`, on the `alreadyDone === false`
+   branch** (the same place the existing `fire-dragonshare-social-hook` call is
+   made, fire-and-forget). `fulfillBoost` is the sole writer of
+   `status = 'transferred'` and is idempotent (early-returns when already done),
+   so invoking there covers both callers (`boost-payment` and `stripe-webhook`)
+   exactly once — do **not** wire it at the two call sites. Pass the values
+   `fulfillBoost` already has — `{ event:'boost_paid', boost_id, post_id,
+   creator_id, creator_payout_cents }` — so `dragonshare-notify` needn't
+   re-resolve them:
    - `create-notification` → creator: `dragonshare_boost` (payout), category
      `dragonshare`, actionUrl `/dashboard/creator/dragonshare?highlight=<post_id>`,
      icon `dollar`.
@@ -310,8 +318,9 @@ path. Recommend tracking it as its own ticket.
   used or modified by this work.
 - **Invocation wiring:** `src/hooks/useDragonShare.ts`
   (`useSubmitDragonSharePost` `onSuccess`) and `src/hooks/useDeclineDragonSharePost.ts`
-  (`onSuccess`) invoke `dragonshare-notify`; the boost-fulfillment server path
-  invokes it on the `transferred` transition.
+  (`onSuccess`) invoke `dragonshare-notify`; **`supabase/functions/_shared/fulfill-boost.ts`**
+  invokes it on the `alreadyDone === false` branch (alongside the existing
+  `fire-dragonshare-social-hook` call).
 - **Migrations:** edits to `trg_ds_boost_accepted_fn` and
   `decline_dragonshare_post` to **remove** their raw `push_notifications` inserts
   (keep state changes + `dragonshare_events` logging). No new triggers; no
