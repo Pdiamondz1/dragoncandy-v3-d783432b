@@ -78,6 +78,14 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
 - GTM Capital & CAC Playbook structured across Phase 0–3 with explicit
   budget gates and kill-switches. Creators onboarded before restaurants in
   each new market.
+- Apple App Store (Capacitor) — wrap the existing web app in a Capacitor
+  iOS shell so one codebase serves both dragoncandy.io (unchanged) and a
+  downloadable iPhone app. Payments split by surface (Stripe for marketplace
+  + web-only subscriptions to avoid Apple's 30%), native value-adds
+  (push/camera/share) for guideline 4.2, then TestFlight → review → live.
+  **Status: design + Phase 1 plan written and reviewed; no code yet.**
+  Spec: `docs/superpowers/specs/2026-06-01-apple-app-store-design.md`.
+  Hard prerequisite: macOS/cloud-Mac build + Apple Developer account ($99/yr).
 
 **Workflow discipline**: Single Claude Code agent, one prompt at a time
 → `npm run build` → verify → push. Session handoffs at plan-phase
