@@ -9,10 +9,12 @@ import { DragonShareHowItWorks } from '@/components/dragonshare/DragonShareHowIt
 import { DragonShareQuickTip } from '@/components/dragonshare/DragonShareQuickTip';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ExternalLink, Clock, CheckCircle } from 'lucide-react';
+import { ExternalLink, Clock, CheckCircle, Play } from 'lucide-react';
+import { isVideoPost } from '@/types/dragonshare';
 import type { DragonSharePostWithRelations } from '@/types/dragonshare';
+import { VideoThumbnail } from '@/components/shared/VideoThumbnail';
 import { PrerequisiteGate } from '@/components/PrerequisiteGate';
-import { useResolvedLogoUrl, useSignedUrl } from '@/hooks/useSignedUrl';
+import { useResolvedLogoUrl } from '@/hooks/useSignedUrl';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import type { RestaurantSearchResult } from '@/hooks/useRestaurantSearch';
@@ -165,7 +167,7 @@ const CreatorDragonShare: React.FC = () => {
 
 function CreatorPostCard({ post }: { post: DragonSharePostWithRelations }) {
   const resolvedLogoUrl = useResolvedLogoUrl(post.target_org?.logo_url);
-  const contentImageUrl = useSignedUrl('dragonshare-content', post.content_file_path);
+  const contentUrl = post.content_file_path;
   const [logoError, setLogoError] = useState(false);
 
   const status = post.status as ActivePostStatus;
@@ -177,12 +179,21 @@ function CreatorPostCard({ post }: { post: DragonSharePostWithRelations }) {
 
   return (
     <div className="rounded-2xl border bg-card p-4 space-y-3">
-      {contentImageUrl && (
-        <img
-          src={contentImageUrl}
-          alt="Submitted content"
-          className="w-full rounded-xl object-cover max-h-48"
-        />
+      {contentUrl && (
+        <div className="relative h-48 w-full overflow-hidden rounded-xl">
+          {isVideoPost(post) ? (
+            <>
+              <VideoThumbnail src={contentUrl} className="w-full h-full object-cover" />
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div className="w-10 h-10 rounded-full bg-black/50 flex items-center justify-center">
+                  <Play className="h-5 w-5 text-white fill-white ml-0.5" />
+                </div>
+              </div>
+            </>
+          ) : (
+            <img src={contentUrl} alt="Submitted content" className="w-full h-full object-cover" />
+          )}
+        </div>
       )}
 
       <div className="flex items-center justify-between">
