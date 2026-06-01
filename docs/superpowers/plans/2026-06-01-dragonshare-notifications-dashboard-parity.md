@@ -16,7 +16,7 @@
 
 The spec is approved; these two corrections were discovered while grounding the plan in code and **supersede** the spec where they conflict:
 
-1. **Dashboard data source is NOT `dragonshare_events`.** That table has RLS enabled with **no SELECT policy**, so the frontend cannot read it. The dedicated card and feed derivations use the already-RLS-readable tables the existing DragonShare hooks query successfully: `dragonshare_posts` (creator's own; org's incoming), `dragonshare_boosts` (org's boosts), `dragonshare_payouts` (creator's payouts).
+1. **Dashboard data source is NOT `dragonshare_events`.** That table's SELECT policy (`USING (actor_user_id = auth.uid())`) is too narrow to serve either dashboard: `boost_accepted` events set no `actor_user_id` (creators can't read their own boosts), `post_declined` sets it to the *business* decliner (creators can't read their declines), and nothing is scoped by org membership (business owners can't read org events at all). So the frontend effectively cannot read the events it would need. The dedicated card and feed derivations use the already-RLS-readable tables the existing DragonShare hooks query successfully: `dragonshare_posts` (creator's own; org's incoming), `dragonshare_boosts` (org's boosts), `dragonshare_payouts` (creator's payouts).
 2. **Business "fold into the feed" is satisfied by the dedicated card.** The creator dashboard has a generic "Recent Activity" feed to fold DragonShare into (Task 8). The business dashboard has no equivalent generic feed (only "Your Campaigns"), so its DragonShare feed presence IS the dedicated card (Task 7) — we do not jam DragonShare rows into the campaigns list.
 
 ## Notification contracts (reference — used across tasks)
@@ -24,7 +24,7 @@ The spec is approved; these two corrections were discovered while grounding the 
 - **`create-notification`** (`supabase/functions/create-notification/index.ts`) accepts a POST with body
   `{ recipientId, type, category, title, body, actionUrl?, icon?, data?, forceDelivery?, emailType? }`.
   Callable server-to-server when `Authorization: Bearer <SERVICE_ROLE_KEY>` (its `isService` path). It always inserts the bell row, then emails via `send-notification-email` when the category's `email` pref is true (or `forceDelivery`). Email type resolves from `emailType` or its internal `NOTIFICATION_TYPE_TO_EMAIL_TYPE`.
-- **`donny_nudges`** row shape (insert directly, service role): `{ user_id, type, source_table, source_id, summary, priority, actions, raw_data }`. `type` CHECK allows only `('application','content','milestone','payment','invitation','match')`. Unique on `(user_id, source_table, source_id)` → upsert with `onConflict` + `ignoreDuplicates`. Actions are rendered by `DonnyNudgeCard`; a `navigate` action uses `{ action:'navigate', payload:{ route } , variant, label }` (see `DonnyProvider.tsx:249`).
+- **`donny_nudges`** row shape (insert directly, service role): `{ user_id, type, source_table, source_id, summary, priority, actions, raw_data }`. `type` CHECK allows only `('application','content','milestone','payment','invitation','match')`. Unique on `(user_id, source_table, source_id)` → upsert with `onConflict` + `ignoreDuplicates`. Actions are rendered by `DonnyNudgeCard`; a `navigate` action uses `{ action:'navigate', payload:{ route } , variant, label }` (handler at `src/contexts/DonnyProvider.tsx:249`).
 - **`donny_messages`** quick_actions use `{ label, action:'navigate', url }` / `{ label, action:'dismiss' }` (see `DonnyMessage.tsx:95`).
 - **Event recipients/types:** submission→restaurant owner (`dragonshare_submission`); boost paid→creator (`dragonshare_boost`) + restaurant owner (`dragonshare_boost_receipt`); decline→creator (`dragonshare_declined`). Category for all four: `dragonshare`.
 
@@ -187,7 +187,7 @@ And add to the `defaultMatrix` (around line 119) so users with no stored pref st
 
 - [ ] **Step 2: Add the four email templates**
 
-In `send-notification-email/index.ts`, add four entries to the `templates` record and to the supported-types list, matching the existing brand HTML structure (teal/pink gradient header + single CTA). Use the inbound `data` fields the notify function will pass (`creator_name`, `business_name`, `payout_dollars`, `post_id`). Base URL + wrapper already exist in the file — mirror an existing template (e.g. `campaign_published`). Templates:
+In `send-notification-email/index.ts`, add four entries to the `templates` record and to the supported-types list, matching the existing brand HTML structure (teal/pink gradient header + single CTA). Use the inbound `data` fields the notify function will pass — note these are **snake_case** (`creator_name`, `business_name`, `payout_dollars`, `post_id`), deliberately matching the `dragonshare-notify` payload; do **not** reflexively copy the camelCase field reads (`creatorName`) from the mirrored campaign template. Base URL + wrapper already exist in the file — mirror an existing template (e.g. `campaign_published`). Templates:
 - `dragonshare_submission` → "{creator_name} shared a post about you", CTA "Review & boost" → `${baseUrl}/dashboard/business/dragonshare`.
 - `dragonshare_boost` → "Your post got boosted 🎉 — ${payout_dollars} is on the way", CTA "See it on DragonShare" → `${baseUrl}/dashboard/creator/dragonshare`.
 - `dragonshare_boost_receipt` → "Your boost is live — drafted for one-tap posting", CTA "Open Social" → `${baseUrl}/dashboard/business/social`.
@@ -439,7 +439,7 @@ Now that `dragonshare-notify` owns delivery, remove the duplicate raw `push_noti
 
 - [ ] **Step 1: Write the migration**
 
-`CREATE OR REPLACE` both functions, copying their current bodies (from `20260601140000_dragonshare_notifications.sql` and `20260601180000_...`) but deleting the `push_notifications` INSERT blocks:
+`CREATE OR REPLACE` both functions, copying the **most recent** `CREATE OR REPLACE` body of each (the latest definitions are: `trg_ds_boost_accepted_fn` in `20260601180000_dragonshare_boost_notif_business_name.sql`; `decline_dragonshare_post` in `20260601140000_dragonshare_notifications.sql`) but deleting the `push_notifications` INSERT blocks:
 - `trg_ds_boost_accepted_fn()` — keep the `dragonshare_events` insert; **remove** the `push_notifications` insert + its `BEGIN..EXCEPTION` wrapper and the now-unused name lookups.
 - `decline_dragonshare_post(p_post_id uuid)` — keep the membership guard, in-progress-boost guard, `declined_at` update, and `dragonshare_events` insert; **remove** the `push_notifications` insert block.
 
