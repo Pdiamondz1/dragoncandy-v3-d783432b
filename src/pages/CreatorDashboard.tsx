@@ -19,8 +19,10 @@ import { DashboardHero } from '@/components/dashboard/DashboardHero';
 import { DashboardStatsGrid, type StatItem } from '@/components/dashboard/DashboardStatsGrid';
 import { QuickActionButtons, type QuickAction } from '@/components/dashboard/QuickActionButtons';
 import { DragonShareStatTile } from '@/components/dragonshare/DragonShareStatTile';
+import { DragonShareActivityCard } from '@/components/dragonshare/DragonShareActivityCard';
 import { SocialMediaManagerTile } from '@/components/dashboard/SocialMediaManagerTile';
 import { useCreatorDragonShareEarnings } from '@/hooks/useDragonShare';
+import { useCreatorDragonShareActivity } from '@/hooks/useCreatorDragonShareActivity';
 import { UpcomingPostsWidget } from '@/components/outstand/UpcomingPostsWidget';
 
 const CreatorDashboard = () => {
@@ -29,6 +31,7 @@ const CreatorDashboard = () => {
   const { data: activities, isLoading: activitiesLoading } = useCreatorRecentActivity();
   const { data: deadlines, isLoading: deadlinesLoading } = useCreatorUpcomingDeadlines();
   const { data: dsEarnings } = useCreatorDragonShareEarnings();
+  const { data: dsActivity, isLoading: dsActivityLoading } = useCreatorDragonShareActivity();
   const { showTour, tourSteps, completeTour, skipTour, triggerTour } = useTour();
   const { missions, isFirstRun, completeMission, skipMissions } = useFirstRunMissions();
 
@@ -199,6 +202,12 @@ const CreatorDashboard = () => {
                 )}
               </div>
             </div>
+
+            <DragonShareActivityCard
+              role="creator"
+              items={dsActivity ?? []}
+              isLoading={dsActivityLoading}
+            />
 
             {/* Upcoming Deadlines */}
             <div className="border-2 border-dc-teal rounded-2xl bg-white overflow-hidden">

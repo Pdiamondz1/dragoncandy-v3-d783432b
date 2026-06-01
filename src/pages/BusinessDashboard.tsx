@@ -12,8 +12,10 @@ import { DashboardStatsGrid, type StatItem } from '@/components/dashboard/Dashbo
 import { QuickActionButtons, type QuickAction } from '@/components/dashboard/QuickActionButtons';
 import { useBusinessActiveCampaigns } from '@/hooks/useBusinessActiveCampaigns';
 import { DragonShareStatTile } from '@/components/dragonshare/DragonShareStatTile';
+import { DragonShareActivityCard } from '@/components/dragonshare/DragonShareActivityCard';
 import { useOrgBoostStats } from '@/hooks/useDragonShare';
 import { useOrg } from '@/hooks/useOrgData';
+import { useBusinessDragonShareActivity } from '@/hooks/useBusinessDragonShareActivity';
 import { useFirstRunMissions } from '@/hooks/useFirstRunMissions';
 import { FirstRunDashboard } from '@/components/first-run/FirstRunDashboard';
 import { PendingActionBanners } from '@/components/dashboard/PendingActionBanners';
@@ -35,6 +37,7 @@ const BusinessDashboard = () => {
   const { data: campaigns, isLoading: campaignsLoading } = useBusinessActiveCampaigns(activeOrgUnit?.id);
   const { data: org } = useOrg();
   const { data: dsBoosts } = useOrgBoostStats(org?.id);
+  const { data: dsActivity, isLoading: dsActivityLoading } = useBusinessDragonShareActivity(org?.id);
   const { showTour, tourSteps, completeTour, skipTour, triggerTour } = useTour();
   const { missions, isFirstRun, completeMission, skipMissions } = useFirstRunMissions();
   const { isReady, missingSocial, missingStripe, locationName, hasActiveLocation } = useLocationReadiness();
@@ -192,6 +195,12 @@ const BusinessDashboard = () => {
                 )}
               </div>
             )}
+
+            <DragonShareActivityCard
+              role="business"
+              items={dsActivity ?? []}
+              isLoading={dsActivityLoading}
+            />
 
             <UpcomingPostsWidget />
 
