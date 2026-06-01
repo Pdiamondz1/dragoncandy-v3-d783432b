@@ -16,16 +16,22 @@ begin
     select creator_id into v_creator_id from dragonshare_posts where id = NEW.post_id;
     select name into v_org_name from organizations where id = NEW.boosting_org_id;
     if v_creator_id is not null then
-      insert into push_notifications (user_id, type, category, title, body, action_url, icon, data, sent_at)
-      values (
-        v_creator_id, 'dragonshare_boost', 'content',
-        'Your post got boosted! 🎉',
-        coalesce(v_org_name, 'A restaurant') || ' boosted your content — $'
-          || (NEW.creator_payout_cents / 100)::int::text || ' is on the way.',
-        '/dashboard/creator/dragonshare', 'dollar',
-        jsonb_build_object('post_id', NEW.post_id, 'boost_id', NEW.id),
-        now()
-      );
+      -- Best-effort: a notification failure must NEVER roll back the boost
+      -- transferred transition (Stripe transfer already happened upstream).
+      begin
+        insert into push_notifications (user_id, type, category, title, body, action_url, icon, data, sent_at)
+        values (
+          v_creator_id, 'dragonshare_boost', 'content',
+          'Your post got boosted! 🎉',
+          coalesce(v_org_name, 'A restaurant') || ' boosted your content — $'
+            || (NEW.creator_payout_cents / 100)::int::text || ' is on the way.',
+          '/dashboard/creator/dragonshare', 'dollar',
+          jsonb_build_object('post_id', NEW.post_id, 'boost_id', NEW.id),
+          now()
+        );
+      exception when others then
+        null; -- swallow: notification is non-critical
+      end;
     end if;
   end if;
   return NEW;
@@ -59,13 +65,18 @@ begin
   insert into dragonshare_events (event_type, actor_user_id, actor_org_id, post_id, payload)
   values ('post_declined', auth.uid(), v_post.target_org_id, p_post_id, '{}'::jsonb);
 
-  insert into push_notifications (user_id, type, category, title, body, action_url, icon, data, sent_at)
-  values (
-    v_post.creator_id, 'dragonshare_declined', 'content',
-    'Not selected this time',
-    'A restaurant passed on this post — your content''s still great. Share more and keep earning!',
-    '/dashboard/creator/dragonshare', 'default',
-    jsonb_build_object('post_id', p_post_id), now()
-  );
+  -- Best-effort notification: must not roll back the (self-consistent) decline.
+  begin
+    insert into push_notifications (user_id, type, category, title, body, action_url, icon, data, sent_at)
+    values (
+      v_post.creator_id, 'dragonshare_declined', 'content',
+      'Not selected this time',
+      'A restaurant passed on this post — your content''s still great. Share more and keep earning!',
+      '/dashboard/creator/dragonshare', 'default',
+      jsonb_build_object('post_id', p_post_id), now()
+    );
+  exception when others then
+    null; -- swallow: notification is non-critical
+  end;
 end;
 $$;
