@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Trash2, LogOut, ShieldAlert } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
@@ -32,6 +33,7 @@ import { CGCPostingPreferences } from '@/components/promotions/CGCPostingPrefere
 const BusinessSettings = () => {
   const { user, activeOrg, activeOrgUnit } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { submitProfile: submitBusinessProfile } = useBusinessProfileSubmit();
   const { submitProfile: submitLocationProfile } = useLocationProfileSubmit();
   const [searchParams] = useSearchParams();
@@ -121,6 +123,27 @@ const BusinessSettings = () => {
     }
   };
 
+  // Persist a location/product logo to org_units ONLY — never the main business
+  // logo (business_profiles) or the user avatar (profiles). Targets the active unit.
+  const persistLocationLogo = useCallback(
+    async (path: string) => {
+      if (!user || !activeOrgUnit) return;
+      handleLocationInputChange('logo_url', path);
+      setLocationLogoFile(null);
+      const { error } = await supabase
+        .from('org_units')
+        .update({ logo_url: path, updated_at: new Date().toISOString() })
+        .eq('id', activeOrgUnit.id);
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ['location-profile', activeOrgUnit.id] });
+      queryClient.invalidateQueries({ queryKey: ['org-units'] });
+    },
+    [user, activeOrgUnit, handleLocationInputChange, setLocationLogoFile, queryClient],
+  );
+
+  const locationLogoLabel =
+    activeOrgUnit?.unit_type === 'product' ? 'Product Logo' : 'Location Logo';
+
   const hasSocialPresence = !!(
     (locationSocialAccounts && locationSocialAccounts.length > 0) ||
     locationFormData.instagram_url ||
@@ -201,6 +224,8 @@ const BusinessSettings = () => {
                   logoFile={locationLogoFile}
                   onInputChange={handleLocationInputChange}
                   onLogoChange={setLocationLogoFile}
+                  onPersistLogo={persistLocationLogo}
+                  logoLabel={locationLogoLabel}
                   onFieldBlur={handleLocationFieldBlur}
                   defaultSection={activeSection}
                 />
@@ -234,6 +259,7 @@ const BusinessSettings = () => {
               onLogoChange={setBusinessLogoFile}
               onFieldBlur={handleBusinessFieldBlur}
               defaultSection={activeSection}
+              logoLabel={isBrand ? 'Brand Logo' : 'Business Logo'}
             />
           )}
 

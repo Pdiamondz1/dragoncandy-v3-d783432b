@@ -63,6 +63,7 @@ interface BusinessSettingsSectionsProps {
   onFieldBlur: () => void;
   defaultSection?: string;
   locationMode?: boolean;
+  logoLabel?: string;
 }
 
 export function BusinessSettingsSections({
@@ -74,6 +75,7 @@ export function BusinessSettingsSections({
   onFieldBlur,
   defaultSection,
   locationMode,
+  logoLabel,
 }: BusinessSettingsSectionsProps) {
   const hasDescription = !!formData.description;
 
@@ -249,6 +251,7 @@ export function BusinessSettingsSections({
           onLogoChange={onLogoChange}
           onSampleFilesChange={() => undefined}
           logoUrl={formData.logo_url}
+          logoLabel={logoLabel}
           logoOnly
         />
 
@@ -401,6 +404,7 @@ export function BusinessSettingsSections({
           onLogoChange={onLogoChange}
           onSampleFilesChange={() => undefined}
           logoUrl={formData.logo_url}
+          logoLabel={logoLabel}
         />
       </SettingsSection>
 

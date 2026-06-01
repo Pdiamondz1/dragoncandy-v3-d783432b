@@ -22,6 +22,14 @@ interface FileUploadSectionProps {
   onLogoUrlChange?: (url: string) => void;
   onSampleUrlsChange?: (urls: string[]) => void;
   logoOnly?: boolean;
+  /**
+   * Custom persistence for the uploaded logo. When provided, it is called with
+   * the storage path instead of the default write to business_profiles/profiles.
+   * Used to redirect a location/product logo to org_units without touching the
+   * main business logo or user avatar.
+   */
+  onPersistLogo?: (path: string) => Promise<void> | void;
+  logoLabel?: string;
 }
 
 export const FileUploadSection = ({
@@ -34,6 +42,8 @@ export const FileUploadSection = ({
   onLogoUrlChange,
   onSampleUrlsChange,
   logoOnly = false,
+  onPersistLogo,
+  logoLabel = 'Restaurant Logo',
 }: FileUploadSectionProps) => {
   const { user } = useAuth();
   const [logoUploading, setLogoUploading] = useState(false);
@@ -81,14 +91,18 @@ export const FileUploadSection = ({
       onLogoUrlChange?.(path);
 
       try {
-        await supabase
-          .from('business_profiles')
-          .update({ logo_url: path, updated_at: new Date().toISOString() })
-          .eq('user_id', user.id);
-        await supabase
-          .from('profiles')
-          .update({ avatar_url: path })
-          .eq('id', user.id);
+        if (onPersistLogo) {
+          await onPersistLogo(path);
+        } else {
+          await supabase
+            .from('business_profiles')
+            .update({ logo_url: path, updated_at: new Date().toISOString() })
+            .eq('user_id', user.id);
+          await supabase
+            .from('profiles')
+            .update({ avatar_url: path })
+            .eq('id', user.id);
+        }
         clearSignedUrlCache();
         clearProfileCache(user.id);
       } catch (e) {
@@ -164,7 +178,7 @@ export const FileUploadSection = ({
     <>
       {/* Logo Upload */}
       <div>
-        <Label>Restaurant Logo</Label>
+        <Label>{logoLabel}</Label>
         {logoPreviewSrc ? (
           <div className="mt-2 flex items-start gap-3">
             <div className="relative w-20 h-20 rounded-lg overflow-hidden border border-gray-200 flex-shrink-0">
@@ -204,7 +218,7 @@ export const FileUploadSection = ({
           >
             <Upload className="mx-auto h-10 w-10 text-dc-teal mb-2" />
             <p className="text-sm font-medium text-gray-700">
-              {logoUploading ? 'Uploading…' : 'Upload your restaurant logo'}
+              {logoUploading ? 'Uploading…' : `Upload your ${logoLabel.toLowerCase()}`}
             </p>
             <p className="text-xs text-gray-400 mt-1">
               JPG, PNG, WebP up to 10MB

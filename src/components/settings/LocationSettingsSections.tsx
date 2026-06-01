@@ -15,6 +15,8 @@ interface LocationSettingsSectionsProps {
   logoFile: File | null;
   onInputChange: (field: string, value: string | boolean | string[]) => void;
   onLogoChange: (file: File | null) => void;
+  onPersistLogo?: (path: string) => Promise<void> | void;
+  logoLabel?: string;
   onFieldBlur: () => void;
   defaultSection?: string;
 }
@@ -24,6 +26,8 @@ export function LocationSettingsSections({
   logoFile,
   onInputChange,
   onLogoChange,
+  onPersistLogo,
+  logoLabel,
   onFieldBlur,
   defaultSection,
 }: LocationSettingsSectionsProps) {
@@ -51,6 +55,8 @@ export function LocationSettingsSections({
           onLogoChange={onLogoChange}
           onSampleFilesChange={() => undefined}
           logoUrl={formData.logo_url}
+          onPersistLogo={onPersistLogo}
+          logoLabel={logoLabel}
           logoOnly
         />
 
