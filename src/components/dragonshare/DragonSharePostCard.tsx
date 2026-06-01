@@ -1,12 +1,13 @@
 import { useState } from 'react';
-import { useResolvedAvatarUrl, useSignedUrl } from '@/hooks/useSignedUrl';
+import { useResolvedAvatarUrl } from '@/hooks/useSignedUrl';
 import { safeUrl } from '@/lib/safeUrl';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ExternalLink, Flag } from 'lucide-react';
+import { ExternalLink, Flag, Play } from 'lucide-react';
 import { BoostConfirmationSheet } from './BoostConfirmationSheet';
 import { AmplificationPreview } from './AmplificationPreview';
-import { BOOST_TIERS } from '@/types/dragonshare';
+import { BOOST_TIERS, isVideoPost } from '@/types/dragonshare';
+import { VideoThumbnail } from '@/components/shared/VideoThumbnail';
 import { useFlagDragonSharePost } from '@/hooks/useFlagDragonSharePost';
 import type { DragonSharePostWithRelations, BoostTierLabel } from '@/types/dragonshare';
 
@@ -20,7 +21,7 @@ export function DragonSharePostCard({ post, canBoost }: Props) {
   const [avatarError, setAvatarError] = useState(false);
   const isAlreadyBoosted = post.boost_status === 'boosted';
   const resolvedCreatorAvatar = useResolvedAvatarUrl(post.creator?.avatar_url);
-  const contentImageUrl = useSignedUrl('dragonshare-content', post.content_file_path);
+  const contentUrl = post.content_file_path;
   const flagMutation = useFlagDragonSharePost();
 
   const postUrl = safeUrl(post.post_url);
@@ -62,14 +63,23 @@ export function DragonSharePostCard({ post, canBoost }: Props) {
           </div>
         )}
 
-        {/* Content image preview */}
-        {contentImageUrl && (
+        {/* Content preview */}
+        {contentUrl && (
           <div className="px-4 pb-3">
-            <img
-              src={contentImageUrl}
-              alt="Content preview"
-              className="w-full rounded-xl object-cover max-h-48"
-            />
+            <div className="relative h-48 w-full overflow-hidden rounded-xl">
+              {isVideoPost(post) ? (
+                <>
+                  <VideoThumbnail src={contentUrl} className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <div className="w-10 h-10 rounded-full bg-black/50 flex items-center justify-center">
+                      <Play className="h-5 w-5 text-white fill-white ml-0.5" />
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <img src={contentUrl} alt="Content preview" className="w-full h-full object-cover" />
+              )}
+            </div>
           </div>
         )}
 
