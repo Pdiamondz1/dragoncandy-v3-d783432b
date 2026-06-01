@@ -71,3 +71,11 @@ export interface DragonSharePayout {
   failure_reason: string | null;
   processed_at: string | null;
 }
+
+export function isVideoPost(
+  post: Pick<DragonSharePost, 'content_type' | 'content_file_path'>,
+): boolean {
+  if (post.content_type === 'video') return true;
+  const path = post.content_file_path ?? '';
+  return /\.(mp4|webm|mov)$/i.test(path);
+}
