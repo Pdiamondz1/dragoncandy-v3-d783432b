@@ -38,6 +38,10 @@ const NOTIFICATION_TYPE_TO_EMAIL_TYPE: Record<string, string> = {
   content_liked: 'content_liked',
   content_approved: 'content_approved',
   file_uploaded: 'file_uploaded_by_creator',
+  dragonshare_submission: 'dragonshare_submission',
+  dragonshare_boost: 'dragonshare_boost',
+  dragonshare_boost_receipt: 'dragonshare_boost_receipt',
+  dragonshare_declined: 'dragonshare_declined',
 };
 
 const handler = async (req: Request): Promise<Response> => {
@@ -122,6 +126,7 @@ const handler = async (req: Request): Promise<Response> => {
       transactions: { email: true, sms: false },
       content:      { email: false, sms: false },
       account:      { email: true, sms: false },
+      dragonshare:  { email: true, sms: false },
     };
 
     let categoryPrefs = defaultMatrix[category] ?? { email: false, sms: false };

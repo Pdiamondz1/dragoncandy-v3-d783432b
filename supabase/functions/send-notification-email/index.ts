@@ -33,7 +33,11 @@ type NotificationType =
   | 'campaign_invitation'
   | 'campaign_invitation_declined'
   | 'content_approved'
-  | 'revision_requested';
+  | 'revision_requested'
+  | 'dragonshare_submission'
+  | 'dragonshare_boost'
+  | 'dragonshare_boost_receipt'
+  | 'dragonshare_declined';
 
 interface NotificationEmailRequest {
   to?: string;
@@ -73,6 +77,12 @@ interface NotificationEmailRequest {
     isRecipient?: boolean; // true if recipient received payment, false if they paid
     invitationMessage?: string;
     campaignUrl?: string;
+    // DragonShare (snake_case, as passed by dragonshare-notify)
+    creator_name?: string;
+    business_name?: string;
+    payout_dollars?: number | string;
+    content_type?: string;
+    post_id?: string;
   };
 }
 
@@ -778,6 +788,58 @@ const handler = async (req: Request): Promise<Response> => {
             <a href="${baseUrl}/dashboard/creator/projects"
                style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block;">
               View Project
+            </a>
+          </p>
+        `,
+      },
+      dragonshare_submission: {
+        subject: `New DragonShare post`,
+        html: `
+          <p>Hi ${esc.rn},</p>
+          <p><strong>${htmlEscape(data.creator_name ?? 'A creator')}</strong> shared a ${htmlEscape(data.content_type ?? 'post')} about you — review and boost it.</p>
+          <p style="margin-top: 30px;">
+            <a href="${baseUrl}/dashboard/business/dragonshare"
+               style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block;">
+              Review & boost
+            </a>
+          </p>
+        `,
+      },
+      dragonshare_boost: {
+        subject: `Your post got boosted! 🎉`,
+        html: `
+          <p>Hi ${esc.rn},</p>
+          <p><strong>${htmlEscape(data.business_name ?? 'A restaurant')}</strong> boosted your content — $${htmlEscape(String(data.payout_dollars ?? ''))} is on the way.</p>
+          <p style="margin-top: 30px;">
+            <a href="${baseUrl}/dashboard/creator/dragonshare"
+               style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block;">
+              See it on DragonShare
+            </a>
+          </p>
+        `,
+      },
+      dragonshare_boost_receipt: {
+        subject: `Your boost is live`,
+        html: `
+          <p>Hi ${esc.rn},</p>
+          <p>Your boosted content is drafted for one-tap posting.</p>
+          <p style="margin-top: 30px;">
+            <a href="${baseUrl}/dashboard/business/social"
+               style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block;">
+              Open Social
+            </a>
+          </p>
+        `,
+      },
+      dragonshare_declined: {
+        subject: `Not selected this time`,
+        html: `
+          <p>Hi ${esc.rn},</p>
+          <p>A restaurant passed on this post — your content's still great. Share more and keep earning!</p>
+          <p style="margin-top: 30px;">
+            <a href="${baseUrl}/dashboard/creator/dragonshare"
+               style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block;">
+              Share more
             </a>
           </p>
         `,
