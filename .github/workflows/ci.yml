@@ -1,0 +1,28 @@
+name: CI
+
+# Server-side enforcement of migration hygiene + type/build health on every
+# change — independent of anyone's local git-hook setup or worktree. Catches
+# the duplicate/back-dated/malformed migration class for all contributors,
+# including Lovable's auto-commits.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Migration filename audit (duplicate / malformed block the build)
+        run: npm run migrations:audit
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Build
+        run: npm run build

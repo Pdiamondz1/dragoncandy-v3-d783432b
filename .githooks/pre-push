@@ -1,0 +1,18 @@
+#!/bin/sh
+# Block pushes that introduce duplicate / malformed migration versions —
+# the filename hygiene that, when broken, lets `supabase db push` silently
+# skip migrations (root cause of the 2026-05 campaign_skips drift).
+# See docs/wiki/concepts/migration-deployment-process.md
+#
+# Installed via `git config core.hooksPath .githooks` (package.json postinstall),
+# so it is active in every worktree and fresh clone after `npm install`.
+
+echo "[pre-push] auditing migration filenames..."
+if ! node scripts/audit-migrations.mjs; then
+  echo "" >&2
+  echo "[pre-push] BLOCKED: duplicate or malformed migration version(s)." >&2
+  echo "[pre-push] Fix the filenames above, then push again." >&2
+  echo "[pre-push] Details: npm run migrations:audit" >&2
+  exit 1
+fi
+exit 0

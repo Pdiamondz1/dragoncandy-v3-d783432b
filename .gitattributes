@@ -1,0 +1,2 @@
+# Git hooks must use LF — a CRLF in the shebang breaks the script on Linux/CI.
+.githooks/** text eol=lf

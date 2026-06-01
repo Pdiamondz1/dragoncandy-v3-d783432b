@@ -20,7 +20,7 @@
 // Usage:  node scripts/audit-migrations.mjs [--git] [--remote] [--json]
 
 import { readdirSync } from 'node:fs';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, execSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -81,7 +81,8 @@ function findBackDated(entries) {
 
 function remoteDiff() {
   try {
-    const out = execFileSync('npx', ['--yes', 'supabase', 'migration', 'list', '--linked'],
+    // execSync (string) runs via shell so Windows resolves `npx.cmd`.
+    const out = execSync('npx --yes supabase migration list --linked',
       { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
     return { ok: true, output: out };
   } catch (err) {

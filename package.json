@@ -14,6 +14,8 @@
     "typecheck": "tsc --noEmit -p tsconfig.app.json",
     "audit:agent": "npx tsx scripts/managed-agent-audit.ts",
     "migrations:audit": "node scripts/audit-migrations.mjs --git",
+    "migrations:drift": "node scripts/migration-drift-check.mjs",
+    "postinstall": "node scripts/install-git-hooks.mjs",
     "test:e2e": "npx playwright test --project=chromium",
     "test:e2e:auth": "npx playwright test auth.setup --project=chromium",
     "test:e2e:report": "npx playwright show-report"

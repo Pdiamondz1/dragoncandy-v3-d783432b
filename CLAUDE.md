@@ -171,7 +171,19 @@ Push to `main` on GitHub → Lovable auto-deploys to dragoncandy.io. Test locall
 5. **Verify the ledger**: `npm run migrations:audit` (local lint) + `supabase migration list --linked`.
 6. Verify the feature in production (Chrome DevTools, desktop + mobile).
 
+**Authoring convention — always `supabase migration new <name>`.** Never hand-author the
+`YYYYMMDDhhmmss_` timestamp. Letting the CLI stamp a real wall-clock version makes back-dating and
+duplicate versions structurally impossible — the two failure modes that caused the 2026-05 drift.
+
 **Avoid drift:** never back-date a migration's timestamp (a version older than an already-applied
 one gets silently skipped by `db push`); never reuse a version prefix (the ledger keys on it). Run
 `npm run migrations:audit` before every push — it flags duplicates, back-dated, and malformed
 migration filenames and exits non-zero on hard anomalies.
+
+**Automated guardrails (active in this repo):**
+- **Pre-push hook** (`.githooks/pre-push`, auto-installed via `npm install`) runs the audit and
+  blocks pushes with duplicate/malformed migrations — in every worktree and clone.
+- **CI** (`.github/workflows/ci.yml`) runs the audit + typecheck + build on every PR/push.
+- **Nightly drift audit** (`.github/workflows/migration-drift.yml`) object-verifies that every repo
+  migration exists in production and opens an issue on drift. Run locally any time with
+  `npm run migrations:drift`. Requires the `SUPABASE_ACCESS_TOKEN` repo secret.
