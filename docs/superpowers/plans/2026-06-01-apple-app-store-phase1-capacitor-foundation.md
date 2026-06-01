@@ -35,6 +35,7 @@
 - Run all commands from the worktree root: `C:\GIT\dragoncandy-v3-d783432b\.claude\worktrees\apple-app-store`.
 - This is Windows + PowerShell. Capacitor install, config, scaffolding, and `cap sync` all work on Windows. Only `cap build`/Xcode require macOS and are out of scope here.
 - Confirm a clean baseline first: `npm run build` and `npm run test` should pass before starting. If they don't, stop and report — do not layer Capacitor onto a broken build.
+- Capacitor 6 requires Node 18+. The existing Vite 5 / Vitest 4 toolchain already implies this; a quick `node -v` confirms it.
 - Vitest's global `environment` is `node` (`vite.config.ts:53`). The platform tests in this plan are written to run under the node environment by mocking `@capacitor/core` — they do **not** require jsdom.
 
 ---
@@ -229,7 +230,9 @@ const config: CapacitorConfig = {
   appName: 'DragonCandy',
   webDir: 'dist',
   ios: {
-    // Serve the bundled web app from capacitor://localhost (default scheme).
+    // `scheme` is the Xcode BUILD scheme name (default 'App') — NOT the WebView
+    // URL scheme. The served origin stays capacitor://localhost because we do not
+    // set `server.iosScheme`. The Task 5 CSP (capacitor://localhost) is therefore correct.
     scheme: 'DragonCandy',
     contentInset: 'always',
   },
@@ -332,7 +335,7 @@ Expected: `dist/` is populated (Capacitor copies `webDir: dist` into the iOS pro
 Run: `npx cap add ios`
 Expected: an `ios/` directory is created containing `ios/App/App.xcodeproj`, `ios/App/App/`, and `ios/App/Podfile`. The command finishes with a sync step that copies `dist/` into `ios/App/App/public`.
 
-If the command reports it cannot run CocoaPods (`pod install`) — that is expected on Windows and is **not** a failure for this plan. The project files are still scaffolded; `pod install` runs later on the Mac (Plan 4).
+If the command reports it cannot run CocoaPods (`pod install`) or emits `[warn] Skipping pod install` — that is the **expected** Windows path and is **not** a failure for this plan. The project files are still scaffolded; `pod install` runs later on the Mac (Plan 4).
 
 - [ ] **Step 3: Ignore CocoaPods + build artifacts, keep the project**
 
