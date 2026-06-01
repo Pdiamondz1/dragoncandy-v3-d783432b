@@ -1,4 +1,4 @@
-export type NotificationCategory = 'campaigns' | 'messages' | 'transactions' | 'content' | 'account' | 'dragonshare';
+export type NotificationCategory = 'campaigns' | 'messages' | 'transactions' | 'content' | 'account' | 'dragonshare' | 'promotions';
 
 export type NotificationType =
   | 'application_received'
@@ -73,6 +73,7 @@ export interface PreferencesMatrix {
   content: ChannelPreferences;
   account: ChannelPreferences;
   dragonshare: ChannelPreferences;
+  promotions: ChannelPreferences;
 }
 
 export const DEFAULT_PREFERENCES_MATRIX: PreferencesMatrix = {
@@ -82,6 +83,7 @@ export const DEFAULT_PREFERENCES_MATRIX: PreferencesMatrix = {
   content:      { in_app: true,  email: false, sms: false },
   account:      { in_app: true,  email: true,  sms: false },
   dragonshare:  { in_app: true,  email: true,  sms: false },
+  promotions:   { in_app: true,  email: false, sms: false },
 };
 
 export const CATEGORY_META: Record<NotificationCategory, { label: string; icon: string; description: string }> = {
@@ -91,6 +93,7 @@ export const CATEGORY_META: Record<NotificationCategory, { label: string; icon: 
   content:      { label: 'Content',      icon: '❤️', description: 'Likes, file uploads, social posting' },
   account:      { label: 'Account',      icon: '🏢', description: 'Team members, locations, settings, account' },
   dragonshare:  { label: 'DragonShare',  icon: '🐉', description: 'Submissions, boosts, and payouts' },
+  promotions:   { label: 'Promotions',   icon: '🎁', description: 'Customer submissions, codes, redemptions' },
 };
 
 export const NOTIFICATION_TYPE_TO_EMAIL_TYPE: Partial<Record<NotificationType, string>> = {

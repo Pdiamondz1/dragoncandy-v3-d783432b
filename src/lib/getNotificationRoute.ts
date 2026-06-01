@@ -56,6 +56,14 @@ export function getNotificationRoute(notification: PushNotification): string | n
         ? `/dashboard/creator/dragonshare?highlight=${data.post_id}`
         : '/dashboard/creator/dragonshare';
 
+    case 'cgc_submission_received':
+    case 'cgc_code_redeemed':
+    case 'cgc_promotion_expired':
+    case 'cgc_max_redemptions_reached':
+      return data?.promotion_id
+        ? `/dashboard/business/promotions/${data.promotion_id}`
+        : '/dashboard/business/promotions';
+
     default:
       return null;
   }

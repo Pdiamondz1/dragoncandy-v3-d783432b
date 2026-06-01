@@ -14,6 +14,28 @@ interface SubmissionData {
 
 const isImageFile = (file: File): boolean => file.type.startsWith('image/');
 
+// Read the true duration (seconds) from the video file's metadata. Resolves 0 if the
+// browser can't decode it — never rejects, so a submission is never blocked on this.
+const getVideoDuration = (file: File): Promise<number> =>
+  new Promise((resolve) => {
+    try {
+      const url = URL.createObjectURL(file);
+      const video = document.createElement('video');
+      video.preload = 'metadata';
+      video.onloadedmetadata = () => {
+        URL.revokeObjectURL(url);
+        resolve(Number.isFinite(video.duration) ? Math.round(video.duration) : 0);
+      };
+      video.onerror = () => {
+        URL.revokeObjectURL(url);
+        resolve(0);
+      };
+      video.src = url;
+    } catch {
+      resolve(0);
+    }
+  });
+
 export const usePromotionSubmission = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCheckingDuplicate, setIsCheckingDuplicate] = useState(false);
@@ -78,8 +100,8 @@ export const usePromotionSubmission = () => {
         .from('promotion-videos')
         .getPublicUrl(fileName);
 
-      // Get video duration (approximate from file size) — 0 for images
-      const videoDuration = isImage ? 0 : Math.min(30, Math.ceil(data.videoFile.size / (1024 * 1024) * 10));
+      // Read the real media duration — 0 for images
+      const videoDuration = isImage ? 0 : await getVideoDuration(data.videoFile);
 
       // Create submission record
       const { error: insertError } = await supabase
@@ -96,7 +118,21 @@ export const usePromotionSubmission = () => {
           status: 'pending',
         });
 
-      if (insertError) throw insertError;
+      if (insertError) {
+        // Roll back the orphaned upload so we don't leave dangling storage objects
+        await supabase.storage.from('promotion-videos').remove([fileName]);
+        // The (promotion_id, customer_email) unique constraint is the real guard against
+        // the check-then-insert race — surface it as a friendly duplicate message.
+        if (insertError.code === '23505') {
+          toast({
+            title: "Already Submitted",
+            description: "You have already submitted for this promotion.",
+            variant: "destructive",
+          });
+          return { success: false, reason: 'duplicate' };
+        }
+        throw insertError;
+      }
 
       toast({
         title: "Submission Received!",

@@ -6,9 +6,10 @@ import { SocialPostEditor } from './SocialPostEditor';
 import { useCGCReviewSheet } from '@/hooks/useCGCReviewSheet';
 import { useCrossPost } from '@/hooks/outstand/useCrossPost';
 import { usePromotions, type PromotionSubmission } from '@/hooks/usePromotions';
-import { Check, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
+import { Check, ChevronLeft, ChevronRight, Download, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { downloadBlob } from '@/lib/downloadUtils';
 
 interface CGCReviewSheetProps {
   open: boolean;
@@ -64,12 +65,52 @@ export function CGCReviewSheet({
     setEditedCaption(caption);
   }
 
+  const handleDownload = useCallback(() => {
+    if (!submission?.video_url) return;
+    const base = submission.video_url.split('?')[0];
+    const ext = base.split('.').pop() || 'mp4';
+    const downloadUrl = `${submission.video_url}${submission.video_url.includes('?') ? '&' : '?'}download`;
+    const safeName = `${promotionTitle}-${submission.customer_name || submission.customer_email}`
+      .replace(/[^a-z0-9]+/gi, '-')
+      .replace(/^-+|-+$/g, '')
+      .toLowerCase();
+    downloadBlob(downloadUrl, `${safeName}.${ext}`);
+  }, [submission, promotionTitle]);
+
   const handleApprove = useCallback(async (withSocialPost: boolean) => {
     if (!submission) return;
 
     let socialAction: 'post_now' | 'schedule' | 'skip' = 'skip';
-    if (withSocialPost && connectedAccounts.length > 0) {
+    if (withSocialPost && connectedAccounts.length > 0 && selectedPlatforms.length > 0) {
       socialAction = scheduleForLater ? 'schedule' : 'post_now';
+    }
+
+    const effectiveScheduledAt = scheduleForLater
+      ? (scheduledAt || suggestedTime || undefined)
+      : undefined;
+
+    // Cross-post to Outstand for BOTH post-now and scheduled. A scheduled post must
+    // reach Outstand (with scheduledAt) — otherwise the donny_scheduled_posts row is a
+    // phantom that never publishes. Never block the approval on a posting failure.
+    let outstandPostId: string | null = null;
+    if (socialAction !== 'skip') {
+      const accountIds = connectedAccounts
+        .filter(a => selectedPlatforms.includes(a.platform))
+        .map(a => a.outstand_social_account_id);
+
+      if (accountIds.length > 0) {
+        try {
+          const result = await crossPost.mutateAsync({
+            caption: hashtags.length > 0 ? `${editedCaption}\n\n${hashtags.join(' ')}` : editedCaption,
+            mediaUrls: submission.video_url ? [submission.video_url] : [],
+            accountIds,
+            scheduledAt: effectiveScheduledAt,
+          });
+          outstandPostId = result?._outstandPostId ?? null;
+        } catch {
+          toast.warning('Approved! Social posting failed — try again from Content Library.');
+        }
+      }
     }
 
     try {
@@ -80,27 +121,9 @@ export function CGCReviewSheet({
         platforms: selectedPlatforms,
         caption: editedCaption,
         hashtags,
-        scheduledAt: scheduleForLater ? (scheduledAt || suggestedTime || undefined) : undefined,
+        scheduledAt: effectiveScheduledAt,
+        outstandPostId,
       });
-
-      // If posting now via Outstand
-      if (socialAction === 'post_now' && selectedPlatforms.length > 0) {
-        const accountIds = connectedAccounts
-          .filter(a => selectedPlatforms.includes(a.platform))
-          .map(a => a.outstand_social_account_id);
-
-        if (accountIds.length > 0) {
-          try {
-            await crossPost.mutateAsync({
-              caption: `${editedCaption}\n\n${hashtags.join(' ')}`,
-              mediaUrls: submission.video_url ? [submission.video_url] : [],
-              accountIds,
-            });
-          } catch {
-            toast.warning('Approved! Social posting failed — try again from Content Library.');
-          }
-        }
-      }
 
       // Move to next or close
       if (currentIndex < submissions.length - 1) {
@@ -271,9 +294,19 @@ export function CGCReviewSheet({
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                   )}
                   <Check className="h-4 w-4 mr-2" />
-                  Approve{submission.video_url ? ' & Download' : ''}
+                  Approve
                 </Button>
               </>
+            )}
+            {submission.video_url && (
+              <Button
+                variant="outline"
+                className="w-full rounded-full"
+                onClick={handleDownload}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Download
+              </Button>
             )}
             <button
               className="w-full text-center text-xs text-dc-text-muted hover:text-red-500 py-1"

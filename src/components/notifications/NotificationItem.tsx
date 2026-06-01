@@ -18,6 +18,7 @@ const CATEGORY_BG: Record<string, string> = {
   content: 'bg-dc-pink-accent',
   account: 'bg-dc-dark',
   dragonshare: 'bg-dc-teal',
+  promotions: 'bg-dc-pink',
 };
 
 function formatRelativeTime(dateString: string): string {

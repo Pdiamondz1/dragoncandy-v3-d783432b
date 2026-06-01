@@ -320,17 +320,11 @@ export const usePromotions = () => {
     },
   });
 
-  // Delete promotion
+  // Delete promotion — atomic cascade (codes -> submissions -> promotion) via RPC so a
+  // partial failure can't orphan discount codes.
   const deletePromotion = useMutation({
     mutationFn: async (id: string) => {
-      // Delete discount codes first
-      const { error: codesError } = await supabase.from('discount_codes').delete().eq('promotion_id', id);
-      if (codesError) throw codesError;
-      // Delete submissions
-      const { error: subsError } = await supabase.from('promotion_submissions').delete().eq('promotion_id', id);
-      if (subsError) throw subsError;
-      // Delete promotion
-      const { error } = await supabase.from('promotions').delete().eq('id', id);
+      const { error } = await supabase.rpc('delete_promotion_cascade', { p_promotion_id: id });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -356,6 +350,7 @@ export const usePromotions = () => {
       caption,
       hashtags,
       scheduledAt,
+      outstandPostId,
     }: {
       submissionId: string;
       status: 'approved' | 'rejected';
@@ -365,6 +360,7 @@ export const usePromotions = () => {
       caption?: string;
       hashtags?: string[];
       scheduledAt?: string;
+      outstandPostId?: string | null;
     }) => {
       const submission = pendingSubmissions?.find(s => s.id === submissionId);
       if (!submission) throw new Error('Submission not found');
@@ -409,7 +405,9 @@ export const usePromotions = () => {
 
       }
 
-      // Send notification via edge function
+      // Send notification via edge function. Best-effort: a failure here must not
+      // block the approval, but we surface delivery failures back to the business.
+      let emailDelivered = false;
       try {
         const { data: notificationResult, error: notificationError } = await supabase.functions.invoke(
           'send-promotion-notification',
@@ -432,6 +430,7 @@ export const usePromotions = () => {
         if (notificationError) {
           console.error('Notification error:', notificationError);
         } else {
+          emailDelivered = notificationResult?.emailSent === true;
           // Update email_sent and sms_sent flags if we have a discount code
           if (status === 'approved' && discountCode) {
             await supabase
@@ -448,30 +447,38 @@ export const usePromotions = () => {
         // Don't throw - the approval still succeeded
       }
 
-      // Record social posting outcome
+      // Record social posting outcome — one row per selected platform so per-platform
+      // stats (cgc-social-stats) are accurate. The actual Outstand cross-post happens
+      // in the caller (CGCReviewSheet); we store its id for traceability.
       const normalizePlatform = (p: string) => p === 'x' ? 'twitter' : p;
+      const isPhoto = !!submission.video_url?.match(/\.(jpg|jpeg|png|gif|webp|heic|heif)$/i);
 
       if (socialAction && socialAction !== 'skip' && platforms && platforms.length > 0) {
         const postStatus = socialAction === 'post_now' ? 'published' : 'scheduled';
-        await supabase.from('donny_scheduled_posts').insert({
-          user_id: (await supabase.auth.getUser()).data.user?.id,
+        const authUserId = (await supabase.auth.getUser()).data.user?.id;
+        const normalizedPlatforms = platforms.map(normalizePlatform);
+        const rows = normalizedPlatforms.map((platform) => ({
+          user_id: authUserId,
           status: postStatus,
           caption: caption || '',
           hashtags: hashtags || [],
           media_urls: submission.video_url ? [submission.video_url] : [],
-          platform: normalizePlatform(platforms[0]),
-          content_type: 'video',
+          platform,
+          content_type: isPhoto ? 'photo' : 'video',
           scheduled_at: scheduledAt || new Date().toISOString(),
           metadata: {
             source: 'promotion',
             promotion_id: submission.promotion_id,
             submission_id: submissionId,
-            platforms: platforms.map(normalizePlatform),
+            platforms: normalizedPlatforms,
+            outstand_post_id: outstandPostId ?? null,
           },
-        });
+        }));
+        const { error: postError } = await supabase.from('donny_scheduled_posts').insert(rows);
+        if (postError) console.error('Failed to record scheduled posts:', postError);
       }
 
-      return { status, discountCode };
+      return { status, discountCode, emailDelivered };
     },
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['pending-submissions'] });
@@ -481,7 +488,11 @@ export const usePromotions = () => {
       queryClient.invalidateQueries({ queryKey: ['cgc-social-stats'] });
       
       if (result.status === 'approved') {
-        toast.success('Submission approved! Discount code sent to customer.');
+        if (result.discountCode && !result.emailDelivered) {
+          toast.warning(`Approved — code ${result.discountCode} created, but the email to the customer may not have sent. Share the code directly if needed.`);
+        } else {
+          toast.success('Submission approved! Discount code sent to customer.');
+        }
       } else {
         toast.success('Submission rejected. Customer has been notified.');
       }

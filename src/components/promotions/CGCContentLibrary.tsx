@@ -3,7 +3,8 @@ import { usePromotions } from '@/hooks/usePromotions';
 import { CGCReviewSheet } from './CGCReviewSheet';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Search, Play } from 'lucide-react';
+import { Search, Play, Download } from 'lucide-react';
+import { downloadBlob } from '@/lib/downloadUtils';
 
 type FilterStatus = 'all' | 'pending' | 'approved' | 'rejected' | 'published';
 
@@ -60,6 +61,17 @@ export function CGCContentLibrary({ promotionTitle = '' }: CGCContentLibraryProp
   };
 
   const pendingOnly = pendingSubmissions || [];
+
+  const handleDownload = (videoUrl: string, label: string) => {
+    const base = videoUrl.split('?')[0];
+    const ext = base.split('.').pop() || 'mp4';
+    const downloadUrl = `${videoUrl}${videoUrl.includes('?') ? '&' : '?'}download`;
+    const safeName = `${promotionTitle}-${label}`
+      .replace(/[^a-z0-9]+/gi, '-')
+      .replace(/^-+|-+$/g, '')
+      .toLowerCase();
+    downloadBlob(downloadUrl, `${safeName || 'submission'}.${ext}`);
+  };
 
   const STATUS_BADGE: Record<string, { label: string; className: string }> = {
     pending: { label: 'Pending', className: 'bg-dc-yellow/20 text-yellow-800' },
@@ -150,6 +162,26 @@ export function CGCContentLibrary({ promotionTitle = '' }: CGCContentLibraryProp
                   <Badge className={`absolute top-2 right-2 text-[10px] ${badge.className}`}>
                     {badge.label}
                   </Badge>
+                  {sub.video_url && (sub._status === 'approved' || sub._status === 'published') && (
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      aria-label="Download content"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDownload(sub.video_url!, sub.customer_name || sub.customer_email);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.stopPropagation();
+                          handleDownload(sub.video_url!, sub.customer_name || sub.customer_email);
+                        }
+                      }}
+                      className="absolute top-2 left-2 h-7 w-7 flex items-center justify-center rounded-full bg-dc-teal text-white shadow-md hover:bg-dc-teal-dark transition-colors cursor-pointer"
+                    >
+                      <Download className="h-3.5 w-3.5" />
+                    </span>
+                  )}
                 </div>
                 <div className="p-2.5">
                   <p className="text-xs font-medium text-dc-text truncate">
