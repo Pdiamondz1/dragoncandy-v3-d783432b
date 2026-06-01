@@ -54,6 +54,11 @@ social channels via Outstand, paying the creator through [[Stripe Connect]] on a
 - Security-definer RPCs (`resolve_dragonshare_orgs`, `get_org_connected_platforms`) to read
   restaurant names and connected accounts across RLS boundaries on [[Supabase]].
 - Soft-decline (additive) over hard delete, to preserve the audit trail.
+- **Notification inserts are best-effort** — wrapped in `BEGIN…EXCEPTION WHEN OTHERS THEN
+  NULL` blocks so a push-notification failure can never roll back a boost payment or decline
+  (both of which are financially or state-critical). The Stripe transfer happens before the
+  trigger fires; the notification is non-critical. (Migration:
+  `20260601140000_dragonshare_notifications.sql`)
 
 ## Known Issues
 

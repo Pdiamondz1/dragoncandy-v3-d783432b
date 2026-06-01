@@ -1,5 +1,22 @@
 # Wiki Log
 
+## [2026-06-01] ingest | Weekly Sync — CI Quality Gate, Second Brain Phase 1.5B, DragonShare Notification Fix
+
+Weekly wiki-sync agent run. Three workstreams shipped after the previous 2026-06-01 sync
+commit (`51b5c62`): CI quality gate (Plan A), Second Brain Phase 1.5B + docs:scale, and a
+DragonShare notification isolation bugfix.
+Pages created: [[CI/CD Quality Gate]], [[Wiki Automation]] (concepts);
+[[CI Quality Gate Plan A Session]], [[Second Brain Phase 1.5B Session]] (sources).
+Pages updated: [[DragonShare]] (notification isolation decision added),
+[[Error Handling Patterns]] (Postgres exception isolation pattern added),
+index.md (4 new entries).
+Raw session extracts written: `2026-06-01-ci-quality-gate-plan-a.md`,
+`2026-06-01-second-brain-phase-1-5b.md`.
+docs:scale run: PROJECT_CONTEXT.md refreshed to 60 pages, 184 hooks, 71 edge functions.
+Lint fix: [[Karpathy LLM Wiki Schema]] was an orphan (not in index) — added to index.md.
+Lint fix: broken wikilink `[[CI Quality Gate Session]]` → `[[CI Quality Gate Plan A Session]]` in ci-cd-quality-gate.md.
+No contradictions with existing pages.
+
 ## [2026-06-01] ingest | Repo-State Sync — DragonShare, Capacitor, Delivery Cluster
 
 Full session-extract ingest closing the gap since the 2026-05-24 backfill. Three new raw
