@@ -42,7 +42,7 @@ serve(async (req) => {
     // 2. Fetch post
     const { data: post } = await supabase
       .from('dragonshare_posts')
-      .select('id, creator_id, target_org_id, post_url, screenshot_url, caption, platform, content_type, hashtags, mentions')
+      .select('id, creator_id, target_org_id, post_url, screenshot_url, content_file_path, caption, platform, content_type, hashtags, mentions')
       .eq('id', post_id)
       .single();
 
@@ -209,9 +209,12 @@ serve(async (req) => {
           console.warn(`[fire-dragonshare-social-hook] Schedule failed for ${party.role}:`, schedErr.message);
         }
 
-        // Build media URLs — prefer screenshot, fall back to post_url
+        // Build media URLs — prefer the uploaded content file (direct uploads),
+        // then screenshot, then the external post URL.
         const mediaUrls: string[] = [];
-        if (post.screenshot_url) {
+        if (post.content_file_path) {
+          mediaUrls.push(post.content_file_path);
+        } else if (post.screenshot_url) {
           mediaUrls.push(post.screenshot_url);
         } else if (post.post_url) {
           mediaUrls.push(post.post_url);
