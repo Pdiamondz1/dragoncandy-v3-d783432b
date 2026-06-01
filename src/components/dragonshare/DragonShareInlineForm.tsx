@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Upload, Link, X, Loader2 } from 'lucide-react';
 import { useDragonShareSubmitForm } from '@/hooks/useDragonShareSubmitForm';
 import { RestaurantTypeahead } from '@/components/dragonshare/RestaurantTypeahead';
+import { VideoThumbnail } from '@/components/shared/VideoThumbnail';
 import type { RestaurantSearchResult } from '@/hooks/useRestaurantSearch';
 
 const PLATFORM_LABELS: Record<string, string> = {
@@ -67,8 +68,8 @@ export function DragonShareInlineForm({ preselectedOrg }: Props) {
         ) : (
           <div className="border border-dc-teal/30 rounded-2xl overflow-hidden bg-dc-teal/5">
             {form.uploadedFileType?.startsWith('video/') ? (
-              <div className="h-32 bg-dc-dark/10 flex items-center justify-center">
-                <span className="text-3xl">🎬</span>
+              <div className="h-32 w-full overflow-hidden">
+                <VideoThumbnail src={form.uploadedUrl} className="w-full h-full object-cover" />
               </div>
             ) : (
               <img src={form.uploadedUrl} alt="Upload preview" className="h-32 w-full object-cover" />
