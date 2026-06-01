@@ -87,5 +87,19 @@ export async function fulfillBoost(
     console.warn("[fulfill-boost] social hook failed (non-blocking):", e);
   }
 
+  // DragonShare notifications (fire-and-forget)
+  try {
+    await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/dragonshare-notify`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+      },
+      body: JSON.stringify({ event: "boost_paid", boost_id: boostId, post_id: postId, creator_id: creatorId, creator_payout_cents: creatorPayoutCents }),
+    });
+  } catch (e) {
+    console.warn("[fulfill-boost] dragonshare-notify failed (non-blocking):", e);
+  }
+
   return { alreadyDone: false, transferId: transfer.id };
 }

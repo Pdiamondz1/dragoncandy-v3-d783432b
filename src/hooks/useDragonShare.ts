@@ -89,8 +89,13 @@ export function useSubmitDragonSharePost() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: KEYS.creatorPosts(user?.id) });
+      if (data?.id) {
+        supabase.functions.invoke('dragonshare-notify', {
+          body: { event: 'submission', post_id: data.id },
+        }).catch((e) => console.warn('dragonshare-notify (submission) failed:', e));
+      }
     },
     onError: () => { toast.error('Failed to submit DragonShare post'); },
   });
