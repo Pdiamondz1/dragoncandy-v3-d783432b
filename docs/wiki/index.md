@@ -19,6 +19,7 @@
 - [[Donny AI]](entities/donny-ai.md) — Intelligence layer: campaign generation, creator matching, analytics
 - [[DragonCandy Platform]](entities/dragoncandy-platform.md) — AI-powered creator-restaurant marketplace
 - [[DragonDash]](entities/dragondash.md) — Premium rush content delivery, the profit engine
+- [[DragonShare]](entities/dragonshare.md) — Amplification engine: creators upload, restaurants boost (80/20 split)
 - [[Stripe Connect]](entities/stripe-connect.md) — Payment infrastructure, escrow, subscriptions (test mode)
 - [[Supabase]](entities/supabase.md) — Backend: Postgres, Auth, Edge Functions, Realtime, RLS
 
@@ -27,10 +28,15 @@
 - [[Campaign Lifecycle]](concepts/campaign-lifecycle.md) — Draft through completion, applications, sponsorship
 - [[Content Delivery State Machine]](concepts/content-delivery-state-machine.md) — 9-status flow from pending through resolved
 - [[Data Flywheel]](concepts/data-flywheel.md) — Primary competitive moat via accumulated match data
+- [[Donny AI Cost Architecture]](concepts/donny-cost-architecture.md) — Cost ledger, monthly budget, tier routing, degradation stages
 - [[Error Handling Patterns]](concepts/error-handling-patterns.md) — ErrorBoundary levels, QueryClient throwOnError, async patterns
+- [[Multi-Deliverable Scheduling]](concepts/multi-deliverable-scheduling.md) — Per-deliverable hooks, auto cross-scheduling, 5-stage social hooks
 - [[Musk's Algorithm]](concepts/musks-algorithm.md) — Question → Delete → Simplify → Accelerate → Automate
+- [[Notification System]](concepts/notification-system.md) — Category × channel preference matrix, realtime feed
 - [[Pricing Architecture]](concepts/pricing-architecture.md) — Four stacked revenue streams per customer
 - [[Take-Rate Ladder]](concepts/take-rate-ladder.md) — Tiered platform fees from 10% (Free) to 2% (Enterprise)
 - [[TypeScript Patterns]](concepts/typescript-patterns.md) — Strict mode, type safety, export conventions
 
 ## Analyses
+
+- [[Known Issues]](analyses/known-issues.md) — Verified-but-unfixed issues (campaign_status enum gap)

@@ -2,7 +2,7 @@
 title: Donny AI
 type: entity
 created: 2026-05-23
-updated: 2026-05-24
+updated: 2026-06-01
 sources: [docs/PROJECT_CONTEXT.md, docs/DATABASE_SCHEMA.md, docs/STRIPE_PRICES.md]
 tags: [ai, donny, intelligence-layer]
 ---
@@ -15,11 +15,12 @@ Donny powers [[DragonDash]]; DragonDash sells.
 
 ## Architecture
 
-- Backend-only via 67 Deno edge functions
+- Backend-only via 71 Deno edge functions
 - Model routing: Claude Sonnet 4 + Haiku with cost routing matrix
 - Shared utils: `_shared/model-routing`, `_shared/cost-ledger`,
   `_shared/anthropic-fetch`
 - Credit system: invisible per-tier budgets with graceful degradation
+  (see [[Donny AI Cost Architecture]])
 - API spend hard-capped at 15% of revenue ($250/mo floor pre-revenue)
 
 ## Database Tables
@@ -30,6 +31,9 @@ Donny powers [[DragonDash]]; DragonDash sells.
 - `donny_nudges` — proactive nudge definitions
 - `donny_tool_executions` — tool call logs
 - `donny_help_logs` — help requests and resolutions
+- `donny_cost_ledger` / `donny_usage` — cost ledger and monthly action budget
+  (see [[Donny AI Cost Architecture]])
+- `donny_scheduled_posts` — scheduled social posts (per deliverable)
 - OAuth tables: `donny_oauth_clients`, `donny_oauth_codes`, `donny_oauth_tokens`
 
 ## Credit Budgets by Tier
@@ -51,6 +55,8 @@ Donny powers [[DragonDash]]; DragonDash sells.
 
 - [[DragonDash]]
 - [[DragonCandy Platform]]
+- [[Donny AI Cost Architecture]]
+- [[Multi-Deliverable Scheduling]]
 - [[Pricing Architecture]]
 - [[Donny Audit Phase 1 Session]]
 - [[Donny Audit Phase 2 Session]]

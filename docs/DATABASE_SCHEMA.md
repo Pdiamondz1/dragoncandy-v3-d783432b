@@ -13,7 +13,7 @@
 |-|-|
 | `profiles` | Core user profiles (linked to Supabase auth). Includes `first_run_missions` JSONB for onboarding state. |
 | `creator_profiles` | Extended profile data for content creators |
-| `business_profiles` | Extended profile data for brands/businesses |
+| `business_profiles` | Extended profile data for brands/businesses. `cgc_posting_preferences` JSONB (NULL = system defaults) |
 | `profile_views` | Tracks who viewed which profiles |
 | `onboarding_steps` | Defines onboarding flow steps |
 | `user_onboarding_progress` | Tracks per-user onboarding completion |
@@ -24,7 +24,7 @@
 
 | Table | Purpose |
 |-|-|
-| `campaigns` | Brand-created campaigns seeking creators |
+| `campaigns` | Brand-created campaigns seeking creators. `posting_preferences` JSONB, `posting_schedule_status`, `escrow_checkout_session_id` |
 | `campaign_applications` | Creator applications to campaigns |
 | `campaign_collaborations` | Active collaborations between brands and creators |
 | `campaign_invitations` | Direct invites from brands to creators |
@@ -52,8 +52,8 @@
 | `messages_with_profiles` | View joining messages with sender profile data |
 | `message_reactions` | Emoji reactions on messages |
 | `user_presence` | Online/offline status (realtime) |
-| `push_notifications` | Push notification records |
-| `notification_preferences` | Per-user notification settings |
+| `push_notifications` | Push notification records. Realtime-enabled. Adds `type`, `category`, `action_url`, `actor_id`, `actor_name`, `icon` |
+| `notification_preferences` | Per-user notification settings. `preferences_matrix` JSONB — 5 categories (campaigns/messages/transactions/content/account) × 3 channels (in_app/email/sms) |
 
 ## File Management
 
@@ -101,6 +101,9 @@
 | `donny_oauth_clients` | OAuth client registrations for Donny API |
 | `donny_oauth_codes` | OAuth authorization codes |
 | `donny_oauth_tokens` | OAuth access/refresh tokens |
+| `donny_cost_ledger` | Per-call AI cost ledger — model, T0–T3 tier, input/output tokens, estimated cost, fallback flag |
+| `donny_usage` | Monthly per-user action budget and degradation stage (`full_power`/`conservation`/`essential`) |
+| `donny_scheduled_posts` | Scheduled social posts from Donny. `deliverable_id` links to `campaign_deliverables` |
 
 ## DragonShare
 

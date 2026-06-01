@@ -1,5 +1,19 @@
 # Wiki Log
 
+## [2026-06-01] ingest | May 2026 Feature Sync
+
+Synced the wiki to features shipped across May 2026 alongside a refresh of the
+static core docs (CLAUDE.md, PROJECT_CONTEXT.md, DATABASE_SCHEMA.md). Scale
+numbers updated to 60 pages / 181 hooks / 71 edge functions.
+Pages created: [[DragonShare]], [[Notification System]],
+[[Donny AI Cost Architecture]], [[Multi-Deliverable Scheduling]],
+[[Known Issues]] (first analyses page)
+Pages updated: [[Stripe Connect]] (two-path boost charge),
+[[Donny AI]] (cost architecture + new tables, 71 edge functions),
+[[Project Context]] (dropped stale metrics, May workstreams),
+[[Database Schema]] (new Donny tables, May column additions),
+index.md (1 entity, 3 concepts, 1 analysis)
+
 ## [2026-05-24] ingest | Session Handoff Backfill — 6 Source Pages
 
 Backfill of 6 session handoff source pages from accumulated sessions:

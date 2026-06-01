@@ -2,8 +2,8 @@
 title: Stripe Connect
 type: entity
 created: 2026-05-23
-updated: 2026-05-23
-sources: [docs/STRIPE_PRICES.md, docs/content-delivery-system-flows.md, docs/DATABASE_SCHEMA.md]
+updated: 2026-06-01
+sources: [docs/STRIPE_PRICES.md, docs/content-delivery-system-flows.md, docs/DATABASE_SCHEMA.md, docs/PROJECT_CONTEXT.md]
 tags: [stripe, payments, escrow]
 ---
 
@@ -27,6 +27,19 @@ Campaign payments use escrow: pending → held → released. Fixed-price
 campaigns require escrow before publishing. Payment released on content
 approval or auto-approval timer expiry.
 
+## Two-Path Boost Charge (DragonShare)
+
+[[DragonShare]] boosts charge a restaurant via one of two paths:
+
+- **Off-session** — reuse a saved card on file when present.
+- **Hosted Checkout** — redirect to Stripe Checkout when no reusable card
+  exists (`campaigns.escrow_checkout_session_id` tracks the session).
+
+A per-org customer is anchored (`getOrCreateOrgCustomer()`-style) so cards are
+reused across boosts, and fulfillment runs idempotently from the Stripe webhook
+(`fulfillBoost()`-style transfer) on checkout-paid events. Test-mode
+`custom_text` clarifies payout-account behavior.
+
 ## Database Tables
 
 - `payment_events` — payment lifecycle ledger
@@ -49,4 +62,5 @@ approval or auto-approval timer expiry.
 - [[Pricing Architecture]]
 - [[Take-Rate Ladder]]
 - [[DragonDash]]
+- [[DragonShare]]
 - [[Campaign Lifecycle]]

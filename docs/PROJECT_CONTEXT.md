@@ -47,11 +47,11 @@ paid campaign in under 60 seconds.
 
 ## 4. Current State
 
-Pre-revenue by choice. ~30 organic users, $0 paying customers, ~$295/mo
-operating cost, Stripe in test mode. Production launch date TBD — blocked
+Pre-revenue by choice. Small organic user base, no paying customers yet,
+lean operating cost, Stripe in test mode. Production launch date TBD — blocked
 on content delivery system stability and bug resolution.
 
-**Codebase scale** (as of 2026-05-20): 59 pages, 162 hooks, 67 edge functions.
+**Codebase scale** (as of 2026-06-01): 60 pages, 181 hooks, 71 edge functions.
 **Repo**: `C:\GIT\dragoncandy-v3-d783432b`
 **Active integrations**: Toast POS, Stripe Connect, Outstand.so (social media —
 Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
@@ -61,20 +61,36 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
 
 - Content delivery system stabilization — fixing bugs in the
   creator-to-business content handoff and payment flow before launch.
-- Auth session management — app-level loading guard, 3-hour global
-  inactivity timeout, session hint cleanup (completed May 2026).
+- Stripe escrow payments — two-path boost charge (off-session saved card or
+  hosted Stripe Checkout), idempotent webhook fulfillment, per-org customer
+  anchoring with card reuse. Restaurant→creator payment reliability hardening.
+- Notification system — `push_notifications` realtime feed with type/category/
+  actor metadata, a `preferences_matrix` across 5 categories (campaigns,
+  messages, transactions, content, account) × 3 channels (in-app, email, SMS),
+  and a redesigned notification center with per-category clearing.
+- Donny AI cost architecture — per-call `donny_cost_ledger` (token + cost
+  tracking, T0–T3 tier classification) and monthly `donny_usage` action budget
+  with graceful degradation stages (`full_power` → `conservation` →
+  `essential`). Quota enforcement + SSE streaming live in the orchestrator.
+- Multi-deliverable scheduling & auto cross-scheduling — per-deliverable
+  captions and hooks, date-collision resolution, spread-aware post times,
+  5-stage `campaign_social_hooks` and `triple_post_sessions` coordination
+  across restaurant/creator/brand.
+- CGC campaigns optimization — camera-first submission (email-only required),
+  2-tab dashboard (active campaigns + content library), 3-field create modal,
+  unified approve-and-post review flow, business posting preferences.
+- DragonShare amplification engine (shipped) — creators upload organic content
+  about restaurants, restaurants boost it to cross-post across connected
+  channels via Outstand. Upload-first submit, trust-then-flag model (no admin
+  verification), restaurant browse, real photo/video content thumbnails, and a
+  Stripe Connect payment flow with an 80/20 creator/platform split.
+- App freshness & session enforcement — version detection via
+  `AppVersionContext`, soft update banner with force-reload on navigation,
+  build-hash polling (`useAppVersion`), and timestamp-based 3-hour inactivity
+  timeout (replacing the prior `setTimeout` approach).
 - Outstand social media integration — Instagram, TikTok, YouTube account
   linking and delegated posting via Outstand.so API. Phases 1–3 complete;
   phase 4 (analytics dashboard) in scope.
-- Dashboard UX polish — pill badge sizing, avatar cache invalidation,
-  relative timestamps, status synchronization across roles.
-- RLS compliance and query optimization — resolving infinite recursion in
-  Supabase RLS policies, removing nested profile joins blocked by RLS.
-- DragonShare amplification engine — creators upload organic content about
-  restaurants, restaurants boost it to cross-post across all connected social
-  channels via Outstand. Upload-first submit flow, trust-then-flag model
-  (no admin verification), in-app education per role. Stripe Connect
-  payment flow with 80/20 creator/platform split.
 - GTM Capital & CAC Playbook structured across Phase 0–3 with explicit
   budget gates and kill-switches. Creators onboarded before restaurants in
   each new market.
@@ -193,7 +209,7 @@ Apply to every recommendation, every prompt, every PR:
 
 **Frontend**: React 18 / TypeScript (strict), Vite, Tailwind CSS, shadcn/ui,
 Framer Motion, Lovable.dev (hosting/preview), GitHub.
-**Backend**: Supabase (70+ tables, 67 Deno Edge Functions, RLS, realtime),
+**Backend**: Supabase (70+ tables, 71 Deno Edge Functions, RLS, realtime),
 Stripe Connect (test mode).
 **AI**: Claude Sonnet 4 + Haiku (cost routing via edge functions, backend
 only). Model routing and cost ledger in `_shared/`.
