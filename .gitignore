@@ -102,3 +102,10 @@ test-results/
 *.patch
 *.png.tmp
 mintty.*.png
+
+# Capacitor / iOS native — generated build artifacts (project files ARE committed)
+ios/App/Pods/
+ios/App/App/public/
+ios/.DS_Store
+ios/App/build/
+DerivedData/
