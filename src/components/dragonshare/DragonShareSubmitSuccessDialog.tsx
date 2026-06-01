@@ -1,4 +1,4 @@
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { CheckCircle } from 'lucide-react';
 
@@ -17,7 +17,7 @@ export function DragonShareSubmitSuccessDialog({ open, orgName, onShareAnother, 
           <div className="h-14 w-14 rounded-full bg-dc-teal/15 flex items-center justify-center">
             <CheckCircle className="h-8 w-8 text-dc-teal" />
           </div>
-          <h2 className="text-lg font-bold text-dc-text">Sent to {orgName ?? 'the restaurant'}!</h2>
+          <DialogTitle className="text-lg font-bold text-dc-text">Sent to {orgName ?? 'the restaurant'}!</DialogTitle>
           <p className="text-sm text-dc-text-muted">
             They'll review your content and can boost it. You'll get notified either way.
           </p>

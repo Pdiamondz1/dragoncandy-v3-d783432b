@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Play } from 'lucide-react';
 import { VideoThumbnail } from '@/components/shared/VideoThumbnail';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 
 interface Props {
   src: string;
@@ -56,6 +56,7 @@ export function WatermarkedMedia({ src, isVideo, watermark, className }: Props) 
       {isVideo && (
         <Dialog open={playing} onOpenChange={setPlaying}>
           <DialogContent className="max-w-2xl p-0 overflow-hidden bg-black rounded-2xl border-0">
+            <DialogTitle className="sr-only">Video preview</DialogTitle>
             <div className="relative">
               <video
                 src={src}
