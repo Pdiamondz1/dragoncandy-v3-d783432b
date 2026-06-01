@@ -1,15 +1,29 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { deriveCreatorActivity, type DSPostRow, type DSActivityItem } from '@/lib/dragonshareActivity';
 
 export interface ActivityItem {
   id: string;
-  type: 'application' | 'collaboration' | 'completion';
+  type: 'application' | 'collaboration' | 'completion' | 'dragonshare';
   status: string;
   description: string;
   created_at: string;
   campaign_id?: string;
 }
+
+const capitalize = (s: string): string => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
+
+const dsDescription = (d: DSActivityItem): string => {
+  switch (d.kind) {
+    case 'paid':
+      return `${d.contentType ? capitalize(d.contentType) : 'Your post'} boosted — +$${((d.payoutCents ?? 0) / 100).toFixed(0)}`;
+    case 'not_selected':
+      return 'A restaurant passed — share again';
+    default:
+      return 'Shared a post — awaiting a boost';
+  }
+};
 
 export const useCreatorRecentActivity = () => {
   const { user } = useAuth();
@@ -95,6 +109,30 @@ export const useCreatorRecentActivity = () => {
               description,
               created_at: collab.updated_at,
               campaign_id: collab.campaign_id,
+            });
+          });
+        }
+
+        // Get recent DragonShare activity
+        const { data: dsPosts, error: dsError } = await supabase
+          .from('dragonshare_posts')
+          .select('id, content_type, submitted_at, boost_status, declined_at, boosts:dragonshare_boosts(status, creator_payout_cents, transferred_at)')
+          .eq('creator_id', user.id)
+          .order('submitted_at', { ascending: false })
+          .limit(6);
+
+        if (dsError) {
+          console.error('Error fetching dragonshare activity:', dsError);
+        } else if (dsPosts) {
+          const dsItems = deriveCreatorActivity(dsPosts as unknown as DSPostRow[]);
+          dsItems.forEach((d) => {
+            activities.push({
+              id: `ds-${d.postId}-${d.kind}`,
+              type: 'dragonshare',
+              status: d.kind === 'paid' ? 'completed' : 'pending',
+              description: dsDescription(d),
+              created_at: d.timestamp || new Date(0).toISOString(),
+              // no campaign_id → renders as a non-link row
             });
           });
         }
