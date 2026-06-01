@@ -1,4 +1,5 @@
 import { defineConfig } from "vite";
+import { configDefaults } from 'vitest/config';
 import react from "@vitejs/plugin-react-swc";
 import mdx from "@mdx-js/rollup";
 import remarkFrontmatter from "remark-frontmatter";
@@ -51,5 +52,7 @@ export default defineConfig(({ mode }) => ({
   test: {
     globals: true,
     environment: 'node',
+    // Unit tests only — Playwright e2e specs live in tests/e2e and run via playwright.config.ts
+    exclude: [...configDefaults.exclude, 'tests/e2e/**'],
   },
 }));
