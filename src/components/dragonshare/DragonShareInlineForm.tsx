@@ -6,6 +6,7 @@ import { Upload, Link, X, Loader2 } from 'lucide-react';
 import { useDragonShareSubmitForm } from '@/hooks/useDragonShareSubmitForm';
 import { RestaurantTypeahead } from '@/components/dragonshare/RestaurantTypeahead';
 import { VideoThumbnail } from '@/components/shared/VideoThumbnail';
+import { DragonShareSubmitSuccessDialog } from '@/components/dragonshare/DragonShareSubmitSuccessDialog';
 import type { RestaurantSearchResult } from '@/hooks/useRestaurantSearch';
 
 const PLATFORM_LABELS: Record<string, string> = {
@@ -144,6 +145,13 @@ export function DragonShareInlineForm({ preselectedOrg }: Props) {
           More platforms connected = more reach = higher boost value.
         </p>
       </div>
+
+      <DragonShareSubmitSuccessDialog
+        open={!!form.submittedOrgName}
+        orgName={form.submittedOrgName}
+        onShareAnother={form.clearSubmitted}
+        onDone={form.clearSubmitted}
+      />
     </div>
   );
 }

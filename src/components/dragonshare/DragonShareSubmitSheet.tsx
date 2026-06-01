@@ -7,6 +7,7 @@ import { Upload, Link, X, Loader2 } from 'lucide-react';
 import { useDragonShareSubmitForm } from '@/hooks/useDragonShareSubmitForm';
 import { RestaurantTypeahead } from '@/components/dragonshare/RestaurantTypeahead';
 import { VideoThumbnail } from '@/components/shared/VideoThumbnail';
+import { DragonShareSubmitSuccessDialog } from '@/components/dragonshare/DragonShareSubmitSuccessDialog';
 
 const PLATFORM_LABELS: Record<string, string> = {
   instagram: 'Instagram',
@@ -22,13 +23,11 @@ interface Props {
 }
 
 export function DragonShareSubmitSheet({ open, onOpenChange }: Props) {
-  const form = useDragonShareSubmitForm({
-    onSuccess: () => onOpenChange(false),
-  });
+  const form = useDragonShareSubmitForm();
   const [typeaheadOpen, setTypeaheadOpen] = useState(false);
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
+    <Sheet open={open} onOpenChange={(v) => { if (!v) setTypeaheadOpen(false); onOpenChange(v); }}>
       <SheetContent
         side="bottom"
         className="h-[85vh] rounded-t-3xl overflow-y-auto lg:max-w-lg lg:mx-auto lg:rounded-3xl lg:bottom-6 lg:h-auto lg:max-h-[80vh] lg:shadow-2xl lg:border lg:border-dc-teal/15"
@@ -150,6 +149,13 @@ export function DragonShareSubmitSheet({ open, onOpenChange }: Props) {
             </p>
           </div>
         </div>
+
+        <DragonShareSubmitSuccessDialog
+          open={!!form.submittedOrgName}
+          orgName={form.submittedOrgName}
+          onShareAnother={form.clearSubmitted}
+          onDone={() => { form.clearSubmitted(); onOpenChange(false); }}
+        />
       </SheetContent>
     </Sheet>
   );

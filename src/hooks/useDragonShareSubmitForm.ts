@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import type { ContentType } from '@/types/dragonshare';
 import type { RestaurantSearchResult } from '@/hooks/useRestaurantSearch';
 
-export function useDragonShareSubmitForm(options?: { onSuccess?: () => void }) {
+export function useDragonShareSubmitForm(_options?: { onSuccess?: () => void }) {
   const submitMutation = useSubmitDragonSharePost();
   const { upload, uploading } = useDragonShareUpload();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -17,6 +17,7 @@ export function useDragonShareSubmitForm(options?: { onSuccess?: () => void }) {
   const [uploadedFileType, setUploadedFileType] = useState<string | null>(null);
   const [postUrl, setPostUrl] = useState('');
   const [selectedOrg, setSelectedOrg] = useState<RestaurantSearchResult | null>(null);
+  const [submittedOrgName, setSubmittedOrgName] = useState<string | null>(null);
 
   const detectedPlatform = postUrl ? detectPlatformFromUrl(postUrl) : null;
 
@@ -56,6 +57,7 @@ export function useDragonShareSubmitForm(options?: { onSuccess?: () => void }) {
     if (!selectedOrg) return;
     if (!uploadedUrl && !postUrl.trim()) return;
 
+    const orgName = selectedOrg.name;
     try {
       await submitMutation.mutateAsync({
         target_org_id: selectedOrg.id,
@@ -64,12 +66,15 @@ export function useDragonShareSubmitForm(options?: { onSuccess?: () => void }) {
         platform: detectedPlatform,
         content_file_path: uploadedUrl,
       });
-      toast.success('Content shared! The restaurant can now see and boost your post.');
       reset();
-      options?.onSuccess?.();
+      setSubmittedOrgName(orgName);
     } catch {
       toast.error('Submission failed. Please try again.');
     }
+  }
+
+  function clearSubmitted() {
+    setSubmittedOrgName(null);
   }
 
   return {
@@ -81,6 +86,7 @@ export function useDragonShareSubmitForm(options?: { onSuccess?: () => void }) {
     setPostUrl,
     selectedOrg,
     setSelectedOrg,
+    submittedOrgName,
     detectedPlatform,
     contentType,
     canSubmit,
@@ -92,5 +98,6 @@ export function useDragonShareSubmitForm(options?: { onSuccess?: () => void }) {
     removeUpload,
     handleSubmit,
     reset,
+    clearSubmitted,
   };
 }
