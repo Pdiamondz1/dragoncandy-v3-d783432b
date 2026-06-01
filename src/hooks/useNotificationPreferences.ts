@@ -29,8 +29,8 @@ export const useNotificationPreferences = () => {
     enabled: !!user,
   });
 
-  const matrix: PreferencesMatrix =
-    (query.data?.preferences_matrix as PreferencesMatrix) ?? DEFAULT_PREFERENCES_MATRIX;
+  const stored = (query.data?.preferences_matrix as Partial<PreferencesMatrix> | undefined) ?? {};
+  const matrix: PreferencesMatrix = { ...DEFAULT_PREFERENCES_MATRIX, ...stored };
 
   const updateMatrix = useMutation({
     mutationFn: async (newMatrix: PreferencesMatrix) => {

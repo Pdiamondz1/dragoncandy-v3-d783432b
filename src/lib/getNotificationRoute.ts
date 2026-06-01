@@ -44,6 +44,18 @@ export function getNotificationRoute(notification: PushNotification): string | n
         ? `/dashboard/creator/my-campaigns/${data.campaign_id}`
         : `/dashboard/business/campaigns/${data.campaign_id}`;
 
+    case 'dragonshare_submission':
+    case 'dragonshare_boost_receipt':
+      return data?.post_id
+        ? `/dashboard/business/dragonshare?highlight=${data.post_id}`
+        : '/dashboard/business/dragonshare';
+
+    case 'dragonshare_boost':
+    case 'dragonshare_declined':
+      return data?.post_id
+        ? `/dashboard/creator/dragonshare?highlight=${data.post_id}`
+        : '/dashboard/creator/dragonshare';
+
     default:
       return null;
   }

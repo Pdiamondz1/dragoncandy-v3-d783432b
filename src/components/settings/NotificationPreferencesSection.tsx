@@ -5,7 +5,7 @@ import { toast } from '@/hooks/use-toast';
 import { CATEGORY_META } from '@/types/notifications';
 import type { NotificationCategory, PreferencesMatrix } from '@/types/notifications';
 
-const CATEGORIES: NotificationCategory[] = ['campaigns', 'messages', 'transactions', 'content', 'account'];
+const CATEGORIES: NotificationCategory[] = ['campaigns', 'messages', 'transactions', 'content', 'dragonshare', 'account'];
 const CHANNELS = [
   { key: 'in_app' as const, label: 'IN-APP' },
   { key: 'email' as const, label: 'EMAIL' },

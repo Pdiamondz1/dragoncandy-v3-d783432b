@@ -1,4 +1,4 @@
-export type NotificationCategory = 'campaigns' | 'messages' | 'transactions' | 'content' | 'account';
+export type NotificationCategory = 'campaigns' | 'messages' | 'transactions' | 'content' | 'account' | 'dragonshare';
 
 export type NotificationType =
   | 'application_received'
@@ -23,7 +23,9 @@ export type NotificationType =
   | 'content_liked'
   | 'content_approved'
   | 'file_uploaded'
+  | 'dragonshare_submission'
   | 'dragonshare_boost'
+  | 'dragonshare_boost_receipt'
   | 'dragonshare_declined'
   | 'social_post_published'
   | 'social_post_failed'
@@ -70,6 +72,7 @@ export interface PreferencesMatrix {
   transactions: ChannelPreferences;
   content: ChannelPreferences;
   account: ChannelPreferences;
+  dragonshare: ChannelPreferences;
 }
 
 export const DEFAULT_PREFERENCES_MATRIX: PreferencesMatrix = {
@@ -78,6 +81,7 @@ export const DEFAULT_PREFERENCES_MATRIX: PreferencesMatrix = {
   transactions: { in_app: true,  email: true,  sms: false },
   content:      { in_app: true,  email: false, sms: false },
   account:      { in_app: true,  email: true,  sms: false },
+  dragonshare:  { in_app: true,  email: true,  sms: false },
 };
 
 export const CATEGORY_META: Record<NotificationCategory, { label: string; icon: string; description: string }> = {
@@ -86,6 +90,7 @@ export const CATEGORY_META: Record<NotificationCategory, { label: string; icon: 
   transactions: { label: 'Transactions', icon: '💰', description: 'Payments, sponsorships, counter-offers' },
   content:      { label: 'Content',      icon: '❤️', description: 'Likes, DragonShare, file uploads, social posting' },
   account:      { label: 'Account',      icon: '🏢', description: 'Team members, locations, settings, account' },
+  dragonshare:  { label: 'DragonShare',  icon: '🐉', description: 'Submissions, boosts, and payouts' },
 };
 
 export const NOTIFICATION_TYPE_TO_EMAIL_TYPE: Partial<Record<NotificationType, string>> = {
@@ -107,4 +112,8 @@ export const NOTIFICATION_TYPE_TO_EMAIL_TYPE: Partial<Record<NotificationType, s
   content_liked: 'content_liked',
   content_approved: 'content_approved',
   file_uploaded: 'file_uploaded_by_creator',
+  dragonshare_submission: 'dragonshare_submission',
+  dragonshare_boost: 'dragonshare_boost',
+  dragonshare_boost_receipt: 'dragonshare_boost_receipt',
+  dragonshare_declined: 'dragonshare_declined',
 };
