@@ -11,6 +11,7 @@ interface Props {
   selectedOrg: RestaurantSearchResult | null;
   onSelect: (org: RestaurantSearchResult) => void;
   onClear: () => void;
+  onOpenChange?: (open: boolean) => void;
 }
 
 function OrgInitial({ name }: { name: string }) {
@@ -49,17 +50,19 @@ function ResultRow({ org, onSelect }: { org: RestaurantSearchResult; onSelect: (
   );
 }
 
-export function RestaurantTypeahead({ selectedOrg, onSelect, onClear }: Props) {
+export function RestaurantTypeahead({ selectedOrg, onSelect, onClear, onOpenChange }: Props) {
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const { data: results, isLoading, isFetching } = useRestaurantSearch(search, open);
 
+  const setOpenState = (v: boolean) => { setOpen(v); onOpenChange?.(v); };
+
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpen(false);
+        setOpenState(false);
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
@@ -84,8 +87,8 @@ export function RestaurantTypeahead({ selectedOrg, onSelect, onClear }: Props) {
         <Input
           placeholder="Search restaurants..."
           value={search}
-          onChange={(e) => { setSearch(e.target.value); setOpen(true); }}
-          onFocus={() => setOpen(true)}
+          onChange={(e) => { setSearch(e.target.value); setOpenState(true); }}
+          onFocus={() => setOpenState(true)}
           className="rounded-xl pl-9 border-dc-teal/30 focus-visible:ring-dc-teal/40 bg-dc-teal/[0.03]"
         />
       </div>
@@ -110,7 +113,7 @@ export function RestaurantTypeahead({ selectedOrg, onSelect, onClear }: Props) {
                 onSelect={() => {
                   onSelect(org);
                   setSearch('');
-                  setOpen(false);
+                  setOpenState(false);
                 }}
               />
             ))}
