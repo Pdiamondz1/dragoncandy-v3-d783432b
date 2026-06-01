@@ -28,6 +28,9 @@ export function DragonSharePostCard({ post, canBoost }: Props) {
   const isAlreadyBoosted = post.boost_status === 'boosted';
   const resolvedCreatorAvatar = useResolvedAvatarUrl(post.creator?.avatar_url);
   const contentUrl = post.content_file_path;
+  const downloadUrl = contentUrl
+    ? `${contentUrl}${contentUrl.includes('?') ? '&' : '?'}download`
+    : null;
   const flagMutation = useFlagDragonSharePost();
   const declineMutation = useDeclineDragonSharePost();
 
@@ -96,9 +99,9 @@ export function DragonSharePostCard({ post, canBoost }: Props) {
               <Badge className="bg-teal-100 text-teal-700 border-teal-200">
                 Boosted · ${((post.boosts?.[0]?.amount_cents ?? 0) / 100).toFixed(0)}
               </Badge>
-              {contentUrl && (
+              {downloadUrl && (
                 <a
-                  href={contentUrl}
+                  href={downloadUrl}
                   download
                   target="_blank"
                   rel="noopener noreferrer"
