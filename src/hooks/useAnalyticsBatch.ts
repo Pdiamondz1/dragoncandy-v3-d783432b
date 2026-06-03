@@ -134,7 +134,7 @@ export const useAnalyticsBatch = () => {
         
         try {
           // Use the Supabase REST endpoint directly
-          const url = `https://zocahiffooqdybdhguqv.supabase.co/rest/v1/analytics_events`;
+          const url = `${import.meta.env.VITE_SUPABASE_URL || 'https://zocahiffooqdybdhguqv.supabase.co'}/rest/v1/analytics_events`;
           const blob = new Blob([data], { type: 'application/json' });
           navigator.sendBeacon(url, blob);
         } catch (error) {

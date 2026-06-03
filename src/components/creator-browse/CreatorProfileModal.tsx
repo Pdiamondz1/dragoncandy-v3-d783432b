@@ -74,7 +74,7 @@ interface CreatorProfileModalProps {
   onClose: () => void;
 }
 
-const SUPABASE_URL = 'https://zocahiffooqdybdhguqv.supabase.co';
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://zocahiffooqdybdhguqv.supabase.co';
 
 /**
  * Convert a raw Supabase public storage URL to an image-transform thumbnail URL.
