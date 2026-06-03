@@ -50,6 +50,12 @@ staging **explicitly** (Lovable only ships the frontend). Webhook-receiver funct
 (`stripe-webhook`, `toast-redemption-webhook`, `toast-oauth-callback`) require
 `verify_jwt = false` in `config.toml` or external callers get 401'd.
 
+**Env-wiring caveat:** the Lovable-generated `src/integrations/supabase/client.ts`
+hardcoded the prod URL/anon key and ignored `VITE_SUPABASE_URL`, so a staging build
+silently talked to prod (other callers already read the env var → split-brain). Fixed
+client.ts + 3 hardcoded callers to read `import.meta.env.VITE_SUPABASE_URL` with a prod
+fallback. `client.ts` is auto-generated, so re-check after any Lovable regeneration.
+
 ## Known Issues
 
 - RLS infinite recursion in some policies (active workstream)

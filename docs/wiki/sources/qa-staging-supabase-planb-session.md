@@ -43,6 +43,17 @@ staging `service_role` key; plus two Vercel env vars on the user's side.
 - `supabase/.temp/project-ref` points at staging — verify before any `db push`; never commit `.temp`.
 - Migrations are CRLF; `$`-anchored regex misses line ends (see `scripts/fix-migration-terminators.mjs`).
 
+## Frontend Env-Wiring Gap (post-verification finding)
+
+Verifying the deployed Vercel bundle revealed the app was **hardwired to prod**:
+`src/integrations/supabase/client.ts` hardcoded the prod Supabase URL + anon key and
+ignored `VITE_SUPABASE_URL`, while edge-function callers already read the env var — a
+split-brain where auth/DB hit prod but edge calls hit staging. Fixed `client.ts` plus
+three other hardcoded callers (`useAnalyticsBatch`, `CreatorProfileModal`, `VerifyEmail`)
+to `import.meta.env.VITE_SUPABASE_URL || '<prod fallback>'`. Caveat: `client.ts` is
+Lovable-auto-generated, so a future Lovable sync may revert it. This means Plan B's "set
+env vars" assumption was incomplete — the app has to actually *read* those vars. See [[Supabase]].
+
 ## See Also
 
 - [[QA CI/CD Gate]]

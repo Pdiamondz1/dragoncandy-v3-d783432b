@@ -1,5 +1,14 @@
 # Wiki Log
 
+## [2026-06-02] update | QA Staging — frontend env-wiring gap
+
+Post-verification finding folded into the QA staging pages: the app was hardwired to
+prod (`client.ts` hardcoded the prod Supabase URL/key, ignoring `VITE_SUPABASE_URL`;
+edge callers already used the env var → split-brain). Fixed client.ts + 3 hardcoded
+callers to read the env var with prod fallback.
+Pages updated: [[QA Staging Supabase (Plan B) Session]] (new "Frontend Env-Wiring Gap"
+section), [[Supabase]] (env-wiring caveat).
+
 ## [2026-06-02] ingest | QA Staging Supabase (Plan B)
 
 Ingested the Plan B session extract: standing up the isolated staging Supabase project
