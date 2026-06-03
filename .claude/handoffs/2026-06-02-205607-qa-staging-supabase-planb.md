@@ -24,9 +24,10 @@ Standing up the **isolated staging Supabase project** for the QA/CI-CD gate
 **Plan B — Staging environment**). Vercel per-PR previews were already set up by
 the user. This session created and populated the staging Supabase backend:
 schema (all 213 migrations), all 71 edge functions, and the essential function
-secrets. **Steps 1–4 and 6 are DONE. Step 5 (seed + test accounts) is the only
-remaining backend work, blocked solely on the staging `service_role` key.** The
-user must also finish adding two Vercel env vars on their side.
+secrets. **Plan B is COMPLETE — Steps 1–6 all done, including Step 5 (3 test
+accounts created + login-verified, Donny knowledge seeded with 71 chunks).** The
+only remaining items are outside this setup: the user adds two Vercel env vars,
+and Plan C (e2e wiring) is a separate effort.
 
 ## Codebase Understanding
 
@@ -75,6 +76,8 @@ user must also finish adding two Vercel env vars on their side.
 - [x] Committed all migration/config/script changes to `qa-staging` (6f25dafc)
 - [x] Verified `cap:sync` (iOS target) still builds green
 - [x] `npm run build` + `npm run typecheck` both pass
+- [x] **Step 5a** — created 3 test accounts (restaurant/creator/brand) via Auth Admin API; trigger auto-built profiles + business/creator profiles from `user_metadata`; logins verified end-to-end
+- [x] **Step 5b** — seeded Donny knowledge base (71 chunks) via `npx tsx supabase/seed/donny-knowledge-seed.ts`
 
 ## Files Modified (committed in 6f25dafc — 11 files)
 
@@ -110,24 +113,31 @@ repoint everyone's CLI default at staging.
 
 ## Immediate Next Steps
 
-1. **Get the staging `service_role` key** from the user (staging → Project Settings
-   → API). It is backend-only — never put it in Vercel; rotate after use if desired.
-2. **Step 5a — create 3 test accounts** (restaurant/creator/brand) on staging via
-   the Auth Admin API (`POST {staging-url}/auth/v1/admin/users` with the service_role
-   key, `email_confirm: true`). Then create matching `profiles` / `business_profiles`
-   / `creator_profiles` rows with the right `role` + `account_type`
-   (`restaurant`/`brand`). Mirror the prod test accounts in [[reference_browser_credentials]]
-   but with DISTINCT staging creds; store them as GitHub secrets later for Plan C `auth.setup.ts`.
-3. **Step 5b — run the Donny seed**: `supabase/seed/donny-knowledge-seed.ts` against
-   staging (check its header for how it's invoked — likely needs service_role + URL).
-4. After Step 5, Plan B is complete. Plan C (parametrize Playwright `baseURL`, triage
-   the e2e suite, add the e2e CI job, branch protection) is the next plan.
+Plan B is done. Remaining work is outside this setup:
+
+1. **Vercel env vars (USER):** add to the Preview scope `VITE_STRIPE_PUBLISHABLE_KEY`
+   (the `pk_test_51SkFixJi…` from CLAUDE.md) and `VITE_GOOGLE_MAPS_API_KEY` (a
+   referrer-restricted staging Maps key). `VITE_SUPABASE_URL`/`ANON_KEY` already provided.
+2. **Plan C** (separate plan): parametrize Playwright `baseURL` via env (default to the
+   PR preview URL in CI), point `auth.setup.ts` at the staging test accounts below
+   (store their password as a GitHub secret), triage the e2e suite (move `debug-*` specs
+   to a non-gating `_scratch/` folder), add the e2e CI job, tighten branch protection.
+3. **Decide how to land `qa-staging`** — it's a local worktree branch with 3 commits
+   (migration remediation, handoff, wiki). PR to main vs keep as the gate branch.
+
+### Staging Test Accounts (created this session — login-verified)
+
+Password `DcStaging!2026`, email-confirmed. DISTINCT from prod [[reference_browser_credentials]]:
+- `restaurant.staging@dragoncandy.test` — business_client / account_type restaurant
+- `creator.staging@dragoncandy.test` — content_creator
+- `brand.staging@dragoncandy.test` — brand / account_type brand
 
 ### Blockers/Open Questions
 
-- [ ] Staging `service_role` key needed for Step 5 (only blocker).
-- [ ] Confirm `donny-knowledge-seed.ts` invocation method (Deno vs node, auth used).
-- [ ] How/where to merge the `qa-staging` branch (it's a local worktree branch; PR to main vs keep for the gate).
+- [ ] None blocking Plan B (complete). Open for Plan C: store the staging test password
+      as a GitHub secret for `auth.setup.ts`.
+- [ ] SECURITY: the prod `service_role` key (`ref=zocahiffooqdybdhguqv`) was pasted into
+      this session's transcript by mistake — consider rotating it (weigh prod blast radius).
 
 ### Deferred Items
 
