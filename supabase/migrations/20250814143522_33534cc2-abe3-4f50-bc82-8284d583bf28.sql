@@ -18,7 +18,7 @@ BEGIN
   
   RETURN other_user_id;
 END;
-$function$
+$function$;
 
 -- Optimize message queries with better indexing
 CREATE INDEX IF NOT EXISTS idx_messages_conversation_created_at ON public.messages(conversation_id, created_at);

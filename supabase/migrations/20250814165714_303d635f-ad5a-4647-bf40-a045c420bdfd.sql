@@ -1,4 +1,5 @@
 -- Update the get_user_conversations function to include campaign conversations
+DROP FUNCTION IF EXISTS public.get_user_conversations(uuid);
 CREATE OR REPLACE FUNCTION public.get_user_conversations(user_uuid uuid)
  RETURNS TABLE(conversation_id uuid, conversation_type text, conversation_title text, last_message_at timestamp with time zone, unread_count bigint, other_participant_name text, other_participant_avatar text, campaign_id uuid, campaign_status text)
  LANGUAGE plpgsql

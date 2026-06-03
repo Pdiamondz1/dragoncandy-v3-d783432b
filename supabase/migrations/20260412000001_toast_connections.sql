@@ -2,9 +2,6 @@
 -- Stores Toast POS OAuth credentials per restaurant (business_profile).
 -- access_token and refresh_token are encrypted at rest via pgsodium.
 
--- Enable pgsodium extension for column-level encryption
-CREATE EXTENSION IF NOT EXISTS pgsodium WITH SCHEMA pgsodium;
-
 -- Create the connections table
 CREATE TABLE public.toast_connections (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -25,11 +22,21 @@ CREATE TABLE public.toast_connections (
   CONSTRAINT unique_business_restaurant UNIQUE (business_id, restaurant_guid)
 );
 
--- Enable transparent column encryption on sensitive columns
-SECURITY LABEL FOR pgsodium ON COLUMN public.toast_connections.access_token
-  IS 'ENCRYPT WITH KEY DEFAULT';
-SECURITY LABEL FOR pgsodium ON COLUMN public.toast_connections.refresh_token
-  IS 'ENCRYPT WITH KEY DEFAULT';
+-- Enable transparent column encryption on sensitive columns.
+-- Guarded: pgsodium transparent column encryption is deprecated and unavailable
+-- on newer Supabase projects. Where it exists (prod), tokens are encrypted at
+-- rest; where it does not (fresh staging / clean replay), this degrades to
+-- plaintext, which is acceptable for a non-prod environment using test Toast
+-- credentials. The table/columns are created identically either way.
+DO $toast_enc$
+BEGIN
+  CREATE EXTENSION IF NOT EXISTS pgsodium WITH SCHEMA pgsodium;
+  EXECUTE 'SECURITY LABEL FOR pgsodium ON COLUMN public.toast_connections.access_token IS ''ENCRYPT WITH KEY DEFAULT''';
+  EXECUTE 'SECURITY LABEL FOR pgsodium ON COLUMN public.toast_connections.refresh_token IS ''ENCRYPT WITH KEY DEFAULT''';
+EXCEPTION WHEN OTHERS THEN
+  RAISE NOTICE 'pgsodium transparent column encryption unavailable (%); toast tokens stored unencrypted (non-prod).', SQLERRM;
+END
+$toast_enc$;
 
 -- Enable RLS
 ALTER TABLE public.toast_connections ENABLE ROW LEVEL SECURITY;

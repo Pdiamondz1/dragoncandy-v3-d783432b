@@ -54,7 +54,7 @@ BEGIN
   AND c.is_archived = false
   ORDER BY c.last_message_at DESC NULLS LAST;
 END;
-$function$
+$function$;
 
 -- Add function to get other participant ID from conversation
 CREATE OR REPLACE FUNCTION public.get_other_participant_id(conversation_uuid uuid, user_uuid uuid)
@@ -74,7 +74,7 @@ BEGIN
   
   RETURN other_user_id;
 END;
-$function$
+$function$;
 
 -- Optimize message queries with better indexing
 CREATE INDEX IF NOT EXISTS idx_messages_conversation_created_at ON public.messages(conversation_id, created_at);
