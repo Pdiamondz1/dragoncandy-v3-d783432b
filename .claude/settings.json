@@ -7,7 +7,7 @@
           {
             "type": "prompt",
             "if": "Bash(git push *)",
-            "prompt": "This is a git push to production (no staging environment). Remind the user that both `npm run build` and `npm run typecheck` should pass before pushing. If both have already been run successfully in this session, approve the push. When in doubt, approve and remind rather than block.",
+            "prompt": "You are gating a Bash command before it runs. The command is in this hook input JSON: $ARGUMENTS. FIRST decide whether the command is a `git push`. If it is NOT a git push (e.g. curl, npm, supabase, git status/add/commit, node, ls, etc.), respond to ALLOW it immediately with no reminder. ONLY if the command IS a `git push` (to production — there is no staging branch): remind the user that `npm run build` and `npm run typecheck` should both pass first, and ALLOW the push if both have already passed in this session; otherwise ask them to run those first. When in doubt, ALLOW.",
             "timeout": 30
           }
         ]
