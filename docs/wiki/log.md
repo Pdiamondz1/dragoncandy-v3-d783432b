@@ -1,5 +1,16 @@
 # Wiki Log
 
+## [2026-06-02] ingest | QA Staging Supabase (Plan B)
+
+Ingested the Plan B session extract: standing up the isolated staging Supabase project
+(`dragoncandy-staging`, ref `mhffqrawgizhprbobcta`) for the CI/CD gate — 213-migration
+replay with a 7-class remediation, 71 edge functions deployed, 9 secrets set, Stripe
+single-sandbox alignment + webhook endpoint, CSP parity + `cap:sync` verified.
+Pages created: [[QA Staging Supabase (Plan B) Session]] (source); [[QA CI/CD Gate]],
+[[Migration Replay Drift]] (concepts).
+Pages updated: [[Supabase]] (staging env + drift + verify_jwt note), [[Stripe Connect]]
+(single-sandbox alignment), index.md (3 new entries).
+
 ## [2026-06-01] ingest | Repo-State Sync — DragonShare, Capacitor, Delivery Cluster
 
 Full session-extract ingest closing the gap since the 2026-05-24 backfill. Three new raw
