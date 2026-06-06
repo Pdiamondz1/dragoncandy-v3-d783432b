@@ -24,6 +24,7 @@ jobs:
         with:
           configPath: ./lighthouserc.cjs
           uploadArtifacts: true
+          artifactName: lighthouse-desktop
         env:
           # Valid presets are perf | experimental | desktop. The config defaults
           # to mobile (no preset), so desktop is selected here.
@@ -34,6 +35,7 @@ jobs:
         with:
           configPath: ./lighthouserc.cjs
           uploadArtifacts: true
+          artifactName: lighthouse-mobile
         env:
           # No preset = Lighthouse's default mobile emulation ("mobile" is NOT a
           # valid preset). Report-only until a mobile baseline is established.
