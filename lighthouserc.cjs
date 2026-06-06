@@ -10,16 +10,17 @@ module.exports = {
       // this default. ("mobile" is not a valid Lighthouse preset.)
     },
     assert: {
-      // Report-only for now (warn): this file was previously deleted, so there is
-      // no trusted current baseline. warn keeps the check green while CI prints
-      // the real desktop + mobile scores; the stable categories get promoted back
-      // to `error` (at data-driven bars) once a baseline is established.
-      // The mobile run overrides the perf assertion via env in lighthouse-ci.yml.
+      // Bars set from a measured baseline (landing page, median of 3 runs, 2026-06-06):
+      // desktop perf 0.99; a11y / best-practices / SEO 1.00 on both desktop & mobile;
+      // mobile perf ~0.81. a11y/best-practices/SEO and desktop perf gate at `error`
+      // (comfortably below current scores, so they catch real regressions without
+      // flaking). The mobile run overrides perf to `warn` via env in lighthouse-ci.yml
+      // (mobile perf is a known weak spot — a non-blocking nudge, not a gate).
       assertions: {
-        'categories:performance': ['warn', { minScore: 0.9 }],
-        'categories:accessibility': ['warn', { minScore: 1.0 }],
-        'categories:best-practices': ['warn', { minScore: 0.95 }],
-        'categories:seo': ['warn', { minScore: 0.95 }],
+        'categories:performance': ['error', { minScore: 0.9 }],
+        'categories:accessibility': ['error', { minScore: 0.95 }],
+        'categories:best-practices': ['error', { minScore: 0.95 }],
+        'categories:seo': ['error', { minScore: 0.95 }],
       },
     },
     upload: {

@@ -38,5 +38,7 @@ jobs:
           artifactName: lighthouse-mobile
         env:
           # No preset = Lighthouse's default mobile emulation ("mobile" is NOT a
-          # valid preset). Report-only until a mobile baseline is established.
+          # valid preset). Mobile perf (~0.81 baseline) stays `warn` — a non-blocking
+          # nudge toward improvement, not a merge gate. a11y/best-practices/SEO still
+          # gate at `error` via lighthouserc.cjs (all 1.00 on mobile).
           LHCI_ASSERT__ASSERTIONS__CATEGORIES_PERFORMANCE: 'warn,minScore,0.85'
