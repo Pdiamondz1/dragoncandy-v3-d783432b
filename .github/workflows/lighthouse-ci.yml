@@ -32,4 +32,5 @@ jobs:
           uploadArtifacts: true
         env:
           LHCI_COLLECT__SETTINGS__PRESET: mobile
-          LHCI_ASSERT__ASSERTIONS__CATEGORIES_PERFORMANCE: 'error,minScore,0.85'
+          # Report-only until a mobile baseline is established (see lighthouserc.js).
+          LHCI_ASSERT__ASSERTIONS__CATEGORIES_PERFORMANCE: 'warn,minScore,0.85'
