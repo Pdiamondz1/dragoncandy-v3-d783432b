@@ -22,13 +22,13 @@ jobs:
       - name: Lighthouse CI — Desktop
         uses: treosh/lighthouse-ci-action@v12
         with:
-          configPath: ./lighthouserc.js
+          configPath: ./lighthouserc.cjs
           uploadArtifacts: true
 
       - name: Lighthouse CI — Mobile
         uses: treosh/lighthouse-ci-action@v12
         with:
-          configPath: ./lighthouserc.js
+          configPath: ./lighthouserc.cjs
           uploadArtifacts: true
         env:
           LHCI_COLLECT__SETTINGS__PRESET: mobile
