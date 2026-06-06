@@ -1,6 +1,7 @@
-import { useState } from 'react';
-import type { SocialAccount, SocialNetwork } from '@outstand-so/ui';
+import type { SocialAccount } from '@outstand-so/ui';
 import { cn } from '@/lib/utils';
+import { SocialAccountAvatar } from './SocialAccountAvatar';
+import { NETWORK_LABELS } from './socialNetworks';
 
 interface DCNetworkSelectorProps {
   accounts: SocialAccount[];
@@ -9,42 +10,7 @@ interface DCNetworkSelectorProps {
   className?: string;
 }
 
-const NETWORK_COLORS: Record<string, string> = {
-  instagram: '#E1306C',
-  tiktok: '#000000',
-  facebook: '#1877F2',
-  x: '#1f2937',
-  youtube: '#dc2626',
-  linkedin: '#0A66C2',
-  threads: '#000000',
-  bluesky: '#0085FF',
-  pinterest: '#E60023',
-};
-
-const NETWORK_LABELS: Record<string, string> = {
-  instagram: 'Instagram',
-  tiktok: 'TikTok',
-  facebook: 'Facebook',
-  x: 'X',
-  youtube: 'YouTube',
-  linkedin: 'LinkedIn',
-  threads: 'Threads',
-  bluesky: 'Bluesky',
-  pinterest: 'Pinterest',
-};
-
-function PlatformIcon({ network }: { network: SocialNetwork }) {
-  const label = NETWORK_LABELS[network] ?? network;
-  return (
-    <span className="text-[10px] font-bold leading-none text-white select-none">
-      {label.slice(0, 2).toUpperCase()}
-    </span>
-  );
-}
-
 export function DCNetworkSelector({ accounts, selectedIds, onChange, className }: DCNetworkSelectorProps) {
-  const [imgErrors, setImgErrors] = useState<Record<string, boolean>>({});
-
   const toggleAccount = (id: string) => {
     if (selectedIds.includes(id)) {
       onChange(selectedIds.filter((i) => i !== id));
@@ -80,8 +46,6 @@ export function DCNetworkSelector({ accounts, selectedIds, onChange, className }
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         {accounts.map((account) => {
           const isSelected = selectedIds.includes(account.id);
-          const networkColor = NETWORK_COLORS[account.network] ?? '#6b7280';
-          const showFallback = imgErrors[account.id] || !account.profile_picture_url;
 
           return (
             <button
@@ -98,21 +62,11 @@ export function DCNetworkSelector({ accounts, selectedIds, onChange, className }
                   : 'border-gray-200 hover:border-gray-400',
               )}
             >
-              <div
-                className="w-10 h-10 rounded-full flex items-center justify-center text-white flex-shrink-0 overflow-hidden"
-                style={{ backgroundColor: networkColor }}
-              >
-                {showFallback ? (
-                  <PlatformIcon network={account.network} />
-                ) : (
-                  <img
-                    src={account.profile_picture_url}
-                    alt={account.nickname}
-                    className="w-full h-full rounded-full object-cover"
-                    onError={() => setImgErrors((prev) => ({ ...prev, [account.id]: true }))}
-                  />
-                )}
-              </div>
+              <SocialAccountAvatar
+                network={account.network}
+                profilePictureUrl={account.profile_picture_url}
+                name={account.nickname}
+              />
 
               <div className="flex-1 text-left min-w-0">
                 <p className="font-medium truncate text-sm">{account.nickname}</p>

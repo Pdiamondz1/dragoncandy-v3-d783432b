@@ -5,6 +5,7 @@ import { DragonDashRushButton } from './DragonDashRushButton';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useAccounts } from '@outstand-so/ui';
+import { SocialAccountAvatar } from './SocialAccountAvatar';
 import { useOutstandConfig, DragonCandyOutstandProvider } from '@/integrations/outstand/Provider';
 import { useSponsorshipAmplification } from '@/hooks/outstand/useSponsorshipAmplification';
 import { useBrandGuidelines } from '@/hooks/outstand/useBrandGuidelines';
@@ -117,12 +118,18 @@ function SponsorshipAmplificationPromptInner({
                     key={account.id}
                     type="button"
                     onClick={() => toggleAccount(account.id)}
-                    className={`text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors ${
+                    className={`inline-flex items-center gap-1.5 text-xs font-semibold pl-1 pr-3 py-1 rounded-full border transition-colors ${
                       selected
                         ? 'bg-dc-teal text-white border-dc-teal'
                         : 'bg-white text-gray-500 border-gray-200'
                     }`}
                   >
+                    <SocialAccountAvatar
+                      network={account.network}
+                      profilePictureUrl={account.profile_picture_url}
+                      name={account.nickname}
+                      sizeClass="w-6 h-6"
+                    />
                     {account.username ?? account.network}
                   </button>
                 );

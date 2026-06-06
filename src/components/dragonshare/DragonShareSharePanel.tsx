@@ -5,6 +5,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Loader2, Send, CalendarDays } from 'lucide-react';
 import { DragonCandyOutstandProvider, useOutstandConfig } from '@/integrations/outstand/Provider';
 import { useAccounts } from '@outstand-so/ui';
+import { SocialAccountAvatar } from '../outstand/SocialAccountAvatar';
 import { useCrossPost } from '@/hooks/outstand/useCrossPost';
 import { MediaPreviewGrid } from '@/components/outstand/MediaPreviewGrid';
 import { supabase } from '@/integrations/supabase/client';
@@ -124,9 +125,15 @@ function SharePanelInner({ open, onOpenChange, post, creatorName, businessName }
                       key={a.id}
                       type="button"
                       onClick={() => toggleAccount(a.id)}
-                      className={`rounded-full px-3 py-1 text-xs font-medium border ${sel ? 'bg-dc-teal-btn text-white border-dc-teal-btn' : 'bg-white text-dc-text border-dc-teal/30'}`}
+                      className={`inline-flex items-center gap-1.5 rounded-full pl-1 pr-3 py-1 text-xs font-medium border ${sel ? 'bg-dc-teal-btn text-white border-dc-teal-btn' : 'bg-white text-dc-text border-dc-teal/30'}`}
                     >
-                      {a.network}{a.username ? ` · ${a.username}` : ''}
+                      <SocialAccountAvatar
+                        network={a.network}
+                        profilePictureUrl={a.profile_picture_url}
+                        name={a.nickname}
+                        sizeClass="w-6 h-6"
+                      />
+                      {a.username ?? a.network}
                     </button>
                   );
                 })}
