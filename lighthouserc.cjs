@@ -5,9 +5,9 @@ module.exports = {
       startServerCommand: 'npm run preview -- --port 8080',
       startServerReadyPattern: 'Local',
       numberOfRuns: 3,
-      settings: {
-        preset: 'desktop',
-      },
+      // No preset here = Lighthouse default (mobile emulation). The desktop run
+      // sets preset=desktop via env in lighthouse-ci.yml; the mobile run uses
+      // this default. ("mobile" is not a valid Lighthouse preset.)
     },
     assert: {
       // Report-only for now (warn): this file was previously deleted, so there is

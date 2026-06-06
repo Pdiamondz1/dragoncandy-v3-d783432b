@@ -24,6 +24,10 @@ jobs:
         with:
           configPath: ./lighthouserc.cjs
           uploadArtifacts: true
+        env:
+          # Valid presets are perf | experimental | desktop. The config defaults
+          # to mobile (no preset), so desktop is selected here.
+          LHCI_COLLECT__SETTINGS__PRESET: desktop
 
       - name: Lighthouse CI — Mobile
         uses: treosh/lighthouse-ci-action@v12
@@ -31,6 +35,6 @@ jobs:
           configPath: ./lighthouserc.cjs
           uploadArtifacts: true
         env:
-          LHCI_COLLECT__SETTINGS__PRESET: mobile
-          # Report-only until a mobile baseline is established (see lighthouserc.js).
+          # No preset = Lighthouse's default mobile emulation ("mobile" is NOT a
+          # valid preset). Report-only until a mobile baseline is established.
           LHCI_ASSERT__ASSERTIONS__CATEGORIES_PERFORMANCE: 'warn,minScore,0.85'
