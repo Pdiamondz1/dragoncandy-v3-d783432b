@@ -2,8 +2,8 @@
 title: Stripe Connect
 type: entity
 created: 2026-05-23
-updated: 2026-05-23
-sources: [docs/STRIPE_PRICES.md, docs/content-delivery-system-flows.md, docs/DATABASE_SCHEMA.md]
+updated: 2026-06-02
+sources: [docs/STRIPE_PRICES.md, docs/content-delivery-system-flows.md, docs/DATABASE_SCHEMA.md, raw/sessions/2026-06-02-205607-qa-staging-supabase-planb.md]
 tags: [stripe, payments, escrow]
 ---
 
@@ -49,6 +49,16 @@ reused across escrow, sponsorship, and boost flows. On iOS this coexists with
 - `supabase/functions/_shared/platform-fee.ts` (default 5%)
 - `supabase/functions/_shared/cost-ledger.ts`
 
+## Staging (QA Gate)
+
+For the [[QA CI/CD Gate]], all Stripe keys on staging must stay on **one sandbox
+account** (`acct_1SkFixJi7lqzzhdM`, the same account as CLAUDE.md's publishable key):
+the publishable key (Vercel), `STRIPE_SECRET_KEY` (edge functions), and the webhook
+endpoint (`we_1Te30V…` → `STRIPE_WEBHOOK_SECRET`). Stripe **Sandboxes are isolated
+accounts with their own keys** — mixing a secret key from a different sandbox breaks
+every payment call and webhook signature. The `stripe-webhook` function must have
+`verify_jwt = false` (see [[Supabase]]) or Stripe's calls are rejected.
+
 ## Known Issues
 
 - [2026-05-23] False "not connected" banner on Business Dashboard — fixed
@@ -63,3 +73,5 @@ reused across escrow, sponsorship, and boost flows. On iOS this coexists with
 - [[Two-Path Boost Payment]]
 - [[Payments Split by Surface]]
 - [[DragonShare]]
+- [[QA Staging Supabase (Plan B) Session]]
+- [[QA CI/CD Gate]]

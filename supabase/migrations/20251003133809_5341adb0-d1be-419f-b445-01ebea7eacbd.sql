@@ -1,4 +1,8 @@
 -- Phase 1: Insert test brand profiles
+-- Guarded for clean-DB replay (staging): only seed test brands when users exist.
+DO $insert_test_brands$
+BEGIN
+IF (SELECT count(*) FROM auth.users) >= 2 THEN
 INSERT INTO public.business_profiles (
   user_id,
   business_name,
@@ -39,6 +43,9 @@ INSERT INTO public.business_profiles (
   'public'
 )
 ON CONFLICT (user_id) DO NOTHING;
+END IF;
+END
+$insert_test_brands$;
 
 -- Phase 4: Update conversations table for multi-party messaging
 ALTER TABLE public.conversations

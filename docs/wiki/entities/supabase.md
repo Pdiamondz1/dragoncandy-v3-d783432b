@@ -2,8 +2,8 @@
 title: Supabase
 type: entity
 created: 2026-05-23
-updated: 2026-05-24
-sources: [docs/DATABASE_SCHEMA.md, .claude/handoffs/2026-05-04-232158-code-architecture-audit-remediation.md]
+updated: 2026-06-02
+sources: [docs/DATABASE_SCHEMA.md, .claude/handoffs/2026-05-04-232158-code-architecture-audit-remediation.md, raw/sessions/2026-06-02-205607-qa-staging-supabase-planb.md]
 tags: [supabase, database, auth, rls]
 ---
 
@@ -39,6 +39,23 @@ Realtime subscriptions, and Storage.
 - Route guards: ProtectedRoute, VerifiedRoute, BusinessRoute, BrandRoute
 - Session hint cleanup implemented May 2026
 
+## Staging Environment (QA Gate)
+
+A separate, fully isolated staging project (`dragoncandy-staging`, ref
+`mhffqrawgizhprbobcta`) backs the [[QA CI/CD Gate]], distinct from prod
+(`zocahiffooqdybdhguqv`). The Supabase MCP can reach both projects, so any write
+must pin the staging ref. Standing it up by replaying all 213 migrations surfaced
+[[Migration Replay Drift]]. Edge functions + function secrets must be deployed to
+staging **explicitly** (Lovable only ships the frontend). Webhook-receiver functions
+(`stripe-webhook`, `toast-redemption-webhook`, `toast-oauth-callback`) require
+`verify_jwt = false` in `config.toml` or external callers get 401'd.
+
+**Env-wiring caveat:** the Lovable-generated `src/integrations/supabase/client.ts`
+hardcoded the prod URL/anon key and ignored `VITE_SUPABASE_URL`, so a staging build
+silently talked to prod (other callers already read the env var → split-brain). Fixed
+client.ts + 3 hardcoded callers to read `import.meta.env.VITE_SUPABASE_URL` with a prod
+fallback. `client.ts` is auto-generated, so re-check after any Lovable regeneration.
+
 ## Known Issues
 
 - RLS infinite recursion in some policies (active workstream)
@@ -49,6 +66,9 @@ Realtime subscriptions, and Storage.
 - [[DragonCandy Platform]]
 - [[TypeScript Patterns]]
 - [[Error Handling Patterns]]
+- [[QA CI/CD Gate]]
+- [[Migration Replay Drift]]
+- [[QA Staging Supabase (Plan B) Session]]
 - [[Code Architecture Audit Session]]
 - [[Realtime Edge Cases Session]]
 - [[Counter-Offer Enum Fix Session]]

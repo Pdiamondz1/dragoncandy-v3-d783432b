@@ -2,8 +2,16 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-export const SUPABASE_URL = "https://zocahiffooqdybdhguqv.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpvY2FoaWZmb29xZHliZGhndXF2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk5NzgzMzQsImV4cCI6MjA2NTU1NDMzNH0.bGhT6ft_zTbw-9v2Typi0wxzlfStg3sGiuPOor8Wfz8";
+// Source the Supabase project from env (VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY)
+// so non-prod surfaces — e.g. the Vercel staging preview for the QA/CI-CD gate —
+// point at their own isolated backend. Falls back to the prod project when the env
+// vars are unset (Lovable's prod build sets them, so prod is unaffected). This keeps
+// client.ts consistent with the edge-function callers that already read these vars.
+export const SUPABASE_URL =
+  import.meta.env.VITE_SUPABASE_URL || "https://zocahiffooqdybdhguqv.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY =
+  import.meta.env.VITE_SUPABASE_ANON_KEY ||
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpvY2FoaWZmb29xZHliZGhndXF2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk5NzgzMzQsImV4cCI6MjA2NTU1NDMzNH0.bGhT6ft_zTbw-9v2Typi0wxzlfStg3sGiuPOor8Wfz8";
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";

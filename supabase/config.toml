@@ -86,3 +86,13 @@ verify_jwt = false
 
 [functions.auto-approve-content]
 verify_jwt = false
+
+# Webhook/redirect receivers called by external services (no Supabase JWT) — must skip JWT verification.
+[functions.stripe-webhook]
+verify_jwt = false
+
+[functions.toast-redemption-webhook]
+verify_jwt = false
+
+[functions.toast-oauth-callback]
+verify_jwt = false
