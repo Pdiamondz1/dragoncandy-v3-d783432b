@@ -1,9 +1,11 @@
 import React, { useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { RefreshCw, X } from 'lucide-react';
+import { RefreshCw, X, AlertCircle } from 'lucide-react';
 import { useAccounts, ConnectAccountButtonGroup, type SocialNetwork } from '@outstand-so/ui';
 import { DragonCandyOutstandProvider, useOutstandConfig, OUTSTAND_PROXY_BASE_URL } from '@/integrations/outstand/Provider';
 import { useOutstandPaths } from '@/hooks/outstand/useOutstandPaths';
+import { useReconnectNeeded } from '@/hooks/outstand/useReconnectNeeded';
+import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -36,6 +38,8 @@ const ConnectedAccountsListInner: React.FC<ConnectedAccountsListProps> = ({ role
   const { accounts, isLoading } = useAccounts({ apiKey, baseUrl, limit: 100 });
   const redirectUri = `${window.location.origin}${oauthCallback}`;
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const { data: reconnectNeeded = [] } = useReconnectNeeded(user?.id);
 
   const [dialogState, setDialogState] = useState<{
     open: boolean;
@@ -113,6 +117,55 @@ const ConnectedAccountsListInner: React.FC<ConnectedAccountsListProps> = ({ role
 
   return (
     <div className="space-y-4">
+      {reconnectNeeded.length > 0 && (
+        <div className="rounded-2xl border-2 border-dc-pink-accent/60 bg-dc-pink/15 p-4 space-y-3">
+          <div className="flex items-start gap-2.5">
+            <AlertCircle className="h-4 w-4 text-dc-pink-accent mt-0.5 shrink-0" />
+            <div>
+              <div className="text-[12px] font-bold text-dc-text">Reconnect needed</div>
+              <div className="text-[11px] text-dc-text-muted">
+                {reconnectNeeded.length === 1 ? 'An account was' : 'Some accounts were'}{' '}
+                disconnected by the provider. Reconnect to resume posting and analytics.
+              </div>
+            </div>
+          </div>
+          <div className="space-y-2">
+            {reconnectNeeded.map(({ platform, platformHandle }) => {
+              const meta = PLATFORMS.find((p) => p.network === platform);
+              const label = meta?.label ?? platform;
+              return (
+                <div key={platform} className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2.5">
+                    <div
+                      className={`w-7 h-7 ${meta?.color ?? 'bg-dc-pink-accent'} rounded-lg flex items-center justify-center text-white text-[10px] font-bold`}
+                    >
+                      {label.slice(0, 2).toUpperCase()}
+                    </div>
+                    <div className="text-[11px] font-semibold text-dc-text">
+                      {platformHandle ?? label}
+                    </div>
+                  </div>
+                  <ConnectAccountButtonGroup
+                    networks={[platform as SocialNetwork]}
+                    redirectUri={redirectUri}
+                    apiKey={apiKey}
+                    baseUrl={baseUrl}
+                    variant="default"
+                    layout="vertical"
+                    onSuccess={(_network, authUrl) => {
+                      sessionStorage.setItem('outstand_pending_network', platform);
+                      window.location.href = authUrl;
+                    }}
+                    onError={(_network, error) => {
+                      toast.error(`Could not reconnect ${label}: ${error.message}`);
+                    }}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
       <div className="text-[10px] font-semibold uppercase text-gray-400 tracking-wide">
         Connected Accounts
       </div>
