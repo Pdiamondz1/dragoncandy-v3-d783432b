@@ -1,0 +1,69 @@
+name: E2E (staging preview)
+
+# Runs the curated Playwright smoke suite against the Vercel PR preview once
+# it is live. Vercel posts a GitHub deployment_status per deploy; we react to
+# successful *Preview* deploys and test that exact URL (STAGING backend).
+#
+# NOTE: deployment_status workflows always run from the default branch (main),
+# so this file only takes effect after it is merged to main — it does not run
+# for its own introducing PR. workflow_dispatch is provided to validate against
+# a known preview URL manually.
+on:
+  deployment_status:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: Preview URL to run the smoke suite against
+        required: true
+
+concurrency:
+  group: e2e-${{ github.event.deployment_status.environment_url || github.event.inputs.base_url }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    # deployment_status: only successful Preview deploys (skip Production + non-success).
+    # workflow_dispatch: always.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.deployment_status.state == 'success' &&
+       contains(github.event.deployment_status.environment, 'Preview'))
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Test the code that matches the deployed commit.
+          ref: ${{ github.event.deployment.sha || github.sha }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - name: Install Playwright (chromium)
+        run: npx playwright install --with-deps chromium
+
+      - name: Run curated smoke suite
+        run: npm run test:e2e
+        env:
+          PLAYWRIGHT_BASE_URL: ${{ github.event.deployment_status.environment_url || github.event.inputs.base_url }}
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+          DC_RESTAURANT_EMAIL: ${{ secrets.DC_RESTAURANT_EMAIL }}
+          DC_RESTAURANT_PASSWORD: ${{ secrets.DC_RESTAURANT_PASSWORD }}
+          DC_CREATOR_EMAIL: ${{ secrets.DC_CREATOR_EMAIL }}
+          DC_CREATOR_PASSWORD: ${{ secrets.DC_CREATOR_PASSWORD }}
+          DC_BRAND_EMAIL: ${{ secrets.DC_BRAND_EMAIL }}
+          DC_BRAND_PASSWORD: ${{ secrets.DC_BRAND_PASSWORD }}
+
+      - name: Upload Playwright report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            tests/e2e/playwright/results/
+          retention-days: 7
+          if-no-files-found: ignore

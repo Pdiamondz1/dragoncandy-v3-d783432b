@@ -1,4 +1,4 @@
-import { test as setup, expect } from '@playwright/test';
+import { test as setup } from '@playwright/test';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -41,7 +41,10 @@ for (const [role, creds] of Object.entries(accounts)) {
     await page.locator('#password').fill(creds.password);
     await page.locator('button:has-text("Login")').click();
 
-    await expect(page).toHaveURL(/dashboard/, { timeout: 30_000 });
+    // Login succeeds when we leave /auth. Freshly-seeded accounts may land on
+    // profile-completion (/profile/*) before the dashboard, so don't assert a
+    // specific destination — just that an authenticated route was reached.
+    await page.waitForURL((url) => !url.pathname.startsWith('/auth'), { timeout: 30_000 });
 
     await page.context().storageState({ path: creds.file });
   });
