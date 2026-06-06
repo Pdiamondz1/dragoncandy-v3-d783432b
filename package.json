@@ -16,6 +16,7 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit -p tsconfig.app.json",
     "docs:scale": "node scripts/update-scale-numbers.mjs",
+    "preview:url": "node scripts/preview-url.mjs",
     "audit:agent": "npx tsx scripts/managed-agent-audit.ts",
     "test:e2e": "npx playwright test --project=chromium",
     "test:e2e:auth": "npx playwright test auth.setup --project=chromium",
