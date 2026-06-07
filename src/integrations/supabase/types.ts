@@ -5057,6 +5057,7 @@ export type Database = {
             }
             Returns: Json
           }
+      block_user: { Args: { p_blocked_id: string }; Returns: undefined }
       can_create_application: {
         Args: { p_campaign_id: string; p_creator_id: string }
         Returns: boolean
@@ -5198,12 +5199,14 @@ export type Database = {
         }
         Returns: undefined
       }
+      is_blocked: { Args: { user_a: string; user_b: string }; Returns: boolean }
       is_conversation_participant: {
         Args: { conversation_uuid: string; user_uuid: string }
         Returns: boolean
       }
       is_org_owner_or_admin: { Args: { p_org_id: string }; Returns: boolean }
       is_platform_admin: { Args: never; Returns: boolean }
+      is_user_blocked: { Args: { p_other_id: string }; Returns: boolean }
       match_donny_knowledge: {
         Args: { match_count?: number; query_embedding: string }
         Returns: {
@@ -5213,9 +5216,18 @@ export type Database = {
           similarity: number
         }[]
       }
+      report_user: {
+        Args: {
+          p_conversation_id?: string
+          p_reason?: string
+          p_reported_id: string
+        }
+        Returns: undefined
+      }
       request_org_deletion: { Args: { p_org_id: string }; Returns: undefined }
       restore_org: { Args: { p_org_id: string }; Returns: undefined }
       set_user_offline: { Args: { p_user_id: string }; Returns: undefined }
+      unblock_user: { Args: { p_blocked_id: string }; Returns: undefined }
       user_in_conversation: {
         Args: { conversation_uuid: string; user_uuid: string }
         Returns: boolean
