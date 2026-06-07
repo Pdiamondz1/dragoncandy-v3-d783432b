@@ -46,4 +46,15 @@
 - [[Two-Path Boost Payment]](concepts/boost-payment-two-path.md) — Hosted checkout first, off-session repeat, idempotent fulfillment
 - [[TypeScript Patterns]](concepts/typescript-patterns.md) — Strict mode, type safety, export conventions
 
+## Flow Diagrams
+
+- [[Feature Flows]](../flows/README.md) — Index + system map for all visual feature-flow docs
+- [[Campaign Lifecycle Flow]](../flows/campaign-lifecycle.md) — Create → apply → deliver → approve → download → auto-post (Mermaid)
+- [[DragonShare Flow]](../flows/dragonshare.md) — Upload → boost-or-pass → two-path payment → fulfillment → notify
+- [[Promotions / CGC Flow]](../flows/promotions-cgc.md) — Promotion → anonymous submission → approve → discount code → cross-post
+- [[Onboarding Flow]](../flows/onboarding.md) — Signup → role selection → wizard → first-run missions
+- [[Stripe Payments Flow]](../flows/stripe-payments.md) — Escrow, payout, sponsorship, boost, Connect, take-rate ladder
+- [[Creator Journey]](../flows/creator-journey.md) — Creator's cross-feature path
+- [[Restaurant Journey]](../flows/restaurant-journey.md) — Restaurant's cross-feature path
+
 ## Analyses

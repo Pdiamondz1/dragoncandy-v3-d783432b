@@ -51,6 +51,8 @@ Spec: account recovery after billing wipe (`docs/superpowers/...`, 2026-06).
 
 ## See Also
 
+- [[Campaign Lifecycle Flow]] — auto-posting path (approved content → Outstand)
+- [[DragonShare Flow]] — boost cross-posting via Outstand
 - [[DragonShare]]
 - [[Donny AI]]
 - [[DragonCandy Platform]]

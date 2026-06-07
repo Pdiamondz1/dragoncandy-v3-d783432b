@@ -3,6 +3,12 @@
 > Complete reference for the content delivery lifecycle across all three roles:
 > **Restaurant** (business owner), **Creator** (content creator), and **Brand** (sponsor).
 
+> 📊 **Visual diagrams:** see [`flows/campaign-lifecycle.md`](./flows/campaign-lifecycle.md)
+> for Mermaid renderings of these state machines, plus the **download** and
+> **auto-posting** paths this doc doesn't cover. This document remains the
+> authoritative prose reference; that page owns the visuals. Full flow index:
+> [`flows/README.md`](./flows/README.md).
+
 ---
 
 ## Roles Overview
