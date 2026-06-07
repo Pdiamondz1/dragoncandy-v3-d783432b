@@ -2,8 +2,8 @@
 title: Capacitor Native Shell
 type: entity
 created: 2026-06-01
-updated: 2026-06-01
-sources: [raw/sessions/2026-06-01-apple-app-store-capacitor-phase1.md, docs/superpowers/specs/2026-06-01-apple-app-store-design.md]
+updated: 2026-06-07
+sources: [raw/sessions/2026-06-01-apple-app-store-capacitor-phase1.md, raw/sessions/2026-06-07-core-docs-recent-updates-sync.md, docs/superpowers/specs/2026-06-01-apple-app-store-design.md]
 tags: [capacitor, ios, app-store, mobile, native]
 ---
 
@@ -26,14 +26,25 @@ changed.
 - CSP allows `capacitor://localhost` so the WebView bridge loads.
 - npm scripts `cap:sync` / `cap:open` / `cap:copy`; runbook at `docs/runbooks/capacitor-ios.md`.
 
+## Phase 2 — Native Value-Adds (started 2026-06)
+
+- **Camera / photo-library capture shipped** — the first native value-add. Native
+  capture UI for [[DragonShare]] uploads, iOS permission strings (camera + photo
+  library), and a `captureFromCamera` helper feeding a shared upload area. This
+  advances the camera-first North Star and the guideline-4.2 "more than a wrapper" bar.
+- **Privacy Policy + Terms of Service pages shipped** — clearing the hosted
+  privacy-policy/terms prerequisite below.
+- Still next: push + share plugins, then TestFlight → submission → review.
+
 ## Strategy
 
 - **One codebase, two surfaces** — avoids a second native app to maintain.
 - **Payments split by surface** — see [[Payments Split by Surface]]. Marketplace flows use
   [[Stripe Connect]] on both surfaces; subscriptions/credits are web-only to avoid Apple's
   30% cut.
-- **Guideline 4.2** — native value-adds (push/camera/share) planned for Phase 2, not a bare
-  wrapper. Push/camera also advance the camera-first North Star.
+- **Guideline 4.2** — native value-adds (push/camera/share) for Phase 2, not a bare
+  wrapper. **Camera shipped (2026-06)**; push/share still planned. Camera also advances
+  the camera-first North Star.
 - Route to store: TestFlight → submission → review → live.
 
 ## Key Decisions
@@ -56,3 +67,4 @@ changed.
 - [[DragonCandy Platform]]
 - [[Stripe Connect]]
 - [[Apple App Store Capacitor Phase 1 Session]]
+- [[Core Docs Recent Updates Sync Session]]
