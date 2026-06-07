@@ -3,8 +3,8 @@ title: Capacitor Native Shell
 type: entity
 created: 2026-06-01
 updated: 2026-06-07
-sources: [raw/sessions/2026-06-01-apple-app-store-capacitor-phase1.md, raw/sessions/2026-06-07-core-docs-recent-updates-sync.md, docs/superpowers/specs/2026-06-01-apple-app-store-design.md]
-tags: [capacitor, ios, app-store, mobile, native]
+sources: [raw/sessions/2026-06-01-apple-app-store-capacitor-phase1.md, raw/sessions/2026-06-07-core-docs-recent-updates-sync.md, raw/sessions/2026-06-07-weekly-sync.md, docs/superpowers/specs/2026-06-01-apple-app-store-design.md]
+tags: [capacitor, ios, app-store, mobile, native, privacy]
 ---
 
 # Capacitor Native Shell
@@ -26,15 +26,30 @@ changed.
 - CSP allows `capacitor://localhost` so the WebView bridge loads.
 - npm scripts `cap:sync` / `cap:open` / `cap:copy`; runbook at `docs/runbooks/capacitor-ios.md`.
 
-## Phase 2 — Native Value-Adds (started 2026-06)
+## Phase 2 — Native Value-Adds (in progress 2026-06)
 
-- **Camera / photo-library capture shipped** — the first native value-add. Native
-  capture UI for [[DragonShare]] uploads, iOS permission strings (camera + photo
-  library), and a `captureFromCamera` helper feeding a shared upload area. This
-  advances the camera-first North Star and the guideline-4.2 "more than a wrapper" bar.
-- **Privacy Policy + Terms of Service pages shipped** — clearing the hosted
-  privacy-policy/terms prerequisite below.
-- Still next: push + share plugins, then TestFlight → submission → review.
+Phase 2 is delivering native value-adds in named slices. Status:
+
+- **Slice B: Camera / photo-library capture — shipped.** Native capture UI for
+  [[DragonShare]] uploads, iOS permission strings (camera + photo library), and
+  a `captureFromCamera` helper feeding a shared upload area.
+- **Slice C: Native share sheet — shipped.** `@capacitor/share` added;
+  `shareOrCopyLink` helper (`src/lib/nativeShare.ts`) presents the iOS native
+  share sheet on native or falls back to clipboard on web. Targets only the
+  promotion "Copy Link" surfaces (`PromotionCard`, `PromotionDetailPage`).
+  Spec: `docs/superpowers/specs/2026-06-07-native-share-sheet-design.md`.
+- **Slice A: Push notifications — pending.**
+- **Slice D: Deep links — pending.**
+- **Next:** push + deep links, then TestFlight → submission → review.
+
+**Privacy Policy + Terms of Service pages shipped** — clearing the hosted
+privacy-policy/terms prerequisite below.
+
+**App Privacy data inventory (Phase 0) completed** —
+`docs/app-store/app-privacy-data-inventory.md` is the source of truth for the
+App Store Connect "nutrition label." Key findings: nothing used for tracking, ATT
+not required (first-party analytics only), ~13 data types collected, five founder
+decisions to confirm before submission.
 
 ## Strategy
 
@@ -60,6 +75,9 @@ changed.
 - Apple Developer account ($99/yr).
 - App Store Connect record, hosted privacy policy/terms/EULA, App Privacy labels, 1024px
   icon, per-device screenshots, three-role reviewer demo accounts.
+- **App Privacy label** — inventory complete (`docs/app-store/app-privacy-data-inventory.md`);
+  five founder decisions pending before submission (phone number handling, search-term
+  logging, diagnostics linkage, `privacy@dragoncandy.io` inbox, future-SDK re-audit).
 
 ## See Also
 
@@ -68,3 +86,4 @@ changed.
 - [[Stripe Connect]]
 - [[Apple App Store Capacitor Phase 1 Session]]
 - [[Core Docs Recent Updates Sync Session]]
+- [[Capacitor Phase 2 Share Sheet & App Privacy Sync Session]]

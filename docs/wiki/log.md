@@ -1,5 +1,19 @@
 # Wiki Log
 
+## [2026-06-07] ingest | Capacitor Phase 2 Share Sheet & App Privacy Inventory
+
+Captured work that landed concurrently with the previous June 7 sync and was not
+yet reflected in the wiki. Two shipped items plus a page-count correction.
+Pages created: [[Capacitor Phase 2 Share Sheet & App Privacy Sync Session]] (source).
+Pages updated: [[Capacitor Native Shell]] (Phase 2 share sheet shipped as Slice C,
+App Privacy inventory section added, prerequisites updated with five pending decisions,
+See Also link added); index.md (1 new entry).
+Core-doc corrections: `docs/PROJECT_CONTEXT.md` page count 60 → 63 (§4 codebase scale);
+Apple App Store workstream (§5) updated to reflect Slice C shipped, App Privacy inventory
+exists, push + deep links still pending.
+Carried forward: `campaign_status` enum still missing `in_progress` (see [[Counter-Offer Enum Fix Session]]).
+Five App Store submission decisions still pending (see [[Capacitor Native Shell]]).
+
 ## [2026-06-07] ingest | Core Docs Recent Updates Sync
 
 Synced core docs + wiki with codebase work that landed 2026-06-01 → 2026-06-06,

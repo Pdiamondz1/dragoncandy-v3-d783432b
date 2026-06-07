@@ -3,6 +3,7 @@
 ## Sources
 
 - [[Apple App Store Capacitor Phase 1 Session]](sources/apple-app-store-capacitor-phase1-session.md) — Capacitor iOS foundation: one codebase for web + iPhone, payments split by surface (2026-06-01)
+- [[Capacitor Phase 2 Share Sheet & App Privacy Sync Session]](sources/capacitor-phase2-share-sheet-sync-session.md) — Share sheet (Slice C) shipped, App Privacy inventory complete, page count corrected to 63 (2026-06-07)
 - [[Campaign Delivery, Scheduling & Notifications Session]](sources/campaign-delivery-scheduling-notifications-session.md) — Content-delivery stabilization, notification system, auto cross-scheduling, Donny strategist, revision sync (2026-06-01)
 - [[Code Architecture Audit Remediation]](sources/code-architecture-audit.md) — TypeScript strict mode, type safety, and codebase cleanup (2026-05-04)
 - [[Code Architecture Audit Session]](sources/code-architecture-audit-session.md) — Strict mode enablement, 158 unused imports, 34 type errors, Supabase type regeneration (2026-05-04)
@@ -13,6 +14,7 @@
 - [[Donny Audit Phase 1 Session]](sources/donny-audit-phase1-session.md) — Role-based tool filtering, prompt injection defense, tier-based token clamping (2026-05-06)
 - [[Donny Audit Phase 2 Session]](sources/donny-audit-phase2-session.md) — Quota enforcement, SSE streaming, dual auth, upgrade CTAs (2026-05-06)
 - [[DragonShare Amplification Engine Session]](sources/dragonshare-amplification-engine-session.md) — Upload-first submit, trust-then-flag, watermark, two-path boost payment, 80/20 split (2026-06-01)
+- [[Karpathy LLM Wiki Schema]](sources/karpathy-llm-wiki-schema.md) — Two-layer wiki architecture (raw + LLM-generated), four page types, three operations, seven principles (2026-05-24)
 - [[Project Context]](sources/project-context.md) — Project identity, strategy, and operating instructions (2026-05-23)
 - [[QA Staging Supabase (Plan B) Session]](sources/qa-staging-supabase-planb-session.md) — Isolated staging Supabase for the CI/CD gate; 213-migration replay, secrets, Stripe sandbox alignment (2026-06-02)
 - [[Realtime Edge Cases Session]](sources/realtime-edge-cases-session.md) — Race conditions, presence ghost state, keepalive, single-slot triggers (2026-05-06)

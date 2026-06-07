@@ -53,7 +53,7 @@ Supabase $45, OpenAI $25), Stripe in test mode. Production launch date TBD. The 
 delivery system stabilization that gated launch landed in late May 2026;
 remaining blockers are final bug resolution and payment-flow hardening.
 
-**Codebase scale** (as of 2026-06-07): 60 pages, 183 hooks, 73 edge functions.
+**Codebase scale** (as of 2026-06-07): 63 pages, 183 hooks, 73 edge functions.
 **Repo**: `C:\GIT\dragoncandy-v3-d783432b`
 **Active integrations**: Toast POS, Stripe Connect, Outstand.so (social media —
 Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
@@ -107,10 +107,14 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   iOS native project scaffold, `useNativePlatform` hook + platform-detection
   utility, CSP allowance for the `capacitor://` WebView scheme, and
   `cap:sync`/`cap:open`/`cap:copy` npm scripts (see iOS build & sync runbook).
-  **Phase 2 started:** native camera / photo-library capture for DragonShare
-  uploads is the first native value-add — capture UI, iOS permission strings
-  (camera + photo library), and a `captureFromCamera` helper feeding the
-  shared upload area. Next: push + share plugins, then TestFlight.
+  **Phase 2 in progress:** two native value-add slices shipped — camera
+  (Slice B: capture UI, iOS permission strings, `captureFromCamera` helper) and
+  native share sheet (Slice C: `@capacitor/share`, `shareOrCopyLink` helper,
+  promotion Copy Link surfaces). Push notifications (Slice A) and deep links
+  (Slice D) still pending. Next: push + deep links, then TestFlight.
+  **App Privacy data inventory (Phase 0) complete** —
+  `docs/app-store/app-privacy-data-inventory.md`; five founder decisions to
+  confirm before App Store submission.
   Spec: `docs/superpowers/specs/2026-06-01-apple-app-store-design.md`.
   Hard prerequisite: macOS/cloud-Mac build + Apple Developer account ($99/yr).
 - QA staging & CI-CD gate — a three-plan effort to stop prod-only testing.
