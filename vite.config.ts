@@ -52,7 +52,8 @@ export default defineConfig(({ mode }) => ({
   test: {
     globals: true,
     environment: 'node',
-    // Unit tests only — Playwright e2e specs live in tests/e2e and run via playwright.config.ts
-    exclude: [...configDefaults.exclude, 'tests/e2e/**'],
+    // Unit tests only — Playwright e2e specs live in tests/e2e and run via playwright.config.ts;
+    // supabase/** holds Deno edge functions (https:// imports) tested via `deno test`, not Vitest.
+    exclude: [...configDefaults.exclude, 'tests/e2e/**', 'supabase/**'],
   },
 }));
