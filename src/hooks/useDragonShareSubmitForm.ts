@@ -3,6 +3,7 @@ import { useState, useRef } from 'react';
 import { useSubmitDragonSharePost } from '@/hooks/useDragonShare';
 import { useDragonShareUpload } from '@/hooks/useDragonShareUpload';
 import { detectPlatformFromUrl } from '@/lib/detectPlatform';
+import { captureCameraPhoto } from '@/lib/nativeCamera';
 import { toast } from 'sonner';
 import type { ContentType } from '@/types/dragonshare';
 import type { RestaurantSearchResult } from '@/hooks/useRestaurantSearch';
@@ -35,16 +36,25 @@ export function useDragonShareSubmitForm() {
     setSelectedOrg(null);
   }
 
-  async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  async function ingestFile(file: File) {
     const url = await upload(file);
     if (url) {
       setUploadedUrl(url);
       setUploadedFileName(file.name);
       setUploadedFileType(file.type);
     }
+  }
+
+  async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    await ingestFile(file);
     if (fileInputRef.current) fileInputRef.current.value = '';
+  }
+
+  async function captureFromCamera() {
+    const file = await captureCameraPhoto();
+    if (file) await ingestFile(file);
   }
 
   function removeUpload() {
@@ -95,6 +105,7 @@ export function useDragonShareSubmitForm() {
     fileInputRef,
     // Actions
     handleFileSelect,
+    captureFromCamera,
     removeUpload,
     handleSubmit,
     reset,
