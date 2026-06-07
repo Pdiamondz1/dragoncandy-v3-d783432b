@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { format, isAfter, isBefore } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
+import { shareOrCopyLink } from '@/lib/nativeShare';
 import { useVideoUrl } from '@/hooks/useVideoUrl';
 import { SocialHandleChips } from '@/features/promotions/review/SubmissionRow';
 import { QRCodeCanvas } from 'qrcode.react';
@@ -290,10 +291,16 @@ const PromotionDetailPage: React.FC = () => {
 
   const copyLink = async () => {
     try {
-      await navigator.clipboard.writeText(promotionUrl);
-      setCopied(true);
-      toast({ title: 'Link copied!' });
-      setTimeout(() => setCopied(false), 2000);
+      const result = await shareOrCopyLink({
+        url: promotionUrl,
+        title: promotion.title,
+        text: `Check out this offer — ${discountDisplay}`,
+      });
+      if (result === 'copied') {
+        setCopied(true);
+        toast({ title: 'Link copied!' });
+        setTimeout(() => setCopied(false), 2000);
+      }
     } catch {
       toast({ title: 'Failed to copy', variant: 'destructive' });
     }
