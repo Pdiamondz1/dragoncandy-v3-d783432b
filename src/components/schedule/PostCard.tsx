@@ -63,13 +63,25 @@ export function PostCard({
 }: PostCardProps) {
   const isEven = index % 2 === 0;
   const isPublished = post.status === 'published';
+  const isFailed = post.status === 'failed';
+  const isTerminal = isPublished || isFailed;
+  const firstError = (() => {
+    const r = (post.metadata as Record<string, unknown> | null)?.publish_result;
+    if (Array.isArray(r)) {
+      const withErr = r.find((x) => x && typeof x === 'object' && 'error' in x) as
+        | { error?: string }
+        | undefined;
+      return withErr?.error ?? null;
+    }
+    return null;
+  })();
 
   return (
     <div
       className={cn(
         'bg-white rounded-2xl p-4 border-l-4',
         isEven ? 'border-dc-teal' : 'border-dc-pink',
-        isPublished && 'opacity-60'
+        isTerminal && 'opacity-60'
       )}
     >
       {/* Top row: sequence badge + date */}
@@ -89,6 +101,11 @@ export function PostCard({
           {isPublished && (
             <span className="text-[10px] font-semibold text-green-600 bg-green-100 rounded-full px-2 py-0.5 flex items-center gap-1">
               ✓ Published
+            </span>
+          )}
+          {isFailed && (
+            <span className="text-[10px] font-semibold text-red-600 bg-red-100 rounded-full px-2 py-0.5 flex items-center gap-1">
+              ✕ Failed
             </span>
           )}
           <span className="text-xs text-gray-400">{formatScheduledDate(post.scheduled_at)}</span>
@@ -115,8 +132,13 @@ export function PostCard({
         <p className="text-xs text-dc-text-muted line-clamp-2 mt-1">{post.caption}</p>
       )}
 
+      {/* Failure reason */}
+      {isFailed && firstError && (
+        <p className="text-xs text-red-600 mt-1">{firstError}</p>
+      )}
+
       {/* Action row */}
-      {!isPublished && (
+      {!isTerminal && (
         <div className="flex gap-2 mt-3">
           <button
             type="button"
