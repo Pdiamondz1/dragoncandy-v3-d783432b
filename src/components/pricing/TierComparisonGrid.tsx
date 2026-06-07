@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Check, Minus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
+import { WebOnly } from '@/components/platform/WebOnly';
 import {
   TIER_FEATURES,
   TIER_PRICES,
@@ -117,16 +118,18 @@ export function TierComparisonGrid({ highlightTier, onSelectTier }: TierComparis
             {(() => { const note = seatNote(tier); return note ? <p className="mt-3 text-xs text-gray-500">{note}</p> : null; })()}
 
             {/* CTA */}
-            <Button
-              onClick={() => onSelectTier?.(tier)}
-              className={`mt-6 w-full rounded-full font-semibold ${
-                tier === 'free' && !isHighlighted(tier)
-                  ? 'bg-white border border-gray-300 text-gray-800 hover:bg-gray-50'
-                  : 'bg-teal-500 hover:bg-teal-600 text-white'
-              }`}
-            >
-              {ctaLabel(tier)}
-            </Button>
+            <WebOnly>
+              <Button
+                onClick={() => onSelectTier?.(tier)}
+                className={`mt-6 w-full rounded-full font-semibold ${
+                  tier === 'free' && !isHighlighted(tier)
+                    ? 'bg-white border border-gray-300 text-gray-800 hover:bg-gray-50'
+                    : 'bg-teal-500 hover:bg-teal-600 text-white'
+                }`}
+              >
+                {ctaLabel(tier)}
+              </Button>
+            </WebOnly>
 
             {/* Feature list */}
             <ul className="mt-6 flex flex-col gap-3">

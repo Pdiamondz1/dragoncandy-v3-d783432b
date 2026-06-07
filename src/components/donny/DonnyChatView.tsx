@@ -7,6 +7,7 @@ import { DonnyTypingIndicator } from './DonnyTypingIndicator';
 import { DonnyQuickChips } from './DonnyQuickChips';
 import { DonnyAvatar } from './DonnyAvatar';
 import { useDonnyContext } from '@/contexts/DonnyProvider';
+import { WebOnly } from '@/components/platform/WebOnly';
 
 export function DonnyChatView() {
   const {
@@ -82,10 +83,12 @@ export function DonnyChatView() {
             <p className="text-xs text-red-600">{error}</p>
             <div className="flex gap-2 mt-1.5">
               {error.includes('Upgrade') && (
-                <Link to="/settings/billing"
-                  className="text-xs text-dc-teal font-semibold">
-                  Upgrade Plan
-                </Link>
+                <WebOnly>
+                  <Link to="/settings/billing"
+                    className="text-xs text-dc-teal font-semibold">
+                    Upgrade Plan
+                  </Link>
+                </WebOnly>
               )}
               {!error.includes('Upgrade') && (
                 <button type="button" onClick={retry}

@@ -3,6 +3,7 @@ import { LineChart, Sparkles, RefreshCw, Loader2 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { WebOnly } from '@/components/platform/WebOnly';
 
 interface Insight {
   title: string;
@@ -67,7 +68,7 @@ export const DonnyPerformanceInsights: React.FC = () => {
           <Sparkles className="h-4 w-4 text-gray-300" />
         </div>
         <h3 className="font-semibold text-sm text-gray-400">Performance Recommendations</h3>
-        <p className="text-xs text-gray-300 mt-1">Requires Starter plan or higher. <a href="/settings/billing" className="underline text-dc-teal">Upgrade</a></p>
+        <p className="text-xs text-gray-300 mt-1">Requires Starter plan or higher. <WebOnly><a href="/settings/billing" className="underline text-dc-teal">Upgrade</a></WebOnly></p>
       </div>
     );
   }
