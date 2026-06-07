@@ -31,9 +31,11 @@ flowchart LR
     S --> R2{Restaurant reviews}
     R2 -->|reject + reason| N1[Customer notified:<br/>rejected]
     R2 -->|approve| CODE[Generate discount code]
-    CODE --> N2[Customer notified:<br/>code via email/SMS]
+    CODE --> N2[Customer notified:<br/>code via email + SMS]
     CODE -.->|optional| X[Cross-post to social]
-    N2 --> RD[Customer redeems<br/>code in-store]
+    N2 --> RD{Redeem code}
+    RD -->|manual| RM[Restaurant verifies<br/>in VerifyCodesTab]
+    RD -->|automatic| RT[Toast POS webhook<br/>ORDER_PAID / DISCOUNT_APPLIED]
 ```
 
 ## Technical Flow
@@ -81,6 +83,22 @@ sequenceDiagram
     end
 ```
 
+`send-promotion-notification` sends email via **Resend** and SMS via **Twilio**
+(SMS fires only on approval, carrying the discount code).
+
+### Redemption (manual + Toast POS)
+
+A discount code can be redeemed two ways:
+
+- **Manual** — the restaurant verifies the code in `VerifyCodesTab`
+  (`usePromotions.redeemCode`), which sets `is_redeemed = true` and increments
+  `promotions.current_redemptions`.
+- **Automatic via Toast** — for restaurants that connected Toast (OAuth via
+  `toast-oauth-start` / `toast-oauth-callback`, discounts pushed by
+  `toast-discount-push`), the `toast-redemption-webhook` marks the code redeemed
+  when Toast emits `ORDER_PAID` / `DISCOUNT_APPLIED`. It is HMAC-verified and
+  idempotent via `toast_sync_events`.
+
 ## Reference
 
 ### Pages & Components
@@ -106,8 +124,11 @@ sequenceDiagram
 
 | Function | Path | Trigger |
 |----------|------|---------|
-| `send-promotion-notification` | `supabase/functions/send-promotion-notification/` | On approve / reject (email + SMS) |
+| `send-promotion-notification` | `supabase/functions/send-promotion-notification/` | On approve / reject — email (Resend) + SMS (Twilio) |
 | `fire-promotion-social-hook` | `supabase/functions/fire-promotion-social-hook/` | Cross-post an approved submission |
+| `toast-redemption-webhook` | `supabase/functions/toast-redemption-webhook/` | Toast `ORDER_PAID` / `DISCOUNT_APPLIED` → auto-redeem code |
+| `toast-oauth-start` / `toast-oauth-callback` | `supabase/functions/toast-oauth-*/` | Connect a restaurant's Toast account |
+| `toast-discount-push` | `supabase/functions/toast-discount-push/` | Push a discount to Toast |
 
 ### Tables & Status
 
@@ -115,16 +136,18 @@ sequenceDiagram
 |-------|------------------|-------------|
 | `promotions` | `status` | `active ↔ paused` (implicit `expired` past `end_date`) |
 | `promotion_submissions` | `status` | `pending → approved / rejected` (anonymous insert RLS) |
-| `discount_codes` | `is_redeemed` | `false → true` (increments `current_redemptions`) |
+| `discount_codes` | `is_redeemed` | `false → true` (manual or Toast webhook; increments `current_redemptions`) |
 | `donny_scheduled_posts` | `status` | `scheduled → published` (metadata `source: 'promotion'`) |
+| `toast_sync_events` | — | Idempotency log for Toast redemption webhooks |
 
 ## Known Gaps / TODOs
 
-- **Redemption is manual** — no POS/Toast webhook ties code redemption to actual
-  sales; verification is done in-app via `VerifyCodesTab`.
-- **No reopen** — once a submission is approved or rejected its status is terminal.
-- **SMS provider** — `send-promotion-notification` sends SMS; confirm the
-  provider/credentials before relying on SMS delivery in prod.
+- **One shot per customer** — once a submission is `approved` or `rejected` its
+  status is terminal (`status IN ('pending','approved','rejected')`) and a
+  `(promotion_id, customer_email)` unique index blocks re-submission, so a
+  customer effectively gets a single attempt per promotion (no reopen path).
+- **Toast is opt-in** — automatic redemption only applies to restaurants that
+  connected Toast; everyone else relies on manual verification in `VerifyCodesTab`.
 
 ## See Also
 

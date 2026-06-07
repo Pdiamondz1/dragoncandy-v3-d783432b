@@ -66,7 +66,12 @@ stateDiagram-v2
 ### Content delivery state machine
 
 `campaign_collaborations.content_status`. Auto-approval timer starts on
-`submitted` (Standard 48h / Expedited 24h / DragonRush 4h, each extendable once).
+`submitted`. Base window by delivery type: **Standard 48h · Expedited 24h ·
+DragonRush 4h**. The campaign owner may extend **once** (the `extend-review`
+function flips `review_extended` from `false` → `true`, only while status is
+`submitted`), adding **+24h / +24h / +2h** respectively — so the worst-case
+totals are 72h / 48h / 6h. `auto-approve-content` (cron) reads `review_extended`
+when computing expiry and auto-approves once the window elapses.
 
 ```mermaid
 stateDiagram-v2
@@ -205,15 +210,17 @@ Triggered **inside** `release-creator-payout` via the non-blocking
 - **`in_progress` enum gap (known):** the `campaign_status` enum is missing an
   `in_progress` value that ~11 source files reference. Add the enum value before
   it bites a live collaboration flow (tracked in `PROJECT_CONTEXT.md` §6).
-- **Outstand publish callbacks:** `confirm-posting-schedule` queues posts and
-  marks them `scheduled`; the mechanism that flips `scheduled → published`
-  (Outstand webhook vs. `outstand-reconcile` polling) was not fully traced —
-  confirm before documenting as authoritative.
-- **Dispute admin UI:** `resolve-dispute` exists, but the admin surface that
-  invokes it was not located during tracing.
-- **Auto-approval extension eligibility:** an `extend-review` path grants a
-  one-time extension; the exact eligibility rules live in code and aren't
-  restated here.
+- **Posts never reach `published` (confirmed gap):** `confirm-posting-schedule`
+  marks posts `scheduled`, but **nothing flips them to `published`**. There is no
+  Outstand webhook handler (the only webhook function is `stripe-webhook`), and
+  `outstand-reconcile` only reconciles `business_outstand_accounts` — it does not
+  poll post status. The `published`/`published_at` columns are defined but never
+  written, so rows stay `scheduled` indefinitely. Needs an Outstand webhook or a
+  status-polling cron.
+- **Disputes are backend-only (confirmed gap):** `resolve-dispute` is fully
+  implemented (outcomes `refund` / `partial_payment` / `approved`) but requires
+  the **service-role key** and has **no frontend caller**. `AdminRoute` exists but
+  is wired into zero routes, so no in-app admin surface can trigger it today.
 
 ## See Also
 

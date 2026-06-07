@@ -94,6 +94,12 @@ net_payout   = gross − platform_fee
 creator_net  = net_payout − Stripe fee (~2.9% + $0.30)
 ```
 
+**No Connect account yet?** The net is **not transferred** — it is added to
+`creator_profiles.pending_balance` via the `increment_pending_balance` RPC (same
+in `resolve-dispute`'s partial/approved outcomes). The creator later moves it out
+**manually** with `withdraw-pending-balance`; there is **no automatic flush** when
+they finish onboarding (see Known Gaps).
+
 ### DragonShare boost charge
 
 Two-path charge (saved card off-session, else hosted checkout that saves the
@@ -129,7 +135,9 @@ checkout-based charges.
 | `release-sponsorship-payout` | `supabase/functions/release-sponsorship-payout/` | Both confirm sponsorship completion |
 | `boost-payment` | `supabase/functions/boost-payment/` | DragonShare boost |
 | `create-creator-connect-account` | `supabase/functions/create-creator-connect-account/` | Connect onboarding for payouts |
-| `resolve-dispute` | `supabase/functions/resolve-dispute/` | Admin refund / partial / payout |
+| `check-creator-payout-status` | `supabase/functions/check-creator-payout-status/` | Read onboarding status; set `stripe_onboarding_complete` |
+| `withdraw-pending-balance` | `supabase/functions/withdraw-pending-balance/` | Creator manually withdraws accrued `pending_balance` |
+| `resolve-dispute` | `supabase/functions/resolve-dispute/` | Refund / partial / payout (service-role only — see gaps) |
 | `stripe-webhook` | `supabase/functions/stripe-webhook/` | Async Stripe event reconciliation |
 
 Shared helpers: `_shared/platform-fee.ts` (`getOrgTakeRate`, `calculatePlatformFee`),
@@ -144,18 +152,21 @@ Shared helpers: `_shared/platform-fee.ts` (`getOrgTakeRate`, `calculatePlatformF
 | `campaign_sponsorships` | `payment_status` / `status` | `… → paid`; `pending → accepted → completed` |
 | `dragonshare_boosts` | `status` | `pending → captured → transferred` (or `refunded` / `failed`) |
 | `dragonshare_payouts` | `status` | `pending → succeeded` (or `failed` / `reversed`) |
+| `creator_profiles` | `pending_balance` | Accrues when payout fires before Connect onboarding; drained by `withdraw-pending-balance` |
 | `payment_events` | — | Append-only ledger of all payment lifecycle events |
 | `stripe_webhook_events` | — | Raw inbound Stripe event log |
 | `rush_surcharge_log` | — | DragonDash rush surcharge records |
 
 ## Known Gaps / TODOs
 
-- **Pending-balance vs. instant transfer** — `release-creator-payout` can either
-  transfer to a connected account or hold a pending balance when the creator has
-  no Connect account yet; the reconciliation of pending balances on later Connect
-  onboarding wasn't fully traced.
-- **Dispute admin surface** — `resolve-dispute` exists; the admin UI invoking it
-  was not located.
+- **Pending balance never auto-flushes (confirmed gap).** When a payout fires
+  before the creator has a Connect account, the net lands in
+  `creator_profiles.pending_balance`. Neither `create-creator-connect-account` nor
+  `check-creator-payout-status` pays it out on completion — the creator must call
+  `withdraw-pending-balance` manually, so funds can sit indefinitely.
+- **Disputes are backend-only (confirmed gap).** `resolve-dispute` requires the
+  service-role key and has no frontend caller; `AdminRoute` exists but is wired
+  into zero routes. No in-app surface can trigger a dispute resolution today.
 - **Test mode only** — all keys are Stripe **test** keys; never switch to live
   without explicit approval.
 

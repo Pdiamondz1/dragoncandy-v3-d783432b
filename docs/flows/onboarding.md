@@ -112,14 +112,17 @@ None dedicated — RLS on `profiles` lets users update their own
 | Table | Field | Notes |
 |-------|-------|-------|
 | `profiles` | `first_run_missions` (JSONB) | Role-shaped; `completed_at` marks done |
-| `onboarding_steps` / `user_onboarding_progress` | — | Legacy/unused vs. the JSONB approach — see gaps |
+| `onboarding_steps` / `user_onboarding_progress` | — | **Dead code** — 0 references in `src/` or `supabase/functions/`; superseded by `first_run_missions` |
 
 ## Known Gaps / TODOs
 
-- **Legacy tables** — `onboarding_steps` and `user_onboarding_progress` exist but
-  the live flow uses `profiles.first_run_missions`. Confirm the legacy tables are
-  dead before relying on (or removing) them.
-- **No partial wizard save** — closing the wizard mid-step loses entered state.
+- **Legacy tables are dead** — `onboarding_steps` and `user_onboarding_progress`
+  have **0 references** in `src/` or `supabase/functions/` (they survive only in
+  generated Supabase types). The live flow is entirely `profiles.first_run_missions`.
+  Safe to drop once confirmed against any external/SQL consumers.
+- **No partial wizard save** — `OnboardingWizard` holds step state in in-memory
+  React `useState` only (no localStorage/DB); closing mid-wizard loses everything,
+  and the profile is upserted only on final submit.
 - **No mission auto-detection** — missions only advance when the UI explicitly
   calls `completeMission(key)`; an action done outside the expected surface may
   not tick its mission.

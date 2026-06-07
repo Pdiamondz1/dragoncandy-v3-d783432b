@@ -60,12 +60,17 @@ stateDiagram-v2
 
 ### Boost payment — two paths
 
-`boost-payment` validates the caller is an org owner/admin, creates a boost row,
-then charges. **Path depends on whether the org has a saved card:**
+`boost-payment` validates the caller is an org owner/admin and creates a boost
+row, then **checks the creator is payout-ready** (has a Stripe Connect account
+with onboarding complete). If not, the boost is **parked** without charging
+(`CREATOR_PAYOUT_NOT_READY`, HTTP 202, boost stays `pending`). Otherwise it
+charges — and the charge **path depends on whether the org has a saved card:**
 
 ```mermaid
 flowchart TD
-    A[boost-payment invoked] --> B{Org has<br/>saved card?}
+    A[boost-payment invoked] --> G{Creator payout-ready?<br/>Connect + onboarding}
+    G -->|no| P[Park boost: pending<br/>202 CREATOR_PAYOUT_NOT_READY]
+    G -->|yes| B{Org has<br/>saved card?}
     B -->|yes| C[Off-session PaymentIntent]
     C -->|succeeded| F[fulfillBoost:<br/>transfer 80% to creator Connect]
     C -->|SCA required / failed| H[Fall back to hosted checkout]
@@ -74,6 +79,10 @@ flowchart TD
     I -->|stripe-webhook| F
     F --> N[dragonshare-notify: boost_paid]
 ```
+
+`fulfillBoost` (`_shared/fulfill-boost.ts`) re-verifies Connect readiness, makes
+the transfer, and records a `dragonshare_payouts` row (`succeeded`); it throws if
+the creator still isn't onboarded.
 
 - Off-session success returns inline; checkout returns `{ checkout_url, boost_id }`
   and completes on the Stripe webhook.
@@ -125,7 +134,7 @@ inserts were retired). Each event fans out to the **bell notification**, a
 |----------|------|---------|
 | `boost-payment` | `supabase/functions/boost-payment/` | Restaurant boosts a post |
 | `dragonshare-notify` | `supabase/functions/dragonshare-notify/` | submit / boost / decline events |
-| `get-watermarked-preview` | `supabase/functions/get-watermarked-preview/` | Pre-payment watermarked media |
+| `get-watermarked-preview` | `supabase/functions/get-watermarked-preview/` | Signed URL for content, gated by boost/approval (watermark itself is client-side — see below) |
 | `fire-dragonshare-social-hook` | `supabase/functions/fire-dragonshare-social-hook/` | Cross-post after boost |
 
 ### Tables & Status
@@ -140,14 +149,20 @@ inserts were retired). Each event fans out to the **bell notification**, a
 > `content_file_path` on a post is a **public URL** — use it directly as an
 > `img`/`video` src; do not wrap it in `useSignedUrl`.
 
+> **The watermark is a client-side overlay**, not a generated asset.
+> `WatermarkedMedia` renders a repeating "DragonCandy • PREVIEW" CSS overlay when
+> `watermark={true}` (shown until a post is boosted; the creator sees their own
+> posts un-watermarked). `get-watermarked-preview` itself just returns a signed
+> URL and enforces download access by boost/approval status — it does not bake a
+> watermark into the media.
+
 ## Known Gaps / TODOs
 
-- **Watermark generation timing** — `get-watermarked-preview` produces the
-  pre-payment preview; whether watermarking is synchronous or pre-baked at upload
-  wasn't fully traced.
-- **Creator Connect prerequisite** — a creator needs a Stripe Connect account
-  (`create-creator-connect-account`) to receive payouts; the UI doesn't appear to
-  hard-block submission on this. Confirm the failure mode.
+- **Submission is not gated on creator Connect.** A creator can submit before
+  setting up payouts; readiness is enforced later at boost time (the boost parks
+  as `pending` if the creator isn't onboarded). A mechanism that **auto-retries a
+  parked boost** once the creator finishes Connect onboarding was not confirmed —
+  parked boosts may sit `pending` until manually retried.
 - **`dragonshare_engagement`** is schema-only (not populated) — engagement
   metrics are not yet wired.
 
