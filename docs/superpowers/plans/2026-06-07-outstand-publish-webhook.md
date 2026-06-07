@@ -285,6 +285,7 @@ serve(async (req: Request) => {
         const patch: Record<string, unknown> = {
           status: newStatus,
           metadata: { ...meta, publish_result: socialAccounts ?? null },
+          updated_at: new Date().toISOString(),
         };
         if (newStatus === "published") patch.published_at = publishedAt ?? new Date().toISOString();
         await supabase
@@ -309,7 +310,7 @@ serve(async (req: Request) => {
       if (accountId) {
         await supabase
           .from("business_outstand_accounts")
-          .update({ status: "error" })
+          .update({ status: "error", updated_at: new Date().toISOString() })
           .eq("outstand_social_account_id", accountId);
       }
       return json(200, { status: "processed", event });
@@ -358,20 +359,34 @@ git commit -m "feat(outstand-webhook): inbound handler + verify_jwt=false config
 
 Deploy `outstand-webhook` via Supabase MCP `deploy_edge_function` to ref `mhffqrawgizhprbobcta` (include the `_shared/outstand-webhook-lib.ts` import).
 
-- [ ] **Step 3: Smoke test with a signed request**
+- [ ] **Step 3: Insert a dedicated throwaway test row**
 
-Insert a throwaway scheduled row to target, then send a signed `post.published` for it. Compute the signature with the staging secret:
+Via `execute_sql` on staging, **INSERT** a new row (do not mutate a real one). Satisfy the NOT NULL / FK columns by reusing an existing staging `user_id` (the staging DB is a migration replay and may lack seed data — pick a real id first with `select id from auth.users limit 1;`):
+```sql
+insert into public.donny_scheduled_posts
+  (id, user_id, platform, content_type, scheduled_at, status, metadata)
+values
+  (gen_random_uuid(), '<existing-staging-user-id>', 'instagram', 'reel',
+   now(), 'scheduled', '{"outstand_post_id":"TEST_OS_ID"}'::jsonb)
+returning id;
+```
+Record the returned `id` for cleanup in Step 5.
+
+- [ ] **Step 4: Smoke test with a signed request**
+
+Export the staging secret in your shell first, then send a signed `post.published`:
 ```bash
+export OUTSTAND_WEBHOOK_SECRET='<the staging secret you set in Step 1>'
 BODY='{"event":"post.published","data":{"postId":"TEST_OS_ID","publishedAt":"2026-06-07T12:00:00Z","socialAccounts":[{"accountId":"a1","status":"published","platformPostId":"x"}]}}'
 SIG="sha256=$(printf '%s' "$BODY" | openssl dgst -sha256 -hmac "$OUTSTAND_WEBHOOK_SECRET" | sed 's/^.* //')"
-curl -s -X POST "https://mhffqrawgizhprbobcta.functions.supabase.co/outstand-webhook" \
+curl -s -X POST "https://mhffqrawgizhprbobcta.supabase.co/functions/v1/outstand-webhook" \
   -H "Content-Type: application/json" -H "X-Outstand-Signature: $SIG" --data "$BODY"
 ```
-Expected: `{"status":"no_match",...}` if no row has `metadata.outstand_post_id = "TEST_OS_ID"`. Seed one via `execute_sql` (set a row's `metadata` to `{"outstand_post_id":"TEST_OS_ID"}`, `status='scheduled'`), re-send, expect `{"status":"processed",...}`, then confirm the row is `published` with `published_at` set. Also send with a wrong signature → expect `401`.
+Expected: `{"status":"processed","event":"post.published","post_id":"TEST_OS_ID"}`. Confirm via `execute_sql` that the row is now `published` with `published_at` set and `metadata.publish_result` populated. Then re-send the **same** request → expect `{"status":"no_match",...}` (guarded — already published, safe no-op). Finally send with a wrong signature (`-H "X-Outstand-Signature: sha256=deadbeef"`) → expect `401`.
 
-- [ ] **Step 4: Clean up the throwaway row**
+- [ ] **Step 5: Clean up the throwaway row**
 
-Delete the seeded test row via `execute_sql`.
+Delete it by the id from Step 3: `delete from public.donny_scheduled_posts where id = '<id>';`
 
 ---
 
@@ -502,7 +517,7 @@ account tokens. See spec `docs/superpowers/specs/2026-06-07-outstand-publish-web
 2. **Deploy** — deploy the `outstand-webhook` function and apply the
    `outstand_webhook_events` migration to the project.
 3. **Register in Outstand** — outstand.so → Settings → Webhooks → Add Webhook:
-   - URL: `https://<project-ref>.functions.supabase.co/outstand-webhook`
+   - URL: `https://<project-ref>.supabase.co/functions/v1/outstand-webhook`
    - Events: `post.published`, `post.error`, `account.token_expired`
    - Signing secret: the same value as `OUTSTAND_WEBHOOK_SECRET`.
 
