@@ -14,6 +14,7 @@ import { Calendar, Gift, QrCode, Pause, Play, Copy, Check, MoreVertical, Pencil,
 import { format, isAfter, isBefore } from 'date-fns';
 import { Promotion } from '@/hooks/usePromotions';
 import { toast } from '@/hooks/use-toast';
+import { shareOrCopyLink } from '@/lib/nativeShare';
 import { SyncStatusBadge } from '@/features/promotions/components/SyncStatusBadge';
 import { useToastSyncStatus } from '@/features/promotions/hooks/useToastSyncStatus';
 import { RedemptionMetrics } from '@/features/promotions/components/RedemptionMetrics';
@@ -67,10 +68,17 @@ export const PromotionCard: React.FC<PromotionCardProps> = ({
 
   const copyLink = async () => {
     try {
-      await navigator.clipboard.writeText(promotionUrl);
-      setCopied(true);
-      toast({ title: "Link copied!", description: "Share this link with your customers" });
-      setTimeout(() => setCopied(false), 2000);
+      const result = await shareOrCopyLink({
+        url: promotionUrl,
+        title: promotion.title,
+        text: `Check out this offer — ${discountDisplay}`,
+      });
+      if (result === 'copied') {
+        setCopied(true);
+        toast({ title: "Link copied!", description: "Share this link with your customers" });
+        setTimeout(() => setCopied(false), 2000);
+      }
+      // 'shared' → native sheet handled feedback; no toast, no flash
     } catch {
       toast({ title: "Failed to copy", variant: "destructive" });
     }
