@@ -6,6 +6,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
+import { WebOnly } from '@/components/platform/WebOnly';
 
 export const DonnyAutoPilot: React.FC = () => {
   const { user, activeOrg } = useAuth();
@@ -53,7 +54,7 @@ export const DonnyAutoPilot: React.FC = () => {
             </div>
           </TooltipTrigger>
           <TooltipContent>
-            <p>Auto-Pilot requires Growth plan or higher. <a href="/settings/billing" className="underline text-dc-teal">Upgrade</a></p>
+            <p>Auto-Pilot requires Growth plan or higher. <WebOnly><a href="/settings/billing" className="underline text-dc-teal">Upgrade</a></WebOnly></p>
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>

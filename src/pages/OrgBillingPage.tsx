@@ -7,6 +7,7 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { WebOnly } from '@/components/platform/WebOnly';
 import { ResolvedAvatar } from '@/components/ui/resolved-avatar';
 import { useAuth } from '@/hooks/useAuth';
 import { useMyOrgRole } from '@/hooks/useOrgData';
@@ -73,10 +74,12 @@ export default function OrgBillingPage() {
               {activeOrg && <p className="text-sm text-muted-foreground">{activeOrg.name}</p>}
             </div>
             {isOwner && tier !== 'free' && (
-              <Button onClick={handleManageBilling} variant="outline" className="gap-2 rounded-full">
-                Manage billing
-                <ArrowUpRight className="h-4 w-4" />
-              </Button>
+              <WebOnly>
+                <Button onClick={handleManageBilling} variant="outline" className="gap-2 rounded-full">
+                  Manage billing
+                  <ArrowUpRight className="h-4 w-4" />
+                </Button>
+              </WebOnly>
             )}
           </div>
         </PageHeader>
@@ -119,28 +122,30 @@ export default function OrgBillingPage() {
                   <p className="text-xs text-teal-700 mt-1">
                     The free plan includes 1 seat. Upgrade to Starter ($149/mo) to invite up to 3 additional team members.
                   </p>
-                  <Button
-                    size="sm"
-                    disabled={upgrading}
-                    onClick={async () => {
-                      setUpgrading(true);
-                      try {
-                        const { data, error } = await supabase.functions.invoke('create-checkout-session', {
-                          body: { tier: 'starter', billing_period: 'monthly', org_id: activeOrg!.id },
-                        });
-                        if (error) throw error;
-                        if (data?.checkout_url) window.location.href = data.checkout_url;
-                      } catch (err: unknown) {
-                        const message = err instanceof Error ? err.message : String(err);
-                        toast({ title: 'Checkout failed', description: message, variant: 'destructive' });
-                      } finally {
-                        setUpgrading(false);
-                      }
-                    }}
-                    className="mt-3 rounded-full bg-teal-500 hover:bg-teal-600 text-white"
-                  >
-                    {upgrading ? 'Redirecting…' : 'Upgrade plan'}
-                  </Button>
+                  <WebOnly>
+                    <Button
+                      size="sm"
+                      disabled={upgrading}
+                      onClick={async () => {
+                        setUpgrading(true);
+                        try {
+                          const { data, error } = await supabase.functions.invoke('create-checkout-session', {
+                            body: { tier: 'starter', billing_period: 'monthly', org_id: activeOrg!.id },
+                          });
+                          if (error) throw error;
+                          if (data?.checkout_url) window.location.href = data.checkout_url;
+                        } catch (err: unknown) {
+                          const message = err instanceof Error ? err.message : String(err);
+                          toast({ title: 'Checkout failed', description: message, variant: 'destructive' });
+                        } finally {
+                          setUpgrading(false);
+                        }
+                      }}
+                      className="mt-3 rounded-full bg-teal-500 hover:bg-teal-600 text-white"
+                    >
+                      {upgrading ? 'Redirecting…' : 'Upgrade plan'}
+                    </Button>
+                  </WebOnly>
                 </div>
               </div>
             )}
