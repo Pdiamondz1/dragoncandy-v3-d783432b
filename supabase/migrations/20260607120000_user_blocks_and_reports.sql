@@ -89,6 +89,11 @@ GRANT EXECUTE ON FUNCTION public.report_user(uuid, uuid, text) TO authenticated;
 -- 5) Hide direct messages between blocked users. Recreate the ACTIVE policy
 --    "messages: select by participant" (from 20260506200000_security_messages_rls.sql),
 --    preserving its full predicate, wrapped with the block filter. Do NOT add a second policy.
+--    Prod-drift guard: 20260506200000 (which dropped this legacy policy and created the
+--    participant policy) never reached prod, so prod still had the pre-block legacy policy.
+--    Two permissive SELECT policies OR together and would defeat the block, so drop the
+--    legacy one too (no-op anywhere it was already removed, e.g. staging).
+DROP POLICY IF EXISTS "Users can view messages they sent or received" ON public.messages;
 DROP POLICY IF EXISTS "messages: select by participant" ON public.messages;
 CREATE POLICY "messages: select by participant"
   ON public.messages FOR SELECT
