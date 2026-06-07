@@ -83,6 +83,7 @@ A dedicated notifications layer sits on top of the engine:
 
 ## See Also
 
+- [[DragonShare Flow]] — visual end-to-end flow diagrams
 - [[Trust-Then-Flag Model]]
 - [[Two-Path Boost Payment]]
 - [[Stripe Connect]]

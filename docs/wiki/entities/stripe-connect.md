@@ -66,6 +66,7 @@ every payment call and webhook signature. The `stripe-webhook` function must hav
 
 ## See Also
 
+- [[Stripe Payments Flow]] — visual money-movement diagrams across all surfaces
 - [[Pricing Architecture]]
 - [[Take-Rate Ladder]]
 - [[DragonDash]]
