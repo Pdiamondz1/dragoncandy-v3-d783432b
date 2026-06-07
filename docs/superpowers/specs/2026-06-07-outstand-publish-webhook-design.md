@@ -104,22 +104,29 @@ Pattern mirrors `stripe-webhook` and `toast-redemption-webhook`.
    Web Crypto (`crypto.subtle`), hex-encode, constant-time compare to the header
    value (after stripping `sha256=`). Missing/invalid → `401`.
 4. Parse JSON; extract `event` + payload.
-5. **Idempotency**: for terminal events (`post.published`, `post.error`) insert a
-   row into `outstand_webhook_events` with `id = "<event>:<postId>"`. On unique
-   violation → return `200` (already processed). `account.token_expired` is
-   naturally idempotent (sets a state), so it skips the dedupe insert.
-6. Route:
+5. Route the event (all writes via the service-role client), using **guarded
+   updates** so any duplicate/out-of-order delivery is a safe no-op:
    - `post.published` → update `donny_scheduled_posts` where
-     `metadata->>outstand_post_id = postId`: `status='published'`,
-     `published_at = payload.publishedAt ?? now()`, merge `socialAccounts[]` into
-     `metadata.publish_result`. If 0 rows match → log + `200` (foreign post).
-   - `post.error` → same lookup: `status='failed'`, merge per-account errors into
+     `metadata->>outstand_post_id = postId` **AND `status <> 'published'`**:
+     set `status='published'`, `published_at = payload.publishedAt ?? now()`,
+     merge `socialAccounts[]` into `metadata.publish_result`. 0 rows matched →
+     log + `200` (foreign post, or already published).
+   - `post.error` → same lookup, also guarded `status <> 'published'` (never
+     downgrade a published row): `status='failed'`, merge per-account errors into
      `metadata.publish_result`.
    - `account.token_expired` → update `business_outstand_accounts` where
-     `outstand_social_account_id = accountId`: `status='error'` (the exact state
-     `outstand-reconcile` sets, which the reconnect-needed UI already reads).
+     `outstand_social_account_id = accountId` (expected to match **at most one**
+     row): `status='error'` (the exact state `outstand-reconcile` sets, which the
+     reconnect-needed UI already reads).
    - `import.*` / unknown → log + `200`.
-7. Use the service-role client for all writes. Respond `200` quickly.
+6. **Idempotency / audit**: *after* a successful write, insert a row into
+   `outstand_webhook_events` keyed `id = "<event>:<postId>"`, ignoring a
+   unique-violation. Recording **after** the write (not before) ensures a
+   transient write failure lets Outstand's retry succeed rather than being
+   short-circuited as "already processed"; the guarded updates in step 5 make a
+   genuine duplicate a no-op regardless. `account.token_expired` skips this insert
+   (it is naturally idempotent).
+7. Respond `200` quickly.
 
 Signature helper may live inline or in `_shared/outstand-signature.ts` (small,
 single-purpose) — decided at implementation.
@@ -183,11 +190,9 @@ No change needed to `ScheduleReviewScreen`'s `allScheduled` logic.
 - **Partial success** (`post.published` with some failed accounts) → `published`
   + per-account detail in `metadata.publish_result` (no separate status; CHECK
   constraint allows only draft/scheduled/publishing/published/failed/cancelled).
-- **Out-of-order delivery** — terminal events only; a late `post.error` after a
-  `post.published` is blocked by the `published` idempotency key not existing for
-  error, but the row is already `published`. Mitigation: only downgrade
-  `scheduled`→terminal; never overwrite an existing `published` with `failed`
-  (guard the update with `.eq('status','scheduled')` or `.neq('status','published')`).
+- **Out-of-order delivery** — both terminal updates are guarded with
+  `status <> 'published'`, so an existing `published` row is never overwritten
+  (e.g. a late `post.error` after a partial-success `post.published` is ignored).
 
 ## 6. Security
 
