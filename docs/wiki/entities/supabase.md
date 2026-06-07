@@ -2,8 +2,8 @@
 title: Supabase
 type: entity
 created: 2026-05-23
-updated: 2026-06-02
-sources: [docs/DATABASE_SCHEMA.md, .claude/handoffs/2026-05-04-232158-code-architecture-audit-remediation.md, raw/sessions/2026-06-02-205607-qa-staging-supabase-planb.md]
+updated: 2026-06-07
+sources: [docs/DATABASE_SCHEMA.md, .claude/handoffs/2026-05-04-232158-code-architecture-audit-remediation.md, raw/sessions/2026-06-02-205607-qa-staging-supabase-planb.md, raw/sessions/2026-06-07-core-docs-recent-updates-sync.md]
 tags: [supabase, database, auth, rls]
 ---
 
@@ -18,7 +18,7 @@ Realtime subscriptions, and Storage.
 - Always use `.select()` with explicit field lists — no `select *`
 - All tables have Row Level Security (RLS) — assume it
 - Type-safe queries via `Database['public']['Tables']['x']['Row']`
-- 70+ tables, 71 Deno edge functions, shared utils in `_shared/`
+- 70+ tables, 73 Deno edge functions, shared utils in `_shared/`
 - Realtime used for `messages`, `user_presence`, and (since the 2026-05 notification
   system) `push_notifications` + campaign tables for dashboard refresh
 - Security-definer RPCs are the standard way to read across RLS boundaries — e.g.
@@ -74,3 +74,4 @@ fallback. `client.ts` is auto-generated, so re-check after any Lovable regenerat
 - [[Counter-Offer Enum Fix Session]]
 - [[Campaign Delivery, Scheduling & Notifications Session]]
 - [[DragonShare Amplification Engine Session]]
+- [[Core Docs Recent Updates Sync Session]]

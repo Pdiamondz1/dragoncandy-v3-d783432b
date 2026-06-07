@@ -2,8 +2,8 @@
 title: QA CI/CD Gate
 type: concept
 created: 2026-06-02
-updated: 2026-06-02
-sources: [docs/superpowers/specs/2026-06-01-qa-staging-cicd-design.md, raw/sessions/2026-06-02-205607-qa-staging-supabase-planb.md]
+updated: 2026-06-07
+sources: [docs/superpowers/specs/2026-06-01-qa-staging-cicd-design.md, raw/sessions/2026-06-02-205607-qa-staging-supabase-planb.md, raw/sessions/2026-06-07-core-docs-recent-updates-sync.md]
 tags: [ci-cd, staging, testing, deployment]
 ---
 
@@ -34,8 +34,12 @@ PR to main → CI gate (install · build · typecheck · lint · unit tests)
 - **Plan B — Staging environment** (this session): a separate, isolated staging
   [[Supabase]] project (migrations + functions + secrets), Vercel per-PR previews,
   env wiring, CSP parity. See [[QA Staging Supabase (Plan B) Session]].
-- **Plan C — e2e on staging** (next): parametrize Playwright `baseURL`, triage the
-  suite (move `debug-*` specs to a non-gating folder), add the e2e CI job, update branch protection.
+- **Plan C — e2e on staging** (shipped): a curated Playwright e2e smoke gate now runs
+  against staging previews, with auth + smoke hardened to be robust against a
+  freshly-seeded staging DB. An end-to-end QA staging/CI-CD gate **runbook** was added,
+  plus a preview-url helper + feature-change workflow doc. The Plan B env-wiring fix
+  (`VITE_SUPABASE_URL`) was carried to the `VerifyEmail` catch-branch fallback. All three
+  plans (A/B/C) are now in place.
 
 ## Key Decisions
 
@@ -55,3 +59,4 @@ PR to main → CI gate (install · build · typecheck · lint · unit tests)
 - [[Migration Replay Drift]]
 - [[Supabase]]
 - [[Musk's Algorithm]]
+- [[Core Docs Recent Updates Sync Session]]

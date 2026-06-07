@@ -2,8 +2,8 @@
 title: DragonShare
 type: entity
 created: 2026-06-01
-updated: 2026-06-01
-sources: [raw/sessions/2026-06-01-dragonshare-amplification-engine.md, docs/PROJECT_CONTEXT.md, docs/DATABASE_SCHEMA.md]
+updated: 2026-06-07
+sources: [raw/sessions/2026-06-01-dragonshare-amplification-engine.md, raw/sessions/2026-06-07-core-docs-recent-updates-sync.md, docs/PROJECT_CONTEXT.md, docs/DATABASE_SCHEMA.md]
 tags: [dragonshare, amplification, ugc, payments, social]
 ---
 
@@ -35,6 +35,24 @@ social channels via Outstand, paying the creator through [[Stripe Connect]] on a
 - Custom boost amount ($5–$500) on top of preset tiers.
 - Real photo/video-frame thumbnails across all four surfaces (`isVideoPost` helper).
 - Success confirmation dialog with "Share another".
+
+## Notifications & Activity (2026-06)
+
+A dedicated notifications layer sits on top of the engine:
+
+- **`dragonshare-notify` fanout edge function** is the single owner of DragonShare
+  notification delivery across three channels — in-app bell + email + Donny. Raw
+  `push_notifications` inserts were retired so all delivery routes through it.
+- DragonShare is its **own notification category** (split out of the generic
+  "content" category) with four DragonShare email templates, fired on three
+  lifecycle events: **submit, decline, and boost fulfillment**.
+- **Dashboard activity parity** — a dedicated DragonShare activity card on *both*
+  the creator and business dashboards, with events folded into each role's
+  recent-activity feed via an activity-derive helper + per-role activity hooks.
+  Whole-dollar formatting matches the rest of the app; business activity query
+  failures surface instead of failing silently.
+- **CGC submissions unblocked** — storage upload RLS fix + a missing
+  `social_handles` column; posting/download parity, real duration, atomic delete.
 
 ## Database Tables
 
@@ -70,4 +88,6 @@ social channels via Outstand, paying the creator through [[Stripe Connect]] on a
 - [[Stripe Connect]]
 - [[Data Flywheel]]
 - [[DragonDash]]
+- [[Outstand]]
 - [[DragonShare Amplification Engine Session]]
+- [[Core Docs Recent Updates Sync Session]]
