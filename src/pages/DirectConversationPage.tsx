@@ -2,13 +2,31 @@ import React from 'react';
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, MoreVertical } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { ConversationMessageThread } from '@/components/messages/ConversationMessageThread';
 import { useConversations } from '@/hooks/useConversations';
 import { supabase } from '@/integrations/supabase/client';
 import { CampaignConversationHeader } from '@/components/messaging/CampaignConversationHeader';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { useBlockUser, useUnblockUser, useIsUserBlocked } from '@/hooks/useUserBlocks';
+import { useReportUser } from '@/hooks/useReportUser';
 
 const DirectConversationPage: React.FC = () => {
   const { conversationId } = useParams<{ conversationId: string }>();
@@ -23,6 +41,38 @@ const DirectConversationPage: React.FC = () => {
   const userRole = user?.user_metadata?.role || 'business_client';
 
   const [otherParticipantId, setOtherParticipantId] = React.useState<string>("");
+  const [blockDialogOpen, setBlockDialogOpen] = React.useState(false);
+
+  const { data: isBlocked } = useIsUserBlocked(otherParticipantId || undefined);
+  const blockUser = useBlockUser();
+  const unblockUser = useUnblockUser();
+  const reportUser = useReportUser();
+
+  const goToMessagesList = React.useCallback(() => {
+    const role = userRole === 'content_creator' ? 'creator' : 'business';
+    navigate(`/dashboard/${role}/messages`);
+  }, [userRole, navigate]);
+
+  const handleConfirmBlock = () => {
+    if (!otherParticipantId) return;
+    if (isBlocked) {
+      unblockUser.mutate(otherParticipantId, {
+        onSuccess: () => setBlockDialogOpen(false),
+      });
+    } else {
+      blockUser.mutate(otherParticipantId, {
+        onSuccess: () => {
+          setBlockDialogOpen(false);
+          goToMessagesList();
+        },
+      });
+    }
+  };
+
+  const handleReport = () => {
+    if (!otherParticipantId) return;
+    reportUser.mutate({ reportedId: otherParticipantId, conversationId });
+  };
 
   React.useEffect(() => {
     if (conversationId && user) {
@@ -92,18 +142,64 @@ const DirectConversationPage: React.FC = () => {
             <p className="text-xs text-gray-500">Recently Active</p>
           </div>
 
-          {/* Right: View Profile link */}
-          <div className="flex-shrink-0">
+          {/* Right: View Profile link + kebab menu */}
+          <div className="flex-shrink-0 flex items-center gap-2">
             {otherParticipantId && (
-              <Link
-                to={`/profile/${otherParticipantId}`}
-                className="text-xs font-medium text-dc-teal hover:underline"
-              >
-                View Profile
-              </Link>
+              <>
+                <Link
+                  to={`/profile/${otherParticipantId}`}
+                  className="text-xs font-medium text-dc-teal hover:underline"
+                >
+                  View Profile
+                </Link>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-dc-teal hover:bg-dc-teal/12"
+                      aria-label="Conversation options"
+                    >
+                      <MoreVertical className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => setBlockDialogOpen(true)}>
+                      {isBlocked ? 'Unblock user' : 'Block user'}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleReport}>
+                      Report user
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </>
             )}
           </div>
         </div>
+
+        <AlertDialog open={blockDialogOpen} onOpenChange={setBlockDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                {isBlocked ? 'Unblock this user?' : 'Block this user?'}
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {isBlocked
+                  ? 'You will be able to send and receive messages with this user again.'
+                  : 'You will no longer exchange messages with this user. You can unblock them later.'}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel className="rounded-full">Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleConfirmBlock}
+                className="rounded-full bg-dc-teal-btn hover:bg-dc-teal-btn-hover text-white"
+              >
+                {isBlocked ? 'Unblock' : 'Block'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         {/* Campaign context banner */}
         {conversation?.campaign_id && (
