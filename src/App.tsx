@@ -90,6 +90,8 @@ const HelpBriefPage = lazy(() => import("./pages/help/promotions/HelpBriefPage")
 const HelpCenter = lazy(() => import("./pages/help/HelpCenter"));
 const HelpArticlePage = lazy(() => import("./pages/help/HelpArticlePage"));
 const PricingPage = lazy(() => import("./pages/PricingPage"));
+const PrivacyPolicy = lazy(() => import("./pages/legal/PrivacyPolicy"));
+const TermsOfService = lazy(() => import("./pages/legal/TermsOfService"));
 const ContentCalendar = lazy(() => import("./pages/ContentCalendar"));
 const NotificationsPage = lazy(() => import("./pages/NotificationsPage"));
 const HelpBriefDrawer = lazy(() => import("./features/donny/HelpBriefDrawer").then(m => ({ default: m.HelpBriefDrawer })));
@@ -161,6 +163,8 @@ function AnimatedRoutes() {
           <Route path="/help" element={<HelpCenter />} />
           <Route path="/help/:slug" element={<HelpArticlePage />} />
           <Route path="/pricing" element={<PricingPage />} />
+          <Route path="/privacy" element={<PrivacyPolicy />} />
+          <Route path="/terms" element={<TermsOfService />} />
 
           <Route path="/campaign/create" element={<CampaignCreator />} />
           <Route path="/auth/forgot" element={<ForgotPassword />} />

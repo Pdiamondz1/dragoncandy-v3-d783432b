@@ -9,7 +9,7 @@ import { BrandSection } from "@/components/landing/BrandSection";
 import { BottomCTA } from "@/components/landing/BottomCTA";
 import { BRAND_ROLE_ENABLED } from '@/lib/featureConfig';
 import { useAuth } from "@/hooks/useAuth";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { lazy, Suspense, useEffect } from "react";
 export default function LandingPage() {
   const { user, loading } = useAuth();
@@ -39,6 +39,23 @@ export default function LandingPage() {
           {BRAND_ROLE_ENABLED && <BrandSection />}
           <BottomCTA />
         </section>
+
+        <footer className="border-t border-dc-teal/15 py-8 mt-4">
+          <div className="flex flex-col items-center gap-3 text-sm">
+            <nav className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
+              <Link to="/privacy" className="text-dc-text-muted hover:text-dc-teal transition-colors">
+                Privacy Policy
+              </Link>
+              <Link to="/terms" className="text-dc-text-muted hover:text-dc-teal transition-colors">
+                Terms of Service
+              </Link>
+              <Link to="/help" className="text-dc-text-muted hover:text-dc-teal transition-colors">
+                Help Center
+              </Link>
+            </nav>
+            <p className="text-xs text-dc-text-muted">© 2026 DragonCandy. All rights reserved.</p>
+          </div>
+        </footer>
       </div>
     </div>
   );
