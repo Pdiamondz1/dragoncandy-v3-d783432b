@@ -2,8 +2,8 @@
 title: Donny AI
 type: entity
 created: 2026-05-23
-updated: 2026-05-24
-sources: [docs/PROJECT_CONTEXT.md, docs/DATABASE_SCHEMA.md, docs/STRIPE_PRICES.md]
+updated: 2026-06-07
+sources: [docs/PROJECT_CONTEXT.md, docs/DATABASE_SCHEMA.md, docs/STRIPE_PRICES.md, raw/sessions/2026-06-07-core-docs-recent-updates-sync.md]
 tags: [ai, donny, intelligence-layer]
 ---
 
@@ -15,7 +15,8 @@ Donny powers [[DragonDash]]; DragonDash sells.
 
 ## Architecture
 
-- Backend-only via 71 Deno edge functions
+- Backend-only via 73 Deno edge functions (one of them `dragonshare-notify`,
+  which routes DragonShare notifications through Donny among other channels)
 - Model routing: Claude Sonnet 4 + Haiku with cost routing matrix
 - Shared utils: `_shared/model-routing`, `_shared/cost-ledger`,
   `_shared/anthropic-fetch`
@@ -67,3 +68,4 @@ Donny powers [[DragonDash]]; DragonDash sells.
 - [[Donny Audit Phase 1 Session]]
 - [[Donny Audit Phase 2 Session]]
 - [[Campaign Delivery, Scheduling & Notifications Session]]
+- [[Outstand]]

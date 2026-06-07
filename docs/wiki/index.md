@@ -7,6 +7,7 @@
 - [[Code Architecture Audit Remediation]](sources/code-architecture-audit.md) — TypeScript strict mode, type safety, and codebase cleanup (2026-05-04)
 - [[Code Architecture Audit Session]](sources/code-architecture-audit-session.md) — Strict mode enablement, 158 unused imports, 34 type errors, Supabase type regeneration (2026-05-04)
 - [[Content Delivery System Flows]](sources/content-delivery-system-flows.md) — Complete content delivery lifecycle across all three roles (2026-05-23)
+- [[Core Docs Recent Updates Sync Session]](sources/core-docs-recent-updates-sync-session.md) — Post–June-2 sync: DragonShare notifications, iOS camera, legal pages, Outstand recovery, QA Plan C, scale → 73 functions (2026-06-07)
 - [[Counter-Offer Enum Fix Session]](sources/counter-offer-enum-fix-session.md) — Postgres enum cast bug, PL/pgSQL variable typing, missing campaign_status value (2026-05-21)
 - [[Database Schema]](sources/database-schema.md) — Supabase Postgres schema overview (2026-05-23)
 - [[Donny Audit Phase 1 Session]](sources/donny-audit-phase1-session.md) — Role-based tool filtering, prompt injection defense, tier-based token clamping (2026-05-06)
@@ -25,6 +26,7 @@
 - [[DragonCandy Platform]](entities/dragoncandy-platform.md) — AI-powered creator-restaurant marketplace
 - [[DragonDash]](entities/dragondash.md) — Premium rush content delivery, the profit engine
 - [[DragonShare]](entities/dragonshare.md) — Organic-content amplification engine, 80/20 boost payments
+- [[Outstand]](entities/outstand.md) — Social-posting bridge (Instagram, TikTok, YouTube); delegated posting, account recovery
 - [[Stripe Connect]](entities/stripe-connect.md) — Payment infrastructure, escrow, subscriptions, boosts (test mode)
 - [[Supabase]](entities/supabase.md) — Backend: Postgres, Auth, Edge Functions, Realtime, RLS
 

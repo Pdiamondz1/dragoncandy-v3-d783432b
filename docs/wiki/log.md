@@ -1,5 +1,21 @@
 # Wiki Log
 
+## [2026-06-07] ingest | Core Docs Recent Updates Sync
+
+Synced core docs + wiki with codebase work that landed 2026-06-01 → 2026-06-06,
+after the 2026-06-02 Plan B ingest. Corrected codebase scale to 60 pages / 183 hooks /
+**73 edge functions** (docs said 67/71). Captured six shipped workstreams: DragonShare
+notifications pipeline (`dragonshare-notify` fanout + dashboard activity parity), iOS
+camera capture (Capacitor Phase 2 begins), legal pages, Outstand account recovery + real
+profile photos, CGC submission unblock, and QA staging Plan C (e2e smoke gate).
+Pages created: [[Core Docs Recent Updates Sync Session]] (source); [[Outstand]] (entity — first dedicated page).
+Pages updated: [[DragonShare]] (notifications & activity section), [[Capacitor Native Shell]]
+(Phase 2 camera + legal pages), [[Donny AI]] (73 functions), [[Supabase]] (73 functions),
+[[DragonCandy Platform]] (scale 60/183/73 + Outstand link), [[QA CI/CD Gate]] (Plan C shipped);
+index.md (2 new entries). Also synced `CLAUDE.md` (67→73) and `PROJECT_CONTEXT.md`
+(scale, §5 workstreams, §6 enum triage, §10, live metrics).
+Carried forward: `campaign_status` enum still missing `in_progress` (see [[Counter-Offer Enum Fix Session]]).
+
 ## [2026-06-02] update | QA Staging — frontend env-wiring gap
 
 Post-verification finding folded into the QA staging pages: the app was hardwired to
