@@ -1,6 +1,7 @@
 import { useCallback, useEffect } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
+import { WebOnly } from '@/components/platform/WebOnly';
 import { getFeature, TIER_PRICES, type TierName } from '@/lib/pricing/tier-features';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -59,9 +60,11 @@ export function SoftPaywallSheet({ featureKey, open, onClose }: SoftPaywallSheet
           Starting at ${price?.monthly}/mo
         </p>
         <div className="flex flex-col gap-3 mt-6">
-          <Button onClick={handleUpgrade} className="w-full rounded-full bg-teal-500">
-            Upgrade to {requiredTier}
-          </Button>
+          <WebOnly>
+            <Button onClick={handleUpgrade} className="w-full rounded-full bg-teal-500">
+              Upgrade to {requiredTier}
+            </Button>
+          </WebOnly>
           <Button variant="outline" onClick={handleDismiss} className="w-full rounded-full">
             Maybe later
           </Button>

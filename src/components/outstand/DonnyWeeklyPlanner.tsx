@@ -3,6 +3,7 @@ import { CalendarRange, Sparkles, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
+import { WebOnly } from '@/components/platform/WebOnly';
 
 export const DonnyWeeklyPlanner: React.FC = () => {
   const { user, activeOrg } = useAuth();
@@ -39,7 +40,7 @@ export const DonnyWeeklyPlanner: React.FC = () => {
           <Sparkles className="h-4 w-4 text-gray-300" />
         </div>
         <h3 className="font-semibold text-sm text-gray-400">Weekly Content Plan</h3>
-        <p className="text-xs text-gray-300 mt-1">Requires Starter plan or higher. <a href="/settings/billing" className="underline text-dc-teal">Upgrade</a></p>
+        <p className="text-xs text-gray-300 mt-1">Requires Starter plan or higher. <WebOnly><a href="/settings/billing" className="underline text-dc-teal">Upgrade</a></WebOnly></p>
       </div>
     );
   }
