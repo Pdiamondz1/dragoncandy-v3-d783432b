@@ -140,10 +140,14 @@ boundaries (see `.claude/handoffs/`).
 - Toast partnership application (6–12 month timeline).
 - Trademark filings: DragonCandy, Donny AI, DragonDash (Classes 35 & 42).
 - Provisional patents: campaign-from-URL system, AI-scored matching pipeline.
-- Schema triage (known gap): the `campaign_status` enum is missing an
-  `in_progress` value that ~11 source files already reference (surfaced during
-  the May counter-offer enum fix). Add the enum value before it bites a live
-  collaboration flow.
+- Schema triage (resolved 2026-06-07): the `campaign_status` enum lacks
+  `in_progress`, but a code + DB audit confirmed **no code or trigger writes
+  `in_progress` to either enum column** (`campaigns.status` /
+  `campaign_collaborations.status`); every `in_progress` reference targets the
+  `text` columns `content_status` / `posting_schedule_status`. Prod logs no
+  longer show the `invalid input value for enum campaign_status` error — the
+  original offending write was already re-routed to `content_status`. No enum
+  change needed.
 
 ## 7. Key Principles & Learnings
 
