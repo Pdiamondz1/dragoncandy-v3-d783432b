@@ -146,6 +146,10 @@ Triggered **inside** `release-creator-payout` via the non-blocking
 5. The restaurant reviews/edits drafts, then `confirm-posting-schedule` queues
    each post to Outstand through `outstand-proxy` and flips its status to
    `scheduled`. Outstand publishes at `scheduled_at`.
+6. When Outstand publishes (or fails), it calls the `outstand-webhook` edge
+   function (`post.published` / `post.error`), which advances the row to
+   `published` (with `published_at`) or `failed`. `account.token_expired` events
+   mark the connected account for reconnect.
 
 ## Reference
 
@@ -203,20 +207,13 @@ Triggered **inside** `release-creator-payout` via the non-blocking
 | `application_counter_offers` | — | Negotiation records |
 | `campaign_collaborations` | `content_status` | see content-delivery state machine above |
 | `file_uploads` | `upload_status` | `… → completed` (`file_category = 'deliverable'`) |
-| `donny_scheduled_posts` | `status` | `draft → scheduled → published / failed` |
+| `donny_scheduled_posts` | `status` | `draft → scheduled → published / failed` (terminal set by `outstand-webhook`) |
 
 ## Known Gaps / TODOs
 
 - **`in_progress` enum gap (known):** the `campaign_status` enum is missing an
   `in_progress` value that ~11 source files reference. Add the enum value before
   it bites a live collaboration flow (tracked in `PROJECT_CONTEXT.md` §6).
-- **Posts never reach `published` (confirmed gap):** `confirm-posting-schedule`
-  marks posts `scheduled`, but **nothing flips them to `published`**. There is no
-  Outstand webhook handler (the only webhook function is `stripe-webhook`), and
-  `outstand-reconcile` only reconciles `business_outstand_accounts` — it does not
-  poll post status. The `published`/`published_at` columns are defined but never
-  written, so rows stay `scheduled` indefinitely. Needs an Outstand webhook or a
-  status-polling cron.
 - **Disputes are backend-only (confirmed gap):** `resolve-dispute` is fully
   implemented (outcomes `refund` / `partial_payment` / `approved`) but requires
   the **service-role key** and has **no frontend caller**. `AdminRoute` exists but
