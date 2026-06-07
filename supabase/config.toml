@@ -96,3 +96,6 @@ verify_jwt = false
 
 [functions.toast-oauth-callback]
 verify_jwt = false
+
+[functions.outstand-webhook]
+verify_jwt = false
