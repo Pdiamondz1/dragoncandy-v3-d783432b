@@ -22,6 +22,7 @@ import { useCampaignDetailEnriched } from '@/hooks/useCampaignDetailEnriched';
 import { useCreateApplication } from '@/hooks/useCreateApplication';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { PrerequisiteGate } from '@/components/PrerequisiteGate';
+import { ReadinessGate } from '@/components/ReadinessGate';
 import { ApplicationForm } from '@/components/campaigns/ApplicationForm';
 import type { DonnyPitchResult } from '@/hooks/useDonnyApplyPitch';
 import { deriveCampaignPhase, deriveCurrentStep } from '@/lib/campaignPhase';
@@ -348,26 +349,40 @@ const CampaignDetailsPage: React.FC = () => {
             />
           </div>
 
-          <PrerequisiteGate feature="apply for this campaign" inline>
-            <StickyApplyCTA
-              canApply={canApply || canReapply}
-              hasApplied={hasApplied}
-              applicationStatus={applicationStatus}
-              onApply={() => setShowApplySheet(true)}
-              onViewProject={() => navigate('/dashboard/creator/projects')}
-              positionFilled={campaign.status === 'active'}
-            />
+          {(() => {
+            const isPaid = (campaign.fixed_price ?? 0) > 0;
+            const applyControls = (
+              <>
+                <StickyApplyCTA
+                  canApply={canApply || canReapply}
+                  hasApplied={hasApplied}
+                  applicationStatus={applicationStatus}
+                  onApply={() => setShowApplySheet(true)}
+                  onViewProject={() => navigate('/dashboard/creator/projects')}
+                  positionFilled={campaign.status === 'active'}
+                />
 
-            <OneTapApplySheet
-              open={showApplySheet}
-              onOpenChange={setShowApplySheet}
-              campaign={campaign}
-              onSend={handleDonnySend}
-              onEditDetails={handleEditDetails}
-              isInvited={isInvited}
-              onCounterOffer={handleCounterOffer}
-            />
-          </PrerequisiteGate>
+                <OneTapApplySheet
+                  open={showApplySheet}
+                  onOpenChange={setShowApplySheet}
+                  campaign={campaign}
+                  onSend={handleDonnySend}
+                  onEditDetails={handleEditDetails}
+                  isInvited={isInvited}
+                  onCounterOffer={handleCounterOffer}
+                />
+              </>
+            );
+            return isPaid ? (
+              <ReadinessGate role="creator" require={{ stripe: true }} mode="hard" inline>
+                {applyControls}
+              </ReadinessGate>
+            ) : (
+              <PrerequisiteGate feature="apply for this campaign" inline>
+                {applyControls}
+              </PrerequisiteGate>
+            );
+          })()}
 
           <Dialog open={showLegacyForm} onOpenChange={setShowLegacyForm}>
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
