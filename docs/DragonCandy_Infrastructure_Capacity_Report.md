@@ -12,6 +12,16 @@ Confidential — For Internal Use
 
 ---
 
+> ⚠️ **Cost numbers in this report are superseded.** For the authoritative,
+> all-in monthly run-rate and growth estimates (including services this report
+> omits — Google Workspace, Apple Developer, domain, staging Supabase,
+> Resend/Twilio, and the two separate Anthropic bills), see
+> [`DragonCandy_Tech_Infrastructure_Costs.md`](./DragonCandy_Tech_Infrastructure_Costs.md).
+> This report remains useful for **technical capacity limits** (can our systems
+> handle the load), not for the cost ledger.
+
+---
+
 ## The Bottom Line
 
 **Our current infrastructure cannot reliably support 250 daily active users using all features.** The database server (Supabase MICRO tier) will run out of memory and connections under that load. The fix is a single settings change — upgrading from MICRO to SMALL compute — at an additional cost of approximately $49/month. No code changes, no downtime, no migration. Everything else (disk space, edge functions, hosting, authentication) is fine at 250 users.

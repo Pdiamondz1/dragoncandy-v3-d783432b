@@ -14,6 +14,13 @@ Prepared by the DragonCandy Team
 
 Confidential — For Internal Use
 
+> ⚠️ **Infrastructure/tech-cost figures in this briefing are superseded.** For
+> the authoritative tech infrastructure run-rate and scaling costs, see
+> [`DragonCandy_Tech_Infrastructure_Costs.md`](./DragonCandy_Tech_Infrastructure_Costs.md).
+> This briefing remains the source of truth for **CAC, LTV, marketing budget, and
+> pricing/profitability strategy** — i.e. the revenue side, which the tech-cost
+> doc deliberately leaves out.
+
 *Updated April 2026*
 
 > **Note (May 2026):** This document contains strategic pricing analysis and
