@@ -161,7 +161,7 @@ export function BoostConfirmationSheet({ open, onOpenChange, post, amountCents, 
               <Button
                 variant="ghost"
                 className="w-full rounded-full text-dc-text-muted text-sm mt-1"
-                onClick={() => onOpenChange(false)}
+                onClick={() => handleOpenChange(false)}
               >
                 Got it
               </Button>
