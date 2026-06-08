@@ -26,6 +26,7 @@ import { useApplicationCollaboration } from '@/hooks/useApplicationCollaboration
 import { useAuth } from '@/hooks/useAuth';
 import { useResolvedLogoUrl } from '@/hooks/useSignedUrl';
 import { JointApprovalStatus } from './JointApprovalStatus';
+import { ReadinessGate } from '@/components/ReadinessGate';
 import { DragonCandyOutstandProvider } from '@/integrations/outstand/Provider';
 import { CrossPostPrompt } from '@/components/outstand/CrossPostPrompt';
 import { formatDistanceToNow } from 'date-fns';
@@ -228,9 +229,11 @@ export const DetailedApplicationCard: React.FC<DetailedApplicationCardProps> = (
               </div>
             </div>
             <div className="flex gap-2">
-              <Button size="sm" className="flex-1" onClick={handleAcceptOffer} disabled={respondToOffer.isPending}>
-                <Check className="h-4 w-4 mr-1" /> Accept
-              </Button>
+              <ReadinessGate role="creator" require={{ stripe: true }} mode="hard">
+                <Button size="sm" className="flex-1" onClick={handleAcceptOffer} disabled={respondToOffer.isPending}>
+                  <Check className="h-4 w-4 mr-1" /> Accept
+                </Button>
+              </ReadinessGate>
               <Button size="sm" variant="secondary" className="flex-1" onClick={() => setShowCounterModal(true)}>
                 <ArrowRightLeft className="h-4 w-4 mr-1" /> Counter
               </Button>
