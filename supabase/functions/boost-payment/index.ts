@@ -129,7 +129,7 @@ serve(async (req) => {
           source_id: boostId,
           summary: `A business wants to boost your post with $${boostDollars} — finish your payout setup to get paid.`,
           priority: "high",
-          actions: [{ label: "Set up payouts", route: "/dashboard/creator/settings?focus=payments" }],
+          actions: [{ label: "Set up payouts", variant: "primary", action: "navigate", payload: { route: "/dashboard/creator/settings?section=payments" } }],
           raw_data: { boost_id: boostId, amount_cents: boostAmountCents },
         });
         logStep("Creator payout nudge inserted", { creatorId: post.creator_id, boostId });

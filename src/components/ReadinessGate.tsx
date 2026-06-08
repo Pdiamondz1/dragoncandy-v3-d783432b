@@ -26,7 +26,7 @@ export function ReadinessGate({ role, require, mode, orgUnitId = null, children,
 
   if (!enabled) return <>{children}</>;
 
-  const goToSetup = () => navigate(`/dashboard/${role === 'creator' ? 'creator' : 'business'}/settings?focus=payments`);
+  const goToSetup = () => navigate(`/dashboard/${role === 'creator' ? 'creator' : 'business'}/settings?section=payments`);
 
   if (mode === 'soft') {
     return <>{children}{r.shouldBlock && (softHint ?? null)}</>;
