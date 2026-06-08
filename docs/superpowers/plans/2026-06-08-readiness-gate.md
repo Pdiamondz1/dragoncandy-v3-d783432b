@@ -540,8 +540,8 @@ Leave the existing `PrerequisiteGate` wrapper as-is (it's a no-op) or remove it 
 
 ## Task 6: Gate the creator counter-offer accept control
 
-**Files:** Modify `src/components/campaigns/DetailedApplicationCard.tsx` (the creator-side counter-offer accept UI).
-- Read first: `DetailedApplicationCard.tsx` — `handleAcceptOffer` with `currentUserRole === 'creator'` and the `Accept` button (~line 231). **Do NOT touch `src/components/campaigns/ApplicationCard.tsx` `handleAccept` — that is the business/payer accepting.** Confirm against `src/hooks/useCounterOffers.ts` (`useRespondToCounterOffer`).
+**Files:** Modify `src/components/applications/DetailedApplicationCard.tsx` (the creator-side counter-offer accept UI).
+- Read first: `src/components/applications/DetailedApplicationCard.tsx` — `handleAcceptOffer` with `currentUserRole === 'creator'` and the `Accept` button (~line 231). **Do NOT touch `src/components/campaigns/ApplicationCard.tsx` `handleAccept` — that is the business/payer accepting (`currentUserRole: 'business'`).** Confirm against `src/hooks/useCounterOffers.ts` (`useRespondToCounterOffer`).
 
 - [ ] **Step 1:** Wrap only the creator's `Accept` button in `<ReadinessGate role="creator" require={{ stripe: true }} mode="hard">…</ReadinessGate>`.
 - [ ] **Step 2:** Typecheck + build.
