@@ -347,7 +347,9 @@ Then **remove** the now-unused `import { writePaymentEvent } from "../_shared/pa
 
 - [ ] **Step 2: Replace the inline block**
 
-Replace lines ~104–158 (from `// Convert to cents for Stripe` through the end of the `writePaymentEvent(...)` call) with:
+The old block defines `let transfer` *inside* the range being replaced, but two statements **below** it still reference `transfer.id` — the `logStep("Withdrawal complete", ...)` (~lines 160–163) and the success `return`'s `transferId: transfer.id` (~line 167). So the replacement must extend **through the old "Withdrawal complete" logStep** (which the new block re-emits), and the success `return` must switch to the `transferId` constant.
+
+Replace lines ~104–163 (from `// Convert to cents for Stripe` through the closing `});` of the old `logStep("Withdrawal complete", {...})`) with:
 
 ```ts
     // Move the money via the shared core (atomic claim → transfer → restore-on-error → ledger).
@@ -363,7 +365,7 @@ Replace lines ~104–158 (from `// Convert to cents for Stripe` through the end 
     logStep("Withdrawal complete", { transferId, amountWithdrawn: pendingBalance });
 ```
 
-Leave the existing success `return new Response(... transferId ... amount: pendingBalance ...)` block as-is (it references `transferId` and `pendingBalance`, both still in scope). Leave the outer `catch` returning 500 as-is.
+Then, in the surviving success `return new Response(...)` block immediately below, change the line `transferId: transfer.id,` to `transferId,` (the only remaining `transfer.id` reference). Leave `amount: pendingBalance`, the message, and the outer `catch` returning 500 unchanged.
 
 - [ ] **Step 3: Sanity-check the diff**
 
@@ -501,6 +503,8 @@ After the onboarding-status write block (the `if (org_unit_id) { ... } else if (
 ```
 
 (`stripeAccountId` and `stripe` are both in scope here. `pending_balance` lives on `business_profiles`; `flushPendingBalance` resolves it from the connected-account id, consistent with the webhook.)
+
+Deliberate boundary (do not "fix"): `flushPendingBalance` resolves only `creator_profiles` → `business_profiles`, never `org_units`. If an `org_unit`'s `stripe_account_id` differs from the `business_profiles` one, that org-unit's `pending_balance` is not auto-flushed here — but `pending_balance` is accrued on `business_profiles`, and this matches both the existing `account.updated` webhook's two-table resolution and the spec's stated scope. Leave it as-is.
 
 - [ ] **Step 3: Type-check**
 
