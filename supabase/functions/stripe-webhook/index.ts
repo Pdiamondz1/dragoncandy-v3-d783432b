@@ -3,6 +3,7 @@ import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { writePaymentEvent } from "../_shared/payment-events.ts";
 import { fulfillBoost } from "../_shared/fulfill-boost.ts";
+import { flushPendingBalance } from "../_shared/flush-pending-balance.ts";
 
 const logStep = (step: string, details?: any) => {
   console.log(`[STRIPE-WEBHOOK] ${step}${details ? ' - ' + JSON.stringify(details) : ''}`);
@@ -384,6 +385,18 @@ serve(async (req) => {
             .from("business_profiles")
             .update({ stripe_onboarding_complete: onboardingComplete })
             .eq("stripe_account_id", account.id);
+        }
+
+        // Now payout-ready → release any held pending_balance. Never fail the
+        // webhook on a flush error (the onboarding-return poll is the backstop),
+        // so Stripe does not retry-storm.
+        if (onboardingComplete) {
+          try {
+            const flush = await flushPendingBalance(stripe, supabase, account.id);
+            if (flush.flushed) logStep("Auto-flushed pending balance", { accountId: account.id, amount: flush.amount, transferId: flush.transferId });
+          } catch (flushErr) {
+            logStep("Pending-balance auto-flush failed (non-fatal)", { accountId: account.id, error: String(flushErr) });
+          }
         }
 
         logStep("Account onboarding status updated", { accountId: account.id, onboardingComplete });
