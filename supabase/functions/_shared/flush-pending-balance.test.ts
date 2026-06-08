@@ -6,6 +6,7 @@ type Resp = { data: any; error: any };
 // Fake supabase: per-table canned results for select / update / insert.
 function fakeSupabase(byTable: Record<string, { select?: Resp; update?: Resp; insert?: Resp }>) {
   const inserted: any[] = [];
+  const updates: any[] = [];
   const get = (t: string) => byTable[t] ?? {};
   const selChain = (res: Resp): any => {
     const c: any = { eq: () => c, maybeSingle: () => Promise.resolve(res), then: (r: any) => r(res) };
@@ -17,9 +18,10 @@ function fakeSupabase(byTable: Record<string, { select?: Resp; update?: Resp; in
   };
   const client: any = {
     inserted,
+    updates,
     from: (t: string) => ({
       select: () => selChain(get(t).select ?? { data: null, error: null }),
-      update: () => updChain(get(t).update ?? { data: [], error: null }),
+      update: (payload: any) => { updates.push({ table: t, payload }); return updChain(get(t).update ?? { data: [], error: null }); },
       insert: (row: any) => { inserted.push({ table: t, row }); return Promise.resolve(get(t).insert ?? { error: null }); },
     }),
   };
@@ -118,4 +120,40 @@ Deno.test("transferPendingBalance: manual source keeps existing metadata + key s
   assertEquals(stripe.calls[0].params.metadata.withdrawal_type, "pending_balance");
   assertEquals(sb.inserted[0].row.metadata.type, "wallet_withdrawal");
   assertEquals(out.transferId, "tr_test");
+});
+
+Deno.test("transfer: Stripe throws -> pending_balance is restored to original", async () => {
+  const sb = fakeSupabase({ creator_profiles: { update: claimOk } });
+  const stripe = fakeStripe(() => { throw new Error("stripe down"); });
+  await assertRejects(
+    () => transferPendingBalance(stripe, sb, {
+      table: "creator_profiles", userId: "u1", stripeAccountId: "acct_1", pendingBalance: 9.25, source: "autoflush",
+    }),
+    Error,
+    "stripe down",
+  );
+  // One claim (zero-out) + one restore, both on creator_profiles.
+  assertEquals(sb.updates.length, 2);
+  assertEquals(sb.updates[0].payload.pending_balance, 0);       // atomic claim
+  assertEquals(sb.updates[1].payload.pending_balance, 9.25);    // restore to original
+  assertEquals(sb.inserted.length, 0);                          // no ledger row
+});
+
+Deno.test("transfer: ledger write fails AFTER transfer -> balance NOT restored", async () => {
+  const sb = fakeSupabase({
+    creator_profiles: { update: claimOk },
+    payment_events: { insert: { data: null, error: { message: "ledger boom" } } },
+  });
+  const stripe = fakeStripe();
+  await assertRejects(
+    () => transferPendingBalance(stripe, sb, {
+      table: "creator_profiles", userId: "u1", stripeAccountId: "acct_1", pendingBalance: 4, source: "autoflush",
+    }),
+    Error,
+    "ledger boom",
+  );
+  // Only the atomic claim update happened; NO restore (the transfer already succeeded).
+  assertEquals(sb.updates.length, 1);
+  assertEquals(sb.updates[0].payload.pending_balance, 0);
+  assertEquals(stripe.calls.length, 1);                         // transfer was made
 });
