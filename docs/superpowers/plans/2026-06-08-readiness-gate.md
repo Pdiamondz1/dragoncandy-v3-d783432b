@@ -17,7 +17,44 @@
 - Tests are co-located Vitest files. Component/DOM tests need `// @vitest-environment jsdom` as the FIRST line. The repo has **no jest-dom** — assert with `toBeTruthy()` / `toBeNull()` / `toBe(...)`, NOT `toBeInTheDocument()`. Pattern reference: `src/components/schedule/PostCard.test.tsx`.
 - Run a single test: `npx vitest run src/lib/readiness.test.ts`. The exit code may be non-zero from unrelated pre-existing failing files — trust the per-file "Tests N passed" line, not the exit code.
 - `npm run typecheck` and `npm run build` must pass before pushing.
-- Feature flags: the project already gates the brand role behind a `BRAND_ROLE_ENABLED` flag. **Before Task 1, locate the existing feature-flag mechanism** (grep `BRAND_ROLE_ENABLED` and `feature_flags` across `src/`) and reuse it. If it's a simple constant/env flag, mirror that; if it's a `useFeatureFlag(key)` hook, use it. The plan refers to this as `useReadinessGateEnabled()` — implement it on top of whatever exists. Default the flag **off** in production config until rollout.
+- Feature flags: `src/lib/featureConfig.ts` has only a **build-time constant** `BRAND_ROLE_ENABLED = false` (no runtime hook). But a real DB-backed `feature_flags` table **exists** (migration `20250617160641…`): columns `name` (unique), `is_enabled` (bool, default false), `rollout_percentage`, `target_roles text[]`, `environment` (default `'production'`), with **public-read RLS** (`SELECT USING (true)`). We use this table so the gate has an **instant kill-switch** (flip `is_enabled` in the DB — no redeploy) and **staging-first** rollout (separate row per `environment`). Task 0 below builds the missing `useFeatureFlag` hook. v1 honors `is_enabled` only; `rollout_percentage`/`target_roles` are available for later ops use (YAGNI at ~30 users — do not implement percentage logic now). **Fail-safe: the hook returns `false` (gate off → pass-through) on any error or missing row**, which is the safe direction.
+
+---
+
+## Task 0: `useFeatureFlag` hook (DB-backed, fail-safe off)
+
+**Files:**
+- Create: `src/hooks/useFeatureFlag.ts`
+
+- [ ] **Step 1: Implement**
+```ts
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+
+/** Reads public.feature_flags by name. Fail-safe: returns false (off) on any error
+ *  or missing row, so an unreadable flag never blocks anyone. v1 honors is_enabled
+ *  only; rollout_percentage/target_roles/environment exist for ops use later. */
+export function useFeatureFlag(name: string): boolean {
+  const { data } = useQuery({
+    queryKey: ['feature-flag', name],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('feature_flags')
+        .select('is_enabled')
+        .eq('name', name)
+        .maybeSingle();
+      if (error) return false;
+      return !!data?.is_enabled;
+    },
+    staleTime: 5 * 60_000,
+  });
+  return data ?? false;
+}
+```
+- [ ] **Step 2: Typecheck** — `npm run typecheck` exit 0.
+- [ ] **Step 3: Commit** — `git add src/hooks/useFeatureFlag.ts && git commit -m "feat(flags): DB-backed useFeatureFlag hook (fail-safe off)"`
+
+> Rollout (ops, no redeploy): insert a `feature_flags` row `name='READINESS_GATE_ENABLED'`. Set `is_enabled=true` on the **staging** project first to validate, then on **prod**. Flip `is_enabled=false` = instant kill-switch.
 
 ---
 
@@ -264,7 +301,9 @@ export function useTransactionReadiness(
 
   // Social status (only meaningful for business + requireSocial; creator never requires social)
   const { data: socialAccounts = [] } = useLocationSocialAccounts(user?.id, orgUnitId);
-  const reconnectNeeded = useReconnectNeeded(user?.id);
+  // NOTE: useReconnectNeeded returns a React Query result — the array is on .data
+  // (confirmed at the real call site src/components/.../ConnectedAccountsList.tsx).
+  const { data: reconnectNeeded = [] } = useReconnectNeeded(user?.id);
 
   const result = deriveReadiness({
     require: { stripe: requireStripe, social: requireSocial },
@@ -446,10 +485,12 @@ export function ReadinessGate({ role, require, mode, orgUnitId = null, children,
 }
 ```
 
-- [ ] **Step 5: Create `src/hooks/useReadinessGateEnabled.ts`** — wrap the existing feature-flag mechanism found in Conventions. Minimal shape:
+- [ ] **Step 5: Create `src/hooks/useReadinessGateEnabled.ts`** — thin wrapper over the Task 0 hook:
 ```ts
-// Reuse the project's existing flag system (mirror BRAND_ROLE_ENABLED). Default OFF in prod until rollout.
-export function useReadinessGateEnabled(): boolean { /* return useFeatureFlag('READINESS_GATE_ENABLED') ?? false */ }
+import { useFeatureFlag } from '@/hooks/useFeatureFlag';
+export function useReadinessGateEnabled(): boolean {
+  return useFeatureFlag('READINESS_GATE_ENABLED');
+}
 ```
 
 - [ ] **Step 6: Run tests + typecheck** — `npx vitest run src/components/ReadinessGate.test.tsx` (4 passed); `npm run typecheck` exit 0.
@@ -499,23 +540,23 @@ Leave the existing `PrerequisiteGate` wrapper as-is (it's a no-op) or remove it 
 
 ## Task 6: Gate the creator counter-offer accept control
 
-**Files:** Modify the creator-side counter-offer accept UI.
-- Read first: `src/hooks/useCounterOffers.ts` (`useRespondToCounterOffer`) and its callers; find the component rendering the creator's "Accept price" button where `currentUserRole === 'creator'` & response would be `accepted`. **Do NOT touch `ApplicationCard.handleAccept` — that is the business/payer accepting.**
+**Files:** Modify `src/components/campaigns/DetailedApplicationCard.tsx` (the creator-side counter-offer accept UI).
+- Read first: `DetailedApplicationCard.tsx` — `handleAcceptOffer` with `currentUserRole === 'creator'` and the `Accept` button (~line 231). **Do NOT touch `src/components/campaigns/ApplicationCard.tsx` `handleAccept` — that is the business/payer accepting.** Confirm against `src/hooks/useCounterOffers.ts` (`useRespondToCounterOffer`).
 
-- [ ] **Step 1:** Wrap the creator's accept button in `<ReadinessGate role="creator" require={{ stripe: true }} mode="hard">…</ReadinessGate>`.
+- [ ] **Step 1:** Wrap only the creator's `Accept` button in `<ReadinessGate role="creator" require={{ stripe: true }} mode="hard">…</ReadinessGate>`.
 - [ ] **Step 2:** Typecheck + build.
 - [ ] **Step 3: Commit** — `git commit -m "feat(readiness): gate creator counter-offer acceptance"`
 
 ---
 
-## Task 7: Gate restaurant-as-receiver in sponsorships (inline, button-only)
+## Task 7: Restaurant-as-receiver gate — VERIFY-OR-DEFER
 
-**Files:** Modify `src/pages/BrandSponsorships.tsx`
-- Read first: the current page-level `<PrerequisiteGate feature="manage sponsorships">` wrap and the accept/initiate control where the restaurant is the receiver.
+**Reality check (from plan review):** `src/pages/BrandSponsorships.tsx` is the **brand's payer** view (gated behind `BRAND_ROLE_ENABLED = false`, so hidden in prod) — its money buttons are the brand **paying** a restaurant, which must stay smooth. In the **live** app, restaurants are essentially always **payers** (they create/fund campaigns, they boost) — those stay ungated by design. The only restaurant-**receiver** money flow is **sponsorship payouts** (`release-sponsorship-payout`), which is tied to the dormant brand role.
 
-- [ ] **Step 1:** Do NOT block the whole page. Wrap only the accept/initiate (receiver-commitment) button in `<ReadinessGate role="business" require={{ stripe: true }} mode="hard" orgUnitId={activeOrgUnit?.id ?? null}>…</ReadinessGate>`. Pass the active org unit id (mirror `StripeConnectSetup`'s `activeOrgUnit`).
-- [ ] **Step 2:** Typecheck + build.
-- [ ] **Step 3: Commit** — `git commit -m "feat(readiness): gate restaurant sponsorship acceptance (receiver)"`
+- [ ] **Step 1:** Search for a **live** restaurant-side control where the restaurant *accepts/commits to receive* a sponsorship/payout (not the brand's pay button). Grep sponsorship-accept flows; check whether any such control is reachable without `BRAND_ROLE_ENABLED`.
+- [ ] **Step 2a — if a live receiver control exists:** wrap **only that button** in `<ReadinessGate role="business" require={{ stripe: true }} mode="hard" orgUnitId={activeOrgUnit?.id ?? null}>…</ReadinessGate>` (pass the active org unit id, mirroring `StripeConnectSetup`). Typecheck + build + commit.
+- [ ] **Step 2b — if none exists (expected):** **DEFER** this gate. Do NOT gate any payer control on `BrandSponsorships.tsx`. Add a one-line note in the PR description: "Restaurant-receiver gate deferred — no live receiver-commitment control today (sponsorship payouts are behind the hidden brand role); will gate when that flow ships." No code change.
+- [ ] **Step 3: Commit** (only if 2a) — `git commit -m "feat(readiness): gate restaurant sponsorship acceptance (receiver)"`
 
 ---
 
@@ -524,7 +565,7 @@ Leave the existing `PrerequisiteGate` wrapper as-is (it's a no-op) or remove it 
 **Files:**
 - Modify: `src/components/dragonshare/BoostConfirmationSheet.tsx` (business-facing queued card)
 - Modify: `supabase/functions/boost-payment/index.ts` (creator nudge before the 202 return)
-- Read first: `BoostConfirmationSheet.tsx` `queued` branch (~`:69-72`), `src/lib/boostOutcome.ts`, and the `donny_nudges` insert + notification pattern in `src/hooks/useCounterOffers.ts` (~`:262-274`) — but emit it SERVER-side from the edge fn for reliability.
+- Read first: `BoostConfirmationSheet.tsx` `queued` branch (~`:69-73`), `src/components/dragonshare/boostOutcome.ts` (co-located, NOT `src/lib/`), and the `donny_nudges` insert pattern in `src/hooks/useCounterOffers.ts` (~`:263-273`, columns `user_id, type, summary, priority, actions, raw_data`) — but emit the nudge SERVER-side from the edge fn for reliability (match `donny_nudges` columns exactly; read a prior insert to confirm).
 
 - [ ] **Step 1 (business UX):** In the `queued` outcome branch, render a persistent teal info card inside the sheet instead of (or in addition to) the transient toast: "{creatorName} is finishing payout setup — your ${amount} boost is queued and won't be charged until they're ready." Reuse the sheet's existing teal info-card styling. Do NOT change `resolveBoostOutcome` or the 202 contract.
 - [ ] **Step 2 (creator nudge):** In `boost-payment/index.ts`, immediately before the `return json({ error: 'CREATOR_PAYOUT_NOT_READY', ... }, 202)` (~`:118-125`), add a best-effort `try/catch` block (never block/await-fail the 202) that inserts a `donny_nudges` row + invokes the notification fn for `post.creator_id`: title "A business wants to boost your post", body "Finish your payout setup to get paid for the $X boost", action deep-link `/dashboard/creator/settings?focus=payments`. Match the existing `donny_nudges` column shape (read a prior insert in the codebase to get columns right). Wrap in try/catch and `console.warn` on failure.
