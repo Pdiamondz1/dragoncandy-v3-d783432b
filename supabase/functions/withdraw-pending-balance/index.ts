@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
-import { writePaymentEvent } from "../_shared/payment-events.ts";
+import { transferPendingBalance } from "../_shared/flush-pending-balance.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 
 const logStep = (step: string, details?: any) => {
@@ -101,70 +101,21 @@ serve(async (req) => {
       throw new Error("Your Stripe account cannot receive payouts. Please complete Stripe verification.");
     }
 
-    // Convert to cents for Stripe
-    const amountInCents = Math.round(pendingBalance * 100);
-
-    // Atomic guard: zero the balance only if it still matches the amount we read.
-    // This prevents a second concurrent request from also withdrawing the same funds.
-    const { data: zeroResult, error: zeroError } = await supabaseClient
-      .from(profileTable)
-      .update({ pending_balance: 0 })
-      .eq('user_id', user.id)
-      .eq('pending_balance', pendingBalance) // Only update if balance hasn't changed
-      .select('pending_balance');
-
-    if (zeroError || !zeroResult?.length) {
-      throw new Error("Withdrawal already in progress or balance has changed. Please try again.");
-    }
-
-    // Create a transfer to the connected account.
-    // Idempotency key is scoped to this user + exact amount so retries don't double-pay.
-    logStep("Creating transfer", { amount: amountInCents, destination: stripeAccountId });
-
-    let transfer: Stripe.Transfer;
-    try {
-      transfer = await stripe.transfers.create({
-        amount: amountInCents,
-        currency: 'usd',
-        destination: stripeAccountId,
-        description: `DragonCandy platform wallet withdrawal`,
-        metadata: {
-          user_id: user.id,
-          withdrawal_type: 'pending_balance',
-        },
-      }, { idempotencyKey: `withdraw_${user.id}_${amountInCents}` });
-    } catch (stripeError) {
-      // Transfer failed — restore the balance so the user can try again
-      await supabaseClient
-        .from(profileTable)
-        .update({ pending_balance: pendingBalance })
-        .eq('user_id', user.id);
-      throw stripeError;
-    }
-
-    logStep("Transfer created", { transferId: transfer.id, amount: transfer.amount });
-
-    const profileType = profileTable === 'creator_profiles' ? 'creator' : 'business';
-    await writePaymentEvent(supabaseClient, {
-      event_type: 'transfer_created',
-      entity_type: profileType === 'creator' ? 'collaboration' : 'sponsorship',
-      entity_id: user.id,
-      campaign_id: null,
-      actor_id: user.id,
-      actor_role: profileType === 'creator' ? 'creator' : 'business',
-      amount_cents: amountInCents,
-      stripe_id: transfer.id,
-      metadata: { type: 'wallet_withdrawal' },
-    }, '[WITHDRAW-PENDING-BALANCE]');
-
-    logStep("Withdrawal complete", { 
-      transferId: transfer.id, 
-      amountWithdrawn: pendingBalance 
+    // Move the money via the shared core (atomic claim → transfer → restore-on-error → ledger).
+    // Behavior is identical to the previous inline implementation.
+    const { transferId } = await transferPendingBalance(stripe, supabaseClient, {
+      table: profileTable as "creator_profiles" | "business_profiles",
+      userId: user.id,
+      stripeAccountId,
+      pendingBalance,
+      source: "manual",
     });
+
+    logStep("Withdrawal complete", { transferId, amountWithdrawn: pendingBalance });
 
     return new Response(JSON.stringify({ 
       success: true,
-      transferId: transfer.id,
+      transferId,
       amount: pendingBalance,
       message: `Successfully transferred $${pendingBalance.toFixed(2)} to your Stripe account`,
     }), {
