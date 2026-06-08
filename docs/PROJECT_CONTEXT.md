@@ -53,7 +53,7 @@ Supabase $45, OpenAI $25), Stripe in test mode. Production launch date TBD. The 
 delivery system stabilization that gated launch landed in late May 2026;
 remaining blockers are final bug resolution and payment-flow hardening.
 
-**Codebase scale** (as of 2026-06-08): 63 pages, 185 hooks, 74 edge functions.
+**Codebase scale** (as of 2026-06-08): 63 pages, 192 hooks, 74 edge functions.
 **Repo**: `C:\GIT\dragoncandy-v3-d783432b`
 **Active integrations**: Toast POS, Stripe Connect, Outstand.so (social media —
 Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku

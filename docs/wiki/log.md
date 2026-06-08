@@ -17,6 +17,15 @@ Pages updated: [[Outstand]] (publish webhook section), [[Donny AI]] (lifecycle c
 index.md (1 new source entry). Also synced `CLAUDE.md` (73→74, ×2) and
 `PROJECT_CONTEXT.md` (scale 63/185/74, §5 Outstand webhook, §10 73→74).
 
+## [2026-06-08] update | Capacitor Phase 3 + hook count correction
+
+Follow-up pass from the same sync session: (1) updated [[Capacitor Native Shell]] to
+document Phase 2 native share sheet, Phase 3 iOS CTA gating (`WebOnly`), and
+block/report feature — all shipped on this branch but missing from the entity.
+(2) hooks count corrected 185 → 192 (docs:scale on current branch state) in
+[[DragonCandy Platform]] and `PROJECT_CONTEXT.md`. No new source pages (already
+covered by [[Weekly Sync Session (2026-06-08)]]).
+
 ## [2026-06-07] ingest | Core Docs Recent Updates Sync
 
 Synced core docs + wiki with codebase work that landed 2026-06-01 → 2026-06-06,

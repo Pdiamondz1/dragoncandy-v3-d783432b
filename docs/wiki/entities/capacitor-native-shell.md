@@ -2,8 +2,8 @@
 title: Capacitor Native Shell
 type: entity
 created: 2026-06-01
-updated: 2026-06-07
-sources: [raw/sessions/2026-06-01-apple-app-store-capacitor-phase1.md, raw/sessions/2026-06-07-core-docs-recent-updates-sync.md, docs/superpowers/specs/2026-06-01-apple-app-store-design.md]
+updated: 2026-06-08
+sources: [raw/sessions/2026-06-01-apple-app-store-capacitor-phase1.md, raw/sessions/2026-06-07-core-docs-recent-updates-sync.md, raw/sessions/2026-06-08-weekly-sync.md, docs/superpowers/specs/2026-06-01-apple-app-store-design.md]
 tags: [capacitor, ios, app-store, mobile, native]
 ---
 
@@ -34,7 +34,29 @@ changed.
   advances the camera-first North Star and the guideline-4.2 "more than a wrapper" bar.
 - **Privacy Policy + Terms of Service pages shipped** — clearing the hosted
   privacy-policy/terms prerequisite below.
-- Still next: push + share plugins, then TestFlight → submission → review.
+- **Native share sheet shipped (Slice C)** — promotion "Copy Link" actions call
+  `shareOrCopyLink` (`src/lib/nativeShare.ts`, `@capacitor/share@^6`): on iOS opens
+  the native share sheet; on web falls back to clipboard. No button-label changes.
+
+## Phase 3 — App Store Compliance (2026-06)
+
+- **iOS Purchase-CTA Gating shipped (Slice 3a).** New `WebOnly` component
+  (`src/components/platform/WebOnly.tsx`) wraps all 8 subscription/upgrade/billing
+  CTAs — on iOS they render `null`. No steering links. Web behavior byte-identical.
+  Apple guideline 3.1.1 anti-steering compliance. Marketplace payments (escrow,
+  DragonShare boosts, sponsorship) stay on Stripe on all surfaces (guideline 3.1.5).
+  Spec: `docs/superpowers/specs/2026-06-07-ios-purchase-cta-gating-design.md`.
+
+- **Block/Report scaffolding shipped (Slice 3b prep).** DB migration adds
+  `user_blocks` + `user_reports` tables, `is_blocked` RLS helper function, and five
+  SECURITY DEFINER RPCs (`block_user`, `unblock_user`, `is_user_blocked`, `is_blocked`,
+  `report_user`). React hooks in `useUserBlocks.ts` / `useReportUser.ts` wrap the RPCs;
+  a Block/Unblock/Report menu surfaces in the conversation header. TypeScript types
+  (`supabase/types.ts`) registered in the 2026-06-07 type-patch pass.
+  See [[Supabase]] for RPC signatures.
+
+- Still next: push notifications (Phase 2 Slice A), deep links (Phase 2 Slice D),
+  TestFlight → review → live.
 
 ## Strategy
 
@@ -43,8 +65,8 @@ changed.
   [[Stripe Connect]] on both surfaces; subscriptions/credits are web-only to avoid Apple's
   30% cut.
 - **Guideline 4.2** — native value-adds (push/camera/share) for Phase 2, not a bare
-  wrapper. **Camera shipped (2026-06)**; push/share still planned. Camera also advances
-  the camera-first North Star.
+  wrapper. **Camera and share sheet shipped (2026-06)**; push still planned.
+  Camera also advances the camera-first North Star.
 - Route to store: TestFlight → submission → review → live.
 
 ## Key Decisions
@@ -68,3 +90,5 @@ changed.
 - [[Stripe Connect]]
 - [[Apple App Store Capacitor Phase 1 Session]]
 - [[Core Docs Recent Updates Sync Session]]
+- [[Supabase]] (block/report RPCs)
+- [[Payments Split by Surface]]

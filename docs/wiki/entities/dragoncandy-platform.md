@@ -21,11 +21,11 @@ through a hybrid marketplace model.
 - Social: [[Outstand]] (Instagram, TikTok, YouTube)
 - Payments: [[Stripe Connect]] (test mode)
 - Hosting: Lovable.dev → dragoncandy.io
-- iOS: [[Capacitor Native Shell]] (Phase 1 shipped; Phase 2 camera shipped)
+- iOS: [[Capacitor Native Shell]] (Phase 1+2 shipped; Phase 3 compliance in progress)
 
 ## Scale (as of 2026-06-08)
 
-- 63 pages, 185 hooks, 74 edge functions
+- 63 pages, 192 hooks, 74 edge functions
 - Pre-revenue: ~30 organic users, $0 paying, ~$390/mo operating cost
   (Lovable $50, Anthropic $200, Outstand $67, Supabase $45, OpenAI $25)
 - Three user roles: business_client, content_creator, brand
