@@ -53,7 +53,7 @@ Supabase $45, OpenAI $25), Stripe in test mode. Production launch date TBD. The 
 delivery system stabilization that gated launch landed in late May 2026;
 remaining blockers are final bug resolution and payment-flow hardening.
 
-**Codebase scale** (as of 2026-06-07): 60 pages, 183 hooks, 73 edge functions.
+**Codebase scale** (as of 2026-06-08): 63 pages, 185 hooks, 74 edge functions.
 **Repo**: `C:\GIT\dragoncandy-v3-d783432b`
 **Active integrations**: Toast POS, Stripe Connect, Outstand.so (social media —
 Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
@@ -71,6 +71,12 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   reconcile + reconnect-needed prompt for accounts wiped by an Outstand
   billing event, so users are guided to re-link rather than hitting silent
   failures. Real profile photos now surface for connected accounts.
+  **Publish webhook shipped (2026-06-07):** new `outstand-webhook` edge function
+  receives `post.published`, `post.error`, and `account.token_expired` events from
+  Outstand, advancing `donny_scheduled_posts` from `scheduled` → `published`/`failed`
+  in real time. Previously rows sat at `scheduled` indefinitely — publish failures
+  were invisible. Auth via HMAC-SHA256 signature; idempotent via `outstand_webhook_events`
+  audit table. Closes the scheduled-post lifecycle end-to-end.
 - Dashboard UX polish — pill badge sizing, avatar cache invalidation,
   relative timestamps, status synchronization across roles.
 - RLS compliance and query optimization — resolving infinite recursion in
@@ -248,7 +254,7 @@ Apply to every recommendation, every prompt, every PR:
 
 **Frontend**: React 18 / TypeScript (strict), Vite, Tailwind CSS, shadcn/ui,
 Framer Motion, Lovable.dev (hosting/preview), GitHub.
-**Backend**: Supabase (70+ tables, 73 Deno Edge Functions, RLS, realtime),
+**Backend**: Supabase (70+ tables, 74 Deno Edge Functions, RLS, realtime),
 Stripe Connect (test mode).
 **AI**: Claude Sonnet 4 + Haiku for generation (cost routing via edge
 functions, backend only); OpenAI for embeddings (RAG/matching). Model routing

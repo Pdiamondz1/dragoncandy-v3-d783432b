@@ -2,8 +2,8 @@
 title: Donny AI
 type: entity
 created: 2026-05-23
-updated: 2026-06-07
-sources: [docs/PROJECT_CONTEXT.md, docs/DATABASE_SCHEMA.md, docs/STRIPE_PRICES.md, raw/sessions/2026-06-07-core-docs-recent-updates-sync.md]
+updated: 2026-06-08
+sources: [docs/PROJECT_CONTEXT.md, docs/DATABASE_SCHEMA.md, docs/STRIPE_PRICES.md, raw/sessions/2026-06-07-core-docs-recent-updates-sync.md, raw/sessions/2026-06-08-weekly-sync.md]
 tags: [ai, donny, intelligence-layer]
 ---
 
@@ -15,7 +15,7 @@ Donny powers [[DragonDash]]; DragonDash sells.
 
 ## Architecture
 
-- Backend-only via 73 Deno edge functions (one of them `dragonshare-notify`,
+- Backend-only via 74 Deno edge functions (one of them `dragonshare-notify`,
   which routes DragonShare notifications through Donny among other channels)
 - Model routing: Claude Sonnet 4 + Haiku with cost routing matrix
 - Shared utils: `_shared/model-routing`, `_shared/cost-ledger`,
@@ -53,6 +53,10 @@ Donny powers [[DragonDash]]; DragonDash sells.
 - **Auto cross-scheduling** — restaurant posting preferences live on the campaign; after
   content approval Donny auto-generates a schedule into `donny_scheduled_posts`, grouped via
   `plan_group_id`, queued to Outstand. Static per-platform time rules avoid external API calls.
+- **Lifecycle closed (2026-06-07)** — `donny_scheduled_posts` rows now advance from
+  `scheduled` → `published`/`failed` in real time via the new `outstand-webhook` edge function
+  (see [[Outstand]]). `published_at` is written on success; per-account results stored in
+  `metadata.publish_result`. Before this, rows sat at `scheduled` indefinitely.
 
 ## Key Decisions
 
@@ -69,3 +73,4 @@ Donny powers [[DragonDash]]; DragonDash sells.
 - [[Donny Audit Phase 2 Session]]
 - [[Campaign Delivery, Scheduling & Notifications Session]]
 - [[Outstand]]
+- [[Weekly Sync Session (2026-06-08)]]

@@ -2,8 +2,8 @@
 title: DragonCandy Platform
 type: entity
 created: 2026-05-23
-updated: 2026-06-07
-sources: [docs/PROJECT_CONTEXT.md, docs/DATABASE_SCHEMA.md, raw/sessions/2026-06-07-core-docs-recent-updates-sync.md]
+updated: 2026-06-08
+sources: [docs/PROJECT_CONTEXT.md, docs/DATABASE_SCHEMA.md, raw/sessions/2026-06-07-core-docs-recent-updates-sync.md, raw/sessions/2026-06-08-weekly-sync.md]
 tags: [platform, marketplace, identity]
 ---
 
@@ -16,16 +16,16 @@ through a hybrid marketplace model.
 ## Architecture
 
 - Frontend: React 18 / TypeScript (strict), Vite, Tailwind CSS, shadcn/ui
-- Backend: Supabase (70+ tables, 73 Deno Edge Functions, RLS, realtime)
+- Backend: Supabase (70+ tables, 74 Deno Edge Functions, RLS, realtime)
 - AI: Claude Sonnet 4 + Haiku (cost routing via edge functions)
 - Social: [[Outstand]] (Instagram, TikTok, YouTube)
 - Payments: [[Stripe Connect]] (test mode)
 - Hosting: Lovable.dev → dragoncandy.io
 - iOS: [[Capacitor Native Shell]] (Phase 1 shipped; Phase 2 camera shipped)
 
-## Scale (as of 2026-06-07)
+## Scale (as of 2026-06-08)
 
-- 60 pages, 183 hooks, 73 edge functions
+- 63 pages, 185 hooks, 74 edge functions
 - Pre-revenue: ~30 organic users, $0 paying, ~$390/mo operating cost
   (Lovable $50, Anthropic $200, Outstand $67, Supabase $45, OpenAI $25)
 - Three user roles: business_client, content_creator, brand

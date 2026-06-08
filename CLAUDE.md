@@ -23,7 +23,7 @@ npm run preview      # Preview production build locally
 
 ## Tech Stack
 
-React 18 + TypeScript (strict), Vite, Tailwind CSS, shadcn/ui (Radix). Supabase backend (Postgres, Auth, Edge Functions, Realtime, Storage). Stripe Connect (test mode). React Query for server state. Framer Motion (lazy-loaded). Outstand.so for social media integration (Instagram, TikTok, YouTube). Google Maps (geocoding). Claude API (Anthropic) for AI features — backend-only via 73 Deno edge functions. Hosted on Lovable.dev → dragoncandy.io. Fonts: Outfit (sans), Pacifico (script).
+React 18 + TypeScript (strict), Vite, Tailwind CSS, shadcn/ui (Radix). Supabase backend (Postgres, Auth, Edge Functions, Realtime, Storage). Stripe Connect (test mode). React Query for server state. Framer Motion (lazy-loaded). Outstand.so for social media integration (Instagram, TikTok, YouTube). Google Maps (geocoding). Claude API (Anthropic) for AI features — backend-only via 74 Deno edge functions. Hosted on Lovable.dev → dragoncandy.io. Fonts: Outfit (sans), Pacifico (script).
 
 ## Coding Conventions
 
@@ -85,7 +85,7 @@ ErrorBoundary → ThemeProvider → QueryClientProvider → LazyMotion → AuthP
 
 * **Supabase client**: single instance at `src/integrations/supabase/client.ts`
 * **Feature modules**: domain code in `src/features/` (donny, promotions, settings)
-* **Edge functions**: 73 Deno functions in `supabase/functions/`, shared utils in `_shared/` (cors, auth, model-routing, cost-ledger, platform-fee, anthropic-fetch, mcp-client)
+* **Edge functions**: 74 Deno functions in `supabase/functions/`, shared utils in `_shared/` (cors, auth, model-routing, cost-ledger, platform-fee, anthropic-fetch, mcp-client)
 * **Outstand integration**: `src/integrations/outstand/Provider.tsx` + 17 hooks in `src/hooks/outstand/` — social media account linking, delegated posting, analytics
 * **Auth system**: app-level loading guard in `AppLayout`, 3-hour global inactivity timeout in `AuthenticatedShell` (both defined in `src/App.tsx`)
 * **ErrorBoundary** levels: `'page'` (default), `'section'`, `'widget'`. Pass `fallback={null}` for silent widget errors.
