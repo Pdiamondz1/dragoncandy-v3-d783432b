@@ -51,10 +51,10 @@ co-founders**. Here's roughly what we spend each month at this size:
 
 | Bucket | What's in it | Monthly |
 |--------|--------------|--------:|
-| 🔁 Subscriptions we always pay | Building tools, hosting, database, social, email seats | **~$667** |
-| 📈 Usage (small right now) | AI answers, embeddings, the odd text message | **~$30–50** |
-| 📅 Yearly stuff, spread out monthly | Apple fee + domain ÷ 12 | **~$13** |
-| **Estimated total today** | | **≈ $710–$765 / month** `CONFIRM` |
+| 🔁 Subscriptions + team seats | Build tools, hosting, database, social, Workspace + phone for 3 | **~$720–753** |
+| 📈 Usage (small right now) | AI answers, embeddings, the odd text message | **~$32–55** |
+| 📅 Yearly stuff, spread out monthly | Apple fee + two domains (.io + .com) ÷ 12 | **~$21** |
+| **Estimated total today** | | **≈ $775–$830 / month** `CONFIRM` |
 
 > **Why this is bigger than the old "~$390" number:** two reasons. (1) Older docs
 > forgot some real bills — the **Google Workspace** seats, the **Apple Developer**
@@ -80,8 +80,9 @@ This is where the website actually "lives" so people can visit it.
 
 | Service | In plain words | Plan | Cost | Billed | Status |
 |---------|----------------|------|-----:|--------|:------:|
-| **Lovable.dev** | The tool that builds and publishes the website automatically when we save changes | Business | **$50/mo** | 🔁 monthly | 🟡 |
-| **Domain `dragoncandy.io`** | The app's address on the internet (what you type in the browser) | `.io` domain | **~$55/yr** | 📅 yearly | 🟡 |
+| **Lovable.dev** | The tool that builds and publishes the website automatically when we save changes | Business | **$50/mo** | 🔁 monthly | ✅ |
+| **Domain `dragoncandy.io`** | The app's main address on the internet (what you type in the browser) | `.io` domain | **~$55/yr** | 📅 yearly | ✅ |
+| **Domain `dragoncandy.com`** | A second address we also own (protects the brand / catches `.com` typers) | GoDaddy | **$100/yr** | 📅 yearly | ✅ |
 | **Vercel** | Makes a temporary "preview" copy of the site to test changes safely | Hobby/free | **$0** | 🔁 monthly | 🟡 |
 
 ### 2b. 🗄️ The database & backend (the app's brain and memory)
@@ -115,8 +116,8 @@ mixing them up. They are not the same thing:
 | Service | In plain words | Plan | Cost | Billed | Status |
 |---------|----------------|------|-----:|--------|:------:|
 | **Claude Team Premium (build tool)** | The team Claude subscription used to develop DragonCandy — includes Claude Code + Max-level usage, shared across the team | Team Premium, **5 seats** (minimum) | **$500/mo** (annual) / **$625/mo** (monthly) | 🔁 monthly | 🟡 |
-| **Anthropic API (live app)** | Pays per-answer when Donny helps real users (uses cheap *Haiku* for easy stuff, pricier *Sonnet* for hard stuff) | Pay-as-you-go | **~$10–25/mo today** | 📈 usage | 🟡 |
-| **OpenAI (embeddings)** | Turns text into numbers so Donny can "find similar things" (matching & search). Very cheap. | Pay-as-you-go | **~$20–25/mo** | 📈 usage | 🟡 |
+| **Anthropic API (live app)** | Pays per-answer when Donny helps real users (uses cheap *Haiku* for easy stuff, pricier *Sonnet* for hard stuff) | Pay-as-you-go | **~$10–25/mo today** | 📈 usage | ✅ |
+| **OpenAI (embeddings)** | Turns text into numbers so Donny can "find similar things" (matching & search). Very cheap. | Pay-as-you-go | **~$20–25/mo** | 📈 usage | ✅ |
 
 > Donny is built to keep AI cheap on purpose: most questions go to the cheaper
 > Claude model, and there's a rule that AI can never cost more than 15% of revenue.
@@ -128,7 +129,7 @@ How the app sends sign-up emails, alerts, and text messages.
 
 | Service | In plain words | Plan | Cost | Billed | Status |
 |---------|----------------|------|-----:|--------|:------:|
-| **Resend** | Sends emails (welcome, verify your account, notifications) | Free (3,000/mo) → Pro $20 | **$0 today** | 📈 usage | 🟡 |
+| **Resend** | Sends emails (welcome, verify your account, notifications) | Free (3,000/mo) → Pro $20 | **$0 today** | 📈 usage | ✅ |
 | **Twilio** | Sends text messages (SMS) and rents our phone number | Pay-as-you-go | **~$1.15/mo number + $0.0083/text** | 📈 usage | 🟡 |
 
 ### 2e. 🔌 Other connected services (integrations)
@@ -137,7 +138,7 @@ Outside tools the app plugs into.
 
 | Service | In plain words | Plan | Cost | Billed | Status |
 |---------|----------------|------|-----:|--------|:------:|
-| **Outstand.so** | Connects to Instagram, TikTok & YouTube so creators can post | Subscription | **$67/mo** | 🔁 monthly | 🟡 |
+| **Outstand.so** | Connects to Instagram, TikTok & YouTube so creators can post | Subscription | **$73/mo** | 🔁 monthly | ✅ |
 | **Stripe Connect** | Handles all payments and splits money between creators and us | Per-transaction | **~2.9% + $0.30 per payment** (no monthly fee) | 📈 usage | ✅ |
 | **Google Maps** | Shows restaurants/creators on a map and looks up addresses | Pay-as-you-go | **~$0 (free credit covers small use)** | 📈 usage | 🟡 |
 | **Google reCAPTCHA** | Blocks robots/spam on the login page | Free | **$0** | — | ✅ |
@@ -150,7 +151,7 @@ What it costs to put DragonCandy in Apple's App Store.
 | Service | In plain words | Plan | Cost | Billed | Status |
 |---------|----------------|------|-----:|--------|:------:|
 | **Apple Developer Program** | The yearly membership Apple requires to publish an iPhone app | Standard | **$99/yr** | 📅 yearly | ✅ |
-| **A Mac to build on** | iPhone apps can only be built on a Mac (we don't have one yet) | Mac mini *or* cloud-Mac rental | **~$600 once** *or* **~$20–60/mo rental** | 🧱 one-time *or* 🔁 | 🟡 |
+| **Codemagic (iOS builds)** | Builds and signs the iPhone app in the cloud — **no Mac needed** (replaces buying/renting a Mac) | Free tier → pay-as-you-go | **$0 to start** → usage | 📈 usage | 🟡 |
 | **Google Play (later)** | Same idea as Apple, for Android phones — only if we make an Android app | One-time | **$25 once** | 🧱 one-time | 🔮 |
 
 ### 2g. 👥 Team tools (grow with headcount, not users)
@@ -159,8 +160,8 @@ These cost more as we **hire people**, not as customers sign up. Today = 3 co-fo
 
 | Service | In plain words | Plan | Cost | Billed | Status |
 |---------|----------------|------|-----:|--------|:------:|
-| **Google Workspace** | Company email (`@dragoncandy.io`), shared drive, calendar — one seat per person | Business Starter | **~$8.40/person/mo** | 🔁 per seat | 🟡 |
-| **Phone numbers** | Business phone line(s) — either Google Voice or Twilio | Add-on | **~$10/person/mo** (Voice) | 🔁 per seat | 🟡 |
+| **Google Workspace** | Company email (`@dragoncandy.io`), shared drive, calendar — one seat per person | **Business Standard, 3 seats** | **~$16.80/seat (monthly)** / $14 (annual) | 🔁 per seat | 🟡 |
+| **Phone numbers** | Business phone lines — **Google Voice** (one per person) | Voice add-on | **~$10/person/mo** | 🔁 per seat | 🟡 |
 | **GitHub** | Stores the app's code safely and tracks every change | Free → Team $4 | **$0 today** | 🔁 per seat | 🟡 |
 | **Claude seats beyond 5** | We're on Team Premium with 5 seats (see §2c). A 6th+ builder adds a seat | Team Premium add-seat | **+$100/seat/mo** (annual) | 🔁 per seat | 🔮 |
 
@@ -175,13 +176,14 @@ Same costs as above, but grouped by rhythm — handy for budgeting.
 | Item | Monthly |
 |------|--------:|
 | Claude Team Premium (5 seats, build tool) | $500 |
-| Outstand.so | $67 |
+| Outstand.so | $73 |
 | Lovable.dev | $50 |
+| Google Workspace (Standard, 3 seats) | ~$42–50 |
+| Google Voice (phone, 3 lines) | ~$30 |
 | Supabase production | $25 |
-| Google Workspace (3 seats × $8.40) | ~$25 |
 | Supabase staging | $0–25 `CONFIRM` |
-| Resend / Vercel / GitHub / reCAPTCHA | $0 (free tiers) |
-| **Subtotal** | **~$667–692** |
+| Resend / Vercel / GitHub / Codemagic / reCAPTCHA | $0 (free tiers) |
+| **Subtotal** | **~$720–753** |
 
 ### 📈 Usage-based each month (small today, grows with users)
 
@@ -200,13 +202,14 @@ Same costs as above, but grouped by rhythm — handy for budgeting.
 |------|-------:|-----------:|
 | Apple Developer Program | $99 | ~$8.25 |
 | Domain `dragoncandy.io` | ~$55 | ~$4.58 |
-| **Subtotal** | **~$154** | **~$13/mo** |
+| Domain `dragoncandy.com` (GoDaddy) | $100 | ~$8.33 |
+| **Subtotal** | **~$254** | **~$21/mo** |
 
 ### 🧱 One-time (pay once, ever)
 
 | Item | Cost |
 |------|-----:|
-| Mac to build the iPhone app | ~$600 (or rent monthly instead) `CONFIRM` |
+| iPhone build machine | **$0** — using **Codemagic** cloud builds instead of buying a ~$600 Mac (see §2f) |
 | Google Play account (only if Android) | $25 (future) |
 
 ---
@@ -245,12 +248,12 @@ cost estimates; they assume the cheap-model-first routing keeps working.)*
 These costs don't care how many customers we have — they go up when we add people.
 Using the company's headcount plan:
 
-| Stage | People | Workspace (~$8.40 ea) | Phone (~$10 ea) | Claude seats beyond 5 | Approx. **team total/mo** |
-|-------|-------:|----------------------:|----------------:|----------------------:|----------------------:|
-| Today | 3 | ~$25 | ~$30 | $0 (within the 5 included) | **~$55** |
-| Year 1 | 5–6 | ~$42–50 | ~$50–60 | $0–100 | **~$92–210** |
-| Year 2 | 7–8 | ~$59–67 | ~$70–80 | +$100–200 | **~$230–350** |
-| Year 3 | 10–11 | ~$84–92 | ~$100–110 | +$200–300 | **~$385–500** |
+| Stage | People | Workspace (~$16.80 ea) | Phone (~$10 ea) | Claude seats beyond 5 | Approx. **team total/mo** |
+|-------|-------:|-----------------------:|----------------:|----------------------:|----------------------:|
+| Today | 3 | ~$42–50 | ~$30 | $0 (within the 5 included) | **~$72–80** |
+| Year 1 | 5–6 | ~$84–101 | ~$50–60 | $0–100 | **~$135–260** |
+| Year 2 | 7–8 | ~$118–134 | ~$70–80 | +$100–200 | **~$290–415** |
+| Year 3 | 10–11 | ~$168–185 | ~$100–110 | +$200–300 | **~$470–595** |
 
 *(Phone-number cost assumes everyone gets a line; in practice only some roles will.
 The first **5 Claude seats are already paid for** in the $500 subscription (§2c);
@@ -262,10 +265,10 @@ Add the always-on subscriptions + Track A (users) + Track B (team):
 
 | Scenario | Subscriptions | + Users (A) | + Team (B) | **Rough total/mo** |
 |----------|--------------:|------------:|-----------:|-------------------:|
-| **Today** (~30 users, 3 people) | ~$667 | ~$45 | (in subs) | **~$710–765** |
-| **Year 1** (~250 users, 5–6 people) | ~$667 | ~$300 | ~$150 | **~$1,100–1,200** |
-| **Year 2** (~500 users, 7–8 people) | ~$690 | ~$640 | ~$290 | **~$1,600–1,800** |
-| **Year 3** (~1,000 users, 10–11 people) | ~$690 | ~$1,180 | ~$490 | **~$2,300–2,600** |
+| **Today** (~30 users, 3 people) | ~$670 | ~$45 | ~$80 | **~$775–830** |
+| **Year 1** (~250 users, 5–6 people) | ~$670 | ~$300 | ~$200 | **~$1,150–1,300** |
+| **Year 2** (~500 users, 7–8 people) | ~$690 | ~$640 | ~$350 | **~$1,650–1,850** |
+| **Year 3** (~1,000 users, 10–11 people) | ~$690 | ~$1,180 | ~$530 | **~$2,350–2,650** |
 
 > These are **estimates**, not promises. They line up with the older Infrastructure
 > Capacity Report's range, just with the missing services added in. Treat them as
@@ -286,8 +289,8 @@ DragonCandy is built to stay cheap. The main guardrails:
 - **One AI vendor over time.** Plan to use Anthropic for the "thinking" and keep
   OpenAI only for the cheap "matching" part, then eventually train our own model
   to cut costs ~90% once we have enough data.
-- **Free tiers while small.** Resend, Vercel, GitHub, Google Maps, and reCAPTCHA
-  are all free at our current size — we only start paying when we outgrow them.
+- **Free tiers while small.** Resend, Vercel, GitHub, Codemagic, Google Maps, and
+  reCAPTCHA are all free at our current size — we only start paying when we outgrow them.
 - **Pause staging when idle.** The practice database can be paused to avoid paying
   for a second project we're not actively using.
 
@@ -295,24 +298,25 @@ Full detail: *Donny AI Cost Architecture & Token Efficiency Strategy* doc.
 
 ---
 
-## 6. The numbers Dame still needs to confirm 🟡
+## 6. Confirmation status 🟡
 
-Before this doc is "100% final," check the real bills for these. The number shown
-is the normal public price I used as a placeholder.
+Most figures were **confirmed by Dame on 2026-06-08**. ✅ = locked in · 🟡 = still open.
 
-| # | Item | Price I used | What to check |
-|---|------|-------------|---------------|
-| 1 | Claude Team Premium | $500/mo (annual) | Confirm **5 seats**; decide **monthly ($625) vs annual ($500)** billing. Replaces the old individual Max 20× ($200) plan. |
-| 2 | Anthropic API (live) | ~$10–25/mo | What's the actual current API bill (separate from the Max sub)? |
-| 3 | Google Workspace | $8.40/seat (Starter) | Starter or Standard? How many seats? Monthly or annual billing? |
-| 4 | Phone numbers | ~$10/seat | Google Voice or Twilio? How many lines? |
-| 5 | Supabase staging | $0–25/mo | Is staging on the free tier or a paid Pro project? |
-| 6 | Lovable.dev | $50/mo | Confirm we're on Business ($50), not Pro ($25). |
-| 7 | Outstand.so | $67/mo | Confirm current plan price. |
-| 8 | Resend | $0 (free) | Still under 3,000 emails/mo, or on Pro ($20)? |
-| 9 | Domain | ~$55/yr | Which registrar, and the exact renewal price? |
-| 10 | Mac for iOS builds | ~$600 once | Buy a Mac mini, or rent a cloud-Mac monthly? |
-| 11 | OpenAI embeddings | ~$20–25/mo | Confirm actual monthly embeddings spend. |
+**✅ Confirmed:** Claude Team Premium (5 seats) · Anthropic API ~$10–25/mo ·
+OpenAI ~$20–25/mo · Google Workspace = **Business Standard, 3 seats** ·
+Phone = **Google Voice** · Lovable Business $50 · Outstand.so **$73** ·
+Resend free tier · Domains **`dragoncandy.io` ~$55/yr + `dragoncandy.com` (GoDaddy) $100/yr** ·
+iOS builds via **Codemagic** (no Mac purchase).
+
+**🟡 Still open (small swings only):**
+
+| # | Item | Decision needed |
+|---|------|-----------------|
+| 1 | Claude Team Premium billing | Pay **monthly ($625/mo)** or **annual ($500/mo)**? Doc uses annual as default. |
+| 2 | Google Workspace billing | Pay **monthly ($16.80/seat)** or **annual ($14/seat)**? Doc shows both. |
+| 3 | Supabase staging | Free tier (**$0**) or paid Pro project (**$25/mo**)? |
+| 4 | Codemagic | Free tier covers us for now; confirm the paid tier once iOS builds ramp up. |
+| 5 | Twilio | Usage-based; confirm a typical monthly text volume once live. |
 
 ---
 
