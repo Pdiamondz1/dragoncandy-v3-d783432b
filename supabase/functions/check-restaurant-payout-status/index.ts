@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { corsHeaders } from "../_shared/cors.ts";
+import { flushPendingBalance } from "../_shared/flush-pending-balance.ts";
 
 const logStep = (step: string, details?: any) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
@@ -166,6 +167,17 @@ serve(async (req) => {
 
       if (updateError) {
         logStep("Warning: Failed to update onboarding status in business_profiles", { error: updateError.message });
+      }
+    }
+
+    // Onboarding-return backstop: if payout-ready, release any held pending_balance.
+    // Best-effort — never fail the status response.
+    if (onboardingComplete) {
+      try {
+        const flush = await flushPendingBalance(stripe, supabaseClient, stripeAccountId);
+        if (flush.flushed) logStep("Auto-flushed pending balance", { amount: flush.amount, transferId: flush.transferId });
+      } catch (flushErr) {
+        logStep("Pending-balance auto-flush failed (non-fatal)", { error: String(flushErr) });
       }
     }
 
