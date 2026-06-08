@@ -163,6 +163,35 @@ flushPendingBalance: resolve profile → guard (ready & owed) → atomic zero-ou
 - **Balance restore on Stripe failure** mirrors the manual path, so a transient
   Stripe error leaves the balance intact for the next trigger to retry.
 
+### 5.1 Idempotency-key nuances the plan must respect
+
+- **Key is scoped to user+amount, not to a balance event.** Stripe retains
+  idempotency keys ~24h. If the same user legitimately accrues and flushes two
+  *separate* balances of the **identical cents amount within 24h** (e.g. a
+  `resolve-dispute` re-credit shortly after onboarding), the second
+  `transfers.create` could replay/collide on the cached key and silently strand
+  the funds. This is **pre-existing** in the manual path and low-probability
+  (accrual largely stops once the account is payout-ready), but auto-flush makes
+  it automatic rather than click-gated. The plan must at minimum acknowledge it;
+  preferred fix is to fold a balance discriminator into the key (e.g.
+  `flush_${user}_${cents}_${shortHashOfPriorBalance}`) **while preserving
+  cross-path dedup** so a manual click and an auto-flush on the *same* balance
+  still collapse to one transfer. Decide this explicitly in the plan, don't leave
+  it implicit.
+- **Same key + different params = Stripe 400, not a silent replay.** If the
+  manual and auto paths share a key but send different `description`/`metadata`,
+  Stripe rejects the reuse with an error (caught by the caller) rather than
+  replaying the first response. The no-double-pay property still holds (the
+  atomic DB zero-out already guarantees one transfer per balance), but test
+  expectations should treat the Stripe-key backstop as "error caught," not
+  "clean cached replay."
+- **Ledger-failure restore boundary.** A `writePaymentEvent` failure happens
+  *after* a successful transfer and must **not** restore the balance (the money
+  moved correctly; only the ledger row is missing). Only a `transfers.create`
+  throw restores. The refactored `withdraw-pending-balance` must keep its
+  existing 500-on-ledger-failure surface so "observable behavior unchanged" is
+  genuinely verified.
+
 ## 6. Error handling
 
 | Failure | Handling |
