@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>DragonCandy — What It Costs to Run</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Pacifico&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --teal:#4DD9C0; --teal-deep:#0F766E; --teal-dark:#115E59;
+    --pink:#F9A8D4; --pink-accent:#EC4899; --pink-bg:#F9C8E0;
+    --yellow:#FACC15; --dark:#1A1A2A; --ink:#141420; --muted:#5b5b66;
+    --cream:#FFFBF4; --card:#FFFFFF; --line:#efe7da;
+    /* donut palette */
+    --c-claude:#0F766E; --c-outstand:#EC4899; --c-lovable:#4DD9C0;
+    --c-usage:#FACC15; --c-supabase:#F472B6; --c-workspace:#F9C8E0; --c-annual:#1A1A2A;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    font-family:'Outfit',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    background:var(--cream);
+    color:var(--ink);
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+    background-image:
+      radial-gradient(circle at 12% 8%, rgba(77,217,192,.12), transparent 38%),
+      radial-gradient(circle at 88% 4%, rgba(236,72,153,.10), transparent 34%);
+  }
+  .wrap{max-width:980px;margin:0 auto;padding:0 28px}
+
+  /* ---- entrance animation ---- */
+  @keyframes rise{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+  .rise{opacity:0;animation:rise .7s cubic-bezier(.2,.7,.2,1) forwards}
+  .d1{animation-delay:.05s}.d2{animation-delay:.15s}.d3{animation-delay:.25s}
+  .d4{animation-delay:.35s}.d5{animation-delay:.45s}.d6{animation-delay:.55s}
+
+  /* ---- top bar ---- */
+  .topbar{display:flex;align-items:center;justify-content:space-between;
+    padding:26px 0 14px;flex-wrap:wrap;gap:12px}
+  .brand{font-family:'Pacifico',cursive;font-size:30px;color:var(--teal-deep);
+    letter-spacing:.3px}
+  .brand span{color:var(--pink-accent)}
+  .kicker{font-size:12px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;
+    color:var(--muted)}
+  .datebadge{font-size:12px;font-weight:600;color:var(--teal-dark);
+    background:rgba(77,217,192,.16);border:1px solid rgba(15,118,110,.22);
+    padding:6px 12px;border-radius:999px}
+
+  /* ---- hero ---- */
+  .hero{padding:30px 0 18px;border-top:2px solid var(--ink);margin-top:6px}
+  .hero h1{font-size:clamp(26px,4.6vw,44px);font-weight:800;line-height:1.05;
+    letter-spacing:-.02em;max-width:18ch}
+  .hero h1 em{font-style:normal;color:var(--pink-accent)}
+  .heronum{display:flex;align-items:flex-end;gap:18px;flex-wrap:wrap;margin:22px 0 8px}
+  .bignum{font-size:clamp(54px,11vw,108px);font-weight:900;line-height:.86;
+    letter-spacing:-.04em;color:var(--teal-deep);
+    background:linear-gradient(180deg,var(--teal-deep),var(--teal-dark));
+    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+  .bignum small{font-size:.26em;font-weight:700;color:var(--muted);
+    -webkit-text-fill-color:var(--muted);letter-spacing:0}
+  .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  .chip{font-size:13px;font-weight:600;padding:7px 13px;border-radius:999px;
+    background:#fff;border:1px solid var(--line)}
+  .chip b{color:var(--pink-accent)}
+  .lead{font-size:16px;color:var(--muted);max-width:62ch;margin-top:16px}
+  .lead b{color:var(--ink)}
+
+  /* ---- section heads ---- */
+  .sec{margin:46px 0 0}
+  .sec-h{display:flex;align-items:baseline;gap:12px;margin-bottom:18px}
+  .sec-n{font-size:13px;font-weight:800;color:var(--teal-deep);
+    font-variant-numeric:tabular-nums}
+  .sec-t{font-size:22px;font-weight:800;letter-spacing:-.01em}
+  .sec-sub{font-size:14px;color:var(--muted);margin:-8px 0 18px}
+
+  /* ---- 4 kinds cards ---- */
+  .kinds{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+  .kcard{background:var(--card);border:1px solid var(--line);border-radius:18px;
+    padding:18px 16px;transition:transform .2s ease, box-shadow .2s ease}
+  .kcard:hover{transform:translateY(-3px);box-shadow:0 14px 30px -18px rgba(20,20,32,.4)}
+  .kemoji{font-size:24px}
+  .ktitle{font-weight:800;font-size:15px;margin:8px 0 4px}
+  .kdesc{font-size:12.5px;color:var(--muted);line-height:1.4}
+
+  /* ---- money split: donut + legend ---- */
+  .split{display:grid;grid-template-columns:300px 1fr;gap:34px;align-items:center;
+    background:var(--card);border:1px solid var(--line);border-radius:24px;padding:30px}
+  .donutwrap{display:flex;flex-direction:column;align-items:center;gap:10px}
+  .donut{width:230px;height:230px;border-radius:50%;position:relative;
+    background:conic-gradient(
+      var(--c-claude) 0 68.97%,
+      var(--c-outstand) 68.97% 78.21%,
+      var(--c-lovable) 78.21% 85.11%,
+      var(--c-usage) 85.11% 91.32%,
+      var(--c-supabase) 91.32% 94.77%,
+      var(--c-workspace) 94.77% 98.22%,
+      var(--c-annual) 98.22% 100%);
+    box-shadow:0 18px 40px -22px rgba(15,118,110,.7);
+    animation:spin .9s cubic-bezier(.2,.7,.2,1) both}
+  @keyframes spin{from{transform:rotate(-26deg) scale(.92);opacity:0}to{transform:none;opacity:1}}
+  .donut::after{content:"";position:absolute;inset:30%;background:var(--card);
+    border-radius:50%;box-shadow:inset 0 2px 10px rgba(20,20,32,.08)}
+  .donut .center{position:absolute;inset:0;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;text-align:center;z-index:2}
+  .donut .center b{font-size:25px;font-weight:900;color:var(--ink);line-height:1}
+  .donut .center span{font-size:11px;font-weight:600;color:var(--muted);margin-top:3px}
+  .legend{display:grid;grid-template-columns:1fr 1fr;gap:11px 24px}
+  .leg{display:flex;align-items:center;gap:10px}
+  .dot{width:13px;height:13px;border-radius:4px;flex:none}
+  .leg .lt{font-size:13.5px;font-weight:600}
+  .leg .lv{margin-left:auto;font-size:13.5px;font-weight:800;font-variant-numeric:tabular-nums}
+  .leg .lp{font-size:11px;color:var(--muted);font-weight:600}
+
+  /* ---- spotlight callout ---- */
+  .spot{background:linear-gradient(120deg,var(--dark),#23233a);color:#fff;
+    border-radius:24px;padding:30px 32px;margin-top:20px;position:relative;overflow:hidden}
+  .spot::before{content:"";position:absolute;right:-60px;top:-60px;width:240px;height:240px;
+    border-radius:50%;background:radial-gradient(circle,rgba(77,217,192,.35),transparent 70%)}
+  .spot .lab{font-size:12px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;
+    color:var(--teal)}
+  .spot h3{font-size:22px;font-weight:800;margin:8px 0 12px;max-width:30ch}
+  .spot h3 em{font-style:normal;color:var(--teal)}
+  .twobill{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:18px}
+  .bill{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14);
+    border-radius:16px;padding:16px 18px}
+  .bill .bt{font-weight:800;font-size:15px;display:flex;align-items:center;gap:8px}
+  .bill .bd{font-size:13px;color:#c9c9d6;margin-top:6px;line-height:1.45}
+  .bill .bv{font-size:13px;font-weight:800;color:var(--teal);margin-top:8px}
+  .pinkpill{font-size:11px;font-weight:800;background:var(--pink-accent);color:#fff;
+    padding:2px 9px;border-radius:999px}
+
+  /* ---- growth bars ---- */
+  .growth{background:var(--card);border:1px solid var(--line);border-radius:24px;padding:30px}
+  .bars{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;align-items:end;
+    height:300px;margin-top:6px}
+  .barcol{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;
+    height:100%;gap:10px}
+  .barval{font-weight:900;font-size:17px;color:var(--ink);font-variant-numeric:tabular-nums}
+  .bar{width:100%;max-width:96px;border-radius:14px 14px 6px 6px;position:relative;
+    background:linear-gradient(180deg,var(--teal),var(--teal-deep));
+    transform-origin:bottom;animation:grow .9s cubic-bezier(.2,.7,.2,1) both}
+  .bar.b1{animation-delay:.1s}.bar.b2{animation-delay:.22s}
+  .bar.b3{animation-delay:.34s}.bar.b4{animation-delay:.46s}
+  .bar.now{background:linear-gradient(180deg,var(--pink),var(--pink-accent))}
+  @keyframes grow{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+  .barlab{text-align:center}
+  .barlab .stage{font-weight:800;font-size:13.5px}
+  .barlab .meta{font-size:11.5px;color:var(--muted);line-height:1.35;margin-top:2px}
+  .tracknote{display:flex;gap:18px;flex-wrap:wrap;margin-top:22px;
+    padding-top:18px;border-top:1px solid var(--line)}
+  .track{flex:1;min-width:220px}
+  .track .th{font-weight:800;font-size:14px;display:flex;align-items:center;gap:8px}
+  .track .td{font-size:13px;color:var(--muted);margin-top:5px;line-height:1.45}
+  .tk-dot{width:11px;height:11px;border-radius:50%}
+
+  /* ---- excluded strip ---- */
+  .excl{display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+    background:rgba(249,200,224,.35);border:1px dashed var(--pink-accent);
+    border-radius:18px;padding:18px 22px;margin-top:20px}
+  .excl b{color:var(--pink-accent);font-weight:800}
+  .excl .et{font-size:14px;color:var(--ink)}
+
+  /* ---- footer ---- */
+  .foot{margin:46px 0 40px;padding-top:20px;border-top:2px solid var(--ink);
+    display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;
+    font-size:12.5px;color:var(--muted)}
+  .foot b{color:var(--ink)}
+  .confirm{background:rgba(250,204,21,.18);border:1px solid rgba(202,138,4,.4);
+    color:#7a5a00;font-weight:600;padding:4px 10px;border-radius:8px;font-size:12px}
+
+  /* ---- responsive ---- */
+  @media (max-width:760px){
+    .kinds{grid-template-columns:1fr 1fr}
+    .split{grid-template-columns:1fr;text-align:center}
+    .legend{grid-template-columns:1fr;text-align:left}
+    .twobill{grid-template-columns:1fr}
+    .bars{height:240px}
+  }
+
+  /* ---- print / PDF ---- */
+  @media print{
+    body{background:#fff;background-image:none}
+    .rise,.bar,.donut{animation:none!important;opacity:1!important;transform:none!important}
+    .kcard:hover{transform:none;box-shadow:none}
+    .sec{margin-top:26px;break-inside:avoid}
+    .split,.growth,.spot,.kinds{break-inside:avoid}
+    @page{margin:14mm}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- TOP BAR -->
+  <div class="topbar rise d1">
+    <div>
+      <div class="brand">Dragon<span>Candy</span></div>
+      <div class="kicker">Tech Infrastructure Costs</div>
+    </div>
+    <div class="datebadge">As of June 2026 · Source of truth</div>
+  </div>
+
+  <!-- HERO -->
+  <section class="hero rise d2">
+    <h1>What it costs to <em>build and run</em> DragonCandy.</h1>
+    <div class="heronum">
+      <div class="bignum">$710–765<small>&nbsp;/ month</small></div>
+    </div>
+    <div class="chips">
+      <span class="chip">Stage: <b>Pre-revenue</b></span>
+      <span class="chip">Users: <b>~30</b></span>
+      <span class="chip">Team: <b>3 founders</b></span>
+      <span class="chip">Paying customers: <b>0 (by choice)</b></span>
+    </div>
+    <p class="lead">In plain terms: like a lemonade stand, we pay <b>monthly rent</b>
+      for tools, a little <b>per-customer</b> for things like AI answers and emails, and
+      a few <b>once-a-year</b> fees. Right now the single biggest cost isn't running the
+      app for users — it's the <b>Claude subscription we use to build it</b>.</p>
+  </section>
+
+  <!-- FOUR KINDS -->
+  <section class="sec rise d3">
+    <div class="sec-h"><span class="sec-n">01</span><span class="sec-t">Four kinds of cost</span></div>
+    <div class="kinds">
+      <div class="kcard"><div class="kemoji">🔁</div><div class="ktitle">Monthly</div>
+        <div class="kdesc">Subscriptions we pay every month, rain or shine — building tools, hosting, database.</div></div>
+      <div class="kcard"><div class="kemoji">📈</div><div class="ktitle">Usage-based</div>
+        <div class="kdesc">Like water from a tap — more customers means more AI answers, emails &amp; texts.</div></div>
+      <div class="kcard"><div class="kemoji">📅</div><div class="ktitle">Yearly</div>
+        <div class="kdesc">A once-a-year fee — the domain name and the Apple Developer membership.</div></div>
+      <div class="kcard"><div class="kemoji">🧱</div><div class="ktitle">One-time</div>
+        <div class="kdesc">Pay once, ever — like a Mac to build the iPhone app on.</div></div>
+    </div>
+  </section>
+
+  <!-- WHERE THE MONEY GOES -->
+  <section class="sec rise d4">
+    <div class="sec-h"><span class="sec-n">02</span><span class="sec-t">Where the money goes today</span></div>
+    <p class="sec-sub">Of roughly <b>$725 a month</b>, here's how it splits. ~7 of every 10 dollars is the Claude team subscription used to build the product.</p>
+    <div class="split">
+      <div class="donutwrap">
+        <div class="donut"><div class="center"><b>$725</b><span>/ month</span></div></div>
+      </div>
+      <div class="legend">
+        <div class="leg"><span class="dot" style="background:var(--c-claude)"></span><span class="lt">Claude Team <span class="lp">(build)</span></span><span class="lv">$500</span></div>
+        <div class="leg"><span class="dot" style="background:var(--c-outstand)"></span><span class="lt">Outstand.so <span class="lp">(social)</span></span><span class="lv">$67</span></div>
+        <div class="leg"><span class="dot" style="background:var(--c-lovable)"></span><span class="lt">Lovable <span class="lp">(hosting)</span></span><span class="lv">$50</span></div>
+        <div class="leg"><span class="dot" style="background:var(--c-usage)"></span><span class="lt">Usage <span class="lp">(AI/email/SMS)</span></span><span class="lv">~$45</span></div>
+        <div class="leg"><span class="dot" style="background:var(--c-supabase)"></span><span class="lt">Supabase <span class="lp">(database)</span></span><span class="lv">$25</span></div>
+        <div class="leg"><span class="dot" style="background:var(--c-workspace)"></span><span class="lt">Workspace <span class="lp">(email)</span></span><span class="lv">$25</span></div>
+        <div class="leg"><span class="dot" style="background:var(--c-annual)"></span><span class="lt">Yearly fees <span class="lp">(÷12)</span></span><span class="lv">~$13</span></div>
+      </div>
+    </div>
+
+    <!-- SPOTLIGHT -->
+    <div class="spot">
+      <div class="lab">The one thing to understand</div>
+      <h3>There are <em>two</em> Claude bills — and they're not the same thing.</h3>
+      <div class="twobill">
+        <div class="bill">
+          <div class="bt">🛠️ Building the app <span class="pinkpill">FLAT</span></div>
+          <div class="bd">A team subscription the founders use to develop DragonCandy. Costs the same no matter how many customers we have.</div>
+          <div class="bv">~$500 / month · Claude Team Premium (5 seats)</div>
+        </div>
+        <div class="bill">
+          <div class="bt">🤖 Running it for users <span class="pinkpill">GROWS</span></div>
+          <div class="bd">Pays per-answer when Donny (our AI) helps real users. Tiny today, grows with users — and capped at 15% of revenue by design.</div>
+          <div class="bv">~$10–25 / month today · pay-as-you-go API</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- GROWTH -->
+  <section class="sec rise d5">
+    <div class="sec-h"><span class="sec-n">03</span><span class="sec-t">What it costs as we grow</span></div>
+    <p class="sec-sub">Estimated total monthly cost at each stage. Costs grow on two separate tracks — more <b>users</b> and more <b>teammates</b> — added together here. <em>(Revenue is intentionally left out.)</em></p>
+    <div class="growth">
+      <div class="bars">
+        <div class="barcol">
+          <div class="barval">~$740</div>
+          <div class="bar now b1" style="height:30%"></div>
+          <div class="barlab"><div class="stage">Today</div><div class="meta">~30 users<br>3 people</div></div>
+        </div>
+        <div class="barcol">
+          <div class="barval">~$1.15k</div>
+          <div class="bar b2" style="height:47%"></div>
+          <div class="barlab"><div class="stage">Year 1</div><div class="meta">~250 users<br>5–6 people</div></div>
+        </div>
+        <div class="barcol">
+          <div class="barval">~$1.7k</div>
+          <div class="bar b3" style="height:69%"></div>
+          <div class="barlab"><div class="stage">Year 2</div><div class="meta">~500 users<br>7–8 people</div></div>
+        </div>
+        <div class="barcol">
+          <div class="barval">~$2.45k</div>
+          <div class="bar b4" style="height:100%"></div>
+          <div class="barlab"><div class="stage">Year 3</div><div class="meta">~1,000 users<br>10–11 people</div></div>
+        </div>
+      </div>
+      <div class="tracknote">
+        <div class="track">
+          <div class="th"><span class="tk-dot" style="background:var(--teal-deep)"></span>Track A — more users 📈</div>
+          <div class="td">The "tap-water" costs: a bigger database engine, more AI answers, more emails &amp; texts. AI is the fastest-growing line, kept in check by cheap-model-first routing.</div>
+        </div>
+        <div class="track">
+          <div class="th"><span class="tk-dot" style="background:var(--pink-accent)"></span>Track B — more teammates 👥</div>
+          <div class="td">Per-person tools: Google Workspace seats, phone lines, and extra Claude seats for new builders. Grows with hiring, not with customers.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- EXCLUDED -->
+  <section class="sec rise d6">
+    <div class="excl">
+      <span style="font-size:22px">🚫</span>
+      <span class="et"><b>On purpose, this is costs only.</b> No revenue, pricing, margins, customer-acquisition cost, or salaries — those live in the pricing &amp; profitability docs. This page answers one question: <b>what do we spend to keep the lights on?</b></span>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <div class="foot">
+    <div>
+      <b>DragonCandy — Tech Infrastructure Costs.</b> Single source of truth for tech spend.<br>
+      Full detail &amp; line-item ledger: <b>DragonCandy_Tech_Infrastructure_Costs.md</b>
+    </div>
+    <div style="text-align:right">
+      <span class="confirm">Estimates — some figures pending confirmation</span><br>
+      <span style="display:inline-block;margin-top:8px">Updated June 8, 2026 · Owner: Dame (CPO)</span>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
