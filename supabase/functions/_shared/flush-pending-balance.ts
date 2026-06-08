@@ -52,10 +52,12 @@ export async function transferPendingBalance(
     throw new Error(BALANCE_CHANGED);
   }
 
-  const withdrawalType = source === "manual" ? "pending_balance" : "pending_balance_autoflush";
-  const description = source === "manual"
+  const isManual = source === "manual";
+  const withdrawalType = isManual ? "pending_balance" : "pending_balance_autoflush";
+  const description = isManual
     ? "DragonCandy platform wallet withdrawal"
     : "DragonCandy pending balance auto-payout";
+  const metadataType = isManual ? "wallet_withdrawal" : "pending_balance_autoflush";
 
   let transfer: { id: string };
   try {
@@ -67,8 +69,15 @@ export async function transferPendingBalance(
       metadata: { user_id: userId, withdrawal_type: withdrawalType },
     }, { idempotencyKey: `withdraw_${userId}_${amountCents}` });
   } catch (stripeError) {
-    // Restore so a later trigger / manual retry can move it again.
-    await supabase.from(table).update({ pending_balance: pendingBalance }).eq("user_id", userId);
+    // Restore so a later trigger / manual retry can move it again. If the restore
+    // itself fails, surface it loudly — the balance is now zeroed with no transfer.
+    const { error: restoreError } = await supabase
+      .from(table)
+      .update({ pending_balance: pendingBalance })
+      .eq("user_id", userId);
+    if (restoreError) {
+      console.error(`[FLUSH-PENDING-BALANCE] CRITICAL: failed to restore pending_balance for ${userId} after transfer error`, restoreError);
+    }
     throw stripeError;
   }
 
@@ -82,7 +91,7 @@ export async function transferPendingBalance(
     actor_role: table === "creator_profiles" ? "creator" : "business",
     amount_cents: amountCents,
     stripe_id: transfer.id,
-    metadata: { type: source === "manual" ? "wallet_withdrawal" : "pending_balance_autoflush" },
+    metadata: { type: metadataType },
   }, "[FLUSH-PENDING-BALANCE]");
 
   return { transferId: transfer.id, amountCents };

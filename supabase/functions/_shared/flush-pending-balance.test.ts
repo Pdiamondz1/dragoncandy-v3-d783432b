@@ -117,4 +117,5 @@ Deno.test("transferPendingBalance: manual source keeps existing metadata + key s
   assertEquals(stripe.calls[0].opts.idempotencyKey, "withdraw_u9_700");
   assertEquals(stripe.calls[0].params.metadata.withdrawal_type, "pending_balance");
   assertEquals(sb.inserted[0].row.metadata.type, "wallet_withdrawal");
+  assertEquals(out.transferId, "tr_test");
 });
