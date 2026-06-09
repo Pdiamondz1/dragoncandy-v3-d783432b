@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { getSignedProfileUrl } from '@/hooks/useSignedUrl';
 import { formatSkillLabel } from '@/lib/skillUtils';
@@ -104,6 +104,7 @@ export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [avatarUrl, setAvatarUrl] = useState<string | undefined>();
+  const reviewsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const profile = fullProfile;
@@ -279,6 +280,7 @@ export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
               averageRating={profile.average_rating}
               totalReviews={profile.total_reviews}
               size="md"
+              onClick={() => reviewsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
             />
 
             <Separator />
@@ -519,7 +521,7 @@ export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
             )}
 
             {/* Reviews */}
-            <div>
+            <div ref={reviewsRef} className="scroll-mt-4">
               <PublicProfileReviews
                 profileId={profile.user_id}
                 profileType="creator"
