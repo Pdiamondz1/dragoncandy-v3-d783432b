@@ -5,6 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Star, MapPin, Building2, MessageSquare } from 'lucide-react';
+import { InlineRating } from '@/components/reviews/InlineRating';
 import { PublicProfileReviews } from '@/components/profiles/PublicProfileReviews';
 import logo from '@/assets/Transparent_DragonCandy_logo.webp';
 import { SEO } from '@/components/SEO';
@@ -16,6 +17,8 @@ interface BusinessProfile {
   user_id: string;
   business_name: string;
   industry: string;
+  average_rating?: number | null;
+  total_reviews?: number | null;
   website_url?: string;
   location?: string;
   description?: string;
@@ -55,7 +58,7 @@ const PublicBusinessProfile = () => {
       try {
         const { data, error } = await supabase
           .from('business_profiles')
-          .select('id, user_id, business_name, industry, website_url, location, description, company_size, founded_year, employee_count_range, budget_range, preferred_collaboration_style, timezone, logo_url, instagram_url, facebook_url, linkedin_url, x_url, other_social_url, sample_content_urls, created_at')
+          .select('id, user_id, business_name, industry, average_rating, total_reviews, website_url, location, description, company_size, founded_year, employee_count_range, budget_range, preferred_collaboration_style, timezone, logo_url, instagram_url, facebook_url, linkedin_url, x_url, other_social_url, sample_content_urls, created_at')
           .eq('profile_slug', slug)
           .eq('profile_visibility', 'public')
           .single();
@@ -190,14 +193,14 @@ const PublicBusinessProfile = () => {
           <h1 className="text-lg font-bold text-gray-900 truncate">
             {profile.business_name}
           </h1>
-          {profile.industry && (
+          {(profile.total_reviews ?? 0) > 0 ? (
+            <InlineRating averageRating={profile.average_rating} totalReviews={profile.total_reviews} />
+          ) : profile.industry ? (
             <div className="flex items-center gap-1 text-sm text-dc-pink-accent">
               <Star className="h-3.5 w-3.5 fill-dc-pink-accent" />
-              <span className="font-medium uppercase">
-                {profile.industry.replace('_', ' ')}
-              </span>
+              <span className="font-medium uppercase">{profile.industry.replace('_', ' ')}</span>
             </div>
-          )}
+          ) : null}
           {profile.location && (
             <p className="text-xs text-gray-500 uppercase tracking-wide flex items-center gap-1">
               <MapPin className="h-3 w-3" />
