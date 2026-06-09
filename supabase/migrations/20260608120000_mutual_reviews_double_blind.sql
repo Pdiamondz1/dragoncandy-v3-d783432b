@@ -15,6 +15,7 @@ UPDATE public.project_reviews
 CREATE OR REPLACE FUNCTION public.set_review_reveal_at()
 RETURNS trigger
 LANGUAGE plpgsql
+SET search_path = public
 AS $$
 BEGIN
   IF NEW.reveal_at IS NULL THEN
@@ -160,3 +161,12 @@ WHERE r.is_public
   );
 
 GRANT SELECT ON public.public_project_reviews TO anon, authenticated;
+
+-- 6. Harden the SECURITY DEFINER surface. recompute_profile_rating and
+--    update_profile_ratings are only ever invoked internally (the AFTER trigger
+--    and PERFORM), never as PostgREST RPC — revoke client EXECUTE so they can't
+--    be called over /rest/v1/rpc. has_counterpart_review is intentionally left
+--    executable: the RLS policy and the view call it as the querying user, and
+--    it returns only a boolean.
+REVOKE ALL ON FUNCTION public.recompute_profile_rating(uuid) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.update_profile_ratings() FROM PUBLIC, anon, authenticated;
