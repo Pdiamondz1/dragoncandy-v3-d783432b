@@ -33,9 +33,9 @@ export const StarRating: React.FC<StarRatingProps> = ({
             sizes[size],
             'transition-colors',
             star <= rating
-              ? 'fill-yellow-400 text-yellow-400'
-              : 'text-gray-300',
-            !readonly && 'cursor-pointer hover:text-yellow-300'
+              ? 'fill-dc-pink-accent text-dc-pink-accent'
+              : 'text-dc-pink-accent/25',
+            !readonly && 'cursor-pointer hover:text-dc-pink-accent/60'
           )}
           onClick={() => !readonly && onRatingChange?.(star)}
         />
