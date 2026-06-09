@@ -26,9 +26,15 @@ export const useMyGivenReviews = (userId?: string) =>
       if (error) { console.error('useMyGivenReviews error:', error); return []; }
       if (!mine || mine.length === 0) return [];
 
-      const { data: revealed } = await (supabase.from('public_project_reviews' as never) as any)
+      const { data: revealed, error: revealedError } = await (supabase.from('public_project_reviews' as never) as any)
         .select('id')
         .eq('reviewer_id', userId);
+      // If the reveal lookup fails we can't know each review's state. Default to
+      // "revealed" (no pending badge) rather than falsely flagging live reviews as hidden.
+      if (revealedError) {
+        console.error('useMyGivenReviews reveal lookup error:', revealedError);
+        return mine.map((r) => ({ ...r, is_revealed: true }));
+      }
       const revealedIds = new Set(((revealed ?? []) as unknown as { id: string }[]).map((r) => r.id));
 
       return mine.map((r) => ({ ...r, is_revealed: revealedIds.has(r.id) }));
