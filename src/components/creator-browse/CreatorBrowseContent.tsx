@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React from 'react';
 import { Search } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
@@ -6,6 +6,8 @@ import { CreatorCard } from './CreatorCard';
 import { CreatorMapView } from './CreatorMapView';
 import { AdvancedCreatorFilters } from '@/components/creator-search/AdvancedCreatorFilters';
 import type { CreatorFilters, CreatorProfile } from '@/hooks/useCreatorBrowse';
+import { usePagedList } from '@/hooks/usePagedList';
+import { LoadMoreButton } from '@/components/shared/LoadMoreButton';
 
 interface CreatorBrowseContentProps {
   filteredCreators: CreatorProfile[];
@@ -34,31 +36,7 @@ export const CreatorBrowseContent: React.FC<CreatorBrowseContentProps> = ({
   isMapOpen,
   onMapOpenChange,
 }) => {
-  const PAGE_SIZE = 30;
-  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
-  const sentinelRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    setVisibleCount(PAGE_SIZE);
-  }, [filteredCreators]);
-
-  useEffect(() => {
-    const sentinel = sentinelRef.current;
-    if (!sentinel) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setVisibleCount(prev => Math.min(prev + PAGE_SIZE, filteredCreators.length));
-        }
-      },
-      { rootMargin: '400px' },
-    );
-    observer.observe(sentinel);
-    return () => observer.disconnect();
-  }, [filteredCreators.length]);
-
-  const visibleCreators = filteredCreators.slice(0, visibleCount);
-  const hasMore = visibleCount < filteredCreators.length;
+  const { visible: visibleCreators, hasMore, showing, total, loadMore } = usePagedList(filteredCreators, 12);
 
   if (isLoading) {
     return (
@@ -104,12 +82,13 @@ export const CreatorBrowseContent: React.FC<CreatorBrowseContentProps> = ({
               <CreatorCard key={creator.id} creator={creator} />
             ))}
           </div>
-          {hasMore && <div ref={sentinelRef} className="h-1" />}
-          {hasMore && (
-            <p className="text-center text-sm text-gray-400 py-4">
-              Showing {visibleCount} of {filteredCreators.length} creators
-            </p>
-          )}
+          <LoadMoreButton
+            hasMore={hasMore}
+            showing={showing}
+            total={total}
+            onClick={loadMore}
+            noun="creators"
+          />
         </>
       )}
 

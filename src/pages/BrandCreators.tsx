@@ -11,6 +11,8 @@ import { CampaignContextSelector } from '@/components/brand-browse/CampaignConte
 import { EmptyStateNoCampaigns } from '@/components/brand-browse/EmptyStateNoCampaigns';
 import { CreatorMetricFilters, type MetricFilters } from '@/components/outstand/CreatorMetricFilters';
 import { useCreatorBrowse } from '@/hooks/useCreatorBrowse';
+import { usePagedList } from '@/hooks/usePagedList';
+import { LoadMoreButton } from '@/components/shared/LoadMoreButton';
 import { useBrandShortlist } from '@/hooks/useBrandShortlist';
 import { useBulkInvite } from '@/hooks/useBulkInvite';
 import { useBrandActiveCampaigns } from '@/hooks/useBrandActiveCampaigns';
@@ -208,6 +210,8 @@ const BrandCreators: React.FC = () => {
     return result;
   }, [filteredCreators, metricFilters, socialStatsByUser]);
 
+  const creatorPage = usePagedList(metricFilteredCreators, 12);
+
   // Count active advanced filters
   const activeFilterCount = [
     filters.skills.length > 0,
@@ -318,17 +322,26 @@ const BrandCreators: React.FC = () => {
                   cta={{ label: "Clear Filters", onClick: resetFilters }}
                 />
               ) : (
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                  {metricFilteredCreators.map((creator) => (
-                    <BrandCreatorCard
-                      key={creator.id}
-                      creator={creator}
-                      isShortlisted={isShortlisted(creator.user_id)}
-                      onToggleShortlist={handleToggleShortlist}
-                      onInvite={handleSingleInvite}
-                      shortlistLoading={addToShortlist.isPending || removeFromShortlist.isPending}
-                    />
-                  ))}
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                    {creatorPage.visible.map((creator) => (
+                      <BrandCreatorCard
+                        key={creator.id}
+                        creator={creator}
+                        isShortlisted={isShortlisted(creator.user_id)}
+                        onToggleShortlist={handleToggleShortlist}
+                        onInvite={handleSingleInvite}
+                        shortlistLoading={addToShortlist.isPending || removeFromShortlist.isPending}
+                      />
+                    ))}
+                  </div>
+                  <LoadMoreButton
+                    hasMore={creatorPage.hasMore}
+                    showing={creatorPage.showing}
+                    total={creatorPage.total}
+                    onClick={creatorPage.loadMore}
+                    noun="creators"
+                  />
                 </div>
               )}
             </>

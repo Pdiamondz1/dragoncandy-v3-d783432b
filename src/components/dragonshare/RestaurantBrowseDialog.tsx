@@ -1,46 +1,41 @@
-// src/pages/DragonShareBrowseRestaurants.tsx
-import { useNavigate } from 'react-router-dom';
-import { DashboardLayout } from '@/components/DashboardLayout';
-import { PrerequisiteGate } from '@/components/PrerequisiteGate';
+// src/components/dragonshare/RestaurantBrowseDialog.tsx
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 import { useRestaurantBrowse } from '@/hooks/useRestaurantBrowse';
 import { RestaurantBrowseHeader } from '@/components/dragonshare/RestaurantBrowseHeader';
 import { RestaurantCard } from '@/components/dragonshare/RestaurantCard';
-import { Button } from '@/components/ui/button';
-import { ArrowLeft } from 'lucide-react';
-import type { RestaurantSearchResult } from '@/hooks/useRestaurantSearch';
 import { usePagedList } from '@/hooks/usePagedList';
 import { LoadMoreButton } from '@/components/shared/LoadMoreButton';
+import type { RestaurantSearchResult } from '@/hooks/useRestaurantSearch';
 
-const DragonShareBrowseRestaurants: React.FC = () => {
-  const navigate = useNavigate();
+interface Props {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSelect: (restaurant: RestaurantSearchResult) => void;
+}
+
+/**
+ * In-page restaurant browser. Replaces navigating to a separate page so the
+ * creator never loses their in-progress upload/draft when picking a restaurant.
+ */
+export function RestaurantBrowseDialog({ open, onOpenChange, onSelect }: Props) {
   const { restaurants, cuisines, isLoading, filters, setSearch, setCuisine, resetFilters } =
     useRestaurantBrowse();
   const { visible, hasMore, showing, total, loadMore } = usePagedList(restaurants, 12);
 
   function handleSelect(restaurant: RestaurantSearchResult) {
-    navigate(`/dashboard/creator/dragonshare?restaurant=${restaurant.id}`);
+    onSelect(restaurant);
+    onOpenChange(false);
   }
 
   return (
-    <DashboardLayout userRole="content_creator">
-      <PrerequisiteGate feature="use DragonShare">
-        <div className="space-y-5 pt-4">
-          {/* Back link + page header */}
-          <div>
-            <button
-              onClick={() => navigate('/dashboard/creator/dragonshare')}
-              className="flex items-center gap-2 text-sm font-medium text-dc-teal hover:text-dc-teal-dark transition-colors mb-3"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Back to DragonShare
-            </button>
-            <h1 className="text-2xl font-bold tracking-tight">Find Restaurants</h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Browse restaurants near you to tag in your content
-            </p>
-          </div>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="text-dc-teal font-bold">Find Restaurants</DialogTitle>
+        </DialogHeader>
 
-          {/* Search + filters */}
+        <div className="space-y-4 mt-2">
           <RestaurantBrowseHeader
             search={filters.search}
             onSearchChange={setSearch}
@@ -50,9 +45,8 @@ const DragonShareBrowseRestaurants: React.FC = () => {
             resultCount={restaurants.length}
           />
 
-          {/* Restaurant grid */}
           {isLoading ? (
-            <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
               {[1, 2, 3, 4, 5, 6].map((i) => (
                 <div key={i} className="h-48 animate-pulse rounded-2xl bg-dc-teal/10" />
               ))}
@@ -62,17 +56,13 @@ const DragonShareBrowseRestaurants: React.FC = () => {
               <p className="text-sm text-dc-text-muted">
                 No restaurants found matching your search.
               </p>
-              <Button
-                variant="outline"
-                onClick={resetFilters}
-                className="rounded-full"
-              >
+              <Button variant="outline" onClick={resetFilters} className="rounded-full">
                 Reset filters
               </Button>
             </div>
           ) : (
             <div className="space-y-4">
-              <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+              <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
                 {visible.map((restaurant) => (
                   <RestaurantCard
                     key={restaurant.id}
@@ -91,9 +81,7 @@ const DragonShareBrowseRestaurants: React.FC = () => {
             </div>
           )}
         </div>
-      </PrerequisiteGate>
-    </DashboardLayout>
+      </DialogContent>
+    </Dialog>
   );
-};
-
-export default DragonShareBrowseRestaurants;
+}

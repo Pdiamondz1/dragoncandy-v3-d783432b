@@ -7,15 +7,18 @@ import { CreatePromotionModal } from './CreatePromotionModal';
 import { EditPromotionModal, EditPromotionFormData } from './EditPromotionModal';
 import { PromotionStats } from './PromotionStats';
 import { Skeleton } from '@/components/ui/skeleton';
+import { usePagedList } from '@/hooks/usePagedList';
+import { LoadMoreButton } from '@/components/shared/LoadMoreButton';
 
 export const ActivePromotionsTab: React.FC = () => {
   const { promotions, isLoading, isError, refetch, updatePromotionStatus, updatePromotion, deletePromotion, stats } = usePromotions();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingPromotion, setEditingPromotion] = useState<Promotion | null>(null);
 
-  const activePromotions = promotions?.filter(p => 
+  const activePromotions = promotions?.filter(p =>
     p.status === 'active' || p.status === 'paused'
   ) || [];
+  const { visible, hasMore, showing, total, loadMore } = usePagedList(activePromotions, 12);
 
   const handleEditSave = async (data: EditPromotionFormData) => {
     if (!editingPromotion) return;
@@ -104,17 +107,26 @@ export const ActivePromotionsTab: React.FC = () => {
           </Button>
         </div>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {activePromotions.map(promotion => (
-            <PromotionCard
-              key={promotion.id}
-              promotion={promotion}
-              onPause={() => updatePromotionStatus.mutate({ id: promotion.id, status: 'paused' })}
-              onResume={() => updatePromotionStatus.mutate({ id: promotion.id, status: 'active' })}
-              onEdit={() => setEditingPromotion(promotion)}
-              onDelete={() => deletePromotion.mutate(promotion.id)}
-            />
-          ))}
+        <div className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {visible.map(promotion => (
+              <PromotionCard
+                key={promotion.id}
+                promotion={promotion}
+                onPause={() => updatePromotionStatus.mutate({ id: promotion.id, status: 'paused' })}
+                onResume={() => updatePromotionStatus.mutate({ id: promotion.id, status: 'active' })}
+                onEdit={() => setEditingPromotion(promotion)}
+                onDelete={() => deletePromotion.mutate(promotion.id)}
+              />
+            ))}
+          </div>
+          <LoadMoreButton
+            hasMore={hasMore}
+            showing={showing}
+            total={total}
+            onClick={loadMore}
+            noun="promotions"
+          />
         </div>
       )}
 
