@@ -73,6 +73,11 @@ export async function uploadProfileAsset({
   const allowedTypes = isPortfolioKind ? PORTFOLIO_MIME_TYPES : PROFILE_MIME_TYPES;
   const maxSize = isPortfolioKind ? PORTFOLIO_MAX_SIZE : PROFILE_MAX_SIZE;
 
+  // Reject empty files — a 0-byte upload yields a broken image that silently fails to render.
+  if (file.size === 0) {
+    throw new UploadError('File is empty. Please choose a valid image.');
+  }
+
   // Validate MIME type
   if (!allowedTypes.includes(file.type)) {
     const label = isPortfolioKind
