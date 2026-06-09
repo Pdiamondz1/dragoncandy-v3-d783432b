@@ -41,9 +41,9 @@ export const MobileOptimizedStarRating: React.FC<MobileOptimizedStarRatingProps>
             sizes[size],
             'transition-all duration-200',
             star <= rating
-              ? 'fill-yellow-400 text-yellow-400'
-              : 'text-gray-300',
-            !readonly && 'cursor-pointer hover:text-yellow-300 active:scale-95 touch-manipulation',
+              ? 'fill-dc-pink-accent text-dc-pink-accent'
+              : 'text-dc-pink-accent/25',
+            !readonly && 'cursor-pointer hover:text-dc-pink-accent/60 active:scale-95 touch-manipulation',
             readonly && 'cursor-default'
           )}
           onClick={() => handleStarClick(star)}
