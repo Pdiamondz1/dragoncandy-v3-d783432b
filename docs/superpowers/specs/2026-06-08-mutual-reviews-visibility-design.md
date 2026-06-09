@@ -95,26 +95,76 @@ A review is **publicly visible** when:
 ```
 is_public = true
 AND (
-  EXISTS (counterpart review for the same collaboration_id / sponsorship_id
-          written by the reviewee about the reviewer)
+  has_counterpart_review(reviewer_id, reviewee_id, collaboration_id, sponsorship_id)
   OR now() >= reveal_at
 )
 ```
 
 The reviewer always sees their own review regardless of reveal state.
 
-### 5.3 `public_project_reviews` view
+**Counterpart match is an exact id-swap**, not a review-type pairing. The
+counterpart of review `R` is the row where:
 
-A new Postgres view computes the reveal predicate and joins the reviewer's
-profile (`full_name`, `avatar_url`) plus the campaign title (as today). **Every
-public surface reads this view, never the raw table.** This concentrates the
-entire double-blind display rule in one place — no cron, no edge function.
+```
+cp.reviewer_id = R.reviewee_id          -- the other party
+AND cp.reviewee_id = R.reviewer_id      -- reviewing me back
+AND cp.collaboration_id IS NOT DISTINCT FROM R.collaboration_id
+AND cp.sponsorship_id   IS NOT DISTINCT FROM R.sponsorship_id   -- same project
+AND cp.id <> R.id
+```
 
-`useReviews` and `useReviewStats` are repointed from `project_reviews` to
-`public_project_reviews`. Their public signatures are unchanged; the
-`.eq('is_public', true)` filter is removed (the view already enforces it).
+This is unambiguous for every bidirectional pair — `business_to_creator` ↔
+`creator_to_business` (same `collaboration_id`) and `brand_to_business` ↔
+`business_to_brand` (same `sponsorship_id`) — without needing to enumerate
+review-type opposites. The id-swap also self-protects against a (disallowed)
+self-review row matching itself.
 
-### 5.4 RLS (security, not just display)
+### 5.3 `has_counterpart_review` — SECURITY DEFINER function
+
+The counterpart check is an `EXISTS` subquery **against `project_reviews`
+itself**. If that subquery runs inside the base-table RLS SELECT policy under
+the caller's own RLS, it recurses. Therefore the predicate is wrapped in a
+`SECURITY DEFINER` SQL function `has_counterpart_review(...)` that bypasses RLS
+for the inner lookup only — exactly the pattern the codebase already uses for
+`has_role()` (see DATABASE_SCHEMA.md, `user_roles`). The function:
+
+- takes the four identifying columns of the originating review,
+- returns `boolean` (does a counterpart row exist),
+- is `STABLE` and `SECURITY DEFINER` with a locked `search_path`,
+- leaks nothing: it returns only a boolean, never review content.
+
+Both the RLS policy (§5.5) and the view (§5.4) call this one function.
+
+### 5.4 `public_project_reviews` view
+
+A new Postgres view computes the reveal predicate (via
+`has_counterpart_review`) and exposes the reviewer's profile fields and a
+project title **as plain columns** (not PostgREST FK embeds — see hook note
+below). It `LEFT JOIN`s **both** project paths:
+
+- `collaboration_id → campaign_collaborations → campaigns(title)`
+- `sponsorship_id → campaign_sponsorships → campaigns(title)` (whichever the
+  sponsorship references)
+
+Project title is `coalesce(collab_campaign_title, sponsorship_campaign_title,
+'Project')`. Using `LEFT JOIN`s (not `INNER`) ensures sponsorship reviews —
+which have a null `collaboration_id` — are **not** dropped from the view.
+
+**Every public surface reads this view, never the raw table.** This
+concentrates the entire double-blind display rule in one place — no cron, no
+edge function.
+
+**Hook rewrite (not just a repoint).** `useReviews` currently relies on
+PostgREST FK embedding (`profiles!project_reviews_reviewer_id_fkey(...)` and the
+nested `campaign_collaborations(...)`), which does **not** work against a view
+with no declared relationships. The view therefore flattens those into plain
+columns (`reviewer_full_name`, `reviewer_avatar_url`, `project_title`), and
+`useReviews` / `useReviewStats` are rewritten to select those columns directly.
+The `.eq('is_public', true)` filter is removed (the view already enforces the
+full reveal predicate). The hooks' public signatures and return shapes are
+preserved so call sites are unaffected.
+
+### 5.5 RLS (security, not just display)
 
 Client-side filtering is insufficient for a real double-blind — the
 counterparty must not be able to query the hidden text early. Base-table
@@ -122,26 +172,51 @@ counterparty must not be able to query the hidden text early. Base-table
 
 ```
 auth.uid() = reviewer_id          -- you always see your own
-OR <reveal predicate is true>     -- otherwise only revealed rows
+OR ( is_public
+     AND ( has_counterpart_review(reviewer_id, reviewee_id,
+                                  collaboration_id, sponsorship_id)
+           OR now() >= reveal_at ) )
 ```
 
-The view inherits the caller's RLS. Verify with `get_advisors` (security lint)
-after applying the migration.
+The `EXISTS` lives inside `has_counterpart_review` (SECURITY DEFINER, §5.3), so
+the policy does not recurse. The view inherits the caller's RLS. Verify with
+`get_advisors` (security lint) after applying the migration — expect no new
+RLS warnings and no recursion.
 
-### 5.5 Denormalized aggregate trigger
+### 5.6 Denormalized aggregate trigger
 
 A trigger on `project_reviews` (insert/update) recomputes the **reviewee's**
-aggregate — `creator_profiles` or `business_profiles` depending on the
-reviewee's role — counting **only revealed reviews**. The common reveal path
-(counterpart submits) is a write, so the trigger keeps browse numbers fresh
-for it.
+aggregate, counting **only revealed reviews** and **only the review type that
+feeds that profile's headline number**:
+
+- `creator_profiles.average_rating` / `total_reviews` ← counts **only
+  `business_to_creator`** (how businesses rate this creator).
+- `business_profiles.average_rating` / `total_reviews` ← counts **only
+  `creator_to_business`** (how creators rate this restaurant — the exact signal
+  the creator→restaurant decision surfaces read).
+
+This keeps each headline number semantically clean: a restaurant's rating is
+"rated by creators," never blended with `brand_to_business`. Brand-as-reviewee
+(`business_to_brand`) and brand profiles are **intentionally not aggregated** in
+this build (no surface reads them); the trigger's `WHERE` clause is explicit
+about the two counted types so this is a deliberate scope, not an accident. A
+future DragonShare or brand signal gets its own column/filter rather than
+polluting these.
 
 **Known limitation:** a review that reveals purely by the 14-day timeout
 (counterpart never reviewed) produces no write event, so the denormalized number
-on **browse cards** can lag until the next write touches that reviewee.
-**Mitigation:** profile pages show **live** stats via `useReviewStats` (computed
-from the view), so the authoritative number is always correct where it matters
-most. Accepted tradeoff to avoid a nightly recompute / cron.
+on **browse/list cards** can lag until the next write touches that reviewee.
+**Mitigation:** profile pages and detail modals show **live** stats via
+`useReviewStats` (computed from the view), so the authoritative number is always
+correct where it matters most. Accepted tradeoff to avoid a nightly recompute /
+cron.
+
+**Per-surface data source (explicit):** browse/list surfaces (`CreatorCard`,
+restaurant browse cards, `ApplicationsListFixed` rows) read the **denormalized
+columns** — fast, single query, possibly briefly stale on timeout-reveal.
+Profile pages and detail modals (`PublicCreatorProfile`, `PublicBusinessProfile`,
+`CreatorProfileModal`) read **live** stats from the view. `InlineRating` accepts
+the numbers as props so each surface picks its own source.
 
 ### 5.6 Reveal clock set server-side
 
@@ -241,9 +316,17 @@ use base classes only. Test both viewports per surface.
   staging (`mhffqrawgizhprbobcta`) first, validate, then production.
 - No live Stripe keys involved; no auth-logic changes.
 
-## 11. Open questions
+## 11. Resolved during review
 
-- Confirm star color normalization: standardize on pink (`dc-pink-accent`)
-  everywhere, or keep `CreatorCard`'s existing yellow ★?
-- Is 14 days the right reveal timeout, or shorter (e.g. 7) given pre-revenue,
-  low-volume reality?
+- **Star color: pink (`dc-pink-accent`) everywhere** — locked. `InlineRating`
+  uses pink; `CreatorCard`'s current yellow ★ is normalized to pink. (No longer
+  an open question — §7 already assumes this.)
+- **Reveal timeout: 14 days** — locked as the default. Cheap to revisit later
+  (it's a single `interval` literal in the §5.2 insert trigger); not a blocker.
+
+## 12. Future considerations (out of scope, schema-ready)
+
+- Lightweight one-tap DragonShare signal (separate column/filter, not the
+  double-blind flow).
+- Brand-as-reviewee aggregates, if a surface ever needs to show how businesses
+  rate brands.
