@@ -9,6 +9,7 @@ import {
 } from '@/lib/storage/uploadProfileAsset';
 import { clearSignedUrlCache } from '@/hooks/useSignedUrl';
 import { clearProfileCache } from '@/hooks/useProfileData';
+import { invalidateOrgLogoCaches } from '@/hooks/useOrgData';
 import type { BusinessProfileFormData } from './useBusinessProfileForm';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -121,6 +122,9 @@ export const useBusinessProfileSubmit = () => {
       clearSignedUrlCache();
       clearProfileCache(userId);
       queryClient.invalidateQueries({ queryKey: ['restaurant-profile', userId] });
+      // The logo change propagates to organizations + org_units via the DB trigger;
+      // refresh those caches so the location switcher reflects it without a reload.
+      invalidateOrgLogoCaches(queryClient);
 
       toast({
         title: "Profile saved successfully!",

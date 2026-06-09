@@ -9,6 +9,8 @@ import {
 } from '@/lib/storage/uploadProfileAsset';
 import { getSignedProfileUrl, clearSignedUrlCache } from '@/hooks/useSignedUrl';
 import { clearProfileCache } from '@/hooks/useProfileData';
+import { invalidateOrgLogoCaches } from '@/hooks/useOrgData';
+import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { AvatarCropModal } from '@/components/settings/AvatarCropModal';
 
@@ -46,6 +48,7 @@ export const FileUploadSection = ({
   logoLabel = 'Restaurant Logo',
 }: FileUploadSectionProps) => {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [logoUploading, setLogoUploading] = useState(false);
   const [sampleUploading, setSampleUploading] = useState(false);
   const [sampleProgress, setSampleProgress] = useState({ done: 0, total: 0 });
@@ -105,6 +108,10 @@ export const FileUploadSection = ({
         }
         clearSignedUrlCache();
         clearProfileCache(user.id);
+        // Refresh the location switcher / org logo surfaces: a business-level logo save
+        // propagates to organizations + org_units via the DB trigger, and a location-level
+        // save (onPersistLogo) writes org_units directly.
+        invalidateOrgLogoCaches(queryClient);
       } catch (e) {
         console.error('Auto-save logo failed:', e);
       }

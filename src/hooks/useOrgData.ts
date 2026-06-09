@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
@@ -13,6 +13,21 @@ const KEYS = {
   activeOrgUnit: (unitId?: string) => ['active-org-unit', unitId] as const,
   myOrgRole: (orgId?: string, userId?: string) => ['my-org-role', orgId, userId] as const,
 };
+
+// ── invalidateOrgLogoCaches ───────────────────────────────────────────────────
+
+/**
+ * Invalidate every cache that surfaces an org/brand or location logo. A business-level
+ * logo save propagates to organizations + org_units via the DB trigger
+ * (sync_brand_logo_from_business_profile); calling this afterwards refreshes the location
+ * switcher ("All Locations" row + per-location rows) without requiring a page reload.
+ */
+export function invalidateOrgLogoCaches(queryClient: QueryClient): void {
+  queryClient.invalidateQueries({ queryKey: ['org'] });
+  queryClient.invalidateQueries({ queryKey: ['org-from-profile'] });
+  queryClient.invalidateQueries({ queryKey: ['org-units'] });
+  queryClient.invalidateQueries({ queryKey: ['active-org-unit'] });
+}
 
 // ── useOrg ───────────────────────────────────────────────────────────────────
 

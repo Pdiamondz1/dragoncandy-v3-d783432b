@@ -22,22 +22,34 @@ interface UnitAvatarProps {
   unit: OrgUnit;
   isActive?: boolean;
   size?: 'sm' | 'md';
+  /** Resolved org/brand logo URL used as a fallback when the unit has no usable logo. */
+  fallbackUrl?: string;
 }
 
-function UnitAvatar({ unit, isActive = false, size = 'md' }: UnitAvatarProps) {
+function UnitAvatar({ unit, isActive = false, size = 'md', fallbackUrl }: UnitAvatarProps) {
   const sizeClass = size === 'sm' ? 'w-5 h-5' : 'w-7 h-7';
   const ringClass = isActive ? 'ring-2 ring-teal-400' : '';
   const textSize = size === 'sm' ? 'text-[10px]' : 'text-xs';
   const resolvedUrl = useResolvedLogoUrl(unit.logo_url);
   const [imgError, setImgError] = useState(false);
+  const [fallbackError, setFallbackError] = useState(false);
 
-  if (resolvedUrl && !imgError) {
+  // Prefer the unit's own logo; degrade to the org logo before the initial-letter fallback,
+  // so a missing/broken unit logo never silently drops straight to "U".
+  const showingPrimary = !!resolvedUrl && !imgError;
+  const src = showingPrimary
+    ? resolvedUrl
+    : fallbackUrl && !fallbackError
+      ? fallbackUrl
+      : undefined;
+
+  if (src) {
     return (
       <img
-        src={resolvedUrl}
+        src={src}
         alt={unit.name}
         className={`${sizeClass} rounded-full object-cover shrink-0 ${ringClass}`}
-        onError={() => setImgError(true)}
+        onError={() => (showingPrimary ? setImgError(true) : setFallbackError(true))}
       />
     );
   }
@@ -75,9 +87,10 @@ interface RichUnitCardProps {
   campaignCount: number;
   hasSocialAccount: boolean;
   onSelect: (unit: OrgUnit) => void;
+  fallbackUrl?: string;
 }
 
-function RichUnitCard({ unit, isActive, campaignCount, hasSocialAccount, onSelect }: RichUnitCardProps) {
+function RichUnitCard({ unit, isActive, campaignCount, hasSocialAccount, onSelect, fallbackUrl }: RichUnitCardProps) {
   const isReady = unit.stripe_onboarding_complete === true && hasSocialAccount;
   const statsLabel = campaignCount > 0 ? `${campaignCount} campaign${campaignCount !== 1 ? 's' : ''}` : 'Setup needed';
 
@@ -87,7 +100,7 @@ function RichUnitCard({ unit, isActive, campaignCount, hasSocialAccount, onSelec
       onClick={() => onSelect(unit)}
       className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-teal-50 transition-colors text-left ${isActive ? 'border-l-2 border-teal-400 pl-2.5 bg-teal-50/60' : ''}`}
     >
-      <UnitAvatar unit={unit} isActive={isActive} size="md" />
+      <UnitAvatar unit={unit} isActive={isActive} size="md" fallbackUrl={fallbackUrl} />
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold text-gray-900 truncate">{unit.name}</p>
         <p className="text-xs text-gray-500 truncate">{statsLabel}</p>
@@ -155,7 +168,7 @@ export function OrgUnitSwitcher({ onAddUnit, canManage }: OrgUnitSwitcherProps) 
           data-tour="org-switcher"
           className="rounded-full border-2 border-teal-300 bg-white text-teal-600 flex items-center gap-2 px-2 py-1.5"
         >
-          <UnitAvatar unit={singleUnit} isActive size="sm" />
+          <UnitAvatar unit={singleUnit} isActive size="sm" fallbackUrl={orgLogoUrl} />
           <span className="text-sm font-semibold max-w-[120px] truncate">
             {singleUnit.name}
           </span>
@@ -175,7 +188,7 @@ export function OrgUnitSwitcher({ onAddUnit, canManage }: OrgUnitSwitcherProps) 
             className="rounded-full border-2 border-teal-300 bg-white text-teal-600 hover:bg-teal-50 hover:text-teal-700 flex items-center gap-2 px-2 py-1.5 h-auto"
           >
             {activeOrgUnit ? (
-              <UnitAvatar unit={activeOrgUnit} isActive size="sm" />
+              <UnitAvatar unit={activeOrgUnit} isActive size="sm" fallbackUrl={orgLogoUrl} />
             ) : (
               <Globe className="w-4 h-4 shrink-0" />
             )}
@@ -235,6 +248,7 @@ export function OrgUnitSwitcher({ onAddUnit, canManage }: OrgUnitSwitcherProps) 
                   campaignCount={campaignCountMap.get(unit.id) ?? 0}
                   hasSocialAccount={socialAccountUnitIds.has(unit.id)}
                   onSelect={handleSelect}
+                  fallbackUrl={orgLogoUrl}
                 />
               ))
             )}
