@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -45,6 +45,7 @@ const PublicBusinessProfile = () => {
   const [profile, setProfile] = useState<BusinessProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const reviewsRef = useRef<HTMLDivElement>(null);
   const resolvedLogoUrl = useResolvedLogoUrl(profile?.logo_url);
 
   useEffect(() => {
@@ -194,7 +195,11 @@ const PublicBusinessProfile = () => {
             {profile.business_name}
           </h1>
           {(profile.total_reviews ?? 0) > 0 ? (
-            <InlineRating averageRating={profile.average_rating} totalReviews={profile.total_reviews} />
+            <InlineRating
+              averageRating={profile.average_rating}
+              totalReviews={profile.total_reviews}
+              onClick={() => reviewsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+            />
           ) : profile.industry ? (
             <div className="flex items-center gap-1 text-sm text-dc-pink-accent">
               <Star className="h-3.5 w-3.5 fill-dc-pink-accent" />
@@ -260,7 +265,7 @@ const PublicBusinessProfile = () => {
       )}
 
       {/* Reviews Section */}
-      <div className="px-4 pb-4">
+      <div ref={reviewsRef} className="px-4 pb-4 scroll-mt-4">
         <h2 className="text-lg font-bold text-center mb-3 text-gray-900">Reviews</h2>
         <PublicProfileReviews
           profileId={profile.user_id}
