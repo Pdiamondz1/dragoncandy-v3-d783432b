@@ -19,14 +19,15 @@ const ReviewsManagement = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'received' | 'given'>('all');
 
+  // Hooks must run before any early return (rules-of-hooks). The hook no-ops when userId is undefined.
+  const { data: givenReviews, isLoading: givenLoading } = useMyGivenReviews(user?.id);
+
   if (!user || !profile) {
     return null;
   }
 
   const isCreator = profile.role === 'content_creator';
   const receivedReviewType = isCreator ? 'business_to_creator' : 'creator_to_business';
-
-  const { data: givenReviews, isLoading: givenLoading } = useMyGivenReviews(user.id);
 
   const GivenReviewsList = () => {
     if (givenLoading) {
