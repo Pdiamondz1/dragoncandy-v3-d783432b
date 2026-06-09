@@ -37,6 +37,10 @@ export const AccountsTab: React.FC = () => {
   const assignMutation = useAssignAccountLocation();
   const [assignments, setAssignments] = useState<Record<string, string>>({});
 
+  // One account per platform at a time: anything already connected is "in use".
+  const connectedByPlatform = new Map(allAccounts.map((a) => [a.platform, a]));
+  const availableNetworks = SUPPORTED_NETWORKS.filter((n) => !connectedByPlatform.has(n));
+
   const handleSaveAssignments = () => {
     const entries = Object.entries(assignments).filter(([, unitId]) => unitId);
     if (entries.length === 0) return;
@@ -119,9 +123,32 @@ export const AccountsTab: React.FC = () => {
             <h2 className="text-base font-bold text-gray-900">Connect a network</h2>
             <p className="text-xs text-gray-500 mt-1 mb-4">
               Connect your social accounts so you can publish, schedule, and respond to comments from one place.
+              One account per platform at a time.
             </p>
+            {connectedByPlatform.size > 0 && (
+              <div className="flex flex-wrap gap-2 mb-4">
+                {SUPPORTED_NETWORKS.filter((n) => connectedByPlatform.has(n)).map((network) => {
+                  const acct = connectedByPlatform.get(network)!;
+                  return (
+                    <span
+                      key={network}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-teal-200 bg-teal-50 px-3 py-1 text-xs font-medium text-teal-700"
+                    >
+                      <span className="capitalize">{network}</span>
+                      {acct.platform_handle && <span className="text-teal-600">@{acct.platform_handle}</span>}
+                      <span className="font-semibold">· Connected</span>
+                    </span>
+                  );
+                })}
+              </div>
+            )}
+            {availableNetworks.length === 0 ? (
+              <p className="text-sm font-medium text-dc-teal">
+                All networks connected. Disconnect one below to switch accounts.
+              </p>
+            ) : (
             <ConnectAccountButtonGroup
-              networks={SUPPORTED_NETWORKS}
+              networks={availableNetworks}
               redirectUri={redirectUri}
               apiKey={apiKey}
               baseUrl={baseUrl}
@@ -137,6 +164,7 @@ export const AccountsTab: React.FC = () => {
                 toast.error(`Could not start ${network} connection: ${error.message}`);
               }}
             />
+            )}
           </div>
 
           <div className="bg-white rounded-2xl p-4 border-2 border-dc-teal">

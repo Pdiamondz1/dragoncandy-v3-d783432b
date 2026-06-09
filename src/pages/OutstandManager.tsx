@@ -188,66 +188,74 @@ const OutstandManagerInner: React.FC = () => {
           </button>
         </div>
         <div className="grid grid-cols-2 gap-3 mt-4">
-          <div className="bg-white rounded-2xl p-4 border-2 border-dc-teal">
+          <button
+            type="button"
+            onClick={() => setActiveTab('accounts')}
+            className="bg-white rounded-2xl p-4 border-2 border-dc-teal text-left cursor-pointer hover:shadow-md transition-shadow"
+          >
             <p className="text-3xl font-extrabold text-gray-900">{connectedCount}</p>
             <p className="text-xs text-gray-500">Connected Accounts</p>
-          </div>
-          <div className="bg-white rounded-2xl p-4 border-2 border-dc-teal">
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('calendar')}
+            className="bg-white rounded-2xl p-4 border-2 border-dc-teal text-left cursor-pointer hover:shadow-md transition-shadow"
+          >
             <p className="text-3xl font-extrabold text-gray-900">{scheduledCount}</p>
             <p className="text-xs text-gray-500">Scheduled Posts</p>
-          </div>
+          </button>
         </div>
       </div>
 
       <div className="bg-white p-4">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className={`grid w-full ${isBrand ? 'grid-cols-8 overflow-x-auto' : 'grid-cols-7'} overflow-x-auto`}>
-            <TabsTrigger value="compose" className="flex items-center gap-1 text-xs">
+          <TabsList className="flex w-full justify-start gap-1 overflow-x-auto">
+            <TabsTrigger value="compose" className="flex shrink-0 items-center gap-1 whitespace-nowrap text-xs">
               <Send className="h-3 w-3" />
               <span className="hidden sm:inline">Compose</span>
               <span className="sm:hidden">New</span>
             </TabsTrigger>
-            <TabsTrigger value="drafts" className="flex items-center gap-1 text-xs">
+            <TabsTrigger value="drafts" className="flex shrink-0 items-center gap-1 whitespace-nowrap text-xs">
               <FileText className="h-3 w-3" />
-              <span className="hidden sm:inline">Drafts</span>
-              <span className="sm:hidden">Drafts</span>
+              Drafts
               {draftCount > 0 && (
-                <span className="ml-1 bg-dc-pink-accent text-white text-xs px-1.5 py-0.5 rounded-full">
+                <span className="ml-1 shrink-0 bg-dc-pink-accent text-white text-xs px-1.5 py-0.5 rounded-full">
                   {draftCount}
                 </span>
               )}
             </TabsTrigger>
-            <TabsTrigger value="calendar" className="flex items-center gap-1 text-xs">
+            <TabsTrigger value="calendar" className="flex shrink-0 items-center gap-1 whitespace-nowrap text-xs">
               <CalendarDays className="h-3 w-3" />
-              Calendar
+              <span className="hidden sm:inline">Calendar</span>
+              <span className="sm:hidden">Cal</span>
             </TabsTrigger>
-            <TabsTrigger value="published" className="flex items-center gap-1 text-xs">
+            <TabsTrigger value="published" className="flex shrink-0 items-center gap-1 whitespace-nowrap text-xs">
               <BarChart3 className="h-3 w-3" />
               <span className="hidden sm:inline">Published</span>
               <span className="sm:hidden">Posts</span>
             </TabsTrigger>
-            <TabsTrigger value="engagement" className="flex items-center gap-1 text-xs">
+            <TabsTrigger value="engagement" className="flex shrink-0 items-center gap-1 whitespace-nowrap text-xs">
               <MessageCircle className="h-3 w-3" />
               <span className="hidden sm:inline">Engagement</span>
               <span className="sm:hidden">Engage</span>
             </TabsTrigger>
-            <TabsTrigger value="analytics" className="flex items-center gap-1 text-xs">
+            <TabsTrigger value="analytics" className="flex shrink-0 items-center gap-1 whitespace-nowrap text-xs">
               <TrendingUp className="h-3 w-3" />
               <span className="hidden sm:inline">Analytics</span>
               <span className="sm:hidden">Stats</span>
             </TabsTrigger>
             {isBrand && (
-              <TabsTrigger value="sponsorships" className="flex items-center gap-1 text-xs">
+              <TabsTrigger value="sponsorships" className="flex shrink-0 items-center gap-1 whitespace-nowrap text-xs">
                 <Handshake className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">Sponsorships</span>
                 <span className="sm:hidden">Deals</span>
               </TabsTrigger>
             )}
-            <TabsTrigger value="accounts" className="flex items-center gap-1 text-xs">
+            <TabsTrigger value="accounts" className="flex shrink-0 items-center gap-1 whitespace-nowrap text-xs">
               <LinkIcon className="h-3 w-3" />
               Accounts
               {connectedCount > 0 && (
-                <span className="ml-1 bg-dc-teal text-white text-xs px-1.5 py-0.5 rounded-full">
+                <span className="ml-1 shrink-0 bg-dc-teal text-white text-xs px-1.5 py-0.5 rounded-full">
                   {connectedCount}
                 </span>
               )}
