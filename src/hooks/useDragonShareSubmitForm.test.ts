@@ -16,7 +16,12 @@ vi.mock('@/lib/nativeCamera', () => ({ captureCameraPhoto: () => captureMock() }
 import { useDragonShareSubmitForm } from './useDragonShareSubmitForm';
 
 describe('useDragonShareSubmitForm camera + file paths', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // The hook persists an in-progress draft to sessionStorage; clear it so each test
+    // starts from an empty draft (otherwise a prior test's uploadedUrl leaks in).
+    sessionStorage.clear();
+  });
 
   it('captureFromCamera uploads the captured file and sets uploaded state', async () => {
     const file = new File(['x'], 'dragonshare-capture.jpeg', { type: 'image/jpeg' });

@@ -4,6 +4,8 @@ import { Grid, Map, Columns } from 'lucide-react';
 import { CampaignMapView } from './CampaignMapView';
 import { PublicCampaign } from '@/hooks/usePublicCampaigns';
 import { SponsorshipCampaign } from '@/hooks/useSponsorshipCampaigns';
+import { usePagedList } from '@/hooks/usePagedList';
+import { LoadMoreButton } from '@/components/shared/LoadMoreButton';
 
 interface CampaignBrowseContentProps {
   campaigns: (PublicCampaign | SponsorshipCampaign)[];
@@ -26,6 +28,9 @@ export const CampaignBrowseContent: React.FC<CampaignBrowseContentProps> = ({
   useEffect(() => {
     localStorage.setItem('campaign-view-mode', viewMode);
   }, [viewMode]);
+
+  // Grid view paginates with "Load more"; map/split show the full set.
+  const grid = usePagedList(campaigns, 12);
 
   if (campaigns.length === 0 && emptyState) {
     return <>{emptyState}</>;
@@ -52,9 +57,18 @@ export const CampaignBrowseContent: React.FC<CampaignBrowseContentProps> = ({
         {campaigns.length === 0 ? (
           emptyState
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {campaigns.map((campaign) => renderCampaignCard(campaign))}
-          </div>
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {grid.visible.map((campaign) => renderCampaignCard(campaign))}
+            </div>
+            <LoadMoreButton
+              hasMore={grid.hasMore}
+              showing={grid.showing}
+              total={grid.total}
+              onClick={grid.loadMore}
+              noun="campaigns"
+            />
+          </>
         )}
       </TabsContent>
 

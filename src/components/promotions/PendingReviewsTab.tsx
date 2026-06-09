@@ -3,9 +3,12 @@ import { usePromotions } from '@/hooks/usePromotions';
 import { SubmissionCard } from './SubmissionCard';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Video, CheckCircle } from 'lucide-react';
+import { usePagedList } from '@/hooks/usePagedList';
+import { LoadMoreButton } from '@/components/shared/LoadMoreButton';
 
 export const PendingReviewsTab: React.FC = () => {
   const { pendingSubmissions, isLoading, reviewSubmission } = usePromotions();
+  const { visible, hasMore, showing, total, loadMore } = usePagedList(pendingSubmissions ?? [], 12);
 
   if (isLoading) {
     return (
@@ -39,16 +42,16 @@ export const PendingReviewsTab: React.FC = () => {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {pendingSubmissions.map(submission => (
+        {visible.map(submission => (
           <SubmissionCard
             key={submission.id}
             submission={submission}
-            onApprove={() => reviewSubmission.mutate({ 
-              submissionId: submission.id, 
-              status: 'approved' 
+            onApprove={() => reviewSubmission.mutate({
+              submissionId: submission.id,
+              status: 'approved'
             })}
-            onReject={(reason) => reviewSubmission.mutate({ 
-              submissionId: submission.id, 
+            onReject={(reason) => reviewSubmission.mutate({
+              submissionId: submission.id,
               status: 'rejected',
               rejectionReason: reason
             })}
@@ -56,6 +59,13 @@ export const PendingReviewsTab: React.FC = () => {
           />
         ))}
       </div>
+      <LoadMoreButton
+        hasMore={hasMore}
+        showing={showing}
+        total={total}
+        onClick={loadMore}
+        noun="submissions"
+      />
     </div>
   );
 };

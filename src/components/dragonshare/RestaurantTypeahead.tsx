@@ -5,7 +5,7 @@ import { Search, X, Loader2 } from 'lucide-react';
 import { useRestaurantSearch } from '@/hooks/useRestaurantSearch';
 import type { RestaurantSearchResult } from '@/hooks/useRestaurantSearch';
 import { useResolvedLogoUrl } from '@/hooks/useSignedUrl';
-import { useNavigate } from 'react-router-dom';
+import { RestaurantBrowseDialog } from '@/components/dragonshare/RestaurantBrowseDialog';
 
 interface Props {
   selectedOrg: RestaurantSearchResult | null;
@@ -51,9 +51,9 @@ function ResultRow({ org, onSelect }: { org: RestaurantSearchResult; onSelect: (
 }
 
 export function RestaurantTypeahead({ selectedOrg, onSelect, onClear, onOpenChange }: Props) {
-  const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [open, setOpen] = useState(false);
+  const [browseOpen, setBrowseOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const { data: results, isLoading, isFetching } = useRestaurantSearch(search, open);
 
@@ -120,7 +120,7 @@ export function RestaurantTypeahead({ selectedOrg, onSelect, onClear, onOpenChan
           </div>
           <div className="border-t border-dc-teal/10 px-3 py-2">
             <button
-              onClick={() => navigate('/dashboard/creator/dragonshare/browse')}
+              onClick={() => { setOpenState(false); setBrowseOpen(true); }}
               className="text-xs font-semibold text-dc-teal hover:text-dc-teal-dark transition-colors flex items-center gap-1"
             >
               <span>&rarr;</span> Browse all restaurants
@@ -128,6 +128,12 @@ export function RestaurantTypeahead({ selectedOrg, onSelect, onClear, onOpenChan
           </div>
         </div>
       )}
+
+      <RestaurantBrowseDialog
+        open={browseOpen}
+        onOpenChange={setBrowseOpen}
+        onSelect={(org) => { onSelect(org); setSearch(''); setOpenState(false); }}
+      />
     </div>
   );
 }

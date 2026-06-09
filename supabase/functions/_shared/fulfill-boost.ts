@@ -27,6 +27,10 @@ export async function fulfillBoost(
     .eq("id", boostId)
     .single();
   if (boostRow?.status === "transferred") return { alreadyDone: true };
+  // Never pay out a boost that's already in a terminal non-paid state (refunded/declined/failed).
+  if (boostRow?.status === "refunded" || boostRow?.status === "failed") {
+    throw new Error(`Cannot fulfill boost ${boostId} in terminal status: ${boostRow.status}`);
+  }
 
   const { data: creatorProfile, error: creatorError } = await supabase
     .from("creator_profiles")
@@ -57,7 +61,7 @@ export async function fulfillBoost(
     })
     .eq("id", boostId);
 
-  await supabase
+  const { error: payoutError } = await supabase
     .from("dragonshare_payouts")
     .insert({
       boost_id: boostId,
@@ -67,6 +71,12 @@ export async function fulfillBoost(
       status: "succeeded",
       processed_at: new Date().toISOString(),
     });
+  // With the UNIQUE(boost_id) constraint, a concurrent fulfillment that raced past the
+  // status check above lands here with a unique violation — benign (payout already recorded;
+  // the Stripe transfer is idempotent via boost_tr_${boostId}). Surface any other error.
+  if (payoutError && payoutError.code !== "23505") {
+    throw payoutError;
+  }
 
   await supabase
     .from("dragonshare_posts")

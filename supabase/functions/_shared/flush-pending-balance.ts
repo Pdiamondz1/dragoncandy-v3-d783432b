@@ -69,12 +69,14 @@ export async function transferPendingBalance(
       metadata: { user_id: userId, withdrawal_type: withdrawalType },
     }, { idempotencyKey: `withdraw_${userId}_${amountCents}` });
   } catch (stripeError) {
-    // Restore so a later trigger / manual retry can move it again. If the restore
-    // itself fails, surface it loudly — the balance is now zeroed with no transfer.
-    const { error: restoreError } = await supabase
-      .from(table)
-      .update({ pending_balance: pendingBalance })
-      .eq("user_id", userId);
+    // Restore by ADDING the claimed amount back (atomic increment), not SET: a balance
+    // that accrued concurrently during the transfer window must not be clobbered. If the
+    // restore itself fails, surface it loudly — the balance is now zeroed with no transfer.
+    const { error: restoreError } = await supabase.rpc("increment_pending_balance", {
+      p_user_id: userId,
+      p_amount: pendingBalance,
+      p_profile_type: table === "creator_profiles" ? "creator" : "business",
+    });
     if (restoreError) {
       console.error(`[FLUSH-PENDING-BALANCE] CRITICAL: failed to restore pending_balance for ${userId} after transfer error`, restoreError);
     }

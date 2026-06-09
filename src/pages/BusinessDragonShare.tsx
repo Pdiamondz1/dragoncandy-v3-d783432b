@@ -10,6 +10,8 @@ import { DragonShareQuickTip } from '@/components/dragonshare/DragonShareQuickTi
 import type { UserRole } from '@/types/user';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { PrerequisiteGate } from '@/components/PrerequisiteGate';
+import { usePagedList } from '@/hooks/usePagedList';
+import { LoadMoreButton } from '@/components/shared/LoadMoreButton';
 
 type Tab = 'available' | 'boosted' | 'all';
 
@@ -27,6 +29,7 @@ export function BusinessDragonSharePage({ userRole }: { userRole: UserRole }) {
     if (activeTab === 'boosted') return p.boost_status === 'boosted';
     return true;
   });
+  const { visible, hasMore, showing, total, loadMore } = usePagedList(filteredPosts, 12);
 
   const tabs: { key: Tab; label: string }[] = [
     { key: 'available', label: 'Available' },
@@ -78,7 +81,7 @@ export function BusinessDragonSharePage({ userRole }: { userRole: UserRole }) {
         ) : (
           <div className="space-y-4">
             <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
-              {filteredPosts.map((post) => (
+              {visible.map((post) => (
                 <DragonSharePostCard
                   key={post.id}
                   post={post}
@@ -86,6 +89,13 @@ export function BusinessDragonSharePage({ userRole }: { userRole: UserRole }) {
                 />
               ))}
             </div>
+            <LoadMoreButton
+              hasMore={hasMore}
+              showing={showing}
+              total={total}
+              onClick={loadMore}
+              noun="posts"
+            />
           </div>
         )}
       </div>
