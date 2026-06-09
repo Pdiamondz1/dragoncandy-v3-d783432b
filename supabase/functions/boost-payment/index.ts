@@ -117,6 +117,26 @@ serve(async (req) => {
 
     if (!creatorReady) {
       logStep("Creator payout not ready — parking boost", { creatorId: post.creator_id, boostId });
+
+      // Best-effort nudge: tell the creator to finish payout setup.
+      // Must NEVER block or fail the 202 response.
+      try {
+        const boostDollars = (boostAmountCents / 100).toFixed(0);
+        await supabase.from("donny_nudges").insert({
+          user_id: post.creator_id,
+          type: "payment",
+          source_table: "dragonshare_boosts",
+          source_id: boostId,
+          summary: `A business wants to boost your post with $${boostDollars} — finish your payout setup to get paid.`,
+          priority: "high",
+          actions: [{ label: "Set up payouts", variant: "primary", action: "navigate", payload: { route: "/dashboard/creator/settings?section=payments" } }],
+          raw_data: { boost_id: boostId, amount_cents: boostAmountCents },
+        });
+        logStep("Creator payout nudge inserted", { creatorId: post.creator_id, boostId });
+      } catch (nudgeErr) {
+        console.warn("[BOOST-PAYMENT] Creator nudge failed (non-blocking):", nudgeErr);
+      }
+
       return json({
         error: "CREATOR_PAYOUT_NOT_READY",
         boost_id: boostId,
