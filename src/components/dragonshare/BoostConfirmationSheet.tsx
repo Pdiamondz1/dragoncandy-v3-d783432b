@@ -25,6 +25,7 @@ export function BoostConfirmationSheet({ open, onOpenChange, post, amountCents, 
   const queryClient = useQueryClient();
   const { data: platforms } = useAmplificationPreview(creatorId, orgId);
   const [boostQueued, setBoostQueued] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
 
   const platformFeeCents = Math.round(amountCents * DRAGONSHARE_FEE_RATE);
   const creatorPayoutCents = amountCents - platformFeeCents;
@@ -46,28 +47,20 @@ export function BoostConfirmationSheet({ open, onOpenChange, post, amountCents, 
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('Not authenticated');
 
-      // Pre-open a blank tab synchronously to dodge pop-up blockers (may be unused).
-      const checkoutTab = window.open('about:blank', '_blank');
-
       const res = await supabase.functions.invoke('boost-payment', {
         body: { post_id: post.id, amount_cents: amountCents, tier_label: tierLabel },
       });
-      if (res.error) {
-        checkoutTab?.close();
-        throw new Error(res.error.message);
-      }
-      return { data: res.data, checkoutTab };
+      if (res.error) throw new Error(res.error.message);
+      return res.data;
     },
-    onSuccess: ({ data, checkoutTab }) => {
+    onSuccess: (data) => {
       const outcome = resolveBoostOutcome(data);
       if (outcome.kind === 'checkout') {
-        if (checkoutTab) checkoutTab.location.href = outcome.url;
-        else window.open(outcome.url, '_blank');
-        toast({ title: 'Complete your payment', description: 'Finish the boost in the new tab.' });
-        onOpenChange(false);
+        // Same-tab redirect; Stripe's success/cancel URLs return to DragonShare.
+        setRedirecting(true);
+        window.location.assign(outcome.url);
         return;
       }
-      checkoutTab?.close();
       if (outcome.kind === 'queued') {
         setBoostQueued(true);
         toast({ title: 'Boost queued', description: "We've notified the creator to finish setup. You won't be charged until it's processed." });
@@ -170,9 +163,9 @@ export function BoostConfirmationSheet({ open, onOpenChange, post, amountCents, 
             <Button
               className="w-full rounded-full bg-dc-teal-btn hover:bg-dc-teal-btn-hover text-white"
               onClick={() => boostMutation.mutate()}
-              disabled={boostMutation.isPending}
+              disabled={boostMutation.isPending || redirecting}
             >
-              {boostMutation.isPending ? (
+              {boostMutation.isPending || redirecting ? (
                 <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Processing…</>
               ) : (
                 'Confirm Boost'

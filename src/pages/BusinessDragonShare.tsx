@@ -1,4 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
+import { useToast } from '@/hooks/use-toast';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { useOrgDragonSharePosts } from '@/hooks/useDragonShare';
 import { useOrg } from '@/hooks/useOrgData';
@@ -21,6 +24,27 @@ export function BusinessDragonSharePage({ userRole }: { userRole: UserRole }) {
   const { data: myRole } = useMyOrgRole(org?.id);
   const { data: posts, isLoading } = useOrgDragonSharePosts(org?.id);
   const [activeTab, setActiveTab] = useState<Tab>('available');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  // Returning from the Stripe Checkout redirect (?boost=success|cancelled).
+  useEffect(() => {
+    const boostResult = searchParams.get('boost');
+    if (!boostResult) return;
+    if (boostResult === 'success') {
+      toast({
+        title: 'Boost confirmed!',
+        description: 'Payment complete — the creator payout is on its way.',
+      });
+      queryClient.invalidateQueries({ queryKey: ['dragonshare-posts'] });
+    } else if (boostResult === 'cancelled') {
+      toast({ title: 'Payment cancelled', description: 'No charge was made.' });
+    }
+    const next = new URLSearchParams(searchParams);
+    next.delete('boost');
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams, queryClient, toast]);
 
   const canBoost = myRole?.role === 'owner' || myRole?.role === 'admin';
 
