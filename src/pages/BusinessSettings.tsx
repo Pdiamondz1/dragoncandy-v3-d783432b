@@ -267,9 +267,9 @@ const BusinessSettings = () => {
             <NotificationPreferencesSection />
           </Accordion>
 
-          <div className="mt-3">
+          <Accordion type="single" collapsible className="mt-3">
             <CGCPostingPreferences />
-          </div>
+          </Accordion>
 
           <Accordion type="single" collapsible className="mt-3">
             <AccordionItem value="danger" className="border-red-200">
