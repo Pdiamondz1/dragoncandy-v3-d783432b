@@ -48,6 +48,7 @@ const BusinessActivity = () => {
       await supabase.from('analytics_events').insert({
         event_type: 'dragon_feed_like',
         user_id: user.id,
+        org_unit_id: activeOrgUnit?.id ?? null,
         page_url: window.location.href,
         user_agent: navigator.userAgent,
         event_data: {
