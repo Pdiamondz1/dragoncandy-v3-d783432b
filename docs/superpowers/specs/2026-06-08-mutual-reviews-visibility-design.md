@@ -218,7 +218,7 @@ Profile pages and detail modals (`PublicCreatorProfile`, `PublicBusinessProfile`
 `CreatorProfileModal`) read **live** stats from the view. `InlineRating` accepts
 the numbers as props so each surface picks its own source.
 
-### 5.6 Reveal clock set server-side
+### 5.7 Reveal clock set server-side
 
 A `BEFORE INSERT` trigger sets
 `NEW.reveal_at := COALESCE(NEW.reveal_at, now() + interval '14 days')` so the
@@ -285,7 +285,7 @@ use base classes only. Test both viewports per surface.
 - **Supabase query/mutation errors:** every new query and mutation handles
   loading + error states (per repo conventions); aggregate reads degrade to the
   `New` pill rather than erroring the card.
-- **Denormalized aggregate staleness (timeout reveal):** documented in §5.5;
+- **Denormalized aggregate staleness (timeout reveal):** documented in §5.6;
   profile pages always show live numbers.
 
 ## 9. Testing
