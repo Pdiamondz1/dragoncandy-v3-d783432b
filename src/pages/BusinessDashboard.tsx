@@ -19,6 +19,8 @@ import { useBusinessDragonShareActivity } from '@/hooks/useBusinessDragonShareAc
 import { useFirstRunMissions } from '@/hooks/useFirstRunMissions';
 import { FirstRunDashboard } from '@/components/first-run/FirstRunDashboard';
 import { PendingActionBanners } from '@/components/dashboard/PendingActionBanners';
+import { RatingPromptManager } from '@/components/reviews/RatingPromptManager';
+import { SponsorshipRatingPromptManager } from '@/components/reviews/SponsorshipRatingPromptManager';
 import { useLocationReadiness } from '@/hooks/useLocationReadiness';
 import { LocationBadge } from '@/components/org/LocationBadge';
 import { UpcomingPostsWidget } from '@/components/outstand/UpcomingPostsWidget';
@@ -138,6 +140,9 @@ const BusinessDashboard = () => {
             )}
 
             <PendingActionBanners />
+
+            <RatingPromptManager />
+            <SponsorshipRatingPromptManager />
 
             <div className="flex items-center justify-between">
               <p className="text-sm font-bold uppercase tracking-wide text-dc-teal">

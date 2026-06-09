@@ -8,6 +8,7 @@ import { VerifiedBadge } from '@/components/outstand/VerifiedBadge';
 import { useVerifiedStatus } from '@/hooks/outstand/useVerifiedStatus';
 import { formatSkillLabel } from '@/lib/skillUtils';
 import { VideoThumbnail } from '@/components/shared/VideoThumbnail';
+import { InlineRating } from '@/components/reviews/InlineRating';
 
 interface CreatorCardProps {
   creator: CreatorProfile;
@@ -90,9 +91,6 @@ export const CreatorCard: React.FC<CreatorCardProps> = React.memo(({ creator }) 
 
   // Metrics line parts
   const metricParts: string[] = [];
-  if (creator.total_reviews != null && creator.total_reviews > 0) {
-    metricParts.push(`${creator.total_reviews} review${creator.total_reviews !== 1 ? 's' : ''}`);
-  }
   if (creator.base_rate_per_hour != null) {
     metricParts.push(`$${creator.base_rate_per_hour}/hr`);
   }
@@ -153,9 +151,11 @@ export const CreatorCard: React.FC<CreatorCardProps> = React.memo(({ creator }) 
           <div className="flex items-center gap-1.5 mb-0.5 pr-8">
             <span className="font-bold text-gray-900 text-sm truncate">{creator.creator_name || 'Unknown Creator'}</span>
             {isVerified && <VerifiedBadge />}
-            {creator.average_rating != null && (
-              <span className="text-yellow-400 text-xs flex-shrink-0">★ {creator.average_rating.toFixed(1)}</span>
-            )}
+            <InlineRating
+              averageRating={creator.average_rating}
+              totalReviews={creator.total_reviews}
+              className="flex-shrink-0"
+            />
           </div>
 
           {/* Location */}

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Star, ChevronRight } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
+import { InlineRating } from '@/components/reviews/InlineRating';
 import type { BusinessProfile } from '@/hooks/useCampaignDetailEnriched';
 import { useResolvedLogoUrl } from '@/hooks/useSignedUrl';
 
@@ -41,12 +42,7 @@ export function BusinessProfileStrip({ profile, completedCampaignCount }: Busine
         <p className="text-sm font-semibold text-gray-900 truncate">{profile.business_name}</p>
         <div className="flex items-center gap-2 text-xs text-gray-500">
           {profile.city && <span>{profile.city}</span>}
-          {profile.average_rating != null && (
-            <span className="flex items-center gap-0.5">
-              <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />
-              {profile.average_rating.toFixed(1)}
-            </span>
-          )}
+          <InlineRating averageRating={profile.average_rating} totalReviews={profile.total_reviews} />
           {completedCampaignCount > 0 && (
             <span>{completedCampaignCount} campaigns</span>
           )}
