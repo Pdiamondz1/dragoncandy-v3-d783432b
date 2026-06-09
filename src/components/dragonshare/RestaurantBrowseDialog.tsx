@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button';
 import { useRestaurantBrowse } from '@/hooks/useRestaurantBrowse';
 import { RestaurantBrowseHeader } from '@/components/dragonshare/RestaurantBrowseHeader';
 import { RestaurantCard } from '@/components/dragonshare/RestaurantCard';
+import { usePagedList } from '@/hooks/usePagedList';
+import { LoadMoreButton } from '@/components/shared/LoadMoreButton';
 import type { RestaurantSearchResult } from '@/hooks/useRestaurantSearch';
 
 interface Props {
@@ -19,6 +21,7 @@ interface Props {
 export function RestaurantBrowseDialog({ open, onOpenChange, onSelect }: Props) {
   const { restaurants, cuisines, isLoading, filters, setSearch, setCuisine, resetFilters } =
     useRestaurantBrowse();
+  const { visible, hasMore, showing, total, loadMore } = usePagedList(restaurants, 12);
 
   function handleSelect(restaurant: RestaurantSearchResult) {
     onSelect(restaurant);
@@ -58,14 +61,23 @@ export function RestaurantBrowseDialog({ open, onOpenChange, onSelect }: Props) 
               </Button>
             </div>
           ) : (
-            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-              {restaurants.map((restaurant) => (
-                <RestaurantCard
-                  key={restaurant.id}
-                  restaurant={restaurant}
-                  onSelect={handleSelect}
-                />
-              ))}
+            <div className="space-y-4">
+              <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                {visible.map((restaurant) => (
+                  <RestaurantCard
+                    key={restaurant.id}
+                    restaurant={restaurant}
+                    onSelect={handleSelect}
+                  />
+                ))}
+              </div>
+              <LoadMoreButton
+                hasMore={hasMore}
+                showing={showing}
+                total={total}
+                onClick={loadMore}
+                noun="restaurants"
+              />
             </div>
           )}
         </div>
