@@ -9,7 +9,7 @@ import { PublicProfileReviews } from '@/components/profiles/PublicProfileReviews
 import logo from '@/assets/Transparent_DragonCandy_logo.webp';
 import { SEO } from '@/components/SEO';
 import { PublicPageHeader } from '@/components/PublicPageHeader';
-import { useResolvedLogoUrl } from '@/hooks/useSignedUrl';
+import { useResolvedLogoUrl, resolveProfileAssetUrl } from '@/hooks/useSignedUrl';
 
 interface BusinessProfile {
   id: string;
@@ -134,7 +134,9 @@ const PublicBusinessProfile = () => {
     );
   }
 
-  const heroImage = profile.sample_content_urls?.[0] || profile.logo_url;
+  // Resolve storage keys to public URLs — sample_content_urls and logo_url are stored as
+  // `profile-assets` keys, not displayable URLs.
+  const heroImage = resolveProfileAssetUrl(profile.sample_content_urls?.[0] || profile.logo_url);
   const sampleImages = profile.sample_content_urls ?? [];
 
   return (
@@ -144,13 +146,13 @@ const PublicBusinessProfile = () => {
         title={`${profile.business_name} - DragonCandy`}
         description={`View ${profile.business_name}'s profile, active campaigns, and creator collaborations on DragonCandy.`}
         path={`/business/${slug}`}
-        image={profile.logo_url || undefined}
+        image={resolveProfileAssetUrl(profile.logo_url) || undefined}
         type="profile"
         jsonLd={{
           "@context": "https://schema.org",
           "@type": "Organization",
           "name": profile.business_name,
-          "image": profile.logo_url,
+          "image": resolveProfileAssetUrl(profile.logo_url),
           "url": `https://dragoncandy.io/business/${slug}`,
         }}
       />
@@ -243,7 +245,7 @@ const PublicBusinessProfile = () => {
             {sampleImages.slice(1).map((url, index) => (
               <div key={index} className="aspect-square rounded-xl overflow-hidden">
                 <img
-                  src={url}
+                  src={resolveProfileAssetUrl(url)}
                   alt={`${profile.business_name} content sample ${index + 2}`}
                   className="w-full h-full object-cover"
                   loading="lazy"
