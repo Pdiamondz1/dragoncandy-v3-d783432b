@@ -40,14 +40,15 @@ The review system already exists. The migration is **additive and corrective**, 
 **Hooks:**
 - Modify: `src/hooks/useReviews.ts` — repoint `useReviews` + `useReviewStats` to the view (flattened columns, drop `is_public` filter).
 - Create: `src/hooks/useMyGivenReviews.ts` — the reviewer's given reviews with an `is_revealed` flag (for the pending badge).
-- Modify: `src/hooks/useFetchApplications.ts` — add `average_rating, total_reviews` to the creator select.
+- Modify: `src/hooks/useFetchApplications.ts` — add `average_rating, total_reviews` to the creator select AND thread them through the enrichment map.
+- Modify: `src/types/applications.ts` — add `average_rating`/`total_reviews` to `CampaignApplication.creator_profile`.
 
 **Components:**
 - Create: `src/components/reviews/InlineRating.tsx` (+ `InlineRating.test.tsx`) — shared compact rating display.
 - Modify: `src/components/reviews/RatingModal.tsx` — in-dialog success state with double-blind copy.
 - Modify: `src/components/creator-browse/CreatorCard.tsx` — swap yellow ★ to `InlineRating`.
 - Modify: `src/components/creator-browse/CreatorProfileModal.tsx` — extend select + `InlineRating` header.
-- Modify: `src/components/campaigns/ApplicationsListFixed.tsx` — `InlineRating` per applicant row.
+- Modify: `src/components/campaigns/ApplicationCard.tsx` — `InlineRating` per applicant row.
 - Modify: `src/pages/PublicBusinessProfile.tsx` — header rating + extend select.
 - Modify: `src/pages/ReviewsManagement.tsx` — "Given" tab uses `useMyGivenReviews` + pending badge.
 
@@ -691,12 +692,29 @@ git commit -m "feat(reviews): rating header in CreatorProfileModal"
 ### Task 13: Applicant rows show ★
 
 **Files:**
-- Modify: `src/hooks/useFetchApplications.ts`
-- Modify: `src/components/campaigns/ApplicationsListFixed.tsx`
+- Modify: `src/types/applications.ts` (type)
+- Modify: `src/hooks/useFetchApplications.ts` (select + enrichment map)
+- Modify: `src/components/campaigns/ApplicationCard.tsx` (render — this is a SEPARATE file from `ApplicationsListFixed.tsx`, which imports it at line 9)
 
-- [ ] **Step 1: Extend the creator select** in `useFetchApplications.ts` (around line 36) from `user_id, creator_name, avatar_url, bio, skills` to also include `average_rating, total_reviews`. Add those two fields to whatever type describes `creator_profile` (so `application.creator_profile?.average_rating` is typed).
+- [ ] **Step 1: Extend the type.** In `src/types/applications.ts`, add the two fields to `CampaignApplication.creator_profile` (lines 18–23):
 
-- [ ] **Step 2: Render per-row rating.** In `ApplicationsListFixed.tsx`'s `ApplicationCard`, import `InlineRating` and place it next to the status badge (around line 123, after `<ApplicationStatusBadge .../>`):
+```ts
+creator_profile?: {
+  creator_name: string;
+  avatar_url?: string;
+  bio?: string;
+  skills?: string[];
+  average_rating?: number | null;
+  total_reviews?: number | null;
+};
+```
+
+- [ ] **Step 2: Extend the select AND the enrichment map** in `src/hooks/useFetchApplications.ts` (inside `useCampaignApplications`). The fields must be both fetched (line 36) and threaded through the manual map (lines 43–63), or they'll be dropped:
+  - Line 36 select → `'user_id, creator_name, avatar_url, bio, skills, average_rating, total_reviews'`
+  - `fallbackProfile` (lines 43–48) → add `average_rating: null, total_reviews: null,`
+  - the `creator_profile` object built in `enrichedApplications.map` (lines 55–60) → add `average_rating: profile.average_rating ?? null, total_reviews: profile.total_reviews ?? null,`
+
+- [ ] **Step 3: Render per-row rating.** In `src/components/campaigns/ApplicationCard.tsx`, import `InlineRating` and place it just after `<ApplicationStatusBadge .../>` (line 123, inside the `flex items-center gap-2 flex-wrap` row):
 
 ```tsx
 <InlineRating
@@ -705,12 +723,12 @@ git commit -m "feat(reviews): rating header in CreatorProfileModal"
 />
 ```
 
-- [ ] **Step 3: Build check.** Run: `npm run build` → success.
+- [ ] **Step 4: Build check.** Run: `npm run build` → success.
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
-git add src/hooks/useFetchApplications.ts src/components/campaigns/ApplicationsListFixed.tsx
+git add src/types/applications.ts src/hooks/useFetchApplications.ts src/components/campaigns/ApplicationCard.tsx
 git commit -m "feat(reviews): show creator rating on campaign applicant rows"
 ```
 
@@ -872,5 +890,7 @@ git push
 - **Never** add the unique constraints or profile rating columns the spec mentions — they already exist (see Context). Adding them will error or no-op.
 - The double-blind security boundary is the **RLS policy** (Task 3); the **view WHERE** (Task 5) is the display filter. Both call `has_counterpart_review` — that duplication is intentional (security vs display) and keeps the counterpart logic DRY.
 - Known, accepted limitation: a review that reveals purely by 14-day timeout (no counterpart) won't fire the aggregate trigger, so browse-card numbers can lag until the next write; profile pages/modals read live stats and are always correct.
+- The rewritten `update_profile_ratings()` gains `SECURITY DEFINER SET search_path=public` (the original was plain). This is **intentional and required** so the reveal-aware reads/writes run with consistent privileges — not scope creep.
+- The one-time `DO $$` recompute (Task 4) is O(distinct reviewees) with the counterpart lookup per row. Fine at current scale (~30 users, pre-revenue); just don't be surprised if it's the slowest statement in the migration.
 - Keep desktop (`lg:`/`xl:`) and mobile (base) classes separate; test both viewports after each UI task.
 - Do not modify auth logic. The migration is additive; no drops/renames of tables or columns.
