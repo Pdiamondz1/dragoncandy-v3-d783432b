@@ -125,11 +125,13 @@ export function DragonSharePostCard({ post, canBoost }: Props) {
             </div>
           ) : canBoost ? (
             <div className="space-y-2">
-              <div className="flex items-center gap-1.5 lg:gap-2">
+              {/* Mobile: all 5 in one row. Desktop: 4 presets row 1, Custom full-width row 2
+                  (card is only 33–50% wide in the lg/xl grid, so 5-up clips "Custom"). */}
+              <div className="grid grid-cols-5 lg:grid-cols-4 items-end gap-1.5 lg:gap-2">
                 {BOOST_TIERS.map((tier) => {
                   const isPopular = tier.label === '50';
                   return (
-                    <div key={tier.label} className="flex-1 flex flex-col items-center gap-0.5">
+                    <div key={tier.label} className="flex flex-col items-center gap-0.5">
                       {isPopular ? (
                         <span className="text-[10px] font-bold text-dc-teal uppercase tracking-wide">POPULAR</span>
                       ) : (
@@ -146,7 +148,7 @@ export function DragonSharePostCard({ post, canBoost }: Props) {
                     </div>
                   );
                 })}
-                <div className="flex-1 flex flex-col items-center gap-0.5">
+                <div className="flex flex-col items-center gap-0.5 lg:col-span-4">
                   <span className="text-[10px] invisible">POPULAR</span>
                   <Button
                     variant="outline"

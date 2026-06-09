@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { deriveCampaignPhase, phaseToDisplayLabel } from '@/lib/campaignPhase';
+import { usePagedList } from '@/hooks/usePagedList';
+import { LoadMoreButton } from '@/components/shared/LoadMoreButton';
 
 interface CampaignsListProps {
   statusFilter?: 'all' | 'draft' | 'published' | 'active' | 'completed' | 'cancelled';
@@ -20,6 +22,18 @@ export const CampaignsList: React.FC<CampaignsListProps> = ({
   const { activeOrgUnit } = useAuth();
   const { campaigns, isLoading, error } = useCampaigns(filterByOwnership, activeOrgUnit?.id);
   const navigate = useNavigate();
+
+  const filteredCampaigns = statusFilter === 'all'
+    ? (campaigns ?? [])
+    : (campaigns ?? []).filter(campaign => {
+        if (campaign.status === 'draft') return statusFilter === 'draft';
+        const collabShape = campaign.collaboration_status
+          ? { status: campaign.collaboration_status }
+          : null;
+        const phase = deriveCampaignPhase(campaign.status, collabShape);
+        return phaseToDisplayLabel(phase) === statusFilter;
+      });
+  const { visible, hasMore, showing, total, loadMore } = usePagedList(filteredCampaigns, 12);
 
   if (isLoading) {
     return (
@@ -41,17 +55,6 @@ export const CampaignsList: React.FC<CampaignsListProps> = ({
       </div>
     );
   }
-
-  const filteredCampaigns = statusFilter === 'all'
-    ? campaigns
-    : campaigns.filter(campaign => {
-        if (campaign.status === 'draft') return statusFilter === 'draft';
-        const collabShape = campaign.collaboration_status
-          ? { status: campaign.collaboration_status }
-          : null;
-        const phase = deriveCampaignPhase(campaign.status, collabShape);
-        return phaseToDisplayLabel(phase) === statusFilter;
-      });
 
   if (filteredCampaigns.length === 0) {
     return (
@@ -79,13 +82,22 @@ export const CampaignsList: React.FC<CampaignsListProps> = ({
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 w-full">
-      {filteredCampaigns.map((campaign) => (
-        <CampaignCard
-          key={campaign.id}
-          campaign={campaign}
-        />
-      ))}
+    <div className="w-full space-y-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 w-full">
+        {visible.map((campaign) => (
+          <CampaignCard
+            key={campaign.id}
+            campaign={campaign}
+          />
+        ))}
+      </div>
+      <LoadMoreButton
+        hasMore={hasMore}
+        showing={showing}
+        total={total}
+        onClick={loadMore}
+        noun="campaigns"
+      />
     </div>
   );
 };

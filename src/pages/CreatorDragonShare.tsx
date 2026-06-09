@@ -17,6 +17,8 @@ import type { DragonSharePostWithRelations } from '@/types/dragonshare';
 import { deriveCreatorPostState } from '@/lib/dragonsharePostState';
 import { WatermarkedMedia } from '@/components/dragonshare/WatermarkedMedia';
 import { PrerequisiteGate } from '@/components/PrerequisiteGate';
+import { usePagedList } from '@/hooks/usePagedList';
+import { LoadMoreButton } from '@/components/shared/LoadMoreButton';
 import { useResolvedLogoUrl } from '@/hooks/useSignedUrl';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
@@ -81,6 +83,7 @@ const CreatorDragonShare: React.FC = () => {
     if (activeTab === 'boosted') return p.boost_status === 'boosted';
     return p.status === 'expired' || p.boost_status === 'expired';
   });
+  const { visible, hasMore, showing, total, loadMore } = usePagedList(filteredPosts, 12);
 
   const tabs: { key: Tab; label: string; count: number }[] = [
     { key: 'submitted', label: 'Submitted', count: postsWithOrg.filter((p) => p.status === 'verified').length },
@@ -152,10 +155,17 @@ const CreatorDragonShare: React.FC = () => {
                 <div className="space-y-4">
                   <DragonShareHowItWorks role="creator" />
                   <div className="grid gap-4 lg:grid-cols-2">
-                    {filteredPosts.map((post) => (
+                    {visible.map((post) => (
                       <CreatorPostCard key={post.id} post={post} />
                     ))}
                   </div>
+                  <LoadMoreButton
+                    hasMore={hasMore}
+                    showing={showing}
+                    total={total}
+                    onClick={loadMore}
+                    noun="posts"
+                  />
                 </div>
               )}
             </div>
