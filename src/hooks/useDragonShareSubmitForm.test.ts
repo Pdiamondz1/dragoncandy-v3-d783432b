@@ -16,10 +16,10 @@ vi.mock('@/lib/nativeCamera', () => ({ captureCameraPhoto: () => captureMock() }
 import { useDragonShareSubmitForm } from './useDragonShareSubmitForm';
 
 describe('useDragonShareSubmitForm camera + file paths', () => {
-  // The hook persists an in-progress draft to sessionStorage; clear it between
-  // cases so a prior test's upload doesn't restore into the next hook instance.
   beforeEach(() => {
     vi.clearAllMocks();
+    // The hook persists an in-progress draft to sessionStorage; clear it so each test
+    // starts from an empty draft (otherwise a prior test's uploadedUrl leaks in).
     sessionStorage.clear();
   });
 

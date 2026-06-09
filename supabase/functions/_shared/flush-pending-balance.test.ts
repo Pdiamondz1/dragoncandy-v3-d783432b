@@ -16,9 +16,12 @@ function fakeSupabase(byTable: Record<string, { select?: Resp; update?: Resp; in
     const c: any = { eq: () => c, select: () => ({ then: (r: any) => r(res) }), then: (r: any) => r(res) };
     return c;
   };
+  const rpcCalls: any[] = [];
   const client: any = {
     inserted,
     updates,
+    rpcCalls,
+    rpc: (fn: string, args: any) => { rpcCalls.push({ fn, args }); return Promise.resolve({ data: null, error: null }); },
     from: (t: string) => ({
       select: () => selChain(get(t).select ?? { data: null, error: null }),
       update: (payload: any) => { updates.push({ table: t, payload }); return updChain(get(t).update ?? { data: [], error: null }); },
@@ -132,10 +135,14 @@ Deno.test("transfer: Stripe throws -> pending_balance is restored to original", 
     Error,
     "stripe down",
   );
-  // One claim (zero-out) + one restore, both on creator_profiles.
-  assertEquals(sb.updates.length, 2);
+  // One claim (zero-out) via update; restore is an atomic increment RPC (adds the
+  // claimed amount back so a concurrent accrual isn't clobbered).
+  assertEquals(sb.updates.length, 1);
   assertEquals(sb.updates[0].payload.pending_balance, 0);       // atomic claim
-  assertEquals(sb.updates[1].payload.pending_balance, 9.25);    // restore to original
+  assertEquals(sb.rpcCalls.length, 1);
+  assertEquals(sb.rpcCalls[0].fn, "increment_pending_balance");
+  assertEquals(sb.rpcCalls[0].args.p_amount, 9.25);             // restore adds original back
+  assertEquals(sb.rpcCalls[0].args.p_profile_type, "creator");
   assertEquals(sb.inserted.length, 0);                          // no ledger row
 });
 
