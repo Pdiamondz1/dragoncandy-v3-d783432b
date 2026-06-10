@@ -39,9 +39,10 @@ export function useCreatorEarnings(userId: string | undefined) {
           .in('event_type', ['payment_released', 'payout_pending_wallet']),
         supabase
           .from('payment_events')
-          .select('amount_cents, campaign_id')
+          .select('amount_cents, campaign_id, event_type, created_at')
           .in('campaign_id', campaignIds)
-          .eq('event_type', 'escrow_held'),
+          .in('event_type', ['escrow_held', 'escrow_authorized'])
+          .order('created_at', { ascending: true }),
         supabase
           .from('payment_events')
           .select('campaign_id')
@@ -58,9 +59,24 @@ export function useCreatorEarnings(userId: string | undefined) {
         (sum, e) => sum + (e.amount_cents ?? 0), 0
       ) / 100;
 
-      const inEscrow = (escrowResult.data ?? [])
+      // escrow_held is written without an amount by some flows; fall back to
+      // the latest prior escrow_authorized for the same campaign.
+      const escrowEvents = escrowResult.data ?? [];
+      const resolveHeldAmount = (held: typeof escrowEvents[number]): number => {
+        if (held.amount_cents != null) return held.amount_cents;
+        const auths = escrowEvents.filter(a =>
+          a.event_type === 'escrow_authorized' &&
+          a.campaign_id === held.campaign_id &&
+          a.amount_cents != null &&
+          a.created_at <= held.created_at
+        );
+        return auths.length > 0 ? (auths[auths.length - 1].amount_cents ?? 0) : 0;
+      };
+
+      const inEscrow = escrowEvents
+        .filter(e => e.event_type === 'escrow_held')
         .filter(e => !releasedCampaignIds.has(e.campaign_id))
-        .reduce((sum, e) => sum + (e.amount_cents ?? 0), 0) / 100;
+        .reduce((sum, e) => sum + resolveHeldAmount(e), 0) / 100;
 
       const payoutStatus = payoutStatusResult.data;
 
