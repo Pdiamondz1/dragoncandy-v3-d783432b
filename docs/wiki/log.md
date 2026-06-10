@@ -1,5 +1,19 @@
 # Wiki Log
 
+## [2026-06-10] update | Slice 3 promoted to prod + empty-RAG finding
+
+Promoted Slice 3 to prod (zocahiffooqdybdhguqv): applied both migrations (the `'wiki'` source_type +
+idempotency index, and the `match_donny_knowledge` search_path fix) and deployed the
+`donny-knowledge-sync` edge function (ACTIVE, identical bundle to staging). Verified: `'wiki'` accepted,
+index present, RPC runs clean.
+
+Flag (verified): **prod `donny_knowledge` is empty (0 rows).** The seed scripts
+(`supabase/seed/donny-knowledge-seed.ts` + `embed-knowledge.ts`) were apparently never run in prod, so
+Donny's RAG has had **no knowledge base** in production — it answers from its system prompt + live
+context only. Consequence: the autoresearch wiki sync will be Donny's first populated RAG knowledge in
+prod. Decision pending: also load the ~75-chunk hand-seed, or let the wiki be the knowledge source.
+Recorded on [[Self-Improving App]].
+
 ## [2026-06-10] update | Slice 3 — Donny learns (staging) + RAG drift flag
 
 Built Phase 2 of the self-improving loop: verified wiki pages now sync into Donny's RAG store.

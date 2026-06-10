@@ -100,7 +100,12 @@ code and money changes human-gated.
   back to full-text search. Prod resolved the operator (pgvector reachable from `public`), so prod was
   unaffected. Same drift class as the logo trigger — see [[Migration Replay Drift]]. **Fixed:**
   migration `20260610130000_fix_match_donny_knowledge_search_path.sql` sets the function search_path to
-  `public, extensions`; applied to staging and captured for replay everywhere.
+  `public, extensions`; applied to staging **and prod**, and captured for replay everywhere.
+- **Prod `donny_knowledge` is empty (flag, verified 2026-06-10).** 0 rows in prod — the hand-seed
+  scripts (`supabase/seed/donny-knowledge-seed.ts` + `embed-knowledge.ts`) were never run there, so
+  [[Donny AI]]'s RAG has had no knowledge base in production. The autoresearch wiki sync will be its
+  first populated knowledge. Open decision: also run the ~75-chunk hand-seed, or treat the wiki as the
+  canonical RAG source.
 
 ## See Also
 
