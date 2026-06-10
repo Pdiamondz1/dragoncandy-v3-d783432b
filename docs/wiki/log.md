@@ -1,5 +1,16 @@
 # Wiki Log
 
+## [2026-06-10] analysis | Content engine data audit (foundation-first)
+
+Audited prod signal data for the planned Donny content-strategy engine. Verdict: context data is live
+(business/creator profiles, business_contexts) and Donny's generative functions are reusable, but
+content-performance signal is dark — `social_analytics_cache` and the entire `toast_*` schema are
+**absent from prod**, `dragonshare_engagement` is empty, the Outstand per-post analytics endpoint is
+never called, and the only big dataset (`analytics_events`, 326k) is web telemetry, not content
+performance. Conclusion: a data-driven recommender isn't buildable yet; sequence **foundation-first**
+(Phase A "turn on the signal" → Phase B recommender). More prod migration drift surfaced.
+Pages created: [[Content Engine Data Audit]] (analysis). Pages updated: index.md.
+
 ## [2026-06-10] update | Slice 3 promoted to prod + empty-RAG finding
 
 Promoted Slice 3 to prod (zocahiffooqdybdhguqv): applied both migrations (the `'wiki'` source_type +

@@ -62,4 +62,5 @@
 
 ## Analyses
 
+- [[Content Engine Data Audit]](analyses/content-engine-data-audit.md) — what signal data exists in prod for the Donny content engine; context live, performance dark, Toast/social-cache tables missing from prod; foundation-first plan
 - [[North Star & KPI Scorecard]](analyses/north-star-kpi-scorecard.md) — Three-year targets + kill-switches operationalized and validated against 2025 SMB-SaaS benchmarks; flags churn-unit ambiguity and a mis-scoped rev/employee gate
