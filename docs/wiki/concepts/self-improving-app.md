@@ -78,6 +78,15 @@ manufactures structured, verified knowledge in the interim.
 - **Phase 5 — KPI/milestone autopilot** *(future).* The loop maintains a living strategy/KPI/milestone
   page, refreshing against the three-year targets and flagging when a kill-switch threshold is neared
   (churn >6%, CAC payback >12mo, LTV:CAC <2:1, revenue/employee <$400K).
+- **Phase 6 — Donny content-strategy engine** *(future, requested 2026-06-10).* Extend the loop from
+  wiki knowledge to **live signals**: ingest social-account analytics (Outstand — IG/TikTok/YouTube)
+  for all roles, Toast analytics for restaurants, and Campaign/DragonShare/Promotions engagement, then
+  have [[Donny AI]] recommend the **best content strategy** per restaurant/brand/creator (so a creator
+  can easily make content for a given business). Mirrors the wiki→Donny sync: aggregate signals →
+  embed/store → Donny retrieves to advise. **Dependency:** the analytics pipelines must be flowing and
+  aggregated first — several are partial today (`dragonshare_engagement` is schema-only; Outstand
+  Phase 4 analytics is in scope; Toast analytics maturity TBD). Step 1 is a data-source audit, then a
+  design, before building.
 
 ## Guardrails
 

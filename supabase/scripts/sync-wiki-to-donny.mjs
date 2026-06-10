@@ -27,6 +27,17 @@ const KEY = process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE
 const DIRS = ["concepts", "entities", "analyses"];
 const BATCH = 50;
 
+// Curation: with SYNC_CURATE=1 (use for the user-facing prod assistant), skip internal
+// engineering / infra / ops / internal-strategy pages so Donny only retrieves
+// product/content-relevant knowledge in end-user chats. Edit as the wiki grows.
+const CURATE = process.env.SYNC_CURATE === "1";
+const EXCLUDE = new Set([
+  "self-improving-app", "migration-replay-drift", "qa-cicd-gate", "typescript-patterns",
+  "error-handling-patterns", "content-delivery-state-machine", "boost-payment-two-path",
+  "payments-split-by-surface", "data-flywheel", "musks-algorithm", "north-star-kpi-scorecard",
+  "supabase", "capacitor-native-shell", "file-management", "organizations", "stripe-connect",
+]);
+
 if (!URL || !KEY) {
   console.error("Set DONNY_SYNC_URL and SUPABASE_SECRET_KEY (the sb_secret_… key).");
   process.exit(1);
@@ -54,9 +65,10 @@ for (const dir of DIRS) {
   }
   for (const name of entries) {
     if (!name.endsWith(".md")) continue;
+    const slug = name.replace(/\.md$/, "");
+    if (CURATE && EXCLUDE.has(slug)) continue;
     const raw = readFileSync(join(WIKI_ROOT, dir, name), "utf8");
     const { fm, body } = parseFrontmatter(raw);
-    const slug = name.replace(/\.md$/, "");
     const title = fm.title ?? slug;
     pages.push({
       source_id: `wiki:${dir}/${slug}`,
