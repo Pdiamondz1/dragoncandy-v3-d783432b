@@ -40,10 +40,18 @@ paid campaign in under 60 seconds.
 | Y3   | $7–12M     | 10–11     | 20+    | $2–5M profit |
 
 **Kill-switches** (any trigger ≥ pause and reassess):
-- Churn > 6%
+- Churn > 6% **monthly** (SMB SaaS benchmark is 3–5%/mo, so >6%/mo means worse than
+  typical SMB; unit clarified 2026-06-10 — was previously unitless)
 - CAC payback > 12 months
 - LTV:CAC < 2:1
-- Revenue per employee < $400K
+- Revenue per employee < $400K — **Y2–Y3 maturity gate, not a Y1 trigger.** The Y1
+  plan ($300–600K ARR ÷ 5–6 staff ≈ $50–120K/employee) is structurally below this
+  floor, so applying it early would false-trigger; the Y3 plan ($7–12M ÷ 10–11 ≈
+  $636K–$1.2M/employee) clears it. (Scoped 2026-06-10.)
+
+> Kill-switch thresholds validated against 2025 SMB-SaaS benchmarks and operationalized
+> into a tracked metric set in `docs/wiki/analyses/north-star-kpi-scorecard.md`
+> (produced by the `/autoresearch` loop).
 
 ## 4. Current State
 

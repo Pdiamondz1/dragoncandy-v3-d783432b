@@ -1,5 +1,30 @@
 # Wiki Log
 
+## [2026-06-10] update | Autoresearch skill + Self-Improving App concept
+
+Stood up the `/autoresearch` skill (`.claude/skills/autoresearch/SKILL.md`) — a domain-swap of
+Karpathy's `autoresearch` loop (vendored at `/autoresearch`): research a knowledge gap → adversarially
+verify → keep only if it passes an acceptance gate → ingest into the wiki → log → repeat. The wiki is
+the artifact that improves each iteration (his loop lowers `val_bpb`; ours grows verified knowledge).
+Orchestrates the existing [[wiki-ops]] and `deep-research` skills; writes only to `docs/wiki/`.
+Slice 1 of an agile rollout — ships on-demand mode; autonomous `loop` and Donny sync are documented,
+validated later. Recorded the architecture + 5-phase smart-app roadmap (incl. Donny learning on the
+same loop via `donny_knowledge`).
+Pages created: [[Self-Improving App]] (concept).
+Pages updated: index.md (1 new concept entry).
+
+## [2026-06-10] autoresearch | North Star & KPI scorecard (Slice 1 demo)
+Status: kept
+Domain: strategy
+Sources: PROJECT_CONTEXT.md §2/§3/§8 (internal); 2025 SaaS benchmark reports — SaaS Capital,
+Optifai, First Page Sage, ScaleXP, HiBob, The SaaS CFO, Vena, Vitally, Lighter Capital (external,
+≥2 independent per metric).
+Pages created: [[North Star & KPI Scorecard]] (analysis).
+Pages updated: index.md (1 new analyses entry).
+Note: First on-demand `/autoresearch` run. Validated CAC-payback, LTV:CAC, and NRR targets as
+well-calibrated; raised two flags for the user — churn kill-switch has no stated unit (monthly vs
+annual), and the rev/employee <$400K gate reads as a Y2–Y3 maturity target, not a Y1 trigger.
+
 ## [2026-06-07] ingest | Core Docs Recent Updates Sync
 
 Synced core docs + wiki with codebase work that landed 2026-06-01 → 2026-06-06,

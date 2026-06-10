@@ -41,6 +41,7 @@
 - [[Payments Split by Surface]](concepts/payments-split-by-surface.md) — Stripe for marketplace on all surfaces; subscriptions web-only to avoid Apple's 30%
 - [[Pricing Architecture]](concepts/pricing-architecture.md) — Four stacked revenue streams per customer
 - [[QA CI/CD Gate]](concepts/qa-cicd-gate.md) — Automated quality gate + staging env between code and prod; human ship gate; Plans A/B/C
+- [[Self-Improving App]](concepts/self-improving-app.md) — Autoresearch loop (Karpathy pattern, domain-swapped) that grows the wiki + Donny; 5-phase smart-app roadmap
 - [[Take-Rate Ladder]](concepts/take-rate-ladder.md) — Tiered platform fees from 10% (Free) to 2% (Enterprise)
 - [[Trust-Then-Flag Model]](concepts/trust-then-flag-model.md) — DragonShare moderation: post live immediately, flag post-hoc (no admin queue)
 - [[Two-Path Boost Payment]](concepts/boost-payment-two-path.md) — Hosted checkout first, off-session repeat, idempotent fulfillment
@@ -58,3 +59,5 @@
 - [[Restaurant Journey]](../flows/restaurant-journey.md) — Restaurant's cross-feature path
 
 ## Analyses
+
+- [[North Star & KPI Scorecard]](analyses/north-star-kpi-scorecard.md) — Three-year targets + kill-switches operationalized and validated against 2025 SMB-SaaS benchmarks; flags churn-unit ambiguity and a mis-scoped rev/employee gate
