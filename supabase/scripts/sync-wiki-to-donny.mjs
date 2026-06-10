@@ -33,10 +33,11 @@ if (!URL || !KEY) {
 }
 
 function parseFrontmatter(raw) {
-  const m = raw.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
+  // Tolerate both LF and CRLF (Windows checkouts) line endings.
+  const m = raw.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/);
   if (!m) return { fm: {}, body: raw };
   const fm = {};
-  for (const line of m[1].split("\n")) {
+  for (const line of m[1].split(/\r?\n/)) {
     const kv = line.match(/^(\w+):\s*(.*)$/);
     if (kv) fm[kv[1]] = kv[2].trim();
   }
