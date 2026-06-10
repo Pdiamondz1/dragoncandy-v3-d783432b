@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useResolvedLogoUrl } from '@/hooks/useSignedUrl';
 import { MapPin } from 'lucide-react';
 import type { RestaurantSearchResult } from '@/hooks/useRestaurantSearch';
+import { InlineRating } from '@/components/reviews/InlineRating';
 
 interface Props {
   restaurant: RestaurantSearchResult;
@@ -58,8 +59,12 @@ export function RestaurantCard({ restaurant, onSelect }: Props) {
             <span className="text-xs text-dc-text-muted truncate">{restaurant.address}</span>
           </div>
         )}
-        <div className="flex items-center justify-end mt-2.5">
-          <span className="text-xs font-semibold text-dc-teal group-hover:text-dc-teal-dark transition-colors">
+        <div className="flex items-center justify-between gap-2 mt-2.5">
+          <InlineRating
+            averageRating={restaurant.average_rating}
+            totalReviews={restaurant.total_reviews}
+          />
+          <span className="text-xs font-semibold text-dc-teal group-hover:text-dc-teal-dark transition-colors flex-shrink-0">
             Select &rarr;
           </span>
         </div>
