@@ -62,9 +62,13 @@ manufactures structured, verified knowledge in the interim.
 
 - **Phase 1 — knowledge research loop** *(built).* On-demand `/autoresearch <topic>` plus an
   autonomous `loop` that auto-detects gaps via wiki-ops `lint`. Grows the wiki across all three domains.
-- **Phase 2 — Donny learns** *(planned).* Gated sync of each verified wiki page into `donny_knowledge`
-  (RAG + OpenAI embeddings) through an edge function (RLS-safe, metered) — never a direct DB write
-  from the skill.
+- **Phase 2 — Donny learns** *(built, staging).* The `sync-donny` skill mode + the
+  `donny-knowledge-sync` edge function embed verified pages (OpenAI `text-embedding-3-small`, 1536d)
+  and idempotently upsert them into `donny_knowledge` as a new `'wiki'` source_type (RLS service-role,
+  metered, keyed on `metadata.source_id`). Donny retrieves them through the existing
+  `match_donny_knowledge` RPC — no retrieval change. Verified on staging end-to-end on the DB side;
+  the live OpenAI sync runs from `supabase/scripts/sync-wiki-to-donny.ts`. Promote to prod after
+  retrieval is confirmed.
 - **Phase 3 — telemetry→wiki bridge** *(future).* Feed real app signals (`analytics_events`,
   `dragonshare_events`, edge-function/error logs, [[Supabase]] advisors) into a raw `signals` source
   so gap detection is driven by actual transactions and engagement — "learn about bugs from usage."
@@ -89,6 +93,14 @@ code and money changes human-gated.
   Donny's behavior or app code.
 - The acceptance gate's "fills a real gap" check depends on `index.md` being complete; a missing
   index entry can cause a duplicate. Run wiki-ops `lint` periodically to catch this.
+- **Donny's vector RAG was broken on staging (flag → fixed 2026-06-10).** The
+  `match_donny_knowledge` RPC pinned `SET search_path TO 'public'`, but pgvector (and its `<=>`
+  operator) is installed in the `extensions` schema on staging, so the RPC errored there
+  (`operator does not exist: extensions.vector <=> extensions.vector`) and retrieval silently fell
+  back to full-text search. Prod resolved the operator (pgvector reachable from `public`), so prod was
+  unaffected. Same drift class as the logo trigger — see [[Migration Replay Drift]]. **Fixed:**
+  migration `20260610130000_fix_match_donny_knowledge_search_path.sql` sets the function search_path to
+  `public, extensions`; applied to staging and captured for replay everywhere.
 
 ## See Also
 
@@ -96,4 +108,5 @@ code and money changes human-gated.
 - [[Donny AI]]
 - [[DragonCandy Platform]]
 - [[Musk's Algorithm]]
+- [[Migration Replay Drift]]
 - [[Supabase]]

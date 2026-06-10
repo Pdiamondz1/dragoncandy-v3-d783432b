@@ -1,5 +1,25 @@
 # Wiki Log
 
+## [2026-06-10] update | Slice 3 — Donny learns (staging) + RAG drift flag
+
+Built Phase 2 of the self-improving loop: verified wiki pages now sync into Donny's RAG store.
+Shipped: migration adding a `'wiki'` source_type + idempotency index on `donny_knowledge`
+(`20260610120000_donny_knowledge_wiki_source.sql`), the `donny-knowledge-sync` edge function
+(service-role, OpenAI `text-embedding-3-small`, idempotent upsert by `metadata.source_id`), embedding
+pricing in `_shared/cost-ledger.ts`, a `sync-donny` skill mode, and `supabase/scripts/sync-wiki-to-donny.ts`.
+Migration + function deployed to **staging** (mhffqrawgizhprbobcta).
+
+DB-side verified on staging: `'wiki'` rows accepted, idempotency index rejects duplicate source_id,
+and a stored 1536-d embedding is retrievable (similarity 1.0 via the pgvector operator). Live OpenAI
+sync is the operator's step (needs the staging service-role key + OPENAI_API_KEY secret).
+
+Flag (verified → fixed): **Donny's vector RAG was broken on staging** — `match_donny_knowledge` had
+`search_path = 'public'` but pgvector lives in `extensions` on staging, so the `<=>` operator didn't
+resolve and retrieval fell back to FTS. Prod unaffected. Migration-drift class. Fixed via
+`20260610130000_fix_match_donny_knowledge_search_path.sql` (search_path → `public, extensions`),
+applied to staging. Recorded on [[Self-Improving App]], cross-linked [[Migration Replay Drift]].
+Pages updated: [[Self-Improving App]] (Phase 2 built + fixed flag), log.
+
 ## [2026-06-10] autoresearch loop | Slice 2 demo — budget 2, 2 gaps closed
 
 First autonomous `loop` run. Lint found no missing/orphan pages (wiki well-linked); all gaps were

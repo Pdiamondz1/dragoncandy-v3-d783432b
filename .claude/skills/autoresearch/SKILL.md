@@ -92,6 +92,27 @@ Pages updated: [[Page]]   (omit if none)
 Note: <one line — why discarded/flagged, or what was learned>
 ```
 
+## `/autoresearch sync-donny [staging|prod]` — teach Donny (Phase 2)
+
+Pushes verified wiki knowledge into Donny's RAG store so the product reasons over it — the second
+learner on the same loop. Donny retrieves it automatically through the existing
+`match_donny_knowledge` path; no retrieval change is needed.
+
+- **Scope:** only `concepts/`, `entities/`, `analyses/`. **Never** `raw/`, `sources/`, session pages,
+  `index.md`, or `log.md` (too granular/noisy for retrieval).
+- **How:** for each in-scope page build `{ source_id: "wiki:<path-without-.md>", content: "<title>\n\n<body>",
+  metadata: { title, type, path, tags } }` and POST batches (≤100) to the **`donny-knowledge-sync`**
+  edge function. It embeds via OpenAI `text-embedding-3-small` (1536d) and **idempotently upserts** one
+  row per page keyed on `metadata.source_id` (re-sync updates, never duplicates).
+- **Auth / target:** the function is **service-role only**. The operator supplies the target function
+  URL + service-role key via env (never commit a key). **Default target is `staging` — promote to
+  `prod` only after verifying Donny retrieves wiki knowledge correctly.**
+- **Cost:** embedding spend is logged to `donny_cost_ledger` (model `text-embedding-3-small`), so it
+  counts against the 15%-of-revenue AI cap.
+
+This is the **only** place the loop writes outside `docs/wiki/`, and it writes **only** to
+`donny_knowledge` through the gated edge function — never app code, schema, or other tables.
+
 ## Hard guardrails
 
 - **Writes only to `docs/wiki/`.** Never edit app code, schema, RLS, or auth. Never touch
@@ -114,9 +135,9 @@ Note: <one line — why discarded/flagged, or what was learned>
 ## Roadmap (recorded in `docs/wiki/concepts/self-improving-app.md`)
 
 - **Phase 1 (now):** this loop → grows the wiki across the three domains.
-- **Phase 2 — Donny learns:** gated sync of each verified wiki page into `donny_knowledge` (RAG,
-  OpenAI embeddings) via an edge function (RLS-safe, metered) — dual output, one loop: wiki for
-  humans, Donny's RAG store for the product.
+- **Phase 2 — Donny learns** *(built, staging):* `sync-donny` mode + the `donny-knowledge-sync` edge
+  function push verified pages into `donny_knowledge` (RAG, OpenAI embeddings, RLS-safe, metered) —
+  dual output, one loop: wiki for humans, Donny's RAG store for the product. See the section above.
 - **Phase 3 — telemetry→wiki bridge:** real app signals (`analytics_events`, `dragonshare_events`,
   edge-function/error logs, Supabase advisors) drive gap detection — "learn about bugs from usage."
 - **Phase 4 — fix proposals:** verified-bug remediation specs / draft PRs, human-gated, never auto-merged.
