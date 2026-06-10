@@ -5,20 +5,45 @@ import type { PaymentEvent } from "@/hooks/usePaymentTimeline";
 interface PaymentSummaryCardsProps {
   events: PaymentEvent[];
   userRole: UserRole;
+  pendingReviewCount?: number;
 }
 
 function formatCurrency(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
 }
 
+// Charge events (escrow_authorized/escrow_held) use the campaign id as
+// entity_id while release events use the collaboration id, so cross-event
+// matching must go through campaign_id as well.
+function sameEntity(a: PaymentEvent, b: PaymentEvent): boolean {
+  return a.entity_id === b.entity_id || (!!a.campaign_id && a.campaign_id === b.campaign_id);
+}
+
+// escrow_held is written without an amount by some flows; the matching
+// escrow_authorized (latest one at or before the hold) carries the charge.
+function resolveEscrowAmount(held: PaymentEvent, events: PaymentEvent[]): number {
+  if (held.amount_cents != null) return held.amount_cents;
+  const auths = events.filter(a =>
+    a.event_type === 'escrow_authorized' &&
+    a.amount_cents != null &&
+    a.created_at <= held.created_at &&
+    sameEntity(a, held)
+  );
+  return auths.length > 0 ? (auths[auths.length - 1].amount_cents ?? 0) : 0;
+}
+
 function computeBusinessStats(events: PaymentEvent[]) {
-  const totalSpent = events
-    .filter(e => e.event_type === 'escrow_held' || e.event_type === 'sponsorship_paid')
-    .reduce((sum, e) => sum + (e.amount_cents ?? 0), 0);
-  const inEscrow = events
-    .filter(e => e.event_type === 'escrow_held')
-    .filter(e => !events.some(r => r.entity_id === e.entity_id && (r.event_type === 'payment_released' || r.event_type === 'refund_completed')))
-    .reduce((sum, e) => sum + (e.amount_cents ?? 0), 0);
+  const heldEvents = events.filter(e => e.event_type === 'escrow_held');
+  const totalSpent =
+    heldEvents.reduce((sum, e) => sum + resolveEscrowAmount(e, events), 0) +
+    events
+      .filter(e => e.event_type === 'sponsorship_paid')
+      .reduce((sum, e) => sum + (e.amount_cents ?? 0), 0);
+  const inEscrow = heldEvents
+    .filter(e => !events.some(r =>
+      (r.event_type === 'payment_released' || r.event_type === 'refund_completed') && sameEntity(r, e)
+    ))
+    .reduce((sum, e) => sum + resolveEscrowAmount(e, events), 0);
   const pendingReview = events
     .filter(e => e.event_type === 'content_submitted')
     .filter(e => !events.some(a => a.entity_id === e.entity_id && a.event_type === 'content_approved'))
@@ -41,14 +66,14 @@ function computeCreatorStats(events: PaymentEvent[]) {
   return { totalEarned, inWallet, pendingReview };
 }
 
-export function PaymentSummaryCards({ events, userRole }: PaymentSummaryCardsProps) {
+export function PaymentSummaryCards({ events, userRole, pendingReviewCount }: PaymentSummaryCardsProps) {
   if (userRole === 'business') {
     const { totalSpent, inEscrow, pendingReview } = computeBusinessStats(events);
     return (
       <div className="grid grid-cols-3 gap-3">
         <SummaryCard icon={DollarSign} label="Total Spent" value={formatCurrency(totalSpent)} />
         <SummaryCard icon={Lock} label="In Escrow" value={formatCurrency(inEscrow)} />
-        <SummaryCard icon={Clock} label="Pending Review" value={String(pendingReview)} />
+        <SummaryCard icon={Clock} label="Pending Review" value={String(pendingReviewCount ?? pendingReview)} />
       </div>
     );
   }
@@ -59,7 +84,7 @@ export function PaymentSummaryCards({ events, userRole }: PaymentSummaryCardsPro
       <div className="grid grid-cols-3 gap-3">
         <SummaryCard icon={DollarSign} label="Total Earned" value={formatCurrency(totalEarned)} />
         <SummaryCard icon={Wallet} label="In Wallet" value={formatCurrency(inWallet)} />
-        <SummaryCard icon={Clock} label="Pending Review" value={String(pendingReview)} />
+        <SummaryCard icon={Clock} label="Pending Review" value={String(pendingReviewCount ?? pendingReview)} />
       </div>
     );
   }

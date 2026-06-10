@@ -95,6 +95,7 @@ serve(async (req) => {
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
     let paymentSucceeded = false;
     let actualPaymentIntentId: string | null = null;
+    let chargedAmountCents: number | null = null;
 
     // Priority 1: sessionId from URL
     if (sessionId) {
@@ -103,6 +104,7 @@ serve(async (req) => {
         if (session.payment_status === 'paid') {
           paymentSucceeded = true;
           actualPaymentIntentId = session.payment_intent as string;
+          chargedAmountCents = session.amount_total ?? null;
         }
       } catch (e) {
         logStep("Session retrieval failed", { error: String(e) });
@@ -118,6 +120,7 @@ serve(async (req) => {
           if (session.payment_status === 'paid') {
             paymentSucceeded = true;
             actualPaymentIntentId = session.payment_intent as string;
+            chargedAmountCents = session.amount_total ?? null;
           }
         } catch (e) { /* skip */ }
       } else if (storedId.startsWith('pi_')) {
@@ -126,6 +129,7 @@ serve(async (req) => {
           if (pi.status === 'succeeded') {
             paymentSucceeded = true;
             actualPaymentIntentId = storedId;
+            chargedAmountCents = pi.amount ?? null;
           }
         } catch (e) { /* skip */ }
       }
@@ -141,6 +145,7 @@ serve(async (req) => {
         if (pis.data.length > 0) {
           paymentSucceeded = true;
           actualPaymentIntentId = pis.data[0].id;
+          chargedAmountCents = pis.data[0].amount ?? null;
         }
       } catch (e) {
         logStep("Stripe search failed", { error: String(e) });
@@ -176,6 +181,7 @@ serve(async (req) => {
       campaign_id: campaignId,
       actor_id: user.id,
       actor_role: 'business',
+      amount_cents: chargedAmountCents ?? undefined,
       stripe_id: actualPaymentIntentId,
     }, '[VERIFY-CAMPAIGN-ESCROW]');
 
