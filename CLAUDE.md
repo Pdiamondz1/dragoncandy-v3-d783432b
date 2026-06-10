@@ -23,7 +23,7 @@ npm run preview      # Preview production build locally
 
 ## Tech Stack
 
-React 18 + TypeScript (strict), Vite, Tailwind CSS, shadcn/ui (Radix). Supabase backend (Postgres, Auth, Edge Functions, Realtime, Storage). Stripe Connect (test mode). React Query for server state. Framer Motion (lazy-loaded). Outstand.so for social media integration (Instagram, TikTok, YouTube). Google Maps (geocoding). Claude API (Anthropic) for AI features — backend-only via 73 Deno edge functions. Hosted on Lovable.dev → dragoncandy.io. Fonts: Outfit (sans), Pacifico (script).
+React 18 + TypeScript (strict), Vite, Tailwind CSS, shadcn/ui (Radix). Supabase backend (Postgres, Auth, Edge Functions, Realtime, Storage). Stripe Connect (test mode). React Query for server state. Framer Motion (lazy-loaded). Outstand.so for social media integration (Instagram, TikTok, YouTube). Google Maps (geocoding). Claude API (Anthropic) for AI features — backend-only via 75 Deno edge functions. Hosted on Lovable.dev → dragoncandy.io. Fonts: Outfit (sans), Pacifico (script).
 
 ## Coding Conventions
 
@@ -85,7 +85,8 @@ ErrorBoundary → ThemeProvider → QueryClientProvider → LazyMotion → AuthP
 
 * **Supabase client**: single instance at `src/integrations/supabase/client.ts`
 * **Feature modules**: domain code in `src/features/` (donny, promotions, settings)
-* **Edge functions**: 73 Deno functions in `supabase/functions/`, shared utils in `_shared/` (cors, auth, model-routing, cost-ledger, platform-fee, anthropic-fetch, mcp-client)
+* **Edge functions**: 75 Deno functions in `supabase/functions/`, shared utils in `_shared/` (cors, auth, model-routing, cost-ledger, platform-fee, anthropic-fetch, mcp-client)
+* **Autoresearch + Donny RAG**: the `/autoresearch` skill (`.claude/skills/autoresearch/`) grows the wiki and, via `sync-donny`, syncs verified wiki pages into Donny's RAG store (`donny_knowledge`) through the `donny-knowledge-sync` edge function (OpenAI embeddings, idempotent). See `docs/wiki/concepts/self-improving-app.md`.
 * **Outstand integration**: `src/integrations/outstand/Provider.tsx` + 17 hooks in `src/hooks/outstand/` — social media account linking, delegated posting, analytics
 * **Auth system**: app-level loading guard in `AppLayout`, 3-hour global inactivity timeout in `AuthenticatedShell` (both defined in `src/App.tsx`)
 * **ErrorBoundary** levels: `'page'` (default), `'section'`, `'widget'`. Pass `fallback={null}` for silent widget errors.
@@ -158,4 +159,24 @@ Never commit actual values. Reference `.env.local` locally.
 
 ## Deployment
 
-Push to `main` on GitHub → Lovable auto-deploys to dragoncandy.io. Test locally with `npm run dev` before pushing. No staging environment.
+Push to `main` on GitHub → Lovable auto-deploys to dragoncandy.io. Test locally with `npm run dev` before pushing.
+
+### Worktree workflow — refresh local main after every merge
+
+Work happens in **git worktrees** under `.claude/worktrees/` (30+ of them). A worktree is a
+**separate working directory** with its own branch; edits there reach `origin/main` only via PR
+merge. **The local `main` checkout (`C:\GIT\dragoncandy-v3-d783432b`) does NOT auto-update** — so the
+files you browse there go stale (they can drift 100+ commits behind `origin/main`). Lovable deploys
+from **GitHub `origin/main`**, not the local checkout, so prod stays current even when local main is stale.
+
+**After merging any PR, refresh the local main checkout** so its files match reality:
+
+```bash
+git -C "C:/GIT/dragoncandy-v3-d783432b" stash push -- README.md   # if it has local edits
+git -C "C:/GIT/dragoncandy-v3-d783432b" fetch origin
+git -C "C:/GIT/dragoncandy-v3-d783432b" merge --ff-only origin/main
+```
+
+If the fast-forward aborts on "untracked working tree files would be overwritten," move those
+untracked files aside first. Core files (`CLAUDE.md`, `docs/PROJECT_CONTEXT.md`, `docs/wiki/`) appearing
+stale in the local folder almost always means this refresh step was skipped — not that the change was lost.
