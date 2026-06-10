@@ -104,8 +104,11 @@ learner on the same loop. Donny retrieves it automatically through the existing
   metadata: { title, type, path, tags } }` and POST batches (≤100) to the **`donny-knowledge-sync`**
   edge function. It embeds via OpenAI `text-embedding-3-small` (1536d) and **idempotently upserts** one
   row per page keyed on `metadata.source_id` (re-sync updates, never duplicates).
-- **Auth / target:** the function is **service-role only**. The operator supplies the target function
-  URL + service-role key via env (never commit a key). **Default target is `staging` — promote to
+- **Auth / target:** the function is **service-role only**. Run the client
+  `supabase/scripts/sync-wiki-to-donny.mjs` (Node 18+) with `DONNY_SYNC_URL` + `SUPABASE_SECRET_KEY`.
+  **The key is the project's new Secret key (`sb_secret_…`)** — the value injected into the function as
+  `SUPABASE_SERVICE_ROLE_KEY` on new-API-key-system projects; the legacy `service_role` JWT (`eyJ…`)
+  does **not** match and returns 401. Never commit a key. **Default target is `staging` — promote to
   `prod` only after verifying Donny retrieves wiki knowledge correctly.**
 - **Cost:** embedding spend is logged to `donny_cost_ledger` (model `text-embedding-3-small`), so it
   counts against the 15%-of-revenue AI cap.
