@@ -1,5 +1,38 @@
 # Wiki Log
 
+## [2026-06-10] autoresearch loop | Slice 2 demo — budget 2, 2 gaps closed
+
+First autonomous `loop` run. Lint found no missing/orphan pages (wiki well-linked); all gaps were
+thin-coverage core systems with no dedicated page. Ranked top 5: Organizations, Toast POS, File
+Management, Messaging/Notifications, Donny scheduled posts. Ran budget=2 on the top two.
+
+### Iteration 1 | Organizations (entity)
+Status: kept
+Domain: technical
+Sources: supabase/migrations/20260426200000_team_accounts.sql (+org_unit_stripe, backfill, view),
+src/hooks/useOrgData.ts, src/hooks/useOrgMembers.ts, src/types/org.ts, src/pages/OrgUnitsPage.tsx +
+OrgBillingPage.tsx, supabase/functions/invite-member (internal, file-path grounded).
+Pages created: [[Organizations]].
+Pages updated: index.md, [[DragonCandy Platform]] (backlink).
+Note: Flagged then verified (live DB, 2026-06-10) — the `sync_brand_logo_from_business_profile`
+trigger (`trg_sync_brand_logo` on `business_profiles`) DOES exist in prod, so logo sync works; the
+real issue is migration drift (trigger absent from migration files → lost on clean replay). Flag
+reclassified on [[Organizations]], cross-linked [[Migration Replay Drift]]. Kept as a wiki flag.
+
+### Iteration 2 | File Management (entity)
+Status: kept
+Domain: technical
+Sources: supabase/migrations/20250617123640_*.sql (+file_uploads_org_unit), src/hooks/useFileQuery.ts,
+useFileUploadMutations.ts, useFilePermissions.ts, useFileComments.ts, useSignedUrl.ts,
+src/components/files/*, supabase/functions/bulk-download-campaign-content + release-creator-payout.
+Pages created: [[File Management]].
+Pages updated: index.md, [[DragonCandy Platform]] (backlink).
+Note: Flagged — `file_versions` and `file_tags` are schema-only (queried/displayed but no write paths);
+private buckets + signed URLs, opposite security model from DragonShare's public `content_file_path`.
+
+### Budget exhausted (2/2). Remaining ranked gaps for a future run: Toast POS (external+internal),
+### Messaging/Notifications, Donny scheduled posts, Analytics/funnel, Reviews & ratings.
+
 ## [2026-06-10] update | Autoresearch skill + Self-Improving App concept
 
 Stood up the `/autoresearch` skill (`.claude/skills/autoresearch/SKILL.md`) — a domain-swap of

@@ -26,6 +26,8 @@
 - [[DragonCandy Platform]](entities/dragoncandy-platform.md) — AI-powered creator-restaurant marketplace
 - [[DragonDash]](entities/dragondash.md) — Premium rush content delivery, the profit engine
 - [[DragonShare]](entities/dragonshare.md) — Organic-content amplification engine, 80/20 boost payments
+- [[File Management]](entities/file-management.md) — Content-deliverable system: file_uploads + versions/permissions/comments/tags, private buckets + signed URLs
+- [[Organizations]](entities/organizations.md) — Team accounts: parent org → org units (locations/products) → members; multi-unit, seat billing, RLS
 - [[Outstand]](entities/outstand.md) — Social-posting bridge (Instagram, TikTok, YouTube); delegated posting, account recovery
 - [[Stripe Connect]](entities/stripe-connect.md) — Payment infrastructure, escrow, subscriptions, boosts (test mode)
 - [[Supabase]](entities/supabase.md) — Backend: Postgres, Auth, Edge Functions, Realtime, RLS

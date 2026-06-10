@@ -101,6 +101,15 @@ Note: <one line — why discarded/flagged, or what was learned>
 - **No metered spend.** This runs in the user's Claude Code session, not through the edge functions,
   so it sits outside the 15%-of-revenue AI cap. The iteration budget bounds cost.
 - **Flag, don't overwrite.** Contradictions are surfaced explicitly, never silently resolved.
+- **Flags stay in the wiki — do not fold them into codebase docs.** When the loop surfaces an
+  *empirical* claim about code or data (a possible bug, schema-vs-reality mismatch, migration drift,
+  or "schema-only" feature), record it as a **wiki flag** on the relevant page and **verify it**
+  (live DB via Supabase MCP, repo via Grep). Resolve/reclassify the flag **in place** on the wiki
+  page — never edit `DATABASE_SCHEMA.md`, `PROJECT_CONTEXT.md`, or other codebase docs to assert a
+  finding that hasn't been confirmed, and never write a code fix from this loop (that is a separate,
+  human-gated, non-wiki change). The *only* exception is an **editorial** ambiguity in a
+  human-owned strategy doc (e.g. an unstated unit or scope) — those may be folded into that doc, and
+  only after the human decides. Empirical → verify in the wiki; editorial → human decides, then fold.
 
 ## Roadmap (recorded in `docs/wiki/concepts/self-improving-app.md`)
 
