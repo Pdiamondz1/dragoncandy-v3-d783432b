@@ -26,6 +26,8 @@
 - [[DragonCandy Platform]](entities/dragoncandy-platform.md) — AI-powered creator-restaurant marketplace
 - [[DragonDash]](entities/dragondash.md) — Premium rush content delivery, the profit engine
 - [[DragonShare]](entities/dragonshare.md) — Organic-content amplification engine, 80/20 boost payments
+- [[File Management]](entities/file-management.md) — Content-deliverable system: file_uploads + versions/permissions/comments/tags, private buckets + signed URLs
+- [[Organizations]](entities/organizations.md) — Team accounts: parent org → org units (locations/products) → members; multi-unit, seat billing, RLS
 - [[Outstand]](entities/outstand.md) — Social-posting bridge (Instagram, TikTok, YouTube); delegated posting, account recovery
 - [[Stripe Connect]](entities/stripe-connect.md) — Payment infrastructure, escrow, subscriptions, boosts (test mode)
 - [[Supabase]](entities/supabase.md) — Backend: Postgres, Auth, Edge Functions, Realtime, RLS
@@ -41,6 +43,7 @@
 - [[Payments Split by Surface]](concepts/payments-split-by-surface.md) — Stripe for marketplace on all surfaces; subscriptions web-only to avoid Apple's 30%
 - [[Pricing Architecture]](concepts/pricing-architecture.md) — Four stacked revenue streams per customer
 - [[QA CI/CD Gate]](concepts/qa-cicd-gate.md) — Automated quality gate + staging env between code and prod; human ship gate; Plans A/B/C
+- [[Self-Improving App]](concepts/self-improving-app.md) — Autoresearch loop (Karpathy pattern, domain-swapped) that grows the wiki + Donny; 5-phase smart-app roadmap
 - [[Take-Rate Ladder]](concepts/take-rate-ladder.md) — Tiered platform fees from 10% (Free) to 2% (Enterprise)
 - [[Trust-Then-Flag Model]](concepts/trust-then-flag-model.md) — DragonShare moderation: post live immediately, flag post-hoc (no admin queue)
 - [[Two-Path Boost Payment]](concepts/boost-payment-two-path.md) — Hosted checkout first, off-session repeat, idempotent fulfillment
@@ -58,3 +61,6 @@
 - [[Restaurant Journey]](../flows/restaurant-journey.md) — Restaurant's cross-feature path
 
 ## Analyses
+
+- [[Content Engine Data Audit]](analyses/content-engine-data-audit.md) — what signal data exists in prod for the Donny content engine; context live, performance dark, Toast/social-cache tables missing from prod; foundation-first plan
+- [[North Star & KPI Scorecard]](analyses/north-star-kpi-scorecard.md) — Three-year targets + kill-switches operationalized and validated against 2025 SMB-SaaS benchmarks; flags churn-unit ambiguity and a mis-scoped rev/employee gate

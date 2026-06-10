@@ -46,3 +46,5 @@ through a hybrid marketplace model.
 - [[Content Delivery State Machine]]
 - [[Take-Rate Ladder]]
 - [[Payments Split by Surface]]
+- [[Organizations]]
+- [[File Management]]

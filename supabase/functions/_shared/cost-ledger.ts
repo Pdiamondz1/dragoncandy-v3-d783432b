@@ -11,6 +11,8 @@ const MODEL_COSTS: Record<string, { input: number; output: number }> = {
   "claude-haiku-4-5-20251001": { input: 0.00000025, output: 0.00000125 },
   "claude-sonnet-4-6": { input: 0.000003, output: 0.000015 },
   "claude-sonnet-4-20250514": { input: 0.000003, output: 0.000015 },
+  // OpenAI embeddings (RAG): $0.02 / 1M tokens, input only.
+  "text-embedding-3-small": { input: 0.00000002, output: 0 },
 };
 
 export interface CostLogEntry {
@@ -44,5 +46,39 @@ export async function logCost(
 
   if (error) {
     console.error("[cost-ledger] Failed to log cost:", error.message);
+  }
+}
+
+export interface EmbeddingCostEntry {
+  userId: string;
+  edgeFunction: string;
+  model: string;
+  inputTokens: number;
+}
+
+/**
+ * Logs an OpenAI embedding call (input-only, no output tokens). Best-effort:
+ * never throws, so cost tracking can't break the calling sync.
+ */
+export async function logEmbeddingCost(
+  supabaseAdmin: SupabaseClient,
+  entry: EmbeddingCostEntry
+): Promise<void> {
+  const rates = MODEL_COSTS[entry.model] ?? { input: 0.00000002, output: 0 };
+  const estimatedCost = entry.inputTokens * rates.input;
+
+  const { error } = await supabaseAdmin.from("donny_cost_ledger").insert({
+    user_id: entry.userId,
+    edge_function: entry.edgeFunction,
+    model: entry.model,
+    tier: "embedding",
+    input_tokens: entry.inputTokens,
+    output_tokens: 0,
+    estimated_cost_usd: estimatedCost,
+    fallback: false,
+  });
+
+  if (error) {
+    console.error("[cost-ledger] Failed to log embedding cost:", error.message);
   }
 }
