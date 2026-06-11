@@ -1,0 +1,100 @@
+/**
+ * Scaling-threshold rules for the AIOS weight page.
+ * Tier facts from the founder's Supabase Compute & Disk screenshot (2026-06-11)
+ * — see the AIOS design spec §C. Update COMPUTE_TIERS / DISK_LIMIT_BYTES when
+ * the plan changes; everything else derives from them.
+ */
+
+export const GB = 1024 * 1024 * 1024;
+
+/** Spend cap limits disk to 8 GB on the current plan. */
+export const DISK_LIMIT_BYTES = 8 * GB;
+
+/** Current tier is the first entry; the ladder names the upgrade path. */
+export const COMPUTE_TIERS = [
+  { name: 'Micro', ramGb: 1, monthlyUsd: 10 },
+  { name: 'Small', ramGb: 2, monthlyUsd: 15 },
+  { name: 'Medium', ramGb: 4, monthlyUsd: 60 },
+  { name: 'Large', ramGb: 8, monthlyUsd: 110 },
+  { name: 'XL', ramGb: 16, monthlyUsd: 210 },
+] as const;
+
+const DISK_WARNING_RATIO = 0.7;
+const DISK_CRITICAL_RATIO = 0.85;
+const FORECAST_HORIZON_DAYS = 90;
+
+export interface WeightSnapshot {
+  captured_at: string;
+  db_bytes: number;
+  storage_bytes: number;
+  users_total: number;
+}
+
+export interface WeightAlert {
+  severity: 'info' | 'warning' | 'critical';
+  title: string;
+  detail: string;
+}
+
+/** Linear growth rate (bytes/day) between the first and last snapshot. */
+export function dailyGrowthBytes(snapshots: WeightSnapshot[]): number {
+  if (snapshots.length < 2) return 0;
+  const sorted = [...snapshots].sort(
+    (a, b) => new Date(a.captured_at).getTime() - new Date(b.captured_at).getTime()
+  );
+  const first = sorted[0];
+  const last = sorted[sorted.length - 1];
+  const days =
+    (new Date(last.captured_at).getTime() - new Date(first.captured_at).getTime()) / 86_400_000;
+  if (days <= 0) return 0;
+  return (last.db_bytes - first.db_bytes) / days;
+}
+
+/**
+ * Whole days until DB size crosses the disk warning threshold at the given
+ * growth rate. 0 if already past; null if not growing.
+ */
+export function daysUntilDiskAlert(currentDbBytes: number, growthPerDay: number): number | null {
+  const threshold = DISK_LIMIT_BYTES * DISK_WARNING_RATIO;
+  if (currentDbBytes >= threshold) return 0;
+  if (growthPerDay <= 0) return null;
+  return Math.ceil((threshold - currentDbBytes) / growthPerDay);
+}
+
+export function computeWeightAlerts(snapshots: WeightSnapshot[]): WeightAlert[] {
+  if (snapshots.length === 0) return [];
+  const sorted = [...snapshots].sort(
+    (a, b) => new Date(a.captured_at).getTime() - new Date(b.captured_at).getTime()
+  );
+  const latest = sorted[sorted.length - 1];
+  const alerts: WeightAlert[] = [];
+  const ratio = latest.db_bytes / DISK_LIMIT_BYTES;
+  const nextTier = COMPUTE_TIERS[1];
+  const upgradeHint = `Next tier: ${nextTier.name} (${nextTier.ramGb} GB RAM, $${nextTier.monthlyUsd}/mo) — or raise the spend cap for more disk.`;
+
+  if (ratio >= DISK_CRITICAL_RATIO) {
+    alerts.push({
+      severity: 'critical',
+      title: 'Time to scale disk',
+      detail: `Database is at ${Math.round(ratio * 100)}% of the ${DISK_LIMIT_BYTES / GB} GB spend-cap disk limit. ${upgradeHint}`,
+    });
+  } else if (ratio >= DISK_WARNING_RATIO) {
+    alerts.push({
+      severity: 'warning',
+      title: 'Disk usage climbing',
+      detail: `Database is at ${Math.round(ratio * 100)}% of the ${DISK_LIMIT_BYTES / GB} GB spend-cap disk limit. ${upgradeHint}`,
+    });
+  } else {
+    const growth = dailyGrowthBytes(sorted);
+    const days = daysUntilDiskAlert(latest.db_bytes, growth);
+    if (days !== null && days > 0 && days <= FORECAST_HORIZON_DAYS) {
+      alerts.push({
+        severity: 'info',
+        title: 'Disk threshold ahead',
+        detail: `At the current growth rate the database crosses ${Math.round(DISK_WARNING_RATIO * 100)}% of the disk limit in about ${days} days. ${upgradeHint}`,
+      });
+    }
+  }
+
+  return alerts;
+}

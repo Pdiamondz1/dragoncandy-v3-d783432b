@@ -12,6 +12,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       account_deletion_requests: {
@@ -4192,6 +4217,33 @@ export type Database = {
           },
         ]
       }
+      platform_weight: {
+        Row: {
+          captured_at: string
+          db_bytes: number
+          id: string
+          row_counts: Json
+          storage_bytes: number
+          users_total: number
+        }
+        Insert: {
+          captured_at?: string
+          db_bytes: number
+          id?: string
+          row_counts?: Json
+          storage_bytes: number
+          users_total: number
+        }
+        Update: {
+          captured_at?: string
+          db_bytes?: number
+          id?: string
+          row_counts?: Json
+          storage_bytes?: number
+          users_total?: number
+        }
+        Relationships: []
+      }
       pricing_funnel_events: {
         Row: {
           action: string
@@ -5597,6 +5649,7 @@ export type Database = {
         Args: { p_campaign_id: string; p_creator_id: string }
         Returns: boolean
       }
+      capture_platform_weight: { Args: never; Returns: undefined }
       check_prerequisite_status: { Args: { p_user_id: string }; Returns: Json }
       cleanup_expired_verification_tokens: { Args: never; Returns: undefined }
       create_boost: {
@@ -6021,6 +6074,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       app_role: ["admin", "moderator", "stakeholder"],
