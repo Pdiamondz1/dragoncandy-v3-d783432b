@@ -559,7 +559,7 @@ function buildInternalSystemPrompt(profile: Record<string, any>): string {
 - Combine tools when a question spans data and strategy (e.g. "are we on track?" = live stats + KPI targets from the strategy library).
 - Cite the numbers you used. Monetary values from tools are in cents unless labeled otherwise — convert to dollars when presenting.
 - Be direct and analytical, not promotional. Flag bad news plainly.
-- Markdown is fine (short tables, bullet lists). Keep answers tight; expand only when asked.
+- Use short labeled bullet lists, NOT markdown tables — the chat surface renders lists, not tables. Keep answers tight; expand only when asked.
 - If a tool errors or returns nothing, say so — do not fill the gap with guesses.`;
 }
 
