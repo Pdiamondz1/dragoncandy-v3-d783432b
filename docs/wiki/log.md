@@ -180,3 +180,11 @@ Pages created: [[Project Context]], [[Content Delivery System Flows]],
 [[Take-Rate Ladder]], [[Data Flywheel]], [[Musk's Algorithm]],
 [[Pricing Architecture]], [[TypeScript Patterns]], [[Error Handling Patterns]]
 Pages updated: none (initial seeding)
+
+## [2026-06-10] update | Flag: toast-token-refresh dead-GUC cron
+
+Flagged that the `toast-token-refresh` pg_cron job uses the unset `app.settings.*`
+GUC pattern (silently dead in prod); Toast tokens may not be refreshing. Deferred
+(Toast blocked on pending API access); fix onto the Vault-cron recipe when Toast resumes.
+Pages updated: [[Content Engine Data Audit]] (flag + drift section), [[Migration Replay Drift]]
+(runtime-variant section + cross-ref). Part of the content-performance-capture build (Phase A keystone).

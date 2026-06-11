@@ -51,9 +51,19 @@ continues. Pure-data destructive migrations (cleanup/reset) are **skipped** with
 - Going forward, migrations should be authored clean (proper terminators, `DROP` before
   return-type changes, no out-of-band schema, unique versions).
 
+## Runtime variant — dead-GUC crons
+
+A related runtime (not replay) form of the same out-of-band drift: `pg_cron` jobs that read
+`current_setting('app.settings.*')` GUCs which are **unset in prod**, so the job silently posts a null
+URL/bearer and never runs. Confirmed for the pg_net-from-trigger nudge path; **suspected for
+`toast-token-refresh`** (flagged in [[Content Engine Data Audit]], 2026-06-10). The fix is a **Vault-based
+`pg_cron`** job (read the service key from `vault.decrypted_secrets`, hardcode the project URL) instead of
+GUC lookups — first shipped by the content-performance-capture cron.
+
 ## See Also
 
 - [[QA Staging Supabase (Plan B) Session]]
 - [[QA CI/CD Gate]]
 - [[Supabase]]
 - [[Counter-Offer Enum Fix Session]]
+- [[Content Engine Data Audit]]

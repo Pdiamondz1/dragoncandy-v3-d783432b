@@ -40,6 +40,19 @@ and migrations exist for tables that were **never applied to prod**:
   silently don't persist).
 - entire `toast_*` schema (`toast_connections`, `toast_sync_events`, `toast_*` views) — absent in prod.
 
+### Flag: `toast-token-refresh` cron likely dead in prod (2026-06-10)
+
+Surfaced while designing the [[Self-Improving App|content-performance capture]] scheduler. The
+`toast-token-refresh` cron (`supabase/migrations/20260412000005_toast_token_refresh_cron.sql`) fires via
+`pg_cron` + `net.http_post` reading `current_setting('app.settings.supabase_url')` /
+`...service_role_key` — the **same unset-GUC pattern recorded as silently dead in prod** (the
+pg_net-from-trigger / GUC issue). If those GUCs are unset, the job posts a null URL/bearer and never
+refreshes Toast tokens. **Not fixed here** — Toast is deferred and additionally **blocked on pending Toast
+API/integration access**, so no Toast data flows regardless. When Toast enablement resumes: verify via
+`cron.job_run_details`, and migrate the job onto the **Vault-based `pg_cron` recipe** introduced by the
+content-performance-capture cron (`20260610150000_content_performance_capture_cron.sql`), which avoids the
+dead GUC dependency.
+
 ## Phase A — "Turn on the signal" (the foundation)
 
 Decomposed into shippable sub-projects (keystone first):
