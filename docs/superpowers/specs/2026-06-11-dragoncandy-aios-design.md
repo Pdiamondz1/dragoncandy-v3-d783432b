@@ -117,6 +117,8 @@ All four functions follow the full `verify_dragonshare_post` grant discipline: `
 
 Frontend: hooks `usePlatformStats` / `useRevenueStats` / `useCostStats` / `usePlatformWeight` under `src/hooks/internal/`; threshold rules as pure functions in `src/lib/internal/weightThresholds.ts` (unit-tested) rendering "time to scale disk/compute" alert cards (e.g. DB size vs plan allowance, storage growth slope).
 
+**Compute/disk reference** (founder's Supabase Compute & Disk screenshot, 2026-06-11, project `zocahiffooqdybdhguqv`): current compute appears to be **Micro — 1 GB RAM, 2-core ARM, $0.01344/hr (~$10/mo)**; the **spend cap limits disk to 8 GB**. Upgrade ladder: Small $15 (2 GB) → Medium $60 (4 GB) → Large $110 (8 GB) → XL $210 (16 GB) → 2XL (32 GB) and beyond. `weightThresholds.ts` keys its alerts to this: DB size crossing ~70% of the 8 GB spend-cap disk allowance, and sustained growth slope projecting the crossing date, trigger the "time to scale" card with the next tier + price named. Tier constants live in `weightThresholds.ts` so a plan change is a one-line update (re-verify the live tier via the dashboard or Management API when PR 3 lands).
+
 ### D. Repo docs → internal UI + internal Donny (zero public-bundle exposure)
 
 The Vite bundle is publicly fetchable — strategy docs must never be imported into it (not even lazy chunks). All internal content is fetched at runtime behind RLS.

@@ -2,6 +2,7 @@ const ALLOWED = new Set([
   'https://dragoncandy.io',
   'https://www.dragoncandy.io',
   'https://dragoncandy-preview.lovable.app',
+  'https://internal.dragoncandy.io',
 ]);
 
 export const corsHeaders = (req: Request) => {
