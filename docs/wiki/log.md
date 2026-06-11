@@ -224,3 +224,22 @@ Verified on staging + prod via SQL trigger probes; build/typecheck/CI green. Res
 unknown: social_post_log is written only when a human clicks "Post Now" on the boost auto-draft.
 Pages updated: [[Content Engine]] (Phase C built + mechanism), [[Self-Improving App]] (Phase 6
 loop closed), [[DragonShare]] (published-post link), index.md.
+
+## [2026-06-11] update | Content Engine Phase D SHIPPED — creator brief history + performance card
+
+Phase D (PR #77) puts the first UI on the loop: a "Your content briefs" card on the creator
+dashboard. Present-day value is persistence — briefs were generate-and-forget; the card gives a
+creator their history and lights up with earned engagement as it flows. One read-path migration: the
+SECURITY DEFINER RPC `get_creator_brief_performance`, gated on `content_briefs.creator_id =
+auth.uid()`, which bridges the cross-user RLS gap (Phase C writes `content_performance.user_id` = the
+publisher/restaurant, not the brief's creator, and the table is owner-only). The RPC reduces each
+post to its most-mature milestone snapshot (7d>72h>24h, `distinct on`) before summing, so 24h/72h/7d
+rows don't multiply-count. Frontend: `useCreatorBriefPerformance`, `deriveBriefStatus` (+tests),
+`BriefPerformanceCard` (mirrors the DragonShare activity card), surgical one-function `types.ts` add.
+Verified staging + prod (aggregation probe 2 posts/435 views proving latest-milestone; anon-exec
+revoked, authenticated granted; build/typecheck/vitest/CI green). Empty in prod today by data reality
+(no paying boosts) — shows "Not posted yet" until a real boost + publish flows. Two new learnings
+recorded: cross-user reads belong in an ownership-gated definer RPC (not a loosened table policy), and
+milestoned snapshots must be reduced-then-summed.
+Pages updated: [[Content Engine]] (Phase D built + RLS bridge + learnings), [[Self-Improving App]]
+(Phase 6 loop surfaced to creators), index.md.

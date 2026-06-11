@@ -85,13 +85,16 @@ manufactures structured, verified knowledge in the interim.
   This has graduated from idea to a building system — see **[[Content Engine]]** for the full phase
   breakdown. **Built (verified prod):** Phase A (content-performance capture, live), Phase B (brief →
   DragonShare action across three slices — a creator gets a Donny brief and acts on it in one tap, with
-  `dragonshare_posts.source_brief_id` + `caption` recorded), and **Phase C** (PR #73 — the *return*
+  `dragonshare_posts.source_brief_id` + `caption` recorded), **Phase C** (PR #73 — the *return*
   half: published-post engagement linked back to the brief via two `social_post_log` triggers that
   populate `content_briefs.social_post_log_id` first-wins and carry `source_brief_id` onto
-  `content_performance`). The full brief→action→performance loop is now closed. Remaining dependency:
-  the link only forms once a real boost + "Post Now" publish happens, and engagement-side pipelines are
-  still partial (`dragonshare_engagement` schema-only; Outstand Phase 4 analytics in scope). See also
-  [[Content Engine Data Audit]].
+  `content_performance`), and **Phase D** (PR #77 — the first *creator-facing* surface: a "Your content
+  briefs" card backed by the ownership-gated `get_creator_brief_performance` RPC that bridges the
+  cross-user RLS gap and shows each brief's earned engagement). The full brief→action→performance loop
+  is now closed and visible to the creator. Remaining dependency: the link only forms once a real boost
+  + "Post Now" publish happens, and engagement-side pipelines are still partial
+  (`dragonshare_engagement` schema-only; Outstand Phase 4 analytics in scope), so the card is empty in
+  prod today by data reality. See also [[Content Engine Data Audit]].
 
 ## Guardrails
 
