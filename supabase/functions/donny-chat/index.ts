@@ -716,8 +716,16 @@ async function getConversationHistory(
     }
   }
 
-  // Ensure first message is from "user" role (Anthropic requirement)
-  while (sanitized.length > 0 && sanitized[0].role !== "user") {
+  // Ensure history starts with a plain user message (Anthropic requirement).
+  // A user message headed by tool_result blocks is not a valid start either:
+  // dropping a leading assistant tool_use turn orphans its results, and the
+  // API rejects tool_result blocks with no matching tool_use in the previous
+  // message.
+  while (
+    sanitized.length > 0 &&
+    (sanitized[0].role !== "user" ||
+      (Array.isArray(sanitized[0].content) && sanitized[0].content[0]?.type === "tool_result"))
+  ) {
     sanitized.shift();
   }
 
