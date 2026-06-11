@@ -21,6 +21,7 @@ import { usePagedList } from '@/hooks/usePagedList';
 import { LoadMoreButton } from '@/components/shared/LoadMoreButton';
 import { useResolvedLogoUrl } from '@/hooks/useSignedUrl';
 import { supabase } from '@/integrations/supabase/client';
+import { composeCaption } from '@/lib/composeCaption';
 import { useQuery } from '@tanstack/react-query';
 import type { RestaurantSearchResult } from '@/hooks/useRestaurantSearch';
 
@@ -33,6 +34,8 @@ const statusConfig: Record<ActivePostStatus, { label: string; className: string;
   rejected: { label: 'Rejected', className: 'bg-red-100 text-red-800', icon: Clock },
   expired: { label: 'Expired', className: 'bg-dc-teal/10 text-dc-teal', icon: Clock },
 };
+
+type ContentBriefShape = { sample_caption?: string; hashtags?: string[] };
 
 function usePreselectedOrg() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -53,23 +56,30 @@ function usePreselectedOrg() {
     enabled: !!restaurantId,
   });
 
-  // Validate the brief is the creator's own (RLS) AND targets the same org.
-  const { data: briefOrgId } = useQuery({
+  // Validate the brief is the creator's own (RLS) AND targets the same org; also read the brief
+  // jsonb so we can pre-fill the caption.
+  const { data: briefRow } = useQuery({
     queryKey: ['preselected-brief', briefId],
-    queryFn: async (): Promise<string | null> => {
+    queryFn: async (): Promise<{ organization_id: string; brief: ContentBriefShape } | null> => {
       if (!briefId) return null;
       const { data, error } = await supabase
         .from('content_briefs')
-        .select('organization_id')
+        .select('organization_id, brief')
         .eq('id', briefId)
         .maybeSingle();
       if (error || !data) return null;
-      return data.organization_id as string;
+      return data as { organization_id: string; brief: ContentBriefShape };
     },
     enabled: !!briefId,
   });
 
+  const briefOrgId = briefRow?.organization_id ?? null;
   const sourceBriefId = briefId && org && briefOrgId === org.id ? briefId : null;
+  // Only pre-fill when the link is valid (owned + org-matched), so a stale/hand-edited URL never injects text.
+  const prefillCaption =
+    sourceBriefId && briefRow
+      ? composeCaption(briefRow.brief?.sample_caption, briefRow.brief?.hashtags)
+      : null;
 
   useEffect(() => {
     if (restaurantId && org) {
@@ -80,7 +90,7 @@ function usePreselectedOrg() {
     }
   }, [org, restaurantId, searchParams, setSearchParams]);
 
-  return { org: org ?? null, sourceBriefId };
+  return { org: org ?? null, sourceBriefId, prefillCaption: prefillCaption || null };
 }
 
 const CreatorDragonShare: React.FC = () => {
@@ -90,7 +100,7 @@ const CreatorDragonShare: React.FC = () => {
   const orgIds = (posts ?? []).map((p) => p.target_org_id);
   const { data: resolvedOrgs } = useResolveDragonShareOrgs(orgIds);
   const postsWithOrg = mergeResolvedOrgs(posts ?? [], resolvedOrgs ?? []);
-  const { org: preselectedOrg, sourceBriefId } = usePreselectedOrg();
+  const { org: preselectedOrg, sourceBriefId, prefillCaption } = usePreselectedOrg();
 
   useEffect(() => {
     if (preselectedOrg) {
@@ -137,7 +147,7 @@ const CreatorDragonShare: React.FC = () => {
           <div className="flex flex-col lg:flex-row lg:gap-6 lg:items-start">
             {/* Left: Inline form (desktop only) */}
             <div className="hidden lg:block lg:w-[440px] lg:flex-shrink-0">
-              <DragonShareInlineForm preselectedOrg={preselectedOrg} sourceBriefId={sourceBriefId} />
+              <DragonShareInlineForm preselectedOrg={preselectedOrg} sourceBriefId={sourceBriefId} prefillCaption={prefillCaption} />
             </div>
 
             {/* Right: Post history */}
@@ -195,7 +205,7 @@ const CreatorDragonShare: React.FC = () => {
 
         {/* Mobile-only: bottom sheet */}
         <div className="lg:hidden">
-          <DragonShareSubmitSheet open={submitOpen} onOpenChange={setSubmitOpen} preselectedOrg={preselectedOrg} sourceBriefId={sourceBriefId} />
+          <DragonShareSubmitSheet open={submitOpen} onOpenChange={setSubmitOpen} preselectedOrg={preselectedOrg} sourceBriefId={sourceBriefId} prefillCaption={prefillCaption} />
         </div>
       </PrerequisiteGate>
     </DashboardLayout>
