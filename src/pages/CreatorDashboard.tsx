@@ -24,6 +24,7 @@ import { SocialMediaManagerTile } from '@/components/dashboard/SocialMediaManage
 import { useCreatorDragonShareEarnings } from '@/hooks/useDragonShare';
 import { useCreatorDragonShareActivity } from '@/hooks/useCreatorDragonShareActivity';
 import { UpcomingPostsWidget } from '@/components/outstand/UpcomingPostsWidget';
+import { ContentIdeaCard } from '@/components/donny/ContentIdeaCard';
 
 const CreatorDashboard = () => {
   const { profile } = useAuth();
@@ -149,6 +150,8 @@ const CreatorDashboard = () => {
         {/* White body content */}
         <div className="px-4 py-6 pb-24 md:pb-0">
           <div className="max-w-2xl lg:max-w-4xl mx-auto space-y-6">
+
+            <ContentIdeaCard />
 
             {/* Recent Activity */}
             <div className="border-2 border-dc-teal rounded-2xl bg-white overflow-hidden">

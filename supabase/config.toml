@@ -102,3 +102,6 @@ verify_jwt = false
 
 [functions.content-performance-capture]
 verify_jwt = false
+
+[functions.content-strategy-recommend]
+verify_jwt = false

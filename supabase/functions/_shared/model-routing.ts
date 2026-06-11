@@ -58,6 +58,7 @@ const FUNCTION_ROUTING: Record<string, FunctionRouting> = {
   "social-caption": { config: HAIKU, canDowngrade: false },
   "content-posting-plan": { config: HAIKU, canDowngrade: false },
   "social-analysis": { config: SONNET, canDowngrade: true },
+  "content-strategy-recommend": { config: SONNET, canDowngrade: true },
 };
 
 export function getModelConfig(
