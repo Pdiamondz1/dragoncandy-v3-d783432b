@@ -63,6 +63,24 @@ content-strategy-recommend  (NEW edge fn; reuses anthropic-fetch, model-routing,
   returns brief → UI renders (format, hook, 3 angles, caption [copy], hashtags [copy], best time, why)
 ```
 
+### Identity resolution (canonical key = `organization_id`)
+
+`RestaurantTypeahead` → `useRestaurantSearch` → the `search_restaurants` RPC returns **`organizations.id`**
+(not `business_profiles.id`). So the canonical "business" key throughout this slice is **`organization_id`**,
+and the function resolves it **server-side** to the three context sources, which each key on a *different* id:
+
+1. **Restaurant profile + owner.**
+   `business_profiles bp JOIN org_members om ON om.user_id = bp.user_id`
+   `WHERE om.org_id = :organization_id AND om.invitation_status = 'active' AND bp.account_type = 'restaurant'`
+   → the restaurant's `business_profiles` row + its **owner `user_id`** (`bp.user_id`). 404 if none resolves.
+2. **`business_contexts`** keys on `profile_id` (= the owner `user_id`):
+   `WHERE profile_id = <owner_user_id>`, latest non-expired.
+3. **`business_outstand_accounts`** keys on the owner `user_id` (and `business_id = bp.id`): connected
+   platforms `WHERE user_id = <owner_user_id> AND status <> 'revoked'`.
+
+This mirrors how DragonShare already identifies a restaurant (by organization). `content_briefs.organization_id`
+FKs to `organizations(id)`, which also sets up the future outcome-link (a DragonShare post about that org).
+
 ### Deliverables
 
 | # | Deliverable | Type |
@@ -70,7 +88,7 @@ content-strategy-recommend  (NEW edge fn; reuses anthropic-fetch, model-routing,
 | B1 | `content_briefs` table + RLS | DB migration (ledger-first — lands before code) |
 | B2 | `content-strategy-recommend` edge function | Backend (Deno) |
 | B3 | `useContentBrief` hook + creator-dashboard surface (card → typeahead → brief render) | Frontend (React Query) |
-| B4 | `config.toml` registration | Config |
+| B4 | `config.toml` (`verify_jwt = false`) + `_shared/model-routing.ts` entry | Config |
 
 ---
 
@@ -80,8 +98,8 @@ content-strategy-recommend  (NEW edge fn; reuses anthropic-fetch, model-routing,
 create table public.content_briefs (
   id                    uuid primary key default gen_random_uuid(),
   creator_id            uuid not null references auth.users(id) on delete cascade,
-  business_id           uuid not null references public.business_profiles(id) on delete cascade,
-  context_snapshot      jsonb not null default '{}'::jsonb,   -- inputs the brief was generated from
+  organization_id       uuid not null references public.organizations(id) on delete cascade,  -- the restaurant the typeahead returns
+  context_snapshot      jsonb not null default '{}'::jsonb,   -- inputs the brief was generated from (incl. resolved owner/business_profile)
   brief                 jsonb not null,                       -- the structured brief returned
   model                 text,                                 -- which model produced it
   used_performance_data boolean not null default false,       -- drives honest UI copy + future analysis
@@ -90,7 +108,7 @@ create table public.content_briefs (
 );
 
 create index idx_content_briefs_creator on public.content_briefs (creator_id, created_at desc);
-create index idx_content_briefs_business on public.content_briefs (business_id);
+create index idx_content_briefs_org on public.content_briefs (organization_id);
 
 alter table public.content_briefs enable row level security;
 
@@ -105,9 +123,9 @@ create policy "Creators read own briefs"
 
 **RLS rationale (Supabase security checklist):** `TO authenticated` + ownership predicate (not role-only).
 Service-role-only writes (the function needs cross-user reads — business context belonging to another user
-— so it runs admin-side and writes admin-side). The `business_id` FK targets `business_profiles.id` (the
-id `RestaurantTypeahead` already returns). `social_post_log_id` exists now but is **left null in Slice 1**;
-auto-population is the next slice.
+— so it runs admin-side and writes admin-side). The `organization_id` FK targets `organizations.id` (the id
+`RestaurantTypeahead`/`search_restaurants` returns — see **Identity resolution** above). `social_post_log_id`
+exists now but is **left null in Slice 1**; auto-population is the next slice.
 
 **Data-API exposure:** confirm new `public` tables are auto-exposed; if not, `grant select ... to
 authenticated` (read still gated by RLS).
@@ -120,24 +138,33 @@ Authenticated user-facing function. Resolves the caller (creator) from their JWT
 with the **service role** (admin client) because it must read the target business's context (owned by a
 different user). Reuses the shared utilities the codebase already standardizes on.
 
-1. **Auth.** Resolve `auth.uid()` from the caller's JWT (401 if absent). Load `creator_profiles` for the
-   caller. (Function does not require the caller to be a "completed" creator, but loads what exists.)
-2. **Validate input.** `business_id` required and must resolve to a `business_profiles` row; 400/404 otherwise.
-3. **Business context.** `business_profiles` (name, industry, description, location, sample_content_urls) +
-   latest non-expired `business_contexts` (extracted vibe/industry/sample content) + connected platforms via
-   `business_outstand_accounts` (so the brief targets a platform the business can actually post to).
+1. **Auth.** In-code JWT verification (matches the user-facing fleet, e.g. `donny-campaign-generate`):
+   `verify_jwt = false` in config + resolve the caller via a user-scoped client's `auth.getUser()` (401 if
+   absent), so CORS preflight and custom 401s work. Load `creator_profiles` for the caller (loads what exists;
+   does not require a "completed" creator).
+2. **Validate + resolve identity.** `organization_id` required. Resolve it per **Identity resolution** above
+   (admin client): `business_profiles` + owner `user_id` via `org_members`; **404** if no active restaurant
+   profile resolves for the org; **400** if `organization_id` missing/malformed.
+3. **Business context.** From the resolved row/owner: `business_profiles` (name, industry, description,
+   location, sample_content_urls) + latest non-expired `business_contexts` (`profile_id = owner_user_id`) +
+   connected platforms via `business_outstand_accounts` (`user_id = owner_user_id`, not revoked) — so the
+   brief targets a platform the business can actually post to.
 4. **Creator performance (graceful).** Aggregate the creator's own `content_performance` by
    `(platform, post_type)` — average `engagement_rate` / `views` over settled snapshots. If the creator has
    fewer than a small threshold of settled posts (config constant, e.g. `MIN_POSTS_FOR_SIGNAL = 3`), treat
    the signal as absent: `used_performance_data = false` and omit it from the prompt. (Today: always absent.)
 5. **RAG.** `embedQuery` + `retrieveContext(donny_knowledge, ..., k)` (reuse `donny-orchestrator/rag.ts`) for
    content-strategy best-practice chunks. Tolerate RAG being empty (graceful).
-6. **Generate.** One Claude call via `getModelConfig("content-strategy-recommend", usageStage)` (Sonnet
-   tier; routes to Haiku on degraded tiers) through `anthropicFetch`. System prompt: creator-content-strategy
-   role, fed the business context + creator profile + (optional) performance summary + RAG chunks. Ask for a
-   **strict JSON** brief (schema below). Parse defensively; on parse failure, retry once, then 502.
-7. **Persist.** Insert one `content_briefs` row (creator_id, business_id, `context_snapshot` = the structured
-   inputs used, `brief`, `model`, `used_performance_data`). `social_post_log_id` stays null.
+6. **Generate.** Resolve the user's tier via `getUserUsageStage`, then one Claude call via
+   `getModelConfig("content-strategy-recommend", usageStage)` through `anthropicFetch`. Add a
+   `"content-strategy-recommend"` entry to `_shared/model-routing.ts` (Sonnet, `canDowngrade: true`) so the
+   routing + usage accounting is explicit (the helper defaults to Sonnet for unregistered names, but the
+   entry makes it intentional). System prompt: creator-content-strategy role, fed the business context +
+   creator profile + (optional) performance summary + RAG chunks. Ask for a **strict JSON** brief (schema
+   below). Parse defensively; on parse failure, retry once, then 502. Call `incrementUsage` per the fleet pattern.
+7. **Persist.** Insert one `content_briefs` row (creator_id, organization_id, `context_snapshot` = the
+   structured inputs used incl. resolved owner/business_profile, `brief`, `model`, `used_performance_data`).
+   `social_post_log_id` stays null.
 8. **Cost.** Log the Claude usage to the cost ledger (reuse the existing `logCost`/cost-ledger path), so this
    stays inside the 15%-of-revenue AI cap accounting.
 9. **Return** the brief JSON + the `content_briefs.id` + `used_performance_data`.
@@ -157,15 +184,18 @@ different user). Reuses the shared utilities the codebase already standardizes o
 }
 ```
 
-`config.toml`: register `[functions.content-strategy-recommend]` (JWT-verified — it is user-facing; the
-function additionally resolves the user server-side).
+`config.toml`: register `[functions.content-strategy-recommend]` with **`verify_jwt = false`** — matching the
+user-facing fleet (`donny-campaign-generate`, `donny-chat`), which verify the JWT in-code via
+`auth.getUser()` so CORS preflight and custom 401s work. (It is user-facing; the function resolves and
+enforces the user server-side.)
 
 ---
 
 ## B3 — Frontend (creator dashboard)
 
-- **`useContentBrief`** React Query mutation hook (`use<Entity><Action>` convention): posts `{ business_id }`
-  to the function, returns the brief; handles loading + error states.
+- **`useContentBrief`** React Query mutation hook (`use<Entity><Action>` convention): posts
+  `{ organization_id }` (the id the typeahead already provides) to the function, returns the brief; handles
+  loading + error states.
 - **Surface:** a Donny-branded "Get a content idea" card on the creator dashboard → `RestaurantTypeahead`
   (reused) to pick the business → on submit, render the brief: format + platform badges, the hook, the 3
   angles, the caption (with a copy button), hashtags (copy), best time, and the rationale. A subtle source
@@ -178,8 +208,10 @@ function additionally resolves the user server-side).
 
 ## Reuse / cost / guardrails
 
-- **Reuse:** `_shared/anthropic-fetch`, `_shared/model-routing` (`getModelConfig`), `_shared/cost-ledger`,
-  `donny-orchestrator/rag.ts`, `RestaurantTypeahead`, the `business_contexts`/`creator_profiles` queries.
+- **Reuse:** `_shared/anthropic-fetch`, `_shared/model-routing` (`getModelConfig`, `getUserUsageStage`,
+  `incrementUsage`; **add** a `content-strategy-recommend` routing entry), `_shared/cost-ledger` (`logCost`),
+  `_shared/cors` (`corsHeaders`), `donny-orchestrator/rag.ts` (`embedQuery`, `retrieveContext`),
+  `RestaurantTypeahead`, the `business_contexts`/`creator_profiles` queries.
 - **Cost:** one Sonnet call per brief, low frequency, logged to the cost ledger → respects the AI cap.
 - **Guardrails:** ledger-first (B1 migration + RLS reviewed before B2 code); RLS-safe; the creator only ever
   receives the brief — never another user's raw context rows; auth required; no auth/schema changes beyond
@@ -202,9 +234,11 @@ function additionally resolves the user server-side).
 
 Staging-first (`mhffqrawgizhprbobcta`):
 1. Apply B1 migration; run `get_advisors`; resolve findings.
-2. Seed a creator + a `business_profiles` row with a `business_contexts` extract; deploy B2; call it as the
-   creator. Confirm a well-formed brief (valid JSON matching the schema), a persisted `content_briefs` row
-   with `used_performance_data = false`, and a cost-ledger entry.
+2. Seed the identity chain: an `organizations` row + `org_members` (active) + a `business_profiles`
+   (`account_type='restaurant'`) for the owner + a `business_contexts` extract (`profile_id = owner`). Seed a
+   separate creator. Deploy B2; call it as the creator with that `organization_id`. Confirm a well-formed
+   brief (valid JSON matching the schema), a persisted `content_briefs` row with `used_performance_data =
+   false`, and a cost-ledger entry. Also confirm a **404** for an `organization_id` with no restaurant profile.
 3. RLS proof: as the creator, read own brief; as another authenticated user, 0 rows; as `anon`, 0 rows;
    confirm no client can INSERT.
 4. Graceful-degradation check: with no/sparse `content_performance`, the prompt omits performance and
