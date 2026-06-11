@@ -1583,7 +1583,7 @@ serve(async (req) => {
     // service client, so the caller must own the conversation they target.
     const { data: conversationRow } = await supabaseAdmin
       .from("donny_conversations")
-      .select("id, user_id")
+      .select("id, user_id, surface")
       .eq("id", conversation_id)
       .maybeSingle();
     if (!conversationRow || conversationRow.user_id !== userId) {
@@ -1593,10 +1593,14 @@ serve(async (req) => {
       );
     }
 
-    // Internal (AIOS) surface: NEVER trust the client flag — require a real
-    // Supabase session AND a server-verified admin row in user_roles.
+    // Internal (AIOS) surface: NEVER trust the client flag — the STORED
+    // conversation surface is the trust anchor. A conversation marked internal
+    // is treated as internal no matter what the client claims (its history
+    // holds internal data), and requires a real Supabase session AND a
+    // server-verified admin row in user_roles.
+    const isInternalConversation = conversationRow.surface === "internal";
     let internalMode = false;
-    if (requestContext?.surface === "internal") {
+    if (isInternalConversation || requestContext?.surface === "internal") {
       if (!sessionAuthed) {
         return new Response(
           JSON.stringify({ error: "forbidden: internal surface requires session auth" }),
@@ -1629,12 +1633,16 @@ serve(async (req) => {
       );
     }
 
-    // Update conversation surface if provided
-    if (requestContext?.surface) {
+    // Update conversation surface if provided. An internal conversation's
+    // surface is IMMUTABLE: relabeling it would un-gate its history under the
+    // surface-scoped RLS. (The .neq guard also covers a write racing this
+    // request's read.)
+    if (requestContext?.surface && !isInternalConversation) {
       await supabaseAdmin
         .from("donny_conversations")
         .update({ surface: requestContext.surface })
-        .eq("id", conversation_id);
+        .eq("id", conversation_id)
+        .neq("surface", "internal");
     }
 
     // Load user profile
