@@ -105,6 +105,7 @@ const InternalStrategy = lazy(() => import("./pages/internal/InternalStrategy"))
 const InternalDonny = lazy(() => import("./pages/internal/InternalDonny"));
 const InternalBriefings = lazy(() => import("./pages/internal/InternalBriefings"));
 const InternalFindings = lazy(() => import("./pages/internal/InternalFindings"));
+const InternalAuth = lazy(() => import("./pages/internal/InternalAuth"));
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -165,7 +166,8 @@ function AnimatedRoutes() {
           <Route path="/" element={<LandingPage />} />
           <Route path="/home" element={<LandingPage />} />
           <Route path="/landing" element={<LandingPage />} />
-          <Route path="/auth" element={<AuthPage />} />
+          {/* Internal host gets the founders-only login (no signup surface) */}
+          <Route path="/auth" element={isInternalHost() ? <InternalAuth /> : <AuthPage />} />
           <Route path="/verify-email" element={<VerifyEmail />} />
 
           <Route path="/promo/:promotionId" element={
