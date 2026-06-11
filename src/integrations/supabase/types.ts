@@ -120,6 +120,51 @@ export type Database = {
         }
         Relationships: []
       }
+      aios_findings: {
+        Row: {
+          created_at: string
+          evidence: Json
+          fingerprint: string | null
+          id: string
+          last_seen_at: string
+          occurrences: number
+          severity: string
+          source: string
+          status: string
+          summary_md: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          evidence?: Json
+          fingerprint?: string | null
+          id?: string
+          last_seen_at?: string
+          occurrences?: number
+          severity: string
+          source?: string
+          status?: string
+          summary_md: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          evidence?: Json
+          fingerprint?: string | null
+          id?: string
+          last_seen_at?: string
+          occurrences?: number
+          severity?: string
+          source?: string
+          status?: string
+          summary_md?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       analytics_events: {
         Row: {
           created_at: string
@@ -5861,6 +5906,24 @@ export type Database = {
           youtube_url: string
         }[]
       }
+      get_creator_brief_performance: {
+        Args: { result_limit?: number }
+        Returns: {
+          avg_engagement_rate: number
+          brief: Json
+          brief_id: string
+          created_at: string
+          is_posted: boolean
+          last_captured_at: string
+          organization_id: string
+          post_count: number
+          total_comments: number
+          total_likes: number
+          total_shares: number
+          total_views: number
+          used_performance_data: boolean
+        }[]
+      }
       get_creator_connected_platforms: {
         Args: { p_creator_id: string }
         Returns: {
@@ -6003,24 +6066,6 @@ export type Database = {
         Returns: undefined
       }
       request_org_deletion: { Args: { p_org_id: string }; Returns: undefined }
-      get_creator_brief_performance: {
-        Args: { result_limit?: number }
-        Returns: {
-          brief_id: string
-          organization_id: string
-          created_at: string
-          used_performance_data: boolean
-          brief: Json
-          is_posted: boolean
-          post_count: number
-          total_views: number
-          total_likes: number
-          total_comments: number
-          total_shares: number
-          avg_engagement_rate: number
-          last_captured_at: string
-        }[]
-      }
       resolve_dragonshare_orgs: {
         Args: { p_org_ids: string[] }
         Returns: {
