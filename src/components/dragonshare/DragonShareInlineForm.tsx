@@ -19,10 +19,11 @@ const PLATFORM_LABELS: Record<string, string> = {
 
 interface Props {
   preselectedOrg?: RestaurantSearchResult | null;
+  sourceBriefId?: string | null;
 }
 
-export function DragonShareInlineForm({ preselectedOrg }: Props) {
-  const form = useDragonShareSubmitForm();
+export function DragonShareInlineForm({ preselectedOrg, sourceBriefId }: Props) {
+  const form = useDragonShareSubmitForm(sourceBriefId);
 
   useEffect(() => {
     if (preselectedOrg && !form.selectedOrg) {

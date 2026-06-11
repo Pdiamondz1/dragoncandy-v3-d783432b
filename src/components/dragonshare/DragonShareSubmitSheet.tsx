@@ -1,5 +1,5 @@
 // src/components/dragonshare/DragonShareSubmitSheet.tsx
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,6 +8,7 @@ import { useDragonShareSubmitForm } from '@/hooks/useDragonShareSubmitForm';
 import { RestaurantTypeahead } from '@/components/dragonshare/RestaurantTypeahead';
 import { DragonShareUploadArea } from '@/components/dragonshare/DragonShareUploadArea';
 import { DragonShareSubmitSuccessDialog } from '@/components/dragonshare/DragonShareSubmitSuccessDialog';
+import type { RestaurantSearchResult } from '@/hooks/useRestaurantSearch';
 
 const PLATFORM_LABELS: Record<string, string> = {
   instagram: 'Instagram',
@@ -20,11 +21,20 @@ const PLATFORM_LABELS: Record<string, string> = {
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  preselectedOrg?: RestaurantSearchResult | null;
+  sourceBriefId?: string | null;
 }
 
-export function DragonShareSubmitSheet({ open, onOpenChange }: Props) {
-  const form = useDragonShareSubmitForm();
+export function DragonShareSubmitSheet({ open, onOpenChange, preselectedOrg, sourceBriefId }: Props) {
+  const form = useDragonShareSubmitForm(sourceBriefId);
   const [typeaheadOpen, setTypeaheadOpen] = useState(false);
+
+  useEffect(() => {
+    if (preselectedOrg && !form.selectedOrg) {
+      form.setSelectedOrg(preselectedOrg);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preselectedOrg]);
 
   return (
     <Sheet open={open} onOpenChange={(v) => { if (!v) setTypeaheadOpen(false); onOpenChange(v); }}>
