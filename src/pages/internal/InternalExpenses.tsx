@@ -13,6 +13,13 @@ import { Spinner } from '@/components/ui/spinner';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { toast } from 'sonner';
 
 const CATEGORIES = ['hosting', 'infrastructure', 'ai', 'saas', 'legal', 'marketing', 'other'];
@@ -42,9 +49,12 @@ const InternalExpenses = () => {
   const monthlyOpexCents = rows
     .filter((e) => e.active)
     .reduce((sum, e) => sum + e.monthly_amount_cents, 0);
+  // Burn revenue = DragonShare platform fees only. payment_events is excluded
+  // deliberately: Stripe runs in test mode, so those events aren't real money yet.
   const mtdRevenueCents = revenue.data?.dragonshare_mtd.platform_fee_cents ?? 0;
   const mtdAiSpendUsd = cost.data?.mtd_spend_usd ?? 0;
-  const netBurnCents = monthlyOpexCents + Math.round(mtdAiSpendUsd * 100) - mtdRevenueCents;
+  const mtdAiSpendCents = Math.round(mtdAiSpendUsd * 100);
+  const netBurnCents = monthlyOpexCents + mtdAiSpendCents - mtdRevenueCents;
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -144,18 +154,18 @@ const InternalExpenses = () => {
             value={form.name}
             onChange={(e) => setForm({ ...form, name: e.target.value })}
           />
-          <select
-            value={form.category}
-            onChange={(e) => setForm({ ...form, category: e.target.value })}
-            className="h-10 rounded-md border border-input bg-background px-3 text-sm"
-            aria-label="Category"
-          >
-            {CATEGORIES.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
+          <Select value={form.category} onValueChange={(category) => setForm({ ...form, category })}>
+            <SelectTrigger aria-label="Category">
+              <SelectValue placeholder="Category" />
+            </SelectTrigger>
+            <SelectContent>
+              {CATEGORIES.map((c) => (
+                <SelectItem key={c} value={c}>
+                  {c}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Input
             placeholder="Monthly $ (e.g. 49.99)"
             inputMode="decimal"
