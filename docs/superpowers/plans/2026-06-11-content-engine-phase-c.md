@@ -153,14 +153,16 @@ declare
   v_linked  uuid;
   v_resolved uuid;
 begin
-  -- a real auth user + org to satisfy NOT NULL FKs
-  select id into v_creator from auth.users limit 1;
+  -- A profiles id (which is also an auth.users id via handle_new_user) satisfies BOTH
+  -- content_briefs.creator_id -> auth.users(id) AND dragonshare_posts.creator_id -> profiles(id).
+  select id into v_creator from public.profiles limit 1;
   select id into v_org from public.organizations limit 1;
 
   insert into public.content_briefs (creator_id, organization_id, brief)
     values (v_creator, v_org, '{"t":"probe"}'::jsonb) returning id into v_brief;
-  insert into public.dragonshare_posts (creator_id, target_org_id, source_brief_id, status)
-    values (v_creator, v_org, v_brief, 'verified') returning id into v_post;
+  -- content_type is NOT NULL with no default ('photo' is a valid CHECK value).
+  insert into public.dragonshare_posts (creator_id, target_org_id, source_brief_id, status, content_type)
+    values (v_creator, v_org, v_brief, 'verified', 'photo') returning id into v_post;
 
   -- first publish -> resolves source_brief_id, links the brief
   insert into public.social_post_log (user_id, outstand_post_id, platform, post_type, dragonshare_post_id)
@@ -190,10 +192,12 @@ begin
   raise notice 'PHASE C PROBE PASSED';
 end $$;
 ```
-Expected: `PHASE C PROBE PASSED` notice, no assertion failure. If `dragonshare_posts` requires
-columns beyond `creator_id, target_org_id, source_brief_id, status` (NOT NULL without default),
-add them to the seed insert — inspect with
-`select column_name, is_nullable, column_default from information_schema.columns where table_name='dragonshare_posts' and is_nullable='NO' and column_default is null;` first.
+Expected: `PHASE C PROBE PASSED` notice, no assertion failure. The seed covers every
+NOT-NULL-without-default column on `dragonshare_posts` (`creator_id`, `target_org_id`,
+`content_type`; `status` defaults but `'verified'` is set explicitly). If staging schema has drifted
+and the insert still fails on a NOT NULL column, list the required columns with
+`select column_name, is_nullable, column_default from information_schema.columns where table_name='dragonshare_posts' and is_nullable='NO' and column_default is null;`
+and add them to the seed.
 
 - [ ] **Step 4: Run advisors on staging (PAUSE — MCP)**
 
