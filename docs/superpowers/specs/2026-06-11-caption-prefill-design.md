@@ -67,7 +67,9 @@ useDragonShareSubmitForm(sourceBriefId?, prefillCaption?)
   - handleSubmit → mutateAsync({ ..., caption: caption.trim() || null })
         ▼
 useSubmitDragonSharePost
-  - NEW: caption?: string | null in the arg type; caption included in the dragonshare_posts insert
+  - caption is ALREADY in the dragonshare_posts insert + select (landed with Slice 2's source_brief_id).
+    ONLY change: widen the existing arg type caption?: string → caption?: string | null so the form can
+    pass caption.trim() || null without a TS error.
         ▼
 dragonshare_posts row { ..., source_brief_id, caption }   ← caption persisted (null for blank)
 ```
@@ -78,7 +80,7 @@ dragonshare_posts row { ..., source_brief_id, caption }   ← caption persisted 
 |---|-------------|------|
 | C1 | `composeCaption(sample_caption, hashtags)` pure helper + unit test | Frontend (pure) |
 | C2 | `useDragonShareSubmitForm`: caption state, `prefillCaption?` seed-once, draft persistence, reset, submit payload | Frontend |
-| C3 | `useSubmitDragonSharePost`: `caption?` in arg type + insert | Frontend |
+| C3 | `useSubmitDragonSharePost`: **widen** the existing `caption?: string` arg type to `caption?: string \| null` (insert + select already carry `caption`) | Frontend (1 line) |
 | C4 | `usePreselectedOrg` (`CreatorDragonShare`): select `brief`, derive `prefillCaption`, return it; pass to both forms | Frontend |
 | C5 | `DragonShareInlineForm` + `DragonShareSubmitSheet`: render the caption `<textarea>`, forward `prefillCaption` | Frontend |
 
@@ -115,10 +117,14 @@ caption with tags → tags only.
 
 Signature becomes `useDragonShareSubmitForm(sourceBriefId?: string | null, prefillCaption?: string | null)`.
 
-- **State:** `const [caption, setCaption] = useState('')` — exposed in the return so the textarea binds to it.
-- **Seed once (capture pattern, mirrors `capturedBriefId`):**
+- **State:** `const [caption, setCaption] = useState(initialDraft.caption)` — initialized from the loaded
+  draft (mirroring how `uploadedUrl`/`postUrl` already init from `initialDraft`), exposed in the return so the
+  textarea binds to it.
+- **Seed once (capture pattern, mirrors `capturedBriefId`) — but never clobber a restored draft:**
   ```ts
-  const seededRef = useRef(false);
+  // Start "already seeded" if the draft already restored a caption, so a from-brief prefill
+  // does NOT overwrite text the creator typed before navigating away and back (draft wins).
+  const seededRef = useRef(!!initialDraft.caption.trim());
   useEffect(() => {
     if (prefillCaption && !seededRef.current) {
       setCaption(prefillCaption);
@@ -126,24 +132,36 @@ Signature becomes `useDragonShareSubmitForm(sourceBriefId?: string | null, prefi
     }
   }, [prefillCaption]);
   ```
-  A `ref` guard (not just "seed if empty") so we seed exactly once and never overwrite the creator's later
-  edits — even if they clear the field deliberately. (Implementer note: `useRef` is already imported.)
-- **Draft persistence:** add `caption` to the `DragonShareDraft` interface, `EMPTY_DRAFT`, `loadDraft`, the
-  sync `useEffect` (and its empty-draft early-out condition so a caption-only draft still persists), so the
-  caption survives the same navigation round-trips `uploadedUrl`/`postUrl` already survive.
-- **reset():** add `setCaption('')` (the post-submit clear) — leave `seededRef` as-is; the component unmounts
-  on navigation, so a fresh arrival re-seeds.
-- **handleSubmit:** add `caption: caption.trim() || null` to the `mutateAsync` payload.
+  The `ref` (not "seed if empty") seeds exactly once and never overwrites the creator's later edits — even if
+  they deliberately clear the field. Initializing the ref from the restored draft resolves the
+  draft-restore-vs-reseed collision: **a restored non-empty caption wins over the brief prefill.**
+  (Implementer note: `useRef` is already imported in this file.)
+- **Draft persistence:** add `caption: string` to the `DragonShareDraft` interface, `EMPTY_DRAFT`
+  (`caption: ''`), `loadDraft` (`caption: parsed.caption ?? ''`), and the sync `useEffect` — both its
+  serialized payload (`JSON.stringify({ uploadedUrl, uploadedFileName, uploadedFileType, postUrl, caption })`)
+  and its early-out guard, which must become `if (!uploadedUrl && !postUrl.trim() && !caption.trim())` so a
+  caption-only draft still persists. This makes the caption survive the same navigation round-trips
+  `uploadedUrl`/`postUrl` already survive.
+- **reset():** add `setCaption('')` (the post-submit clear). Note the desktop `DragonShareInlineForm` is
+  **persistently mounted** (it does not unmount on submit), so we deliberately leave `seededRef` set after a
+  reset — we do **not** want to re-inject the brief caption onto the now-clean form after the creator already
+  submitted from it. (On the mobile sheet, which unmounts on close, a fresh open re-mounts and re-seeds
+  naturally.)
+- **handleSubmit:** add `caption: caption.trim() || null` to the `mutateAsync` payload (this is why C3 widens
+  the arg type to accept `null`).
 - **Return:** add `caption` and `setCaption` to the returned object.
 
 ---
 
 ## C3 — `useSubmitDragonSharePost` (`useDragonShare.ts`)
 
-- Add `caption?: string | null;` to the mutation arg type (beside `source_brief_id`).
-- Add `caption: post.caption ?? null,` to the `dragonshare_posts.insert({...})` object.
+**Already implemented by Slice 2 — do not re-add:** the insert object already includes
+`caption: post.caption ?? null` (`useDragonShare.ts:85`) and the `.select(...)` already lists `caption`
+(`:89`). The mutation arg type already has `caption?: string` (`:69`).
 
-One additive nullable field; absent → `null` (normal submissions, exactly as today).
+**The only change:** widen that arg type from `caption?: string` to **`caption?: string | null`** so
+`handleSubmit`'s `caption.trim() || null` (a `string | null`) type-checks. One line. Absent → `null` (normal
+submissions, exactly as today).
 
 ---
 
@@ -180,6 +198,10 @@ return { org: org ?? null, sourceBriefId, prefillCaption: prefillCaption || null
 - `ContentBriefShape` is a minimal local type for the two fields we read
   (`{ sample_caption?: string; hashtags?: string[] }`) — the `brief` jsonb is `Json`, so cast/narrow rather
   than introducing a hard dependency on the edge function's type. No `any`.
+- **Jsonb shape confirmed:** Slice 1 persists the brief with `brief: parsed`
+  (`content-strategy-recommend/index.ts`), where `parsed` is the full `ContentBrief` — so
+  `brief.sample_caption` and `brief.hashtags` are top-level keys (not wrapped). The `?.` chaining +
+  `composeCaption`'s null-guards still fail safe (empty caption, no crash) if the shape is ever unexpected.
 - `prefillCaption` is derived **only** when `sourceBriefId` is valid (owned + org-matched), so a stale or
   hand-edited URL never injects a caption — same guard that protects the link.
 - Call site: `const { org: preselectedOrg, sourceBriefId, prefillCaption } = usePreselectedOrg();`
@@ -197,7 +219,11 @@ return { org: org ?? null, sourceBriefId, prefillCaption: prefillCaption || null
   - Label "Caption (optional)"; placeholder e.g. "Add a caption…".
   - Design system: rounded (`rounded-2xl`/`rounded-xl`), white field, teal focus ring, **no gray**
     backgrounds/borders (use teal/pink-adjacent + brand neutrals); `dc-*` tokens.
-  - Sensible `rows` (e.g. 3–4) and a max length guard if the column/UX warrants (otherwise free text).
+  - Sensible `rows` (e.g. 3–4). The `caption` column is `text` (unbounded), so no DB-driven cap is required;
+    a soft `maxLength` (e.g. 2200, IG's limit) is optional UX polish, otherwise free text.
+  - **Don't copy neighboring non-brand styles:** the surrounding files aren't fully token-pure (the sheet's
+    quick-tip uses `bg-dc-dark/5`; the page's status chips use `bg-green-100`/`bg-red-100`). Style the new
+    textarea per the rule above (white field + teal focus), not by mimicking those nearby elements.
   - Desktop changes via `lg:` where the inline form differs; mobile base classes in the sheet. Test both.
 - No change to upload, platform detection, boost-or-pass, notify, or the rest of the flow — `caption` rides
   along as one optional field.
