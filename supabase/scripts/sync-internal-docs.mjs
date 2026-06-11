@@ -9,7 +9,10 @@
 // migration (20260611210000) must already be applied or internal content would
 // land in consumer Donny's retrieval set.
 //
-// Auth: the project's sb_secret_… key (see sync-wiki-to-donny.mjs header).
+// Auth: the value injected into edge functions as SUPABASE_SERVICE_ROLE_KEY —
+// per project key system: PROD (zocahiffooqdybdhguqv) is on LEGACY keys, so use
+// the service_role JWT (eyJ…) from the "Legacy anon, service_role API keys"
+// tab; STAGING uses the new system, so use its sb_secret_… key.
 // Usage (from the repo/worktree root; never commit a key):
 //   set DONNY_SYNC_URL=https://<ref>.supabase.co/functions/v1/donny-knowledge-sync
 //   set SUPABASE_SECRET_KEY=sb_secret_xxx
