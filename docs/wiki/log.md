@@ -267,3 +267,18 @@ milestone reduce-then-sum aggregation, the surgical-`types.ts` requirement for n
 headless authenticated-REST verification approach.
 Pages created: [[Content Engine Phase D Session]] (source).
 Pages updated: index.md.
+
+## [2026-06-11] ingest | Content Engine Phase C Session
+
+Backfilled the missing per-session source page for Content Engine Phase C (the return-half link, PR
+#73). Phase C was built between the Phase-B-complete handoff and the Phase D handoff without its own
+`.claude/handoffs/` or `raw/sessions/` document, so — unlike Phase B and Phase D — it had no source
+page; its knowledge lived only inside the [[Content Engine]] concept synthesis. Created the source
+page anchored on the approved Phase C spec (a git-tracked source doc) with an explicit provenance note
+that no standalone transcript exists. Closes the exact gap the `handoff-wiki-archive-always` discipline
+guards against. Captures the resolved gating unknown (only a human "Post Now" click writes
+`social_post_log`, not the boost), the BEFORE/AFTER SECURITY DEFINER trigger mechanism, first-wins +
+one-to-many `source_brief_id` forwarding, and the EXECUTE-revoke contrast vs. the Phase D read RPC.
+Pages created: [[Content Engine Phase C Session]] (source).
+Pages updated: [[Content Engine]] (See Also), [[Content Engine Phase B Session]] (See Also),
+[[Content Engine Phase D Session]] (See Also), index.md.
