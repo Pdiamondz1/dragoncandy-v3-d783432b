@@ -17,6 +17,7 @@ const stakeholderNav: NavItem[] = [
   { to: '/internal/weight', label: 'Weight' },
   { to: '/internal/briefings', label: 'Briefings' },
   { to: '/internal/strategy', label: 'Strategy' },
+  { to: '/internal/workspace', label: 'Workspace' },
 ];
 
 const adminNav: NavItem[] = [

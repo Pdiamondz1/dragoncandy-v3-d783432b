@@ -3667,6 +3667,70 @@ export type Database = {
           },
         ]
       }
+      google_workspace_accounts: {
+        Row: {
+          access_token: string | null
+          access_token_expires_at: string | null
+          connected_at: string
+          dc_folder_id: string | null
+          google_email: string
+          id: string
+          refresh_token: string
+          scopes: string[]
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token?: string | null
+          access_token_expires_at?: string | null
+          connected_at?: string
+          dc_folder_id?: string | null
+          google_email: string
+          id?: string
+          refresh_token: string
+          scopes?: string[]
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token?: string | null
+          access_token_expires_at?: string | null
+          connected_at?: string
+          dc_folder_id?: string | null
+          google_email?: string
+          id?: string
+          refresh_token?: string
+          scopes?: string[]
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "google_workspace_accounts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "message_participant_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "google_workspace_accounts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "google_workspace_accounts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "safe_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       help_article_feedback: {
         Row: {
           article_id: string
@@ -5915,9 +5979,9 @@ export type Database = {
           created_at: string
           is_posted: boolean
           last_captured_at: string
+          measurable_post_count: number
           organization_id: string
           post_count: number
-          measurable_post_count: number
           total_comments: number
           total_likes: number
           total_shares: number
@@ -5995,6 +6059,7 @@ export type Database = {
       }
       get_user_display_name: { Args: { user_uuid: string }; Returns: string }
       get_user_org_ids: { Args: never; Returns: string[] }
+      google_connection_status: { Args: never; Returns: Json }
       has_collaboration_on_campaign: {
         Args: { p_campaign_id: string; p_user_id: string }
         Returns: boolean
