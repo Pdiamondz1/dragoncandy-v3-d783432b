@@ -78,15 +78,17 @@ manufactures structured, verified knowledge in the interim.
 - **Phase 5 — KPI/milestone autopilot** *(future).* The loop maintains a living strategy/KPI/milestone
   page, refreshing against the three-year targets and flagging when a kill-switch threshold is neared
   (churn >6%, CAC payback >12mo, LTV:CAC <2:1, revenue/employee <$400K).
-- **Phase 6 — Donny content-strategy engine** *(future, requested 2026-06-10).* Extend the loop from
-  wiki knowledge to **live signals**: ingest social-account analytics (Outstand — IG/TikTok/YouTube)
-  for all roles, Toast analytics for restaurants, and Campaign/DragonShare/Promotions engagement, then
-  have [[Donny AI]] recommend the **best content strategy** per restaurant/brand/creator (so a creator
-  can easily make content for a given business). Mirrors the wiki→Donny sync: aggregate signals →
-  embed/store → Donny retrieves to advise. **Dependency:** the analytics pipelines must be flowing and
-  aggregated first — several are partial today (`dragonshare_engagement` is schema-only; Outstand
-  Phase 4 analytics is in scope; Toast analytics maturity TBD). Step 1 is a data-source audit, then a
-  design, before building.
+- **Phase 6 — Donny content-strategy engine** *(in progress — now the [[Content Engine]]; requested
+  2026-06-10).* Extend the loop from wiki knowledge to **live signals**: ingest social-account
+  analytics (Outstand — IG/TikTok/YouTube), Toast analytics, and Campaign/DragonShare/Promotions
+  engagement, then have [[Donny AI]] recommend the **best content strategy** per restaurant/brand/creator.
+  This has graduated from idea to a building system — see **[[Content Engine]]** for the full phase
+  breakdown. **Built so far:** Phase A (content-performance capture, live) and Phase B (brief → DragonShare
+  action across three slices, verified prod — a creator gets a Donny brief and acts on it in one tap, with
+  `dragonshare_posts.source_brief_id` + `caption` recorded). **Next:** Phase C wires the *return* half
+  (published-post engagement back to the brief via `content_briefs.social_post_log_id`). Dependency
+  unchanged: the engagement-side pipelines are partial (`dragonshare_engagement` schema-only; Outstand
+  Phase 4 analytics in scope). See also [[Content Engine Data Audit]].
 
 ## Guardrails
 
@@ -118,6 +120,7 @@ code and money changes human-gated.
 
 ## See Also
 
+- [[Content Engine]]
 - [[Data Flywheel]]
 - [[Donny AI]]
 - [[DragonCandy Platform]]
