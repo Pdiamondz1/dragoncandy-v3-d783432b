@@ -40,20 +40,24 @@ type ContentBriefShape = { sample_caption?: string; hashtags?: string[] };
 function usePreselectedOrg() {
   const [searchParams, setSearchParams] = useSearchParams();
   const restaurantId = searchParams.get('restaurant');
-  // Capture once so it survives the param cleanup below.
+  // Capture BOTH params once so they survive the URL cleanup below. Without capturing the restaurant
+  // id, deleting ?restaurant= re-keys/disables the org query and `org` reverts to undefined before the
+  // brief query resolves — so the brief→org match (and therefore the caption pre-fill AND the Slice-2
+  // source_brief_id link) would never land.
+  const [capturedRestaurantId] = useState(() => searchParams.get('restaurant'));
   const [briefId] = useState(() => searchParams.get('brief'));
 
   const { data: org } = useQuery({
-    queryKey: ['preselected-org', restaurantId],
+    queryKey: ['preselected-org', capturedRestaurantId],
     queryFn: async (): Promise<RestaurantSearchResult | null> => {
-      if (!restaurantId) return null;
+      if (!capturedRestaurantId) return null;
       const { data, error } = await supabase.rpc('get_restaurant_by_org_id', {
-        target_org_id: restaurantId,
+        target_org_id: capturedRestaurantId,
       });
       if (error || !data || data.length === 0) return null;
       return data[0] as RestaurantSearchResult;
     },
-    enabled: !!restaurantId,
+    enabled: !!capturedRestaurantId,
   });
 
   // Validate the brief is the creator's own (RLS) AND targets the same org; also read the brief
@@ -74,7 +78,10 @@ function usePreselectedOrg() {
   });
 
   const briefOrgId = briefRow?.organization_id ?? null;
-  const sourceBriefId = briefId && org && briefOrgId === org.id ? briefId : null;
+  // get_restaurant_by_org_id returns organizations.id == the captured ?restaurant= id, so match the
+  // brief's organization_id against the stable captured id (not the async `org`, which may be mid-revert).
+  const sourceBriefId =
+    briefId && capturedRestaurantId && briefOrgId === capturedRestaurantId ? briefId : null;
   // Only pre-fill when the link is valid (owned + org-matched), so a stale/hand-edited URL never injects text.
   const prefillCaption =
     sourceBriefId && briefRow
