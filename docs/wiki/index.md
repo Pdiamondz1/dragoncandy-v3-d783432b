@@ -8,6 +8,7 @@
 - [[Code Architecture Audit Session]](sources/code-architecture-audit-session.md) — Strict mode enablement, 158 unused imports, 34 type errors, Supabase type regeneration (2026-05-04)
 - [[Content Delivery System Flows]](sources/content-delivery-system-flows.md) — Complete content delivery lifecycle across all three roles (2026-05-23)
 - [[Content Engine Phase B Session]](sources/content-engine-phase-b-session.md) — Brief → DragonShare action shipped + verified (3 slices); deep-link race fix; Phase C next (2026-06-11)
+- [[Content Engine Phase D Session]](sources/content-engine-phase-d-session.md) — Creator "Your content briefs" card shipped; ownership-gated definer RPC bridges the cross-user RLS gap; verified prod (2026-06-11)
 - [[Core Docs Recent Updates Sync Session]](sources/core-docs-recent-updates-sync-session.md) — Post–June-2 sync: DragonShare notifications, iOS camera, legal pages, Outstand recovery, QA Plan C, scale → 73 functions (2026-06-07)
 - [[Counter-Offer Enum Fix Session]](sources/counter-offer-enum-fix-session.md) — Postgres enum cast bug, PL/pgSQL variable typing, missing campaign_status value (2026-05-21)
 - [[Database Schema]](sources/database-schema.md) — Supabase Postgres schema overview (2026-05-23)

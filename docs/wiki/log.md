@@ -256,3 +256,14 @@ recorded: cross-user reads belong in an ownership-gated definer RPC (not a loose
 milestoned snapshots must be reduced-then-summed.
 Pages updated: [[Content Engine]] (Phase D built + RLS bridge + learnings), [[Self-Improving App]]
 (Phase 6 loop surfaced to creators), index.md.
+
+## [2026-06-11] ingest | Content Engine Phase D Session
+
+Archived the Phase D session handoff to `raw/sessions/` and created the per-session source page (the
+concept synthesis had already landed inline in PR #78, but the raw-session archive + `sources/` page —
+the provenance layer — were missing; corrected here so the session is recorded as a traceable source,
+matching every prior Content Engine phase). Captures the cross-user RLS-bridge reasoning, the
+milestone reduce-then-sum aggregation, the surgical-`types.ts` requirement for new RPCs, and the
+headless authenticated-REST verification approach.
+Pages created: [[Content Engine Phase D Session]] (source).
+Pages updated: index.md.
