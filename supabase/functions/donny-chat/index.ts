@@ -6,6 +6,7 @@ import { logCost } from "../_shared/cost-ledger.ts";
 import { getUserUsageStage, incrementUsage, getUserSubscriptionTier, checkQuotaOrBlock, checkHourlyRateLimit } from "../_shared/usage-tracker.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 import { anthropicFetch } from "../_shared/anthropic-fetch.ts";
+import { embedQuery, retrieveContext } from "../donny-orchestrator/rag.ts";
 
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
 if (!ANTHROPIC_API_KEY) {
@@ -363,6 +364,53 @@ const TOOL_DEFINITIONS = [
   },
 ];
 
+// --- Internal (AIOS) tools — only exposed on the admin-verified internal surface ---
+const INTERNAL_TOOL_DEFINITIONS = [
+  {
+    name: "search_internal_knowledge",
+    description:
+      "Search DragonCandy's internal strategy library: strategy briefing, GTM/CAC playbook, pricing architecture, KPI scorecard, kill-switches, engineering blueprints, and the full project wiki. Use for any question about strategy, pricing, targets, playbooks, or architecture decisions.",
+    input_schema: {
+      type: "object",
+      properties: {
+        query: { type: "string", description: "Natural-language search query" },
+      },
+      required: ["query"],
+    },
+  },
+  {
+    name: "get_platform_stats",
+    description:
+      "Live platform stats: users per role, restaurants and locations, creators, brands, campaigns by status, DragonShare posts/boosts, promotions, content, and social connections.",
+    input_schema: { type: "object", properties: {} },
+  },
+  {
+    name: "get_revenue_stats",
+    description:
+      "Aggregate revenue: payment-event sums and DragonShare boost totals with the 80/20 creator/platform split.",
+    input_schema: { type: "object", properties: {} },
+  },
+  {
+    name: "get_cost_stats",
+    description:
+      "AI spend from the cost ledger: month-to-date totals by model tier, daily series, and the latest cost alert.",
+    input_schema: { type: "object", properties: {} },
+  },
+  {
+    name: "get_platform_weight_trend",
+    description:
+      "Daily platform-weight snapshots (database bytes, storage bytes, total users, key table row counts). Use for scaling, growth-rate, and capacity-forecast questions.",
+    input_schema: {
+      type: "object",
+      properties: {
+        days: { type: "number", description: "Recent daily snapshots to return (default 30, max 90)" },
+      },
+    },
+  },
+];
+
+const INTERNAL_TOOL_NAMES = new Set(INTERNAL_TOOL_DEFINITIONS.map((t) => t.name));
+
 const TOOLS_BY_ROLE: Record<string, string[]> = {
   business_client: [
     'create_campaign', 'get_campaigns', 'update_campaign', 'generate_campaign',
@@ -499,6 +547,20 @@ When presenting creators or campaigns from tool results, include a JSON code blo
 - Payment: \`\`\`json\\n{ "type": "payment_confirmation", "data": { "collaboration_id": "...", "amount": ..., ... } }\\n\`\`\``;
 
   return prompt;
+}
+
+// System prompt for the internal (AIOS) surface — admin-verified founders only.
+function buildInternalSystemPrompt(profile: Record<string, any>): string {
+  return `You are Donny, DragonCandy's internal operations analyst. You are talking to ${profile.full_name || "a founder"} on the founders-only AIOS dashboard (internal surface). Everything here is internal company data — costs, revenue, strategy — and may be discussed freely with this user.
+
+## How you work
+- Answer ONLY from tool results. Never fabricate or estimate a number a tool didn't return.
+- Use tools proactively: platform questions → get_platform_stats; money in → get_revenue_stats; AI spend → get_cost_stats; growth/scaling/capacity → get_platform_weight_trend; strategy, pricing, playbooks, targets, kill-switches → search_internal_knowledge.
+- Combine tools when a question spans data and strategy (e.g. "are we on track?" = live stats + KPI targets from the strategy library).
+- Cite the numbers you used. Monetary values from tools are in cents unless labeled otherwise — convert to dollars when presenting.
+- Be direct and analytical, not promotional. Flag bad news plainly.
+- Markdown is fine (short tables, bullet lists). Keep answers tight; expand only when asked.
+- If a tool errors or returns nothing, say so — do not fill the gap with guesses.`;
 }
 
 // Rate limiting: check message count in the last hour
@@ -674,9 +736,53 @@ async function executeTool(
     page_url?: string;
     surface?: string;
     campaign_context?: { campaign_id: string; title: string; status: string };
-  }
+  },
+  // Set only after server-side admin verification. Internal tools run through the
+  // CALLER's session client so the SQL-level gates (is_internal_user / has_role)
+  // re-verify access — the service-role client is never used for internal reads.
+  internalCtx?: { userClient: any }
 ): Promise<{ result: any }> {
+  if (INTERNAL_TOOL_NAMES.has(toolName) && !internalCtx) {
+    throw new Error("Internal tools are only available on the internal surface");
+  }
+
   switch (toolName) {
+    // --- Internal (AIOS) tools ---
+    case "search_internal_knowledge": {
+      const embedding = await embedQuery(args.query);
+      const chunks = await retrieveContext(internalCtx!.userClient, args.query, embedding, 5, "internal");
+      return { result: { chunks, count: chunks.length } };
+    }
+
+    case "get_platform_stats": {
+      const { data, error } = await internalCtx!.userClient.rpc("aios_platform_stats");
+      if (error) throw error;
+      return { result: data };
+    }
+
+    case "get_revenue_stats": {
+      const { data, error } = await internalCtx!.userClient.rpc("aios_revenue_stats");
+      if (error) throw error;
+      return { result: data };
+    }
+
+    case "get_cost_stats": {
+      const { data, error } = await internalCtx!.userClient.rpc("aios_cost_stats");
+      if (error) throw error;
+      return { result: data };
+    }
+
+    case "get_platform_weight_trend": {
+      const days = Math.min(Math.max(Number(args.days) || 30, 1), 90);
+      const { data, error } = await internalCtx!.userClient
+        .from("platform_weight")
+        .select("captured_at, db_bytes, storage_bytes, users_total, row_counts")
+        .order("captured_at", { ascending: false })
+        .limit(days);
+      if (error) throw error;
+      return { result: data };
+    }
+
     // --- Campaign Tools ---
     case "create_campaign": {
       const { data, error } = await supabaseAdmin
@@ -1414,6 +1520,7 @@ serve(async (req) => {
 
     // --- Dual auth: Supabase session first, OAuth fallback ---
     let userId: string;
+    let sessionAuthed = false;
 
     // Try Supabase session auth first (in-app usage)
     const supabaseUser = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_ANON_KEY")!, {
@@ -1426,6 +1533,7 @@ serve(async (req) => {
 
     if (user && !authError) {
       userId = user.id;
+      sessionAuthed = true;
     } else {
       // Fallback: try Donny OAuth token (Chrome Extension, external clients)
       const oauthResult = await validateDonnyToken(req);
@@ -1471,6 +1579,45 @@ serve(async (req) => {
 
     const sanitizedMessage = sanitizeUserInput(message);
 
+    // Conversation ownership: history is loaded and replies are written with the
+    // service client, so the caller must own the conversation they target.
+    const { data: conversationRow } = await supabaseAdmin
+      .from("donny_conversations")
+      .select("id, user_id")
+      .eq("id", conversation_id)
+      .maybeSingle();
+    if (!conversationRow || conversationRow.user_id !== userId) {
+      return new Response(
+        JSON.stringify({ error: "forbidden: conversation does not belong to caller" }),
+        { status: 403, headers: { ...corsHeaders(req), "Content-Type": "application/json" } }
+      );
+    }
+
+    // Internal (AIOS) surface: NEVER trust the client flag — require a real
+    // Supabase session AND a server-verified admin row in user_roles.
+    let internalMode = false;
+    if (requestContext?.surface === "internal") {
+      if (!sessionAuthed) {
+        return new Response(
+          JSON.stringify({ error: "forbidden: internal surface requires session auth" }),
+          { status: 403, headers: { ...corsHeaders(req), "Content-Type": "application/json" } }
+        );
+      }
+      const { data: adminRole } = await supabaseAdmin
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId)
+        .eq("role", "admin")
+        .maybeSingle();
+      if (!adminRole) {
+        return new Response(
+          JSON.stringify({ error: "forbidden: internal surface requires admin access" }),
+          { status: 403, headers: { ...corsHeaders(req), "Content-Type": "application/json" } }
+        );
+      }
+      internalMode = true;
+    }
+
     // Rate limiting: max 30 user messages per hour
     const withinLimit = await checkRateLimit(userId, supabaseAdmin);
     if (!withinLimit) {
@@ -1499,32 +1646,41 @@ serve(async (req) => {
 
     if (!profile) throw new Error("Profile not found");
 
-    const roleTools = TOOLS_BY_ROLE[profile.role];
-    if (!roleTools) {
-      console.warn(`[donny-chat] Unknown role "${profile.role}" — defaulting to content_creator tool set`);
+    let allowedTools: typeof TOOL_DEFINITIONS;
+    if (internalMode) {
+      // Internal surface gets ONLY the internal tool set — no consumer tools.
+      allowedTools = INTERNAL_TOOL_DEFINITIONS;
+    } else {
+      const roleTools = TOOLS_BY_ROLE[profile.role];
+      if (!roleTools) {
+        console.warn(`[donny-chat] Unknown role "${profile.role}" — defaulting to content_creator tool set`);
+      }
+      allowedTools = TOOL_DEFINITIONS.filter(
+        (t) => (roleTools ?? TOOLS_BY_ROLE.content_creator).includes(t.name)
+      );
     }
-    const allowedTools = TOOL_DEFINITIONS.filter(
-      (t) => (roleTools ?? TOOLS_BY_ROLE.content_creator).includes(t.name)
-    );
 
-    // Load user context for system prompt
-    const { data: campaigns } = await supabaseAdmin
-      .from("campaigns")
-      .select("id, title, status")
-      .eq("user_id", userId)
-      .eq("status", "published")
-      .limit(10);
+    // Load user context for system prompt (consumer surface only)
+    let userContext = { campaigns: [] as any[], pendingApplications: 0 };
+    if (!internalMode) {
+      const { data: campaigns } = await supabaseAdmin
+        .from("campaigns")
+        .select("id, title, status")
+        .eq("user_id", userId)
+        .eq("status", "published")
+        .limit(10);
 
-    const { count: pendingAppCount } = await supabaseAdmin
-      .from("campaign_applications")
-      .select("id", { count: "exact", head: true })
-      .eq("creator_id", userId)
-      .eq("status", "pending");
+      const { count: pendingAppCount } = await supabaseAdmin
+        .from("campaign_applications")
+        .select("id", { count: "exact", head: true })
+        .eq("creator_id", userId)
+        .eq("status", "pending");
 
-    const userContext = {
-      campaigns: campaigns ?? [],
-      pendingApplications: pendingAppCount ?? 0,
-    };
+      userContext = {
+        campaigns: campaigns ?? [],
+        pendingApplications: pendingAppCount ?? 0,
+      };
+    }
 
     // Load conversation history
     const { messages: history, contextSummary } = await getConversationHistory(
@@ -1533,7 +1689,9 @@ serve(async (req) => {
     );
 
     // Build system prompt
-    const systemPrompt = buildSystemPrompt(profile, userContext, requestContext);
+    const systemPrompt = internalMode
+      ? buildInternalSystemPrompt(profile)
+      : buildSystemPrompt(profile, userContext, requestContext);
     const fullSystemPrompt = contextSummary
       ? `${systemPrompt}\n\n## Previous Conversation Summary\n${contextSummary}`
       : systemPrompt;
@@ -1566,9 +1724,16 @@ serve(async (req) => {
       console.log(`[donny-chat] User ${userId} in essential mode — routing to Haiku`);
     }
 
-    const subscriptionTier = await getUserSubscriptionTier(supabaseAdmin, userId);
-    const tierMaxTokens = MAX_TOKENS_BY_TIER[subscriptionTier] ?? 1024;
-    const clampedMaxTokens = Math.min(modelConfig.maxTokens, tierMaxTokens);
+    // Internal surface skips the subscription-tier clamp (founders aren't on a
+    // consumer plan) but still caps below the model maximum.
+    let clampedMaxTokens: number;
+    if (internalMode) {
+      clampedMaxTokens = Math.min(modelConfig.maxTokens, 4096);
+    } else {
+      const subscriptionTier = await getUserSubscriptionTier(supabaseAdmin, userId);
+      const tierMaxTokens = MAX_TOKENS_BY_TIER[subscriptionTier] ?? 1024;
+      clampedMaxTokens = Math.min(modelConfig.maxTokens, tierMaxTokens);
+    }
 
     // Call Claude
     if (!ANTHROPIC_API_KEY) {
@@ -1638,7 +1803,15 @@ serve(async (req) => {
         let status = "completed";
 
         try {
-          const execution = await executeTool(toolUse.name, toolUse.input, userId, profile.role, supabaseAdmin, requestContext);
+          const execution = await executeTool(
+            toolUse.name,
+            toolUse.input,
+            userId,
+            profile.role,
+            supabaseAdmin,
+            requestContext,
+            internalMode ? { userClient: supabaseUser } : undefined
+          );
           toolResult = execution.result;
         } catch (err: any) {
           toolResult = { error: err.message };

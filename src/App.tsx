@@ -102,6 +102,7 @@ const InternalOverview = lazy(() => import("./pages/internal/InternalOverview"))
 const InternalWeight = lazy(() => import("./pages/internal/InternalWeight"));
 const InternalExpenses = lazy(() => import("./pages/internal/InternalExpenses"));
 const InternalStrategy = lazy(() => import("./pages/internal/InternalStrategy"));
+const InternalDonny = lazy(() => import("./pages/internal/InternalDonny"));
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -325,6 +326,7 @@ function AnimatedRoutes() {
             <Route path="weight" element={<InternalWeight />} />
             <Route path="strategy" element={<InternalStrategy />} />
             <Route path="expenses" element={<InternalRoute tier="admin"><InternalExpenses /></InternalRoute>} />
+            <Route path="donny" element={<InternalRoute tier="admin"><InternalDonny /></InternalRoute>} />
           </Route>
 
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
