@@ -25,6 +25,7 @@ import { useCreatorDragonShareEarnings } from '@/hooks/useDragonShare';
 import { useCreatorDragonShareActivity } from '@/hooks/useCreatorDragonShareActivity';
 import { UpcomingPostsWidget } from '@/components/outstand/UpcomingPostsWidget';
 import { ContentIdeaCard } from '@/components/donny/ContentIdeaCard';
+import { BriefPerformanceCard } from '@/components/dragonshare/BriefPerformanceCard';
 
 const CreatorDashboard = () => {
   const { profile } = useAuth();
@@ -152,6 +153,8 @@ const CreatorDashboard = () => {
           <div className="max-w-2xl lg:max-w-4xl mx-auto space-y-6">
 
             <ContentIdeaCard />
+
+            <BriefPerformanceCard />
 
             {/* Recent Activity */}
             <div className="border-2 border-dc-teal rounded-2xl bg-white overflow-hidden">
