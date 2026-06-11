@@ -8,8 +8,11 @@ import {
 } from './weightThresholds';
 
 const day = 24 * 60 * 60 * 1000;
+// Fixed epoch — two Date.now() calls can differ by a millisecond, which
+// shifts the growth rate just enough to flip exact-day forecast boundaries.
+const T0 = Date.parse('2026-06-11T00:00:00Z');
 const snap = (daysAgo: number, dbBytes: number): WeightSnapshot => ({
-  captured_at: new Date(Date.now() - daysAgo * day).toISOString(),
+  captured_at: new Date(T0 - daysAgo * day).toISOString(),
   db_bytes: dbBytes,
   storage_bytes: 0,
   users_total: 40,
