@@ -370,6 +370,15 @@ serve(async (req: Request) => {
 });
 ```
 
+> **Post-review hardening (applied during execution — the committed file is canonical):**
+> (1) The idempotent insert uses `.upsert(rows, { onConflict, ignoreDuplicates: true }).select("id")` and
+> `inserted += insRows?.length ?? 0` — NOT `count: "exact"`. With `ignoreDuplicates` and no `.select()`,
+> PostgREST returns no `count`, so the old `count ?? rows.length` overcounted on every run (incl.
+> all-duplicate re-runs), breaking the idempotency signal. `.select()` returns only actually-inserted rows.
+> (2) Added `console.warn` on all three Outstand-fetch failure paths (non-2xx, throw, empty payload) and a
+> `console.error` on insert failure — first call to an unconfirmed endpoint, so failures must be diagnosable.
+> Insert errors count in a separate `insertErrors` bucket; summary is `{ok, posts, inserted, skipped, fetchErrors, insertErrors}`.
+
 - [ ] **Step 2: Register the function in `config.toml`**
 
 Append to `supabase/config.toml`:
