@@ -1,5 +1,19 @@
 # Wiki Log
 
+## [2026-06-11] ingest | Content Engine Phase B Session
+
+Ingested the 2026-06-11 session: Content Engine **Phase B shipped + verified in prod** — a creator
+gets a Donny content brief (`content_briefs`) and acts on it in one tap via DragonShare, with
+`dragonshare_posts.source_brief_id` + pre-filled `caption` recorded (3 slices, PRs #60–#63). A
+deep-link query race in `usePreselectedOrg` had silently nulled both the caption pre-fill AND
+`source_brief_id` for two slices (org query keyed on the live URL param that a cleanup effect deleted
+mid-flight); fixed in PR #63 by capturing params at mount. Phase C (engagement → brief, populating
+`content_briefs.social_post_log_id`) is next.
+Pages created: [[Content Engine Phase B Session]] (source), [[Content Engine]] (concept),
+[[Deep-Link Param Query Race]] (concept).
+Pages updated: [[Self-Improving App]] (Phase 6 → Content Engine, A+B built), [[DragonShare]]
+(source_brief_id + caption), index.md.
+
 ## [2026-06-10] analysis | Content engine data audit (foundation-first)
 
 Audited prod signal data for the planned Donny content-strategy engine. Verdict: context data is live
