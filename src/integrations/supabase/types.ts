@@ -2261,6 +2261,7 @@ export type Database = {
           embedding: string | null
           id: string
           metadata: Json
+          scope: string | null
           search_vector: unknown
           source_type: string
           updated_at: string
@@ -2271,6 +2272,7 @@ export type Database = {
           embedding?: string | null
           id?: string
           metadata?: Json
+          scope?: string | null
           search_vector?: unknown
           source_type: string
           updated_at?: string
@@ -2281,6 +2283,7 @@ export type Database = {
           embedding?: string | null
           id?: string
           metadata?: Json
+          scope?: string | null
           search_vector?: unknown
           source_type?: string
           updated_at?: string
@@ -3633,6 +3636,39 @@ export type Database = {
           roles?: string[]
           search_terms?: string[] | null
           slug?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      internal_docs: {
+        Row: {
+          content_md: string
+          created_at: string
+          id: string
+          path: string
+          source_hash: string | null
+          tags: string[]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          content_md: string
+          created_at?: string
+          id?: string
+          path: string
+          source_hash?: string | null
+          tags?: string[]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          content_md?: string
+          created_at?: string
+          id?: string
+          path?: string
+          source_hash?: string | null
+          tags?: string[]
           title?: string
           updated_at?: string
         }
@@ -5879,7 +5915,11 @@ export type Database = {
         }[]
       }
       match_donny_knowledge: {
-        Args: { match_count?: number; query_embedding: string }
+        Args: {
+          match_count?: number
+          query_embedding: string
+          scope_filter?: string
+        }
         Returns: {
           content: string
           id: string
