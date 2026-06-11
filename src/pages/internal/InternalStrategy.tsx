@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
-import ReactMarkdown from 'react-markdown';
 import { useInternalDocs, useInternalDoc } from '@/hooks/internal/useInternalDocs';
 import { ErrorCard } from '@/components/internal/stats';
+import { MarkdownProse } from '@/components/internal/MarkdownProse';
 import { Spinner } from '@/components/ui/spinner';
 import { Input } from '@/components/ui/input';
 
@@ -90,9 +90,7 @@ const InternalStrategy = () => {
             <p className="mb-4 text-xs text-dc-text-muted">
               {doc.data.path} · updated {new Date(doc.data.updated_at).toLocaleDateString()}
             </p>
-            <div className="prose prose-sm max-w-none prose-headings:text-dc-text prose-p:text-dc-text-muted prose-li:text-dc-text-muted prose-strong:text-dc-text">
-              <ReactMarkdown>{doc.data.content_md}</ReactMarkdown>
-            </div>
+            <MarkdownProse>{doc.data.content_md}</MarkdownProse>
           </div>
         )}
       </article>

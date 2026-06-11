@@ -407,6 +407,12 @@ const INTERNAL_TOOL_DEFINITIONS = [
       },
     },
   },
+  {
+    name: "get_latest_briefing",
+    description:
+      "The most recent weekly operating brief: title, week, KPI status list, and full markdown body. Use when asked about the weekly brief, 'this week', or current KPI status.",
+    input_schema: { type: "object", properties: {} },
+  },
 ];
 
 const INTERNAL_TOOL_NAMES = new Set(INTERNAL_TOOL_DEFINITIONS.map((t) => t.name));
@@ -555,7 +561,7 @@ function buildInternalSystemPrompt(profile: Record<string, any>): string {
 
 ## How you work
 - Answer ONLY from tool results. Never fabricate or estimate a number a tool didn't return.
-- Use tools proactively: platform questions → get_platform_stats; money in → get_revenue_stats; AI spend → get_cost_stats; growth/scaling/capacity → get_platform_weight_trend; strategy, pricing, playbooks, targets, kill-switches → search_internal_knowledge.
+- Use tools proactively: platform questions → get_platform_stats; money in → get_revenue_stats; AI spend → get_cost_stats; growth/scaling/capacity → get_platform_weight_trend; weekly brief or KPI status → get_latest_briefing; strategy, pricing, playbooks, targets, kill-switches → search_internal_knowledge.
 - Combine tools when a question spans data and strategy (e.g. "are we on track?" = live stats + KPI targets from the strategy library).
 - Cite the numbers you used. Monetary values from tools are in cents unless labeled otherwise — convert to dollars when presenting.
 - Be direct and analytical, not promotional. Flag bad news plainly.
@@ -789,6 +795,17 @@ async function executeTool(
         .limit(days);
       if (error) throw error;
       return { result: data };
+    }
+
+    case "get_latest_briefing": {
+      const { data, error } = await internalCtx!.userClient
+        .from("aios_briefings")
+        .select("week_start, title, body_md, kpis, published_at, created_at")
+        .order("week_start", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return { result: data ?? { message: "No weekly briefings exist yet." } };
     }
 
     // --- Campaign Tools ---
