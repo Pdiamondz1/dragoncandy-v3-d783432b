@@ -1818,14 +1818,20 @@ serve(async (req) => {
           status = "failed";
         }
 
-        // Audit logging — non-critical, don't crash if these fail
+        // Audit logging — non-critical, don't crash if these fail.
+        // Internal tool OUTPUTS are redacted: these tables are owner-readable
+        // forever, while internal data must require CURRENT admin status
+        // (donny_messages carries the real results behind surface-gated RLS).
+        const auditOutput = internalMode
+          ? { internal: true, redacted: true }
+          : toolResult;
         try {
           await supabaseAdmin.from("donny_tool_executions").insert({
             message_id: savedAssistantMsg?.id ?? null,
             user_id: userId,
             tool_name: toolUse.name,
             input: toolUse.input,
-            output: toolResult,
+            output: auditOutput,
             status: status === "completed" ? "success" : "error",
           });
 
@@ -1833,7 +1839,7 @@ serve(async (req) => {
             conversation_id,
             user_id: userId,
             action_type: toolUse.name,
-            action_payload: { input: toolUse.input, output: toolResult },
+            action_payload: { input: toolUse.input, output: auditOutput },
             status,
           });
         } catch (logErr: any) {
