@@ -8,6 +8,9 @@ describe('milestonesDue', () => {
   it('returns no milestones before 24h', () => {
     expect(milestonesDue(at(0), at(23), new Set())).toEqual([]);
   });
+  it('fires 24h at exactly the threshold (>= boundary, guards against >→regression)', () => {
+    expect(milestonesDue(at(0), at(24), new Set())).toEqual(['24h']);
+  });
   it('returns 24h once the post is a day old', () => {
     expect(milestonesDue(at(0), at(25), new Set())).toEqual(['24h']);
   });
@@ -37,5 +40,16 @@ describe('normalizeAnalytics', () => {
   it('returns nulls for missing metrics (never throws on a sparse payload)', () => {
     const m = normalizeAnalytics({});
     expect(m).toEqual({ views: null, likes: null, comments: null, shares: null, saves: null, reach: null, engagement_rate: null });
+  });
+  it('preserves a legitimate zero (0 views is real data, not missing)', () => {
+    expect(normalizeAnalytics({ views: 0, likes: 0 }).views).toBe(0);
+    expect(normalizeAnalytics({ views: 0, likes: 0 }).likes).toBe(0);
+  });
+  it('rejects corrupt negative metrics as null (cannot poison aggregations)', () => {
+    expect(normalizeAnalytics({ views: -5 }).views).toBeNull();
+  });
+  it('tolerates a null/undefined payload without throwing', () => {
+    expect(normalizeAnalytics(null).views).toBeNull();
+    expect(normalizeAnalytics(undefined).reach).toBeNull();
   });
 });

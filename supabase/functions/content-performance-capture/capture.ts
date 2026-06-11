@@ -32,10 +32,14 @@ export interface NormalizedMetrics {
   engagement_rate: number | null;
 }
 
+// Returns the first finite, non-negative number among the candidate keys.
+// Rejects NaN/Infinity, non-numbers, and negatives (all seven metrics are
+// non-negative by nature — a negative is corrupt upstream data, so treat it as
+// unknown/null rather than store garbage that would poison aggregations).
 function pick(o: Record<string, unknown>, keys: string[]): number | null {
   for (const k of keys) {
     const v = o[k];
-    if (typeof v === 'number' && Number.isFinite(v)) return v;
+    if (typeof v === 'number' && Number.isFinite(v) && v >= 0) return v;
   }
   return null;
 }
@@ -45,7 +49,7 @@ function pick(o: Record<string, unknown>, keys: string[]): number | null {
  * Tolerant of field-name variants; the full payload is stored separately in `raw`
  * by the caller, so any unmapped metric is never lost.
  */
-export function normalizeAnalytics(raw: Record<string, unknown>): NormalizedMetrics {
+export function normalizeAnalytics(raw: Record<string, unknown> | null | undefined): NormalizedMetrics {
   const o = raw ?? {};
   return {
     views: pick(o, ['views', 'viewCount', 'video_views', 'plays']),
