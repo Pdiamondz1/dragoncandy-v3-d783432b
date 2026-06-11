@@ -37,6 +37,8 @@ const statusConfig: Record<ActivePostStatus, { label: string; className: string;
 function usePreselectedOrg() {
   const [searchParams, setSearchParams] = useSearchParams();
   const restaurantId = searchParams.get('restaurant');
+  // Capture once so it survives the param cleanup below.
+  const [briefId] = useState(() => searchParams.get('brief'));
 
   const { data: org } = useQuery({
     queryKey: ['preselected-org', restaurantId],
@@ -51,15 +53,34 @@ function usePreselectedOrg() {
     enabled: !!restaurantId,
   });
 
+  // Validate the brief is the creator's own (RLS) AND targets the same org.
+  const { data: briefOrgId } = useQuery({
+    queryKey: ['preselected-brief', briefId],
+    queryFn: async (): Promise<string | null> => {
+      if (!briefId) return null;
+      const { data, error } = await supabase
+        .from('content_briefs')
+        .select('organization_id')
+        .eq('id', briefId)
+        .maybeSingle();
+      if (error || !data) return null;
+      return data.organization_id as string;
+    },
+    enabled: !!briefId,
+  });
+
+  const sourceBriefId = briefId && org && briefOrgId === org.id ? briefId : null;
+
   useEffect(() => {
     if (restaurantId && org) {
       const next = new URLSearchParams(searchParams);
       next.delete('restaurant');
+      next.delete('brief');
       setSearchParams(next, { replace: true });
     }
   }, [org, restaurantId, searchParams, setSearchParams]);
 
-  return org ?? null;
+  return { org: org ?? null, sourceBriefId };
 }
 
 const CreatorDragonShare: React.FC = () => {
@@ -69,7 +90,7 @@ const CreatorDragonShare: React.FC = () => {
   const orgIds = (posts ?? []).map((p) => p.target_org_id);
   const { data: resolvedOrgs } = useResolveDragonShareOrgs(orgIds);
   const postsWithOrg = mergeResolvedOrgs(posts ?? [], resolvedOrgs ?? []);
-  const preselectedOrg = usePreselectedOrg();
+  const { org: preselectedOrg, sourceBriefId } = usePreselectedOrg();
 
   useEffect(() => {
     if (preselectedOrg) {
@@ -116,7 +137,7 @@ const CreatorDragonShare: React.FC = () => {
           <div className="flex flex-col lg:flex-row lg:gap-6 lg:items-start">
             {/* Left: Inline form (desktop only) */}
             <div className="hidden lg:block lg:w-[440px] lg:flex-shrink-0">
-              <DragonShareInlineForm preselectedOrg={preselectedOrg} />
+              <DragonShareInlineForm preselectedOrg={preselectedOrg} sourceBriefId={sourceBriefId} />
             </div>
 
             {/* Right: Post history */}
@@ -174,7 +195,7 @@ const CreatorDragonShare: React.FC = () => {
 
         {/* Mobile-only: bottom sheet */}
         <div className="lg:hidden">
-          <DragonShareSubmitSheet open={submitOpen} onOpenChange={setSubmitOpen} />
+          <DragonShareSubmitSheet open={submitOpen} onOpenChange={setSubmitOpen} preselectedOrg={preselectedOrg} sourceBriefId={sourceBriefId} />
         </div>
       </PrerequisiteGate>
     </DashboardLayout>

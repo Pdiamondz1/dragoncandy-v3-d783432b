@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { RestaurantTypeahead } from '@/components/dragonshare/RestaurantTypeahead';
 import type { RestaurantSearchResult } from '@/hooks/useRestaurantSearch';
 import { useContentBrief, type ContentBrief } from '@/hooks/useContentBrief';
@@ -70,6 +71,7 @@ function BriefView({ brief, usedPerf }: { brief: ContentBrief; usedPerf: boolean
 export function ContentIdeaCard() {
   const [org, setOrg] = useState<RestaurantSearchResult | null>(null);
   const { mutate, data, isPending, reset } = useContentBrief();
+  const navigate = useNavigate();
 
   return (
     <div className="rounded-3xl border-2 border-dc-teal/40 bg-dc-card p-5 lg:p-6">
@@ -115,6 +117,14 @@ export function ContentIdeaCard() {
         </Button>
       )}
       {data && <BriefView brief={data.brief} usedPerf={data.used_performance_data} />}
+      {data?.brief_id && org && (
+        <Button
+          onClick={() => navigate(`/dashboard/creator/dragonshare?restaurant=${org.id}&brief=${data.brief_id}`)}
+          className="mt-4 w-full rounded-full bg-dc-teal-btn hover:bg-dc-teal-btn-hover text-white font-semibold"
+        >
+          Make it &amp; submit to {org.name}
+        </Button>
+      )}
     </div>
   );
 }
