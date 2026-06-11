@@ -1,4 +1,9 @@
-import { NavLink, Outlet } from 'react-router-dom';
+import { useState } from 'react';
+import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
+import { LogOut } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 import { useInternalAccess } from '@/hooks/internal/useInternalAccess';
 
 interface NavItem {
@@ -22,7 +27,22 @@ const adminNav: NavItem[] = [
 
 export const InternalLayout = () => {
   const { isAdmin } = useInternalAccess();
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [signingOut, setSigningOut] = useState(false);
   const navItems = isAdmin ? [...stakeholderNav, ...adminNav] : stakeholderNav;
+
+  const signOut = async () => {
+    if (signingOut) return;
+    setSigningOut(true);
+    try {
+      await supabase.auth.signOut();
+      queryClient.clear();
+    } finally {
+      navigate('/auth', { replace: true });
+    }
+  };
 
   return (
     <div className="min-h-screen bg-dc-card">
@@ -50,6 +70,20 @@ export const InternalLayout = () => {
               </NavLink>
             ))}
           </nav>
+          <div className="ml-auto flex items-center gap-3">
+            {user?.email && (
+              <span className="hidden text-xs text-dc-text-muted lg:inline">{user.email}</span>
+            )}
+            <button
+              type="button"
+              onClick={signOut}
+              disabled={signingOut}
+              className="flex items-center gap-1.5 rounded-full border border-dc-teal px-4 py-1.5 text-sm font-semibold text-dc-pink-accent transition-colors hover:bg-dc-teal/12 disabled:opacity-50"
+            >
+              <LogOut className="h-3.5 w-3.5" />
+              {signingOut ? 'Signing out…' : 'Sign out'}
+            </button>
+          </div>
         </div>
       </header>
       <main className="p-4 lg:p-8">
