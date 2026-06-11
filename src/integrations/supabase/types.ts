@@ -1563,6 +1563,7 @@ export type Database = {
           saves: number | null
           shares: number | null
           social_post_log_id: string | null
+          source_brief_id: string | null
           user_id: string
           views: number | null
         }
@@ -1583,6 +1584,7 @@ export type Database = {
           saves?: number | null
           shares?: number | null
           social_post_log_id?: string | null
+          source_brief_id?: string | null
           user_id: string
           views?: number | null
         }
@@ -1603,6 +1605,7 @@ export type Database = {
           saves?: number | null
           shares?: number | null
           social_post_log_id?: string | null
+          source_brief_id?: string | null
           user_id?: string
           views?: number | null
         }
@@ -4888,28 +4891,34 @@ export type Database = {
         Row: {
           campaign_id: string | null
           created_at: string | null
+          dragonshare_post_id: string | null
           id: string
           outstand_post_id: string
           platform: string
           post_type: string
+          source_brief_id: string | null
           user_id: string
         }
         Insert: {
           campaign_id?: string | null
           created_at?: string | null
+          dragonshare_post_id?: string | null
           id?: string
           outstand_post_id: string
           platform: string
           post_type: string
+          source_brief_id?: string | null
           user_id: string
         }
         Update: {
           campaign_id?: string | null
           created_at?: string | null
+          dragonshare_post_id?: string | null
           id?: string
           outstand_post_id?: string
           platform?: string
           post_type?: string
+          source_brief_id?: string | null
           user_id?: string
         }
         Relationships: [
