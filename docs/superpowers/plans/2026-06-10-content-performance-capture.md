@@ -416,34 +416,35 @@ select extname from pg_extension where extname = 'supabase_vault';
 ```
 Expected: one row. If absent, enable it (`create extension if not exists supabase_vault;`) before continuing — note this in the deploy checklist for prod too.
 
-- [ ] **Step 2: Register the secret out-of-band (NOT committed) — staging first**
+- [ ] **Step 2: Register the TWO Vault secrets out-of-band (NOT committed) — staging first**
 
-Run (MCP `execute_sql`, staging) with the staging service/`sb_secret` key:
+Replay-safe design (improved during execution): BOTH the URL and the bearer come from Vault, so the
+committed migration is env-agnostic (no `PROJECT_REF` substitution — a stray `db push` can't bake in a
+wrong URL). Run (MCP `execute_sql`, staging) with the staging values:
 ```sql
+select vault.create_secret('https://mhffqrawgizhprbobcta.supabase.co/functions/v1/content-performance-capture', 'content_capture_url');
 select vault.create_secret('<STAGING_SERVICE_OR_SB_SECRET_KEY>', 'content_capture_key');
 ```
-Expected: returns a uuid. (Repeat on prod during Task 7 deploy with the prod key.)
+Expected: each returns a uuid. (Repeat on prod during Task 7 with the prod URL + prod key.)
 
-> ⚠️ Prerequisite gate: the cron produces a **null bearer** (and a silent 401) if `content_capture_key` doesn't exist — the exact failure this slice exists to escape. Do not run Step 3 until this secret exists in the target env.
+> ⚠️ Prerequisite gate: if either secret is missing, the cron posts a **null url/bearer** (silent failure) —
+> the exact failure this slice exists to escape. Do not run Step 3 until BOTH secrets exist in the target env.
 
-- [ ] **Step 3: Write the cron migration**
+- [ ] **Step 3: Write the cron migration** (`20260610150000_content_performance_capture_cron.sql` — committed)
 
 ```sql
--- Daily per-post performance capture. Vault-based (NOT the dead app.settings GUC
--- pattern). Requires: vault secret 'content_capture_key' = service/sb_secret key.
 create extension if not exists pg_cron;
 create extension if not exists pg_net;
 
+-- cron.schedule upserts by job name → idempotent re-apply. URL + bearer both from Vault.
 select cron.schedule(
   'content-performance-capture',
-  '0 9 * * *',                         -- daily 09:00 UTC
+  '0 9 * * *',                          -- daily 09:00 UTC
   $$
   select net.http_post(
-    url     := 'https://PROJECT_REF.supabase.co/functions/v1/content-performance-capture',
+    url     := (select decrypted_secret from vault.decrypted_secrets where name = 'content_capture_url'),
     headers := jsonb_build_object(
-                 'Authorization', 'Bearer ' || (select decrypted_secret
-                                                 from vault.decrypted_secrets
-                                                 where name = 'content_capture_key'),
+                 'Authorization', 'Bearer ' || (select decrypted_secret from vault.decrypted_secrets where name = 'content_capture_key'),
                  'Content-Type', 'application/json'),
     body    := '{}'::jsonb
   );
@@ -451,11 +452,12 @@ select cron.schedule(
 );
 ```
 
-> The committed file uses the literal `PROJECT_REF` placeholder. When applying, substitute the env's ref: staging `mhffqrawgizhprbobcta`, prod `zocahiffooqdybdhguqv`. (Two envs, one file — substitute at apply time; do not hardcode prod into the committed migration.)
+> Env-agnostic & replay-safe: the SAME committed file applies cleanly to staging and prod with no
+> substitution. Per-env difference lives entirely in the two Vault secrets (Step 2).
 
 - [ ] **Step 4: Apply to STAGING and verify the job exists**
 
-Apply via MCP `execute_sql` (staging, with the ref substituted). Then:
+Apply the committed migration via MCP `execute_sql` (staging — no substitution). Then:
 ```sql
 select jobname, schedule, active from cron.job where jobname = 'content-performance-capture';
 ```
@@ -558,10 +560,12 @@ Re-run the curl from Step 2 → `inserted:0` for that milestone (unique index he
 
 - [ ] **Step 4: Promote to PROD — secret, function, migrations, cron (in order)**
 
-1. Register the prod Vault secret: `select vault.create_secret('<PROD_SERVICE_KEY>', 'content_capture_key');`
+1. Register the two prod Vault secrets:
+   `select vault.create_secret('https://zocahiffooqdybdhguqv.supabase.co/functions/v1/content-performance-capture', 'content_capture_url');`
+   `select vault.create_secret('<PROD_SERVICE_KEY>', 'content_capture_key');`
 2. Apply `20260610140000_content_performance.sql` to prod; run `get_advisors`.
 3. Deploy `content-performance-capture` to prod (both files); 401 boot probe.
-4. Apply `20260610150000_..._cron.sql` to prod with ref `zocahiffooqdybdhguqv` substituted.
+4. Apply `20260610150000_..._cron.sql` to prod (committed file as-is — no substitution).
 
 - [ ] **Step 5: Confirm the cron actually fires (prod) — the whole point**
 
