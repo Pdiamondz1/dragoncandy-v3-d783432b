@@ -61,6 +61,9 @@ A dedicated notifications layer sits on top of the engine:
   and `declined_at`/`declined_by`; default status `verified`. Admin-queue and Donny-scoring
   columns were removed. `source_brief_id` (FK → `content_briefs`) and `caption` link a submission
   back to the [[Content Engine]] brief that prompted it and carry the brief's pre-filled caption.
+  Once a boosted post is published, `social_post_log.dragonshare_post_id` references this post and a
+  trigger resolves `source_brief_id` onto the log row and the brief, closing the [[Content Engine]]
+  loop (Phase C).
 - `dragonshare_boosts` — boost payments (pending → transferred).
 - `dragonshare_payouts` — creator payouts (audit ledger, mirrors `payment_events`).
 - `dragonshare_events` — lifecycle events for the [[Data Flywheel]].

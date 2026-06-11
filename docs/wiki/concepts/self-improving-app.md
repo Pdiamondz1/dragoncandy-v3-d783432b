@@ -83,12 +83,15 @@ manufactures structured, verified knowledge in the interim.
   analytics (Outstand — IG/TikTok/YouTube), Toast analytics, and Campaign/DragonShare/Promotions
   engagement, then have [[Donny AI]] recommend the **best content strategy** per restaurant/brand/creator.
   This has graduated from idea to a building system — see **[[Content Engine]]** for the full phase
-  breakdown. **Built so far:** Phase A (content-performance capture, live) and Phase B (brief → DragonShare
-  action across three slices, verified prod — a creator gets a Donny brief and acts on it in one tap, with
-  `dragonshare_posts.source_brief_id` + `caption` recorded). **Next:** Phase C wires the *return* half
-  (published-post engagement back to the brief via `content_briefs.social_post_log_id`). Dependency
-  unchanged: the engagement-side pipelines are partial (`dragonshare_engagement` schema-only; Outstand
-  Phase 4 analytics in scope). See also [[Content Engine Data Audit]].
+  breakdown. **Built (verified prod):** Phase A (content-performance capture, live), Phase B (brief →
+  DragonShare action across three slices — a creator gets a Donny brief and acts on it in one tap, with
+  `dragonshare_posts.source_brief_id` + `caption` recorded), and **Phase C** (PR #73 — the *return*
+  half: published-post engagement linked back to the brief via two `social_post_log` triggers that
+  populate `content_briefs.social_post_log_id` first-wins and carry `source_brief_id` onto
+  `content_performance`). The full brief→action→performance loop is now closed. Remaining dependency:
+  the link only forms once a real boost + "Post Now" publish happens, and engagement-side pipelines are
+  still partial (`dragonshare_engagement` schema-only; Outstand Phase 4 analytics in scope). See also
+  [[Content Engine Data Audit]].
 
 ## Guardrails
 
