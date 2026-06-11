@@ -45,6 +45,21 @@ describe('parseBrief', () => {
     const four = JSON.parse(good); four.angles = ['a', 'b', 'c', 'd'];
     expect(parseBrief(JSON.stringify(four)).angles).toEqual(['a', 'b', 'c']);
   });
+  it('pads to 3 by repeating the last real angle when fewer are given', () => {
+    const one = JSON.parse(good); one.angles = ['only'];
+    expect(parseBrief(JSON.stringify(one)).angles).toEqual(['only', 'only', 'only']);
+  });
+  it('drops null/blank angles (never emits the literal "null")', () => {
+    const dirty = JSON.parse(good); dirty.angles = ['a', null, '', 'b'];
+    expect(parseBrief(JSON.stringify(dirty)).angles).toEqual(['a', 'b', 'b']);
+  });
+  it('throws when no usable angles remain', () => {
+    const empty = JSON.parse(good); empty.angles = [null, '', '   '];
+    expect(() => parseBrief(JSON.stringify(empty))).toThrow();
+  });
+  it('recovers JSON wrapped in prose (model added extra text)', () => {
+    expect(parseBrief('Here is your brief:\n' + good + '\nHope that helps!').platform).toBe('instagram');
+  });
   it('throws on missing required fields', () => {
     const bad = JSON.parse(good); delete bad.hook;
     expect(() => parseBrief(JSON.stringify(bad))).toThrow();

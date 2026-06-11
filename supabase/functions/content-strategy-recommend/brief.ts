@@ -58,18 +58,32 @@ const REQUIRED_STRINGS = ['recommended_format', 'platform', 'hook', 'sample_capt
 /** Parse + validate the model's strict-JSON brief. Throws on anything malformed. */
 export function parseBrief(raw: string): ContentBrief {
   const cleaned = raw.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
-  const obj = JSON.parse(cleaned) as Record<string, unknown>;
+  let obj: Record<string, unknown>;
+  try {
+    obj = JSON.parse(cleaned) as Record<string, unknown>;
+  } catch {
+    // Fallback: the model wrapped the JSON in prose or stray fences — grab the {...} span.
+    const m = cleaned.match(/\{[\s\S]*\}/);
+    if (!m) throw new Error('brief is not JSON');
+    obj = JSON.parse(m[0]) as Record<string, unknown>;
+  }
 
   for (const k of REQUIRED_STRINGS) {
     if (typeof obj[k] !== 'string' || !(obj[k] as string).trim()) {
       throw new Error(`brief missing/invalid field: ${k}`);
     }
   }
-  if (!Array.isArray(obj.angles) || obj.angles.length === 0) throw new Error('brief missing angles');
   if (!Array.isArray(obj.hashtags)) throw new Error('brief missing hashtags');
 
-  const angles = (obj.angles as unknown[]).map(String).slice(0, 3);
-  while (angles.length < 3) angles.push(angles[angles.length - 1] ?? '');
+  // Keep only real, non-empty string angles (drop null/non-string/blank), then pad to
+  // exactly 3 by repeating the last real angle. Never emits the literal "null".
+  const rawAngles = Array.isArray(obj.angles) ? (obj.angles as unknown[]) : [];
+  const angles = rawAngles
+    .map((a) => (typeof a === 'string' ? a.trim() : ''))
+    .filter((a) => a.length > 0)
+    .slice(0, 3);
+  if (angles.length === 0) throw new Error('brief has no usable angles');
+  while (angles.length < 3) angles.push(angles[angles.length - 1]);
 
   return {
     recommended_format: obj.recommended_format as string,
