@@ -154,20 +154,27 @@ export function parseIdToken(idToken: string): { email?: string; hd?: string } {
   }
 }
 
-/** Revoke a token at Google. Returns true on confirmed revocation. */
-export async function revokeToken(token: string): Promise<boolean> {
+export type RevokeOutcome = "revoked" | "already_invalid" | "failed";
+
+/**
+ * Revoke a token at Google. Per Google's OAuth docs: 200 = revoked; 400 means
+ * the token is invalid/already revoked — nothing live remains at Google, so
+ * callers may treat it as terminal success. Anything else (network, 5xx) is a
+ * transient failure worth retrying.
+ */
+export async function revokeToken(token: string): Promise<RevokeOutcome> {
   try {
     const resp = await fetch(`${GOOGLE_REVOKE_URL}?token=${encodeURIComponent(token)}`, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
     });
-    if (!resp.ok) {
-      console.error("[google-workspace] revoke failed:", resp.status, (await resp.text()).slice(0, 200));
-    }
-    return resp.ok;
+    if (resp.ok) return "revoked";
+    const body = (await resp.text()).slice(0, 200);
+    console.error("[google-workspace] revoke non-OK:", resp.status, body);
+    return resp.status === 400 ? "already_invalid" : "failed";
   } catch (err) {
     console.error("[google-workspace] revoke errored:", err instanceof Error ? err.message : err);
-    return false;
+    return "failed";
   }
 }
 

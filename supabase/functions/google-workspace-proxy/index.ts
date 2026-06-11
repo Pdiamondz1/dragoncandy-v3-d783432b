@@ -103,8 +103,8 @@ serve(async (req) => {
         // for non-Workspace accounts.
         const allowedDomain = Deno.env.get("GOOGLE_ALLOWED_DOMAIN");
         if (allowedDomain && identity.hd?.toLowerCase() !== allowedDomain.toLowerCase()) {
-          const revoked = await revokeToken(tokens.refresh_token);
-          if (!revoked) {
+          const outcome = await revokeToken(tokens.refresh_token);
+          if (outcome === "failed") {
             // Token isn't stored anywhere on our side; the grant lingers only
             // in the user's own Google permissions. Log loudly and still reject.
             console.error("[google-workspace-proxy] domain-reject revoke failed for", identity.email);
@@ -161,11 +161,11 @@ serve(async (req) => {
           .eq("user_id", user.id)
           .maybeSingle();
         if (account) {
-          // Revocation must be CONFIRMED before we delete our only copy of the
-          // refresh token — otherwise the grant would linger at Google with no
-          // way to retry. On failure we keep the row so disconnect can be retried.
-          const revoked = await revokeToken(account.refresh_token);
-          if (!revoked) {
+          // Delete our only refresh-token copy only when nothing live remains
+          // at Google: confirmed revocation OR Google reports the token is
+          // already invalid (400). Transient failures keep the row for retry.
+          const outcome = await revokeToken(account.refresh_token);
+          if (outcome === "failed") {
             return json(
               { error: "Google did not confirm the revocation — try disconnecting again", code: "revoke_failed" },
               502

@@ -26,7 +26,7 @@ export const useAnalytics = () => {
         event_type: eventType,
         event_data: eventData || {},
         user_id: user?.id,
-        page_url: window.location.href,
+        page_url: sanitizeUrlForAnalytics(window.location.href),
         user_agent: navigator.userAgent,
         org_unit_id: activeOrgUnit?.id ?? null
       };

@@ -8,6 +8,7 @@ import { Heart, MessageSquare, X, ChevronLeft, ChevronRight, User, Play } from '
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
+import { sanitizeUrlForAnalytics } from '@/lib/analyticsUrl';
 
 interface FeedLightboxProps {
   item: FeedMediaItem | null;
@@ -84,7 +85,7 @@ export const FeedLightbox: React.FC<FeedLightboxProps> = ({
         event_type: 'dragon_feed_like',
         user_id: user.id,
         org_unit_id: activeOrgUnit?.id ?? null,
-        page_url: window.location.href,
+        page_url: sanitizeUrlForAnalytics(window.location.href),
         user_agent: navigator.userAgent,
         event_data: {
           content_id: item?.id,
