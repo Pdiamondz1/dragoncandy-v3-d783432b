@@ -56,4 +56,5 @@ verified live on prod (commit `7206c09a`).
 - [[Self-Improving App]] — Phase 6 (Content Engine); now closed and surfaced to creators
 - [[DragonShare]] — the submission/publish path the engagement flows through
 - [[Content Engine Data Audit]] — why the card is empty in prod today
-- [[Content Engine Phase B Session]] — the prior build session
+- [[Content Engine Phase B Session]] — the forward-half build session
+- [[Content Engine Phase C Session]] — the return-half link this surface reads from

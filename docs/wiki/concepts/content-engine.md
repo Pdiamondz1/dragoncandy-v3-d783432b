@@ -139,7 +139,9 @@ content_performance (engagement signals, captured daily; carries source_brief_id
 
 - [[Self-Improving App]] — the broader smart-app vision (Content Engine = its Phase 6)
 - [[Content Engine Data Audit]] — what signal data actually exists in prod
-- [[Content Engine Phase B Session]] — the build session
+- [[Content Engine Phase B Session]] — the build session (forward half)
+- [[Content Engine Phase C Session]] — the return-half link build (spec-anchored)
+- [[Content Engine Phase D Session]] — the creator read surface
 - [[Deep-Link Param Query Race]]
 - [[DragonShare]]
 - [[Donny AI]]

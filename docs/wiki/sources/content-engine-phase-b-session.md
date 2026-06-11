@@ -58,6 +58,7 @@ subagent-driven implementation → prod-verify discipline per slice (PRs #60–#
 ## See Also
 
 - [[Content Engine]]
+- [[Content Engine Phase C Session]] — the return half this session deferred
 - [[Self-Improving App]]
 - [[Deep-Link Param Query Race]]
 - [[DragonShare]]
