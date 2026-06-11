@@ -3900,6 +3900,39 @@ export type Database = {
         }
         Relationships: []
       }
+      operating_expenses: {
+        Row: {
+          active: boolean
+          category: string
+          created_at: string
+          id: string
+          monthly_amount_cents: number
+          name: string
+          notes: string | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          category?: string
+          created_at?: string
+          id?: string
+          monthly_amount_cents: number
+          name: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          category?: string
+          created_at?: string
+          id?: string
+          monthly_amount_cents?: number
+          name?: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       org_members: {
         Row: {
           id: string

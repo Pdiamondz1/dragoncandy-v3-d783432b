@@ -100,6 +100,7 @@ const HelpBriefDrawer = lazy(() => import("./features/donny/HelpBriefDrawer").th
 const InternalLayout = lazy(() => import("./components/internal/InternalLayout").then(m => ({ default: m.InternalLayout })));
 const InternalOverview = lazy(() => import("./pages/internal/InternalOverview"));
 const InternalWeight = lazy(() => import("./pages/internal/InternalWeight"));
+const InternalExpenses = lazy(() => import("./pages/internal/InternalExpenses"));
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -321,6 +322,7 @@ function AnimatedRoutes() {
           <Route path="/internal" element={<InternalRoute><InternalLayout /></InternalRoute>}>
             <Route index element={<InternalOverview />} />
             <Route path="weight" element={<InternalWeight />} />
+            <Route path="expenses" element={<InternalRoute tier="admin"><InternalExpenses /></InternalRoute>} />
           </Route>
 
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
