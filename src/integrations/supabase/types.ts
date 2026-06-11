@@ -84,6 +84,42 @@ export type Database = {
         }
         Relationships: []
       }
+      aios_briefings: {
+        Row: {
+          body_md: string
+          created_at: string
+          generated_by: string
+          id: string
+          kpis: Json
+          published_at: string | null
+          title: string
+          updated_at: string
+          week_start: string
+        }
+        Insert: {
+          body_md: string
+          created_at?: string
+          generated_by?: string
+          id?: string
+          kpis?: Json
+          published_at?: string | null
+          title: string
+          updated_at?: string
+          week_start: string
+        }
+        Update: {
+          body_md?: string
+          created_at?: string
+          generated_by?: string
+          id?: string
+          kpis?: Json
+          published_at?: string | null
+          title?: string
+          updated_at?: string
+          week_start?: string
+        }
+        Relationships: []
+      }
       analytics_events: {
         Row: {
           created_at: string
@@ -1622,6 +1658,13 @@ export type Database = {
             columns: ["social_post_log_id"]
             isOneToOne: false
             referencedRelation: "social_post_log"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "content_performance_source_brief_id_fkey"
+            columns: ["source_brief_id"]
+            isOneToOne: false
+            referencedRelation: "content_briefs"
             referencedColumns: ["id"]
           },
         ]
@@ -4927,6 +4970,20 @@ export type Database = {
             columns: ["campaign_id"]
             isOneToOne: false
             referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_post_log_dragonshare_post_id_fkey"
+            columns: ["dragonshare_post_id"]
+            isOneToOne: false
+            referencedRelation: "dragonshare_posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_post_log_source_brief_id_fkey"
+            columns: ["source_brief_id"]
+            isOneToOne: false
+            referencedRelation: "content_briefs"
             referencedColumns: ["id"]
           },
         ]
