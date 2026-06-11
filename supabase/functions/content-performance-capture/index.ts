@@ -44,7 +44,7 @@ serve(async (req: Request) => {
     .gte("created_at", cutoff);
   if (postsErr) return json(500, { error: "enumerate_failed", detail: postsErr.message });
 
-  let inserted = 0, skipped = 0, fetchErrors = 0;
+  let inserted = 0, skipped = 0, fetchErrors = 0, insertErrors = 0;
 
   for (const p of posts ?? []) {
     // 2. Which milestones already captured for this post?
@@ -63,11 +63,20 @@ serve(async (req: Request) => {
       const res = await fetch(`${OUTSTAND_BASE_URL}/posts/${p.outstand_post_id}/analytics`, {
         headers: { Authorization: `Bearer ${OUTSTAND_API_KEY}`, Accept: "application/json" },
       });
-      if (!res.ok) { fetchErrors++; continue; }
+      if (!res.ok) {
+        console.warn(`[capture] Outstand analytics fetch failed: postId=${p.outstand_post_id} status=${res.status}`);
+        fetchErrors++; continue;
+      }
       const body = await res.json().catch(() => null);
       payload = (body?.data ?? body) as Record<string, unknown> | null;
-    } catch (_e) { fetchErrors++; continue; }
-    if (!payload) { fetchErrors++; continue; }
+    } catch (e) {
+      console.warn(`[capture] Outstand analytics fetch threw: postId=${p.outstand_post_id}`, e);
+      fetchErrors++; continue;
+    }
+    if (!payload) {
+      console.warn(`[capture] Outstand analytics returned empty payload: postId=${p.outstand_post_id}`);
+      fetchErrors++; continue;
+    }
 
     const m = normalizeAnalytics(payload);
     const rows = due.map((milestone) => ({
@@ -84,12 +93,18 @@ serve(async (req: Request) => {
     }));
 
     // 4. Idempotent insert (unique index drops dupes from overlapping runs).
-    const { error: insErr, count } = await admin
+    // ignoreDuplicates + .select() returns ONLY the rows actually inserted, so a
+    // re-run over already-captured milestones correctly reports inserted=0.
+    const { data: insRows, error: insErr } = await admin
       .from("content_performance")
-      .upsert(rows, { onConflict: "outstand_post_id,milestone", ignoreDuplicates: true, count: "exact" });
-    if (insErr) { fetchErrors++; continue; }
-    inserted += count ?? rows.length;
+      .upsert(rows, { onConflict: "outstand_post_id,milestone", ignoreDuplicates: true })
+      .select("id");
+    if (insErr) {
+      console.error(`[capture] content_performance insert failed: postId=${p.outstand_post_id}`, insErr.message);
+      insertErrors++; continue;
+    }
+    inserted += insRows?.length ?? 0;
   }
 
-  return json(200, { ok: true, posts: posts?.length ?? 0, inserted, skipped, fetchErrors });
+  return json(200, { ok: true, posts: posts?.length ?? 0, inserted, skipped, fetchErrors, insertErrors });
 });
