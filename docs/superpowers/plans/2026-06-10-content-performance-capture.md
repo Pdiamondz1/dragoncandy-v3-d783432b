@@ -251,7 +251,7 @@ export function normalizeAnalytics(raw: Record<string, unknown>): NormalizedMetr
 - [ ] **Step 4: Run tests, verify they PASS**
 
 Run: `npx vitest run supabase/functions/content-performance-capture/capture.test.ts`
-Expected: PASS — all 12 tests green. (NOTE: `vite.config.ts` excludes `supabase/**` by default; this task also adds a surgical carve-out so pure vitest-style edge-logic tests actually run — excluding only the Deno-style `_shared` tests by path.)
+Expected: PASS — all tests green (14 after the post-validation `aggregated_metrics` cases were added). (NOTE: `vite.config.ts` excludes `supabase/**` by default; this task also adds a surgical carve-out so pure vitest-style edge-logic tests actually run — excluding only the Deno-style `_shared` tests by path.)
 
 - [ ] **Step 5: Commit**
 
@@ -591,7 +591,7 @@ Expected: > 0 after the dashboard loads (was permanently 0 before).
 Run: `npm run build`
 Expected: green (backend + migrations only; no frontend change).
 Run: `npx vitest run supabase/functions/content-performance-capture/capture.test.ts`
-Expected: 12 passing.
+Expected: 14 passing.
 
 - [ ] **Step 8: Commit any normalization adjustments + push the branch**
 
@@ -610,7 +610,7 @@ Then open a PR (do not auto-merge; human ship gate per QA discipline).
 - Vault-based cron is **registered and verified firing** in prod (`cron.job_run_details` shows `succeeded`).
 - `social_analytics_cache` exists in prod; dashboard persists.
 - `toast-token-refresh` dead-GUC cron flagged in the wiki.
-- `npm run build` green; `capture.test.ts` 8/8 passing.
+- `npm run build` green; `capture.test.ts` 14/14 passing.
 - No frontend changes; no Claude/OpenAI calls; auth untouched.
 
 ## Post-merge
