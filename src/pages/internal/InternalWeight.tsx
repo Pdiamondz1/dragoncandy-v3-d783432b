@@ -4,7 +4,7 @@ import {
   computeWeightAlerts,
   dailyGrowthBytes,
   DISK_LIMIT_BYTES,
-  COMPUTE_TIERS,
+  CURRENT_TIER,
   GB,
 } from '@/lib/internal/weightThresholds';
 import { StatCard, SectionHeading, ErrorCard } from '@/components/internal/stats';
@@ -40,7 +40,7 @@ const InternalWeight = () => {
   const alerts = computeWeightAlerts(snapshots);
   const growth = dailyGrowthBytes(snapshots);
   const diskPct = Math.round((latest.db_bytes / DISK_LIMIT_BYTES) * 100);
-  const tier = COMPUTE_TIERS[0];
+  const tier = CURRENT_TIER;
   const chartData = snapshots.map((s) => ({
     day: new Date(s.captured_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
     dbMb: Math.round(s.db_bytes / MB),

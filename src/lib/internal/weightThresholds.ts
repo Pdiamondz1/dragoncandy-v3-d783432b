@@ -10,7 +10,6 @@ export const GB = 1024 * 1024 * 1024;
 /** Spend cap limits disk to 8 GB on the current plan. */
 export const DISK_LIMIT_BYTES = 8 * GB;
 
-/** Current tier is the first entry; the ladder names the upgrade path. */
 export const COMPUTE_TIERS = [
   { name: 'Micro', ramGb: 1, monthlyUsd: 10 },
   { name: 'Small', ramGb: 2, monthlyUsd: 15 },
@@ -18,6 +17,10 @@ export const COMPUTE_TIERS = [
   { name: 'Large', ramGb: 8, monthlyUsd: 110 },
   { name: 'XL', ramGb: 16, monthlyUsd: 210 },
 ] as const;
+
+/** Index into COMPUTE_TIERS — the one-line update when the plan changes. */
+const CURRENT_TIER_INDEX = 0;
+export const CURRENT_TIER = COMPUTE_TIERS[CURRENT_TIER_INDEX];
 
 const DISK_WARNING_RATIO = 0.7;
 const DISK_CRITICAL_RATIO = 0.85;
@@ -69,8 +72,12 @@ export function computeWeightAlerts(snapshots: WeightSnapshot[]): WeightAlert[] 
   const latest = sorted[sorted.length - 1];
   const alerts: WeightAlert[] = [];
   const ratio = latest.db_bytes / DISK_LIMIT_BYTES;
-  const nextTier = COMPUTE_TIERS[1];
-  const upgradeHint = `Next tier: ${nextTier.name} (${nextTier.ramGb} GB RAM, $${nextTier.monthlyUsd}/mo) — or raise the spend cap for more disk.`;
+  const nextTier = COMPUTE_TIERS[CURRENT_TIER_INDEX + 1] as
+    | (typeof COMPUTE_TIERS)[number]
+    | undefined;
+  const upgradeHint = nextTier
+    ? `Next tier: ${nextTier.name} (${nextTier.ramGb} GB RAM, $${nextTier.monthlyUsd}/mo) — or raise the spend cap for more disk.`
+    : 'Already on the top listed tier — raise the spend cap or contact Supabase for custom compute.';
 
   if (ratio >= DISK_CRITICAL_RATIO) {
     alerts.push({
