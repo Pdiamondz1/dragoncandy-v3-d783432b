@@ -52,8 +52,16 @@ export default defineConfig(({ mode }) => ({
   test: {
     globals: true,
     environment: 'node',
-    // Unit tests only — Playwright e2e specs live in tests/e2e and run via playwright.config.ts;
-    // supabase/** holds Deno edge functions (https:// imports) tested via `deno test`, not Vitest.
-    exclude: [...configDefaults.exclude, 'tests/e2e/**', 'supabase/**'],
+    // Playwright e2e specs live in tests/e2e and run via playwright.config.ts.
+    // supabase/ holds Deno edge functions: their Deno-style tests (https:// std
+    // imports) can't run under Vitest, so exclude those by path. But pure,
+    // dependency-free edge logic (capture.ts, reconcile.ts) ships a vitest-style
+    // *.test.ts that DOES run here for real CI coverage.
+    exclude: [
+      ...configDefaults.exclude,
+      'tests/e2e/**',
+      'supabase/functions/_shared/flush-pending-balance.test.ts',
+      'supabase/functions/_shared/outstand-webhook-lib.test.ts',
+    ],
   },
 }));
