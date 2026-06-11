@@ -52,4 +52,22 @@ describe('normalizeAnalytics', () => {
     expect(normalizeAnalytics(null).views).toBeNull();
     expect(normalizeAnalytics(undefined).reach).toBeNull();
   });
+  it('maps the real Outstand aggregated_metrics envelope (verified prod shape)', () => {
+    const m = normalizeAnalytics({
+      post: { id: 'mJuDd' },
+      success: true,
+      aggregated_metrics: {
+        total_likes: 3, total_reach: 120, total_views: 540, total_shares: 1,
+        total_comments: 2, total_impressions: 200, average_engagement_rate: 4.1,
+      },
+      metrics_by_account: [],
+    });
+    expect(m).toEqual({ views: 540, likes: 3, comments: 2, shares: 1, saves: null, reach: 120, engagement_rate: 4.1 });
+  });
+  it('preserves zeros from a real all-zero aggregated_metrics payload', () => {
+    const m = normalizeAnalytics({ aggregated_metrics: { total_views: 0, total_likes: 0, average_engagement_rate: 0 } });
+    expect(m.views).toBe(0);
+    expect(m.likes).toBe(0);
+    expect(m.engagement_rate).toBe(0);
+  });
 });

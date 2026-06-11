@@ -45,19 +45,28 @@ function pick(o: Record<string, unknown>, keys: string[]): number | null {
 }
 
 /**
- * Map Outstand's (unconfirmed, variant-prone) analytics payload to our columns.
- * Tolerant of field-name variants; the full payload is stored separately in `raw`
- * by the caller, so any unmapped metric is never lost.
+ * Map Outstand's analytics payload to our columns. The real `/posts/{id}/analytics`
+ * response (verified against prod 2026-06-10) nests the numbers under an
+ * `aggregated_metrics` object with `total_*` / `average_*` field names:
+ *   { post, success, aggregated_metrics: { total_views, total_likes, total_reach,
+ *     total_shares, total_comments, total_impressions, average_engagement_rate },
+ *     metrics_by_account: [...] }
+ * We read from `aggregated_metrics` when present, else fall back to a flat top-level
+ * shape. Field-name variants are tolerated and the full payload is stored separately
+ * in `raw` by the caller, so any unmapped metric (incl. per-account detail) is never lost.
  */
 export function normalizeAnalytics(raw: Record<string, unknown> | null | undefined): NormalizedMetrics {
   const o = raw ?? {};
+  const agg = (o.aggregated_metrics && typeof o.aggregated_metrics === 'object')
+    ? (o.aggregated_metrics as Record<string, unknown>)
+    : o;
   return {
-    views: pick(o, ['views', 'viewCount', 'video_views', 'plays']),
-    likes: pick(o, ['likes', 'likeCount', 'like_count']),
-    comments: pick(o, ['comments', 'commentCount', 'comment_count']),
-    shares: pick(o, ['shares', 'shareCount', 'share_count']),
-    saves: pick(o, ['saves', 'saveCount', 'saved']),
-    reach: pick(o, ['reach', 'impressions', 'reachCount']),
-    engagement_rate: pick(o, ['engagementRate', 'engagement_rate']),
+    views: pick(agg, ['total_views', 'views', 'viewCount', 'video_views', 'plays']),
+    likes: pick(agg, ['total_likes', 'likes', 'likeCount', 'like_count']),
+    comments: pick(agg, ['total_comments', 'comments', 'commentCount', 'comment_count']),
+    shares: pick(agg, ['total_shares', 'shares', 'shareCount', 'share_count']),
+    saves: pick(agg, ['total_saves', 'saves', 'saveCount', 'saved']),
+    reach: pick(agg, ['total_reach', 'reach', 'total_impressions', 'impressions', 'reachCount']),
+    engagement_rate: pick(agg, ['average_engagement_rate', 'engagementRate', 'engagement_rate']),
   };
 }
