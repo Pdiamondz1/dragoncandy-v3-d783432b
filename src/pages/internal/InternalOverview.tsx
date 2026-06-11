@@ -2,43 +2,9 @@ import { usePlatformStats } from '@/hooks/internal/usePlatformStats';
 import { useRevenueStats } from '@/hooks/internal/useRevenueStats';
 import { useCostStats } from '@/hooks/internal/useCostStats';
 import { useInternalAccess } from '@/hooks/internal/useInternalAccess';
+import { StatCard, SectionHeading, ErrorCard } from '@/components/internal/stats';
+import { formatCents, formatUsd } from '@/lib/utils';
 import { Spinner } from '@/components/ui/spinner';
-
-const usd = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
-const formatCents = (cents: number) => usd.format(cents / 100);
-
-interface StatCardProps {
-  label: string;
-  value: string | number;
-  sub?: string;
-  accent?: 'teal' | 'pink';
-}
-
-function StatCard({ label, value, sub, accent = 'teal' }: StatCardProps) {
-  return (
-    <div
-      className={`rounded-2xl border-2 bg-dc-card p-4 ${
-        accent === 'teal' ? 'border-teal-300' : 'border-dc-pink'
-      }`}
-    >
-      <p className="text-xs font-semibold uppercase tracking-wide text-dc-text-muted">{label}</p>
-      <p className="mt-1 text-3xl font-extrabold text-dc-text">{value}</p>
-      {sub && <p className="mt-1 text-xs text-dc-text-muted">{sub}</p>}
-    </div>
-  );
-}
-
-function SectionHeading({ children }: { children: React.ReactNode }) {
-  return <h2 className="mb-3 mt-8 text-lg font-bold text-dc-text first:mt-0">{children}</h2>;
-}
-
-function ErrorCard({ message }: { message: string }) {
-  return (
-    <div className="rounded-2xl border-2 border-dc-pink bg-dc-pink/10 p-4 text-sm text-dc-text">
-      {message}
-    </div>
-  );
-}
 
 const InternalOverview = () => {
   const { isAdmin } = useInternalAccess();
@@ -63,6 +29,8 @@ const InternalOverview = () => {
   const c = cost.data;
   const activeCampaigns = p.campaigns.by_status['active'] ?? 0;
   const verifiedPosts = p.dragonshare.posts_by_status['verified'] ?? 0;
+  const topFunction = c ? topEntry(c.mtd_by_function) : undefined;
+  const topModel = c ? topEntry(c.mtd_by_model) : undefined;
 
   return (
     <div className="max-w-6xl">
@@ -147,23 +115,23 @@ const InternalOverview = () => {
             <ErrorCard message="Cost stats failed to load." />
           ) : (
             <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-              <StatCard label="MTD AI spend" value={usd.format(c.mtd_spend_usd)} />
+              <StatCard label="MTD AI spend" value={formatUsd(c.mtd_spend_usd)} />
               <StatCard
                 label="Top function"
-                value={topEntry(c.mtd_by_function)?.[0] ?? '—'}
-                sub={topEntry(c.mtd_by_function) ? usd.format(topEntry(c.mtd_by_function)![1]) : undefined}
+                value={topFunction?.[0] ?? '—'}
+                sub={topFunction ? formatUsd(topFunction[1]) : undefined}
               />
               <StatCard
                 label="Top model"
-                value={topEntry(c.mtd_by_model)?.[0] ?? '—'}
-                sub={topEntry(c.mtd_by_model) ? usd.format(topEntry(c.mtd_by_model)![1]) : undefined}
+                value={topModel?.[0] ?? '—'}
+                sub={topModel ? formatUsd(topModel[1]) : undefined}
               />
               <StatCard
                 label="Cost alert"
                 value={c.latest_alert?.alert_level ?? 'none'}
                 sub={
                   c.latest_alert
-                    ? `${Math.round(c.latest_alert.ratio * 100)}% of ${usd.format(c.latest_alert.cap_usd)} cap`
+                    ? `${Math.round(c.latest_alert.ratio * 100)}% of ${formatUsd(c.latest_alert.cap_usd)} cap`
                     : 'No alerts logged'
                 }
               />
