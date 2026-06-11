@@ -157,6 +157,11 @@ service-role / sb_secret key, matching the project's new API-key system — see
 1. **Enumerate due posts.** Select `social_post_log` rows where `created_at > now() - interval '8 days'`.
    For each, determine which milestones are due (age ≥ 24h, 72h, 7d) and **not already captured**
    (left-join `content_performance` on `(outstand_post_id, milestone)`).
+   **Milestone semantics (codify, do not re-derive):** a milestone is captured on the **first cron run
+   where `age ≥ milestone`** — so the stored value is "first observation after the threshold," not
+   "exactly at the threshold." With a once-daily cron a post can cross two thresholds between runs; the
+   append-only + unique-index design handles this correctly (each not-yet-captured milestone is simply
+   inserted the first time it's observed past its threshold, even if that's in the same run).
 2. **Fetch analytics.** For each due (post, milestone): `GET {OUTSTAND_BASE_URL}/posts/{outstand_post_id}/analytics`
    with `Authorization: Bearer ${OUTSTAND_API_KEY}`. On non-2xx, log and skip (no row written — the milestone
    stays due and is retried next run).
@@ -223,6 +228,11 @@ drift class as the logo-trigger and `match_donny_knowledge` issues ([[Migration 
 
 ## Verification
 
+0. **Prerequisite — Vault secret (both envs).** Confirm the Vault extension is enabled, then register the
+   `content_capture_key` secret via `vault.create_secret(...)` on **staging and prod** *before* the A3 cron
+   migration runs. The cron silently produces a null bearer if the secret name is missing — the exact
+   failure class this slice exists to escape — so treat this as an explicit checklist gate, not an
+   afterthought.
 1. **Staging first.** Apply A1 + A4 migrations to staging (`mhffqrawgizhprbobcta`). Run `get_advisors`;
    resolve any RLS/security findings.
 2. **Seed + manual run.** Insert a couple of `social_post_log` rows with **real** Outstand post IDs; invoke

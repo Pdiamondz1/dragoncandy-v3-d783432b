@@ -47,6 +47,10 @@ Decomposed into shippable sub-projects (keystone first):
    analytics endpoint and persist metrics (likes/views/reach/engagement); ship `social_analytics_cache`
    to prod; populate `dragonshare_engagement` from the same source. Feeds creator, DragonShare, and
    campaign content performance at once.
+   > **Superseded (2026-06-10):** the keystone design
+   > (`docs/superpowers/specs/2026-06-10-content-performance-capture-design.md`) routes DragonShare
+   > coverage through a single canonical `content_performance` table (faceted by `post_type`) rather than
+   > a parallel write to `dragonshare_engagement`, which is **deferred** to avoid two competing tables.
 2. **Campaign/promotions performance** — attach the captured metrics to campaign/promotion content.
 3. **Toast enablement** — ship `toast_*` migrations to prod, set creds, wire menu/order/traffic syncs
    (restaurant-revenue signal; deferred — Toast attribution was already out of v1 scope).
