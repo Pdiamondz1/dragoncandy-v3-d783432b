@@ -219,7 +219,9 @@ drift class as the logo-trigger and `match_donny_knowledge` issues ([[Migration 
 ## Guardrails / out of scope
 
 - **No recommender.** This slice only *captures*. Donny reasoning over `content_performance` is Phase B.
-- **No Toast.** `toast-token-refresh` bug is flagged (A6), not fixed.
+- **No Toast.** `toast-token-refresh` bug is flagged (A6), not fixed. Toast is additionally **blocked on
+  external access** — DragonCandy must still apply for Toast API/integration access, so no Toast analytics
+  or data can flow at this time regardless of scope. Toast enablement is gated on that approval.
 - **No frontend.** No dashboard reads `content_performance` yet — that's Phase B.
 - **Ledger-first.** A1 migration + RLS land and are reviewed before A2 capture code is written.
 - **Auth untouched.** No changes to auth/session logic.
