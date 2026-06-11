@@ -51,7 +51,7 @@ function clearDraft() {
   }
 }
 
-export function useDragonShareSubmitForm() {
+export function useDragonShareSubmitForm(sourceBriefId?: string | null) {
   const submitMutation = useSubmitDragonSharePost();
   const { upload, uploading } = useDragonShareUpload();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -63,6 +63,13 @@ export function useDragonShareSubmitForm() {
   const [postUrl, setPostUrl] = useState(initialDraft.postUrl);
   const [selectedOrg, setSelectedOrg] = useState<RestaurantSearchResult | null>(null);
   const [submittedOrgName, setSubmittedOrgName] = useState<string | null>(null);
+
+  // Capture the originating brief id when it first arrives — it must survive the
+  // page clearing the ?brief= URL param (same reason selectedOrg is captured).
+  const [capturedBriefId, setCapturedBriefId] = useState<string | null>(null);
+  useEffect(() => {
+    if (sourceBriefId) setCapturedBriefId(sourceBriefId);
+  }, [sourceBriefId]);
 
   // Keep the persisted draft in sync with the upload/link fields.
   useEffect(() => {
@@ -94,6 +101,7 @@ export function useDragonShareSubmitForm() {
     setUploadedFileType(null);
     setPostUrl('');
     setSelectedOrg(null);
+    setCapturedBriefId(null);
   }
 
   async function ingestFile(file: File) {
@@ -135,6 +143,7 @@ export function useDragonShareSubmitForm() {
         post_url: postUrl.trim() || null,
         platform: detectedPlatform,
         content_file_path: uploadedUrl,
+        source_brief_id: capturedBriefId,
       });
       reset();
       setSubmittedOrgName(orgName);
