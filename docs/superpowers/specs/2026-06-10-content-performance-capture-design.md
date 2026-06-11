@@ -254,9 +254,13 @@ drift class as the logo-trigger and `match_donny_knowledge` issues ([[Migration 
 
 - **`toast-token-refresh` likely dead in prod** (shared dead-GUC cron pattern) → Toast tokens may not be
   refreshing. Flagged to wiki (A6); verify when Toast resumes.
-- **Outstand `/posts/{id}/analytics` payload shape is unconfirmed** — the SDK lists the endpoint but it has
-  never been called in this codebase. A2 must be written defensively (coalesce field names, store `raw`) and
-  validated against a real response during staging verification.
+- ~~**Outstand `/posts/{id}/analytics` payload shape is unconfirmed**~~ — **RESOLVED (verified against prod
+  2026-06-10).** The real response nests metrics under `aggregated_metrics` with `total_*` / `average_*`
+  names: `{ post, success, aggregated_metrics: { total_views, total_likes, total_reach, total_shares,
+  total_comments, total_impressions, average_engagement_rate }, metrics_by_account: [...] }`.
+  `normalizeAnalytics` reads from `aggregated_metrics` (flat top-level fallback retained) and the full
+  payload is stored in `raw`. Validated end-to-end against the 1 real prod post (auth → enumerate → fetch →
+  map → idempotent insert; re-run reports `inserted:0`).
 - **Vault availability** — confirm the Vault extension is enabled on both staging and prod before relying on
   `vault.decrypted_secrets` in the cron.
 - **`social_post_log` coverage** — capture is only as complete as this table. Confirm every publish path

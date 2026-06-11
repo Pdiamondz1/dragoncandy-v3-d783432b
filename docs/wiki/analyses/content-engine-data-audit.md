@@ -55,8 +55,17 @@ dead GUC dependency.
 
 ## Phase A — "Turn on the signal" (the foundation)
 
+> **Keystone SHIPPED & live in prod (2026-06-10).** `content_performance` table + RLS, the
+> `content-performance-capture` edge function, and a **Vault-based `pg_cron`** job (daily 09:00 UTC) are
+> deployed to staging + prod. Validated end-to-end against the 1 real prod post: the Outstand
+> `/posts/{id}/analytics` payload shape was confirmed (`aggregated_metrics` envelope), metrics map
+> correctly, and re-runs are idempotent. `social_analytics_cache` was also replayed to prod (the dashboard
+> drift fix). Spec/plan: `docs/superpowers/{specs,plans}/2026-06-10-content-performance-capture*`.
+> Remaining within Phase A: sub-projects 2–3 below. (Staging cron is live but no-ops until staging gets
+> `OUTSTAND_API_KEY` + real posts.)
+
 Decomposed into shippable sub-projects (keystone first):
-1. **Social content-performance capture** *(keystone).* Call the already-built Outstand per-post
+1. **Social content-performance capture** *(keystone — ✅ shipped).* Call the already-built Outstand per-post
    analytics endpoint and persist metrics (likes/views/reach/engagement); ship `social_analytics_cache`
    to prod; populate `dragonshare_engagement` from the same source. Feeds creator, DragonShare, and
    campaign content performance at once.
