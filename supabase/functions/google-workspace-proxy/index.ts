@@ -91,21 +91,28 @@ serve(async (req) => {
 
         const identity = parseIdToken(tokens.id_token ?? "");
         if (!identity.email) {
+          // Never leave a granted-but-unstored token live at Google.
+          await revokeToken(tokens.refresh_token);
           return json({ error: "Google identity missing from token response" }, 400);
         }
 
         // Workspace-day domain restriction (spec §2.1): when set, only
-        // accounts on the DragonCandy Workspace domain may connect.
+        // accounts on the DragonCandy Workspace domain may connect. The `hd`
+        // claim is the ONLY acceptable evidence — Google documents that email
+        // domains must not be used as org-membership proof, and `hd` is absent
+        // for non-Workspace accounts.
         const allowedDomain = Deno.env.get("GOOGLE_ALLOWED_DOMAIN");
-        if (allowedDomain) {
-          const domain = identity.hd ?? identity.email.split("@")[1];
-          if (domain?.toLowerCase() !== allowedDomain.toLowerCase()) {
-            await revokeToken(tokens.refresh_token);
-            return json(
-              { error: `Only ${allowedDomain} Google accounts can connect to the DragonCandy Workspace` },
-              403
-            );
+        if (allowedDomain && identity.hd?.toLowerCase() !== allowedDomain.toLowerCase()) {
+          const revoked = await revokeToken(tokens.refresh_token);
+          if (!revoked) {
+            // Token isn't stored anywhere on our side; the grant lingers only
+            // in the user's own Google permissions. Log loudly and still reject.
+            console.error("[google-workspace-proxy] domain-reject revoke failed for", identity.email);
           }
+          return json(
+            { error: `Only ${allowedDomain} Google accounts can connect to the DragonCandy Workspace` },
+            403
+          );
         }
 
         const dcFolderId = await findOrCreateDcFolder(tokens.access_token);
@@ -154,7 +161,16 @@ serve(async (req) => {
           .eq("user_id", user.id)
           .maybeSingle();
         if (account) {
-          await revokeToken(account.refresh_token);
+          // Revocation must be CONFIRMED before we delete our only copy of the
+          // refresh token — otherwise the grant would linger at Google with no
+          // way to retry. On failure we keep the row so disconnect can be retried.
+          const revoked = await revokeToken(account.refresh_token);
+          if (!revoked) {
+            return json(
+              { error: "Google did not confirm the revocation — try disconnecting again", code: "revoke_failed" },
+              502
+            );
+          }
           await supabaseAdmin.from("google_workspace_accounts").delete().eq("id", account.id);
         }
         return json({ success: true });

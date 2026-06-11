@@ -3,6 +3,7 @@ import { useCallback, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useOptimizedAnalytics } from '@/hooks/useOptimizedAnalytics';
+import { sanitizeUrlForAnalytics } from '@/lib/analyticsUrl';
 
 interface AnalyticsEvent {
   event_type: string;
@@ -71,7 +72,7 @@ export const useAnalytics = () => {
           const navigation = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming;
           if (navigation) {
             trackPerformance('page_load_time', navigation.loadEventEnd - navigation.fetchStart, {
-              page_url: window.location.href
+              page_url: sanitizeUrlForAnalytics(window.location.href)
             });
           }
         }, 1000);

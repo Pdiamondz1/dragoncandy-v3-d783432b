@@ -13,7 +13,13 @@ const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 const GOOGLE_REVOKE_URL = "https://oauth2.googleapis.com/revoke";
 const DRIVE_FILES_URL = "https://www.googleapis.com/drive/v3/files";
 
-export const GOOGLE_SCOPES = ["https://www.googleapis.com/auth/drive.file"];
+// openid + email are required for the id_token that carries the account
+// identity (email/hd); both are non-sensitive OIDC scopes.
+export const GOOGLE_SCOPES = [
+  "openid",
+  "email",
+  "https://www.googleapis.com/auth/drive.file",
+];
 export const DC_FOLDER_NAME = "DragonCandy AIOS";
 
 export class GoogleWorkspaceError extends Error {
@@ -148,10 +154,21 @@ export function parseIdToken(idToken: string): { email?: string; hd?: string } {
   }
 }
 
-export async function revokeToken(token: string): Promise<void> {
-  await fetch(`${GOOGLE_REVOKE_URL}?token=${encodeURIComponent(token)}`, { method: "POST" }).catch(
-    () => {}
-  );
+/** Revoke a token at Google. Returns true on confirmed revocation. */
+export async function revokeToken(token: string): Promise<boolean> {
+  try {
+    const resp = await fetch(`${GOOGLE_REVOKE_URL}?token=${encodeURIComponent(token)}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    });
+    if (!resp.ok) {
+      console.error("[google-workspace] revoke failed:", resp.status, (await resp.text()).slice(0, 200));
+    }
+    return resp.ok;
+  } catch (err) {
+    console.error("[google-workspace] revoke errored:", err instanceof Error ? err.message : err);
+    return false;
+  }
 }
 
 // ---------------------------------------------------------------------------
