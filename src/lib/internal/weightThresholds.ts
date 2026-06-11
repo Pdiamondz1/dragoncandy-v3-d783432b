@@ -61,7 +61,8 @@ export function daysUntilDiskAlert(currentDbBytes: number, growthPerDay: number)
   const threshold = DISK_LIMIT_BYTES * DISK_WARNING_RATIO;
   if (currentDbBytes >= threshold) return 0;
   if (growthPerDay <= 0) return null;
-  return Math.ceil((threshold - currentDbBytes) / growthPerDay);
+  // FP-tolerant ceil: an exact N-day crossing can land at N + ~1e-15 in floats.
+  return Math.ceil((threshold - currentDbBytes) / growthPerDay - 1e-9);
 }
 
 export function computeWeightAlerts(snapshots: WeightSnapshot[]): WeightAlert[] {

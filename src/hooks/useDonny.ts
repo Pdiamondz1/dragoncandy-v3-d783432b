@@ -55,6 +55,7 @@ export function useDonny(options?: UseDonnyOptions) {
         .from('donny_conversations')
         .select('id, user_id, created_at, last_message_at, context_snapshot')
         .eq('user_id', user.id)
+        .neq('surface', 'internal') // internal (AIOS) threads stay out of the consumer panel
         .is('archived_at', null)
         .order('last_message_at', { ascending: false })
         .limit(1)
