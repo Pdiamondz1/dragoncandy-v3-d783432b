@@ -282,3 +282,18 @@ one-to-many `source_brief_id` forwarding, and the EXECUTE-revoke contrast vs. th
 Pages created: [[Content Engine Phase C Session]] (source).
 Pages updated: [[Content Engine]] (See Also), [[Content Engine Phase B Session]] (See Also),
 [[Content Engine Phase D Session]] (See Also), index.md.
+
+## [2026-06-11] update | Content Engine — Outstand measurability + honest "unmeasured" state
+
+Investigated why prod content_performance metrics are all-zero. Verdict: the capture pipeline is
+correct (zeros faithfully preserved); the zeros stem from an EMPTY metrics_by_account in Outstand's
+analytics payload, not a measured zero. Outstand exposes no deletion/archival signal (no analytics
+status field; webhooks are post.published/post.error only), and empty metrics_by_account is ambiguous
+(deleted/archived/disconnected/never-published/not-yet-populated). The captured mJuDd post has been
+empty for 5+ days — likely fundamentally unmeasurable. Shipped an honest surface: the Phase D RPC
+get_creator_brief_performance now returns measurable_post_count (raw-derived), and the creator card
+adds an 'unmeasured' state ("Metrics unavailable") instead of implying a measured "0 views" —
+subsuming the user-raised deletion/archival concern Outstand can't signal. No capture/edge-fn change,
+no new column.
+Pages updated: [[Outstand]] (analytics & measurability findings), [[Content Engine]] (Known Issues +
+unmeasured state).

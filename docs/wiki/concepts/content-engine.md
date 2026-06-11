@@ -129,11 +129,24 @@ content_performance (engagement signals, captured daily; carries source_brief_id
   draft is ignored, no `social_post_log` row exists and `content_briefs.social_post_log_id` stays null.
 - Engagement-side tables are still partial: `dragonshare_engagement` is schema-only; Outstand Phase 4
   analytics is still in scope. The link populates only once a real boost + publish actually happens.
-- **The Phase D card is empty in prod today** by data reality, not bug: `content_performance` has no
-  rows yet (no paying boosts), so every brief shows "Not posted yet". The card's standalone value
-  (brief history) holds regardless; metrics appear automatically when a real boost + publish flows.
-  On RPC error the card falls to its empty state (outer `ErrorBoundary` is the net) — a deliberate,
-  spec-tolerated simplification, not a distinct inline error.
+- **The Phase D card shows no brief-linked metrics in prod today** by data reality, not bug: no
+  *brief-linked* post has been published+captured since Phase C shipped (the one brief-linked post was
+  published pre-Phase-C, so it carries no `source_brief_id`), so briefs show "Not posted yet". The
+  card's standalone value (brief history) holds regardless. On RPC error the card falls to its empty
+  state (outer `ErrorBoundary` is the net) — a deliberate, spec-tolerated simplification.
+- **Outstand exposes no deletion/archival signal, and "all-zero" ≠ "measured zero" (2026-06-11).** The
+  analytics payload has no status/deleted field, and an **empty `metrics_by_account[]`** (the only
+  correlate of "unmeasurable") is ambiguous across deleted / archived / disconnected / never-published
+  / not-yet-populated (see [[Outstand]]). The captured `mJuDd` post has shown an empty
+  `metrics_by_account` for 5+ days — likely fundamentally unmeasurable, not just unwatched. So the loop
+  is engineering-complete but cannot yet demonstrate a real *measured* number; the open value question
+  is whether the publish pipeline can ever yield a populated `metrics_by_account`.
+- **Honest `unmeasured` state.** `get_creator_brief_performance` now returns `measurable_post_count`
+  (count of latest per-post snapshots with a non-empty `metrics_by_account`, derived from
+  `content_performance.raw`). The card's `deriveBriefStatus` adds an `'unmeasured'` state: a posted +
+  captured brief whose linked posts have **no per-account metrics** shows a "Metrics unavailable" pill
+  instead of a misleading "0 views". This subsumes the deletion/archival case Outstand can't signal.
+  (No capture/edge-fn change — measurability is derived in the RPC; no new column.)
 
 ## See Also
 
