@@ -5917,6 +5917,7 @@ export type Database = {
           last_captured_at: string
           organization_id: string
           post_count: number
+          measurable_post_count: number
           total_comments: number
           total_likes: number
           total_shares: number

@@ -12,6 +12,7 @@ export interface CreatorBriefPerformanceRow {
   brief: { recommended_format?: string; platform?: string; [key: string]: unknown };
   is_posted: boolean;
   post_count: number;
+  measurable_post_count: number;
   total_views: number | null;
   total_likes: number | null;
   total_comments: number | null;

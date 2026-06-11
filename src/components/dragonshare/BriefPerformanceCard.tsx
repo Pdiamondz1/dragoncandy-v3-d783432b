@@ -23,6 +23,8 @@ function statusPill(row: CreatorBriefPerformanceRow): { text: string; className:
       return { text: `${Math.round(row.total_views ?? 0)} views`, className: 'bg-emerald-100 text-emerald-700' };
     case 'measuring':
       return { text: 'Measuring…', className: 'bg-amber-100 text-amber-800' };
+    case 'unmeasured':
+      return { text: 'Metrics unavailable', className: 'bg-dc-pink/30 text-dc-pink-accent' };
     case 'awaiting_post':
     default:
       return { text: 'Not posted yet', className: 'bg-dc-teal/15 text-dc-teal-btn' };
