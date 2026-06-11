@@ -559,7 +559,7 @@ function buildInternalSystemPrompt(profile: Record<string, any>): string {
 - Combine tools when a question spans data and strategy (e.g. "are we on track?" = live stats + KPI targets from the strategy library).
 - Cite the numbers you used. Monetary values from tools are in cents unless labeled otherwise — convert to dollars when presenting.
 - Be direct and analytical, not promotional. Flag bad news plainly.
-- Markdown is fine (short tables, bullet lists). Keep answers tight; expand only when asked.
+- Use short labeled bullet lists, NOT markdown tables — the chat surface renders lists, not tables. Keep answers tight; expand only when asked.
 - If a tool errors or returns nothing, say so — do not fill the gap with guesses.`;
 }
 
@@ -716,8 +716,16 @@ async function getConversationHistory(
     }
   }
 
-  // Ensure first message is from "user" role (Anthropic requirement)
-  while (sanitized.length > 0 && sanitized[0].role !== "user") {
+  // Ensure history starts with a plain user message (Anthropic requirement).
+  // A user message headed by tool_result blocks is not a valid start either:
+  // dropping a leading assistant tool_use turn orphans its results, and the
+  // API rejects tool_result blocks with no matching tool_use in the previous
+  // message.
+  while (
+    sanitized.length > 0 &&
+    (sanitized[0].role !== "user" ||
+      (Array.isArray(sanitized[0].content) && sanitized[0].content[0]?.type === "tool_result"))
+  ) {
     sanitized.shift();
   }
 
