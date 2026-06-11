@@ -23,10 +23,11 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   preselectedOrg?: RestaurantSearchResult | null;
   sourceBriefId?: string | null;
+  prefillCaption?: string | null;
 }
 
-export function DragonShareSubmitSheet({ open, onOpenChange, preselectedOrg, sourceBriefId }: Props) {
-  const form = useDragonShareSubmitForm(sourceBriefId);
+export function DragonShareSubmitSheet({ open, onOpenChange, preselectedOrg, sourceBriefId, prefillCaption }: Props) {
+  const form = useDragonShareSubmitForm(sourceBriefId, prefillCaption);
   const [typeaheadOpen, setTypeaheadOpen] = useState(false);
 
   useEffect(() => {
@@ -78,6 +79,20 @@ export function DragonShareSubmitSheet({ open, onOpenChange, preselectedOrg, sou
             <p className="text-[10px] text-dc-text-muted/70 mt-1">
               Adds credibility — restaurants boost linked posts more often
             </p>
+          </div>
+
+          {/* Caption (optional) */}
+          <div>
+            <label className="text-[11px] text-dc-text-muted uppercase tracking-wide font-medium block mb-1.5">
+              Caption <span className="text-dc-text-muted/60">(optional)</span>
+            </label>
+            <textarea
+              value={form.caption}
+              onChange={(e) => form.setCaption(e.target.value)}
+              rows={4}
+              placeholder="Add a caption…"
+              className="w-full rounded-xl border border-dc-teal/30 bg-white p-3 text-sm text-dc-text placeholder:text-dc-text-muted/60 focus:outline-none focus:ring-2 focus:ring-dc-teal/50 resize-y"
+            />
           </div>
 
           {/* Tag restaurant — typeahead */}

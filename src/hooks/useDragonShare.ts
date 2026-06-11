@@ -66,7 +66,7 @@ export function useSubmitDragonSharePost() {
       post_url?: string | null;
       platform?: string | null;
       content_file_path?: string | null;
-      caption?: string;
+      caption?: string | null;
       source_brief_id?: string | null;
       target_org_unit_id?: string;
       hashtags?: string[];
