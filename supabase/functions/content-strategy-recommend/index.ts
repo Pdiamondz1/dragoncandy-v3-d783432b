@@ -70,6 +70,7 @@ serve(async (req) => {
       .select("id, user_id, business_name, industry, description, location, sample_content_urls")
       .in("user_id", memberIds)
       .eq("account_type", "restaurant")
+      .order("id", { ascending: true })   // stable resolution if an org has >1 restaurant profile
       .limit(1)
       .maybeSingle();
     if (!bp) return json(404, { error: "no restaurant profile for organization" }, req);
@@ -144,6 +145,7 @@ serve(async (req) => {
     let lastErr: unknown;
     let usage = { input_tokens: 0, output_tokens: 0 };
     for (let attempt = 0; attempt < 2; attempt++) {
+      if (attempt > 0) await new Promise((r) => setTimeout(r, 800));  // brief backoff before the retry
       const resp = await anthropicFetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-api-key": ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
@@ -173,7 +175,7 @@ serve(async (req) => {
     }
 
     // --- Persist ---
-    const { data: inserted } = await admin.from("content_briefs").insert({
+    const { data: inserted, error: insErr } = await admin.from("content_briefs").insert({
       creator_id: creatorId,
       organization_id: organizationId,
       context_snapshot: { businessName: bp.business_name, connectedPlatforms, perfSummary: perf.summary, ragChunkCount: ragChunks.length },
@@ -181,6 +183,9 @@ serve(async (req) => {
       model: modelConfig.model,
       used_performance_data: usedPerformanceData,
     }).select("id").maybeSingle();
+    if (insErr || !inserted?.id) {
+      console.warn("[content-strategy-recommend] brief persist failed:", insErr?.message ?? "no id returned");
+    }
 
     return json(200, { brief: parsed, brief_id: inserted?.id ?? null, used_performance_data: usedPerformanceData }, req);
   } catch (err) {
