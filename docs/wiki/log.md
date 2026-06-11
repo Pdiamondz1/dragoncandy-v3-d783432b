@@ -311,3 +311,16 @@ the architecture principle (registrations = a source-adapter swap behind social_
 app rebuild) and the Step-0 interim probe for Outstand's account-level endpoint.
 Pages created: [[Platform API Registration Plan]] (analysis).
 Pages updated: index.md.
+
+## [2026-06-11] update | Platform API Registration Plan — deep dives (YouTube, TikTok, X, Toast)
+
+Added live-docs-verified deep dives for the four remaining platforms (Meta was done in the original).
+Key findings: YouTube `yt-analytics.readonly` is a sensitive scope → Google OAuth verification +
+security assessment, 4–6 wks (+ token-refresh gotcha matching our dead-cron history); TikTok maps cleanly
+to user.info.stats (account totals) + video.list (per-video), app review w/ video demo, plus a new 2026
+Creator Search Insights API (no per-creator OAuth); X moved to PAY-PER-USE on 2026-02-06 (no free tier
+for new devs; ~$0.005/read, 2M/mo cap; legacy Basic/Pro existing-subscribers-only) — lowest priority;
+Toast is a formal Integration Partner Application (compliance/privacy/security/legal vetting → signed
+agreement → sandbox → certification → GA), longest lead, start first. Updated the status table (X row,
+YouTube/TikTok lead times) and Sources.
+Pages updated: [[Platform API Registration Plan]].
