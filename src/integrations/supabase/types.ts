@@ -5946,6 +5946,24 @@ export type Database = {
         Returns: undefined
       }
       request_org_deletion: { Args: { p_org_id: string }; Returns: undefined }
+      get_creator_brief_performance: {
+        Args: { result_limit?: number }
+        Returns: {
+          brief_id: string
+          organization_id: string
+          created_at: string
+          used_performance_data: boolean
+          brief: Json
+          is_posted: boolean
+          post_count: number
+          total_views: number
+          total_likes: number
+          total_comments: number
+          total_shares: number
+          avg_engagement_rate: number
+          last_captured_at: string
+        }[]
+      }
       resolve_dragonshare_orgs: {
         Args: { p_org_ids: string[] }
         Returns: {
