@@ -70,7 +70,7 @@ dragonshare_posts row { ..., target_org_id, source_brief_id }   ← brief→subm
 | C1 | `dragonshare_posts.source_brief_id` column (FK → `content_briefs`, nullable) + index | DB migration (ledger-first) |
 | C2 | CTA on the brief card (`ContentIdeaCard`) → deep-link with `restaurant` + `brief` params | Frontend |
 | C3 | `CreatorDragonShare`: read `?brief=`, validate the brief, derive `sourceBriefId`; pass org + `sourceBriefId` to **both** forms | Frontend |
-| C4 | `DragonShareSubmitSheet` accepts `preselectedOrg` + `sourceBriefId` (mobile plumbing); both forms forward `sourceBriefId`; mutation + `useSubmitDragonSharePost` insert `source_brief_id` | Frontend |
+| C4 | `DragonShareSubmitSheet` accepts `preselectedOrg` + `sourceBriefId` (mobile plumbing); both forms forward `sourceBriefId` → `useDragonShareSubmitForm` → `useSubmitDragonSharePost` inserts `source_brief_id` | Frontend |
 
 ---
 
@@ -130,12 +130,16 @@ In `ContentIdeaCard`'s `BriefView` (which already has the selected `org` with `.
   rendered without an org, so the restaurant is **not** pre-selected on mobile. Add `preselectedOrg?` (forward
   it into the same `useEffect`→`form.setSelectedOrg` consumption the inline form uses) and `sourceBriefId?`.
 - **`DragonShareInlineForm` (desktop)** already consumes `preselectedOrg`; add `sourceBriefId?` passthrough.
-- **Threading mechanism (concrete):** the page passes values as **props**; each form component consumes them
-  via a `useEffect` (mirroring how `preselectedOrg` is already consumed) — the page does **not** reach into
-  the hook's state. `sourceBriefId` is held alongside the form's submit inputs and included in the submit call.
-- **`useDragonShareSubmitForm` / `useSubmitDragonSharePost`** (`src/hooks/useDragonShare.ts`): add
-  `source_brief_id?: string | null` to the submit arg type and include `source_brief_id: <value> ?? null` in
-  the `dragonshare_posts` insert object literal. One additive field; absent → null for normal submissions.
+- **Threading mechanism (concrete), end-to-end:** the page passes `preselectedOrg` + `sourceBriefId` as
+  **props**; each form component consumes them via a `useEffect` (mirroring how `preselectedOrg` is already
+  consumed) — the page does **not** reach into hook state. The chain is
+  *form component → `useDragonShareSubmitForm` → `useSubmitDragonSharePost`*:
+  - **`useDragonShareSubmitForm`** (`src/hooks/useDragonShareSubmitForm.ts`) — the intermediary both forms call
+    and which owns `handleSubmit`: accept `sourceBriefId?` (the natural mirror of how it already holds
+    `selectedOrg`) and include `source_brief_id: sourceBriefId ?? null` in its existing `mutateAsync` payload.
+  - **`useSubmitDragonSharePost`** (`src/hooks/useDragonShare.ts`): add `source_brief_id?: string | null` to
+    the submit arg type and include `source_brief_id` in the `dragonshare_posts` insert object literal.
+  One additive field through each layer; absent → null for normal submissions.
 
 No change to the rest of the flow (upload, platform detection, boost-or-pass, notify, the `sessionStorage`
 draft) — `source_brief_id` rides along as one nullable field.
