@@ -99,3 +99,6 @@ verify_jwt = false
 
 [functions.outstand-webhook]
 verify_jwt = false
+
+[functions.content-performance-capture]
+verify_jwt = false

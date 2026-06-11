@@ -1,0 +1,95 @@
+// content-performance-capture — scheduled (cron-invoked) loop.
+// Enumerates recently-published posts from social_post_log, pulls Outstand's
+// per-post analytics directly with the org key (no proxy — ownership is already
+// known from our own table), and inserts append-only maturation snapshots.
+//
+// Auth: cron passes Bearer <SUPABASE_SERVICE_ROLE_KEY> (the injected service/
+// sb_secret key). verify_jwt=false; we check the bearer ourselves.
+//
+// ENV: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, OUTSTAND_API_KEY,
+//      OUTSTAND_BASE_URL (defaults to https://api.outstand.so/v1)
+
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { milestonesDue, normalizeAnalytics, type Milestone } from "./capture.ts";
+
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const OUTSTAND_BASE_URL = Deno.env.get("OUTSTAND_BASE_URL") ?? "https://api.outstand.so/v1";
+
+function json(status: number, body: unknown): Response {
+  return new Response(JSON.stringify(body), {
+    status, headers: { "Content-Type": "application/json" },
+  });
+}
+
+serve(async (req: Request) => {
+  if (req.method !== "POST") return json(405, { error: "method_not_allowed" });
+
+  // Auth gate — only the cron (service-role bearer) may invoke.
+  const auth = req.headers.get("Authorization");
+  if (auth !== `Bearer ${SERVICE_KEY}`) return json(401, { error: "unauthorized" });
+
+  const OUTSTAND_API_KEY = Deno.env.get("OUTSTAND_API_KEY");
+  if (!OUTSTAND_API_KEY) return json(503, { error: "outstand_not_configured" });
+
+  const admin = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });
+  const now = new Date();
+
+  // 1. Posts younger than 8 days are still maturing.
+  const cutoff = new Date(now.getTime() - 8 * 24 * 60 * 60 * 1000).toISOString();
+  const { data: posts, error: postsErr } = await admin
+    .from("social_post_log")
+    .select("id, user_id, campaign_id, outstand_post_id, platform, post_type, created_at")
+    .gte("created_at", cutoff);
+  if (postsErr) return json(500, { error: "enumerate_failed", detail: postsErr.message });
+
+  let inserted = 0, skipped = 0, fetchErrors = 0;
+
+  for (const p of posts ?? []) {
+    // 2. Which milestones already captured for this post?
+    const { data: existing } = await admin
+      .from("content_performance")
+      .select("milestone")
+      .eq("outstand_post_id", p.outstand_post_id);
+    const captured = new Set<Milestone>((existing ?? []).map((r) => r.milestone as Milestone));
+
+    const due = milestonesDue(new Date(p.created_at), now, captured);
+    if (due.length === 0) { skipped++; continue; }
+
+    // 3. Fetch analytics once; reuse for every due milestone this run.
+    let payload: Record<string, unknown> | null = null;
+    try {
+      const res = await fetch(`${OUTSTAND_BASE_URL}/posts/${p.outstand_post_id}/analytics`, {
+        headers: { Authorization: `Bearer ${OUTSTAND_API_KEY}`, Accept: "application/json" },
+      });
+      if (!res.ok) { fetchErrors++; continue; }
+      const body = await res.json().catch(() => null);
+      payload = (body?.data ?? body) as Record<string, unknown> | null;
+    } catch (_e) { fetchErrors++; continue; }
+    if (!payload) { fetchErrors++; continue; }
+
+    const m = normalizeAnalytics(payload);
+    const rows = due.map((milestone) => ({
+      social_post_log_id: p.id,
+      user_id: p.user_id,
+      campaign_id: p.campaign_id,
+      outstand_post_id: p.outstand_post_id,
+      platform: p.platform,
+      post_type: p.post_type,
+      ...m,
+      raw: payload,
+      milestone,
+      is_settled: milestone === "7d",
+    }));
+
+    // 4. Idempotent insert (unique index drops dupes from overlapping runs).
+    const { error: insErr, count } = await admin
+      .from("content_performance")
+      .upsert(rows, { onConflict: "outstand_post_id,milestone", ignoreDuplicates: true, count: "exact" });
+    if (insErr) { fetchErrors++; continue; }
+    inserted += count ?? rows.length;
+  }
+
+  return json(200, { ok: true, posts: posts?.length ?? 0, inserted, skipped, fetchErrors });
+});
