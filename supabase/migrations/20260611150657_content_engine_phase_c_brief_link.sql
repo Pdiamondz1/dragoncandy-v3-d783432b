@@ -38,6 +38,10 @@ begin
 end;
 $$;
 
+-- Trigger functions need no direct EXECUTE grant (they run as table owner inside the trigger).
+-- Revoke the default PUBLIC grant so they aren't callable via /rest/v1/rpc (advisor 0028/0029).
+revoke execute on function public.resolve_social_post_log_brief() from public, anon, authenticated;
+
 drop trigger if exists trg_resolve_social_post_log_brief on public.social_post_log;
 create trigger trg_resolve_social_post_log_brief
   before insert on public.social_post_log
@@ -61,6 +65,8 @@ begin
   return null;
 end;
 $$;
+
+revoke execute on function public.link_brief_to_social_post() from public, anon, authenticated;
 
 drop trigger if exists trg_link_brief_to_social_post on public.social_post_log;
 create trigger trg_link_brief_to_social_post
