@@ -60,6 +60,9 @@ verify_jwt = false
 [functions.donny-chat]
 verify_jwt = false
 
+[functions.aios-report-ingest]
+verify_jwt = false
+
 [functions.donny-campaign-generate]
 verify_jwt = false
 
