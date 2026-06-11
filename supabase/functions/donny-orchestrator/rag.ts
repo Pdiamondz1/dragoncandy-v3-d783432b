@@ -38,21 +38,29 @@ export async function embedQuery(query: string): Promise<number[] | null> {
   }
 }
 
+export type KnowledgeScope = "consumer" | "internal";
+
 /**
  * Retrieve relevant knowledge chunks from donny_knowledge.
  * Uses cosine similarity if an embedding is provided, falls back to FTS.
+ *
+ * Scope: consumer (default) NEVER sees rows marked scope='internal' — both the
+ * RPC and the FTS fallback filter on it. Pass 'internal' only from
+ * admin-verified paths (internal Donny).
  */
 export async function retrieveContext(
   supabase: SupabaseClient,
   query: string,
   embedding: number[] | null,
-  limit = 5
+  limit = 5,
+  scope: KnowledgeScope = "consumer"
 ): Promise<string[]> {
   try {
     if (embedding !== null) {
       const { data, error } = await supabase.rpc("match_donny_knowledge", {
         query_embedding: embedding,
         match_count: limit,
+        scope_filter: scope,
       });
 
       if (!error && data && data.length > 0) {
@@ -65,15 +73,19 @@ export async function retrieveContext(
       }
     }
 
-    // FTS fallback
-    const { data: ftsData, error: ftsError } = await supabase
+    // FTS fallback — must apply the same scope boundary as the RPC.
+    let ftsQuery = supabase
       .from("donny_knowledge")
       .select("content")
       .textSearch("search_vector", query, {
         type: "plain",
         config: "english",
-      })
-      .limit(limit);
+      });
+    ftsQuery =
+      scope === "internal"
+        ? ftsQuery.eq("scope", "internal")
+        : ftsQuery.or("scope.is.null,scope.neq.internal");
+    const { data: ftsData, error: ftsError } = await ftsQuery.limit(limit);
 
     if (ftsError) {
       console.error("[rag] FTS fallback failed:", ftsError.message);

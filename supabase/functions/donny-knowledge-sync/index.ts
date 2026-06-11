@@ -8,10 +8,14 @@
 // - Idempotent: one row per wiki page, keyed on metadata.source_id
 //   ("wiki:<path>"). Re-syncing a page updates its row instead of duplicating.
 //
-// Request body: { pages: [{ source_id, content, metadata }], userId? }
-//   source_id  e.g. "wiki:concepts/self-improving-app"
-//   content    text to embed + store (title + body)
-//   metadata   { title, type, path, tags? } — stored alongside; source_id is added.
+// Request body: { pages: [{ source_id, content, metadata, scope?, full_content? }], userId? }
+//   source_id     e.g. "wiki:concepts/self-improving-app"
+//   content       text to embed + store (title + body)
+//   metadata      { title, type, path, tags? } — stored alongside; source_id is added.
+//   scope         'internal' marks the row internal-only (AIOS): RLS + the scoped
+//                 match_donny_knowledge keep it out of consumer Donny entirely.
+//   full_content  internal pages only — full markdown additionally upserted into
+//                 internal_docs (keyed on metadata.path) for the strategy viewer.
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -25,6 +29,8 @@ interface WikiPage {
   source_id: string;
   content: string;
   metadata?: Record<string, unknown>;
+  scope?: "internal";
+  full_content?: string;
 }
 
 serve(async (req) => {
@@ -59,6 +65,12 @@ serve(async (req) => {
     if (!p?.source_id || typeof p.content !== "string" || !p.content.trim()) {
       return json({ error: "each page needs a source_id and non-empty content" }, 400);
     }
+    if (p.scope !== undefined && p.scope !== "internal") {
+      return json({ error: "scope must be 'internal' or omitted" }, 400);
+    }
+    if (p.full_content !== undefined && p.scope !== "internal") {
+      return json({ error: "full_content is only valid on internal pages" }, 400);
+    }
   }
 
   const openaiKey = Deno.env.get("OPENAI_API_KEY");
@@ -89,6 +101,7 @@ serve(async (req) => {
       content: page.content,
       embedding: embeddings[i],
       source_type: "wiki",
+      scope: page.scope === "internal" ? "internal" : null,
       metadata: { ...(page.metadata ?? {}), source_id: page.source_id },
     };
 
@@ -118,6 +131,30 @@ serve(async (req) => {
           ? { source_id: page.source_id, action: "error", error: error.message }
           : { source_id: page.source_id, action: "inserted" },
       );
+    }
+
+    // Internal pages also feed the strategy viewer with full markdown.
+    if (page.scope === "internal" && page.full_content) {
+      const meta = page.metadata ?? {};
+      const docPath = typeof meta.path === "string" && meta.path ? meta.path : page.source_id;
+      const tagsRaw = meta.tags;
+      const tags = Array.isArray(tagsRaw)
+        ? tagsRaw.map(String)
+        : typeof tagsRaw === "string" && tagsRaw
+          ? tagsRaw.split(",").map((t: string) => t.trim()).filter(Boolean)
+          : [];
+      const { error: docErr } = await supabase.from("internal_docs").upsert(
+        {
+          path: docPath,
+          title: typeof meta.title === "string" && meta.title ? meta.title : page.source_id,
+          content_md: page.full_content,
+          tags,
+        },
+        { onConflict: "path" },
+      );
+      if (docErr) {
+        results.push({ source_id: `${page.source_id} (internal_docs)`, action: "error", error: docErr.message });
+      }
     }
   }
 
