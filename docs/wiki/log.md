@@ -211,3 +211,16 @@ Validated end-to-end vs the 1 real prod post — confirmed Outstand /posts/{id}/
 returns an aggregated_metrics envelope (total_* fields); mapping + idempotency verified.
 social_analytics_cache also replayed to prod (dashboard drift fix).
 Pages updated: [[Content Engine Data Audit]] (keystone shipped banner + payload shape).
+
+## [2026-06-11] update | Content Engine Phase C SHIPPED — performance loop closed
+
+Phase C (PR #73) bridges dragonshare_posts → social_post_log → content_performance, closing
+the brief→action→performance loop. One migration: social_post_log gains dragonshare_post_id +
+source_brief_id, content_performance gains source_brief_id, plus two SECURITY DEFINER triggers
+(BEFORE-INSERT resolves source_brief_id from the originating post; AFTER-INSERT sets
+content_briefs.social_post_log_id first-wins) with EXECUTE revoked (advisor 0028/0029). Frontend
+publishDraft writes dragonshare_post_id; content-performance-capture forwards source_brief_id.
+Verified on staging + prod via SQL trigger probes; build/typecheck/CI green. Resolved gating
+unknown: social_post_log is written only when a human clicks "Post Now" on the boost auto-draft.
+Pages updated: [[Content Engine]] (Phase C built + mechanism), [[Self-Improving App]] (Phase 6
+loop closed), [[DragonShare]] (published-post link), index.md.
