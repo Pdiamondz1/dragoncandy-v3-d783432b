@@ -155,11 +155,12 @@ different user). Reuses the shared utilities the codebase already standardizes o
    the signal as absent: `used_performance_data = false` and omit it from the prompt. (Today: always absent.)
 5. **RAG.** `embedQuery` + `retrieveContext(donny_knowledge, ..., k)` (reuse `donny-orchestrator/rag.ts`) for
    content-strategy best-practice chunks. Tolerate RAG being empty (graceful).
-6. **Generate.** Resolve the user's tier via `getUserUsageStage`, then one Claude call via
+6. **Generate.** Rate-limit + tier (both from `_shared/usage-tracker.ts`, as `donny-campaign-generate` does):
+   `checkHourlyRateLimit` (429 if exceeded), then `getUserUsageStage` for the tier. One Claude call via
    `getModelConfig("content-strategy-recommend", usageStage)` through `anthropicFetch`. Add a
-   `"content-strategy-recommend"` entry to `_shared/model-routing.ts` (Sonnet, `canDowngrade: true`) so the
-   routing + usage accounting is explicit (the helper defaults to Sonnet for unregistered names, but the
-   entry makes it intentional). System prompt: creator-content-strategy role, fed the business context +
+   `"content-strategy-recommend"` entry to `FUNCTION_ROUTING` in `_shared/model-routing.ts`
+   (`{ config: SONNET, canDowngrade: true }`) so routing is intentional (the helper defaults to Sonnet for
+   unregistered names anyway). System prompt: creator-content-strategy role, fed the business context +
    creator profile + (optional) performance summary + RAG chunks. Ask for a **strict JSON** brief (schema
    below). Parse defensively; on parse failure, retry once, then 502. Call `incrementUsage` per the fleet pattern.
 7. **Persist.** Insert one `content_briefs` row (creator_id, organization_id, `context_snapshot` = the
@@ -208,10 +209,11 @@ enforces the user server-side.)
 
 ## Reuse / cost / guardrails
 
-- **Reuse:** `_shared/anthropic-fetch`, `_shared/model-routing` (`getModelConfig`, `getUserUsageStage`,
-  `incrementUsage`; **add** a `content-strategy-recommend` routing entry), `_shared/cost-ledger` (`logCost`),
-  `_shared/cors` (`corsHeaders`), `donny-orchestrator/rag.ts` (`embedQuery`, `retrieveContext`),
-  `RestaurantTypeahead`, the `business_contexts`/`creator_profiles` queries.
+- **Reuse:** `_shared/anthropic-fetch`, `_shared/model-routing` (`getModelConfig`; **add** a
+  `content-strategy-recommend` entry to `FUNCTION_ROUTING` as `{ config: SONNET, canDowngrade: true }`),
+  `_shared/usage-tracker` (`getUserUsageStage`, `incrementUsage`, `checkHourlyRateLimit`),
+  `_shared/cost-ledger` (`logCost`), `_shared/cors` (`corsHeaders`), `donny-orchestrator/rag.ts`
+  (`embedQuery`, `retrieveContext`), `RestaurantTypeahead`, the `business_contexts`/`creator_profiles` queries.
 - **Cost:** one Sonnet call per brief, low frequency, logged to the cost ledger → respects the AI cap.
 - **Guardrails:** ledger-first (B1 migration + RLS reviewed before B2 code); RLS-safe; the creator only ever
   receives the brief — never another user's raw context rows; auth required; no auth/schema changes beyond
