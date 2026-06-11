@@ -363,22 +363,33 @@ serve(async (req) => {
     }
 
     // --- Identity resolution: organization_id → restaurant business_profiles + owner user_id ---
+    // No FK between business_profiles and org_members (both reference auth.users), so PostgREST cannot
+    // embed them. Resolve in two queries, mirroring the proven search_restaurants RPC join.
+    const { data: members } = await admin
+      .from("org_members")
+      .select("user_id")
+      .eq("org_id", organizationId)
+      .eq("invitation_status", "active");
+    const memberIds = [...new Set((members ?? []).map((m) => m.user_id as string))];
+    if (memberIds.length === 0) return json(404, { error: "no active members for organization" }, req);
+
     const { data: bp } = await admin
       .from("business_profiles")
-      .select("id, user_id, business_name, industry, description, location, sample_content_urls, org_members!inner(org_id, invitation_status)")
-      .eq("org_members.org_id", organizationId)
-      .eq("org_members.invitation_status", "active")
+      .select("id, user_id, business_name, industry, description, location, sample_content_urls")
+      .in("user_id", memberIds)
       .eq("account_type", "restaurant")
       .limit(1)
       .maybeSingle();
     if (!bp) return json(404, { error: "no restaurant profile for organization" }, req);
     const ownerUserId = bp.user_id as string;
 
-    // Business context (latest non-expired extract)
+    // Business context (latest non-expired extract; tolerate null expires_at = never expires)
+    const nowIso = new Date().toISOString();
     const { data: ctx } = await admin
       .from("business_contexts")
       .select("extracted_data, extracted_at")
       .eq("profile_id", ownerUserId)
+      .or(`expires_at.is.null,expires_at.gt.${nowIso}`)
       .order("extracted_at", { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -495,7 +506,12 @@ verify_jwt = false
 
 - [ ] **Step 4: Confirm the pure tests still pass** — `npx vitest run supabase/functions/content-strategy-recommend/brief.test.ts` (the `./brief.ts` exports `index.ts` imports are intact).
 
-> **Note on the `org_members!inner` embed (Step 2):** this relies on a FK relationship between `business_profiles` and `org_members` being discoverable by PostgREST. If the embed errors at runtime (no FK to traverse on `user_id`), fall back to a two-query resolution: `select org_id from org_members where org_id = :organizationId and invitation_status='active'` joined in code to `business_profiles` by `user_id` with `account_type='restaurant'`. Validate during Task 5 Step 2 and adjust if needed.
+> **Identity resolution uses two queries by design (Step 2):** there is no FK between `business_profiles`
+> and `org_members` (both reference `auth.users`), so a PostgREST embed cannot traverse them — the code
+> resolves `org_members` (by `org_id` + active) → `business_profiles` (by `user_id` + `account_type='restaurant'`)
+> in two steps, exactly as the `search_restaurants` RPC joins. An org may have multiple active members; the
+> `account_type='restaurant'` filter selects the restaurant owner row. Confirm the resolution returns the
+> seeded restaurant during Task 5 Step 2.
 
 - [ ] **Step 5: Commit**
 ```bash
