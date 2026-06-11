@@ -2,6 +2,7 @@
 import { useCallback, useRef, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { sanitizeUrlForAnalytics } from '@/lib/analyticsUrl';
 import type { Database } from '@/integrations/supabase/types';
 
 type AnalyticsEventInsert = Database['public']['Tables']['analytics_events']['Insert'];
@@ -86,7 +87,7 @@ export const useAnalyticsBatch = () => {
       event_type: eventType,
       event_data: eventData || {},
       user_id: user?.id,
-      page_url: window.location.href,
+      page_url: sanitizeUrlForAnalytics(window.location.href),
       user_agent: navigator.userAgent,
       org_unit_id: orgUnitId ?? null
     };
