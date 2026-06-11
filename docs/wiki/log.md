@@ -1,5 +1,18 @@
 # Wiki Log
 
+## [2026-06-11] update | DragonCandy AIOS shipped (8 PRs)
+
+The AIOS internal operating surface shipped end to end (PRs #64–#79, spec
+`docs/superpowers/specs/2026-06-11-dragoncandy-aios-design.md`): `/internal` dashboard (two tiers:
+admin vs stakeholder), live stats RPCs, platform-weight scaling snapshots + alerts, operating
+expenses vs revenue, internal-scoped Donny RAG (46 strategy/wiki docs; consumer-leak closed and
+sentinel-verified), Internal Donny (admin-verified donny-chat tool set; Codex gate took 3 rounds —
+de-admin history retention and a surface-relabel bypass, both fixed), and two report-only Monday
+cloud routines (bug & error sweep → `aios_findings` triage; weekly operating brief → `aios_briefings`
+publish gate; first brief validated 2026-06-11). All agent writes flow through `aios-report-ingest`.
+Pages updated: [[Self-Improving App]] (Phases 3 and 5 first slices built; prod donny_knowledge
+no-longer-empty flag resolved), PROJECT_CONTEXT.md (workstream entry).
+
 ## [2026-06-11] ingest | Content Engine Phase B Session
 
 Ingested the 2026-06-11 session: Content Engine **Phase B shipped + verified in prod** — a creator

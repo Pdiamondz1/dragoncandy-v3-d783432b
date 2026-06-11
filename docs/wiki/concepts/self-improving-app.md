@@ -2,8 +2,8 @@
 title: Self-Improving App
 type: concept
 created: 2026-06-10
-updated: 2026-06-10
-sources: [autoresearch/program.md, autoresearch/README.md, docs/PROJECT_CONTEXT.md]
+updated: 2026-06-11
+sources: [autoresearch/program.md, autoresearch/README.md, docs/PROJECT_CONTEXT.md, docs/superpowers/specs/2026-06-11-dragoncandy-aios-design.md]
 tags: [architecture, strategy, ai, moat, autoresearch, donny]
 ---
 
@@ -69,15 +69,21 @@ manufactures structured, verified knowledge in the interim.
   `match_donny_knowledge` RPC — no retrieval change. Verified on staging end-to-end on the DB side;
   the live OpenAI sync runs from `supabase/scripts/sync-wiki-to-donny.ts`. Promote to prod after
   retrieval is confirmed.
-- **Phase 3 — telemetry→wiki bridge** *(future).* Feed real app signals (`analytics_events`,
-  `dragonshare_events`, edge-function/error logs, [[Supabase]] advisors) into a raw `signals` source
-  so gap detection is driven by actual transactions and engagement — "learn about bugs from usage."
+- **Phase 3 — telemetry→reports bridge** *(first slice built — AIOS, 2026-06-11).* Real app signals
+  now feed a report-only loop: the **AIOS bug & error sweep** cloud routine (Mondays) clusters the
+  week's errors from `donny_tool_executions`/`analytics_events`/payment tables, reads repo source for
+  suspected causes, and files fingerprint-deduplicated findings into `aios_findings` via the
+  `aios-report-ingest` choke point (occurrence counting; a resolved finding that recurs auto-reopens).
+  Admins triage at `/internal/findings`. The wiki-signals variant remains future work.
 - **Phase 4 — fix proposals** *(future).* The loop writes verified-bug remediation specs / draft PRs,
   human-gated, never auto-merged — honoring "one change per prompt" and "never modify auth without
   confirming."
-- **Phase 5 — KPI/milestone autopilot** *(future).* The loop maintains a living strategy/KPI/milestone
-  page, refreshing against the three-year targets and flagging when a kill-switch threshold is neared
-  (churn >6%, CAC payback >12mo, LTV:CAC <2:1, revenue/employee <$400K).
+- **Phase 5 — KPI/milestone autopilot** *(first slice built — AIOS, 2026-06-11).* The **AIOS weekly
+  operating brief** cloud routine (Mondays) reads the [[North-Star KPI Scorecard]] + PROJECT_CONTEXT
+  targets, pulls live platform data read-only, and files a draft brief (`aios_briefings`) with KPI
+  status chips, a scaling forecast from `platform_weight` growth, and per-role acquisition
+  recommendations. Admins review and publish to stakeholders at `/internal/briefings` (publish gate).
+  First validated run 2026-06-11. Kill-switch flagging is grounded in the scorecard's calibration.
 - **Phase 6 — Donny content-strategy engine** *(in progress — now the [[Content Engine]]; requested
   2026-06-10).* Extend the loop from wiki knowledge to **live signals**: ingest social-account
   analytics (Outstand — IG/TikTok/YouTube), Toast analytics, and Campaign/DragonShare/Promotions
@@ -118,11 +124,12 @@ code and money changes human-gated.
   unaffected. Same drift class as the logo trigger — see [[Migration Replay Drift]]. **Fixed:**
   migration `20260610130000_fix_match_donny_knowledge_search_path.sql` sets the function search_path to
   `public, extensions`; applied to staging **and prod**, and captured for replay everywhere.
-- **Prod `donny_knowledge` is empty (flag, verified 2026-06-10).** 0 rows in prod — the hand-seed
-  scripts (`supabase/seed/donny-knowledge-seed.ts` + `embed-knowledge.ts`) were never run there, so
-  [[Donny AI]]'s RAG has had no knowledge base in production. The autoresearch wiki sync will be its
-  first populated knowledge. Open decision: also run the ~75-chunk hand-seed, or treat the wiki as the
-  canonical RAG source.
+- ~~Prod `donny_knowledge` is empty~~ **(resolved 2026-06-11).** Prod now holds 9 consumer rows plus
+  46 **internal-scoped** rows (the full strategy/wiki library synced via
+  `supabase/scripts/sync-internal-docs.mjs`). The AIOS knowledge-scoping work (`scope` column,
+  scope-aware RLS, 3-arg `match_donny_knowledge`) keeps internal rows invisible to consumer Donny on
+  every path — verified with sentinel tests in prod. Internal Donny at `/internal/donny` retrieves
+  the internal scope through admin-verified donny-chat.
 
 ## See Also
 
