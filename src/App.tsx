@@ -17,6 +17,8 @@ import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { VerifiedRoute } from '@/components/VerifiedRoute';
 import { BusinessRoute } from "@/components/BusinessRoute";
 import { BrandRoute } from "@/components/BrandRoute";
+import { InternalRoute } from "@/components/InternalRoute";
+import { isInternalHost, isAllowedOnInternalHost } from "@/lib/internalHost";
 import { Spinner } from "@/components/ui/spinner";
 
 import { SiteGateGuard } from "@/components/SiteGateGuard";
@@ -95,6 +97,8 @@ const TermsOfService = lazy(() => import("./pages/legal/TermsOfService"));
 const ContentCalendar = lazy(() => import("./pages/ContentCalendar"));
 const NotificationsPage = lazy(() => import("./pages/NotificationsPage"));
 const HelpBriefDrawer = lazy(() => import("./features/donny/HelpBriefDrawer").then(m => ({ default: m.HelpBriefDrawer })));
+const InternalLayout = lazy(() => import("./components/internal/InternalLayout").then(m => ({ default: m.InternalLayout })));
+const InternalOverview = lazy(() => import("./pages/internal/InternalOverview"));
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -142,6 +146,11 @@ function AnimatedRoutes() {
       main.focus({ preventScroll: false });
     }
   }, [location.pathname]);
+
+  // internal.dragoncandy.io serves only the AIOS surface (plus auth/email-verify).
+  if (isInternalHost() && !isAllowedOnInternalHost(location.pathname)) {
+    return <Navigate to="/internal" replace />;
+  }
 
   return (
     <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><Spinner /></div>}>
@@ -307,6 +316,11 @@ function AnimatedRoutes() {
           <Route path="/restore-account" element={<ProtectedRoute><RestoreAccountPage /></ProtectedRoute>} />
           <Route path="/invite/accept" element={<InviteAcceptPage />} />
 
+          {/* Internal AIOS surface (internal.dragoncandy.io / /internal) */}
+          <Route path="/internal" element={<InternalRoute><InternalLayout /></InternalRoute>}>
+            <Route index element={<InternalOverview />} />
+          </Route>
+
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
@@ -340,7 +354,7 @@ function AuthenticatedShell({ children }: { children: React.ReactNode }) {
 
 function AppShell() {
   const { pathname } = useLocation();
-  const showDonny = !PUBLIC_PATHS.has(pathname);
+  const showDonny = !PUBLIC_PATHS.has(pathname) && !pathname.startsWith('/internal');
 
   return (
     <div className="flex h-screen">
