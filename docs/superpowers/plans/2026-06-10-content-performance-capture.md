@@ -95,7 +95,7 @@ Run (MCP `execute_sql`, staging):
 select column_name, data_type from information_schema.columns
 where table_name = 'content_performance' order by ordinal_position;
 ```
-Expected: 17 columns matching the migration.
+Expected: 18 columns matching the migration.
 
 - [ ] **Step 3: Run security advisors on staging**
 
