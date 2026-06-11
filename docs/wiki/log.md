@@ -297,3 +297,17 @@ subsuming the user-raised deletion/archival concern Outstand can't signal. No ca
 no new column.
 Pages updated: [[Outstand]] (analytics & measurability findings), [[Content Engine]] (Known Issues +
 unmeasured state).
+
+## [2026-06-11] analysis | Platform API Registration Plan
+
+Filed a tracking doc for the external registrations that unblock the Content Engine's dark signal.
+Context: per-post Outstand analytics return empty metrics_by_account and account-level
+social_analytics_cache is empty (0 rows); Outstand is a temporary bridge; the durable signal needs
+direct platform API access (Meta IG/FB, X, TikTok, YouTube) + Toast, each requiring external
+registration/approval (weeks to 6–12 months). Per-platform checklist with lead times + a Meta deep-dive
+grounded against live Meta docs (Instagram-Login vs Facebook-Login paths, Business/Creator-only,
+Advanced Access → Business Verification + App Review, 2–4 wk review, instagram_manage_insights). Records
+the architecture principle (registrations = a source-adapter swap behind social_analytics_cache, not an
+app rebuild) and the Step-0 interim probe for Outstand's account-level endpoint.
+Pages created: [[Platform API Registration Plan]] (analysis).
+Pages updated: index.md.
