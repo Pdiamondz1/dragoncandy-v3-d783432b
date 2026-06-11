@@ -251,7 +251,7 @@ export function normalizeAnalytics(raw: Record<string, unknown>): NormalizedMetr
 - [ ] **Step 4: Run tests, verify they PASS**
 
 Run: `npx vitest run supabase/functions/content-performance-capture/capture.test.ts`
-Expected: PASS — all 8 tests green.
+Expected: PASS — all 12 tests green. (NOTE: `vite.config.ts` excludes `supabase/**` by default; this task also adds a surgical carve-out so pure vitest-style edge-logic tests actually run — excluding only the Deno-style `_shared` tests by path.)
 
 - [ ] **Step 5: Commit**
 
@@ -578,7 +578,7 @@ Expected: > 0 after the dashboard loads (was permanently 0 before).
 Run: `npm run build`
 Expected: green (backend + migrations only; no frontend change).
 Run: `npx vitest run supabase/functions/content-performance-capture/capture.test.ts`
-Expected: 8 passing.
+Expected: 12 passing.
 
 - [ ] **Step 8: Commit any normalization adjustments + push the branch**
 
