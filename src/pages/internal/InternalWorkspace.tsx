@@ -48,8 +48,10 @@ const InternalWorkspace = () => {
           <ul className="space-y-3 text-sm text-dc-text-muted">
             <li className="flex items-start gap-2.5">
               <FileText className="mt-0.5 h-4 w-4 shrink-0 text-dc-teal" />
-              A private <span className="font-semibold text-dc-text">DragonCandy AIOS</span> folder
-              in your Drive — docs, sheets, and slides, editable in Google, previewable here.
+              <span>
+                A private <span className="font-semibold text-dc-text">DragonCandy AIOS</span> folder
+                in your Drive — docs, sheets, and slides, editable in Google, previewable here.
+              </span>
             </li>
             <li className="flex items-start gap-2.5">
               <CloudUpload className="mt-0.5 h-4 w-4 shrink-0 text-dc-teal" />
