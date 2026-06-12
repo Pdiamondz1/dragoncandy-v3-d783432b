@@ -6,6 +6,16 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
+import { SectionHeader } from './SectionHeader';
+
+function CountPill({ count, className = '' }: { count?: number; className?: string }) {
+  if (typeof count !== 'number' || count <= 0) return null;
+  return (
+    <span className={`rounded-full bg-dc-pink/20 px-1.5 py-0.5 text-[10px] font-bold text-dc-pink-accent ${className}`}>
+      {count}
+    </span>
+  );
+}
 
 export interface ActivityGroup {
   id: string;
@@ -35,13 +45,7 @@ export function RecentActivitySection({
 
   return (
     <section>
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <span className="h-3.5 w-1 rounded-full bg-dc-pink" aria-hidden="true" />
-          <h2 className="text-sm font-semibold text-dc-text">{title}</h2>
-        </div>
-        {action && <div className="flex items-center gap-2">{action}</div>}
-      </div>
+      <SectionHeader title={title} action={action} />
 
       {/* Desktop: quiet pill tabs */}
       <div className="hidden lg:block rounded-2xl border border-dc-teal/15 bg-white shadow-dc-sm">
@@ -54,11 +58,7 @@ export function RecentActivitySection({
                 className="rounded-full border border-dc-teal/15 px-4 py-1.5 text-xs font-semibold text-dc-text-muted data-[state=active]:bg-dc-teal/10 data-[state=active]:text-dc-teal-btn data-[state=active]:border-dc-teal/30 data-[state=active]:shadow-none"
               >
                 {g.label}
-                {typeof g.count === 'number' && g.count > 0 && (
-                  <span className="ml-1.5 rounded-full bg-dc-pink/20 px-1.5 py-0.5 text-[10px] font-bold text-dc-pink-accent">
-                    {g.count}
-                  </span>
-                )}
+                <CountPill count={g.count} className="ml-1.5" />
               </TabsTrigger>
             ))}
           </TabsList>
@@ -78,11 +78,7 @@ export function RecentActivitySection({
               <AccordionTrigger className="px-4 py-3 text-sm font-semibold text-dc-text hover:no-underline">
                 <span className="flex items-center">
                   {g.label}
-                  {typeof g.count === 'number' && g.count > 0 && (
-                    <span className="ml-2 rounded-full bg-dc-pink/20 px-1.5 py-0.5 text-[10px] font-bold text-dc-pink-accent">
-                      {g.count}
-                    </span>
-                  )}
+                  <CountPill count={g.count} className="ml-2" />
                 </span>
               </AccordionTrigger>
               <AccordionContent className="px-4 pb-4">{g.content}</AccordionContent>

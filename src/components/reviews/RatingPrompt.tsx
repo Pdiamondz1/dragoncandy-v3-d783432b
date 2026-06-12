@@ -27,6 +27,18 @@ export const RatingPrompt: React.FC<RatingPromptProps> = ({
 }) => {
   const [showModal, setShowModal] = useState(false);
 
+  const modal = (
+    <RatingModal
+      isOpen={showModal}
+      onClose={() => setShowModal(false)}
+      collaborationId={collaborationId}
+      sponsorshipId={sponsorshipId}
+      revieweeId={revieweeId}
+      revieweeName={revieweeName}
+      reviewType={reviewType}
+    />
+  );
+
   if (variant === 'row') {
     return (
       <>
@@ -50,16 +62,7 @@ export const RatingPrompt: React.FC<RatingPromptProps> = ({
             Later
           </button>
         </div>
-
-        <RatingModal
-          isOpen={showModal}
-          onClose={() => setShowModal(false)}
-          collaborationId={collaborationId}
-          sponsorshipId={sponsorshipId}
-          revieweeId={revieweeId}
-          revieweeName={revieweeName}
-          reviewType={reviewType}
-        />
+        {modal}
       </>
     );
   }
@@ -110,16 +113,7 @@ export const RatingPrompt: React.FC<RatingPromptProps> = ({
           </div>
         </CardContent>
       </Card>
-
-      <RatingModal
-        isOpen={showModal}
-        onClose={() => setShowModal(false)}
-        collaborationId={collaborationId}
-        sponsorshipId={sponsorshipId}
-        revieweeId={revieweeId}
-        revieweeName={revieweeName}
-        reviewType={reviewType}
-      />
+      {modal}
     </>
   );
 };
