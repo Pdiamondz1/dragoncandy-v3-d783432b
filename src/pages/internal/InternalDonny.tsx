@@ -3,6 +3,7 @@ import { DonnyMessage } from '@/components/donny/DonnyMessage';
 import { DonnyTypingIndicator } from '@/components/donny/DonnyTypingIndicator';
 import { DonnyChatInput } from '@/components/donny/DonnyChatInput';
 import { DonnyQuickChips } from '@/components/donny/DonnyQuickChips';
+import { ExportToDocButton } from '@/components/internal/ExportToDocButton';
 import { useInternalDonny } from '@/hooks/internal/useInternalDonny';
 
 const STARTER_CHIPS = [
@@ -25,12 +26,12 @@ const InternalDonny = () => {
 
   return (
     <div className="mx-auto w-full max-w-3xl">
-      <h1 className="text-xl font-bold text-dc-text lg:text-2xl">INTERNAL DONNY</h1>
-      <p className="mt-1 text-sm text-dc-text-muted">
+      <h1 className="text-xl font-bold text-white lg:text-2xl">INTERNAL DONNY</h1>
+      <p className="mt-1 text-sm text-white/60">
         Answers from live platform data and the internal strategy library. Admin-only.
       </p>
 
-      <div className="mt-4 flex flex-col rounded-2xl border-2 border-teal-400 bg-dc-card">
+      <div className="mt-4 flex flex-col rounded-2xl border border-dc-teal/25 bg-white/[0.04] backdrop-blur-sm">
         <div
           ref={scrollRef}
           className="h-[55vh] space-y-3 overflow-y-auto overscroll-contain px-4 py-4 lg:h-[60vh]"
@@ -41,19 +42,30 @@ const InternalDonny = () => {
           {messages.length === 0 && !isThinking && (
             <div className="flex h-full flex-col items-center justify-center px-6 text-center">
               <div className="mb-2 text-3xl">🐉</div>
-              <p className="text-sm font-semibold text-dc-text">Founders-only Donny</p>
-              <p className="mt-1 text-xs text-dc-text-muted">
+              <p className="text-sm font-semibold text-white">Founders-only Donny</p>
+              <p className="mt-1 text-xs text-white/60">
                 Ask about platform stats, revenue, AI spend, scaling, or anything in the strategy library.
               </p>
             </div>
           )}
           {messages.map((msg, i) => (
-            <DonnyMessage key={msg.id ?? i} message={msg} />
+            <div key={msg.id ?? i}>
+              <DonnyMessage message={msg} />
+              {msg.role === 'assistant' && msg.content && (
+                <div className="mt-1 flex justify-start pl-2">
+                  <ExportToDocButton
+                    variant="ghost"
+                    title={`Donny — ${new Date(msg.created_at ?? Date.now()).toLocaleDateString()}`}
+                    markdown={msg.content}
+                  />
+                </div>
+              )}
+            </div>
           ))}
           {isThinking && <DonnyTypingIndicator />}
           {error && !isThinking && (
-            <div className="mx-2 rounded-lg border border-dc-pink bg-dc-pink/20 px-3 py-2">
-              <p className="text-xs text-dc-text">{error}</p>
+            <div className="mx-2 rounded-lg border border-dc-pink-accent/40 bg-dc-pink-accent/10 px-3 py-2">
+              <p className="text-xs text-dc-pink">{error}</p>
               <button type="button" onClick={retry} className="mt-1.5 text-xs font-semibold text-dc-teal">
                 Try Again
               </button>

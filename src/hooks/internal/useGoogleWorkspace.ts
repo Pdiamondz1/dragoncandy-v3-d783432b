@@ -159,6 +159,28 @@ export function useTrashWorkspaceFile() {
   });
 }
 
+/**
+ * Markdown → Google Doc in the caller's DragonCandy folder. Pass `docId` to
+ * overwrite an existing export in place (the proxy falls back to creating a
+ * fresh doc if the id has gone stale).
+ */
+export function useExportToDoc() {
+  const updateCache = useUpdateFilesCache();
+  return useMutation({
+    mutationFn: async ({ title, markdown, docId }: { title: string; markdown: string; docId?: string }) => {
+      const { file } = await callProxy<{ file: WorkspaceFile }>({
+        action: 'export_markdown_to_doc',
+        title,
+        markdown,
+        doc_id: docId,
+      });
+      return file;
+    },
+    onSuccess: (file) =>
+      updateCache((files) => [file, ...files.filter((f) => f.id !== file.id)]),
+  });
+}
+
 async function uploadOne(file: File): Promise<void> {
   const mimeType = file.type || 'application/octet-stream';
   const { upload_url } = await callProxy<{ upload_url: string }>({

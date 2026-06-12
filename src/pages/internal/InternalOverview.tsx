@@ -35,8 +35,8 @@ const InternalOverview = () => {
   return (
     <div className="max-w-6xl">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h1 className="text-2xl font-bold text-dc-text">DragonCandy AIOS</h1>
-        <p className="text-xs text-dc-text-muted">
+        <h1 className="text-2xl font-bold text-white">DragonCandy AIOS</h1>
+        <p className="font-mono text-xs text-white/40">
           Live as of {new Date(p.generated_at).toLocaleString()}
         </p>
       </div>
