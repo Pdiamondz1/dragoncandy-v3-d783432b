@@ -5,7 +5,7 @@ import { RatingPrompt } from './RatingPrompt';
 
 const STORAGE_KEY = 'dismissedSponsorshipRatingPrompts';
 
-export const SponsorshipRatingPromptManager: React.FC = () => {
+export const SponsorshipRatingPromptManager: React.FC<{ variant?: 'card' | 'row' }> = ({ variant = 'card' }) => {
   const { data: sponsorshipsForReview, isLoading } = useSponsorshipReviewCompletion();
   const [dismissedPrompts, setDismissedPrompts] = useState<string[]>([]);
 
@@ -39,7 +39,7 @@ export const SponsorshipRatingPromptManager: React.FC = () => {
   }
 
   return (
-    <div className="space-y-4 mb-6">
+    <div className={variant === 'row' ? 'divide-y divide-dc-teal/10' : 'space-y-4 mb-6'}>
       {visiblePrompts.map((sponsorship) => (
         <RatingPrompt
           key={sponsorship.id}
@@ -47,6 +47,7 @@ export const SponsorshipRatingPromptManager: React.FC = () => {
           revieweeId={sponsorship.otherPartyId}
           revieweeName={sponsorship.otherPartyName}
           reviewType={sponsorship.userRole === 'brand' ? 'brand_to_business' : 'business_to_brand'}
+          variant={variant}
           onDismiss={() => handleDismiss(sponsorship.id)}
         />
       ))}

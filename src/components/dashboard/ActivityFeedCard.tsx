@@ -18,19 +18,27 @@ interface ActivityFeedCardProps {
   subtitle: string;
   status: string;
   onClick?: () => void;
+  /** 'row' renders a borderless list row for the calm dashboard activity section */
+  variant?: 'card' | 'row';
 }
 
-export function ActivityFeedCard({ title, subtitle, status, onClick }: ActivityFeedCardProps) {
+export function ActivityFeedCard({ title, subtitle, status, onClick, variant = 'card' }: ActivityFeedCardProps) {
   const Wrapper = onClick ? 'button' : 'div';
-  const statusClass = statusStyles[status.toLowerCase()] ?? 'bg-gray-100 text-gray-600';
+  const statusClass =
+    statusStyles[status.toLowerCase()] ??
+    (variant === 'row' ? 'bg-dc-teal/10 text-dc-teal-btn' : 'bg-gray-100 text-gray-600');
+
+  const wrapperClass =
+    variant === 'row'
+      ? `w-full py-3 text-left border-b border-dc-teal/10 last:border-b-0 ${
+          onClick ? 'hover:bg-dc-teal/[0.04] transition-colors cursor-pointer' : ''
+        }`
+      : `w-full border-2 border-dc-teal rounded-2xl p-4 bg-white text-left ${
+          onClick ? 'hover:bg-gray-50 transition-colors cursor-pointer' : ''
+        }`;
 
   return (
-    <Wrapper
-      onClick={onClick}
-      className={`w-full border-2 border-dc-teal rounded-2xl p-4 bg-white text-left ${
-        onClick ? 'hover:bg-gray-50 transition-colors cursor-pointer' : ''
-      }`}
-    >
+    <Wrapper onClick={onClick} className={wrapperClass}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="text-sm font-bold text-dc-dark truncate">{title}</div>
