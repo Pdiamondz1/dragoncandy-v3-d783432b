@@ -89,3 +89,107 @@ export function useDisconnectGoogle() {
     },
   });
 }
+
+// --- Drive file hub (GW PR 2) ---
+
+export interface WorkspaceFile {
+  id: string;
+  name: string;
+  mimeType: string;
+  modifiedTime: string;
+  webViewLink?: string;
+  webContentLink?: string;
+}
+
+export type WorkspaceFileKind = 'doc' | 'sheet' | 'slides';
+
+const filesKey = (userId?: string) => ['aios', 'workspace', 'files', userId];
+
+export function useWorkspaceFiles() {
+  const { user } = useAuth();
+  const connection = useGoogleConnection();
+  return useQuery({
+    queryKey: filesKey(user?.id),
+    queryFn: async () => {
+      const { files } = await callProxy<{ files: WorkspaceFile[] }>({ action: 'list_files' });
+      return files;
+    },
+    enabled: !!user && !!connection.data?.connected,
+  });
+}
+
+/** Apply a mutation result to the cached list instantly, then reconcile. */
+function useUpdateFilesCache() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  return (update: (files: WorkspaceFile[]) => WorkspaceFile[]) => {
+    queryClient.setQueryData<WorkspaceFile[]>(filesKey(user?.id), (files) => update(files ?? []));
+    queryClient.invalidateQueries({ queryKey: ['aios', 'workspace', 'files'] });
+  };
+}
+
+export function useCreateWorkspaceFile() {
+  const updateCache = useUpdateFilesCache();
+  return useMutation({
+    mutationFn: async ({ kind, name }: { kind: WorkspaceFileKind; name: string }) => {
+      const { file } = await callProxy<{ file: WorkspaceFile }>({ action: 'create_file', kind, name });
+      return file;
+    },
+    onSuccess: (file) => updateCache((files) => [file, ...files]),
+  });
+}
+
+export function useRenameWorkspaceFile() {
+  const updateCache = useUpdateFilesCache();
+  return useMutation({
+    mutationFn: async ({ fileId, name }: { fileId: string; name: string }) => {
+      const { file } = await callProxy<{ file: WorkspaceFile }>({ action: 'rename_file', file_id: fileId, name });
+      return file;
+    },
+    onSuccess: (file) => updateCache((files) => files.map((f) => (f.id === file.id ? file : f))),
+  });
+}
+
+export function useTrashWorkspaceFile() {
+  const updateCache = useUpdateFilesCache();
+  return useMutation({
+    mutationFn: async (fileId: string) =>
+      callProxy<{ success: boolean }>({ action: 'trash_file', file_id: fileId }),
+    onSuccess: (_, fileId) => updateCache((files) => files.filter((f) => f.id !== fileId)),
+  });
+}
+
+async function uploadOne(file: File): Promise<void> {
+  const mimeType = file.type || 'application/octet-stream';
+  const { upload_url } = await callProxy<{ upload_url: string }>({
+    action: 'upload_init',
+    name: file.name,
+    mime_type: mimeType,
+  });
+  const response = await fetch(upload_url, {
+    method: 'PUT',
+    headers: { 'Content-Type': mimeType },
+    body: file,
+  });
+  if (!response.ok) throw new Error(`Upload failed (${response.status})`);
+}
+
+/**
+ * Concurrent two-step uploads: the proxy starts a resumable session per file
+ * (server holds the token), then the browser streams the bytes straight to
+ * Google — no file content ever passes through our backend. Returns the names
+ * of any files that failed; the list refreshes once after the batch.
+ */
+export function useUploadWorkspaceFiles() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (files: File[]) => {
+      const results = await Promise.allSettled(files.map(uploadOne));
+      return files.filter((_, i) => results[i].status === 'rejected').map((f) => f.name);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: filesKey(user?.id) });
+    },
+  });
+}
