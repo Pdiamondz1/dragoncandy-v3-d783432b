@@ -11,9 +11,9 @@ import { Spinner } from '@/components/ui/spinner';
 
 const SEVERITY_STYLES: Record<string, string> = {
   critical: 'bg-dc-pink-accent text-white',
-  high: 'bg-dc-pink text-dc-text',
-  medium: 'bg-dc-yellow/60 text-dc-text',
-  low: 'bg-dc-teal/20 text-dc-teal-btn',
+  high: 'bg-dc-pink text-dc-dark',
+  medium: 'bg-dc-yellow/80 text-dc-dark',
+  low: 'bg-dc-teal/20 text-dc-teal',
 };
 
 const STATUSES: FindingStatus[] = ['open', 'acknowledged', 'resolved', 'wontfix'];
@@ -30,7 +30,7 @@ const FindingCard = ({ finding }: { finding: Finding }) => {
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <div className="rounded-2xl border border-teal-300 bg-dc-card p-4">
+    <div className="rounded-2xl border border-dc-teal/25 bg-white/[0.04] p-4 backdrop-blur-sm">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
@@ -39,9 +39,9 @@ const FindingCard = ({ finding }: { finding: Finding }) => {
             >
               {finding.severity}
             </span>
-            <h3 className="font-bold text-dc-text">{finding.title}</h3>
+            <h3 className="font-bold text-white">{finding.title}</h3>
           </div>
-          <p className="mt-1 text-xs text-dc-text-muted">
+          <p className="mt-1 text-xs text-white/50">
             {finding.source} · seen {finding.occurrences}×, last{' '}
             {new Date(finding.last_seen_at).toLocaleString()}
           </p>
@@ -55,8 +55,8 @@ const FindingCard = ({ finding }: { finding: Finding }) => {
               onClick={() => updateStatus.mutate({ id: finding.id, status: s })}
               className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors disabled:cursor-default ${
                 finding.status === s
-                  ? 'bg-dc-teal-btn text-white'
-                  : 'bg-dc-teal/12 text-dc-text hover:bg-dc-teal/25 disabled:opacity-50'
+                  ? 'bg-dc-teal font-bold text-dc-dark'
+                  : 'bg-white/[0.06] text-white/70 hover:bg-white/[0.12] disabled:opacity-50'
               }`}
             >
               {STATUS_LABELS[s]}
@@ -79,7 +79,7 @@ const FindingCard = ({ finding }: { finding: Finding }) => {
             {expanded ? 'Hide evidence' : 'Show evidence'}
           </button>
           {expanded && (
-            <pre className="mt-2 overflow-x-auto rounded-xl bg-dc-dark p-3 text-xs text-dc-teal">
+            <pre className="mt-2 overflow-x-auto rounded-xl border border-white/10 bg-black/40 p-3 text-xs text-dc-teal">
               {JSON.stringify(finding.evidence, null, 2)}
             </pre>
           )}
@@ -112,8 +112,8 @@ const InternalFindings = () => {
 
   return (
     <div className="max-w-4xl">
-      <h1 className="text-xl font-bold text-dc-text lg:text-2xl">FINDINGS</h1>
-      <p className="mt-1 text-sm text-dc-text-muted">
+      <h1 className="text-xl font-bold text-white lg:text-2xl">FINDINGS</h1>
+      <p className="mt-1 text-sm text-white/60">
         Bug & error discoveries filed by the weekly sweep agent (report-only). Triage here; fixes
         ship through normal PRs.
       </p>
@@ -126,8 +126,8 @@ const InternalFindings = () => {
             onClick={() => setStatusFilter(s)}
             className={`rounded-full px-4 py-1.5 text-sm font-semibold transition-colors ${
               statusFilter === s
-                ? 'bg-dc-teal text-white'
-                : 'bg-dc-teal/12 text-dc-text hover:bg-dc-teal/25'
+                ? 'bg-dc-teal font-bold text-dc-dark'
+                : 'bg-white/[0.06] text-white/70 hover:bg-white/[0.12]'
             }`}
           >
             {s === 'all' ? 'All' : STATUS_LABELS[s]}
@@ -137,7 +137,7 @@ const InternalFindings = () => {
 
       <div className="mt-4 space-y-3">
         {filtered.length === 0 ? (
-          <div className="rounded-2xl border border-teal-300 bg-dc-card p-6 text-sm text-dc-text-muted">
+          <div className="rounded-2xl border border-dc-teal/25 bg-white/[0.04] p-6 text-sm text-white/60 backdrop-blur-sm">
             {statusFilter === 'open'
               ? 'No open findings — the sweep agent files new ones weekly.'
               : 'Nothing with this status.'}

@@ -81,8 +81,8 @@ const InternalExpenses = () => {
 
   return (
     <div className="max-w-4xl">
-      <h1 className="text-2xl font-bold text-dc-text">Expenses &amp; burn</h1>
-      <p className="mb-6 text-sm text-dc-text-muted">
+      <h1 className="text-2xl font-bold text-white">Expenses &amp; burn</h1>
+      <p className="mb-6 text-sm text-white/60">
         Recurring operating costs (founder-entered) against revenue and live AI spend.
       </p>
 
@@ -99,22 +99,22 @@ const InternalExpenses = () => {
       </div>
 
       <SectionHeading>Recurring lines</SectionHeading>
-      <div className="overflow-hidden rounded-2xl border border-teal-300 bg-dc-card">
+      <div className="overflow-hidden rounded-2xl border border-dc-teal/25 bg-white/[0.04] backdrop-blur-sm">
         {rows.map((expense) => (
           <div
             key={expense.id}
-            className="flex flex-wrap items-center gap-3 border-b border-teal-300/40 px-4 py-3 last:border-b-0"
+            className="flex flex-wrap items-center gap-3 border-b border-white/10 px-4 py-3 last:border-b-0"
           >
             <div className="min-w-0 flex-1">
-              <p className={`font-semibold ${expense.active ? 'text-dc-text' : 'text-dc-text-muted line-through'}`}>
+              <p className={`font-semibold ${expense.active ? 'text-white' : 'text-white/40 line-through'}`}>
                 {expense.name}
-                <span className="ml-2 rounded-full bg-dc-teal/12 px-2 py-0.5 text-xs font-medium text-dc-teal-btn">
+                <span className="ml-2 rounded-full bg-dc-teal/15 px-2 py-0.5 text-xs font-medium text-dc-teal">
                   {expense.category}
                 </span>
               </p>
-              {expense.notes && <p className="truncate text-xs text-dc-text-muted">{expense.notes}</p>}
+              {expense.notes && <p className="truncate text-xs text-white/50">{expense.notes}</p>}
             </div>
-            <span className="font-bold text-dc-text">{formatCents(expense.monthly_amount_cents)}/mo</span>
+            <span className="font-bold text-white">{formatCents(expense.monthly_amount_cents)}/mo</span>
             <Switch
               checked={expense.active}
               onCheckedChange={(active) =>
@@ -142,12 +142,12 @@ const InternalExpenses = () => {
           </div>
         ))}
         {rows.length === 0 && (
-          <p className="px-4 py-6 text-sm text-dc-text-muted">No expenses yet — add the first below.</p>
+          <p className="px-4 py-6 text-sm text-white/50">No expenses yet — add the first below.</p>
         )}
       </div>
 
       <SectionHeading>Add expense</SectionHeading>
-      <form onSubmit={submit} className="rounded-2xl border border-teal-300 bg-dc-card p-4">
+      <form onSubmit={submit} className="rounded-2xl border border-dc-teal/25 bg-white/[0.04] p-4 backdrop-blur-sm">
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-4">
           <Input
             placeholder="Name (e.g. Codemagic)"
@@ -181,7 +181,7 @@ const InternalExpenses = () => {
         <Button
           type="submit"
           disabled={addExpense.isPending}
-          className="mt-3 rounded-full bg-dc-teal font-semibold text-white hover:bg-dc-teal-dark"
+          className="mt-3 rounded-full bg-dc-teal font-bold text-dc-dark hover:bg-dc-teal-dark"
         >
           {addExpense.isPending ? 'Adding…' : 'Add expense'}
         </Button>

@@ -49,14 +49,14 @@ const WorkspaceCallback = () => {
 
   return (
     <div className="flex min-h-[60vh] items-center justify-center p-4">
-      <div className="w-full max-w-md rounded-3xl border-2 border-teal-400 bg-dc-card p-7 text-center">
+      <div className="w-full max-w-md rounded-3xl border border-dc-teal/25 bg-white/[0.04] p-7 text-center backdrop-blur-md">
         {error ? (
           <>
-            <h1 className="text-lg font-bold text-dc-text">Google connect failed</h1>
-            <p className="mt-2 text-sm text-dc-text-muted">{error}</p>
+            <h1 className="text-lg font-bold text-white">Google connect failed</h1>
+            <p className="mt-2 text-sm text-white/60">{error}</p>
             <Link
               to="/internal/workspace"
-              className="mt-5 inline-block w-full rounded-full bg-dc-teal px-6 py-3 font-semibold text-white transition-colors hover:bg-dc-teal-dark"
+              className="mt-5 inline-block w-full rounded-full bg-dc-teal px-6 py-3 font-bold text-dc-dark transition-colors hover:bg-dc-teal-dark"
             >
               Back to Workspace
             </Link>
@@ -64,8 +64,8 @@ const WorkspaceCallback = () => {
         ) : (
           <>
             <Spinner className="mx-auto h-10 w-10 border-teal-400" />
-            <p className="mt-4 text-sm font-semibold text-dc-text">Linking your Google account…</p>
-            <p className="mt-1 text-xs text-dc-text-muted">Creating your DragonCandy AIOS folder.</p>
+            <p className="mt-4 text-sm font-semibold text-white">Linking your Google account…</p>
+            <p className="mt-1 text-xs text-white/50">Creating your DragonCandy AIOS folder.</p>
           </>
         )}
       </div>
