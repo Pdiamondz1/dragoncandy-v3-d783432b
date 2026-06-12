@@ -31,22 +31,16 @@ function statusPill(row: CreatorBriefPerformanceRow): { text: string; className:
   }
 }
 
-export function BriefPerformanceCard({ frameless = false }: { frameless?: boolean } = {}) {
+/** Frameless feed — embedded in a dashboard section that provides its own chrome. */
+export function BriefPerformanceCard() {
   const { data: briefs, isLoading } = useCreatorBriefPerformance();
   const orgIds = (briefs ?? []).map((b) => b.organization_id);
   const { data: orgs } = useResolveDragonShareOrgs(orgIds);
   const nameById = new Map((orgs ?? []).map((o) => [o.id, o.name]));
 
   return (
-    <div className={frameless ? '' : 'border-2 border-dc-teal rounded-2xl bg-white overflow-hidden'}>
-      {!frameless && (
-        <div className="px-4 pt-4 pb-2">
-          <p className="font-sans text-sm font-bold uppercase tracking-wide text-dc-teal">
-            Your content briefs
-          </p>
-        </div>
-      )}
-      <div className={frameless ? '' : 'px-4 pb-4'}>
+    <div>
+      <div>
         {isLoading ? (
           <div className="space-y-4">
             {[...Array(3)].map((_, i) => (

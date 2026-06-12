@@ -1,5 +1,7 @@
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { DCTour } from '@/components/guidance/DCTour';
+import { TourButton } from '@/components/guidance/TourButton';
+import { SectionHeader } from '@/components/dashboard/SectionHeader';
 import { useTour } from '@/hooks/useTour';
 import { useFirstRunMissions } from '@/hooks/useFirstRunMissions';
 import { FirstRunDashboard } from '@/components/first-run/FirstRunDashboard';
@@ -216,10 +218,7 @@ const CreatorDashboard = () => {
 
             {/* Donny tools */}
             <section>
-              <div className="flex items-center gap-2 mb-3">
-                <span className="h-3.5 w-1 rounded-full bg-dc-pink" aria-hidden="true" />
-                <h2 className="text-sm font-semibold text-dc-text">Donny tools</h2>
-              </div>
+              <SectionHeader title="Donny tools" />
               <ContentIdeaCard />
             </section>
 
@@ -235,21 +234,12 @@ const CreatorDashboard = () => {
                       role="creator"
                       items={dsActivity ?? []}
                       isLoading={dsActivityLoading}
-                      frameless
                     />
                   ),
                 },
-                { id: 'briefs', label: 'Briefs', content: <BriefPerformanceCard frameless /> },
+                { id: 'briefs', label: 'Briefs', content: <BriefPerformanceCard /> },
               ]}
-              action={
-                <button
-                  onClick={triggerTour}
-                  className="w-7 h-7 rounded-full border border-dc-teal/20 flex items-center justify-center text-xs text-dc-text-muted hover:bg-dc-teal/5 transition-colors"
-                  aria-label="Show tour"
-                >
-                  ?
-                </button>
-              }
+              action={<TourButton onClick={triggerTour} />}
             />
 
             {/* Calendar, tucked behind a disclosure */}

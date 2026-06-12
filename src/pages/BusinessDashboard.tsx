@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { DCTour } from '@/components/guidance/DCTour';
+import { TourButton } from '@/components/guidance/TourButton';
 import { useTour } from '@/hooks/useTour';
 import { Loader2, ChevronRight, Megaphone, Users, DollarSign, TrendingUp, AlertTriangle } from 'lucide-react';
 import { DCSkeleton } from '@/components/ui/dc-skeleton';
@@ -103,7 +104,6 @@ const BusinessDashboard = () => {
       {recentCampaigns.map((campaign) => (
         <ActivityFeedCard
           key={campaign.id}
-          variant="row"
           title={campaign.title}
           subtitle={`${campaign.creatorName ? `@${campaign.creatorName}` : 'Unassigned'} · Due ${formatDate(campaign.deadline)}`}
           status={campaign.displayStatus}
@@ -163,7 +163,7 @@ const BusinessDashboard = () => {
                   </p>
                 </div>
               )}
-              <PendingActionBanners variant="row" />
+              <PendingActionBanners />
               <RatingPromptManager variant="row" />
               <SponsorshipRatingPromptManager variant="row" />
             </NeedsAttentionSection>
@@ -187,7 +187,7 @@ const BusinessDashboard = () => {
                 {
                   id: 'campaigns',
                   label: 'Campaigns',
-                  count: recentCampaigns.length || undefined,
+                  count: recentCampaigns.length,
                   content: campaignsContent,
                 },
                 {
@@ -198,7 +198,6 @@ const BusinessDashboard = () => {
                       role="business"
                       items={dsActivity ?? []}
                       isLoading={dsActivityLoading}
-                      frameless
                     />
                   ),
                 },
@@ -213,13 +212,7 @@ const BusinessDashboard = () => {
                       View all <ChevronRight className="w-3 h-3" />
                     </Link>
                   )}
-                  <button
-                    onClick={triggerTour}
-                    className="w-7 h-7 rounded-full border border-dc-teal/20 flex items-center justify-center text-xs text-dc-text-muted hover:bg-dc-teal/5 transition-colors"
-                    aria-label="Show tour"
-                  >
-                    ?
-                  </button>
+                  <TourButton onClick={triggerTour} />
                 </>
               }
             />

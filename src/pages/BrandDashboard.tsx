@@ -4,6 +4,8 @@ import { useBrandDashboardStats } from '@/hooks/useBrandDashboardStats';
 import { useBrandActiveCampaigns } from '@/hooks/useBrandActiveCampaigns';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { DCTour } from '@/components/guidance/DCTour';
+import { TourButton } from '@/components/guidance/TourButton';
+import { SectionHeader } from '@/components/dashboard/SectionHeader';
 import { useTour } from '@/hooks/useTour';
 import { useFirstRunMissions } from '@/hooks/useFirstRunMissions';
 import { FirstRunDashboard } from '@/components/first-run/FirstRunDashboard';
@@ -120,7 +122,6 @@ const BrandDashboard = () => {
       {campaigns.map((campaign) => (
         <ActivityFeedCard
           key={campaign.id}
-          variant="row"
           title={campaign.title}
           subtitle={campaign.subtitle}
           status={campaign.displayStatus}
@@ -157,20 +158,14 @@ const BrandDashboard = () => {
             <section className="space-y-8">
               <StatsRow stats={brandStats} isLoading={statsLoading} />
               <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="h-3.5 w-1 rounded-full bg-dc-pink" aria-hidden="true" />
-                  <h2 className="text-sm font-semibold text-dc-text">Marketing budget</h2>
-                </div>
+                <SectionHeader title="Marketing budget" />
                 <StatsRow stats={budgetStats} isLoading={statsLoading} />
               </div>
             </section>
 
             {/* Free Donny tools */}
             <section data-tour="free-trio">
-              <div className="flex items-center gap-2 mb-3">
-                <span className="h-3.5 w-1 rounded-full bg-dc-pink" aria-hidden="true" />
-                <h2 className="text-sm font-semibold text-dc-text">Free Donny tools</h2>
-              </div>
+              <SectionHeader title="Free Donny tools" />
               <BrandFreeTrioHero orgId={org?.id} />
             </section>
 
@@ -207,19 +202,11 @@ const BrandDashboard = () => {
                 {
                   id: 'campaigns',
                   label: 'Campaigns',
-                  count: campaigns?.length || undefined,
+                  count: campaigns?.length,
                   content: campaignsContent,
                 },
               ]}
-              action={
-                <button
-                  onClick={triggerTour}
-                  className="w-7 h-7 rounded-full border border-dc-teal/20 flex items-center justify-center text-xs text-dc-text-muted hover:bg-dc-teal/5 transition-colors"
-                  aria-label="Show tour"
-                >
-                  ?
-                </button>
-              }
+              action={<TourButton onClick={triggerTour} />}
             />
 
             <UpcomingPostsWidget />

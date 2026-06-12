@@ -22,9 +22,7 @@ function dismiss(campaignId: string) {
   } catch { /* localStorage unavailable */ }
 }
 
-type BannerVariant = 'banner' | 'row';
-
-function ActionBanner({ action, onDismiss, variant = 'banner' }: { action: PendingAction; onDismiss: () => void; variant?: BannerVariant }) {
+function ActionBanner({ action, onDismiss }: { action: PendingAction; onDismiss: () => void }) {
   const navigate = useNavigate();
   const icon = action.actionType === 'review_application'
     ? <Clock className="h-4 w-4 text-amber-600 shrink-0" />
@@ -37,45 +35,21 @@ function ActionBanner({ action, onDismiss, variant = 'banner' }: { action: Pendi
 
   const ctaLabel = action.actionType === 'review_application' ? 'Review Application →' : 'Review Content →';
 
-  if (variant === 'row') {
-    return (
-      <div className="flex items-center gap-3 px-4 py-2.5 border-l-2 border-l-amber-400">
-        {icon}
-        <p className="text-sm text-dc-text flex-1 min-w-0">
-          {message} —{' '}
-          <button
-            onClick={() => navigate(`/dashboard/business/campaigns/${action.campaignId}`)}
-            className="font-semibold text-dc-teal-btn hover:underline"
-          >
-            {ctaLabel}
-          </button>
-        </p>
-        <button
-          onClick={(e) => { e.stopPropagation(); onDismiss(); }}
-          className="text-dc-text-muted hover:text-dc-text shrink-0"
-          aria-label="Dismiss"
-        >
-          <X className="h-4 w-4" />
-        </button>
-      </div>
-    );
-  }
-
   return (
-    <div className="bg-amber-50 border border-amber-300 rounded-xl p-3 flex items-center gap-3">
+    <div className="flex items-center gap-3 px-4 py-2.5 border-l-2 border-l-amber-400">
       {icon}
-      <p className="text-sm text-gray-800 flex-1 min-w-0">
+      <p className="text-sm text-dc-text flex-1 min-w-0">
         {message} —{' '}
         <button
           onClick={() => navigate(`/dashboard/business/campaigns/${action.campaignId}`)}
-          className="font-semibold text-amber-700 hover:underline"
+          className="font-semibold text-dc-teal-btn hover:underline"
         >
           {ctaLabel}
         </button>
       </p>
       <button
         onClick={(e) => { e.stopPropagation(); onDismiss(); }}
-        className="text-gray-400 hover:text-gray-600 shrink-0"
+        className="text-dc-text-muted hover:text-dc-text shrink-0"
         aria-label="Dismiss"
       >
         <X className="h-4 w-4" />
@@ -84,7 +58,7 @@ function ActionBanner({ action, onDismiss, variant = 'banner' }: { action: Pendi
   );
 }
 
-export function PendingActionBanners({ variant = 'banner' }: { variant?: BannerVariant } = {}) {
+export function PendingActionBanners() {
   const { data: actions, isLoading, isError } = usePendingActions();
   const [dismissed, setDismissed] = React.useState<Set<string>>(new Set());
 
@@ -102,17 +76,16 @@ export function PendingActionBanners({ variant = 'banner' }: { variant?: BannerV
   };
 
   return (
-    <div className={variant === 'row' ? 'divide-y divide-dc-teal/10' : 'space-y-2'}>
+    <div className="divide-y divide-dc-teal/10">
       {shown.map(action => (
         <ActionBanner
           key={`${action.actionType}-${action.campaignId}`}
           action={action}
-          variant={variant}
           onDismiss={() => handleDismiss(action.campaignId)}
         />
       ))}
       {remaining > 0 && (
-        <p className={`text-xs text-amber-600 font-medium ${variant === 'row' ? 'px-4 py-2' : 'pl-1'}`}>
+        <p className="text-xs text-amber-600 font-medium px-4 py-2">
           + {remaining} more campaign{remaining !== 1 ? 's' : ''} need attention
         </p>
       )}

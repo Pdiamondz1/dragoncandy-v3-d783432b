@@ -6,8 +6,6 @@ interface DragonShareActivityCardProps {
   role: 'creator' | 'business';
   items: DSActivityItem[];
   isLoading: boolean;
-  /** Drop the card chrome + header when embedded in a section that provides its own */
-  frameless?: boolean;
 }
 
 function formatRelativeTime(dateString: string): string {
@@ -52,7 +50,8 @@ function pillFor(item: DSActivityItem, role: 'creator' | 'business') {
   }
 }
 
-export function DragonShareActivityCard({ role, items, isLoading, frameless = false }: DragonShareActivityCardProps) {
+/** Frameless feed — embedded in a dashboard section that provides its own chrome. */
+export function DragonShareActivityCard({ role, items, isLoading }: DragonShareActivityCardProps) {
   const basePath =
     role === 'creator' ? '/dashboard/creator/dragonshare' : '/dashboard/business/dragonshare';
 
@@ -62,15 +61,8 @@ export function DragonShareActivityCard({ role, items, isLoading, frameless = fa
       : 'Creator posts about you will show up here';
 
   return (
-    <div className={frameless ? '' : 'border-2 border-dc-teal rounded-2xl bg-white overflow-hidden'}>
-      {!frameless && (
-        <div className="px-4 pt-4 pb-2">
-          <p className="font-sans text-sm font-bold uppercase tracking-wide text-dc-teal">
-            DragonShare Activity
-          </p>
-        </div>
-      )}
-      <div className={frameless ? '' : 'px-4 pb-4'}>
+    <div>
+      <div>
         {isLoading ? (
           <div className="space-y-4">
             {[...Array(3)].map((_, i) => (
