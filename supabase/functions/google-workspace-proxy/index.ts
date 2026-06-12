@@ -15,14 +15,23 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 import {
   GoogleWorkspaceError,
+  assertDriveFileId,
+  assertFileKind,
+  assertFileName,
   buildAuthUrl,
+  createGoogleFile,
+  driveCtx,
   exchangeCode,
   findOrCreateDcFolder,
   getValidAccessToken,
+  initResumableUpload,
+  listDcFiles,
   parseIdToken,
   redirectUriFor,
+  renameDriveFile,
   revokeToken,
   signState,
+  trashDriveFile,
   verifyState,
   GOOGLE_SCOPES,
 } from "../_shared/google-workspace.ts";
@@ -176,11 +185,43 @@ serve(async (req) => {
         return json({ success: true });
       }
 
-      // getValidAccessToken is exercised by later-PR actions; referenced here
-      // so the shared-module contract stays visible to reviewers.
-      case "_token_self_check": {
-        await getValidAccessToken(supabaseAdmin, user.id);
-        return json({ ok: true });
+      // --- Drive file hub (GW PR 2). Every action operates on the CALLER's
+      // own connection; the drive.file scope further limits the token to
+      // files this app created, so cross-file reach is impossible by design.
+      case "list_files": {
+        const { token, folderId } = await driveCtx(supabaseAdmin, user.id);
+        return json({ files: await listDcFiles(token, folderId) });
+      }
+
+      case "create_file": {
+        const mimeType = assertFileKind(body.kind);
+        const name = assertFileName(body.name);
+        const { token, folderId } = await driveCtx(supabaseAdmin, user.id);
+        return json({ file: await createGoogleFile(token, folderId, mimeType, name) });
+      }
+
+      case "rename_file": {
+        const fileId = assertDriveFileId(body.file_id);
+        const name = assertFileName(body.name);
+        const { token } = await getValidAccessToken(supabaseAdmin, user.id);
+        return json({ file: await renameDriveFile(token, fileId, name) });
+      }
+
+      case "trash_file": {
+        const fileId = assertDriveFileId(body.file_id);
+        const { token } = await getValidAccessToken(supabaseAdmin, user.id);
+        await trashDriveFile(token, fileId);
+        return json({ success: true });
+      }
+
+      case "upload_init": {
+        const name = assertFileName(body.name);
+        const mimeType =
+          typeof body.mime_type === "string" && body.mime_type
+            ? body.mime_type
+            : "application/octet-stream";
+        const { token, folderId } = await driveCtx(supabaseAdmin, user.id);
+        return json({ upload_url: await initResumableUpload(token, folderId, name, mimeType) });
       }
 
       default:

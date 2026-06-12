@@ -6,6 +6,7 @@ import {
 } from '@/hooks/internal/useGoogleWorkspace';
 import { ErrorCard } from '@/components/internal/stats';
 import { Spinner } from '@/components/ui/spinner';
+import { WorkspaceHub } from '@/components/internal/workspace/WorkspaceHub';
 
 /**
  * AIOS Workspace (GW PR 1: connection states only — the Drive file hub lands
@@ -90,7 +91,7 @@ const InternalWorkspace = () => {
   }
 
   return (
-    <div className="mx-auto w-full max-w-3xl">
+    <div className="mx-auto w-full max-w-5xl">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-dc-text lg:text-2xl">WORKSPACE</h1>
@@ -109,12 +110,7 @@ const InternalWorkspace = () => {
         </button>
       </div>
 
-      <div className="mt-6 rounded-3xl border-2 border-teal-400 bg-dc-card p-7 text-center">
-        <p className="text-sm font-semibold text-dc-text">Your DragonCandy AIOS folder is ready.</p>
-        <p className="mt-1 text-sm text-dc-text-muted">
-          The file hub — browse, upload, create, preview — arrives in the next slice (GW PR 2).
-        </p>
-      </div>
+      <WorkspaceHub />
     </div>
   );
 };

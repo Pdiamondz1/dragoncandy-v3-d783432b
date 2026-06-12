@@ -263,6 +263,136 @@ export async function driveRequest(token: string, url: string, init: RequestInit
   return resp.status === 204 ? null : resp.json();
 }
 
+/** Resolve the account's DragonCandy folder id, bootstrapping + persisting it if missing. */
+export async function ensureDcFolder(
+  supabaseAdmin: any,
+  account: GoogleAccount,
+  token: string
+): Promise<string> {
+  if (account.dc_folder_id) return account.dc_folder_id;
+  const folderId = await findOrCreateDcFolder(token);
+  await supabaseAdmin
+    .from("google_workspace_accounts")
+    .update({ dc_folder_id: folderId })
+    .eq("id", account.id);
+  return folderId;
+}
+
+/** Token + DragonCandy-folder context shared by every Drive action. */
+export async function driveCtx(
+  supabaseAdmin: any,
+  userId: string
+): Promise<{ token: string; account: GoogleAccount; folderId: string }> {
+  const { token, account } = await getValidAccessToken(supabaseAdmin, userId);
+  return { token, account, folderId: await ensureDcFolder(supabaseAdmin, account, token) };
+}
+
+const FILE_FIELDS = "id,name,mimeType,modifiedTime,webViewLink,webContentLink";
+
+/** Google-native file kinds creatable from the hub. */
+const GOOGLE_FILE_KINDS: Record<string, string> = {
+  doc: "application/vnd.google-apps.document",
+  sheet: "application/vnd.google-apps.spreadsheet",
+  slides: "application/vnd.google-apps.presentation",
+};
+
+/** Validate a creatable file kind and return its Google mimeType. */
+export function assertFileKind(kind: unknown): string {
+  const mimeType = typeof kind === "string" ? GOOGLE_FILE_KINDS[kind] : undefined;
+  if (!mimeType) {
+    throw new GoogleWorkspaceError("bad_kind", "kind must be doc, sheet, or slides");
+  }
+  return mimeType;
+}
+
+const DRIVE_FILE_ID = /^[A-Za-z0-9_-]{10,100}$/;
+
+export function assertDriveFileId(fileId: unknown): string {
+  if (typeof fileId !== "string" || !DRIVE_FILE_ID.test(fileId)) {
+    throw new GoogleWorkspaceError("bad_file_id", "Invalid file id");
+  }
+  return fileId;
+}
+
+export function assertFileName(name: unknown): string {
+  const trimmed = typeof name === "string" ? name.trim() : "";
+  if (!trimmed || trimmed.length > 200) {
+    throw new GoogleWorkspaceError("bad_name", "File name must be 1–200 characters");
+  }
+  return trimmed;
+}
+
+export async function listDcFiles(token: string, folderId: string): Promise<any[]> {
+  const params = new URLSearchParams({
+    q: `'${folderId}' in parents and trashed = false`,
+    orderBy: "modifiedTime desc",
+    pageSize: "100",
+    fields: `files(${FILE_FIELDS})`,
+  });
+  const data = await driveRequest(token, `${DRIVE_FILES_URL}?${params}`);
+  return data.files ?? [];
+}
+
+export async function createGoogleFile(
+  token: string,
+  folderId: string,
+  mimeType: string,
+  name: string
+): Promise<any> {
+  return driveRequest(token, `${DRIVE_FILES_URL}?fields=${FILE_FIELDS}`, {
+    method: "POST",
+    body: JSON.stringify({ name, mimeType, parents: [folderId] }),
+  });
+}
+
+export async function renameDriveFile(token: string, fileId: string, name: string): Promise<any> {
+  return driveRequest(token, `${DRIVE_FILES_URL}/${fileId}?fields=${FILE_FIELDS}`, {
+    method: "PATCH",
+    body: JSON.stringify({ name }),
+  });
+}
+
+export async function trashDriveFile(token: string, fileId: string): Promise<void> {
+  await driveRequest(token, `${DRIVE_FILES_URL}/${fileId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ trashed: true }),
+  });
+}
+
+/**
+ * Start a Drive resumable-upload session server-side and return the session
+ * URL. The URL is a short-lived (~1 week) pre-authorized capability scoped to
+ * creating this one file in the caller's own folder — handing it to the
+ * caller's browser lets bytes stream directly to Google, avoiding the edge
+ * function body limit without ever exposing an access token.
+ */
+export async function initResumableUpload(
+  token: string,
+  folderId: string,
+  name: string,
+  mimeType: string
+): Promise<string> {
+  const resp = await fetch(
+    "https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable",
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+        "X-Upload-Content-Type": mimeType,
+      },
+      body: JSON.stringify({ name, parents: [folderId] }),
+    }
+  );
+  const sessionUrl = resp.headers.get("Location");
+  if (!resp.ok || !sessionUrl) {
+    const body = await resp.text();
+    console.error("[google-workspace] upload_init failed:", resp.status, body.slice(0, 300));
+    throw new GoogleWorkspaceError("google_api_error", `Could not start upload (${resp.status})`, 502);
+  }
+  return sessionUrl;
+}
+
 /** Find or create the per-account "DragonCandy AIOS" folder (drive.file sees only app files). */
 export async function findOrCreateDcFolder(token: string): Promise<string> {
   const q = encodeURIComponent(
