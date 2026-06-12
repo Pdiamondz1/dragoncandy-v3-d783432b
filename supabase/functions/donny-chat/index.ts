@@ -7,6 +7,21 @@ import { getUserUsageStage, incrementUsage, getUserSubscriptionTier, checkQuotaO
 import { corsHeaders } from "../_shared/cors.ts";
 import { anthropicFetch } from "../_shared/anthropic-fetch.ts";
 import { embedQuery, retrieveContext } from "../donny-orchestrator/rag.ts";
+import {
+  GoogleWorkspaceError,
+  assertFileName,
+  driveCtx,
+  exportMarkdownToDoc,
+  listDcFiles,
+} from "../_shared/google-workspace.ts";
+
+/** Friendly tool answer when the caller has no usable Google connection. */
+function workspaceNotConnectedMessage(err: unknown): string | null {
+  if (err instanceof GoogleWorkspaceError && (err.code === "not_connected" || err.code === "needs_reconnect")) {
+    return "Google isn't connected for this account — connect it at /internal/workspace, then ask again.";
+  }
+  return null;
+}
 
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
 if (!ANTHROPIC_API_KEY) {
@@ -413,6 +428,25 @@ const INTERNAL_TOOL_DEFINITIONS = [
       "The most recent weekly operating brief: title, week, KPI status list, and full markdown body. Use when asked about the weekly brief, 'this week', or current KPI status.",
     input_schema: { type: "object", properties: {} },
   },
+  {
+    name: "workspace_export_doc",
+    description:
+      "Export markdown as a Google Doc in the user's DragonCandy AIOS Drive folder. Use when asked to export, save, or turn an answer, analysis, or brief into a doc. Returns the doc link.",
+    input_schema: {
+      type: "object",
+      properties: {
+        title: { type: "string", description: "Doc title" },
+        markdown: { type: "string", description: "Full markdown content for the doc" },
+      },
+      required: ["title", "markdown"],
+    },
+  },
+  {
+    name: "workspace_list_files",
+    description:
+      "List the files in the user's DragonCandy AIOS Google Drive folder (docs, sheets, slides, uploads).",
+    input_schema: { type: "object", properties: {} },
+  },
 ];
 
 const INTERNAL_TOOL_NAMES = new Set(INTERNAL_TOOL_DEFINITIONS.map((t) => t.name));
@@ -561,7 +595,7 @@ function buildInternalSystemPrompt(profile: Record<string, any>): string {
 
 ## How you work
 - Answer ONLY from tool results. Never fabricate or estimate a number a tool didn't return.
-- Use tools proactively: platform questions → get_platform_stats; money in → get_revenue_stats; AI spend → get_cost_stats; growth/scaling/capacity → get_platform_weight_trend; weekly brief or KPI status → get_latest_briefing; strategy, pricing, playbooks, targets, kill-switches → search_internal_knowledge.
+- Use tools proactively: platform questions → get_platform_stats; money in → get_revenue_stats; AI spend → get_cost_stats; growth/scaling/capacity → get_platform_weight_trend; weekly brief or KPI status → get_latest_briefing; strategy, pricing, playbooks, targets, kill-switches → search_internal_knowledge; "export/save this as a doc" → workspace_export_doc (write the full markdown yourself, then share the returned link); "what's in my Drive folder" → workspace_list_files.
 - Combine tools when a question spans data and strategy (e.g. "are we on track?" = live stats + KPI targets from the strategy library).
 - Cite the numbers you used. Monetary values from tools are in cents unless labeled otherwise — convert to dollars when presenting.
 - Be direct and analytical, not promotional. Flag bad news plainly.
@@ -806,6 +840,37 @@ async function executeTool(
         .maybeSingle();
       if (error) throw error;
       return { result: data ?? { message: "No weekly briefings exist yet." } };
+    }
+
+    // --- Workspace tools (caller's own Google connection; tokens never leave
+    // the backend). A missing connection is a normal answer, not an error.
+    case "workspace_export_doc": {
+      try {
+        const { token, folderId } = await driveCtx(supabaseAdmin, userId);
+        const title = assertFileName(args.title);
+        const file = await exportMarkdownToDoc(token, folderId, title, String(args.markdown ?? ""));
+        return { result: { id: file.id, name: file.name, link: file.webViewLink } };
+      } catch (err) {
+        const friendly = workspaceNotConnectedMessage(err);
+        if (friendly) return { result: { message: friendly } };
+        throw err;
+      }
+    }
+
+    case "workspace_list_files": {
+      try {
+        const { token, folderId } = await driveCtx(supabaseAdmin, userId);
+        const files = await listDcFiles(token, folderId);
+        return {
+          result: files.map((f: any) => ({
+            id: f.id, name: f.name, mimeType: f.mimeType, modified: f.modifiedTime, link: f.webViewLink,
+          })),
+        };
+      } catch (err) {
+        const friendly = workspaceNotConnectedMessage(err);
+        if (friendly) return { result: { message: friendly } };
+        throw err;
+      }
     }
 
     // --- Campaign Tools ---

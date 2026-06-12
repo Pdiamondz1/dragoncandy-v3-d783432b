@@ -22,6 +22,7 @@ import {
   createGoogleFile,
   driveCtx,
   exchangeCode,
+  exportMarkdownToDoc,
   findOrCreateDcFolder,
   getValidAccessToken,
   initResumableUpload,
@@ -212,6 +213,18 @@ serve(async (req) => {
         const { token } = await getValidAccessToken(supabaseAdmin, user.id);
         await trashDriveFile(token, fileId);
         return json({ success: true });
+      }
+
+      case "export_markdown_to_doc": {
+        const title = assertFileName(body.title);
+        const markdown = typeof body.markdown === "string" ? body.markdown.trim() : "";
+        if (!markdown) return json({ error: "markdown is required", code: "bad_markdown" }, 400);
+        if (markdown.length > 500_000) {
+          return json({ error: "markdown too large to export", code: "bad_markdown" }, 400);
+        }
+        const docId = body.doc_id ? assertDriveFileId(body.doc_id) : undefined;
+        const { token, folderId } = await driveCtx(supabaseAdmin, user.id);
+        return json({ file: await exportMarkdownToDoc(token, folderId, title, markdown, docId) });
       }
 
       case "upload_init": {

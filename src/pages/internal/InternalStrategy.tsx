@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useInternalDocs, useInternalDoc } from '@/hooks/internal/useInternalDocs';
 import { ErrorCard } from '@/components/internal/stats';
+import { ExportToDocButton } from '@/components/internal/ExportToDocButton';
 import { MarkdownProse } from '@/components/internal/MarkdownProse';
 import { Spinner } from '@/components/ui/spinner';
 import { Input } from '@/components/ui/input';
@@ -87,9 +88,12 @@ const InternalStrategy = () => {
           <ErrorCard message="This document failed to load." />
         ) : (
           <div className="rounded-2xl border border-dc-teal/25 bg-white/[0.04] p-6 backdrop-blur-sm">
-            <p className="mb-4 font-mono text-xs text-white/40">
-              {doc.data.path} · updated {new Date(doc.data.updated_at).toLocaleDateString()}
-            </p>
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+              <p className="font-mono text-xs text-white/40">
+                {doc.data.path} · updated {new Date(doc.data.updated_at).toLocaleDateString()}
+              </p>
+              <ExportToDocButton title={doc.data.title} markdown={doc.data.content_md} />
+            </div>
             <MarkdownProse>{doc.data.content_md}</MarkdownProse>
           </div>
         )}
