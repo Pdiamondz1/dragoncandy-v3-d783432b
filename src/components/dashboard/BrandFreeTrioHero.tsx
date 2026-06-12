@@ -67,20 +67,20 @@ export function BrandFreeTrioHero({ orgId }: BrandFreeTrioHeroProps) {
         {/* 3-card grid: stacked on mobile, 3-col on md+ */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           {/* Card A: Match Report (teal accent) */}
-          <div className="rounded-2xl bg-white shadow-sm overflow-hidden">
-            <div className="h-1.5 bg-teal-400" />
+          <div className="rounded-2xl bg-white border border-dc-teal/15 shadow-dc-sm overflow-hidden">
+            <div className="h-1.5 bg-dc-teal" />
             <div className="p-4 space-y-3">
               <div className="flex items-center gap-2">
-                <Users className="w-5 h-5 text-teal-500 shrink-0" />
-                <p className="text-sm font-bold uppercase tracking-wide text-gray-900">
+                <Users className="w-5 h-5 text-dc-teal shrink-0" />
+                <p className="text-sm font-bold uppercase tracking-wide text-dc-text">
                   Match Report
                 </p>
               </div>
-              <p className="text-sm text-gray-500 leading-snug">
+              <p className="text-sm text-dc-text-muted leading-snug">
                 Top 5 creators ranked for your brand.
               </p>
               <Button
-                variant="dc-primary"
+                variant="dc-outline"
                 className="w-full md:w-fit rounded-full text-sm"
                 onClick={handleMatchReport}
               >
@@ -90,20 +90,20 @@ export function BrandFreeTrioHero({ orgId }: BrandFreeTrioHeroProps) {
           </div>
 
           {/* Card B: Brand Brief (pink accent) */}
-          <div className="rounded-2xl bg-white shadow-sm overflow-hidden">
-            <div className="h-1.5 bg-pink-400" />
+          <div className="rounded-2xl bg-white border border-dc-teal/15 shadow-dc-sm overflow-hidden">
+            <div className="h-1.5 bg-dc-pink" />
             <div className="p-4 space-y-3">
               <div className="flex items-center gap-2">
-                <FileText className="w-5 h-5 text-pink-500 shrink-0" />
-                <p className="text-sm font-bold uppercase tracking-wide text-gray-900">
+                <FileText className="w-5 h-5 text-dc-pink-accent shrink-0" />
+                <p className="text-sm font-bold uppercase tracking-wide text-dc-text">
                   Brand Brief
                 </p>
               </div>
-              <p className="text-sm text-gray-500 leading-snug">
+              <p className="text-sm text-dc-text-muted leading-snug">
                 AI campaign brief tailored to your brand.
               </p>
               <Button
-                variant="dc-primary"
+                variant="dc-outline"
                 className="w-full md:w-fit rounded-full text-sm"
                 onClick={handleBrandBrief}
               >
@@ -112,17 +112,17 @@ export function BrandFreeTrioHero({ orgId }: BrandFreeTrioHeroProps) {
             </div>
           </div>
 
-          {/* Card C: Sponsored Templates (gray accent) */}
-          <div className="rounded-2xl bg-white shadow-sm overflow-hidden">
-            <div className="h-1.5 bg-gray-400" />
+          {/* Card C: Sponsored Templates (yellow accent) */}
+          <div className="rounded-2xl bg-white border border-dc-teal/15 shadow-dc-sm overflow-hidden">
+            <div className="h-1.5 bg-dc-yellow" />
             <div className="p-4 space-y-3">
               <div className="flex items-center gap-2">
-                <LayoutTemplate className="w-5 h-5 text-gray-500 shrink-0" />
-                <p className="text-sm font-bold uppercase tracking-wide text-gray-900">
+                <LayoutTemplate className="w-5 h-5 text-amber-500 shrink-0" />
+                <p className="text-sm font-bold uppercase tracking-wide text-dc-text">
                   Sponsored Templates
                 </p>
               </div>
-              <p className="text-sm text-gray-500 leading-snug">
+              <p className="text-sm text-dc-text-muted leading-snug">
                 {templateCount > 0
                   ? `${templateCount} pre-built campaigns ready to customize.`
                   : 'Pre-built campaigns ready to customize.'}
@@ -139,8 +139,8 @@ export function BrandFreeTrioHero({ orgId }: BrandFreeTrioHeroProps) {
         </div>
 
         {/* Slim banner */}
-        <div className="flex items-center justify-between rounded-xl bg-white/60 px-4 py-2">
-          <p className="text-xs text-gray-500">
+        <div className="flex items-center justify-between rounded-xl bg-dc-teal/5 px-4 py-2">
+          <p className="text-xs text-dc-text-muted">
             These tools stay free forever.
           </p>
           <button

@@ -6,7 +6,7 @@ export interface StatItem {
   label: string;
   value: string | number;
   subtitle?: string;
-  icon: LucideIcon;
+  icon?: LucideIcon;
   href?: string;
 }
 
@@ -42,7 +42,7 @@ export function StatsRow({ stats, isLoading }: StatsRowProps) {
               {stat.value}
             </div>
             <div className="flex items-center gap-1.5 mt-1">
-              <stat.icon className="h-3.5 w-3.5 text-dc-text-muted" aria-hidden="true" />
+              {stat.icon && <stat.icon className="h-3.5 w-3.5 text-dc-text-muted" aria-hidden="true" />}
               <p className="text-xs font-medium text-dc-text-muted">{stat.label}</p>
             </div>
             {stat.subtitle && (
