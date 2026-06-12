@@ -4,7 +4,7 @@ import { useProjectCompletion } from '@/hooks/useProjectCompletion';
 import { useAuth } from '@/hooks/useAuth';
 import { RatingPrompt } from './RatingPrompt';
 
-export const RatingPromptManager: React.FC = () => {
+export const RatingPromptManager: React.FC<{ variant?: 'card' | 'row' }> = ({ variant = 'card' }) => {
   const { user } = useAuth();
   const { data: completedProjects, isLoading } = useProjectCompletion(user?.id);
   const [dismissedPrompts, setDismissedPrompts] = useState<Set<string>>(new Set());
@@ -34,7 +34,7 @@ export const RatingPromptManager: React.FC = () => {
   if (pendingReviews.length === 0) return null;
 
   return (
-    <div className="space-y-4">
+    <div className={variant === 'row' ? 'divide-y divide-dc-teal/10' : 'space-y-4'}>
       {pendingReviews.slice(0, 2).map((project) => {
         const reviewType = project.user_role === 'creator' ? 'creator_to_business' : 'business_to_creator';
 
@@ -45,6 +45,7 @@ export const RatingPromptManager: React.FC = () => {
             revieweeId={project.other_party_id}
             revieweeName={project.other_party_name}
             reviewType={reviewType}
+            variant={variant}
             onDismiss={() => handleDismiss(project.id)}
           />
         );
