@@ -74,7 +74,7 @@ export function ContentIdeaCard() {
   const navigate = useNavigate();
 
   return (
-    <div className="rounded-3xl border-2 border-dc-teal/40 bg-dc-card p-5 lg:p-6">
+    <div className="rounded-2xl border border-dc-teal/15 bg-dc-card shadow-dc-sm p-5 lg:p-6">
       <div className="flex items-center gap-2">
         <Sparkles className="h-5 w-5 text-dc-teal" />
         <h3 className="text-base font-bold text-dc-text">Get a content idea</h3>
