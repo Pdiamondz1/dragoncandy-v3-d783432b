@@ -7,6 +7,7 @@ import { DonnyTypingIndicator } from './DonnyTypingIndicator';
 import { DonnyQuickChips } from './DonnyQuickChips';
 import { DonnyAvatar } from './DonnyAvatar';
 import { useDonnyContext } from '@/contexts/DonnyProvider';
+import { useVisualViewportOffset } from '@/hooks/useVisualViewportOffset';
 import { WebOnly } from '@/components/platform/WebOnly';
 
 export function DonnyChatView() {
@@ -25,19 +26,23 @@ export function DonnyChatView() {
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll to bottom on new messages
+  // Keyboard height on mobile (visualViewport tracks the iOS/Android keyboard;
+  // dvh does not). 0 on desktop — gated so devtools/pinch resizes never pad.
+  const kbOffset = useVisualViewportOffset(window.matchMedia('(max-width: 767px)').matches);
+
+  // Auto-scroll to bottom on new messages (and when the keyboard opens)
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages.length, isStreaming, streamingContent]);
+  }, [messages.length, isStreaming, streamingContent, kbOffset]);
 
   const handleChipTap = (message: string) => {
     sendMessage(message);
   };
 
   return (
-    <div className="flex flex-col h-full bg-white pt-[env(safe-area-inset-top)]">
+    <div className="flex flex-col h-full bg-white pt-[env(safe-area-inset-top)]" style={{ paddingBottom: kbOffset }}>
       <DonnyChatHeader
         avatarState={avatarState}
         onCollapse={collapse}
