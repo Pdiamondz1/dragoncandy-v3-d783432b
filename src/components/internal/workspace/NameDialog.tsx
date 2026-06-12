@@ -29,7 +29,7 @@ export const NameDialog = ({ open, title, cta, initialName, pending, onSubmit, o
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-sm rounded-3xl">
         <DialogHeader>
-          <DialogTitle className="text-dc-text">{title}</DialogTitle>
+          <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
         <Input
           autoFocus
@@ -43,7 +43,7 @@ export const NameDialog = ({ open, title, cta, initialName, pending, onSubmit, o
           type="button"
           disabled={pending || !name.trim()}
           onClick={submit}
-          className="w-full rounded-full bg-dc-teal px-6 py-2.5 font-bold text-white transition-colors hover:bg-dc-teal-dark disabled:opacity-50"
+          className="w-full rounded-full bg-dc-teal px-6 py-2.5 font-bold text-dc-dark transition-colors hover:bg-dc-teal-dark disabled:opacity-50"
         >
           {pending ? 'Working…' : cta}
         </button>

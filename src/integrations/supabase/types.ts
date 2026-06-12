@@ -88,6 +88,8 @@ export type Database = {
         Row: {
           body_md: string
           created_at: string
+          gdoc_id: string | null
+          gdoc_owner_user_id: string | null
           generated_by: string
           id: string
           kpis: Json
@@ -99,6 +101,8 @@ export type Database = {
         Insert: {
           body_md: string
           created_at?: string
+          gdoc_id?: string | null
+          gdoc_owner_user_id?: string | null
           generated_by?: string
           id?: string
           kpis?: Json
@@ -110,6 +114,8 @@ export type Database = {
         Update: {
           body_md?: string
           created_at?: string
+          gdoc_id?: string | null
+          gdoc_owner_user_id?: string | null
           generated_by?: string
           id?: string
           kpis?: Json

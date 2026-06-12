@@ -15,9 +15,9 @@ const formatBytes = (bytes: number) =>
   bytes >= GB ? `${(bytes / GB).toFixed(2)} GB` : `${Math.round(bytes / MB)} MB`;
 
 const severityStyles = {
-  critical: 'border-dc-pink-accent bg-dc-pink/20',
-  warning: 'border-dc-pink bg-dc-pink/10',
-  info: 'border-teal-300 bg-dc-teal/12',
+  critical: 'border-dc-pink-accent/60 bg-dc-pink-accent/15',
+  warning: 'border-dc-pink/50 bg-dc-pink/10',
+  info: 'border-dc-teal/40 bg-dc-teal/10',
 } as const;
 
 const InternalWeight = () => {
@@ -50,8 +50,8 @@ const InternalWeight = () => {
 
   return (
     <div className="max-w-6xl">
-      <h1 className="text-2xl font-bold text-dc-text">App weight</h1>
-      <p className="mb-6 text-sm text-dc-text-muted">
+      <h1 className="text-2xl font-bold text-white">App weight</h1>
+      <p className="mb-6 text-sm text-white/60">
         Daily snapshots of database, storage, and data volume — and when it&apos;s time to scale
         Supabase compute or disk.
       </p>
@@ -61,10 +61,10 @@ const InternalWeight = () => {
           {alerts.map((alert) => (
             <div
               key={alert.title}
-              className={`rounded-2xl border-2 p-4 ${severityStyles[alert.severity]}`}
+              className={`rounded-2xl border p-4 ${severityStyles[alert.severity]}`}
             >
-              <p className="font-bold text-dc-text">{alert.title}</p>
-              <p className="text-sm text-dc-text-muted">{alert.detail}</p>
+              <p className="font-bold text-white">{alert.title}</p>
+              <p className="text-sm text-white/60">{alert.detail}</p>
             </div>
           ))}
         </div>
@@ -90,14 +90,22 @@ const InternalWeight = () => {
       </div>
 
       <SectionHeading>Database vs storage (MB)</SectionHeading>
-      <div className="h-64 rounded-2xl border border-teal-300 bg-dc-card p-4">
+      <div className="h-64 rounded-2xl border border-dc-teal/25 bg-white/[0.04] p-4 backdrop-blur-sm">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={chartData}>
-            <XAxis dataKey="day" tick={{ fontSize: 12 }} />
-            <YAxis tick={{ fontSize: 12 }} width={48} />
-            <Tooltip />
-            <Area type="monotone" dataKey="dbMb" name="Database" stroke="#0F766E" fill="#4DD9C0" fillOpacity={0.5} />
-            <Area type="monotone" dataKey="storageMb" name="Storage" stroke="#DB2777" fill="#F9A8D4" fillOpacity={0.4} />
+            <XAxis dataKey="day" tick={{ fontSize: 12, fill: 'rgba(255,255,255,0.55)' }} stroke="rgba(255,255,255,0.2)" />
+            <YAxis tick={{ fontSize: 12, fill: 'rgba(255,255,255,0.55)' }} width={48} stroke="rgba(255,255,255,0.2)" />
+            <Tooltip
+              contentStyle={{
+                backgroundColor: '#1A1A2A',
+                border: '1px solid rgba(77,217,192,0.3)',
+                borderRadius: 12,
+                color: '#fff',
+              }}
+              labelStyle={{ color: 'rgba(255,255,255,0.7)' }}
+            />
+            <Area type="monotone" dataKey="dbMb" name="Database" stroke="#4DD9C0" fill="#4DD9C0" fillOpacity={0.25} />
+            <Area type="monotone" dataKey="storageMb" name="Storage" stroke="#F9A8D4" fill="#F9A8D4" fillOpacity={0.2} />
           </AreaChart>
         </ResponsiveContainer>
       </div>

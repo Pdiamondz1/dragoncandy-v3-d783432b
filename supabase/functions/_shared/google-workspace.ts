@@ -359,6 +359,59 @@ export async function trashDriveFile(token: string, fileId: string): Promise<voi
   });
 }
 
+const DRIVE_UPLOAD_URL = "https://www.googleapis.com/upload/drive/v3/files";
+
+/**
+ * Export markdown as a Google Doc in the DragonCandy folder. Drive converts
+ * text/markdown natively when the target mimeType is a Google Doc. When
+ * `existingDocId` is given the doc is overwritten in place (idempotent weekly
+ * exports); a stale/trashed id falls back to creating a fresh doc.
+ */
+export async function exportMarkdownToDoc(
+  token: string,
+  folderId: string,
+  title: string,
+  markdown: string,
+  existingDocId?: string
+): Promise<any> {
+  const upload = async (docId?: string) => {
+    const metadata = docId
+      ? { name: title }
+      : { name: title, mimeType: "application/vnd.google-apps.document", parents: [folderId] };
+    const boundary = `dc-export-${crypto.randomUUID()}`;
+    const body = [
+      `--${boundary}`,
+      "Content-Type: application/json; charset=UTF-8",
+      "",
+      JSON.stringify(metadata),
+      `--${boundary}`,
+      "Content-Type: text/markdown; charset=UTF-8",
+      "",
+      markdown,
+      `--${boundary}--`,
+      "",
+    ].join("\r\n");
+    const url = `${DRIVE_UPLOAD_URL}${docId ? `/${docId}` : ""}?uploadType=multipart&fields=${FILE_FIELDS}`;
+    return fetch(url, {
+      method: docId ? "PATCH" : "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": `multipart/related; boundary=${boundary}`,
+      },
+      body,
+    });
+  };
+
+  let resp = await upload(existingDocId);
+  if (existingDocId && resp.status === 404) resp = await upload(); // stale doc id → fresh doc
+  if (!resp.ok) {
+    const body = await resp.text();
+    console.error("[google-workspace] doc export failed:", resp.status, body.slice(0, 300));
+    throw new GoogleWorkspaceError("google_api_error", `Doc export failed (${resp.status})`, 502);
+  }
+  return resp.json();
+}
+
 /**
  * Start a Drive resumable-upload session server-side and return the session
  * URL. The URL is a short-lived (~1 week) pre-authorized capability scoped to
