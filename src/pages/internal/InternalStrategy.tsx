@@ -41,8 +41,8 @@ const InternalStrategy = () => {
   return (
     <div className="flex max-w-6xl flex-col gap-6 lg:flex-row">
       <aside className="lg:w-80 lg:shrink-0">
-        <h1 className="text-2xl font-bold text-dc-text">Strategy library</h1>
-        <p className="mb-4 text-sm text-dc-text-muted">
+        <h1 className="text-2xl font-bold text-white">Strategy library</h1>
+        <p className="mb-4 text-sm text-white/60">
           Playbooks, briefings, and wiki knowledge — synced from the repo.
         </p>
         <Input
@@ -51,31 +51,31 @@ const InternalStrategy = () => {
           onChange={(e) => setFilter(e.target.value)}
           className="mb-3"
         />
-        <nav className="max-h-[60vh] overflow-y-auto rounded-2xl border border-teal-300 bg-dc-card">
+        <nav className="max-h-[60vh] overflow-y-auto rounded-2xl border border-dc-teal/25 bg-white/[0.04] backdrop-blur-sm">
           {filtered.map((d) => (
             <button
               key={d.id}
               onClick={() => setSelectedId(d.id)}
-              className={`block w-full border-b border-teal-300/40 px-4 py-2.5 text-left text-sm transition-colors last:border-b-0 ${
+              className={`block w-full border-b border-white/10 px-4 py-2.5 text-left text-sm transition-colors last:border-b-0 ${
                 selectedId === d.id
-                  ? 'bg-dc-teal/12 font-semibold text-dc-teal-btn'
-                  : 'text-dc-text hover:bg-dc-teal/12'
+                  ? 'bg-dc-teal/15 font-semibold text-dc-teal'
+                  : 'text-white/80 hover:bg-white/[0.06]'
               }`}
             >
               {d.title}
             </button>
           ))}
           {filtered.length === 0 && (
-            <p className="px-4 py-4 text-sm text-dc-text-muted">No docs match that filter.</p>
+            <p className="px-4 py-4 text-sm text-white/50">No docs match that filter.</p>
           )}
         </nav>
       </aside>
 
       <article className="min-w-0 flex-1">
         {!selectedId ? (
-          <div className="rounded-2xl border border-teal-300 bg-dc-card p-6">
-            <h2 className="font-bold text-dc-text">Pick a document</h2>
-            <p className="text-sm text-dc-text-muted">
+          <div className="rounded-2xl border border-dc-teal/25 bg-white/[0.04] p-6 backdrop-blur-sm">
+            <h2 className="font-bold text-white">Pick a document</h2>
+            <p className="text-sm text-white/60">
               Strategy briefing, GTM playbook, KPI scorecard, and the full knowledge wiki live here.
             </p>
           </div>
@@ -86,8 +86,8 @@ const InternalStrategy = () => {
         ) : doc.isError || !doc.data ? (
           <ErrorCard message="This document failed to load." />
         ) : (
-          <div className="rounded-2xl border border-teal-300 bg-dc-card p-6">
-            <p className="mb-4 text-xs text-dc-text-muted">
+          <div className="rounded-2xl border border-dc-teal/25 bg-white/[0.04] p-6 backdrop-blur-sm">
+            <p className="mb-4 font-mono text-xs text-white/40">
               {doc.data.path} · updated {new Date(doc.data.updated_at).toLocaleDateString()}
             </p>
             <MarkdownProse>{doc.data.content_md}</MarkdownProse>

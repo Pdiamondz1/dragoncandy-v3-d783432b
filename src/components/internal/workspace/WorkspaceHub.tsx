@@ -97,7 +97,7 @@ export const WorkspaceHub = () => {
             key={entry.kind}
             type="button"
             onClick={() => setCreateEntry(entry)}
-            className="flex items-center gap-1.5 rounded-full border border-dc-teal px-4 py-1.5 text-sm font-semibold text-dc-text transition-colors hover:bg-dc-teal/12"
+            className="flex items-center gap-1.5 rounded-full border border-dc-teal/30 px-4 py-1.5 text-sm font-semibold text-white transition-colors hover:bg-white/[0.06]"
           >
             <entry.icon className="h-4 w-4 text-dc-teal" /> {entry.label}
           </button>
@@ -106,7 +106,7 @@ export const WorkspaceHub = () => {
           type="button"
           disabled={upload.isPending}
           onClick={open}
-          className="flex items-center gap-1.5 rounded-full bg-dc-teal px-4 py-1.5 text-sm font-bold text-white transition-colors hover:bg-dc-teal-dark disabled:opacity-50"
+          className="flex items-center gap-1.5 rounded-full bg-dc-teal px-4 py-1.5 text-sm font-bold text-dc-dark transition-colors hover:bg-dc-teal-dark disabled:opacity-50"
         >
           <Upload className="h-4 w-4" />
           {upload.isPending ? 'Uploading…' : 'Upload'}

@@ -23,7 +23,7 @@ export const InternalRoute = ({ tier = 'stakeholder', children }: InternalRouteP
 
   if (authLoading || isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-dc-card">
+      <div className="min-h-screen flex items-center justify-center bg-dc-dark">
         <Spinner className="h-10 w-10 border-teal-400" />
       </div>
     );
@@ -58,16 +58,16 @@ function InternalAccessDenied() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-dc-card p-4">
-      <div className="max-w-md w-full rounded-2xl border-2 border-teal-400 bg-dc-card p-6 text-center shadow-sm">
-        <h1 className="text-xl font-bold text-dc-text mb-2">Internal access only</h1>
-        <p className="text-dc-text-muted mb-2">
+    <div className="min-h-screen flex items-center justify-center bg-dc-dark p-4">
+      <div className="max-w-md w-full rounded-2xl border border-dc-teal/25 bg-white/[0.04] p-6 text-center backdrop-blur-md">
+        <h1 className="text-xl font-bold text-white mb-2">Internal access only</h1>
+        <p className="text-white/60 mb-2">
           This area is for the DragonCandy team and its stakeholders. If you believe you
           should have access, ask a founder to grant it to your account.
         </p>
         {user?.email && (
-          <p className="text-xs text-dc-text-muted mb-6">
-            You are signed in as <span className="font-semibold text-dc-text">{user.email}</span>
+          <p className="text-xs text-white/50 mb-6">
+            You are signed in as <span className="font-semibold text-white">{user.email}</span>
             {' '}— founder access may be on a different account.
           </p>
         )}
@@ -75,13 +75,13 @@ function InternalAccessDenied() {
           type="button"
           onClick={switchAccount}
           disabled={signingOut}
-          className="inline-block w-full rounded-full bg-dc-teal px-6 py-3 font-semibold text-white hover:bg-dc-teal-dark transition-colors disabled:opacity-50"
+          className="inline-block w-full rounded-full bg-dc-teal px-6 py-3 font-bold text-dc-dark hover:bg-dc-teal-dark transition-colors disabled:opacity-50"
         >
           {signingOut ? 'Signing out…' : 'Sign in with a different account'}
         </button>
         <a
           href="https://dragoncandy.io"
-          className="mt-3 inline-block w-full rounded-full border border-dc-teal px-6 py-3 font-semibold text-dc-pink-accent hover:bg-dc-teal/12 transition-colors"
+          className="mt-3 inline-block w-full rounded-full border border-dc-teal/30 px-6 py-3 font-semibold text-dc-pink hover:bg-white/[0.06] transition-colors"
         >
           Go to dragoncandy.io
         </a>
