@@ -54,7 +54,7 @@ export function DonnyMobileSheet() {
       <div
         className={cn(
           'fixed z-[61] md:hidden shadow-2xl transition-all duration-300 ease-out',
-          stage === 'tray' && 'left-0 right-0 bottom-0 h-[40dvh] rounded-t-2xl',
+          stage === 'tray' && 'left-0 right-0 bottom-0 h-[70dvh] max-h-[600px] rounded-t-2xl flex flex-col',
           stage === 'chat' && 'inset-0 h-[100dvh]'
         )}
       >
@@ -70,7 +70,11 @@ export function DonnyMobileSheet() {
           </div>
         )}
 
-        {stage === 'tray' && <DonnyTray />}
+        {stage === 'tray' && (
+          <div className="flex-1 min-h-0">
+            <DonnyTray variant="mobile" />
+          </div>
+        )}
         {stage === 'chat' && <DonnyChatView />}
       </div>
     </>

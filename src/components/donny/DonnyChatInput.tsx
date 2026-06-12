@@ -31,7 +31,7 @@ export function DonnyChatInput({ onSubmit, disabled }: DonnyChatInputProps) {
         placeholder="Ask Donny anything..."
         disabled={disabled}
         aria-label="Message Donny"
-        className="flex-1 bg-gray-100 rounded-full py-2 px-4 text-sm text-gray-700 placeholder:text-gray-400 outline-none focus:ring-2 focus:ring-dc-teal/30 disabled:opacity-50"
+        className="flex-1 bg-gray-100 rounded-full py-2 px-4 text-base md:text-sm text-gray-700 placeholder:text-gray-400 outline-none focus:ring-2 focus:ring-dc-teal/30 disabled:opacity-50"
       />
       <button
         type="submit"
