@@ -1,7 +1,9 @@
 import { useState } from 'react';
+import { toast } from 'sonner';
 import { useBriefings, usePublishBriefing, type BriefingKpi } from '@/hooks/internal/useBriefings';
 import { useInternalAccess } from '@/hooks/internal/useInternalAccess';
 import { ErrorCard } from '@/components/internal/stats';
+import { ExportToDocButton } from '@/components/internal/ExportToDocButton';
 import { MarkdownProse } from '@/components/internal/MarkdownProse';
 import { Spinner } from '@/components/ui/spinner';
 
@@ -101,22 +103,45 @@ const InternalBriefings = () => {
                     : ' · draft'}
                 </p>
               </div>
-              {isAdmin && (
-                <button
-                  type="button"
-                  disabled={publishMutation.isPending}
-                  onClick={() =>
-                    publishMutation.mutate({ id: selected.id, publish: !selected.published_at })
-                  }
-                  className={`rounded-full px-4 py-1.5 text-sm font-bold transition-colors disabled:opacity-50 ${
-                    selected.published_at
-                      ? 'bg-dc-pink-accent-btn text-white hover:bg-dc-pink-accent'
-                      : 'bg-dc-teal text-dc-dark hover:bg-dc-teal-dark'
-                  }`}
-                >
-                  {selected.published_at ? 'Unpublish' : 'Publish to stakeholders'}
-                </button>
-              )}
+              <div className="flex flex-wrap items-center gap-2">
+                <ExportToDocButton title={selected.title} markdown={selected.body_md} />
+                {isAdmin && (
+                  <button
+                    type="button"
+                    disabled={publishMutation.isPending}
+                    onClick={() =>
+                      publishMutation.mutate(
+                        { briefing: selected, publish: !selected.published_at },
+                        {
+                          onSuccess: (result) => {
+                            if (result.published && result.exported) {
+                              toast.success('Brief published — Google Doc updated', {
+                                action: result.link
+                                  ? {
+                                      label: 'Open',
+                                      onClick: () => window.open(result.link, '_blank', 'noopener'),
+                                    }
+                                  : undefined,
+                              });
+                            } else if (result.published) {
+                              toast.warning(
+                                'Brief published — Doc export skipped (is Google connected on the Workspace page?)'
+                              );
+                            }
+                          },
+                        }
+                      )
+                    }
+                    className={`rounded-full px-4 py-1.5 text-sm font-bold transition-colors disabled:opacity-50 ${
+                      selected.published_at
+                        ? 'bg-dc-pink-accent-btn text-white hover:bg-dc-pink-accent'
+                        : 'bg-dc-teal text-dc-dark hover:bg-dc-teal-dark'
+                    }`}
+                  >
+                    {selected.published_at ? 'Unpublish' : 'Publish to stakeholders'}
+                  </button>
+                )}
+              </div>
             </div>
 
             {selected.kpis.length > 0 && (
