@@ -54,7 +54,10 @@ serve(async (req) => {
   // The acting account is resolved server-side from aios_settings — NEVER from
   // the request — so neither a scheduled agent nor a leaked service bearer can
   // redirect the write to another user's Drive.
-  const appendMetrics = async (supabaseAdmin: ReturnType<typeof createClient>) => {
+  const appendMetrics = async (
+    supabaseAdmin: ReturnType<typeof createClient>,
+    opts: { includeLink: boolean }
+  ) => {
     const { data: setting } = await supabaseAdmin
       .from("aios_settings")
       .select("value")
@@ -84,7 +87,8 @@ serve(async (req) => {
     if (snapErr) throw snapErr;
     const { token, folderId } = await driveCtx(supabaseAdmin, exportUserId);
     const result = await appendMetricsSnapshot(token, folderId, snapshot as Record<string, unknown>);
-    return json({ success: true, ...result });
+    // Service callers (scheduled agents) get no Drive metadata they don't need.
+    return json({ success: true, created: result.created, ...(opts.includeLink ? { link: result.link } : {}) });
   };
 
   try {
@@ -97,15 +101,22 @@ serve(async (req) => {
 
     // --- Service-bearer mode: scheduled export agents only, and ONLY the
     // metrics append. Everything else requires a real internal user session.
-    const bearer = authHeader.replace(/^Bearer\s+/i, "").trim();
-    if (bearer === SUPABASE_SERVICE_ROLE_KEY) {
+    // Require the Bearer scheme explicitly, and only treat the request as
+    // service-mode when the configured service key is real (non-empty and
+    // distinct from the anon key) — fail closed on any misconfiguration.
+    const bearerMatch = authHeader.match(/^Bearer\s+(.+)$/i);
+    const bearer = bearerMatch ? bearerMatch[1].trim() : "";
+    const serviceKeyUsable =
+      SUPABASE_SERVICE_ROLE_KEY.length > 20 &&
+      SUPABASE_SERVICE_ROLE_KEY !== Deno.env.get("SUPABASE_ANON_KEY");
+    if (serviceKeyUsable && bearer === SUPABASE_SERVICE_ROLE_KEY) {
       if (action !== "append_metrics_to_sheet") {
         return json(
           { error: "service mode permits only append_metrics_to_sheet", code: "forbidden_service_action" },
           403
         );
       }
-      return await appendMetrics(supabaseAdmin);
+      return await appendMetrics(supabaseAdmin, { includeLink: false });
     }
 
     // --- User mode: internal user via Supabase session ---
@@ -291,7 +302,7 @@ serve(async (req) => {
       // Admins can also trigger the metrics append manually; it targets the
       // same designated sheet as the scheduled service-mode call.
       case "append_metrics_to_sheet":
-        return await appendMetrics(supabaseAdmin);
+        return await appendMetrics(supabaseAdmin, { includeLink: true });
 
       default:
         return json({ error: `Unknown action "${action}"` }, 400);
