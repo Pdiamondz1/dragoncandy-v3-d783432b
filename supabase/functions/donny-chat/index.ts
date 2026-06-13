@@ -803,13 +803,28 @@ async function executeTool(
     surface?: string;
     campaign_context?: { campaign_id: string; title: string; status: string };
   },
-  // Set only after server-side admin verification. Internal tools run through the
-  // CALLER's session client so the SQL-level gates (is_internal_user / has_role)
-  // re-verify access — the service-role client is never used for internal reads.
-  internalCtx?: { userClient: any }
+  // Set only after server-side admin verification. In a normal session the
+  // internal tools run through the CALLER's session client so the SQL gates
+  // (is_internal_user / has_role) re-verify. In the trusted service path
+  // (Google Chat) there is no session, so userClient is the service client and
+  // serviceMode is true — the live-stats RPCs are auth.uid()-gated and degrade
+  // gracefully there (see below); the RLS-based tools work via the service role.
+  internalCtx?: { userClient: any; serviceMode?: boolean }
 ): Promise<{ result: any }> {
   if (INTERNAL_TOOL_NAMES.has(toolName) && !internalCtx) {
     throw new Error("Internal tools are only available on the internal surface");
+  }
+
+  // Live platform/revenue/cost stats depend on auth.uid(); over Google Chat
+  // (no session) point the user to the dashboard instead of erroring.
+  const STATS_OVER_CHAT = new Set(["get_platform_stats", "get_revenue_stats", "get_cost_stats"]);
+  if (internalCtx?.serviceMode && STATS_OVER_CHAT.has(toolName)) {
+    return {
+      result: {
+        message:
+          "Live platform, revenue, and cost figures aren't available over Google Chat yet — open the AIOS dashboard at internal.dragoncandy.io for those. I can still pull the latest weekly brief, search the strategy library, and work with Workspace files and email drafts here.",
+      },
+    };
   }
 
   switch (toolName) {
@@ -1661,57 +1676,80 @@ serve(async (req) => {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) throw new Error("No authorization header");
 
-    // --- Dual auth: Supabase session first, OAuth fallback ---
+    const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const requestBody = await req.json();
+    const { conversation_id, message, context: requestContext, acting_user_id } = requestBody;
+
+    // --- Auth: trusted service path → Supabase session → OAuth fallback ---
     let userId: string;
     let sessionAuthed = false;
+    let serviceActed = false;
+    let supabaseUser: ReturnType<typeof createClient> | null = null;
 
-    // Try Supabase session auth first (in-app usage)
-    const supabaseUser = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_ANON_KEY")!, {
-      global: { headers: { Authorization: authHeader } },
-    });
-    const {
-      data: { user },
-      error: authError,
-    } = await supabaseUser.auth.getUser();
+    // Trusted service path (Google Chat bot): the EXACT service-role bearer plus
+    // an acting_user_id. The bearer alone grants nothing — acting_user_id's
+    // internal role is verified where internal mode is entered below, so this
+    // can only ever drive internal Donny for a real internal user. Fail closed
+    // if the configured service key is unusable (empty / equal to the anon key).
+    const bearerTok = authHeader.match(/^Bearer\s+(.+)$/i)?.[1]?.trim() ?? "";
+    const serviceKeyUsable =
+      SUPABASE_SERVICE_ROLE_KEY.length > 20 &&
+      SUPABASE_SERVICE_ROLE_KEY !== Deno.env.get("SUPABASE_ANON_KEY");
 
-    if (user && !authError) {
-      userId = user.id;
-      sessionAuthed = true;
-    } else {
-      // Fallback: try Donny OAuth token (Chrome Extension, external clients)
-      const oauthResult = await validateDonnyToken(req);
-      if (!oauthResult) throw new Error("Unauthorized");
-      if (!requireScope(oauthResult.scopes, "donny:chat")) {
-        throw new Error("Insufficient scope: donny:chat required");
+    if (serviceKeyUsable && bearerTok === SUPABASE_SERVICE_ROLE_KEY) {
+      if (typeof acting_user_id !== "string" || !acting_user_id) {
+        throw new Error("acting_user_id is required for service auth");
       }
-      userId = oauthResult.user_id;
+      userId = acting_user_id;
+      serviceActed = true;
+    } else {
+      // In-app usage: Supabase session first
+      supabaseUser = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_ANON_KEY")!, {
+        global: { headers: { Authorization: authHeader } },
+      });
+      const {
+        data: { user },
+        error: authError,
+      } = await supabaseUser.auth.getUser();
+
+      if (user && !authError) {
+        userId = user.id;
+        sessionAuthed = true;
+      } else {
+        // Fallback: Donny OAuth token (Chrome Extension, external clients)
+        const oauthResult = await validateDonnyToken(req);
+        if (!oauthResult) throw new Error("Unauthorized");
+        if (!requireScope(oauthResult.scopes, "donny:chat")) {
+          throw new Error("Insufficient scope: donny:chat required");
+        }
+        userId = oauthResult.user_id;
+      }
     }
 
-    const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    // Consumer quota/rate limits don't apply to the internal service path
+    // (founders aren't on a plan); the hourly message cap below still does.
+    if (!serviceActed) {
+      const quotaCheck = await checkQuotaOrBlock(supabaseAdmin, userId);
+      if (!quotaCheck.allowed) {
+        return new Response(
+          JSON.stringify({
+            error: "monthly_quota_exceeded",
+            message: `You've used ${quotaCheck.used}/${quotaCheck.budget} Donny actions this month.`,
+            tier: quotaCheck.tier,
+            upgrade_url: "/settings/billing",
+          }),
+          { status: 429, headers: { ...corsHeaders(req), "Content-Type": "application/json" } }
+        );
+      }
 
-    // Monthly quota enforcement
-    const quotaCheck = await checkQuotaOrBlock(supabaseAdmin, userId);
-    if (!quotaCheck.allowed) {
-      return new Response(
-        JSON.stringify({
-          error: "monthly_quota_exceeded",
-          message: `You've used ${quotaCheck.used}/${quotaCheck.budget} Donny actions this month.`,
-          tier: quotaCheck.tier,
-          upgrade_url: "/settings/billing",
-        }),
-        { status: 429, headers: { ...corsHeaders(req), "Content-Type": "application/json" } }
-      );
+      const hourlyCheck = await checkHourlyRateLimit(supabaseAdmin, userId);
+      if (!hourlyCheck.allowed) {
+        return new Response(
+          JSON.stringify({ error: "rate_limited", retry_after: hourlyCheck.retryAfterSeconds }),
+          { status: 429, headers: { ...corsHeaders(req), "Content-Type": "application/json", "Retry-After": String(hourlyCheck.retryAfterSeconds) } }
+        );
+      }
     }
-
-    const hourlyCheck = await checkHourlyRateLimit(supabaseAdmin, userId);
-    if (!hourlyCheck.allowed) {
-      return new Response(
-        JSON.stringify({ error: "rate_limited", retry_after: hourlyCheck.retryAfterSeconds }),
-        { status: 429, headers: { ...corsHeaders(req), "Content-Type": "application/json", "Retry-After": String(hourlyCheck.retryAfterSeconds) } }
-      );
-    }
-
-    const { conversation_id, message, context: requestContext } = await req.json();
 
     if (message && message.length > MAX_INPUT_LENGTH) {
       return new Response(
@@ -1744,9 +1782,11 @@ serve(async (req) => {
     const isInternalConversation = conversationRow.surface === "internal";
     let internalMode = false;
     if (isInternalConversation || requestContext?.surface === "internal") {
-      if (!sessionAuthed) {
+      // Internal surface requires either a real Supabase session or the trusted
+      // service path — never the OAuth fallback — AND a server-verified admin row.
+      if (!sessionAuthed && !serviceActed) {
         return new Response(
-          JSON.stringify({ error: "forbidden: internal surface requires session auth" }),
+          JSON.stringify({ error: "forbidden: internal surface requires session or service auth" }),
           { status: 403, headers: { ...corsHeaders(req), "Content-Type": "application/json" } }
         );
       }
@@ -1961,7 +2001,9 @@ serve(async (req) => {
             profile.role,
             supabaseAdmin,
             requestContext,
-            internalMode ? { userClient: supabaseUser } : undefined
+            internalMode
+              ? { userClient: supabaseUser ?? supabaseAdmin, serviceMode: serviceActed }
+              : undefined
           );
           toolResult = execution.result;
         } catch (err: any) {
