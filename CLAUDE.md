@@ -159,10 +159,13 @@ Work spanning multiple sessions uses handoff documents in `.claude/handoffs/`.
 
 **Creating:** Invoke `session-handoff` skill when completing a plan phase with more work remaining, switching workstreams, or ending a session with pending work. Skip for small self-contained fixes or fully completed work. After writing the handoff to `.claude/handoffs/`, also copy it to `docs/wiki/raw/sessions/` and run `/wiki-ops ingest` on the raw session file to synthesize it into the wiki.
 
+**Knowledge update on branch finish (required).** Finishing a worktree branch is not done until the knowledge layer reflects what shipped. As a standard step of `finishing-a-development-branch`, run the **`knowledge-sync`** skill: write a `docs/wiki/raw/sessions/` source, `/wiki-ops ingest` it, refresh the affected core docs (`PROJECT_CONTEXT.md`, plus `DATABASE_SCHEMA.md` / `DESIGN_SYSTEM.md` / this file only if schema / design / a workflow rule changed), include those changes in the PR (reviewed like any code, through the Codex second pass), and after merge sync Donny's RAG (`donny_knowledge`). Skip only for trivial mechanical changes (typo/format/dep bumps). The daily 3am AIOS `knowledge-freshness-agent` only *flags* misses on `/internal/findings` — it is not a substitute for doing this per session.
+
 | Layer | Purpose | Update cadence |
 |-------|---------|----------------|
 | Memory (`.claude/...memory/`) | Durable user/project facts, preferences | When new facts learned |
 | PROJECT_CONTEXT.md | Project identity, strategy, stack | Monthly or at milestones |
+| Wiki (`docs/wiki/`) + Donny RAG (`donny_knowledge`) | Synthesized knowledge for humans + retrieval | Per worktree session, via `knowledge-sync` |
 | Handoffs (`.claude/handoffs/`) | In-flight execution state, next steps | Per work session |
 | Git log | What changed and why | Per commit |
 
@@ -199,3 +202,9 @@ git -C "C:/GIT/dragoncandy-v3-d783432b" merge --ff-only origin/main
 If the fast-forward aborts on "untracked working tree files would be overwritten," move those
 untracked files aside first. Core files (`CLAUDE.md`, `docs/PROJECT_CONTEXT.md`, `docs/wiki/`) appearing
 stale in the local folder almost always means this refresh step was skipped — not that the change was lost.
+
+**Recurring worktree routines are skills — use them, don't re-derive:** `refresh-main` (the
+fast-forward above), `worktree-cleanup` (remove merged worktrees + branches, safety-gated),
+`codex-review` (the mandatory Codex second pass before a PR), `verify-prod` (post-deploy
+both-viewport + console-error check), and `knowledge-sync` (the per-session knowledge update
+described under Session Continuity).
