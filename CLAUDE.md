@@ -109,6 +109,25 @@ After completing any implementation, review for:
 
 Run /simplify before presenting code to the user.
 
+### Codex second review (required)
+
+Codex is a **mandatory independent second reviewer** of Claude's code. After Claude's
+own reviews pass (subagent spec + code-quality reviews, or `/code-review`) and before
+finishing a development branch / opening a PR, run an independent Codex pass and act
+on its findings:
+
+```bash
+codex review --base main --title "<short title>"   # run from the worktree
+```
+
+(Other modes: `--uncommitted` for staged/unstaged/untracked changes, `--commit <sha>`
+for a single commit.) If Codex flags real issues, Claude fixes them and Codex is
+re-run until clean. Relay Codex's summary verdict to the user. Codex's sandbox may
+reject some of its own shell commands ("blocked by policy") — it still completes a
+full diff pass; that is expected, not a failure. This complements, never replaces,
+Claude's own reviews — the point is two independent models. (Distinct from
+`/code-review ultra`, the user-triggered, billed multi-agent cloud review.)
+
 ## Important Rules
 
 * **Never modify auth logic** without confirming first
