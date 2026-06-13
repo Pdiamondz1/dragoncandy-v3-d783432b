@@ -1970,13 +1970,22 @@ serve(async (req) => {
       outputTokens: result.usage?.output_tokens ?? 0,
     });
 
-    // Tool execution loop — Claude may request tool use
-    const TOKEN_CEILING = clampedMaxTokens * 3;
+    // Tool execution loop — Claude may request tool use. Bounded by ROUND
+    // COUNT, not a cumulative-token ceiling: every call re-sends the whole
+    // growing conversation, so a single large internal tool result (platform
+    // stats, a 30-day weight trend) inflates the running token total and a
+    // low ceiling would break the loop mid-tool-call — surfacing as EMPTY
+    // replies to platform/revenue/scaling questions. The token figure is kept
+    // only as a far-off true-runaway backstop.
+    const MAX_TOOL_ROUNDS = 10;
+    const TOKEN_SAFETY_NET = 300_000;
+    let toolRounds = 0;
     while (result.stop_reason === "tool_use") {
-      if (totalTokens > TOKEN_CEILING) {
-        console.warn(`[donny-chat] Token ceiling hit (${totalTokens}/${TOKEN_CEILING}) — breaking tool loop`);
+      if (toolRounds >= MAX_TOOL_ROUNDS || totalTokens > TOKEN_SAFETY_NET) {
+        console.warn(`[donny-chat] tool loop stop — rounds=${toolRounds}, tokens=${totalTokens}`);
         break;
       }
+      toolRounds++;
       const assistantContent = result.content;
       const callTokens = (result.usage?.input_tokens ?? 0) + (result.usage?.output_tokens ?? 0);
 
@@ -2109,7 +2118,52 @@ serve(async (req) => {
     await incrementUsage(supabaseAdmin, userId, modelConfig.actionCost);
 
     // Extract final text response
-    const finalContent = extractText(result.content);
+    let finalContent = extractText(result.content);
+
+    // Safety net: if we stopped on a pending tool_use (round cap) or the model
+    // returned no text, do ONE final no-tools turn so the user always gets an
+    // answer instead of a blank bubble.
+    if (!finalContent.trim()) {
+      try {
+        if (result.stop_reason === "tool_use") {
+          claudeMessages.push({ role: "assistant", content: result.content });
+          claudeMessages.push({
+            role: "user",
+            content: getToolUseBlocks(result.content).map((t: any) => ({
+              type: "tool_result",
+              tool_use_id: t.id,
+              content: "Tool budget reached — answer the user now from the data you already have.",
+            })),
+          });
+        }
+        const finalResp = await anthropicFetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: {
+            "x-api-key": ANTHROPIC_API_KEY!,
+            "anthropic-version": "2023-06-01",
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: modelConfig.model,
+            max_tokens: clampedMaxTokens,
+            system: fullSystemPrompt,
+            messages: claudeMessages,
+            // no tools — force a text answer
+          }),
+        });
+        if (finalResp.ok) {
+          const finalResult = await finalResp.json();
+          finalContent = extractText(finalResult.content);
+          totalTokens += (finalResult.usage?.input_tokens ?? 0) + (finalResult.usage?.output_tokens ?? 0);
+        }
+      } catch (e) {
+        console.error("[donny-chat] final summary call failed:", e instanceof Error ? e.message : e);
+      }
+      if (!finalContent.trim()) {
+        finalContent =
+          "I pulled the data but ran out of room composing the answer. Ask me again — more specifically if you can — and I'll summarize it directly.";
+      }
+    }
 
     // Try to extract rich_card from response if present
     let richCard = null;
