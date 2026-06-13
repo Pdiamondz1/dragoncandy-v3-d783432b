@@ -1677,33 +1677,29 @@ serve(async (req) => {
     if (!authHeader) throw new Error("No authorization header");
 
     const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-    const requestBody = await req.json();
-    const { conversation_id, message, context: requestContext, acting_user_id } = requestBody;
 
     // --- Auth: trusted service path → Supabase session → OAuth fallback ---
+    // Classify the scheme from HEADERS before touching the body. donny-chat is
+    // verify_jwt=false, so an unauthenticated caller must be rejected BEFORE we
+    // parse an attacker-supplied JSON payload. Only the already-authenticated
+    // service-bearer path reads the body pre-resolution.
     let userId: string;
     let sessionAuthed = false;
     let serviceActed = false;
     let supabaseUser: ReturnType<typeof createClient> | null = null;
 
-    // Trusted service path (Google Chat bot): the EXACT service-role bearer plus
-    // an acting_user_id. The bearer alone grants nothing — acting_user_id's
-    // internal role is verified where internal mode is entered below, so this
-    // can only ever drive internal Donny for a real internal user. Fail closed
-    // if the configured service key is unusable (empty / equal to the anon key).
+    // Trusted service path (Google Chat bot): the EXACT service-role bearer.
+    // The bearer authenticates the caller; acting_user_id (read from the body
+    // below) names the user, whose internal role is re-verified where internal
+    // mode is entered. Fail closed if the service key is unusable.
     const bearerTok = authHeader.match(/^Bearer\s+(.+)$/i)?.[1]?.trim() ?? "";
     const serviceKeyUsable =
       SUPABASE_SERVICE_ROLE_KEY.length > 20 &&
       SUPABASE_SERVICE_ROLE_KEY !== Deno.env.get("SUPABASE_ANON_KEY");
+    const isServiceBearer = serviceKeyUsable && bearerTok === SUPABASE_SERVICE_ROLE_KEY;
 
-    if (serviceKeyUsable && bearerTok === SUPABASE_SERVICE_ROLE_KEY) {
-      if (typeof acting_user_id !== "string" || !acting_user_id) {
-        throw new Error("acting_user_id is required for service auth");
-      }
-      userId = acting_user_id;
-      serviceActed = true;
-    } else {
-      // In-app usage: Supabase session first
+    if (!isServiceBearer) {
+      // Validate the in-app caller (session, then OAuth) BEFORE reading the body.
       supabaseUser = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_ANON_KEY")!, {
         global: { headers: { Authorization: authHeader } },
       });
@@ -1724,6 +1720,18 @@ serve(async (req) => {
         }
         userId = oauthResult.user_id;
       }
+    }
+
+    // Caller is authenticated (service bearer, session, or OAuth) — read body now.
+    const requestBody = await req.json();
+    const { conversation_id, message, context: requestContext, acting_user_id } = requestBody;
+
+    if (isServiceBearer) {
+      if (typeof acting_user_id !== "string" || !acting_user_id) {
+        throw new Error("acting_user_id is required for service auth");
+      }
+      userId = acting_user_id;
+      serviceActed = true;
     }
 
     // Consumer quota/rate limits don't apply to the internal service path
