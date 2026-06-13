@@ -451,6 +451,20 @@ const INTERNAL_TOOL_DEFINITIONS = [
       "List the files in the user's DragonCandy AIOS Google Drive folder (docs, sheets, slides, uploads).",
     input_schema: { type: "object", properties: {} },
   },
+  {
+    name: "compose_email_link",
+    description:
+      "Draft an email for the user to review and send themselves. Returns a link that opens Gmail's compose window pre-filled with the recipient, subject, and body. You NEVER send email — the user reviews and sends. Use when asked to draft, write, or email an update/message to a stakeholder or contact. Write the complete subject and body yourself.",
+    input_schema: {
+      type: "object",
+      properties: {
+        to: { type: "string", description: "Recipient email address (optional — omit to let the user fill it in)" },
+        subject: { type: "string", description: "Email subject line" },
+        body: { type: "string", description: "The complete email body, written and ready to send" },
+      },
+      required: ["subject", "body"],
+    },
+  },
 ];
 
 const INTERNAL_TOOL_NAMES = new Set(INTERNAL_TOOL_DEFINITIONS.map((t) => t.name));
@@ -599,7 +613,7 @@ function buildInternalSystemPrompt(profile: Record<string, any>): string {
 
 ## How you work
 - Answer ONLY from tool results. Never fabricate or estimate a number a tool didn't return.
-- Use tools proactively: platform questions → get_platform_stats; money in → get_revenue_stats; AI spend → get_cost_stats; growth/scaling/capacity → get_platform_weight_trend; weekly brief or KPI status → get_latest_briefing; strategy, pricing, playbooks, targets, kill-switches → search_internal_knowledge; "export/save this as a doc" → gather the data with other tools first, COMPOSE the complete document (headings + full analysis + real numbers), then call workspace_export_doc with that finished markdown — never a placeholder like "let me write it" — and share the returned link; "what's in my Drive folder" → workspace_list_files.
+- Use tools proactively: platform questions → get_platform_stats; money in → get_revenue_stats; AI spend → get_cost_stats; growth/scaling/capacity → get_platform_weight_trend; weekly brief or KPI status → get_latest_briefing; strategy, pricing, playbooks, targets, kill-switches → search_internal_knowledge; "export/save this as a doc" → gather the data with other tools first, COMPOSE the complete document (headings + full analysis + real numbers), then call workspace_export_doc with that finished markdown — never a placeholder like "let me write it" — and share the returned link; "what's in my Drive folder" → workspace_list_files; "draft/write/email an update to <someone>" → compose_email_link (write the full subject and body yourself, then present the returned link as a clickable markdown link like [Open this email in Gmail](link) for the user to review and send — you never send email).
 - Combine tools when a question spans data and strategy (e.g. "are we on track?" = live stats + KPI targets from the strategy library).
 - Cite the numbers you used. Monetary values from tools are in cents unless labeled otherwise — convert to dollars when presenting.
 - Be direct and analytical, not promotional. Flag bad news plainly.
@@ -887,6 +901,29 @@ async function executeTool(
         if (friendly) return { result: { message: friendly } };
         throw err;
       }
+    }
+
+    // Zero-scope Gmail compose link: builds a Gmail compose URL pre-filled with
+    // the drafted email. No Gmail scope, no send — the user reviews and sends.
+    // (Gmail content scopes are RESTRICTED and blocked for unverified apps;
+    // API drafts arrive on the verified-Workspace day. Spec §3.E.)
+    case "compose_email_link": {
+      const subject = String(args.subject ?? "").trim();
+      const body = String(args.body ?? "").trim();
+      if (!subject || !body) {
+        return { result: { error: "subject and body are both required to compose an email." } };
+      }
+      const params = new URLSearchParams({ view: "cm", fs: "1", su: subject, body });
+      const to = typeof args.to === "string" ? args.to.trim() : "";
+      if (to) params.set("to", to);
+      return {
+        result: {
+          link: `https://mail.google.com/mail/?${params.toString()}`,
+          to: to || null,
+          subject,
+          note: "Opens Gmail's compose window pre-filled. Review and send it yourself — nothing was sent.",
+        },
+      };
     }
 
     // --- Campaign Tools ---
