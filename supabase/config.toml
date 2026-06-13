@@ -93,6 +93,11 @@ verify_jwt = false
 [functions.auto-approve-content]
 verify_jwt = false
 
+# google-chat-donny verifies Google's OWN signed request JWT (chat@system.gserviceaccount.com),
+# not a Supabase JWT — so Supabase JWT verification must be off.
+[functions.google-chat-donny]
+verify_jwt = false
+
 # Webhook/redirect receivers called by external services (no Supabase JWT) — must skip JWT verification.
 [functions.stripe-webhook]
 verify_jwt = false
