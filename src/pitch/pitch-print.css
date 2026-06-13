@@ -1,0 +1,91 @@
+/* DragonCandy investor deck — screen + print rules.
+   Slides are authored on a fixed 1280x720 canvas (= 13.333in x 7.5in @ 96dpi),
+   scaled to fit the viewport on screen and rendered 1:1 per page in print. */
+
+.pitch-root {
+  /* Force brand-light/dark surfaces regardless of next-themes (.dark) state. */
+  color-scheme: light;
+}
+
+/* --- Screen: stack all slides, reveal only the active one --- */
+.pitch-slide-wrap {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.35s ease;
+}
+
+.pitch-slide-wrap.is-active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.pitch-slide {
+  position: relative;
+  overflow: hidden;
+  transform-origin: center center;
+  box-shadow: 0 30px 80px -20px rgba(0, 0, 0, 0.55);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pitch-slide-wrap {
+    transition: none;
+  }
+}
+
+/* --- Print / PDF: every slide is exactly one landscape 16:9 page --- */
+@media print {
+  @page {
+    size: 13.333in 7.5in;
+    margin: 0;
+  }
+
+  html,
+  body,
+  #root {
+    overflow: visible !important;
+    height: auto !important;
+    background: #ffffff !important;
+  }
+
+  .pitch-root {
+    position: static !important;
+    overflow: visible !important;
+    background: #ffffff !important;
+  }
+
+  .pitch-deck {
+    position: static !important;
+  }
+
+  .pitch-controls {
+    display: none !important;
+  }
+
+  .pitch-slide-wrap {
+    position: static !important;
+    display: block !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+  }
+
+  .pitch-slide {
+    transform: none !important;
+    width: 1280px !important;
+    height: 720px !important;
+    box-shadow: none !important;
+    page-break-after: always;
+    break-after: page;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .pitch-slide-wrap:last-child .pitch-slide {
+    page-break-after: auto;
+    break-after: auto;
+  }
+}
