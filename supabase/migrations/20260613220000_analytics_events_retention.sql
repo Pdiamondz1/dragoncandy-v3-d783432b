@@ -15,7 +15,7 @@ RETURNS void
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
 AS $$
 DECLARE
-  v_budget  constant integer  := 1000000;
+  v_budget  constant bigint    := 1000000;
   v_max_age constant interval  := interval '90 days';
   v_cutoff  timestamptz;
 BEGIN
@@ -23,6 +23,10 @@ BEGIN
   DELETE FROM public.analytics_events
   WHERE created_at < now() - v_max_age;
 
+  -- Soft cap: rows sharing the exact boundary created_at are retained, so the
+  -- table can sit slightly above v_budget after a same-instant burst. Acceptable
+  -- for retention — the 90-day ceiling and the /internal/weight watermark are the
+  -- real guards. Use id-based OFFSET if a hard cap is ever required.
   -- 2. row-budget trim: find the created_at of the newest row beyond the budget,
   --    then delete everything older than it.
   SELECT created_at INTO v_cutoff
@@ -39,9 +43,11 @@ $$;
 REVOKE EXECUTE ON FUNCTION public.purge_stale_analytics_events() FROM PUBLIC, anon, authenticated;
 GRANT  EXECUTE ON FUNCTION public.purge_stale_analytics_events() TO service_role;
 
+CREATE EXTENSION IF NOT EXISTS pg_cron;
+
 -- cron.schedule upserts by job name, so re-applying is idempotent.
 SELECT cron.schedule(
   'purge-stale-analytics-events',
-  '30 4 * * *',                                    -- daily 04:30 UTC
+  '30 4 * * *',                                    -- daily 04:30 UTC (before the 08:30 platform-weight capture, so the snapshot reflects post-purge counts)
   $$SELECT public.purge_stale_analytics_events();$$
 );
