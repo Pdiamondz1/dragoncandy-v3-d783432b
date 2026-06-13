@@ -1,8 +1,9 @@
 # AIOS Bug & Error Sweep Agent
 
-> Scheduled: Monday mornings (~7am ET, before the weekly brief) as a cloud
-> routine. Report-only — its only write is the findings POST. Created in AIOS
-> PR 8; see the AIOS design spec §E.
+> Scheduled: **daily ~3am ET** as a cloud routine (cron `0 3 * * *`, America/New_York).
+> Report-only — its only write is the findings POST. Findings UPSERT on fingerprint, so
+> daily runs dedupe naturally (the 7-day lookback windows overlap harmlessly). Created in
+> AIOS PR 8, daily cadence added 2026-06-13; see the AIOS design spec §E.
 
 ## Prompt (cloud variant — runs in a fresh checkout with $SUPABASE_SERVICE_ROLE_KEY)
 
