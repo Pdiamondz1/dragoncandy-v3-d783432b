@@ -2,6 +2,7 @@ import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'rec
 import { usePlatformWeight } from '@/hooks/internal/usePlatformWeight';
 import {
   computeWeightAlerts,
+  computeAnalyticsBudgetAlert,
   dailyGrowthBytes,
   DISK_LIMIT_BYTES,
   CURRENT_TIER,
@@ -37,7 +38,10 @@ const InternalWeight = () => {
 
   const snapshots = weight.data;
   const latest = snapshots[snapshots.length - 1];
-  const alerts = computeWeightAlerts(snapshots);
+  const alerts = [
+    ...computeWeightAlerts(snapshots),
+    ...computeAnalyticsBudgetAlert(latest.row_counts?.analytics_events),
+  ];
   const growth = dailyGrowthBytes(snapshots);
   const diskPct = Math.round((latest.db_bytes / DISK_LIMIT_BYTES) * 100);
   const tier = CURRENT_TIER;
