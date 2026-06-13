@@ -15,6 +15,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 import {
   GoogleWorkspaceError,
+  appendMetricsSnapshot,
   assertDriveFileId,
   assertFileKind,
   assertFileName,
@@ -49,11 +50,76 @@ serve(async (req) => {
       headers: { ...corsHeaders(req), "Content-Type": "application/json" },
     });
 
+  // Append the canonical metrics snapshot to the designated account's sheet.
+  // The acting account is resolved server-side from aios_settings — NEVER from
+  // the request — so neither a scheduled agent nor a leaked service bearer can
+  // redirect the write to another user's Drive.
+  const appendMetrics = async (
+    supabaseAdmin: ReturnType<typeof createClient>,
+    opts: { includeLink: boolean }
+  ) => {
+    const { data: setting } = await supabaseAdmin
+      .from("aios_settings")
+      .select("value")
+      .eq("key", "google_export_user_id")
+      .maybeSingle();
+    const exportUserId = setting?.value;
+    if (!exportUserId) {
+      return json(
+        { error: "No google_export_user_id configured in aios_settings", code: "export_unconfigured" },
+        400
+      );
+    }
+    const { data: exRoles } = await supabaseAdmin
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", exportUserId);
+    const exportInternal = (exRoles ?? []).some((r: { role: string }) =>
+      ["admin", "stakeholder"].includes(r.role as string)
+    );
+    if (!exportInternal) {
+      return json(
+        { error: "configured export user is not an internal user", code: "export_unconfigured" },
+        400
+      );
+    }
+    const { data: snapshot, error: snapErr } = await supabaseAdmin.rpc("aios_metrics_snapshot");
+    if (snapErr) throw snapErr;
+    const { token, folderId } = await driveCtx(supabaseAdmin, exportUserId);
+    const result = await appendMetricsSnapshot(token, folderId, snapshot as Record<string, unknown>);
+    // Service callers (scheduled agents) get no Drive metadata they don't need.
+    return json({ success: true, created: result.created, ...(opts.includeLink ? { link: result.link } : {}) });
+  };
+
   try {
-    // --- Auth: internal user via Supabase session ---
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) return json({ error: "unauthorized" }, 401);
 
+    const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const body = await req.json().catch(() => ({}));
+    const action = body.action as string;
+
+    // --- Service-bearer mode: scheduled export agents only, and ONLY the
+    // metrics append. Everything else requires a real internal user session.
+    // Require the Bearer scheme explicitly, and only treat the request as
+    // service-mode when the configured service key is real (non-empty and
+    // distinct from the anon key) — fail closed on any misconfiguration.
+    const bearerMatch = authHeader.match(/^Bearer\s+(.+)$/i);
+    const bearer = bearerMatch ? bearerMatch[1].trim() : "";
+    const serviceKeyUsable =
+      SUPABASE_SERVICE_ROLE_KEY.length > 20 &&
+      SUPABASE_SERVICE_ROLE_KEY !== Deno.env.get("SUPABASE_ANON_KEY");
+    if (serviceKeyUsable && bearer === SUPABASE_SERVICE_ROLE_KEY) {
+      if (action !== "append_metrics_to_sheet") {
+        return json(
+          { error: "service mode permits only append_metrics_to_sheet", code: "forbidden_service_action" },
+          403
+        );
+      }
+      return await appendMetrics(supabaseAdmin, { includeLink: false });
+    }
+
+    // --- User mode: internal user via Supabase session ---
     const supabaseUser = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_ANON_KEY")!, {
       global: { headers: { Authorization: authHeader } },
     });
@@ -62,7 +128,6 @@ serve(async (req) => {
     } = await supabaseUser.auth.getUser();
     if (!user) return json({ error: "unauthorized" }, 401);
 
-    const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     const { data: roles } = await supabaseAdmin
       .from("user_roles")
       .select("role")
@@ -71,9 +136,6 @@ serve(async (req) => {
       ["admin", "stakeholder"].includes(r.role as string)
     );
     if (!isInternal) return json({ error: "forbidden: internal access required" }, 403);
-
-    const body = await req.json().catch(() => ({}));
-    const action = body.action as string;
 
     switch (action) {
       case "auth_url": {
@@ -236,6 +298,11 @@ serve(async (req) => {
         const { token, folderId } = await driveCtx(supabaseAdmin, user.id);
         return json({ upload_url: await initResumableUpload(token, folderId, name, mimeType) });
       }
+
+      // Admins can also trigger the metrics append manually; it targets the
+      // same designated sheet as the scheduled service-mode call.
+      case "append_metrics_to_sheet":
+        return await appendMetrics(supabaseAdmin, { includeLink: true });
 
       default:
         return json({ error: `Unknown action "${action}"` }, 400);

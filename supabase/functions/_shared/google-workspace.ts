@@ -446,6 +446,76 @@ export async function initResumableUpload(
   return sessionUrl;
 }
 
+// ---------------------------------------------------------------------------
+// Metrics → Sheet. The canonical "DragonCandy Metrics" spreadsheet lives in the
+// designated export account's DragonCandy folder. drive.file covers the Sheets
+// API for app-created files, so no extra scope is needed.
+// ---------------------------------------------------------------------------
+
+const METRICS_SHEET_NAME = "DragonCandy Metrics";
+const sheetValuesUrl = (id: string, range: string) =>
+  `https://sheets.googleapis.com/v4/spreadsheets/${id}/values/${range}`;
+
+/** Fixed column order — keep STABLE; the sheet appends a row per run over time. */
+export const METRIC_COLUMNS: { key: string; label: string }[] = [
+  { key: "captured_at", label: "Date" },
+  { key: "users_total", label: "Users" },
+  { key: "creators", label: "Creators" },
+  { key: "restaurants", label: "Restaurants" },
+  { key: "brands", label: "Brands" },
+  { key: "campaigns_total", label: "Campaigns" },
+  { key: "dragonshare_posts", label: "DragonShare posts" },
+  { key: "dragonshare_boosts", label: "DragonShare boosts" },
+  { key: "promotions_total", label: "Promotions" },
+  { key: "social_connections", label: "Social connections" },
+  { key: "revenue_fee_cents_total", label: "Platform fees total (¢)" },
+  { key: "revenue_fee_cents_mtd", label: "Platform fees MTD (¢)" },
+];
+
+async function findOrCreateMetricsSheet(
+  token: string,
+  folderId: string,
+  header: string[]
+): Promise<{ id: string; link?: string; created: boolean }> {
+  const q = encodeURIComponent(
+    `name = '${METRICS_SHEET_NAME}' and mimeType = 'application/vnd.google-apps.spreadsheet' and '${folderId}' in parents and trashed = false`
+  );
+  const found = await driveRequest(token, `${DRIVE_FILES_URL}?q=${q}&fields=files(id,webViewLink)`);
+  if (found.files?.length) {
+    return { id: found.files[0].id, link: found.files[0].webViewLink, created: false };
+  }
+  const created = await driveRequest(token, `${DRIVE_FILES_URL}?fields=id,webViewLink`, {
+    method: "POST",
+    body: JSON.stringify({
+      name: METRICS_SHEET_NAME,
+      mimeType: "application/vnd.google-apps.spreadsheet",
+      parents: [folderId],
+    }),
+  });
+  await driveRequest(token, `${sheetValuesUrl(created.id, "A1")}?valueInputOption=USER_ENTERED`, {
+    method: "PUT",
+    body: JSON.stringify({ values: [header] }),
+  });
+  return { id: created.id, link: created.webViewLink, created: true };
+}
+
+/** Append one metrics snapshot row, creating the sheet (with header) if absent. */
+export async function appendMetricsSnapshot(
+  token: string,
+  folderId: string,
+  snapshot: Record<string, unknown>
+): Promise<{ link?: string; created: boolean }> {
+  const header = METRIC_COLUMNS.map((c) => c.label);
+  const row = METRIC_COLUMNS.map((c) => snapshot[c.key] ?? "");
+  const sheet = await findOrCreateMetricsSheet(token, folderId, header);
+  await driveRequest(
+    token,
+    `${sheetValuesUrl(sheet.id, "A1")}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,
+    { method: "POST", body: JSON.stringify({ values: [row] }) }
+  );
+  return { link: sheet.link, created: sheet.created };
+}
+
 /** Find or create the per-account "DragonCandy AIOS" folder (drive.file sees only app files). */
 export async function findOrCreateDcFolder(token: string): Promise<string> {
   const q = encodeURIComponent(
