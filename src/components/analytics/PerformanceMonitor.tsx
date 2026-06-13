@@ -3,46 +3,10 @@ import React, { useEffect } from 'react';
 import { useAnalyticsContext } from './AnalyticsProvider';
 
 export const PerformanceMonitor: React.FC = () => {
-  const { trackPerformance, trackEvent } = useAnalyticsContext();
+  const { trackEvent } = useAnalyticsContext();
 
   useEffect(() => {
-    // Monitor Core Web Vitals (guarded — not all browsers support PerformanceObserver)
-    let observer: PerformanceObserver | null = null;
-    try {
-      observer = new PerformanceObserver((list) => {
-        for (const entry of list.getEntries()) {
-          if (entry.entryType === 'measure') {
-            trackPerformance(entry.name, entry.duration);
-          }
-        }
-      });
-      observer.observe({ entryTypes: ['measure'] });
-    } catch {
-      // PerformanceObserver not supported — skip monitoring
-    }
-
-    // Monitor memory usage (if available)
-    const checkMemoryUsage = () => {
-      if ('memory' in performance) {
-        const memory = (performance as unknown as { memory: { usedJSHeapSize: number; totalJSHeapSize: number; jsHeapSizeLimit: number } }).memory;
-        trackPerformance('memory_used', memory.usedJSHeapSize, {
-          total_heap: memory.totalJSHeapSize,
-          heap_limit: memory.jsHeapSizeLimit
-        });
-      }
-    };
-
-    let memoryInterval: ReturnType<typeof setInterval> | undefined;
-    const startMemoryMonitoring = () => {
-      memoryInterval = setInterval(checkMemoryUsage, 30000);
-    };
-    if ('requestIdleCallback' in window) {
-      (window as Window).requestIdleCallback(startMemoryMonitoring);
-    } else {
-      setTimeout(startMemoryMonitoring, 2000);
-    }
-
-    // Monitor errors
+    // Capture client-side errors (low volume, genuinely useful).
     const errorHandler = (event: ErrorEvent) => {
       trackEvent('javascript_error', {
         message: event.message,
@@ -64,12 +28,10 @@ export const PerformanceMonitor: React.FC = () => {
     window.addEventListener('unhandledrejection', unhandledRejectionHandler);
 
     return () => {
-      observer?.disconnect();
-      if (memoryInterval) clearInterval(memoryInterval);
       window.removeEventListener('error', errorHandler);
       window.removeEventListener('unhandledrejection', unhandledRejectionHandler);
     };
-  }, [trackPerformance, trackEvent]);
+  }, [trackEvent]);
 
   return null; // This component doesn't render anything
 };
