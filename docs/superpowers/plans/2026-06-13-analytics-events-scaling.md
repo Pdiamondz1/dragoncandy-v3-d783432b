@@ -102,7 +102,7 @@ Replace the `trackPerformance` callback (currently routing to `trackEventOptimiz
   );
 ```
 
-Delete the entire `useEffect` block that calls `measurePageLoad()` / `trackPerformance('page_load_time', …)` (the mount effect). If `trackEventOptimized` becomes unused after this, leave the existing destructure as-is (other methods still use it) — only remove imports that are genuinely unreferenced (let the linter guide you).
+Delete the entire `useEffect` block that calls `measurePageLoad()` / `trackPerformance('page_load_time', …)` (the mount effect). After deleting it, `useEffect` is no longer used in this file — **remove `useEffect` from the `react` import** (`import { useCallback } from 'react';`). `trackEventOptimized` is still used by other methods, so leave its destructure as-is. Run lint (Step 4) to catch any remaining unused symbol.
 
 - [ ] **Step 3: Build + typecheck**
 
@@ -366,17 +366,17 @@ Use MCP `execute_sql`:
 
 ```sql
 SELECT proname FROM pg_proc WHERE proname = 'purge_stale_analytics_events';
-SELECT jobname, schedule FROM cron.job WHERE jobname = 'purge-stale-analytics-events';
+SELECT jobname, schedule, active FROM cron.job WHERE jobname = 'purge-stale-analytics-events';
 ```
-Expected: one function row; one cron row with schedule `30 4 * * *`.
+Expected: one function row; one cron row with schedule `30 4 * * *` and `active = true`.
 
-- [ ] **Step 3: Smoke-run the function (no-op on current small/recent table)**
+- [ ] **Step 3: Smoke-run the function (no-op on current table)**
 
 ```sql
 SELECT public.purge_stale_analytics_events();
 SELECT count(*) FROM public.analytics_events;   -- unchanged vs. before (all rows < 90d, < 1M)
 ```
-Expected: runs without error; count unchanged.
+Expected: runs without error; count unchanged. Note: at this point the ~335K rows are all under both bounds, so this is a genuine no-op — the real shrink happens in **Task 6** (the one-time purge), not here.
 
 - [ ] **Step 4: Check advisors**
 
