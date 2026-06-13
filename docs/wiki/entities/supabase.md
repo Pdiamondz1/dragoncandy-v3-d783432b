@@ -18,7 +18,7 @@ Realtime subscriptions, and Storage.
 - Always use `.select()` with explicit field lists — no `select *`
 - All tables have Row Level Security (RLS) — assume it
 - Type-safe queries via `Database['public']['Tables']['x']['Row']`
-- 70+ tables, 73 Deno edge functions, shared utils in `_shared/`
+- 70+ tables, 80 Deno edge functions, shared utils in `_shared/`
 - Realtime used for `messages`, `user_presence`, and (since the 2026-05 notification
   system) `push_notifications` + campaign tables for dashboard refresh
 - Security-definer RPCs are the standard way to read across RLS boundaries — e.g.

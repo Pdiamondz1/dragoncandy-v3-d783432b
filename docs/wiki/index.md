@@ -5,12 +5,14 @@
 - [[Apple App Store Capacitor Phase 1 Session]](sources/apple-app-store-capacitor-phase1-session.md) — Capacitor iOS foundation: one codebase for web + iPhone, payments split by surface (2026-06-01)
 - [[Campaign Delivery, Scheduling & Notifications Session]](sources/campaign-delivery-scheduling-notifications-session.md) — Content-delivery stabilization, notification system, auto cross-scheduling, Donny strategist, revision sync (2026-06-01)
 - [[Code Architecture Audit Remediation]](sources/code-architecture-audit.md) — TypeScript strict mode, type safety, and codebase cleanup (2026-05-04)
+- [[Karpathy LLM Wiki Schema]](sources/karpathy-llm-wiki-schema.md) — Operating schema for LLM-maintained knowledge bases; inspiration for this wiki's two-layer architecture (2026-05-24)
 - [[Code Architecture Audit Session]](sources/code-architecture-audit-session.md) — Strict mode enablement, 158 unused imports, 34 type errors, Supabase type regeneration (2026-05-04)
 - [[Content Delivery System Flows]](sources/content-delivery-system-flows.md) — Complete content delivery lifecycle across all three roles (2026-05-23)
 - [[Content Engine Phase B Session]](sources/content-engine-phase-b-session.md) — Brief → DragonShare action shipped + verified (3 slices); deep-link race fix; Phase C next (2026-06-11)
 - [[Content Engine Phase C Session]](sources/content-engine-phase-c-session.md) — Return-half link: dragonshare_post_id + first-wins triggers bridge published post → brief → performance; PR #73; spec-anchored (2026-06-11)
 - [[Content Engine Phase D Session]](sources/content-engine-phase-d-session.md) — Creator "Your content briefs" card shipped; ownership-gated definer RPC bridges the cross-user RLS gap; verified prod (2026-06-11)
 - [[Core Docs Recent Updates Sync Session]](sources/core-docs-recent-updates-sync-session.md) — Post–June-2 sync: DragonShare notifications, iOS camera, legal pages, Outstand recovery, QA Plan C, scale → 73 functions (2026-06-07)
+- [[Google Workspace Connections Session]](sources/google-workspace-connections-session.md) — AIOS Connections pillar: per-user OAuth, Drive hub, ops-deck restyle, Donny export, Gmail compose deep-link, metrics Sheet, Chat scaffold; 6 PRs (2026-06-13)
 - [[Counter-Offer Enum Fix Session]](sources/counter-offer-enum-fix-session.md) — Postgres enum cast bug, PL/pgSQL variable typing, missing campaign_status value (2026-05-21)
 - [[Database Schema]](sources/database-schema.md) — Supabase Postgres schema overview (2026-05-23)
 - [[Donny Audit Phase 1 Session]](sources/donny-audit-phase1-session.md) — Role-based tool filtering, prompt injection defense, tier-based token clamping (2026-05-06)
@@ -30,6 +32,7 @@
 - [[DragonDash]](entities/dragondash.md) — Premium rush content delivery, the profit engine
 - [[DragonShare]](entities/dragonshare.md) — Organic-content amplification engine, 80/20 boost payments
 - [[File Management]](entities/file-management.md) — Content-deliverable system: file_uploads + versions/permissions/comments/tags, private buckets + signed URLs
+- [[Google Workspace]](entities/google-workspace.md) — AIOS Connections: per-user OAuth, Drive hub, Donny export, Gmail deep-link, metrics Sheet, Chat scaffold (dark)
 - [[Organizations]](entities/organizations.md) — Team accounts: parent org → org units (locations/products) → members; multi-unit, seat billing, RLS
 - [[Outstand]](entities/outstand.md) — Social-posting bridge (Instagram, TikTok, YouTube); delegated posting, account recovery
 - [[Stripe Connect]](entities/stripe-connect.md) — Payment infrastructure, escrow, subscriptions, boosts (test mode)
