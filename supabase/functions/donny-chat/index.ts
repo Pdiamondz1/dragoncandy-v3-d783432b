@@ -431,12 +431,16 @@ const INTERNAL_TOOL_DEFINITIONS = [
   {
     name: "workspace_export_doc",
     description:
-      "Export markdown as a Google Doc in the user's DragonCandy AIOS Drive folder. Use when asked to export, save, or turn an answer, analysis, or brief into a doc. Returns the doc link.",
+      "Export markdown as a Google Doc in the user's DragonCandy AIOS Drive folder. Use when asked to export, save, or turn an answer, analysis, or brief into a doc. Gather any data you need with other tools FIRST, then call this exactly once with the COMPLETE finished document. Returns the doc link.",
     input_schema: {
       type: "object",
       properties: {
         title: { type: "string", description: "Doc title" },
-        markdown: { type: "string", description: "Full markdown content for the doc" },
+        markdown: {
+          type: "string",
+          description:
+            "The complete, self-contained document: markdown headings, the full analysis, and the actual numbers. NEVER a placeholder, a sentence about what you intend to write, or a pointer to the chat.",
+        },
       },
       required: ["title", "markdown"],
     },
@@ -595,7 +599,7 @@ function buildInternalSystemPrompt(profile: Record<string, any>): string {
 
 ## How you work
 - Answer ONLY from tool results. Never fabricate or estimate a number a tool didn't return.
-- Use tools proactively: platform questions → get_platform_stats; money in → get_revenue_stats; AI spend → get_cost_stats; growth/scaling/capacity → get_platform_weight_trend; weekly brief or KPI status → get_latest_briefing; strategy, pricing, playbooks, targets, kill-switches → search_internal_knowledge; "export/save this as a doc" → workspace_export_doc (write the full markdown yourself, then share the returned link); "what's in my Drive folder" → workspace_list_files.
+- Use tools proactively: platform questions → get_platform_stats; money in → get_revenue_stats; AI spend → get_cost_stats; growth/scaling/capacity → get_platform_weight_trend; weekly brief or KPI status → get_latest_briefing; strategy, pricing, playbooks, targets, kill-switches → search_internal_knowledge; "export/save this as a doc" → gather the data with other tools first, COMPOSE the complete document (headings + full analysis + real numbers), then call workspace_export_doc with that finished markdown — never a placeholder like "let me write it" — and share the returned link; "what's in my Drive folder" → workspace_list_files.
 - Combine tools when a question spans data and strategy (e.g. "are we on track?" = live stats + KPI targets from the strategy library).
 - Cite the numbers you used. Monetary values from tools are in cents unless labeled otherwise — convert to dollars when presenting.
 - Be direct and analytical, not promotional. Flag bad news plainly.
@@ -845,10 +849,22 @@ async function executeTool(
     // --- Workspace tools (caller's own Google connection; tokens never leave
     // the backend). A missing connection is a normal answer, not an error.
     case "workspace_export_doc": {
+      const markdown = String(args.markdown ?? "").trim();
+      // Guard against placeholder exports ("let me write the doc…"): a real
+      // document has structure and substance. The error flows back as a tool
+      // result, so the model composes the full document and retries.
+      if (markdown.length < 200 || !markdown.includes("#")) {
+        return {
+          result: {
+            error:
+              "markdown rejected: it must be the COMPLETE document — markdown headings plus the full written analysis with the actual numbers. Compose the entire document now and call workspace_export_doc again with it.",
+          },
+        };
+      }
       try {
         const { token, folderId } = await driveCtx(supabaseAdmin, userId);
         const title = assertFileName(args.title);
-        const file = await exportMarkdownToDoc(token, folderId, title, String(args.markdown ?? ""));
+        const file = await exportMarkdownToDoc(token, folderId, title, markdown);
         return { result: { id: file.id, name: file.name, link: file.webViewLink } };
       } catch (err) {
         const friendly = workspaceNotConnectedMessage(err);
