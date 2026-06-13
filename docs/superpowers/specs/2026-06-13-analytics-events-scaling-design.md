@@ -160,18 +160,30 @@ the existing alert surface.
     returning an `info`/`warning`/`critical` alert as the latest
     `analytics_events` count approaches/exceeds the budget, with guidance to
     raise the cap / upgrade tier (mirroring the existing `upgradeHint` style).
+    The alert `title` must be **distinct** from the disk alert titles ("Time to
+    scale disk" / "Disk usage climbing" / "Disk threshold ahead") because
+    `InternalWeight.tsx` keys alert cards by `alert.title` — a collision would
+    drop a card. Use e.g. "Analytics table nearing budget".
 - **`src/pages/internal/InternalWeight.tsx`**
   - Merge it into the rendered alerts:
     `const alerts = [...computeWeightAlerts(snapshots), ...computeAnalyticsBudgetAlert(latest.row_counts?.analytics_events)]`.
-  - No new UI primitives — reuses the existing alert card rendering.
+  - No new UI primitives — reuses the existing alert card rendering, which
+    already supports `info`/`warning`/`critical` severities.
+  - **Type note:** `WeightSnapshot` in `weightThresholds.ts` does not declare
+    `row_counts`; `usePlatformWeight` returns the wider `PlatformWeightRow`
+    (which does). `latest` is a `PlatformWeightRow`, so `latest.row_counts` type-
+    checks at the call site. Confirm `npm run typecheck` passes; if not, add
+    `row_counts?: Record<string, number>` to `WeightSnapshot`.
 
 ## Data flow
 
 ```
 Browser tab
   ├─ (REMOVED) memory_used / measure / page_load_time  → performance_metric  ✗
-  └─ likes / errors / page_view / user_action / campaign_event
-        → useAnalyticsBatch (batch of 10 / 5s) → analytics_events (INSERT)
+  ├─ javascript_error / unhandled_promise_rejection
+  │     → trackEvent (legacy direct insert)            → analytics_events (INSERT)
+  └─ likes / page_view / user_action / campaign_event
+        → useAnalyticsBatch (batch of 10 / 5s)         → analytics_events (INSERT)
 
 pg_cron (daily 04:30 UTC) → purge_stale_analytics_events()
         → DELETE by 90d ceiling, then trim to newest 1,000,000 rows
