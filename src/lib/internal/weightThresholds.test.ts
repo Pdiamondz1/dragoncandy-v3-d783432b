@@ -4,6 +4,8 @@ import {
   dailyGrowthBytes,
   daysUntilDiskAlert,
   computeWeightAlerts,
+  computeAnalyticsBudgetAlert,
+  ANALYTICS_EVENTS_ROW_BUDGET,
   type WeightSnapshot,
 } from './weightThresholds';
 
@@ -83,5 +85,32 @@ describe('computeWeightAlerts', () => {
     // tiny growth: crossing > 90 days out → no noise
     const alerts = computeWeightAlerts([snap(10, 1 * GB), snap(0, 1.001 * GB)]);
     expect(alerts).toHaveLength(0);
+  });
+});
+
+describe('computeAnalyticsBudgetAlert', () => {
+  it('stays quiet well under the budget', () => {
+    expect(computeAnalyticsBudgetAlert(100_000)).toHaveLength(0);
+  });
+
+  it('stays quiet for an undefined row count', () => {
+    expect(computeAnalyticsBudgetAlert(undefined)).toHaveLength(0);
+  });
+
+  it('warns at 80% of the budget', () => {
+    const alerts = computeAnalyticsBudgetAlert(Math.round(ANALYTICS_EVENTS_ROW_BUDGET * 0.81));
+    expect(alerts.some((a) => a.severity === 'warning')).toBe(true);
+    expect(alerts.some((a) => a.severity === 'critical')).toBe(false);
+  });
+
+  it('goes critical at 95% of the budget', () => {
+    const alerts = computeAnalyticsBudgetAlert(Math.round(ANALYTICS_EVENTS_ROW_BUDGET * 0.96));
+    expect(alerts.some((a) => a.severity === 'critical')).toBe(true);
+  });
+
+  it('uses a title distinct from the disk alerts (no React key collision)', () => {
+    const alerts = computeAnalyticsBudgetAlert(ANALYTICS_EVENTS_ROW_BUDGET);
+    expect(alerts[0].title.toLowerCase()).not.toContain('disk');
+    expect(alerts[0].title).toMatch(/analytics/i);
   });
 });

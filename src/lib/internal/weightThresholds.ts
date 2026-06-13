@@ -26,6 +26,15 @@ const DISK_WARNING_RATIO = 0.7;
 const DISK_CRITICAL_RATIO = 0.85;
 const FORECAST_HORIZON_DAYS = 90;
 
+/**
+ * Soft cap the retention cron enforces on analytics_events
+ * (purge_stale_analytics_events.v_budget). Keep these two in sync — raise both
+ * only when deliberately upgrading the Supabase tier.
+ */
+export const ANALYTICS_EVENTS_ROW_BUDGET = 1_000_000;
+const ANALYTICS_WARNING_RATIO = 0.8;
+const ANALYTICS_CRITICAL_RATIO = 0.95;
+
 export interface WeightSnapshot {
   captured_at: string;
   db_bytes: number;
@@ -105,4 +114,36 @@ export function computeWeightAlerts(snapshots: WeightSnapshot[]): WeightAlert[] 
   }
 
   return alerts;
+}
+
+/**
+ * Watermark alert for the analytics_events row budget. The daily retention cron
+ * trims the table back to ANALYTICS_EVENTS_ROW_BUDGET, so crossing the warning
+ * line means the *effective* retention window is shrinking below 90 days — the
+ * signal to raise the cap or move to a larger Supabase tier.
+ */
+export function computeAnalyticsBudgetAlert(rowCount: number | undefined): WeightAlert[] {
+  if (rowCount === undefined || rowCount <= 0) return [];
+  const ratio = rowCount / ANALYTICS_EVENTS_ROW_BUDGET;
+  const pct = Math.round(ratio * 100);
+  const hint =
+    'The daily retention job is holding the table at this cap, so older events ' +
+    'are being trimmed sooner. Raise ANALYTICS_EVENTS_ROW_BUDGET (and the cron ' +
+    'v_budget) or move to a larger Supabase tier.';
+
+  if (ratio >= ANALYTICS_CRITICAL_RATIO) {
+    return [{
+      severity: 'critical',
+      title: 'Analytics table at budget',
+      detail: `analytics_events is at ${pct}% of its ${ANALYTICS_EVENTS_ROW_BUDGET.toLocaleString()}-row budget. ${hint}`,
+    }];
+  }
+  if (ratio >= ANALYTICS_WARNING_RATIO) {
+    return [{
+      severity: 'warning',
+      title: 'Analytics table nearing budget',
+      detail: `analytics_events is at ${pct}% of its ${ANALYTICS_EVENTS_ROW_BUDGET.toLocaleString()}-row budget. ${hint}`,
+    }];
+  }
+  return [];
 }
