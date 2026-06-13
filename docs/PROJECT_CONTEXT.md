@@ -140,6 +140,23 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   (`/internal/findings` triage) and a weekly operating brief with KPI chips + publish
   gate (`/internal/briefings`). All agent writes flow through the `aios-report-ingest`
   choke point. Spec: `docs/superpowers/specs/2026-06-11-dragoncandy-aios-design.md`.
+- DragonCandy AIOS — Google Workspace ("Connections") — **shipped (6 PRs,
+  2026-06-12/13).** Per-user Google OAuth on `/internal/workspace`, all traffic through
+  one audited `google-workspace-proxy` edge function (tokens never leave the backend;
+  `drive.file` + `openid` + `email` scopes, service-role-only token table). Drive file
+  hub (browse / create Docs·Sheets·Slides / upload / preview / rename / trash), the whole
+  internal surface restyled to the dark "ops-deck" theme, Donny exports (Export-to-Doc on
+  briefings·strategy·answers, brief→Doc on publish, zero-scope Gmail compose links), and a
+  metrics→living-Sheet auto-flow the Monday brief routine drives via a locked-down
+  service-bearer path (acting account resolved server-side). A Google Chat bot scaffold
+  (`google-chat-donny`) ships **dark** — it verifies Google's signed JWT and routes
+  internal admins to Donny through a Codex-gated trusted service path, returning 503 until
+  the DragonCandy Workspace org exists. Founder GCP gotchas that gated it: publish the
+  OAuth consent screen to Production (Testing blocks non-test-users + expires tokens in 7
+  days), register the exact `/internal/workspace/callback` redirect path, and enable the
+  Sheets API separately. Remaining (all wait on the Workspace org): register the Chat app +
+  set `GOOGLE_CHAT_PROJECT_NUMBER`, set `GOOGLE_ALLOWED_DOMAIN`. Spec:
+  `docs/superpowers/specs/2026-06-11-google-workspace-connections-design.md`.
 
 **Workflow discipline**: Single Claude Code agent, one prompt at a time
 → `npm run build` → verify → push. Session handoffs at plan-phase
