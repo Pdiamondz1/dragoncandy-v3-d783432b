@@ -544,7 +544,12 @@ export function SlideFinancials({ index, total }: SlideProps) {
           </div>
         ))}
       </div>
-      <div className="mt-7 flex items-center justify-center gap-10 text-base font-semibold text-white/75">
+      <p className="mt-6 text-center text-lg font-semibold text-white/80">
+        This round: a <span className="text-dc-teal">~$3M seed</span> buys an 18-month runway to
+        Year-2 scale — <span className="text-dc-teal">50%</span> build · <span className="text-dc-teal">30%</span> GTM ·
+        <span className="text-dc-teal"> 20%</span> working capital.
+      </p>
+      <div className="mt-5 flex items-center justify-center gap-10 text-base font-semibold text-white/75">
         <span>Guardrails:</span>
         <span>LTV:CAC &ge; 2:1</span>
         <span>CAC payback &le; 12 mo</span>
@@ -559,18 +564,18 @@ export function SlideFinancials({ index, total }: SlideProps) {
 
 export function SlideAsk({ index, total }: SlideProps) {
   const use = [
-    { pct: "[__]%", label: "Engineering & Donny AI" },
-    { pct: "[__]%", label: "GTM & metro expansion" },
-    { pct: "[__]%", label: "Working capital" },
+    { pct: "50%", label: "Engineering & Donny AI" },
+    { pct: "30%", label: "GTM & metro expansion" },
+    { pct: "20%", label: "Working capital" },
   ];
   return (
     <SlideShell index={index} total={total} variant="gradient" eyebrow="The Ask">
       <div className="flex flex-1 flex-col justify-center">
         <h2 className="text-6xl font-extrabold leading-tight">
-          Raising <GradientText>$[X]</GradientText>
+          Raising <GradientText>$2.5–3.5M</GradientText>
         </h2>
         <p className="mt-3 text-2xl font-semibold text-white/80">
-          on a $[Y] post-money valuation
+          ~$12–15M post-money · 18-month runway to Year-2 scale
         </p>
 
         <div className="mt-10 grid grid-cols-3 gap-6">
@@ -585,7 +590,8 @@ export function SlideAsk({ index, total }: SlideProps) {
         </div>
 
         <p className="mt-9 rounded-2xl border border-white/10 bg-white/5 px-6 py-4 text-base font-medium text-white/70">
-          Placeholder — raise amount, valuation/structure, and use-of-funds split to be finalized by the founders.
+          Recommended from the 18-month operating plan (full cost model on file). Final raise,
+          valuation, and structure to be set by the founders.
         </p>
       </div>
     </SlideShell>
