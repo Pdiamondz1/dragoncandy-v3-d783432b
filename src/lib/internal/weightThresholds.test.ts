@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   GB,
+  COMPUTE_TIERS,
   dailyGrowthBytes,
   daysUntilDiskAlert,
   computeWeightAlerts,
@@ -85,6 +86,22 @@ describe('computeWeightAlerts', () => {
     // tiny growth: crossing > 90 days out → no noise
     const alerts = computeWeightAlerts([snap(10, 1 * GB), snap(0, 1.001 * GB)]);
     expect(alerts).toHaveLength(0);
+  });
+});
+
+describe('computeWeightAlerts currentTierIndex', () => {
+  it('names the next tier based on the passed current index', () => {
+    const atMicro = computeWeightAlerts([snap(0, 7 * GB)], 0); // Micro → next is Small
+    expect(atMicro[0].detail).toContain(COMPUTE_TIERS[1].name);
+  });
+
+  it('reports no next tier when at the top index', () => {
+    const atTop = computeWeightAlerts([snap(0, 7 * GB)], COMPUTE_TIERS.length - 1);
+    expect(atTop[0].detail).toMatch(/top listed tier/);
+  });
+
+  it('defaults to index 0 when omitted (backwards compatible)', () => {
+    expect(computeWeightAlerts([snap(0, 7 * GB)])[0].detail).toContain(COMPUTE_TIERS[1].name);
   });
 });
 

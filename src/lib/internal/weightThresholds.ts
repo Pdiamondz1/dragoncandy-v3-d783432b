@@ -18,9 +18,13 @@ export const COMPUTE_TIERS = [
   { name: 'XL', ramGb: 16, monthlyUsd: 210 },
 ] as const;
 
-/** Index into COMPUTE_TIERS — the one-line update when the plan changes. */
-const CURRENT_TIER_INDEX = 0;
-export const CURRENT_TIER = COMPUTE_TIERS[CURRENT_TIER_INDEX];
+/**
+ * Default index into COMPUTE_TIERS. The live value now comes from the DB
+ * (`aios_dashboard_settings.current_compute_tier_index`, read via
+ * `useCurrentTierIndex`) so a founder-approved correction can change the tier
+ * without a code change; this constant is only the fallback while that loads.
+ */
+export const DEFAULT_TIER_INDEX = 0;
 
 const DISK_WARNING_RATIO = 0.7;
 const DISK_CRITICAL_RATIO = 0.85;
@@ -74,7 +78,10 @@ export function daysUntilDiskAlert(currentDbBytes: number, growthPerDay: number)
   return Math.ceil((threshold - currentDbBytes) / growthPerDay - 1e-9);
 }
 
-export function computeWeightAlerts(snapshots: WeightSnapshot[]): WeightAlert[] {
+export function computeWeightAlerts(
+  snapshots: WeightSnapshot[],
+  currentTierIndex: number = DEFAULT_TIER_INDEX,
+): WeightAlert[] {
   if (snapshots.length === 0) return [];
   const sorted = [...snapshots].sort(
     (a, b) => new Date(a.captured_at).getTime() - new Date(b.captured_at).getTime()
@@ -82,7 +89,7 @@ export function computeWeightAlerts(snapshots: WeightSnapshot[]): WeightAlert[] 
   const latest = sorted[sorted.length - 1];
   const alerts: WeightAlert[] = [];
   const ratio = latest.db_bytes / DISK_LIMIT_BYTES;
-  const nextTier = COMPUTE_TIERS[CURRENT_TIER_INDEX + 1] as
+  const nextTier = COMPUTE_TIERS[currentTierIndex + 1] as
     | (typeof COMPUTE_TIERS)[number]
     | undefined;
   const upgradeHint = nextTier

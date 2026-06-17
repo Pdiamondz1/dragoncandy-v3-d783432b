@@ -1,11 +1,13 @@
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { usePlatformWeight } from '@/hooks/internal/usePlatformWeight';
+import { useCurrentTierIndex } from '@/hooks/internal/useDashboardSettings';
 import {
   computeWeightAlerts,
   computeAnalyticsBudgetAlert,
   dailyGrowthBytes,
   DISK_LIMIT_BYTES,
-  CURRENT_TIER,
+  COMPUTE_TIERS,
+  DEFAULT_TIER_INDEX,
   GB,
 } from '@/lib/internal/weightThresholds';
 import { StatCard, SectionHeading, ErrorCard } from '@/components/internal/stats';
@@ -23,6 +25,8 @@ const severityStyles = {
 
 const InternalWeight = () => {
   const weight = usePlatformWeight();
+  // Live compute tier from the DB (founder-correctable); falls back while loading.
+  const { data: tierIndex = DEFAULT_TIER_INDEX } = useCurrentTierIndex();
 
   if (weight.isLoading) {
     return (
@@ -39,12 +43,12 @@ const InternalWeight = () => {
   const snapshots = weight.data;
   const latest = snapshots[snapshots.length - 1];
   const alerts = [
-    ...computeWeightAlerts(snapshots),
+    ...computeWeightAlerts(snapshots, tierIndex),
     ...computeAnalyticsBudgetAlert(latest.row_counts?.analytics_events),
   ];
   const growth = dailyGrowthBytes(snapshots);
   const diskPct = Math.round((latest.db_bytes / DISK_LIMIT_BYTES) * 100);
-  const tier = CURRENT_TIER;
+  const tier = COMPUTE_TIERS[tierIndex] ?? COMPUTE_TIERS[DEFAULT_TIER_INDEX];
   const chartData = snapshots.map((s) => ({
     day: new Date(s.captured_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
     dbMb: Math.round(s.db_bytes / MB),
