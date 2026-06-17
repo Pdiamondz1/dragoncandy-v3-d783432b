@@ -102,6 +102,14 @@ widening the margin.
 the AI-developer FTE (counted in §5), not external compute** — in 2026, fine-tuning is
 remarkably cheap, so this moat is built mostly with talent already on payroll.
 
+**Architectural adaptability is the through-line** (the deck's Vision slide, made operational):
+Donny's model-routing seam (`_shared/model-routing`, backend-only) makes the underlying model a
+swappable config — Haiku / Sonnet / Opus today, any frontier model or our own fine-tune tomorrow —
+and the stack is provider-independent (Anthropic + OpenAI today). As frontier AI accelerates,
+DragonCandy adopts the best or cheapest capable model **the day it ships**, so capability rises and
+cost falls automatically. We ride the AI curve instead of being disrupted by it — and the
+trajectory points at an increasingly autonomous, AGI-adjacent super-agent.
+
 ### 3.1 Proprietary fine-tuned model (the data-flywheel moat, made tangible)
 
 Trigger: once **1,000–5,000 campaigns** accumulate (`docs/PROJECT_CONTEXT.md` §6, "On the
@@ -204,6 +212,42 @@ message — targeted **Month 4–6**. Reconciles with documented CAC
 kill-switch, and an AE carrying restaurants + brands clears the $500K-revenue-per-head rule at
 quota.
 
+### 6.1 Brand acquisition — the high-LTV third side
+
+Brands/sponsors are the third marketplace side and the **highest-LTV customer** DragonCandy has.
+Today the brand role is **gated behind the `BRAND_ROLE_ENABLED` feature flag** — the code exists;
+enabling and hardening it is dev time already inside §5 (no incremental build line).
+
+**Brand economics** (`docs/DragonCandy_Pricing_Profitability_Briefing_v2.md` §5;
+`docs/DragonCandy_Infrastructure_Capacity_Report.md` §4):
+
+| Metric | Brand | vs. Restaurant |
+|--------|------:|----------------|
+| CAC | $1,500–$3,500 | ~3–7× higher |
+| CAC payback | 3–5 months | faster |
+| 24-month LTV | $24,000–$72,000 | ~3–6× higher |
+| Subscription | ~$800/mo avg | ~2× restaurant ARPU |
+| LTV:CAC | ~7:1 to 20:1 | far above the 3:1 target |
+
+**Motion (confirmed lean):** sales-led with a 2–3 month cycle, carried by **Joe (CRO) + the sales
+AE** — *no new hire* in the runway; the Brand Partnerships Manager stays a Year-3 hire (staffing
+plan Hire #6). Brand revenue is therefore **upside that accelerates the path to the Y2 $2–4.5M
+plan, not a runway dependency.**
+
+**Incremental 18-month cost — ~$30–50K, all GTM** (the headcount is already counted in §5/§6):
+- Brand-targeted outreach + collateral (sponsor decks, case studies, ROI one-pagers): ~$8–15K
+- Brand / industry events + trade-show presence (where brand budgets are set): ~$15–25K
+- Outreach + pipeline tooling for the longer brand sales cycle: ~$5–10K
+
+**Target:** a modest **10–25 brands by month 18**, gated on having creator + restaurant liquidity
+worth sponsoring. At ~$800/mo plus sponsor campaigns and a $24–72K LTV, even the low end is a
+meaningful revenue layer on a small absolute CAC outlay.
+
+**Why this barely moves the raise:** the expensive part of customer acquisition is *people*, and
+the brand motion adds none — it rides Joe + the AE already in the budget. The only new money is
+~$30–50K of brand-specific GTM, absorbed within the existing GTM bucket. The raise stays
+**$2.5–3.5M**; brands improve the *return* on it.
+
 ---
 
 ## 7. Marketing — Sequenced 3-Metro Launch (Hoboken → Manhattan → Palm Beach)
@@ -241,7 +285,7 @@ and **kill-switches** (CAC payback >12 mo, LTV:CAC <2:1) govern every escalation
 | Infrastructure + dev tooling | **$50–75K** | §2 |
 | Donny super-agent R&D (external) | **$70–150K** | §3 |
 | Mobile apps (Apple + Google) | **$5–10K** | §4 |
-| Marketing (3 metros, sequenced) | **$130–250K** | §7 |
+| Marketing + brand acquisition (3 metros + brand GTM) | **$160–300K** | §7, §6.1 |
 | Legal / IP / fundraising (trademarks, provisional patents, corp) | **$40–75K** | Moat Playbook 90-day legal |
 | G&A / ops / insurance / accounting (Hoboken office) | **$80–120K** | staffing plan |
 | **Operating subtotal** | **~$2.0–2.5M** | |
@@ -259,7 +303,7 @@ all-in cost ramp ($480–600K Y1 → $1.5–2M Y2).
 | Bucket | % | Amount (@ ~$3M) | Covers |
 |--------|--:|----------------:|--------|
 | **Engineering & Donny AI** | **50%** | ~$1.5M | Eng team (back/front/AI/app-admin/security), Donny super-agent R&D, infra + tooling, mobile apps |
-| **GTM & metro expansion** | **30%** | ~$0.9M | Sales AE, 3-metro marketing, partnerships, founder/sales-led launch |
+| **GTM & metro expansion** | **30%** | ~$0.9M | Sales AE, 3-metro marketing, **brand acquisition (founder + AE led)**, partnerships, launch |
 | **Working capital & G&A** | **20%** | ~$0.6M | Founder salaries, legal/IP, accounting, insurance, ops, runway buffer |
 
 ### 8.2 Valuation framing (founders finalize)

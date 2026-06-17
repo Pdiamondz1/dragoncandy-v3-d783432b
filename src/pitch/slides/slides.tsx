@@ -10,6 +10,9 @@ import {
   Tag,
   Check,
   ArrowRight,
+  Bot,
+  Brain,
+  Layers,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { SlideShell, GradientText, type SlideProps } from "./SlideShell";
@@ -299,12 +302,12 @@ export function SlideMarket({ index, total }: SlideProps) {
       <h2 className="max-w-4xl text-5xl font-extrabold leading-tight">
         A budget that already exists — newly consolidatable.
       </h2>
-      <div className="mt-10 grid flex-1 grid-cols-2 gap-12">
-        <div className="flex flex-col justify-center gap-5">
+      <div className="mt-8 grid flex-1 grid-cols-2 gap-12">
+        <div className="flex flex-col justify-center gap-4">
           {tiers.map((t, i) => (
             <div
               key={t.label}
-              className="flex items-center gap-6 rounded-3xl border border-dc-teal/30 bg-white p-6 shadow-[0_10px_40px_-18px_rgba(15,118,110,0.35)]"
+              className="flex items-center gap-6 rounded-3xl border border-dc-teal/30 bg-white p-5 shadow-[0_10px_40px_-18px_rgba(15,118,110,0.35)]"
               style={{ marginRight: i * 56 }}
             >
               <div className="text-3xl font-extrabold text-dc-teal-btn">{t.label}</div>
@@ -322,11 +325,15 @@ export function SlideMarket({ index, total }: SlideProps) {
           <p className="mt-3 text-lg leading-relaxed text-dc-text-muted">
             The average restaurant spends <span className="font-semibold text-dc-text">$2,000–$4,000/mo</span> on
             marketing across disconnected vendors. DragonCandy consolidates that spend into one platform at a blended
-            ARPU of <span className="font-semibold text-dc-text">$350–$500/mo</span> — before take-rate and rush
-            revenue.
+            ARPU of <span className="font-semibold text-dc-text">$350–$500/mo</span> — before take-rate and rush.
           </p>
-          <p className="mt-5 rounded-2xl bg-dc-pink-bg/60 px-5 py-4 text-base font-medium text-dc-text">
-            Dollar TAM/SAM/SOM figures to be finalized from sourced market data.
+          <p className="mt-3 text-lg leading-relaxed text-dc-text-muted">
+            <span className="font-semibold text-dc-pink-accent">Brands</span> are the high-LTV third side —
+            ~$800/mo plus sponsor campaigns, a <span className="font-semibold text-dc-text">$24K–$72K</span> LTV
+            at a 3–5 month payback.
+          </p>
+          <p className="mt-3 rounded-2xl bg-dc-pink-bg/60 px-5 py-3 text-base font-medium text-dc-text">
+            Dollar TAM/SAM/SOM figures pending sourced market data.
           </p>
         </div>
       </div>
@@ -339,7 +346,7 @@ export function SlideMarket({ index, total }: SlideProps) {
 export function SlideModel({ index, total }: SlideProps) {
   const streams = [
     { name: "Subscription", detail: "Free / $149 / $449 / $899 / Enterprise", margin: "80–90%" },
-    { name: "Marketplace take-rate", detail: "Tiered 10% → 2% on creator deals", margin: "65–80%" },
+    { name: "Marketplace take-rate", detail: "Tiered 10% → 2% on creator & brand deals", margin: "65–80%" },
     { name: "Donny AI credits", detail: "$0.10–0.25 per call overage", margin: "70–90%" },
     { name: "DragonDash rush", detail: "$25–75 delivery + platform surcharges", margin: "high" },
   ];
@@ -363,7 +370,8 @@ export function SlideModel({ index, total }: SlideProps) {
         ))}
       </div>
       <p className="mt-7 text-center text-lg font-medium text-white/75">
-        The take-rate ladder rewards growth: discount the rate as the customer scales spend, and grow with them.
+        Restaurants subscribe; <span className="font-semibold text-dc-pink-accent">brands</span> sponsor at the
+        high end. The take-rate ladder discounts as spend scales — we grow with the customer.
       </p>
     </SlideShell>
   );
@@ -508,12 +516,95 @@ export function SlideTeam({ index, total }: SlideProps) {
   );
 }
 
-/* ---------- 12 · Financials ---------- */
+/* ---------- 12 · Vision (Donny super-intelligence + adaptability) ---------- */
+
+export function SlideVision({ index, total }: SlideProps) {
+  const trajectory = [
+    {
+      icon: <Sparkles className="h-6 w-6" />,
+      title: "Today — the copilot",
+      body: "Campaign-from-URL, AI matching, scheduling, and analytics inside the app.",
+    },
+    {
+      icon: <Bot className="h-6 w-6" />,
+      title: "Next — the super-agent",
+      body: "Runs campaigns end-to-end, and delivers value beyond the app — a public Donny API and a standalone assistant.",
+    },
+    {
+      icon: <Brain className="h-6 w-6" />,
+      title: "Horizon — AGI-adjacent",
+      body: "Self-improving agents that build, fix, scale, and secure the platform itself.",
+    },
+  ];
+  const adapt = [
+    {
+      icon: <Layers className="h-6 w-6" />,
+      title: "Model-agnostic routing",
+      body: "Adopt the best or cheapest model the day it ships — backend-only, no rewrite.",
+    },
+    {
+      icon: <Network className="h-6 w-6" />,
+      title: "Provider-independent",
+      body: "Anthropic + OpenAI today, any frontier lab tomorrow. Never locked in.",
+    },
+    {
+      icon: <Database className="h-6 w-6" />,
+      title: "Owns its data",
+      body: "Proprietary flywheel → fine-tune our own models. Capability up, cost down.",
+    },
+  ];
+  return (
+    <SlideShell index={index} total={total} variant="gradient" eyebrow="Vision">
+      <h2 className="max-w-5xl text-5xl font-extrabold leading-tight">
+        Donny is becoming a <GradientText>super-intelligence</GradientText> — and we're built to ride the curve.
+      </h2>
+      <p className="mt-2 max-w-4xl text-lg text-white/70">
+        Increasingly autonomous, increasingly capable — riding the frontier instead of being disrupted by it.
+      </p>
+      <div className="mt-4 grid flex-1 grid-cols-2 gap-10">
+        <div>
+          <h3 className="text-sm font-bold uppercase tracking-widest text-dc-teal">From assistant → super-agent</h3>
+          <div className="mt-3 flex flex-col gap-3">
+            {trajectory.map((t) => (
+              <div key={t.title} className="flex gap-4">
+                <div className="mt-0.5 shrink-0 text-dc-teal">{t.icon}</div>
+                <div>
+                  <div className="text-lg font-bold text-white">{t.title}</div>
+                  <div className="text-base leading-relaxed text-white/65">{t.body}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div>
+          <h3 className="text-sm font-bold uppercase tracking-widest text-dc-pink-accent">Built to ride the AI curve</h3>
+          <div className="mt-3 flex flex-col gap-3">
+            {adapt.map((t) => (
+              <div key={t.title} className="flex gap-4">
+                <div className="mt-0.5 shrink-0 text-dc-pink-accent">{t.icon}</div>
+                <div>
+                  <div className="text-lg font-bold text-white">{t.title}</div>
+                  <div className="text-base leading-relaxed text-white/65">{t.body}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+      <p className="mt-4 text-center text-lg font-semibold text-white/80">
+        We don't bet on one model — we ride every model.{" "}
+        <span className="text-dc-teal">Adaptability is the moat that compounds.</span>
+      </p>
+    </SlideShell>
+  );
+}
+
+/* ---------- 13 · Financials ---------- */
 
 export function SlideFinancials({ index, total }: SlideProps) {
   const rows = [
     { y: "Year 1", arr: "$300–600K", team: "5–6", metros: "2–3", note: "Launch + first liquidity" },
-    { y: "Year 2", arr: "$2–4.5M", team: "7–8", metros: "8–12", note: "NRR > 110%" },
+    { y: "Year 2", arr: "$2–4.5M", team: "7–8", metros: "8–12", note: "Brands drive NRR > 110%" },
     { y: "Year 3", arr: "$7–12M", team: "10–11", metros: "20+", note: "$2–5M profit" },
   ];
   return (
