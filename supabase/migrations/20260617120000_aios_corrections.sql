@@ -64,12 +64,14 @@ create policy "aios_corrections_admin_select" on public.aios_corrections
 -- No authenticated UPDATE/INSERT/DELETE: rows arrive via the service-role ingest
 -- function; the ONLY mutation path for app users is the apply RPC below.
 
+drop trigger if exists trg_aios_corrections_updated_at on public.aios_corrections;
 create trigger trg_aios_corrections_updated_at
   before update on public.aios_corrections
-  for each row execute function handle_updated_at();
+  for each row execute function public.handle_updated_at();
+drop trigger if exists trg_aios_dashboard_settings_updated_at on public.aios_dashboard_settings;
 create trigger trg_aios_dashboard_settings_updated_at
   before update on public.aios_dashboard_settings
-  for each row execute function handle_updated_at();
+  for each row execute function public.handle_updated_at();
 
 -- Apply / reject a proposal. Admin-only (enforced in-body since SECURITY DEFINER
 -- bypasses RLS). Re-validates current state (optimistic concurrency) and applies
@@ -107,13 +109,17 @@ begin
     return jsonb_build_object('status', 'rejected');
   end if;
 
-  -- approve: re-read live value, supersede on drift.
+  -- approve: lock + re-read the TARGET row (not just the correction) so two
+  -- concurrent approvals of different proposals for the same target cannot both
+  -- pass the drift check and clobber each other. Supersede on drift OR a missing
+  -- target; never mark applied unless the change actually landed.
   if c.target_type = 'dashboard_setting' then
-    select value into live_value from public.aios_dashboard_settings where key = c.target_ref;
-    if live_value is distinct from c.current_value then
+    select value into live_value
+      from public.aios_dashboard_settings where key = c.target_ref for update;
+    if not found or live_value is distinct from c.current_value then
       update public.aios_corrections
         set status = 'superseded', reviewed_by = uid, reviewed_at = now() where id = p_id;
-      return jsonb_build_object('status', 'superseded', 'message', 'value changed since proposal; re-propose');
+      return jsonb_build_object('status', 'superseded', 'message', 'value changed or target missing; re-propose');
     end if;
     update public.aios_dashboard_settings
       set value = c.proposed_value, updated_at = now(), updated_by = uid
@@ -124,12 +130,20 @@ begin
     return jsonb_build_object('status', 'applied', 'target_type', 'dashboard_setting');
 
   elsif c.target_type = 'strategy_doc' then
-    -- Compare on normalized text so a benign no-op sync rewrite doesn't false-supersede.
-    select to_jsonb(content_md) into live_value from public.internal_docs where path = c.target_ref;
-    if btrim(coalesce(live_value #>> '{}', '')) is distinct from btrim(coalesce(c.current_value #>> '{}', '')) then
+    -- strategy_doc values must be JSON strings (markdown text) — reject a
+    -- malformed proposal rather than coercing an object/number/null into content_md.
+    if jsonb_typeof(c.current_value) <> 'string' or jsonb_typeof(c.proposed_value) <> 'string' then
+      raise exception 'strategy_doc corrections require JSON string values';
+    end if;
+    -- Lock the doc row; compare on normalized text so a benign no-op sync rewrite
+    -- doesn't false-supersede. Missing doc => supersede (do NOT mark applied).
+    select to_jsonb(content_md) into live_value
+      from public.internal_docs where path = c.target_ref for update;
+    if not found
+       or btrim(coalesce(live_value #>> '{}', '')) is distinct from btrim(coalesce(c.current_value #>> '{}', '')) then
       update public.aios_corrections
         set status = 'superseded', reviewed_by = uid, reviewed_at = now() where id = p_id;
-      return jsonb_build_object('status', 'superseded', 'message', 'doc changed since proposal; re-propose');
+      return jsonb_build_object('status', 'superseded', 'message', 'doc changed or missing; re-propose');
     end if;
     update public.internal_docs
       set content_md = c.proposed_value #>> '{}', updated_at = now()
