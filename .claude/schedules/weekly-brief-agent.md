@@ -1,9 +1,12 @@
 # AIOS Weekly Operating Brief Agent
 
-> Scheduled: Monday mornings (~8am ET) via `/schedule`. Report-only — this agent
-> never edits code, never pushes, and writes to exactly one place: the
-> `aios-report-ingest` edge function. Created in AIOS PR 7; see
-> `docs/superpowers/specs/2026-06-11-dragoncandy-aios-design.md` §E.
+> Scheduled: **daily ~3am ET** via `/schedule` (cron `0 3 * * *`, America/New_York).
+> Report-only — this agent never edits code, never pushes, and writes to exactly one
+> place: the `aios-report-ingest` edge function. The brief keys to the current week's
+> Monday (`week_start`) and `aios-report-ingest` UPSERTS on it, so a daily run refreshes
+> the SAME week's living brief with current numbers (no duplicate rows; the publish gate
+> still controls what stakeholders see). Created in AIOS PR 7, daily cadence added
+> 2026-06-13; see `docs/superpowers/specs/2026-06-11-dragoncandy-aios-design.md` §E.
 
 ## Prompt
 

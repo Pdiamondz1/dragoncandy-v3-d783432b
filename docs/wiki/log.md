@@ -12,6 +12,48 @@ prod-build-only render, gitignored PDF, and the inline-base64 Drive-upload limit
 Source: [[Investor Pitch Deck & Cost Model Session]].
 Pages created: [[Investor Pitch Deck & Cost Model Session]], [[Investor Pitch Deck & Capital Raise]].
 
+## [2026-06-13] ingest | Weekly sync — Google Workspace, Dashboard calm, Analytics fix (PRs #82–#107)
+
+Automated wiki-sync routine. Watermark: 2026-06-11. New raw extract:
+`raw/sessions/2026-06-13-weekly-sync.md`. Sources ingested covering 26 commits (PRs #82–#107)
+across five feature areas.
+
+**Google Workspace / Connections (6 PRs, 2026-06-12/13):** AIOS Connections pillar shipped.
+Per-user Google OAuth + HMAC-signed state, `google_workspace_accounts` table (service-role-only,
+zero RLS), `google-workspace-proxy` edge function (single audited gateway), Drive file hub
+(list/create/rename/trash/upload + embedded preview), ops-deck dark restyle of `/internal`,
+Donny Workspace export (markdown → Google Doc), Gmail compose deep-link (zero-scope; full drafts
+deferred to Workspace-day), metrics → living Sheet (service-bearer, Monday brief auto-flow),
+Google Chat bot scaffold (ships dark, 503 until `GOOGLE_CHAT_PROJECT_NUMBER`). Founder GCP
+gotchas documented: publish OAuth consent to Production, register exact callback path, enable
+Sheets API separately.
+
+**AIOS post-ship polish (PRs #82–#84, 2026-06-11):** founders-only login page, access-denied
+card with account-switch + email display, sign-out control in AIOS header.
+
+**Dashboard UX calm (3 PRs, 2026-06-12):** all three role dashboards (Business/Creator/Brand)
+replaced cluttered layouts with calm hierarchy. New shared kit: `DashboardGreeting`,
+`HeroPrimaryAction`, `StatsRow`, `NeedsAttentionSection`, `RecentActivitySection`. Legacy
+`DashboardHero`, `DashboardStatsGrid`, `QuickActionButtons` retired. Presentation-only — no
+hook/data-flow changes.
+
+**Donny fixes:** input-first mobile tray (PR #94), empty-answer fix for platform/revenue/scaling
+questions (PR #105).
+
+**Analytics firehose fix (PR #106):** stopped `performance_metric` event persistence to Postgres,
+purged 335K dead rows, added self-adjusting retention (90d + 1M-row budget), budget watermark
+on `/internal/weight`.
+
+**Codex second reviewer (PR #107):** mandatory Codex review step added to `CLAUDE.md` Code
+Review Standards.
+
+**Codebase scale corrected (old → new):** 60 pages → 73, 183 hooks → 206, 73 edge functions → 80
+(in PROJECT_CONTEXT.md and CLAUDE.md).
+
+Pages created: [[Google Workspace]] (entity), [[Google Workspace Connections Session]] (source).
+Pages updated: [[Donny AI]] (80 fns, Workspace export tools, mobile fixes), [[Supabase]] (80 fns),
+[[DragonCandy Platform]] (scale 73/206/80, Google Workspace integration); index.md (2 new entries).
+
 ## [2026-06-11] update | DragonCandy AIOS shipped (8 PRs)
 
 The AIOS internal operating surface shipped end to end (PRs #64–#79, spec

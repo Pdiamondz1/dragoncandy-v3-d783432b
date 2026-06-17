@@ -112,8 +112,9 @@ code and money changes human-gated.
 
 ## Known Issues
 
-- Phases 2–5 are roadmap, not built. Phase 1 produces knowledge pages only; it does not yet change
-  Donny's behavior or app code.
+- Phase 1 is fully built. Phases 2, 3 (first slice), 5 (first slice), and 6 (Phases A–D) are
+  also built (see roadmap above). Phase 4 (fix proposals) and the wiki-signals variant of Phase 3
+  remain future work. The loop now changes Donny's RAG and surfaces engagement to creators.
 - The acceptance gate's "fills a real gap" check depends on `index.md` being complete; a missing
   index entry can cause a duplicate. Run wiki-ops `lint` periodically to catch this.
 - **Donny's vector RAG was broken on staging (flag → fixed 2026-06-10).** The
@@ -137,6 +138,7 @@ code and money changes human-gated.
 - [[Data Flywheel]]
 - [[Donny AI]]
 - [[DragonCandy Platform]]
+- [[Karpathy LLM Wiki Schema]]
 - [[Musk's Algorithm]]
 - [[Migration Replay Drift]]
 - [[Supabase]]
