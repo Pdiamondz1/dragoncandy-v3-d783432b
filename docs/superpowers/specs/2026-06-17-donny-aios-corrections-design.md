@@ -50,9 +50,9 @@ The founders want Donny able to **propose corrections** to (a) the strategy libr
 | `reviewed_by` | uuid | auth.users; null until decided |
 | `reviewed_at`, `applied_at` | timestamptz | audit |
 
-RLS (identical pattern to `aios_findings`/`aios_briefings`):
-- SELECT: `is_internal_user()` (admins see all; this surface is internal-only).
-- UPDATE: `has_role(auth.uid(),'admin')` — the approve/reject transition.
+RLS (identical pattern to `aios_findings` — proposals can quote internal data, so admin-only both directions):
+- SELECT: `has_role(auth.uid(),'admin')` — the `/internal/corrections` queue is admin-only, like Findings.
+- The approve/reject transition is **not** a direct table UPDATE policy — it goes through the admin-gated `aios_corrections_apply` RPC (so the value-application and status change are atomic and validated). No authenticated UPDATE policy.
 - INSERT: **no authenticated policy** — written only by service-role via the choke point.
 
 **`aios_dashboard_settings`** — correctable dashboard values:

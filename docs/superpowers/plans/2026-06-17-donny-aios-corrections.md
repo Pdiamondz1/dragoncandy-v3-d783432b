@@ -302,7 +302,7 @@ git commit -m "feat(aios): corrections schema + apply RPC + dashboard settings (
 - Modify: `src/lib/internal/weightThresholds.ts`
 - Test: `src/lib/internal/weightThresholds.test.ts`
 
-- [ ] **Step 1: Read** `src/lib/internal/weightThresholds.ts` fully. Note `COMPUTE_TIERS`, the `CURRENT_TIER_INDEX` constant (line ~22), `CURRENT_TIER` export, and `computeWeightAlerts` (line ~85) which reads `COMPUTE_TIERS[CURRENT_TIER_INDEX + 1]`.
+- [ ] **Step 1: Read** `src/lib/internal/weightThresholds.ts` fully. Note `COMPUTE_TIERS`, the `CURRENT_TIER_INDEX` constant (line ~22), `CURRENT_TIER` export, and `computeWeightAlerts(snapshots: WeightSnapshot[])` (line ~77/85) which reads `COMPUTE_TIERS[CURRENT_TIER_INDEX + 1]`. **The param is `snapshots` (a `WeightSnapshot[]`), not a scalar weight** — keep that name.
 
 - [ ] **Step 2: Write the failing test**
 
@@ -312,18 +312,18 @@ import { computeWeightAlerts, COMPUTE_TIERS } from './weightThresholds';
 
 describe('computeWeightAlerts', () => {
   it('uses the passed current tier index for the next-tier headroom calc', () => {
-    // pick inputs that are safe at a high tier but alerting at a low tier
-    const lowAlerts = computeWeightAlerts(/* sample weight */ SAMPLE, 0);
+    // SAMPLE is a WeightSnapshot[] — copy the shape the existing callers build.
+    const lowAlerts = computeWeightAlerts(SAMPLE, 0);
     const highAlerts = computeWeightAlerts(SAMPLE, COMPUTE_TIERS.length - 2);
     expect(lowAlerts.length).toBeGreaterThanOrEqual(highAlerts.length);
   });
 });
 ```
-(Fill `SAMPLE` from the existing weight shape used by the current function; keep the assertion about index-sensitivity, not exact counts.)
+(Fill `SAMPLE` from the existing `WeightSnapshot[]` shape; keep the assertion about index-sensitivity, not exact counts.)
 
 - [ ] **Step 3: Run, expect FAIL** — `npx vitest run src/lib/internal/weightThresholds.test.ts` → fails (arity/signature).
 
-- [ ] **Step 4: Refactor** — change `computeWeightAlerts(weight)` → `computeWeightAlerts(weight, currentTierIndex)`; replace internal `CURRENT_TIER_INDEX` reads with the param. Keep the `CURRENT_TIER_INDEX = 0` constant only as a fallback default (or remove and default the param to 0). Export `COMPUTE_TIERS` if not already.
+- [ ] **Step 4: Refactor** — change `computeWeightAlerts(snapshots)` → `computeWeightAlerts(snapshots, currentTierIndex)`; replace internal `CURRENT_TIER_INDEX` reads with the param. Keep the `CURRENT_TIER_INDEX = 0` constant only as a fallback default (or default the param to 0). Export `COMPUTE_TIERS` if not already.
 
 - [ ] **Step 5: Run, expect PASS.**
 
@@ -516,7 +516,7 @@ export function useReviewCorrection() {
 
 **Files:**
 - Create: `src/pages/internal/InternalCorrections.tsx`
-- Modify: internal nav source (`src/components/internal/InternalLayout.tsx` or wherever `/internal/findings` nav item is defined) — add "Corrections".
+- Modify: `src/components/internal/InternalLayout.tsx` — the nav is a flat array of `{ to, label }` objects (e.g. `{ to: '/internal/findings', label: 'Findings' }`); add `{ to: '/internal/corrections', label: 'Corrections' }`.
 - Modify: `src/App.tsx` — add admin-gated `/internal/corrections` route (mirror the `/internal/findings` route guard).
 
 - [ ] **Step 1:** Build the page mirroring `src/pages/internal/InternalFindings.tsx`: list `proposed` corrections; each card shows title, a target-type badge (use `dc-*` tokens — no gray), a **before → after** block (`current_value` vs `proposed_value`, using `normalizeForCompare` to flag if already stale), `rationale_md` via `MarkdownProse`, and **Approve / Reject** buttons calling `useReviewCorrection`. Handle loading / error / empty ("No corrections waiting").
