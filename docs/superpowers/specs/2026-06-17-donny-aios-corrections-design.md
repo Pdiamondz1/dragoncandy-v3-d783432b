@@ -46,6 +46,7 @@ The founders want Donny able to **propose corrections** to (a) the strategy libr
 | `proposed_value` | jsonb | the new value (tier index, or corrected `content_md`) |
 | `status` | text | CHECK `('proposed','approved','rejected','applied','superseded')` default `'proposed'` |
 | `proposed_by` | text | e.g. `donny:<conversation_id>` |
+| `proposed_by_user` | uuid | auth.users — the admin whose Donny session proposed it (for per-user audit); nullable |
 | `reviewed_by` | uuid | auth.users; null until decided |
 | `reviewed_at`, `applied_at` | timestamptz | audit |
 
@@ -70,13 +71,13 @@ RLS: SELECT `is_internal_user()`; UPDATE `has_role(...,'admin')`; no INSERT poli
 New internal tool **`propose_correction`** added to `INTERNAL_TOOL_DEFINITIONS` in `donny-chat`:
 - Params: `target_type`, `target_ref`, `title`, `rationale_md`, `proposed_value`.
 - Handler routes through **`aios-report-ingest`** with a new `type: "correction"` (service bearer + `acting_user_id`, the existing trusted service path). Donny never inserts directly.
-- `aios-report-ingest` **captures `current_value` server-side** (reads the live `aios_dashboard_settings` value or `internal_docs.content_md`) so the before/after diff cannot be fabricated by the model, validates `target_ref` exists, inserts the row as `proposed`, returns the id.
+- `aios-report-ingest` **captures `current_value` server-side** (reads the live `aios_dashboard_settings` value or `internal_docs.content_md`) so the before/after diff cannot be fabricated by the model. It **validates `target_ref` exists** (an unknown setting key or `internal_docs.path` returns a 400, surfaced to Donny as a tool error so it does not falsely claim it proposed anything), then inserts the row as `proposed` and returns the id.
 - Donny confirms: "Proposed — review and approve at /internal/corrections." `buildInternalSystemPrompt` is updated to teach Donny when/how to use the tool (correction requests → propose, never claim it edited anything).
 
 ### 4.3 Apply-on-approval
 
 A single admin-gated `SECURITY DEFINER` RPC `aios_corrections_apply(p_id uuid, p_decision text)` (`'approve'`/`'reject'`), granted to `authenticated`, internally enforcing `has_role(auth.uid(),'admin')`:
-- **Staleness check first.** Re-read the live value; if it no longer equals the stored `current_value`, set `status='superseded'` and return a "value changed, re-propose" signal — never blind-overwrite.
+- **Staleness check first.** Re-read the live value; if it no longer equals the stored `current_value`, set `status='superseded'` and return a "value changed, re-propose" signal — never blind-overwrite. For `strategy_doc`, compare on a **normalized/hashed** form of `content_md` (trim + collapse trailing whitespace) so a benign no-op `donny-knowledge-sync` rewrite doesn't trip a false supersede; exact-equality is fine for the scalar `dashboard_setting` values.
 - **`dashboard_setting`**: update `aios_dashboard_settings.value = proposed_value` where `key = target_ref`; `status='applied'`, `applied_at=now()`.
 - **`strategy_doc`**: update `internal_docs.content_md = proposed_value` where `path = target_ref` (immediate in-app effect); `status='applied'`. The RPC returns the corrected markdown + path so the UI can show the wiki-commit step. (Durability note: without the founder committing to the wiki, the next `donny-knowledge-sync` would revert it — the UI makes this explicit.)
 - **reject**: `status='rejected'`, `reviewed_by/at` set, no value change.
@@ -92,7 +93,7 @@ New admin-only page + nav item, cloning `InternalFindings`:
 
 ### 4.5 Compute tier → DB
 
-`src/lib/internal/weightThresholds.ts` keeps `COMPUTE_TIERS` but the *current* index moves out of the hardcoded `CURRENT_TIER_INDEX` constant into `aios_dashboard_settings.current_compute_tier_index`. A `useDashboardSettings` hook reads it; `InternalWeight` resolves `CURRENT_TIER` from the hook (falling back to index 0 while loading). This is what makes the screenshot's compute-tier correction applyable.
+`src/lib/internal/weightThresholds.ts` keeps `COMPUTE_TIERS` but the *current* index moves out of the hardcoded `CURRENT_TIER_INDEX` constant into `aios_dashboard_settings.current_compute_tier_index`. A `useDashboardSettings` hook reads it; `InternalWeight` resolves `CURRENT_TIER` from the hook (falling back to index 0 while loading). **Both consumers of the index must re-point to the DB value, not just the exported `CURRENT_TIER`** — `computeWeightAlerts` (`weightThresholds.ts:85`) reads `COMPUTE_TIERS[CURRENT_TIER_INDEX + 1]` for its next-tier alert, so it must take the current index as a parameter (or read the hook value) rather than the stale constant. This is what makes the screenshot's compute-tier correction applyable.
 
 ## 5. Security Considerations
 
