@@ -1,5 +1,17 @@
 # Wiki Log
 
+## [2026-06-17] ingest | Investor Pitch Deck + Capital Raise Cost Model
+
+Session-end extract of the investor fundraising work (branch `worktree-DC-pitch-deck`, PR #111,
+open at ingest). Built a brand-faithful pitch deck at the unlisted `/pitch` route (15 slides,
+`src/pitch/`, image-per-page PDF via `npm run pitch:pdf`) and a sourced ~$3M capital-raise cost
+model (`docs/DragonCandy_Capital_Raise_Cost_Model.md`, 18-mo, 50/30/20). Added brand acquisition
+(founder+AE led, raise unchanged) and a Donny super-agent/AGI Vision slide selling model-agnostic
+adaptability. Gotchas captured: fixed 1280×720 slide canvas (overflow-verify with scrollHeight),
+prod-build-only render, gitignored PDF, and the inline-base64 Drive-upload limit.
+Source: [[Investor Pitch Deck & Cost Model Session]].
+Pages created: [[Investor Pitch Deck & Cost Model Session]], [[Investor Pitch Deck & Capital Raise]].
+
 ## [2026-06-13] ingest | Weekly sync — Google Workspace, Dashboard calm, Analytics fix (PRs #82–#107)
 
 Automated wiki-sync routine. Watermark: 2026-06-11. New raw extract:

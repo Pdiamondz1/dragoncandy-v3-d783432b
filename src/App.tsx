@@ -37,6 +37,7 @@ import { PageTransition } from "@/components/PageTransition";
 import type { UserRole } from "@/types/user";
 
 import LandingPage from "./pages/LandingPage";
+const PitchDeck = lazy(() => import("./pitch/PitchDeck"));
 const ProfileSetup = lazy(() => import("./pages/ProfileSetup"));
 const BusinessDashboard = lazy(() => import("./pages/BusinessDashboard"));
 const BrandDashboard = lazy(() => import("./pages/BrandDashboard"));
@@ -393,6 +394,22 @@ function AppLayout() {
   const { loading } = useAuth();
   const { pathname } = useLocation();
   const isPublic = PUBLIC_PATHS.has(pathname);
+
+  // Standalone, unlisted investor deck — no AppShell/nav/Donny/SiteGate/auth chrome.
+  // Still nested under ThemeProvider/QueryClient/LazyMotion/BrowserRouter (all above AppLayout).
+  if (pathname === "/pitch" || pathname.startsWith("/pitch/")) {
+    return (
+      <Suspense
+        fallback={
+          <div className="flex min-h-screen items-center justify-center bg-dc-dark">
+            <Spinner className="h-10 w-10 border-teal-400" />
+          </div>
+        }
+      >
+        <PitchDeck />
+      </Suspense>
+    );
+  }
 
   if (loading && isPublic && hasSessionHint()) {
     return (

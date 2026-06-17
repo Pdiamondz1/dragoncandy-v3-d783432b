@@ -17,6 +17,7 @@
 - [[Database Schema]](sources/database-schema.md) — Supabase Postgres schema overview (2026-05-23)
 - [[Donny Audit Phase 1 Session]](sources/donny-audit-phase1-session.md) — Role-based tool filtering, prompt injection defense, tier-based token clamping (2026-05-06)
 - [[Donny Audit Phase 2 Session]](sources/donny-audit-phase2-session.md) — Quota enforcement, SSE streaming, dual auth, upgrade CTAs (2026-05-06)
+- [[Investor Pitch Deck & Cost Model Session]](sources/investor-pitch-deck-cost-model-session.md) — /pitch deck (15 slides) + sourced ~$3M capital-raise cost model; brands woven in; Donny super-agent Vision slide (2026-06-17)
 - [[DragonShare Amplification Engine Session]](sources/dragonshare-amplification-engine-session.md) — Upload-first submit, trust-then-flag, watermark, two-path boost payment, 80/20 split (2026-06-01)
 - [[Project Context]](sources/project-context.md) — Project identity, strategy, and operating instructions (2026-05-23)
 - [[QA Staging Supabase (Plan B) Session]](sources/qa-staging-supabase-planb-session.md) — Isolated staging Supabase for the CI/CD gate; 213-migration replay, secrets, Stripe sandbox alignment (2026-06-02)
@@ -46,6 +47,7 @@
 - [[Data Flywheel]](concepts/data-flywheel.md) — Primary competitive moat via accumulated match data
 - [[Deep-Link Param Query Race]](concepts/deep-link-param-query-race.md) — Capture deep-link URL params at mount; URL-cleanup tears down queries mid-flight
 - [[Error Handling Patterns]](concepts/error-handling-patterns.md) — ErrorBoundary levels, QueryClient throwOnError, async patterns
+- [[Investor Pitch Deck & Capital Raise]](concepts/investor-pitch-deck.md) — Brand-faithful /pitch deck + ~$3M cost model (50/30/20); fixed 1280×720 canvas, gitignored PDF, prod-build-only; Donny super-agent Vision
 - [[Migration Replay Drift]](concepts/migration-replay-drift.md) — Prod schema diverged from migration files; 7 defect classes when replaying onto a clean DB
 - [[Musk's Algorithm]](concepts/musks-algorithm.md) — Question → Delete → Simplify → Accelerate → Automate
 - [[Payments Split by Surface]](concepts/payments-split-by-surface.md) — Stripe for marketplace on all surfaces; subscriptions web-only to avoid Apple's 30%
