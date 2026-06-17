@@ -130,6 +130,32 @@ interface ClaudeResponse {
   };
 }
 
+// Place a prompt-cache breakpoint on the last content block of the last message
+// so the conversation prefix (system + tools + prior messages, including tool
+// results) is read from cache on the next call/turn at ~0.1x — the system+tools
+// prefix alone is under the cache minimum, but with history it clears it.
+// Returns a shallow clone so the caller's messages are never mutated and exactly
+// one moving breakpoint exists per call (the stable system block is the other).
+function withHistoryCacheBreakpoint(messages: ClaudeMessage[]): unknown[] {
+  const out: unknown[] = messages.slice();
+  if (messages.length === 0) return out;
+  const last = messages[messages.length - 1];
+  let content: unknown;
+  if (typeof last.content === "string") {
+    if (!last.content) return out;
+    content = [{ type: "text", text: last.content, cache_control: { type: "ephemeral" } }];
+  } else if (Array.isArray(last.content) && last.content.length > 0) {
+    const blocks = last.content;
+    content = blocks.map((b, i) =>
+      i === blocks.length - 1 ? { ...b, cache_control: { type: "ephemeral" } } : b,
+    );
+  } else {
+    return out;
+  }
+  out[out.length - 1] = { ...last, content };
+  return out;
+}
+
 async function callClaude(
   systemParts: SystemPromptParts,
   messages: ClaudeMessage[],
@@ -157,7 +183,7 @@ async function callClaude(
       max_tokens: modelConfig.maxTokens,
       system: systemBlocks,
       tools: allTools,
-      messages,
+      messages: withHistoryCacheBreakpoint(messages),
     }),
   });
 

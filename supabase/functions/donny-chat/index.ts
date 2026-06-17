@@ -632,6 +632,32 @@ function buildInternalSystemPrompt(profile: Record<string, any>): SystemPromptPa
   return { stable, volatile };
 }
 
+// Place a prompt-cache breakpoint on the last content block of the last message
+// so the whole conversation prefix (system + tools + prior messages, including
+// large tool results) is served from cache on the next call/turn at ~0.1x. This
+// is where the real cost lives — the system+tools prefix alone is under the
+// cache minimum, but with history it clears it easily. Returns a shallow clone
+// so the persisted history is never mutated and exactly ONE moving breakpoint
+// exists per call (the stable system block is the other; max 4 allowed).
+function withHistoryCacheBreakpoint(messages: any[]): any[] {
+  if (messages.length === 0) return messages;
+  const out = messages.slice();
+  const last = out[out.length - 1];
+  let content = last.content;
+  if (typeof content === "string") {
+    if (!content) return messages;
+    content = [{ type: "text", text: content, cache_control: { type: "ephemeral" } }];
+  } else if (Array.isArray(content) && content.length > 0) {
+    content = content.map((b: any, i: number) =>
+      i === content.length - 1 ? { ...b, cache_control: { type: "ephemeral" } } : b,
+    );
+  } else {
+    return messages;
+  }
+  out[out.length - 1] = { ...last, content };
+  return out;
+}
+
 // Rate limiting: check message count in the last hour
 async function checkRateLimit(userId: string, supabaseAdmin: any): Promise<boolean> {
   const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
@@ -1969,7 +1995,7 @@ serve(async (req) => {
         model: modelConfig.model,
         max_tokens: clampedMaxTokens,
         system: systemBlocks,
-        messages: claudeMessages,
+        messages: withHistoryCacheBreakpoint(claudeMessages),
         tools: allowedTools,
       }),
     });
@@ -2121,7 +2147,7 @@ serve(async (req) => {
           model: modelConfig.model,
           max_tokens: clampedMaxTokens,
           system: systemBlocks,
-          messages: claudeMessages,
+          messages: withHistoryCacheBreakpoint(claudeMessages),
           tools: allowedTools,
         }),
       });
@@ -2175,7 +2201,7 @@ serve(async (req) => {
             model: modelConfig.model,
             max_tokens: clampedMaxTokens,
             system: systemBlocks,
-            messages: claudeMessages,
+            messages: withHistoryCacheBreakpoint(claudeMessages),
             // no tools — force a text answer
           }),
         });
