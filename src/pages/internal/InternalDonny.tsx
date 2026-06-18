@@ -34,6 +34,17 @@ const InternalDonny = () => {
     queryClient.invalidateQueries({ queryKey: ['aios', 'corrections'] });
   }, [messages.length, queryClient]);
 
+  // The originating question for the answer at index `idx`: the nearest PRIOR
+  // user turn. On tool-using turns donny-chat persists `tool` (and tool-call
+  // preamble assistant) messages between the user prompt and the final answer,
+  // so the adjacent message is usually not the user's — search backward.
+  const questionFor = (idx: number): string | undefined => {
+    for (let j = idx - 1; j >= 0; j--) {
+      if (messages[j].role === 'user') return messages[j].content ?? undefined;
+    }
+    return undefined;
+  };
+
   return (
     <div className="mx-auto w-full max-w-3xl">
       <h1 className="text-xl font-bold text-white lg:text-2xl">INTERNAL DONNY</h1>
@@ -69,10 +80,11 @@ const InternalDonny = () => {
                     title={`Donny — ${new Date(msg.created_at ?? Date.now()).toLocaleDateString()}`}
                     markdown={msg.content}
                   />
-                  <SaveToKnowledgeButton
-                    markdown={msg.content}
-                    question={messages[i - 1]?.role === 'user' ? messages[i - 1].content ?? undefined : undefined}
-                  />
+                  {/* Save only FINAL answers — a message with tool_calls is a
+                      tool-call preamble, not the answer worth saving. */}
+                  {!msg.tool_calls?.length && (
+                    <SaveToKnowledgeButton markdown={msg.content} question={questionFor(i)} />
+                  )}
                 </div>
               )}
             </div>
