@@ -143,7 +143,7 @@ So the defense-in-depth path check matches the folder dropdown (no `entities/`) 
 
 After the PR merges to `main`, `supabase/scripts/sync-wiki-to-donny.mjs` → `donny-knowledge-sync` reads `concepts/`·`analyses/` and upserts by `source_id` (idempotent). The saved answer enters Donny's RAG on the next sync (per-session `knowledge-sync` skill or the scheduled run). This is the same path `wiki-commit-pr` corrections already rely on — no change required.
 
-## 10. Open questions for the user (spec-review gate)
+## 10. Resolved decisions (user-confirmed 2026-06-18)
 
-1. **AI metadata** — OK to ship v1 without the Haiku suggestion (deterministic defaults + confirm dialog), and add AI only if defaults prove weak? (§8)
-2. **Originating question in the page** — include the preceding founder question as a quoted context block for traceability (§4)? Recommended yes.
+1. **AI metadata — RESOLVED: no AI in v1.** Ship deterministic client-side defaults + confirm dialog (§3, §8). Haiku suggestion is a possible fast-follow only if defaults prove weak.
+2. **Originating question in the page — RESOLVED: include it.** The preceding founder question is quoted as a context block above the answer (§4) for traceability.
