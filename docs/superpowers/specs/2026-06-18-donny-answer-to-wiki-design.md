@@ -106,8 +106,16 @@ Modeled on `wiki-commit-pr`, sharing the GitHub flow (base ref → branch → PU
 
 **Input:** `{ folder, filename, title, tags?: string[], markdown, question? }`.
 
+**Path regex (this function's own — do NOT copy `wiki-commit-pr`'s):** `wiki-commit-pr` allows three folders (`concepts|entities|analyses`); this function must be *tighter* — two folders and the kebab filename shape:
+
+```
+const SAVE_PATH_RE = /^docs\/wiki\/(concepts|analyses)\/[a-z0-9][a-z0-9-]*\.md$/;
+```
+
+So the defense-in-depth path check matches the folder dropdown (no `entities/`) rather than being looser than it.
+
 **Logic:**
-- Admin gate. Validate folder/filename/title/markdown; build `path = docs/wiki/<folder>/<filename>.md`; assert `WIKI_PATH_RE`.
+- Admin gate. Validate: folder ∈ {concepts, analyses}; filename `^[a-z0-9][a-z0-9-]*$`; non-empty `title`; **non-empty `markdown`** (reject `markdown.trim() === ""`, mirroring `wiki-commit-pr`'s `proposed.trim()` guard). Build `path = docs/wiki/<folder>/<filename>.md`; assert `SAVE_PATH_RE`.
 - `GITHUB_TOKEN` missing → `{ error: "github_not_configured" }` (200), after auth/validation so config hint surfaces last.
 - Base head SHA → branch `donny-wiki-answer/<filename>` (filename-derived ⇒ re-saving the same page recovers the same branch/PR — idempotent).
 - **Collision check:** `GET /contents/<path>?ref=<BASE>`. If the file **already exists on base**, return `{ error: "file_exists" }` (200) — never silently overwrite an existing page; the dialog prompts for a new filename. (A file existing only on a reused branch is fine and PUTs cleanly.)
