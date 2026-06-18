@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Check, Copy, ExternalLink, X } from 'lucide-react';
@@ -195,13 +195,19 @@ const CommitToWikiPanel = ({
   const connection = useGoogleConnection();
   const exportToDoc = useExportToDoc();
   const [copied, setCopied] = useState(false);
+  const copyTimer = useRef<ReturnType<typeof setTimeout>>();
   const exported = exportToDoc.data;
+
+  // Clear the "Copied" reset timer if the panel unmounts (e.g. dismissed or
+  // re-keyed for a new target) before it fires.
+  useEffect(() => () => clearTimeout(copyTimer.current), []);
 
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(target.markdown);
       setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
+      clearTimeout(copyTimer.current);
+      copyTimer.current = setTimeout(() => setCopied(false), 1500);
     } catch {
       toast.error('Copy failed — select the text manually.');
     }
@@ -250,7 +256,15 @@ const CommitToWikiPanel = ({
           {copied ? 'Copied' : 'Copy markdown'}
         </button>
 
-        {connection.data?.connected ? (
+        {connection.isLoading ? (
+          <button
+            type="button"
+            disabled
+            className="flex items-center gap-1.5 rounded-full bg-white/[0.06] px-4 py-1.5 text-xs font-semibold text-white/60"
+          >
+            Checking Google…
+          </button>
+        ) : connection.data?.connected ? (
           <button
             type="button"
             onClick={exportDoc}
@@ -315,7 +329,11 @@ const InternalCorrections = () => {
       </p>
 
       {commitTarget && (
-        <CommitToWikiPanel target={commitTarget} onDismiss={() => setCommitTarget(null)} />
+        <CommitToWikiPanel
+          key={commitTarget.wikiPath}
+          target={commitTarget}
+          onDismiss={() => setCommitTarget(null)}
+        />
       )}
 
       <div className="mt-4 flex flex-wrap gap-1.5">
