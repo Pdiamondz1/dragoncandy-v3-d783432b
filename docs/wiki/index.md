@@ -14,6 +14,7 @@
 - [[Core Docs Recent Updates Sync Session]](sources/core-docs-recent-updates-sync-session.md) — Post–June-2 sync: DragonShare notifications, iOS camera, legal pages, Outstand recovery, QA Plan C, scale → 73 functions (2026-06-07)
 - [[Google Workspace Connections Session]](sources/google-workspace-connections-session.md) — AIOS Connections pillar: per-user OAuth, Drive hub, ops-deck restyle, Donny export, Gmail compose deep-link, metrics Sheet, Chat scaffold; 6 PRs (2026-06-13)
 - [[Wiki-Commit-PR Session]](raw/sessions/2026-06-18-wiki-commit-pr.md) — admin-gated "Open wiki PR" button: applied strategy-doc correction → GitHub PR back to docs/wiki/ so it survives the next donny-knowledge-sync; PR-only, idempotent, GITHUB_WIKI_TOKEN gate (2026-06-18)
+- [[Donny Answer to Wiki Session]](raw/sessions/2026-06-18-donny-answer-to-wiki.md) — admin-gated "Save to knowledge" button: a fresh internal Donny answer → GitHub PR creating a NEW docs/wiki/<concepts|analyses> page → Donny RAG on merge; sibling of wiki-commit-pr with a stricter client-input guard, PR-only (2026-06-18)
 - [[Counter-Offer Enum Fix Session]](sources/counter-offer-enum-fix-session.md) — Postgres enum cast bug, PL/pgSQL variable typing, missing campaign_status value (2026-05-21)
 - [[Database Schema]](sources/database-schema.md) — Supabase Postgres schema overview (2026-05-23)
 - [[Donny Audit Phase 1 Session]](sources/donny-audit-phase1-session.md) — Role-based tool filtering, prompt injection defense, tier-based token clamping (2026-05-06)

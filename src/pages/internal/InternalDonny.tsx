@@ -5,6 +5,7 @@ import { DonnyTypingIndicator } from '@/components/donny/DonnyTypingIndicator';
 import { DonnyChatInput } from '@/components/donny/DonnyChatInput';
 import { DonnyQuickChips } from '@/components/donny/DonnyQuickChips';
 import { ExportToDocButton } from '@/components/internal/ExportToDocButton';
+import { SaveToKnowledgeButton } from '@/components/internal/SaveToKnowledgeButton';
 import { PendingCorrectionsBar } from '@/components/internal/PendingCorrectionsBar';
 import { useInternalDonny } from '@/hooks/internal/useInternalDonny';
 
@@ -32,6 +33,17 @@ const InternalDonny = () => {
   useEffect(() => {
     queryClient.invalidateQueries({ queryKey: ['aios', 'corrections'] });
   }, [messages.length, queryClient]);
+
+  // The originating question for the answer at index `idx`: the nearest PRIOR
+  // user turn. On tool-using turns donny-chat persists `tool` (and tool-call
+  // preamble assistant) messages between the user prompt and the final answer,
+  // so the adjacent message is usually not the user's — search backward.
+  const questionFor = (idx: number): string | undefined => {
+    for (let j = idx - 1; j >= 0; j--) {
+      if (messages[j].role === 'user') return messages[j].content ?? undefined;
+    }
+    return undefined;
+  };
 
   return (
     <div className="mx-auto w-full max-w-3xl">
@@ -62,12 +74,17 @@ const InternalDonny = () => {
             <div key={msg.id ?? i}>
               <DonnyMessage message={msg} />
               {msg.role === 'assistant' && msg.content && (
-                <div className="mt-1 flex justify-start pl-2">
+                <div className="mt-1 flex justify-start gap-2 pl-2">
                   <ExportToDocButton
                     variant="ghost"
                     title={`Donny — ${new Date(msg.created_at ?? Date.now()).toLocaleDateString()}`}
                     markdown={msg.content}
                   />
+                  {/* Save only FINAL answers — a message with tool_calls is a
+                      tool-call preamble, not the answer worth saving. */}
+                  {!msg.tool_calls?.length && (
+                    <SaveToKnowledgeButton markdown={msg.content} question={questionFor(i)} />
+                  )}
                 </div>
               )}
             </div>
