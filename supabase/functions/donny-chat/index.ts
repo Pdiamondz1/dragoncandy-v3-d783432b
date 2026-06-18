@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { validateDonnyToken, requireScope } from "../_shared/auth.ts";
-import { getModelConfig } from "../_shared/model-routing.ts";
+import { getModelConfig, type ModelConfig } from "../_shared/model-routing.ts";
 import { logCost } from "../_shared/cost-ledger.ts";
 import { getUserUsageStage, incrementUsage, getUserSubscriptionTier, checkQuotaOrBlock, checkHourlyRateLimit } from "../_shared/usage-tracker.ts";
 import { corsHeaders } from "../_shared/cors.ts";
@@ -384,13 +384,27 @@ const INTERNAL_TOOL_DEFINITIONS = [
   {
     name: "search_internal_knowledge",
     description:
-      "Search DragonCandy's internal strategy library: strategy briefing, GTM/CAC playbook, pricing architecture, KPI scorecard, kill-switches, engineering blueprints, and the full project wiki. Use for any question about strategy, pricing, targets, playbooks, or architecture decisions.",
+      "Search DragonCandy's internal strategy library: strategy briefing, GTM/CAC playbook, pricing architecture, KPI scorecard, kill-switches, engineering blueprints, and the full project wiki. Returns matched EXCERPTS (not whole docs) — use to ANSWER questions about strategy, pricing, targets, playbooks, or architecture. To correct a doc, use get_internal_doc instead (you need its full text).",
     input_schema: {
       type: "object",
       properties: {
         query: { type: "string", description: "Natural-language search query" },
       },
       required: ["query"],
+    },
+  },
+  {
+    name: "get_internal_doc",
+    description:
+      "Read internal strategy/wiki docs in FULL. Call with no path to LIST every doc as {path, title} so you can find the right one. Call with a path to get that doc's complete markdown {path, title, content_md}. Always use this (not search_internal_knowledge, which only returns excerpts) before proposing a strategy_doc correction, so your proposed_value is the COMPLETE corrected document.",
+    input_schema: {
+      type: "object",
+      properties: {
+        path: {
+          type: "string",
+          description: "Exact doc path to fetch in full; omit to list all docs as {path, title}",
+        },
+      },
     },
   },
   {
@@ -641,7 +655,7 @@ function buildInternalSystemPrompt(profile: Record<string, any>): SystemPromptPa
   1. CALL THE TOOL IN THIS TURN. Never reply "let me propose that", "I'll queue it", or "let me do that now" without the tool call — if you mention a fix, the propose_correction call must happen in the same turn. Do not narrate intent across turns.
   2. ONE CALL PER TARGET. If the founder points out more than one thing to fix (e.g. the dashboard tier AND a strategy doc), make a SEPARATE propose_correction call for EACH, all before you write your reply. Do not stop after the first.
   3. YOU NEVER APPLY OR APPROVE. The proposal only lands in a queue for the founder to approve. NEVER say a correction is "approved", "applied", "updated", "done", "live", or "changed". Say exactly: "I've queued this at /internal/corrections — approve it there to apply it." Only the founder, clicking Approve on that page, applies it.
-  4. ARGUMENTS: dashboard tier → target_type 'dashboard_setting', target_ref 'current_compute_tier_index', proposed_value the tier index (Micro=0, Small=1, Medium=2, Large=3, XL=4). Strategy doc → target_type 'strategy_doc', target_ref the doc path, proposed_value the FULL corrected markdown (fetch the current doc with search_internal_knowledge first, then send the complete edited markdown, not a diff). Always include a clear rationale.
+  4. ARGUMENTS: dashboard tier → target_type 'dashboard_setting', target_ref 'current_compute_tier_index', proposed_value the tier index (Micro=0, Small=1, Medium=2, Large=3, XL=4). Strategy doc → target_type 'strategy_doc', target_ref the doc path, proposed_value the FULL corrected markdown. For a strategy doc you MUST first call get_internal_doc (with no path to find the exact path, then with that path to get the complete content_md), edit that full text, and send the entire corrected document — never an excerpt or a diff. search_internal_knowledge only returns excerpts and cannot be used to build the proposed_value. Always include a clear rationale.
 - Combine tools when a question spans data and strategy (e.g. "are we on track?" = live stats + KPI targets from the strategy library).
 - Cite the numbers you used. Monetary values from tools are in cents unless labeled otherwise — convert to dollars when presenting.
 - Be direct and analytical, not promotional. Flag bad news plainly.
@@ -891,6 +905,28 @@ async function executeTool(
       const embedding = await embedQuery(args.query);
       const chunks = await retrieveContext(internalCtx!.userClient, args.query, embedding, 5, "internal");
       return { result: { chunks, count: chunks.length } };
+    }
+
+    case "get_internal_doc": {
+      const client = internalCtx!.userClient;
+      // No path → list every doc so Donny can find the exact target_ref.
+      if (!args.path || typeof args.path !== "string") {
+        const { data, error } = await client
+          .from("internal_docs")
+          .select("path, title")
+          .order("title");
+        if (error) throw error;
+        return { result: { docs: data ?? [], count: (data ?? []).length } };
+      }
+      // Path → full document so Donny can edit and propose the COMPLETE markdown.
+      const { data, error } = await client
+        .from("internal_docs")
+        .select("path, title, content_md")
+        .eq("path", args.path)
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) return { result: { error: `no internal doc at path '${args.path}'` } };
+      return { result: data };
     }
 
     case "get_platform_stats": {
@@ -2011,18 +2047,33 @@ serve(async (req) => {
       return content.filter((b: any) => b.type === "tool_use");
     }
 
-    // Resolve model routing based on user's usage stage
+    // Resolve model routing based on user's usage stage.
     const usageStage = await getUserUsageStage(supabaseAdmin, userId);
-    const modelConfig = getModelConfig("donny-chat", usageStage);
-    if (usageStage === "essential") {
+    // Internal founders are never downgraded by consumer usage stage or tier:
+    // pin Sonnet with a large output budget so a strategy_doc correction can emit
+    // the FULL corrected doc as the propose_correction argument. The consumer
+    // SONNET_EXTENDED budget (8192) — and Haiku's 512 in the 'essential' stage —
+    // truncated anything but tiny docs. (A wiki page >~64KB still won't fit in one
+    // turn; a patch-based correction contract is the future fix if that's common.)
+    const INTERNAL_MODEL_CONFIG: ModelConfig = {
+      model: "claude-sonnet-4-6",
+      maxTokens: 16384,
+      actionCost: 5,
+      tier: "T3",
+    };
+    const modelConfig = internalMode
+      ? INTERNAL_MODEL_CONFIG
+      : getModelConfig("donny-chat", usageStage);
+    if (!internalMode && usageStage === "essential") {
       console.log(`[donny-chat] User ${userId} in essential mode — routing to Haiku`);
     }
 
-    // Internal surface skips the subscription-tier clamp (founders aren't on a
-    // consumer plan) but still caps below the model maximum.
+    // Internal surface skips both the usage-stage downgrade (above) and the
+    // subscription-tier clamp (founders aren't on a consumer plan); its config
+    // already carries the full-doc-correction budget.
     let clampedMaxTokens: number;
     if (internalMode) {
-      clampedMaxTokens = Math.min(modelConfig.maxTokens, 4096);
+      clampedMaxTokens = modelConfig.maxTokens;
     } else {
       const subscriptionTier = await getUserSubscriptionTier(supabaseAdmin, userId);
       const tierMaxTokens = MAX_TOKENS_BY_TIER[subscriptionTier] ?? 1024;
