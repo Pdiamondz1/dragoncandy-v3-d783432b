@@ -168,59 +168,55 @@ serve(async (req) => {
 
     const content = buildPage({ title, folder, tags, markdown, question, today });
 
-    // 4. existing file on the BRANCH (a prior partial run) → reuse its sha so the
-    //    PUT updates cleanly; skip the PUT if the bytes already match.
+    // 4. Look at the branch's current file. We only ever CREATE (never update an
+    //    existing different file): the branch is folder+filename-scoped, so a
+    //    file already there is either THIS save's bytes (idempotent retry) or a
+    //    DIFFERENT page that grabbed the same filename — which we must not clobber.
     const onBranchRes = await fetch(
       `${GH}/repos/${REPO}/contents/${path}?ref=${encodeURIComponent(branch)}`,
       { headers: ghHeaders() },
     );
-    let existingSha: string | undefined;
     let existingMd: string | null = null;
     if (onBranchRes.ok) {
-      const f = await onBranchRes.json();
-      existingSha = f.sha;
-      existingMd = decodeContent(f.content);
+      existingMd = decodeContent((await onBranchRes.json()).content);
     } else if (onBranchRes.status !== 404) {
       return json({ error: `github get-contents ${onBranchRes.status}` }, 502);
     }
 
-    const putBody = (sha?: string) =>
-      JSON.stringify({
-        message: `docs(wiki): save Donny answer — ${title}`,
-        content: toBase64(content),
-        branch,
-        ...(sha ? { sha } : {}),
-      });
-
-    if (existingMd !== content) {
-      const putRes = await fetch(`${GH}/repos/${REPO}/contents/${path}`, {
+    const createFile = () =>
+      fetch(`${GH}/repos/${REPO}/contents/${path}`, {
         method: "PUT",
         headers: ghHeaders(),
-        body: putBody(existingSha),
+        // No sha ⇒ create-only. GitHub 422s if the file already exists, which is
+        // exactly the concurrent-create race we want to detect (not silently win).
+        body: JSON.stringify({
+          message: `docs(wiki): save Donny answer — ${title}`,
+          content: toBase64(content),
+          branch,
+        }),
       });
-      // A 422 here means our write was rejected — typically a create race: a
-      // concurrent request created the file between our read and our PUT, so we
-      // lacked its sha. Unlike wiki-commit-pr (where retries re-PUT IDENTICAL
-      // bytes, so a 422 is a harmless no-op), two DIFFERENT answers can map to
-      // the same filename here, so we must NOT assume our content landed.
-      // Refetch the branch file: if it already holds our exact bytes, we're done
-      // (idempotent double-submit); if it differs, a different page owns this
-      // filename — report a typed conflict rather than a false success.
+
+    if (existingMd === content) {
+      // Idempotent retry of THIS save — our exact bytes are already on the branch.
+      // Nothing to write; fall through to PR creation/recovery.
+    } else if (existingMd !== null) {
+      // A DIFFERENT page already occupies this folder+filename on an unmerged
+      // branch. Never overwrite its open PR — report the filename as taken.
+      return json({ error: "save_conflict" }, 200);
+    } else {
+      // Branch file absent → create it. A concurrent create can still 422; refetch
+      // and only call it done if the bytes now present are ours, else conflict.
+      const putRes = await createFile();
       if (putRes.status === 422) {
         const reRes = await fetch(
           `${GH}/repos/${REPO}/contents/${path}?ref=${encodeURIComponent(branch)}`,
           { headers: ghHeaders() },
         );
         if (!reRes.ok) return json({ error: `github put 422 (refetch ${reRes.status})` }, 502);
-        const rf = await reRes.json();
-        if (decodeContent(rf.content) !== content) {
-          const retry = await fetch(`${GH}/repos/${REPO}/contents/${path}`, {
-            method: "PUT",
-            headers: ghHeaders(),
-            body: putBody(rf.sha),
-          });
-          if (!retry.ok) return json({ error: "save_conflict" }, 200);
+        if (decodeContent((await reRes.json()).content) !== content) {
+          return json({ error: "save_conflict" }, 200);
         }
+        // identical bytes already present → our content effectively landed.
       } else if (!putRes.ok) {
         return json({ error: `github put ${putRes.status}` }, 502);
       }
