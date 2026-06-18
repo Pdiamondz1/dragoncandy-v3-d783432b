@@ -64,6 +64,9 @@ describe('saveErrorMessage', () => {
   it('maps file_exists to a rename hint', () => {
     expect(saveErrorMessage('file_exists')).toMatch(/already exists/i);
   });
+  it('maps save_conflict to a rename hint', () => {
+    expect(saveErrorMessage('save_conflict')).toMatch(/different filename/i);
+  });
   it('passes other messages through unchanged', () => {
     expect(saveErrorMessage('github put 502')).toBe('github put 502');
   });

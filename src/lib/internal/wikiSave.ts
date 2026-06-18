@@ -44,5 +44,6 @@ export function validateSaveInput(input: { folder: string; filename: string; tit
 export function saveErrorMessage(error: string): string {
   if (error === 'github_not_configured') return 'Add GITHUB_WIKI_TOKEN to the edge function to enable wiki PRs.';
   if (error === 'file_exists') return 'A wiki page with that filename already exists — choose a different filename.';
+  if (error === 'save_conflict') return 'That filename was just taken by another save — choose a different filename.';
   return error;
 }
