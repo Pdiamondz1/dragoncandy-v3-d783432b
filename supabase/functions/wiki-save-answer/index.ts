@@ -197,13 +197,18 @@ serve(async (req) => {
         }),
       });
 
-    if (existingMd === content) {
-      // Idempotent retry of THIS save — our exact bytes are already on the branch.
-      // Nothing to write; fall through to PR creation/recovery.
-    } else if (existingMd !== null) {
-      // A DIFFERENT page already occupies this folder+filename on an unmerged
-      // branch. Never overwrite its open PR — report the filename as taken.
-      return json({ error: "save_conflict" }, 200);
+    // Compare date-agnostically: the only thing that changes for the SAME answer
+    // across a midnight retry is the created/updated/provenance date, so a
+    // same-page retry must still read as "same" (recover the PR), while a
+    // genuinely different answer under this filename stays a conflict.
+    const dateless = (s: string) => s.replace(/\d{4}-\d{2}-\d{2}/g, "");
+    const samePage = (a: string) => dateless(a) === dateless(content);
+
+    if (existingMd !== null) {
+      // Branch already holds a file here. Same page (date aside) → idempotent
+      // retry, nothing to write, fall through to PR recovery. Different content →
+      // a different page grabbed this filename; never clobber its open PR.
+      if (!samePage(existingMd)) return json({ error: "save_conflict" }, 200);
     } else {
       // Branch file absent → create it. A concurrent create can still 422; refetch
       // and only call it done if the bytes now present are ours, else conflict.
@@ -214,10 +219,10 @@ serve(async (req) => {
           { headers: ghHeaders() },
         );
         if (!reRes.ok) return json({ error: `github put 422 (refetch ${reRes.status})` }, 502);
-        if (decodeContent((await reRes.json()).content) !== content) {
+        if (!samePage(decodeContent((await reRes.json()).content))) {
           return json({ error: "save_conflict" }, 200);
         }
-        // identical bytes already present → our content effectively landed.
+        // same page already present → our content effectively landed.
       } else if (!putRes.ok) {
         return json({ error: `github put ${putRes.status}` }, 502);
       }
