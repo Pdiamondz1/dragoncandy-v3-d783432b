@@ -23,6 +23,9 @@ export interface Correction {
   reviewed_by: string | null;
   reviewed_at: string | null;
   applied_at: string | null;
+  wiki_pr_url: string | null;
+  wiki_pr_number: number | null;
+  wiki_committed_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -44,7 +47,7 @@ export function useCorrections() {
       const { data, error } = await supabase
         .from('aios_corrections')
         .select(
-          'id, target_type, target_ref, title, rationale_md, current_value, proposed_value, status, proposed_by, proposed_by_user, reviewed_by, reviewed_at, applied_at, created_at, updated_at',
+          'id, target_type, target_ref, title, rationale_md, current_value, proposed_value, status, proposed_by, proposed_by_user, reviewed_by, reviewed_at, applied_at, wiki_pr_url, wiki_pr_number, wiki_committed_at, created_at, updated_at',
         )
         .order('created_at', { ascending: false });
       if (error) {
@@ -83,5 +86,42 @@ export function useReviewCorrection() {
       queryClient.invalidateQueries({ queryKey: ['aios', 'internal-docs'] });
       queryClient.invalidateQueries({ queryKey: ['aios', 'internal-doc'] });
     },
+  });
+}
+
+export interface CommitPrResult {
+  url?: string;
+  number?: number;
+  already?: boolean;
+  persisted?: boolean;
+  error?: string;
+}
+
+/** Open (or fetch the existing) wiki PR for an applied strategy-doc correction. */
+export function useCommitWikiPr() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (correctionId: string): Promise<CommitPrResult> => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('No active session');
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/wiki-commit-pr`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+            apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+          },
+          body: JSON.stringify({ correction_id: correctionId }),
+        },
+      );
+      const data = (await res.json().catch(() => ({}))) as CommitPrResult;
+      // github_not_configured returns 200 with an error field — surface it as
+      // data, not a throw, so the UI shows the hint instead of a toast.
+      if (!res.ok && !data.error) throw new Error('Wiki PR request failed');
+      return data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['aios', 'corrections'] }),
   });
 }

@@ -1,14 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
-import { Check, Copy, ExternalLink, X } from 'lucide-react';
+import { Check, Copy, ExternalLink, GitPullRequest, X } from 'lucide-react';
 import {
   useCorrections,
   useReviewCorrection,
+  useCommitWikiPr,
   type Correction,
   type CorrectionStatus,
 } from '@/hooks/internal/useCorrections';
 import { useExportToDoc, useGoogleConnection } from '@/hooks/internal/useGoogleWorkspace';
+import { commitErrorMessage, isCommittableWikiPath } from '@/lib/internal/wikiCommit';
 import { normalizeForCompare } from '@/lib/internal/normalizeForCompare';
 import { ErrorCard } from '@/components/internal/stats';
 import { MarkdownProse } from '@/components/internal/MarkdownProse';
@@ -16,6 +18,7 @@ import { Spinner } from '@/components/ui/spinner';
 
 /** A just-applied strategy-doc correction the founder still needs to commit to the wiki. */
 interface CommitTarget {
+  id: string;
   wikiPath: string;
   markdown: string;
   title: string;
@@ -83,6 +86,7 @@ const CorrectionCard = ({
             // to the wiki — hand the founder the corrected markdown + export.
             if (res.target_type === 'strategy_doc' && res.wiki_path && res.corrected_md) {
               onApplied({
+                id: correction.id,
                 wikiPath: res.wiki_path,
                 markdown: res.corrected_md,
                 title: correction.title,
@@ -175,6 +179,61 @@ const CorrectionCard = ({
       <div className="mt-3">
         <MarkdownProse>{correction.rationale_md}</MarkdownProse>
       </div>
+
+      {correction.status === 'applied' &&
+        correction.target_type === 'strategy_doc' &&
+        isCommittableWikiPath(correction.target_ref) && (
+          <div className="mt-3">
+            <WikiPrButton correction={correction} />
+          </div>
+        )}
+    </div>
+  );
+};
+
+const WikiPrButton = ({
+  correction,
+}: {
+  correction: { id: string; wiki_pr_url: string | null };
+}) => {
+  const commit = useCommitWikiPr();
+  const [hint, setHint] = useState<string | null>(null);
+  const prUrl = commit.data?.url ?? correction.wiki_pr_url;
+
+  if (prUrl) {
+    return (
+      <a
+        href={prUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center gap-1.5 rounded-full bg-dc-teal px-4 py-1.5 text-xs font-bold text-dc-dark transition-colors hover:bg-dc-teal/80"
+      >
+        <GitPullRequest className="h-3.5 w-3.5" /> View PR
+      </a>
+    );
+  }
+
+  const open = () =>
+    commit.mutate(correction.id, {
+      onSuccess: (res) => {
+        if (res.error) setHint(commitErrorMessage(res.error));
+        else if (res.url) toast.success(res.already ? 'PR already open.' : 'Wiki PR opened.');
+      },
+      onError: (e) => toast.error(`Couldn’t open PR — ${(e as Error)?.message ?? 'try again.'}`),
+    });
+
+  return (
+    <div className="flex flex-col gap-1">
+      <button
+        type="button"
+        onClick={open}
+        disabled={commit.isPending}
+        className="flex items-center gap-1.5 rounded-full bg-dc-teal px-4 py-1.5 text-xs font-bold text-dc-dark transition-colors hover:bg-dc-teal/80 disabled:opacity-50"
+      >
+        <GitPullRequest className="h-3.5 w-3.5" />
+        {commit.isPending ? 'Opening PR…' : 'Open wiki PR'}
+      </button>
+      {hint && <span className="text-[0.7rem] text-white/50">{hint}</span>}
     </div>
   );
 };
@@ -247,6 +306,9 @@ const CommitToWikiPanel = ({
       </pre>
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
+        {isCommittableWikiPath(target.wikiPath) && (
+          <WikiPrButton correction={{ id: target.id, wiki_pr_url: null }} />
+        )}
         <button
           type="button"
           onClick={copy}

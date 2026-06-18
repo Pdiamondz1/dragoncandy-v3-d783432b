@@ -2,8 +2,8 @@
 title: Self-Improving App
 type: concept
 created: 2026-06-10
-updated: 2026-06-11
-sources: [autoresearch/program.md, autoresearch/README.md, docs/PROJECT_CONTEXT.md, docs/superpowers/specs/2026-06-11-dragoncandy-aios-design.md]
+updated: 2026-06-18
+sources: [autoresearch/program.md, autoresearch/README.md, docs/PROJECT_CONTEXT.md, docs/superpowers/specs/2026-06-11-dragoncandy-aios-design.md, 2026-06-18-wiki-commit-pr.md]
 tags: [architecture, strategy, ai, moat, autoresearch, donny]
 ---
 
@@ -57,6 +57,22 @@ OpenAI path). The verified wiki page is the source of truth; a gated sync turns 
 knowledge entry so Donny self-improves on the same heartbeat the wiki does. This is the mechanism by
 which the [[Data Flywheel]] starts compounding before 1,000–5,000 campaigns accumulate — the loop
 manufactures structured, verified knowledge in the interim.
+
+### Correction write-back — keeping the source of truth honest
+
+Because the wiki is the source of truth and the sync is one-directional (wiki → `internal_docs` →
+`donny_knowledge`), an *in-app* fix to a strategy doc is fragile: approving a Donny **gated
+correction** updates `internal_docs.content_md` immediately, but the next `donny-knowledge-sync`
+reads the **stale** repo file and reverts it. The **wiki-commit-PR** capability (AIOS,
+2026-06-18) closes that loop: a founder-clicked, admin-gated button on `/internal/corrections`
+opens a **GitHub pull request** writing the corrected markdown back to its `docs/wiki/…` file via
+the `wiki-commit-pr` edge function. It is the first human-gated git **write-back** into the wiki
+the loop maintains — always a PR (never a push to `main`), so the durable source change still
+passes the normal review/Codex gate. The function trusts only `{ correction_id }` and re-derives
+path + content server-side (no client-forged writes); it is idempotent (one PR per correction,
+self-healing on retry). One-time prerequisite: a fine-grained `GITHUB_WIKI_TOKEN` edge secret
+(single repo, Contents + Pull Requests R/W). This is the doc-side sibling of the still-future
+**Phase 4** (human-gated *code* fix PRs).
 
 ## Phased roadmap
 
