@@ -2055,10 +2055,14 @@ serve(async (req) => {
     }
 
     // Internal surface skips the subscription-tier clamp (founders aren't on a
-    // consumer plan) but still caps below the model maximum.
+    // consumer plan) but still caps below the model maximum. The ceiling is
+    // generous because a strategy_doc correction emits the FULL corrected doc as
+    // the propose_correction argument — 4096 truncated anything but tiny docs.
+    // (A wiki page larger than ~64KB still won't fit in one turn; a patch-based
+    // correction contract is the future fix if that becomes common.)
     let clampedMaxTokens: number;
     if (internalMode) {
-      clampedMaxTokens = Math.min(modelConfig.maxTokens, 4096);
+      clampedMaxTokens = Math.min(modelConfig.maxTokens, 16384);
     } else {
       const subscriptionTier = await getUserSubscriptionTier(supabaseAdmin, userId);
       const tierMaxTokens = MAX_TOKENS_BY_TIER[subscriptionTier] ?? 1024;
