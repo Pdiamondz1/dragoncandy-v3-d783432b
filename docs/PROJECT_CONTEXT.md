@@ -170,8 +170,19 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   `main` push, keeps the review/Codex gate); trusts only `{ correction_id }` and
   re-derives path+content server-side; idempotent/self-healing. One-time prerequisite: a
   fine-grained `GITHUB_WIKI_TOKEN` edge secret (single repo, Contents + Pull Requests R/W).
+  **Save-to-knowledge (answer capture, this branch):** the correction button *fixes* an
+  existing doc; a sibling **"Save to knowledge"** button on each `/internal/donny` answer
+  turns a **fresh** Donny answer into a **new** `docs/wiki/<concepts|analyses>/…md` page via
+  a GitHub PR (the `wiki-save-answer` edge function), folded into Donny's RAG on merge.
+  Deliberate sibling of `wiki-commit-pr` (no correction row → accepts client field values
+  under a stricter guard: admin gate, 2-folder whitelist, kebab filename, server-built
+  YAML-safe frontmatter), PR-only, reuses `GITHUB_WIKI_TOKEN`; no schema/secret/DB-row. v1
+  ships deterministic defaults (no AI metadata); the page records the originating question
+  as provenance. Preserves the invariant *Donny never writes knowledge directly — a human
+  merges first*.
   Specs: `docs/superpowers/specs/2026-06-17-donny-aios-corrections-design.md`,
-  `docs/superpowers/specs/2026-06-18-wiki-commit-pr-design.md`.
+  `docs/superpowers/specs/2026-06-18-wiki-commit-pr-design.md`,
+  `docs/superpowers/specs/2026-06-18-donny-answer-to-wiki-design.md`.
 
 **Workflow discipline**: Single Claude Code agent, one prompt at a time
 → `npm run build` → verify → push. Session handoffs at plan-phase
