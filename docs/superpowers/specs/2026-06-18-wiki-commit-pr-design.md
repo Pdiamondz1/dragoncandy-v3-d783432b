@@ -178,8 +178,10 @@ new edge function via service role):
 - **End-to-end:** approve a strategy-doc correction → "Open wiki PR" → a PR exists on
   `Pdiamondz1/dragoncandy-v3-d783432b` with the corrected file diff and `rationale_md`
   in the body; the card shows "View PR ↗"; clicking again does not open a second PR.
-- **Frontmatter:** a body-only `proposed_value` against a page that has frontmatter →
-  the committed file keeps its frontmatter with `updated:` bumped.
+- **Frontmatter:** a proposal that already has frontmatter is committed **verbatim**
+  (byte-exact with the in-app copy — no `updated:` rewrite). A body-only `proposed_value`
+  against a page that has frontmatter → the committed file inherits the existing
+  frontmatter (also no `updated:` change), so metadata is never stripped.
 - **No token:** with `GITHUB_WIKI_TOKEN` unset, the button shows the "Add token" hint
   and writes nothing.
 - **Auth:** a non-admin internal user (stakeholder) gets 403; anon/consumer cannot
