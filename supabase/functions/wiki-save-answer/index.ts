@@ -112,7 +112,8 @@ serve(async (req) => {
   // frontmatter block (title is emitted both as a quoted scalar and an H1).
   const title = String(body.title ?? "").replace(/[\r\n]+/g, " ").trim();
   const markdown = typeof body.markdown === "string" ? body.markdown : "";
-  const question = typeof body.question === "string" ? body.question : "";
+  // Clamp the provenance question so an over-long paste can't bloat the page.
+  const question = typeof body.question === "string" ? body.question.slice(0, 500) : "";
   const tags = Array.isArray(body.tags)
     ? body.tags
         .map((t) => String(t).trim().toLowerCase().replace(/[^a-z0-9-]/g, ""))

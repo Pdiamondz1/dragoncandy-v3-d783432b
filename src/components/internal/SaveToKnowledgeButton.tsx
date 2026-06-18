@@ -103,7 +103,7 @@ export const SaveToKnowledgeButton = ({ markdown, question }: SaveToKnowledgeBut
               Filename
               <Input
                 value={filename}
-                onChange={(e) => setFilename(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-'))}
+                onChange={(e) => setFilename(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/^-+/, ''))}
                 className="mt-1"
               />
             </label>
