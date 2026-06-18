@@ -112,8 +112,8 @@ serve(async (req) => {
   }
   const folder = String(body.folder ?? "");
   const filename = String(body.filename ?? "");
-  // Collapse interior newlines so a multi-line title can't break the YAML
-  // frontmatter block (title is emitted both as a quoted scalar and an H1).
+  // Collapse interior newlines so a multi-line title can't break the single-line
+  // frontmatter `title:` (it's emitted on one frontmatter line and as an H1).
   const title = String(body.title ?? "").replace(/[\r\n]+/g, " ").trim();
   const markdown = typeof body.markdown === "string" ? body.markdown : "";
   // Clamp the provenance question so an over-long paste can't bloat the page.
