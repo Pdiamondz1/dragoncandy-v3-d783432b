@@ -13,6 +13,7 @@
 - [[Content Engine Phase D Session]](sources/content-engine-phase-d-session.md) — Creator "Your content briefs" card shipped; ownership-gated definer RPC bridges the cross-user RLS gap; verified prod (2026-06-11)
 - [[Core Docs Recent Updates Sync Session]](sources/core-docs-recent-updates-sync-session.md) — Post–June-2 sync: DragonShare notifications, iOS camera, legal pages, Outstand recovery, QA Plan C, scale → 73 functions (2026-06-07)
 - [[Google Workspace Connections Session]](sources/google-workspace-connections-session.md) — AIOS Connections pillar: per-user OAuth, Drive hub, ops-deck restyle, Donny export, Gmail compose deep-link, metrics Sheet, Chat scaffold; 6 PRs (2026-06-13)
+- [[Harbormill AIOS Template Extraction Session]](sources/harbormill-aios-template-extraction-session.md) — extracted /internal AIOS into a sellable white-label template (separate repo) + live Supabase demo proving the full stack (2026-06-18)
 - [[Counter-Offer Enum Fix Session]](sources/counter-offer-enum-fix-session.md) — Postgres enum cast bug, PL/pgSQL variable typing, missing campaign_status value (2026-05-21)
 - [[Database Schema]](sources/database-schema.md) — Supabase Postgres schema overview (2026-05-23)
 - [[Donny Audit Phase 1 Session]](sources/donny-audit-phase1-session.md) — Role-based tool filtering, prompt injection defense, tier-based token clamping (2026-05-06)
@@ -72,6 +73,7 @@
 
 ## Analyses
 
+- [[AIOS White-Label Extraction]](analyses/aios-white-label-extraction.md) — extracting /internal into the Harbormill template as an architecture audit: which AIOS parts generalize (four pillars, tiered auth, Workspace bridge, assistant engine) vs. which were marketplace-coupled (stats RPCs → ingest seam, 21 tools → registry, fallback creds → env-only)
 - [[Content Engine Data Audit]](analyses/content-engine-data-audit.md) — what signal data exists in prod for the Donny content engine; context live, performance dark, Toast/social-cache tables missing from prod; foundation-first plan
 - [[North Star & KPI Scorecard]](analyses/north-star-kpi-scorecard.md) — Three-year targets + kill-switches operationalized and validated against 2025 SMB-SaaS benchmarks; flags churn-unit ambiguity and a mis-scoped rev/employee gate
 - [[Platform API Registration Plan]](analyses/platform-api-registration-plan.md) — running checklist to swap Outstand for direct Meta/X/TikTok/YouTube + Toast access; per-platform requirements, lead times, Meta deep-dive; unblocks the dark Content Engine signal
