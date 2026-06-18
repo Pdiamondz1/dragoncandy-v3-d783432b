@@ -3,7 +3,7 @@ title: Self-Improving App
 type: concept
 created: 2026-06-10
 updated: 2026-06-18
-sources: [autoresearch/program.md, autoresearch/README.md, docs/PROJECT_CONTEXT.md, docs/superpowers/specs/2026-06-11-dragoncandy-aios-design.md, 2026-06-18-wiki-commit-pr.md]
+sources: [autoresearch/program.md, autoresearch/README.md, docs/PROJECT_CONTEXT.md, docs/superpowers/specs/2026-06-11-dragoncandy-aios-design.md, 2026-06-18-wiki-commit-pr.md, 2026-06-18-donny-answer-to-wiki.md]
 tags: [architecture, strategy, ai, moat, autoresearch, donny]
 ---
 
@@ -73,6 +73,25 @@ path + content server-side (no client-forged writes); it is idempotent (one PR p
 self-healing on retry). One-time prerequisite: a fine-grained `GITHUB_WIKI_TOKEN` edge secret
 (single repo, Contents + Pull Requests R/W). This is the doc-side sibling of the still-future
 **Phase 4** (human-gated *code* fix PRs).
+
+### Answer capture — turning a fresh Donny answer into a new wiki page
+
+The correction write-back *fixes an existing* doc. The **Save-to-knowledge** capability (AIOS,
+2026-06-18) handles the other direction: turning a **brand-new** internal Donny answer into a
+**new** wiki page. A founder-clicked, admin-gated **Save to knowledge** button on each
+`/internal/donny` answer opens a confirm dialog (title / folder `concepts|analyses` / filename /
+tags, pre-filled from the answer) and opens a **GitHub PR** adding `docs/wiki/<folder>/<file>.md`
+via the `wiki-save-answer` edge function; on merge, the normal `donny-knowledge-sync` folds it into
+`donny_knowledge`. It is a deliberate **sibling** of `wiki-commit-pr`, not a reuse: a fresh answer
+has no correction row to re-derive from, so the function accepts client field *values* under a
+*stricter* guard (admin gate, 2-folder whitelist, kebab filename, server-built frontmatter,
+question/title/tags sanitized for YAML-safety) — and **PR-only** review is the backstop that makes
+accepting client content safe. The page records its provenance (the originating founder question is
+quoted above the answer). This preserves the core invariant — **Donny never writes knowledge
+directly; a human merges first** — and guards against the feedback loop where Donny would otherwise
+cite its own un-vetted synthesis back as fact. Reuses the same `GITHUB_WIKI_TOKEN`; no new schema or
+secret. v1 uses deterministic client-side defaults (no AI metadata; a Haiku suggestion is a possible
+fast-follow).
 
 ## Phased roadmap
 

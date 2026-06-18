@@ -1,5 +1,19 @@
 # Wiki Log
 
+## [2026-06-18] ingest | Save-to-knowledge — capturing a Donny answer as a new wiki page
+
+Session extract of the AIOS Save-to-knowledge work (branch `worktree-DC-AIOS-save-answer`). Added a
+founder-clicked, admin-gated "Save to knowledge" button on each `/internal/donny` answer that opens a
+GitHub PR creating a **new** `docs/wiki/<concepts|analyses>/<file>.md` page from the answer; on merge,
+`donny-knowledge-sync` folds it into Donny's RAG. The `wiki-save-answer` edge function is a deliberate
+sibling of `wiki-commit-pr` (the answer has no correction row, so it accepts client field values under
+a stricter guard: admin gate, 2-folder whitelist, kebab filename, server-built frontmatter,
+YAML-sanitized title/tags/question), PR-only. No schema/secret/DB-row; reuses `GITHUB_WIKI_TOKEN`. v1
+ships deterministic defaults (no AI metadata); the page records the originating question as provenance.
+Two-stage subagent reviews + final review caught the YAML-newline title risk and input-hardening nits.
+Source: [[Donny Answer to Wiki Session]].
+Pages updated: [[Self-Improving App]] (new "Answer capture" section), `index.md`.
+
 ## [2026-06-18] ingest | Wiki-Commit-PR — correction write-back to the wiki
 
 Session extract of the AIOS wiki-commit-PR work (branch `worktree-DC-AIOS-Donny`). Added a
