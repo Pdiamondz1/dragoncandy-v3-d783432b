@@ -4,7 +4,7 @@ export const SUB_AGENT_TOOLS = [
   {
     name: "campaign_agent",
     description:
-      "Use when the user asks about campaigns, briefs, applications, matching, content delivery, or the campaign wizard.",
+      "Use when the user asks about their EXISTING campaigns, briefs, applications, matching, or content delivery. Do NOT use this to start a new campaign — use prepare_campaign for that.",
     input_schema: {
       type: "object" as const,
       properties: {
@@ -14,6 +14,22 @@ export const SUB_AGENT_TOOLS = [
         org_id: { type: "string", description: "Organization ID" },
       },
       required: ["query", "user_role"],
+    },
+  },
+  {
+    name: "prepare_campaign",
+    description:
+      "Use when the user wants to CREATE or START a new campaign. Distill a concise brief of what they want to promote and pass it as `brief`. This pre-loads the campaign builder so the user lands on a ready-to-review campaign instead of a blank form.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        brief: {
+          type: "string",
+          description:
+            "A concise description of what the user wants to promote, distilled from the conversation (e.g. 'Taco Tuesday weekly promo to drive weeknight dinner traffic, fun and casual tone').",
+        },
+      },
+      required: ["brief"],
     },
   },
   {
