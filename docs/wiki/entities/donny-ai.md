@@ -72,6 +72,23 @@ See [[Google Workspace]] for the full architecture.
 - **Empty-answer fix** (PR #105): specific question types (platform/revenue/scaling) fell
   through the routing logic and returned empty strings — fixed.
 
+## Chat → Campaign-Builder Pre-fill (2026-06-18, PR #124)
+
+When a restaurant asks Donny to create a campaign, the chat hands a distilled **brief** to
+the Create-a-Campaign builder so it opens **pre-filled** (lands on the "Launchpad" with
+generated idea(s)) instead of a blank form.
+
+- In-app chat runs through **`donny-orchestrator`** (not `donny-chat`). New sub-agent tool
+  **`prepare_campaign`** builds a role-aware route
+  `/dashboard/{business,brand}/campaigns/create?brief=<encoded>` (brief encoded
+  server-side, never by the LLM); `campaign_agent` was scoped to *existing* campaigns only.
+- `useCampaignCreator` reacts to the `?brief=` param (deduped, also fires on same-route
+  navigation), strips it, and auto-runs the existing `submitInput` →
+  `donny-campaign-generate` → pre-filled Launchpad. No new tables/migrations.
+- Also fixed a latent broken route: the campaign-summary suggestion pointed at the
+  non-existent `/dashboard/brand/campaigns/new` → now the shared `…/campaigns/create`.
+- Serves the [[DragonCandy Platform]] North Star ("less typing = more margin").
+
 ## Key Decisions
 
 - Donny as service layer, not standalone AI tool (commoditization defense)
