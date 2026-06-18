@@ -1,15 +1,25 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
+import { Check, Copy, ExternalLink, X } from 'lucide-react';
 import {
   useCorrections,
   useReviewCorrection,
   type Correction,
   type CorrectionStatus,
 } from '@/hooks/internal/useCorrections';
+import { useExportToDoc, useGoogleConnection } from '@/hooks/internal/useGoogleWorkspace';
 import { normalizeForCompare } from '@/lib/internal/normalizeForCompare';
 import { ErrorCard } from '@/components/internal/stats';
 import { MarkdownProse } from '@/components/internal/MarkdownProse';
 import { Spinner } from '@/components/ui/spinner';
+
+/** A just-applied strategy-doc correction the founder still needs to commit to the wiki. */
+interface CommitTarget {
+  wikiPath: string;
+  markdown: string;
+  title: string;
+}
 
 const TARGET_STYLES: Record<string, string> = {
   dashboard_setting: 'bg-dc-teal/20 text-dc-teal',
@@ -44,7 +54,13 @@ const formatValue = (v: unknown): string => {
   return JSON.stringify(v, null, 2);
 };
 
-const CorrectionCard = ({ correction }: { correction: Correction }) => {
+const CorrectionCard = ({
+  correction,
+  onApplied,
+}: {
+  correction: Correction;
+  onApplied: (target: CommitTarget) => void;
+}) => {
   const review = useReviewCorrection();
   const isDecided = correction.status !== 'proposed';
 
@@ -61,8 +77,18 @@ const CorrectionCard = ({ correction }: { correction: Correction }) => {
       { id: correction.id, decision },
       {
         onSuccess: (res) => {
-          if (res.status === 'applied') toast.success('Correction applied.');
-          else if (res.status === 'rejected') toast('Proposal rejected.');
+          if (res.status === 'applied') {
+            toast.success('Correction applied.');
+            // A strategy-doc edit is applied in-app but still has to be committed
+            // to the wiki — hand the founder the corrected markdown + export.
+            if (res.target_type === 'strategy_doc' && res.wiki_path && res.corrected_md) {
+              onApplied({
+                wikiPath: res.wiki_path,
+                markdown: res.corrected_md,
+                title: correction.title,
+              });
+            }
+          } else if (res.status === 'rejected') toast('Proposal rejected.');
           else if (res.status === 'superseded')
             toast(
               res.message ??
@@ -153,9 +179,129 @@ const CorrectionCard = ({ correction }: { correction: Correction }) => {
   );
 };
 
+/**
+ * Shown after a strategy-doc correction is applied. The in-app doc is already
+ * updated, but the canonical copy lives in the wiki — so we hand the founder the
+ * corrected markdown (copyable) plus a one-click Google Doc export, and remind
+ * them to commit it so the change survives the next knowledge sync.
+ */
+const CommitToWikiPanel = ({
+  target,
+  onDismiss,
+}: {
+  target: CommitTarget;
+  onDismiss: () => void;
+}) => {
+  const connection = useGoogleConnection();
+  const exportToDoc = useExportToDoc();
+  const [copied, setCopied] = useState(false);
+  const copyTimer = useRef<ReturnType<typeof setTimeout>>();
+  const exported = exportToDoc.data;
+
+  // Clear the "Copied" reset timer if the panel unmounts (e.g. dismissed or
+  // re-keyed for a new target) before it fires.
+  useEffect(() => () => clearTimeout(copyTimer.current), []);
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(target.markdown);
+      setCopied(true);
+      clearTimeout(copyTimer.current);
+      copyTimer.current = setTimeout(() => setCopied(false), 1500);
+    } catch {
+      toast.error('Copy failed — select the text manually.');
+    }
+  };
+
+  const exportDoc = () =>
+    exportToDoc.mutate(
+      { title: `Corrected — ${target.title}`, markdown: target.markdown },
+      {
+        onSuccess: () => toast.success('Exported to a Google Doc in your DragonCandy folder.'),
+        onError: (e) => toast.error(`Export failed — ${(e as Error)?.message ?? 'try again.'}`),
+      },
+    );
+
+  return (
+    <div className="mt-4 rounded-2xl border border-dc-teal/40 bg-dc-teal/[0.07] p-4 backdrop-blur-sm">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h2 className="font-bold text-dc-teal">Commit to the wiki</h2>
+          <p className="mt-1 text-xs text-white/60">
+            <span className="font-mono text-white/80">{target.wikiPath}</span> is updated in-app.
+            Commit the corrected markdown to the wiki so it survives the next knowledge sync.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onDismiss}
+          aria-label="Dismiss"
+          className="shrink-0 rounded-full p-1 text-white/50 transition-colors hover:bg-white/[0.08] hover:text-white"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+
+      <pre className="mt-3 max-h-64 overflow-auto whitespace-pre-wrap break-words rounded-xl border border-white/10 bg-black/40 p-3 text-xs text-white/80">
+        {target.markdown}
+      </pre>
+
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={copy}
+          className="flex items-center gap-1.5 rounded-full bg-white/[0.06] px-4 py-1.5 text-xs font-semibold text-white/80 transition-colors hover:bg-white/[0.12]"
+        >
+          {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+          {copied ? 'Copied' : 'Copy markdown'}
+        </button>
+
+        {connection.isLoading ? (
+          <button
+            type="button"
+            disabled
+            className="flex items-center gap-1.5 rounded-full bg-white/[0.06] px-4 py-1.5 text-xs font-semibold text-white/60"
+          >
+            Checking Google…
+          </button>
+        ) : connection.data?.connected ? (
+          <button
+            type="button"
+            onClick={exportDoc}
+            disabled={exportToDoc.isPending}
+            className="flex items-center gap-1.5 rounded-full bg-dc-teal px-4 py-1.5 text-xs font-bold text-dc-dark transition-colors hover:bg-dc-teal/80 disabled:opacity-50"
+          >
+            {exportToDoc.isPending ? 'Exporting…' : 'Export corrected doc to Drive'}
+          </button>
+        ) : (
+          <Link
+            to="/internal/workspace"
+            className="flex items-center gap-1.5 rounded-full border border-dc-teal/30 px-4 py-1.5 text-xs font-semibold text-dc-teal transition-colors hover:bg-white/[0.06]"
+          >
+            Connect Google to export
+          </Link>
+        )}
+
+        {exported?.webViewLink && (
+          <a
+            href={exported.webViewLink}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-dc-pink transition-colors hover:bg-white/[0.06]"
+          >
+            <ExternalLink className="h-3.5 w-3.5" />
+            Open doc
+          </a>
+        )}
+      </div>
+    </div>
+  );
+};
+
 const InternalCorrections = () => {
   const corrections = useCorrections();
   const [showAll, setShowAll] = useState(false);
+  const [commitTarget, setCommitTarget] = useState<CommitTarget | null>(null);
 
   const filtered = useMemo(() => {
     const list = corrections.data ?? [];
@@ -181,6 +327,14 @@ const InternalCorrections = () => {
         Fixes Donny proposes to dashboard settings and strategy docs. Donny never applies them — you
         approve here, then the change takes effect.
       </p>
+
+      {commitTarget && (
+        <CommitToWikiPanel
+          key={commitTarget.wikiPath}
+          target={commitTarget}
+          onDismiss={() => setCommitTarget(null)}
+        />
+      )}
 
       <div className="mt-4 flex flex-wrap gap-1.5">
         {([
@@ -210,7 +364,9 @@ const InternalCorrections = () => {
               : 'No corrections waiting for review.'}
           </div>
         ) : (
-          filtered.map((c) => <CorrectionCard key={c.id} correction={c} />)
+          filtered.map((c) => (
+            <CorrectionCard key={c.id} correction={c} onApplied={setCommitTarget} />
+          ))
         )}
       </div>
     </div>
