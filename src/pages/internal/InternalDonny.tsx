@@ -1,9 +1,11 @@
 import { useEffect, useRef } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { DonnyMessage } from '@/components/donny/DonnyMessage';
 import { DonnyTypingIndicator } from '@/components/donny/DonnyTypingIndicator';
 import { DonnyChatInput } from '@/components/donny/DonnyChatInput';
 import { DonnyQuickChips } from '@/components/donny/DonnyQuickChips';
 import { ExportToDocButton } from '@/components/internal/ExportToDocButton';
+import { PendingCorrectionsBar } from '@/components/internal/PendingCorrectionsBar';
 import { useInternalDonny } from '@/hooks/internal/useInternalDonny';
 
 const STARTER_CHIPS = [
@@ -17,12 +19,19 @@ const STARTER_CHIPS = [
 const InternalDonny = () => {
   const { messages, sendMessage, retry, isThinking, error } = useInternalDonny();
   const scrollRef = useRef<HTMLDivElement>(null);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages.length, isThinking]);
+
+  // A finished turn may have filed a correction proposal — refresh the inline
+  // approval bar so it shows up without a manual reload.
+  useEffect(() => {
+    queryClient.invalidateQueries({ queryKey: ['aios', 'corrections'] });
+  }, [messages.length, queryClient]);
 
   return (
     <div className="mx-auto w-full max-w-3xl">
@@ -32,6 +41,7 @@ const InternalDonny = () => {
       </p>
 
       <div className="mt-4 flex flex-col rounded-2xl border border-dc-teal/25 bg-white/[0.04] backdrop-blur-sm">
+        <PendingCorrectionsBar />
         <div
           ref={scrollRef}
           className="h-[55vh] space-y-3 overflow-y-auto overscroll-contain px-4 py-4 lg:h-[60vh]"
