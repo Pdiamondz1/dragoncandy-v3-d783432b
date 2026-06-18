@@ -465,6 +465,22 @@ const INTERNAL_TOOL_DEFINITIONS = [
       required: ["subject", "body"],
     },
   },
+  {
+    name: "propose_correction",
+    description:
+      "Propose a correction to internal data for FOUNDER APPROVAL — you do NOT apply it yourself. Use when the founder says the dashboard or a strategy doc is wrong and should be fixed. target_type 'dashboard_setting' (target_ref e.g. 'current_compute_tier_index', proposed_value the new value — e.g. 1 to set the Small compute tier as current) or 'strategy_doc' (target_ref the doc path, proposed_value the FULL corrected markdown). Always include a clear title and rationale_md citing exactly what is wrong. After calling, tell the user it is queued at /internal/corrections for their approval — NEVER claim it is already applied or that you edited anything.",
+    input_schema: {
+      type: "object",
+      properties: {
+        target_type: { type: "string", enum: ["dashboard_setting", "strategy_doc"] },
+        target_ref: { type: "string", description: "Setting key (e.g. current_compute_tier_index) or strategy doc path" },
+        title: { type: "string", description: "Short label for the correction" },
+        rationale_md: { type: "string", description: "Why the current value is wrong, with evidence" },
+        proposed_value: { description: "New value: a number/string for a setting; the full corrected markdown for a doc" },
+      },
+      required: ["target_type", "target_ref", "title", "rationale_md", "proposed_value"],
+    },
+  },
 ];
 
 const INTERNAL_TOOL_NAMES = new Set(INTERNAL_TOOL_DEFINITIONS.map((t) => t.name));
@@ -621,6 +637,7 @@ function buildInternalSystemPrompt(profile: Record<string, any>): SystemPromptPa
 ## How you work
 - Answer ONLY from tool results. Never fabricate or estimate a number a tool didn't return.
 - Use tools proactively: platform questions → get_platform_stats; money in → get_revenue_stats; AI spend → get_cost_stats; growth/scaling/capacity → get_platform_weight_trend; weekly brief or KPI status → get_latest_briefing; strategy, pricing, playbooks, targets, kill-switches → search_internal_knowledge; "export/save this as a doc" → gather the data with other tools first, COMPOSE the complete document (headings + full analysis + real numbers), then call workspace_export_doc with that finished markdown — never a placeholder like "let me write it" — and share the returned link; "what's in my Drive folder" → workspace_list_files; "draft/write/email an update to <someone>" → compose_email_link (write the full subject and body yourself, then present the returned link as a clickable markdown link like [Open this email in Gmail](link) for the user to review and send — you never send email).
+- "the dashboard is wrong / fix this doc / that figure is outdated" → propose_correction: you DRAFT the fix (target_type + target_ref + the corrected proposed_value + a clear rationale) and it goes to /internal/corrections for the founder to APPROVE. You do NOT apply it — never say you changed the dashboard or edited the doc; say it is queued for their approval. For the compute tier, target_ref is 'current_compute_tier_index' and proposed_value is the tier index (Micro=0, Small=1, Medium=2, Large=3, XL=4).
 - Combine tools when a question spans data and strategy (e.g. "are we on track?" = live stats + KPI targets from the strategy library).
 - Cite the numbers you used. Monetary values from tools are in cents unless labeled otherwise — convert to dollars when presenting.
 - Be direct and analytical, not promotional. Flag bad news plainly.
@@ -976,6 +993,34 @@ async function executeTool(
           note: "Opens Gmail's compose window pre-filled. Review and send it yourself — nothing was sent.",
         },
       };
+    }
+
+    // Stage a correction for founder approval. Routes through aios-report-ingest
+    // (the single service-role choke point) so the before-value is captured
+    // server-side and the agent never writes the table directly.
+    case "propose_correction": {
+      const resp = await fetch(`${SUPABASE_URL}/functions/v1/aios-report-ingest`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          type: "correction",
+          payload: {
+            target_type: args.target_type,
+            target_ref: args.target_ref,
+            title: args.title,
+            rationale_md: args.rationale_md,
+            proposed_value: args.proposed_value,
+            proposed_by: "donny",
+            acting_user_id: userId,
+          },
+        }),
+      });
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok) return { result: { error: data?.error ?? `proposal failed (${resp.status})` } };
+      return { result: { proposed: true, id: data.id, review_at: "/internal/corrections" } };
     }
 
     // --- Campaign Tools ---
