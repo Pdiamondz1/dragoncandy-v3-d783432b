@@ -1,5 +1,18 @@
 # Wiki Log
 
+## [2026-06-18] ingest | Wiki-Commit-PR — correction write-back to the wiki
+
+Session extract of the AIOS wiki-commit-PR work (branch `worktree-DC-AIOS-Donny`). Added a
+founder-clicked, admin-gated "Open wiki PR" button on `/internal/corrections` that opens a GitHub
+PR committing an approved strategy-doc correction back to its `docs/wiki/…` file, so the next
+`donny-knowledge-sync` no longer reverts it. Three slices: additive `aios_corrections` PR-tracking
+columns, the `wiki-commit-pr` edge function (admin gate, server-derived path/content, GitHub
+Contents+Pulls, idempotent/self-healing), and the UI button + hook. PR-only (never main push);
+one-time `GITHUB_WIKI_TOKEN` prerequisite. Whole branch Codex-clean; idempotency gotchas (PUT 422 on
+unchanged content; supabase-js `.update()` returns `{error}` not throw) caught by Codex and fixed.
+Source: [[Wiki-Commit-PR Session]].
+Pages updated: [[Self-Improving App]] (new "Correction write-back" section), `index.md`.
+
 ## [2026-06-17] ingest | Investor Pitch Deck + Capital Raise Cost Model
 
 Session-end extract of the investor fundraising work (branch `worktree-DC-pitch-deck`, PR #111,
