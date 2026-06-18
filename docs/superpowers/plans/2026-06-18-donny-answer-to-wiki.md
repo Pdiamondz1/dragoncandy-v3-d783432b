@@ -526,6 +526,8 @@ git commit -m "feat(aios): useSaveAnswerToWiki mutation hook"
 
 Follows the `ExportToDocButton` ghost style (`src/components/internal/ExportToDocButton.tsx`) and the `NameDialog` dialog pattern (`src/components/internal/workspace/NameDialog.tsx`).
 
+> **Preview scope (deliberate):** the spec's "preview" is satisfied by the live **path** preview (`docs/wiki/<folder>/<filename>.md`) plus inline validation — not a full rendered-frontmatter preview. The frontmatter is built server-side and the confirm dialog already provides the human gate, so a path preview is the YAGNI-correct amount of preview. Do not build a frontmatter renderer.
+
 - [ ] **Step 1: Write the component**
 
 Create `src/components/internal/SaveToKnowledgeButton.tsx`:
@@ -723,13 +725,13 @@ with:
                   />
                   <SaveToKnowledgeButton
                     markdown={msg.content}
-                    question={messages[i - 1]?.role === 'user' ? messages[i - 1].content : undefined}
+                    question={messages[i - 1]?.role === 'user' ? messages[i - 1].content ?? undefined : undefined}
                   />
                 </div>
               )}
 ```
 
-(`i` is the map index already in scope at `messages.map((msg, i) => ...)`; the preceding user turn is the originating question.)
+(`i` is the map index already in scope at `messages.map((msg, i) => ...)`; the preceding user turn is the originating question. `DonnyMessage.content` is `string | null`, but the prop is `string | undefined` — the `?? undefined` coalesces the `null` branch so strict-mode typecheck passes.)
 
 - [ ] **Step 3: Build + typecheck**
 
