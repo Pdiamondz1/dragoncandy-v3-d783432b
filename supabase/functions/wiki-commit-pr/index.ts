@@ -166,7 +166,9 @@ serve(async (req) => {
     });
     if (!putRes.ok) return json({ error: `github put ${putRes.status}` }, 502);
 
-    // 5. PR
+    // 5. PR — recover an existing open PR if the branch already has one (a prior
+    //    run created the PR but died before persisting, or two admins raced).
+    //    GitHub returns 422 for POST /pulls when a PR already exists for head.
     const prRes = await fetch(`${GH}/repos/${REPO}/pulls`, {
       method: "POST",
       headers: ghHeaders(),
@@ -177,11 +179,28 @@ serve(async (req) => {
         body: `${c.rationale_md}\n\n---\nApplied correction \`${correctionId}\` — review at /internal/corrections.`,
       }),
     });
-    if (!prRes.ok) return json({ error: `github pr ${prRes.status}` }, 502);
-    const pr = await prRes.json();
+    let pr: { html_url: string; number: number };
+    if (prRes.ok) {
+      pr = await prRes.json();
+    } else if (prRes.status === 422) {
+      const owner = REPO.split("/")[0];
+      const listRes = await fetch(
+        `${GH}/repos/${REPO}/pulls?head=${owner}:${encodeURIComponent(branch)}&state=open`,
+        { headers: ghHeaders() },
+      );
+      const list = listRes.ok ? await listRes.json() : [];
+      if (!Array.isArray(list) || list.length === 0) {
+        return json({ error: "github pr 422 (no open PR found for branch)" }, 502);
+      }
+      pr = list[0];
+    } else {
+      return json({ error: `github pr ${prRes.status}` }, 502);
+    }
 
-    // 6. Persist ONLY after the PR exists (no partial state on earlier failure).
-    await admin
+    // 6. Persist the PR metadata. The PR already exists, so if the row update
+    //    fails we still return the URL (the user gets their PR) but flag
+    //    persisted:false; a later click reconciles via the 422 path above.
+    const { error: upErr } = await admin
       .from("aios_corrections")
       .update({
         wiki_pr_url: pr.html_url,
@@ -189,6 +208,10 @@ serve(async (req) => {
         wiki_committed_at: new Date().toISOString(),
       })
       .eq("id", correctionId);
+    if (upErr) {
+      console.error("wiki-commit-pr: PR created but row update failed", upErr);
+      return json({ url: pr.html_url, number: pr.number, persisted: false }, 200);
+    }
 
     return json({ url: pr.html_url, number: pr.number });
   } catch (e) {
