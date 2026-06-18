@@ -57,13 +57,14 @@ function buildPage(opts: {
   title: string; folder: string; tags: string[]; markdown: string; question: string; today: string;
 }): string {
   const { title, folder, tags, markdown, question, today } = opts;
-  // Escape backslashes BEFORE quotes: a double-quoted YAML scalar treats "\" as
-  // an escape prefix, so an unescaped title like `C:\Users` would emit invalid
-  // YAML (`\U…`) and break the later knowledge sync.
-  const safeTitle = title.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+  // UNQUOTED title — the wiki sync parser is a line regex (`^(\w+):\s*(.*)$`),
+  // not a YAML parser, and existing pages use bare titles. Quotes/backslashes
+  // would land literally in metadata.title. The title is already single-line
+  // (newlines collapsed) and length-capped, and the regex splits on the first
+  // colon only, so a colon in the title is safe.
   const fm = [
     "---",
-    `title: "${safeTitle}"`,
+    `title: ${title}`,
     `type: ${TYPE_BY_FOLDER[folder]}`,
     `created: ${today}`,
     `updated: ${today}`,
