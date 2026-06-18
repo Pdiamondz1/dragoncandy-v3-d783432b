@@ -20,25 +20,18 @@ export interface SaveAnswerResult {
 export function useSaveAnswerToWiki() {
   return useMutation({
     mutationFn: async (input: SaveAnswerInput): Promise<SaveAnswerResult> => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('No active session');
-      const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/wiki-save-answer`,
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-            'Content-Type': 'application/json',
-            apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
-          },
-          body: JSON.stringify(input),
-        },
+      // Invoke through the Supabase client so the configured URL + anon key
+      // (with their prod fallback) and the current admin session's bearer are
+      // applied — no direct import.meta.env reads that break when those are unset.
+      // The function returns file_exists / github_not_configured as HTTP 200 with
+      // an { error } body, so those arrive here as `data` (not `error`) and the
+      // dialog can react (rename / show the hint); a real non-2xx throws.
+      const { data, error } = await supabase.functions.invoke<SaveAnswerResult>(
+        'wiki-save-answer',
+        { body: input },
       );
-      const data = (await res.json().catch(() => ({}))) as SaveAnswerResult;
-      // file_exists / github_not_configured return 200 with an error field —
-      // surface as data so the dialog can react (rename / show hint).
-      if (!res.ok && !data.error) throw new Error('Save to knowledge failed');
-      return data;
+      if (error) throw error;
+      return data ?? {};
     },
   });
 }
