@@ -153,18 +153,25 @@ serve(async (req) => {
 
     const content = ensureFrontmatter(proposed, existingMd);
 
-    // 4. PUT file
-    const putRes = await fetch(`${GH}/repos/${REPO}/contents/${path}`, {
-      method: "PUT",
-      headers: ghHeaders(),
-      body: JSON.stringify({
-        message: `fix(wiki): correction — ${c.title} (#correction ${correctionId.slice(0, 8)})`,
-        content: toBase64(content),
-        branch,
-        ...(existingSha ? { sha: existingSha } : {}),
-      }),
-    });
-    if (!putRes.ok) return json({ error: `github put ${putRes.status}` }, 502);
+    // 4. PUT file — skip when the branch already holds the exact content (a
+    //    retry after a partial prior run). GitHub's contents API 422s on
+    //    unchanged content, so a 422 here is NOT fatal: fall through to the PR
+    //    step, which creates or recovers the existing PR.
+    if (existingMd !== content) {
+      const putRes = await fetch(`${GH}/repos/${REPO}/contents/${path}`, {
+        method: "PUT",
+        headers: ghHeaders(),
+        body: JSON.stringify({
+          message: `fix(wiki): correction — ${c.title} (#correction ${correctionId.slice(0, 8)})`,
+          content: toBase64(content),
+          branch,
+          ...(existingSha ? { sha: existingSha } : {}),
+        }),
+      });
+      if (!putRes.ok && putRes.status !== 422) {
+        return json({ error: `github put ${putRes.status}` }, 502);
+      }
+    }
 
     // 5. PR — recover an existing open PR if the branch already has one (a prior
     //    run created the PR but died before persisting, or two admins raced).
