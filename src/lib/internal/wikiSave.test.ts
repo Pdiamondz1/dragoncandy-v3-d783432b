@@ -20,14 +20,21 @@ describe('deriveWikiDefaults', () => {
     expect(d.folder).toBe('analyses');
     expect(d.filename).toBe('take-rate-ladder');
   });
+  it('strips trailing punctuation from a heading title (matches the sentence path)', () => {
+    const d = deriveWikiDefaults('# Pricing notes!\n\nbody');
+    expect(d.title).toBe('Pricing notes');
+    expect(d.filename).toBe('pricing-notes');
+  });
   it('falls back to the first sentence when there is no heading', () => {
     const d = deriveWikiDefaults('Our CAC payback is 9 months. More detail follows.');
     expect(d.title).toBe('Our CAC payback is 9 months');
+    expect(d.folder).toBe('analyses');
     expect(d.filename).toBe('our-cac-payback-is-9-months');
   });
   it('handles empty input without throwing', () => {
     const d = deriveWikiDefaults('');
     expect(d.title).toBe('Donny answer');
+    expect(d.folder).toBe('analyses');
     expect(d.filename).toBe('donny-answer');
   });
 });

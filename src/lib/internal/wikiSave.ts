@@ -18,7 +18,9 @@ export function slugify(title: string): string {
 export function deriveWikiDefaults(markdown: string): { title: string; folder: WikiFolder; filename: string } {
   const text = (markdown ?? '').trim();
   const heading = text.match(/^#{1,6}\s+(.+?)\s*#*$/m);
-  let title = heading ? heading[1].trim() : '';
+  // Strip trailing sentence punctuation on the heading path too, so it matches
+  // the sentence-fallback path and never leaks e.g. "Pricing notes!" into YAML.
+  let title = heading ? heading[1].trim().replace(/[.!?]+$/, '').trim() : '';
   if (!title) {
     const firstLine = text.split('\n').map((l) => l.trim()).find(Boolean) ?? '';
     const sentence = firstLine.split(/(?<=[.!?])\s/)[0] ?? firstLine;
