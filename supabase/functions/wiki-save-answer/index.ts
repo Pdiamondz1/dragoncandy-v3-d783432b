@@ -57,7 +57,10 @@ function buildPage(opts: {
   title: string; folder: string; tags: string[]; markdown: string; question: string; today: string;
 }): string {
   const { title, folder, tags, markdown, question, today } = opts;
-  const safeTitle = title.replace(/"/g, '\\"');
+  // Escape backslashes BEFORE quotes: a double-quoted YAML scalar treats "\" as
+  // an escape prefix, so an unescaped title like `C:\Users` would emit invalid
+  // YAML (`\U…`) and break the later knowledge sync.
+  const safeTitle = title.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
   const fm = [
     "---",
     `title: "${safeTitle}"`,
@@ -149,9 +152,11 @@ serve(async (req) => {
     if (baseFileRes.ok) return json({ error: "file_exists" }, 200);
     if (baseFileRes.status !== 404) return json({ error: `github get-contents ${baseFileRes.status}` }, 502);
 
-    // 3. branch — filename-derived ⇒ re-saving the same page recovers the same
-    //    branch/PR (idempotent, retry-safe).
-    const branch = `donny-wiki-answer/${filename}`;
+    // 3. branch — folder+filename-derived ⇒ re-saving the SAME page recovers the
+    //    same branch/PR (idempotent), but `concepts/foo` and `analyses/foo` map to
+    //    DISTINCT branches so a same-filename save in another folder can't fold
+    //    itself into an unrelated open PR.
+    const branch = `donny-wiki-answer/${folder}-${filename}`;
     const brRes = await fetch(`${GH}/repos/${REPO}/git/refs`, {
       method: "POST",
       headers: ghHeaders(),
