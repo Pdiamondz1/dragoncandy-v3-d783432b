@@ -126,6 +126,60 @@ export type Database = {
         }
         Relationships: []
       }
+      aios_corrections: {
+        Row: {
+          applied_at: string | null
+          created_at: string
+          current_value: Json
+          id: string
+          proposed_by: string
+          proposed_by_user: string | null
+          proposed_value: Json
+          rationale_md: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          target_ref: string
+          target_type: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          applied_at?: string | null
+          created_at?: string
+          current_value: Json
+          id?: string
+          proposed_by?: string
+          proposed_by_user?: string | null
+          proposed_value: Json
+          rationale_md: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          target_ref: string
+          target_type: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          applied_at?: string | null
+          created_at?: string
+          current_value?: Json
+          id?: string
+          proposed_by?: string
+          proposed_by_user?: string | null
+          proposed_value?: Json
+          rationale_md?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          target_ref?: string
+          target_type?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       aios_dashboard_settings: {
         Row: {
           key: string
@@ -5886,6 +5940,10 @@ export type Database = {
     Functions: {
       accept_application_with_collaboration: {
         Args: { p_application_id: string }
+        Returns: Json
+      }
+      aios_corrections_apply: {
+        Args: { p_id: string; p_decision: string }
         Returns: Json
       }
       aios_cost_stats: { Args: never; Returns: Json }
