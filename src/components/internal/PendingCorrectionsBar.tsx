@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 import {
@@ -28,13 +29,22 @@ const compactChange = (c: Correction): string | null => {
 
 const PendingCorrectionRow = ({ correction }: { correction: Correction }) => {
   const review = useReviewCorrection();
+  // Latch once a decision succeeds so the row can't be clicked again in the gap
+  // before the (non-awaited) refetch removes it — prevents a duplicate submit.
+  const [decided, setDecided] = useState(false);
   const change = compactChange(correction);
+  // Strategy-doc approvals need the "commit to wiki" handoff (corrected markdown +
+  // Drive export) that only the full page renders — so we don't approve those
+  // inline; the founder reviews them there. Dashboard settings have no follow-up.
+  const isDoc = correction.target_type === 'strategy_doc';
+  const busy = review.isPending || decided;
 
   const handle = (decision: 'approve' | 'reject') =>
     review.mutate(
       { id: correction.id, decision },
       {
         onSuccess: (res) => {
+          setDecided(true);
           if (res.status === 'applied') toast.success('Correction applied.');
           else if (res.status === 'rejected') toast('Proposal rejected.');
           else if (res.status === 'superseded')
@@ -61,23 +71,35 @@ const PendingCorrectionRow = ({ correction }: { correction: Correction }) => {
         {correction.title}
         {change && <span className="ml-2 font-mono text-dc-teal">{change}</span>}
       </span>
-      <Link
-        to="/internal/corrections"
-        className="text-[0.7rem] font-semibold text-white/50 transition-colors hover:text-white"
-      >
-        Details
-      </Link>
+      {isDoc ? (
+        // Doc corrections approve on the full page (commit-to-wiki step lives there).
+        <Link
+          to="/internal/corrections"
+          className="rounded-full bg-dc-teal px-3 py-1 text-[0.7rem] font-bold text-dc-dark transition-colors hover:bg-dc-teal/80"
+        >
+          Review &amp; approve
+        </Link>
+      ) : (
+        <>
+          <Link
+            to="/internal/corrections"
+            className="text-[0.7rem] font-semibold text-white/50 transition-colors hover:text-white"
+          >
+            Details
+          </Link>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => handle('approve')}
+            className="rounded-full bg-dc-teal px-3 py-1 text-[0.7rem] font-bold text-dc-dark transition-colors hover:bg-dc-teal/80 disabled:opacity-50"
+          >
+            {busy ? '…' : 'Approve'}
+          </button>
+        </>
+      )}
       <button
         type="button"
-        disabled={review.isPending}
-        onClick={() => handle('approve')}
-        className="rounded-full bg-dc-teal px-3 py-1 text-[0.7rem] font-bold text-dc-dark transition-colors hover:bg-dc-teal/80 disabled:opacity-50"
-      >
-        {review.isPending ? '…' : 'Approve'}
-      </button>
-      <button
-        type="button"
-        disabled={review.isPending}
+        disabled={busy}
         onClick={() => handle('reject')}
         className="rounded-full bg-white/[0.06] px-3 py-1 text-[0.7rem] font-semibold text-dc-pink transition-colors hover:bg-white/[0.12] disabled:opacity-50"
       >
