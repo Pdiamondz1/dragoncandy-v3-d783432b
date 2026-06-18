@@ -108,19 +108,22 @@ serve(async (req) => {
   }
   const folder = String(body.folder ?? "");
   const filename = String(body.filename ?? "");
-  const title = String(body.title ?? "").trim();
+  // Collapse interior newlines so a multi-line title can't break the YAML
+  // frontmatter block (title is emitted both as a quoted scalar and an H1).
+  const title = String(body.title ?? "").replace(/[\r\n]+/g, " ").trim();
   const markdown = typeof body.markdown === "string" ? body.markdown : "";
   const question = typeof body.question === "string" ? body.question : "";
   const tags = Array.isArray(body.tags)
     ? body.tags
         .map((t) => String(t).trim().toLowerCase().replace(/[^a-z0-9-]/g, ""))
-        .filter(Boolean)
+        .filter((t) => /^[a-z0-9]/.test(t)) // drop empties and leading-dash tags
         .slice(0, 8)
     : [];
 
   if (!FOLDERS.includes(folder)) return json({ error: "invalid_folder" }, 400);
   if (!FILENAME_RE.test(filename)) return json({ error: "invalid_filename" }, 400);
   if (!title) return json({ error: "title required" }, 400);
+  if (title.length > 200) return json({ error: "title too long (max 200 chars)" }, 400);
   if (!markdown.trim()) return json({ error: "empty markdown" }, 400);
   const path = `docs/wiki/${folder}/${filename}.md`;
   if (!SAVE_PATH_RE.test(path)) return json({ error: "invalid_path" }, 400);
