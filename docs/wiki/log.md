@@ -378,3 +378,19 @@ Toast is a formal Integration Partner Application (compliance/privacy/security/l
 agreement → sandbox → certification → GA), longest lead, start first. Updated the status table (X row,
 YouTube/TikTok lead times) and Sources.
 Pages updated: [[Platform API Registration Plan]].
+
+## [2026-06-18] ingest | Harbormill AIOS white-label extraction + live demo
+
+Captured the session that extracted DragonCandy's /internal AIOS into the standalone, sellable
+Harbormill AIOS template (separate repo C:\GIT\harbormill-aios, GitHub Pdiamondz1/harbormill-aios,
+CI green, GitHub Template) and stood up a live Supabase demo (ref khtlrhtgnwhrhrstivkw) proving the
+full stack end to end (auth → RLS → metrics → briefs → AI, grounded answer no hallucination). Filed in
+the DragonCandy wiki because the extraction doubled as an architecture audit of the AIOS: it drew a
+clean line between domain-agnostic parts (four pillars, tiered app_role auth, Google Workspace bridge,
+Anthropic+pgvector assistant engine) and marketplace-coupled parts and how each was decoupled —
+hardcoded stat RPCs → one service-role report-ingest seam over generic metric_snapshots; 21 marketplace
+tools → a pluggable tool registry; fallback prod creds → env-only client. Live-infra specifics (project
+refs, demo login, pending Harbormill steps, secret rotation) kept in project memory, not the wiki.
+Domain: technical / architecture.
+Pages created: [[Harbormill AIOS Template Extraction Session]] (source), [[AIOS White-Label Extraction]] (analysis), raw/sessions/2026-06-18-harbormill-aios-extraction.md.
+Pages updated: index.md.
