@@ -18,6 +18,7 @@
 - [[Database Schema]](sources/database-schema.md) — Supabase Postgres schema overview (2026-05-23)
 - [[Donny Audit Phase 1 Session]](sources/donny-audit-phase1-session.md) — Role-based tool filtering, prompt injection defense, tier-based token clamping (2026-05-06)
 - [[Donny Audit Phase 2 Session]](sources/donny-audit-phase2-session.md) — Quota enforcement, SSE streaming, dual auth, upgrade CTAs (2026-05-06)
+- [[Donny Campaign Pre-fill Session]](raw/sessions/2026-06-18-donny-campaign-prefill.md) — Donny chat hands a brief to the Create-a-Campaign builder via ?brief= → opens pre-filled on the Launchpad; new prepare_campaign tool; broken /campaigns/new route fixed; PR #124 (2026-06-18)
 - [[Investor Pitch Deck & Cost Model Session]](sources/investor-pitch-deck-cost-model-session.md) — /pitch deck (15 slides) + sourced ~$3M capital-raise cost model; brands woven in; Donny super-agent Vision slide (2026-06-17)
 - [[DragonShare Amplification Engine Session]](sources/dragonshare-amplification-engine-session.md) — Upload-first submit, trust-then-flag, watermark, two-path boost payment, 80/20 split (2026-06-01)
 - [[Project Context]](sources/project-context.md) — Project identity, strategy, and operating instructions (2026-05-23)

@@ -1,5 +1,18 @@
 # Wiki Log
 
+## [2026-06-18] ingest | Donny chat → Create-a-Campaign pre-fill
+
+Session extract of PR #124 (branch `worktree-DC-Donny-and-bug-fixing`). When a restaurant asks
+Donny to create a campaign, the chat now hands a distilled brief to the Create-a-Campaign builder
+via a `?brief=` param so it opens pre-filled on the Launchpad instead of blank. New
+`prepare_campaign` sub-agent tool in `donny-orchestrator` (role-aware `…/campaigns/create?brief=`
+route, encoded server-side); `campaign_agent` scoped to existing campaigns; `useCampaignCreator`
+reacts to the param (deduped, same-route safe) and auto-runs the existing generation. Also fixed a
+latent broken route (`/dashboard/brand/campaigns/new` → `…/campaigns/create`). Codex-clean (P2
+same-route-param miss caught and fixed). Edge fn deployed to prod via Supabase CLI.
+Source: [[Donny Campaign Pre-fill Session]].
+Pages updated: [[Donny AI]] (new "Chat → Campaign-Builder Pre-fill" section), `index.md`.
+
 ## [2026-06-18] ingest | Wiki-Commit-PR — correction write-back to the wiki
 
 Session extract of the AIOS wiki-commit-PR work (branch `worktree-DC-AIOS-Donny`). Added a
