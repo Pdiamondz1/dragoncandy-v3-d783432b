@@ -157,6 +157,21 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   Sheets API separately. Remaining (all wait on the Workspace org): register the Chat app +
   set `GOOGLE_CHAT_PROJECT_NUMBER`, set `GOOGLE_ALLOWED_DOMAIN`. Spec:
   `docs/superpowers/specs/2026-06-11-google-workspace-connections-design.md`.
+- DragonCandy AIOS — Donny gated corrections — **shipped (5 slices + prompt fix,
+  2026-06-18).** Internal Donny *proposes* fixes to dashboard settings or strategy docs
+  via `propose_correction` → the `aios-report-ingest` choke point → a founder approves at
+  `/internal/corrections` → an admin-gated `aios_corrections_apply` RPC applies it
+  (optimistic-concurrency staleness check; proposed ≠ applied). Donny never writes
+  directly. **Wiki-commit-PR durability (this branch):** approving a strategy-doc
+  correction updates the in-app copy but the canonical wiki file stayed stale, so the next
+  `donny-knowledge-sync` reverted it — now an admin-gated **"Open wiki PR"** button on
+  `/internal/corrections` (and on applied strategy-doc cards) opens a GitHub PR writing the
+  correction back to `docs/wiki/…` via the `wiki-commit-pr` edge function. PR-only (never a
+  `main` push, keeps the review/Codex gate); trusts only `{ correction_id }` and
+  re-derives path+content server-side; idempotent/self-healing. One-time prerequisite: a
+  fine-grained `GITHUB_WIKI_TOKEN` edge secret (single repo, Contents + Pull Requests R/W).
+  Specs: `docs/superpowers/specs/2026-06-17-donny-aios-corrections-design.md`,
+  `docs/superpowers/specs/2026-06-18-wiki-commit-pr-design.md`.
 
 **Workflow discipline**: Single Claude Code agent, one prompt at a time
 → `npm run build` → verify → push. Session handoffs at plan-phase

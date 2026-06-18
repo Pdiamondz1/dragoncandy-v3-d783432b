@@ -143,6 +143,9 @@ export type Database = {
           target_type: string
           title: string
           updated_at: string
+          wiki_committed_at: string | null
+          wiki_pr_number: number | null
+          wiki_pr_url: string | null
         }
         Insert: {
           applied_at?: string | null
@@ -160,6 +163,9 @@ export type Database = {
           target_type: string
           title: string
           updated_at?: string
+          wiki_committed_at?: string | null
+          wiki_pr_number?: number | null
+          wiki_pr_url?: string | null
         }
         Update: {
           applied_at?: string | null
@@ -177,6 +183,9 @@ export type Database = {
           target_type?: string
           title?: string
           updated_at?: string
+          wiki_committed_at?: string | null
+          wiki_pr_number?: number | null
+          wiki_pr_url?: string | null
         }
         Relationships: []
       }
