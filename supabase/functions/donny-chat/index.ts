@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { validateDonnyToken, requireScope } from "../_shared/auth.ts";
-import { getModelConfig } from "../_shared/model-routing.ts";
+import { getModelConfig, type ModelConfig } from "../_shared/model-routing.ts";
 import { logCost } from "../_shared/cost-ledger.ts";
 import { getUserUsageStage, incrementUsage, getUserSubscriptionTier, checkQuotaOrBlock, checkHourlyRateLimit } from "../_shared/usage-tracker.ts";
 import { corsHeaders } from "../_shared/cors.ts";
@@ -2047,22 +2047,33 @@ serve(async (req) => {
       return content.filter((b: any) => b.type === "tool_use");
     }
 
-    // Resolve model routing based on user's usage stage
+    // Resolve model routing based on user's usage stage.
     const usageStage = await getUserUsageStage(supabaseAdmin, userId);
-    const modelConfig = getModelConfig("donny-chat", usageStage);
-    if (usageStage === "essential") {
+    // Internal founders are never downgraded by consumer usage stage or tier:
+    // pin Sonnet with a large output budget so a strategy_doc correction can emit
+    // the FULL corrected doc as the propose_correction argument. The consumer
+    // SONNET_EXTENDED budget (8192) — and Haiku's 512 in the 'essential' stage —
+    // truncated anything but tiny docs. (A wiki page >~64KB still won't fit in one
+    // turn; a patch-based correction contract is the future fix if that's common.)
+    const INTERNAL_MODEL_CONFIG: ModelConfig = {
+      model: "claude-sonnet-4-6",
+      maxTokens: 16384,
+      actionCost: 5,
+      tier: "T3",
+    };
+    const modelConfig = internalMode
+      ? INTERNAL_MODEL_CONFIG
+      : getModelConfig("donny-chat", usageStage);
+    if (!internalMode && usageStage === "essential") {
       console.log(`[donny-chat] User ${userId} in essential mode — routing to Haiku`);
     }
 
-    // Internal surface skips the subscription-tier clamp (founders aren't on a
-    // consumer plan) but still caps below the model maximum. The ceiling is
-    // generous because a strategy_doc correction emits the FULL corrected doc as
-    // the propose_correction argument — 4096 truncated anything but tiny docs.
-    // (A wiki page larger than ~64KB still won't fit in one turn; a patch-based
-    // correction contract is the future fix if that becomes common.)
+    // Internal surface skips both the usage-stage downgrade (above) and the
+    // subscription-tier clamp (founders aren't on a consumer plan); its config
+    // already carries the full-doc-correction budget.
     let clampedMaxTokens: number;
     if (internalMode) {
-      clampedMaxTokens = Math.min(modelConfig.maxTokens, 16384);
+      clampedMaxTokens = modelConfig.maxTokens;
     } else {
       const subscriptionTier = await getUserSubscriptionTier(supabaseAdmin, userId);
       const tierMaxTokens = MAX_TOKENS_BY_TIER[subscriptionTier] ?? 1024;
