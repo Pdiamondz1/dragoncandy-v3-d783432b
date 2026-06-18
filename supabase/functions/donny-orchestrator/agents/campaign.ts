@@ -1,6 +1,39 @@
 import { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { SubAgentResult, UserContext } from "../types.ts";
 
+/**
+ * Role-aware route to the Create-a-Campaign builder. Brands and restaurants
+ * have separate dashboards; both land on the `/campaigns/create` page (the
+ * builder), never the non-existent `/campaigns/new`.
+ */
+function createCampaignRoute(userRole: string): string {
+  return userRole === "brand"
+    ? "/dashboard/brand/campaigns/create"
+    : "/dashboard/business/campaigns/create";
+}
+
+/**
+ * Handles "create / start a new campaign" intent. Builds a link to the campaign
+ * builder pre-loaded with a brief (encoded server-side, never by the LLM) so the
+ * builder auto-generates ideas and lands on the pre-filled Launchpad.
+ */
+export function prepareCampaign(
+  _supabase: SupabaseClient,
+  input: Record<string, unknown>,
+  userContext: UserContext
+): Promise<SubAgentResult> {
+  const brief = typeof input.brief === "string" ? input.brief.trim() : "";
+  const base = createCampaignRoute(userContext.user_role);
+  const route = brief ? `${base}?brief=${encodeURIComponent(brief)}` : base;
+
+  return Promise.resolve({
+    context: brief
+      ? `The campaign builder has been pre-loaded with this brief: "${brief}". Tell the user you've set up the builder with their idea and to click the button to review and launch — keep it to one short sentence.`
+      : `Direct the user to the campaign builder to create a new campaign.`,
+    suggested_actions: [{ label: "Open campaign builder", route }],
+  });
+}
+
 export async function execute(
   supabase: SupabaseClient,
   input: Record<string, unknown>,
@@ -87,7 +120,7 @@ export async function execute(
     if (campaigns.length === 0) {
       suggestedActions.push({
         label: "Create your first campaign",
-        route: "/dashboard/brand/campaigns/new",
+        route: createCampaignRoute(userContext.user_role),
       });
     } else {
       suggestedActions.push({

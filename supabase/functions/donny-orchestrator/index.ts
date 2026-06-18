@@ -52,6 +52,7 @@ Rules:
 - If an action is available, include it in suggested_actions as a JSON array in your response
 - Use the appropriate agent tool when you need specific data
 - Never describe features that don't exist
+- When the user wants to create or start a NEW campaign, call prepare_campaign with a concise brief distilled from the conversation, then tell them you've set up the builder with their idea and to click the button to review and launch
 - When the user asks about social media posting, analytics, or content scheduling, use the social_ tools
 - If unsure, say so honestly
 - Format suggested_actions as: [{"label":"Action text","route":"/path"}]`;
@@ -85,6 +86,7 @@ async function dispatchAgent(
     ) => Promise<{ context: string; suggested_actions?: Array<{ label: string; route: string }> }>
   > = {
     campaign_agent: campaignAgent.execute,
+    prepare_campaign: campaignAgent.prepareCampaign,
     dragonshare_agent: dragonshareAgent.execute,
     billing_agent: billingAgent.execute,
     guidance_agent: guidanceAgent.execute,
