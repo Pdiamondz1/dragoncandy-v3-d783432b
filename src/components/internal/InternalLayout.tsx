@@ -23,6 +23,7 @@ const stakeholderNav: NavItem[] = [
 const adminNav: NavItem[] = [
   { to: '/internal/expenses', label: 'Expenses' },
   { to: '/internal/findings', label: 'Findings' },
+  { to: '/internal/corrections', label: 'Corrections' },
   { to: '/internal/donny', label: 'Donny' },
 ];
 
