@@ -10,7 +10,7 @@ import {
   type CorrectionStatus,
 } from '@/hooks/internal/useCorrections';
 import { useExportToDoc, useGoogleConnection } from '@/hooks/internal/useGoogleWorkspace';
-import { commitErrorMessage } from '@/lib/internal/wikiCommit';
+import { commitErrorMessage, isCommittableWikiPath } from '@/lib/internal/wikiCommit';
 import { normalizeForCompare } from '@/lib/internal/normalizeForCompare';
 import { ErrorCard } from '@/components/internal/stats';
 import { MarkdownProse } from '@/components/internal/MarkdownProse';
@@ -180,11 +180,13 @@ const CorrectionCard = ({
         <MarkdownProse>{correction.rationale_md}</MarkdownProse>
       </div>
 
-      {correction.status === 'applied' && correction.target_type === 'strategy_doc' && (
-        <div className="mt-3">
-          <WikiPrButton correction={correction} />
-        </div>
-      )}
+      {correction.status === 'applied' &&
+        correction.target_type === 'strategy_doc' &&
+        isCommittableWikiPath(correction.target_ref) && (
+          <div className="mt-3">
+            <WikiPrButton correction={correction} />
+          </div>
+        )}
     </div>
   );
 };
@@ -304,7 +306,9 @@ const CommitToWikiPanel = ({
       </pre>
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        <WikiPrButton correction={{ id: target.id, wiki_pr_url: null }} />
+        {isCommittableWikiPath(target.wikiPath) && (
+          <WikiPrButton correction={{ id: target.id, wiki_pr_url: null }} />
+        )}
         <button
           type="button"
           onClick={copy}

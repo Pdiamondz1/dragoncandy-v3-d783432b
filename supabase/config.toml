@@ -66,6 +66,12 @@ verify_jwt = false
 [functions.google-workspace-proxy]
 verify_jwt = false
 
+# Browser-invoked from /internal/corrections; does its own admin check (auth.getUser
+# + user_roles role 'admin'), so the gateway JWT check must be off or it would reject
+# the unauthenticated CORS preflight.
+[functions.wiki-commit-pr]
+verify_jwt = false
+
 [functions.donny-campaign-generate]
 verify_jwt = false
 
