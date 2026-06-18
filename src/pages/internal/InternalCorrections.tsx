@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { toast } from 'sonner';
 import {
   useCorrections,
   useReviewCorrection,
@@ -52,9 +53,26 @@ const CorrectionCard = ({ correction }: { correction: Correction }) => {
   // Pre-flag a no-op: proposed already equals current (ignoring trailing whitespace).
   const isNoOp = normalizeForCompare(before) === normalizeForCompare(after);
 
-  // Surface a superseded outcome (live value drifted since the proposal) so the
-  // founder knows nothing was applied and Donny should re-propose.
-  const superseded = review.data?.status === 'superseded';
+  // Outcome feedback goes through a toast: once a row is decided it refetches
+  // and leaves the default "Proposed" filter, so a card-local notice would
+  // vanish before it's read — the superseded case especially.
+  const handleReview = (decision: 'approve' | 'reject') =>
+    review.mutate(
+      { id: correction.id, decision },
+      {
+        onSuccess: (res) => {
+          if (res.status === 'applied') toast.success('Correction applied.');
+          else if (res.status === 'rejected') toast('Proposal rejected.');
+          else if (res.status === 'superseded')
+            toast(
+              res.message ??
+                'The live value changed since this was proposed — nothing was applied. Ask Donny to re-propose.',
+            );
+          else toast(res.message ?? `Status: ${res.status}`);
+        },
+        onError: (e) => toast.error(`Review failed — ${(e as Error)?.message ?? 'try again.'}`),
+      },
+    );
 
   return (
     <div className="rounded-2xl border border-dc-teal/25 bg-white/[0.04] p-4 backdrop-blur-sm">
@@ -86,7 +104,7 @@ const CorrectionCard = ({ correction }: { correction: Correction }) => {
             <button
               type="button"
               disabled={review.isPending}
-              onClick={() => review.mutate({ id: correction.id, decision: 'approve' })}
+              onClick={() => handleReview('approve')}
               className="rounded-full bg-dc-teal px-4 py-1 text-xs font-bold text-dc-dark transition-colors hover:bg-dc-teal/80 disabled:opacity-50"
             >
               {review.isPending ? '…' : 'Approve'}
@@ -94,7 +112,7 @@ const CorrectionCard = ({ correction }: { correction: Correction }) => {
             <button
               type="button"
               disabled={review.isPending}
-              onClick={() => review.mutate({ id: correction.id, decision: 'reject' })}
+              onClick={() => handleReview('reject')}
               className="rounded-full bg-white/[0.06] px-4 py-1 text-xs font-semibold text-dc-pink transition-colors hover:bg-white/[0.12] disabled:opacity-50"
             >
               Reject
@@ -131,19 +149,6 @@ const CorrectionCard = ({ correction }: { correction: Correction }) => {
       <div className="mt-3">
         <MarkdownProse>{correction.rationale_md}</MarkdownProse>
       </div>
-
-      {superseded && (
-        <p className="mt-3 rounded-xl border border-dc-pink/30 bg-dc-pink/10 p-3 text-xs font-semibold text-dc-pink">
-          {review.data?.message ??
-            'The live value changed since this was proposed — nothing was applied. Ask Donny to re-propose.'}
-        </p>
-      )}
-
-      {review.isError && (
-        <p className="mt-3 text-xs font-semibold text-dc-pink-accent">
-          Review failed — {(review.error as Error)?.message ?? 'try again.'}
-        </p>
-      )}
     </div>
   );
 };

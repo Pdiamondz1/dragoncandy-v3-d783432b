@@ -78,6 +78,10 @@ export function useReviewCorrection() {
       queryClient.invalidateQueries({ queryKey: ['aios', 'corrections'] });
       // An applied dashboard_setting changes the live value the weight page reads.
       queryClient.invalidateQueries({ queryKey: ['aios', 'dashboard-settings'] });
+      // An applied strategy_doc rewrites internal_docs — refresh the Strategy
+      // list and every doc-detail query so it doesn't show stale content.
+      queryClient.invalidateQueries({ queryKey: ['aios', 'internal-docs'] });
+      queryClient.invalidateQueries({ queryKey: ['aios', 'internal-doc'] });
     },
   });
 }
