@@ -5,6 +5,7 @@ import { DonnyTypingIndicator } from '@/components/donny/DonnyTypingIndicator';
 import { DonnyChatInput } from '@/components/donny/DonnyChatInput';
 import { DonnyQuickChips } from '@/components/donny/DonnyQuickChips';
 import { ExportToDocButton } from '@/components/internal/ExportToDocButton';
+import { SaveToKnowledgeButton } from '@/components/internal/SaveToKnowledgeButton';
 import { PendingCorrectionsBar } from '@/components/internal/PendingCorrectionsBar';
 import { useInternalDonny } from '@/hooks/internal/useInternalDonny';
 
@@ -62,11 +63,15 @@ const InternalDonny = () => {
             <div key={msg.id ?? i}>
               <DonnyMessage message={msg} />
               {msg.role === 'assistant' && msg.content && (
-                <div className="mt-1 flex justify-start pl-2">
+                <div className="mt-1 flex justify-start gap-2 pl-2">
                   <ExportToDocButton
                     variant="ghost"
                     title={`Donny — ${new Date(msg.created_at ?? Date.now()).toLocaleDateString()}`}
                     markdown={msg.content}
+                  />
+                  <SaveToKnowledgeButton
+                    markdown={msg.content}
+                    question={messages[i - 1]?.role === 'user' ? messages[i - 1].content ?? undefined : undefined}
                   />
                 </div>
               )}
