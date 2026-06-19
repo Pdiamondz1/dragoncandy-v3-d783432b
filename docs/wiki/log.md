@@ -1,5 +1,19 @@
 # Wiki Log
 
+## [2026-06-18] ingest | AIOS ingest-secret key rotation fix
+
+A new Supabase `sb_secret_…` key rotated prod's service-role credential, silently 401'ing
+the three daily 3am AIOS routines + the content-performance-capture pg_cron since
+2026-06-11 (auto-injected callers like Donny stayed green; stored-copy callers — cloud-
+routine env, Vault — went stale). Fixed with a shared `_shared/ingest-auth.ts` gate that
+accepts the injected service-role key OR a stable `AIOS_INGEST_SECRET` (value = the
+sb_secret key, so it also serves the agents' PostgREST reads); applied to
+aios-report-ingest, donny-knowledge-sync, content-performance-capture, and the
+google-workspace-proxy service-bearer path. PR #129; deployed via CLI + verified end-to-end
+(pg_net through the Vault secret returned 400/200, not 401). RAG sync deferred to merge.
+Pages updated: [[Self-Improving App]], [[Supabase]], index.md.
+Raw: raw/sessions/2026-06-18-aios-ingest-secret-rotation.md.
+
 ## [2026-06-18] ingest | Donny chat → Create-a-Campaign pre-fill
 
 Session extract of PR #124 (branch `worktree-DC-Donny-and-bug-fixing`). When a restaurant asks

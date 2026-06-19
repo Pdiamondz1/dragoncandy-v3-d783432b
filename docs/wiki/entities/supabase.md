@@ -2,8 +2,8 @@
 title: Supabase
 type: entity
 created: 2026-05-23
-updated: 2026-06-07
-sources: [docs/DATABASE_SCHEMA.md, .claude/handoffs/2026-05-04-232158-code-architecture-audit-remediation.md, raw/sessions/2026-06-02-205607-qa-staging-supabase-planb.md, raw/sessions/2026-06-07-core-docs-recent-updates-sync.md]
+updated: 2026-06-18
+sources: [docs/DATABASE_SCHEMA.md, .claude/handoffs/2026-05-04-232158-code-architecture-audit-remediation.md, raw/sessions/2026-06-02-205607-qa-staging-supabase-planb.md, raw/sessions/2026-06-07-core-docs-recent-updates-sync.md, raw/sessions/2026-06-18-aios-ingest-secret-rotation.md]
 tags: [supabase, database, auth, rls]
 ---
 
@@ -56,6 +56,32 @@ silently talked to prod (other callers already read the env var → split-brain)
 client.ts + 3 hardcoded callers to read `import.meta.env.VITE_SUPABASE_URL` with a prod
 fallback. `client.ts` is auto-generated, so re-check after any Lovable regeneration.
 
+## Edge-function auth & API keys
+
+- `verify_jwt = false` functions check the bearer themselves (webhooks, OAuth receivers,
+  and service/cron callers). Must be set in `config.toml` **and** at deploy time, or
+  external callers (and CORS preflights) get 401'd.
+- **Service-role bearer is fragile across key rotation.** A function injects
+  `SUPABASE_SERVICE_ROLE_KEY` automatically (always current), but any caller that stores a
+  **manual copy** of it (a Claude Code cloud-routine env, a Vault secret, an external
+  cron) goes stale the moment the credential changes. Supabase's **new API key system**
+  (`sb_secret_…` secret keys / `sb_publishable_…` replacing the legacy `service_role` /
+  `anon` JWTs) is exactly such a change — creating a new secret key rotated the AIOS
+  routines' credential and silently 401'd them for a week (see
+  [[AIOS Ingest-Secret Rotation Session]]).
+- **Pattern to survive it:** gate service/cron endpoints on a bearer matching *either* the
+  injected service-role key (keeps internal function-to-function calls working) *or* a
+  dedicated operator-set shared secret (shared helper `_shared/ingest-auth.ts`,
+  `AIOS_INGEST_SECRET`). Set that secret's value to the `sb_secret_…` key so the same
+  credential also works as a PostgREST `apikey`/Bearer for direct REST reads. The secret
+  name **cannot** start with `SUPABASE_` (reserved for injected vars).
+- Deploy edge functions with the CLI (`npx supabase functions deploy <fn>
+  --no-verify-jwt`) — it auto-bundles `_shared` from disk (no Docker), avoiding the
+  manual-MCP-bundle silent-no-op gotcha. Deploys are separate from the Lovable frontend.
+- **Caution:** disabling the legacy `service_role` JWT would break every function's
+  injected-key admin client (`createClient(URL, SUPABASE_SERVICE_ROLE_KEY)`) — a separate,
+  app-wide migration, not a per-function flip.
+
 ## Known Issues
 
 - RLS infinite recursion in some policies (active workstream)
@@ -75,3 +101,4 @@ fallback. `client.ts` is auto-generated, so re-check after any Lovable regenerat
 - [[Campaign Delivery, Scheduling & Notifications Session]]
 - [[DragonShare Amplification Engine Session]]
 - [[Core Docs Recent Updates Sync Session]]
+- [[AIOS Ingest-Secret Rotation Session]]
