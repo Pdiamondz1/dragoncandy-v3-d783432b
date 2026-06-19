@@ -30,31 +30,41 @@ if (!ANTHROPIC_API_KEY) {
 // System prompt builder
 // ---------------------------------------------------------------------------
 
+// Returns { stable, volatile } so callClaude can place a prompt-caching
+// breakpoint on the stable instruction block. The stable block is byte-identical
+// every turn (tools + stable system get cached together); all per-user and
+// per-query data — user identity, page, tier, and the RAG chunks that change
+// with each question — lives in the uncached volatile block.
+type SystemPromptParts = { stable: string; volatile: string };
+
 function buildSystemPrompt(
   userContext: UserContext,
   pagePath: string,
   ragChunks: string[]
-): string {
+): SystemPromptParts {
   const ragSection =
     ragChunks.length > 0 ? ragChunks.join("\n") : "No additional knowledge available.";
 
-  return `You are Donny, the AI assistant inside DragonCandy. You help users with campaigns, DragonShare, billing, and general app guidance.
-
-Current user: ${userContext.full_name ?? "Unknown"} (${userContext.user_role})
-Current page: ${pagePath}
-Organization tier: ${userContext.org_tier ?? "free"}
-
-Relevant knowledge:
-${ragSection}
+  const stable = `You are Donny, the AI assistant inside DragonCandy. You help users with campaigns, DragonShare, billing, and general app guidance.
 
 Rules:
 - Answer in 2-3 sentences max unless the user asks for details
 - If an action is available, include it in suggested_actions as a JSON array in your response
 - Use the appropriate agent tool when you need specific data
 - Never describe features that don't exist
+- When the user wants to create or start a NEW campaign, call prepare_campaign with a concise brief distilled from the conversation, then tell them you've set up the builder with their idea and to click the button to review and launch
 - When the user asks about social media posting, analytics, or content scheduling, use the social_ tools
 - If unsure, say so honestly
 - Format suggested_actions as: [{"label":"Action text","route":"/path"}]`;
+
+  const volatile = `Current user: ${userContext.full_name ?? "Unknown"} (${userContext.user_role})
+Current page: ${pagePath}
+Organization tier: ${userContext.org_tier ?? "free"}
+
+Relevant knowledge:
+${ragSection}`;
+
+  return { stable, volatile };
 }
 
 // ---------------------------------------------------------------------------
@@ -76,6 +86,7 @@ async function dispatchAgent(
     ) => Promise<{ context: string; suggested_actions?: Array<{ label: string; route: string }> }>
   > = {
     campaign_agent: campaignAgent.execute,
+    prepare_campaign: campaignAgent.prepareCampaign,
     dragonshare_agent: dragonshareAgent.execute,
     billing_agent: billingAgent.execute,
     guidance_agent: guidanceAgent.execute,
@@ -113,15 +124,55 @@ interface ClaudeContentBlock {
 interface ClaudeResponse {
   stop_reason: string;
   content: ClaudeContentBlock[];
-  usage?: { input_tokens: number; output_tokens: number };
+  usage?: {
+    input_tokens: number;
+    output_tokens: number;
+    cache_read_input_tokens?: number;
+    cache_creation_input_tokens?: number;
+  };
+}
+
+// Place a prompt-cache breakpoint on the last content block of the last message
+// so the conversation prefix (system + tools + prior messages, including tool
+// results) is read from cache on the next call/turn at ~0.1x — the system+tools
+// prefix alone is under the cache minimum, but with history it clears it.
+// Returns a shallow clone so the caller's messages are never mutated and exactly
+// one moving breakpoint exists per call (the stable system block is the other).
+function withHistoryCacheBreakpoint(messages: ClaudeMessage[]): unknown[] {
+  const out: unknown[] = messages.slice();
+  if (messages.length === 0) return out;
+  const last = messages[messages.length - 1];
+  let content: unknown;
+  if (typeof last.content === "string") {
+    if (!last.content) return out;
+    content = [{ type: "text", text: last.content, cache_control: { type: "ephemeral" } }];
+  } else if (Array.isArray(last.content) && last.content.length > 0) {
+    const blocks = last.content;
+    content = blocks.map((b, i) =>
+      i === blocks.length - 1 ? { ...b, cache_control: { type: "ephemeral" } } : b,
+    );
+  } else {
+    return out;
+  }
+  out[out.length - 1] = { ...last, content };
+  return out;
 }
 
 async function callClaude(
-  systemPrompt: string,
+  systemParts: SystemPromptParts,
   messages: ClaudeMessage[],
   modelConfig: ModelConfig,
   allTools: Array<Record<string, unknown>>
 ): Promise<ClaudeResponse> {
+  // Two-block system: stable instructions carry the cache breakpoint (caches
+  // tools + stable system together); the volatile block stays uncached.
+  const systemBlocks: Array<Record<string, unknown>> = [
+    { type: "text", text: systemParts.stable, cache_control: { type: "ephemeral" } },
+  ];
+  if (systemParts.volatile.trim()) {
+    systemBlocks.push({ type: "text", text: systemParts.volatile });
+  }
+
   const response = await anthropicFetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
@@ -132,9 +183,9 @@ async function callClaude(
     body: JSON.stringify({
       model: modelConfig.model,
       max_tokens: modelConfig.maxTokens,
-      system: systemPrompt,
+      system: systemBlocks,
       tools: allTools,
-      messages,
+      messages: withHistoryCacheBreakpoint(messages),
     }),
   });
 
@@ -311,7 +362,7 @@ serve(async (req) => {
     const ragChunks = await retrieveContext(supabase, query, embedding, 5);
 
     // --- Build messages ---
-    const systemPrompt = buildSystemPrompt(userContext, page_path, ragChunks);
+    const systemParts = buildSystemPrompt(userContext, page_path, ragChunks);
 
     const historyMessages: ClaudeMessage[] = (
       conversation_history ?? []
@@ -334,7 +385,14 @@ serve(async (req) => {
     const allTools = mcpBridge ? mergeToolsWithMcp(mcpBridge.tools) : SUB_AGENT_TOOLS;
 
     // --- Tool use loop (max 3 iterations) ---
-    let claudeResult = await callClaude(systemPrompt, messages, modelConfig, allTools);
+    let claudeResult = await callClaude(systemParts, messages, modelConfig, allTools);
+    // Prompt-cache visibility (verify in prod via edge logs): turn 2+ should read
+    // the cached tools+stable-system prefix (cache_read > 0); turn 1 writes it.
+    console.log(
+      `[donny-orchestrator] cache read=${claudeResult.usage?.cache_read_input_tokens ?? 0} ` +
+        `write=${claudeResult.usage?.cache_creation_input_tokens ?? 0} ` +
+        `uncached_input=${claudeResult.usage?.input_tokens ?? 0}`,
+    );
     await logCost(supabase, {
       userId,
       edgeFunction: "donny-orchestrator",
@@ -396,7 +454,7 @@ serve(async (req) => {
       messages.push({ role: "assistant", content: claudeResult.content });
       messages.push({ role: "user", content: toolResultBlocks });
 
-      claudeResult = await callClaude(systemPrompt, messages, modelConfig, allTools);
+      claudeResult = await callClaude(systemParts, messages, modelConfig, allTools);
       await logCost(supabase, {
         userId,
         edgeFunction: "donny-orchestrator",

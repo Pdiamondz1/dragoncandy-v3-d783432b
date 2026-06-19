@@ -1,8 +1,9 @@
 
-import { useCallback, useEffect } from 'react';
+import { useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useOptimizedAnalytics } from '@/hooks/useOptimizedAnalytics';
+import { sanitizeUrlForAnalytics } from '@/lib/analyticsUrl';
 
 interface AnalyticsEvent {
   event_type: string;
@@ -25,7 +26,7 @@ export const useAnalytics = () => {
         event_type: eventType,
         event_data: eventData || {},
         user_id: user?.id,
-        page_url: window.location.href,
+        page_url: sanitizeUrlForAnalytics(window.location.href),
         user_agent: navigator.userAgent,
         org_unit_id: activeOrgUnit?.id ?? null
       };
@@ -55,31 +56,18 @@ export const useAnalytics = () => {
     trackCampaignEventOptimized(eventType, campaignId, additionalData);
   };
 
-  const trackPerformance = useCallback((metric: string, value: number, context?: Record<string, unknown>) => {
-    trackEventOptimized('performance_metric', {
-      metric,
-      value,
-      ...context
-    });
-  }, [trackEventOptimized]);
-
-  // Track page performance on mount
-  useEffect(() => {
-    const measurePageLoad = () => {
-      if ('performance' in window && 'getEntriesByType' in performance) {
-        setTimeout(() => {
-          const navigation = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming;
-          if (navigation) {
-            trackPerformance('page_load_time', navigation.loadEventEnd - navigation.fetchStart, {
-              page_url: window.location.href
-            });
-          }
-        }, 1000);
+  // Performance telemetry is intentionally NOT persisted to analytics_events
+  // (it was 99.99% of the table and read by nothing — see the analytics-events
+  // scaling spec, 2026-06-13). Kept as a dev-only no-op so the context
+  // interface stays stable and the firehose can never be reintroduced.
+  const trackPerformance = useCallback(
+    (metric: string, value: number, context?: Record<string, unknown>) => {
+      if (import.meta.env.DEV) {
+        console.warn('[perf]', metric, value, context);
       }
-    };
-
-    measurePageLoad();
-  }, [trackPerformance]);
+    },
+    []
+  );
 
   return {
     trackEvent,

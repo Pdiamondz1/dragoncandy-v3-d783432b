@@ -1,4 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
+import { useToast } from '@/hooks/use-toast';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { useOrgDragonSharePosts } from '@/hooks/useDragonShare';
 import { useOrg } from '@/hooks/useOrgData';
@@ -10,6 +13,8 @@ import { DragonShareQuickTip } from '@/components/dragonshare/DragonShareQuickTi
 import type { UserRole } from '@/types/user';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { PrerequisiteGate } from '@/components/PrerequisiteGate';
+import { usePagedList } from '@/hooks/usePagedList';
+import { LoadMoreButton } from '@/components/shared/LoadMoreButton';
 
 type Tab = 'available' | 'boosted' | 'all';
 
@@ -19,6 +24,27 @@ export function BusinessDragonSharePage({ userRole }: { userRole: UserRole }) {
   const { data: myRole } = useMyOrgRole(org?.id);
   const { data: posts, isLoading } = useOrgDragonSharePosts(org?.id);
   const [activeTab, setActiveTab] = useState<Tab>('available');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  // Returning from the Stripe Checkout redirect (?boost=success|cancelled).
+  useEffect(() => {
+    const boostResult = searchParams.get('boost');
+    if (!boostResult) return;
+    if (boostResult === 'success') {
+      toast({
+        title: 'Boost confirmed!',
+        description: 'Payment complete — the creator payout is on its way.',
+      });
+      queryClient.invalidateQueries({ queryKey: ['dragonshare-posts'] });
+    } else if (boostResult === 'cancelled') {
+      toast({ title: 'Payment cancelled', description: 'No charge was made.' });
+    }
+    const next = new URLSearchParams(searchParams);
+    next.delete('boost');
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams, queryClient, toast]);
 
   const canBoost = myRole?.role === 'owner' || myRole?.role === 'admin';
 
@@ -27,6 +53,7 @@ export function BusinessDragonSharePage({ userRole }: { userRole: UserRole }) {
     if (activeTab === 'boosted') return p.boost_status === 'boosted';
     return true;
   });
+  const { visible, hasMore, showing, total, loadMore } = usePagedList(filteredPosts, 12);
 
   const tabs: { key: Tab; label: string }[] = [
     { key: 'available', label: 'Available' },
@@ -78,7 +105,7 @@ export function BusinessDragonSharePage({ userRole }: { userRole: UserRole }) {
         ) : (
           <div className="space-y-4">
             <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
-              {filteredPosts.map((post) => (
+              {visible.map((post) => (
                 <DragonSharePostCard
                   key={post.id}
                   post={post}
@@ -86,6 +113,13 @@ export function BusinessDragonSharePage({ userRole }: { userRole: UserRole }) {
                 />
               ))}
             </div>
+            <LoadMoreButton
+              hasMore={hasMore}
+              showing={showing}
+              total={total}
+              onClick={loadMore}
+              noun="posts"
+            />
           </div>
         )}
       </div>

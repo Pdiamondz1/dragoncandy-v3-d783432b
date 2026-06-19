@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# Generated investor deck export (regenerate via `npm run pitch:pdf`)
+dragoncandy-pitch.pdf
+
 # Environment variables
 .env
 .env.local

@@ -3,13 +3,16 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { DCTour } from '@/components/guidance/DCTour';
+import { TourButton } from '@/components/guidance/TourButton';
 import { useTour } from '@/hooks/useTour';
-import { Loader2, ChevronRight, Megaphone, Users, DollarSign, TrendingUp } from 'lucide-react';
-import { DCSkeleton, DCSkeletonGrid } from '@/components/ui/dc-skeleton';
+import { Loader2, ChevronRight, Megaphone, Users, DollarSign, TrendingUp, AlertTriangle } from 'lucide-react';
+import { DCSkeleton } from '@/components/ui/dc-skeleton';
 import { ActivityFeedCard } from '@/components/dashboard/ActivityFeedCard';
-import { DashboardHero } from '@/components/dashboard/DashboardHero';
-import { DashboardStatsGrid, type StatItem } from '@/components/dashboard/DashboardStatsGrid';
-import { QuickActionButtons, type QuickAction } from '@/components/dashboard/QuickActionButtons';
+import { DashboardGreeting } from '@/components/dashboard/DashboardGreeting';
+import { HeroPrimaryAction } from '@/components/dashboard/HeroPrimaryAction';
+import { StatsRow, type StatItem } from '@/components/dashboard/StatsRow';
+import { NeedsAttentionSection } from '@/components/dashboard/NeedsAttentionSection';
+import { RecentActivitySection } from '@/components/dashboard/RecentActivitySection';
 import { useBusinessActiveCampaigns } from '@/hooks/useBusinessActiveCampaigns';
 import { DragonShareStatTile } from '@/components/dragonshare/DragonShareStatTile';
 import { DragonShareActivityCard } from '@/components/dragonshare/DragonShareActivityCard';
@@ -19,6 +22,8 @@ import { useBusinessDragonShareActivity } from '@/hooks/useBusinessDragonShareAc
 import { useFirstRunMissions } from '@/hooks/useFirstRunMissions';
 import { FirstRunDashboard } from '@/components/first-run/FirstRunDashboard';
 import { PendingActionBanners } from '@/components/dashboard/PendingActionBanners';
+import { RatingPromptManager } from '@/components/reviews/RatingPromptManager';
+import { SponsorshipRatingPromptManager } from '@/components/reviews/SponsorshipRatingPromptManager';
 import { useLocationReadiness } from '@/hooks/useLocationReadiness';
 import { LocationBadge } from '@/components/org/LocationBadge';
 import { UpcomingPostsWidget } from '@/components/outstand/UpcomingPostsWidget';
@@ -57,15 +62,13 @@ const BusinessDashboard = () => {
     return (
       <DashboardLayout userRole="business_client">
         <div className="min-h-screen bg-white overflow-x-hidden">
-          <div className="bg-gradient-to-b from-dc-pink-bg to-pink-50 px-4 pt-6 pb-8">
-            <div className="max-w-2xl lg:max-w-4xl mx-auto space-y-4">
-              <DCSkeleton variant="text-block" className="h-4 w-32" />
-              <DCSkeleton variant="text-block" className="h-8 w-48" />
-              <DCSkeletonGrid columns={4} count={4} variant="stat" className="mt-4" />
-            </div>
-          </div>
-          <div className="px-4 py-6 pb-24 md:pb-0">
-            <div className="max-w-2xl lg:max-w-4xl mx-auto space-y-4">
+          <div className="px-4 lg:px-8 pt-8 lg:pt-12 pb-24 md:pb-12">
+            <div className="max-w-2xl lg:max-w-5xl mx-auto space-y-10">
+              <div className="space-y-3">
+                <DCSkeleton variant="text-block" className="h-3 w-32" />
+                <DCSkeleton variant="text-block" className="h-8 w-48" />
+              </div>
+              <DCSkeleton variant="text-block" className="h-12 w-full lg:w-72 rounded-full" />
               <DCSkeleton variant="list-row" count={3} />
             </div>
           </div>
@@ -84,122 +87,134 @@ const BusinessDashboard = () => {
     { label: 'ROI', value: '—', icon: TrendingUp, href: '/dashboard/analytics' },
   ];
 
-  const businessActions: [QuickAction, QuickAction] = [
-    { label: 'Create a Campaign with Donny', to: '/dashboard/business/campaigns/create', variant: 'primary' },
-    { label: 'Browse Creators', to: '/dashboard/business/creators', variant: 'secondary' },
-  ];
+  const campaignsContent = campaignsLoading ? (
+    <div className="flex items-center justify-center py-8">
+      <Loader2 className="w-5 h-5 text-dc-teal animate-spin" />
+    </div>
+  ) : recentCampaigns.length === 0 ? (
+    <div className="py-4 text-center">
+      <LocationEmptyState
+        icon={Megaphone}
+        titleTemplate="[Location] is ready for its first campaign"
+        cta={{ label: 'Create Campaign', to: '/dashboard/business/campaigns/create' }}
+      />
+    </div>
+  ) : (
+    <div>
+      {recentCampaigns.map((campaign) => (
+        <ActivityFeedCard
+          key={campaign.id}
+          title={campaign.title}
+          subtitle={`${campaign.creatorName ? `@${campaign.creatorName}` : 'Unassigned'} · Due ${formatDate(campaign.deadline)}`}
+          status={campaign.displayStatus}
+          onClick={() => navigate(`/dashboard/business/campaigns/${campaign.id}`)}
+        />
+      ))}
+      {hasMore && (
+        <Link
+          to="/dashboard/business/campaigns"
+          className="block text-center text-sm font-semibold text-dc-teal-btn hover:underline pt-3"
+        >
+          View all campaigns
+        </Link>
+      )}
+    </div>
+  );
 
   return (
     <DashboardLayout userRole="business_client">
       <div className="min-h-screen bg-white overflow-x-hidden">
-        <DashboardHero
-          roleLabel="Restaurant Dashboard"
-          userName={profile.full_name || 'there'}
-          badge={<LocationBadge />}
-        >
-          <DashboardStatsGrid stats={businessStats} isLoading={campaignsLoading} />
+        <div className="px-4 lg:px-8 pt-8 lg:pt-12 pb-24 md:pb-12">
+          <div className="max-w-2xl lg:max-w-5xl mx-auto space-y-10 lg:space-y-14">
 
-          <DragonShareStatTile
-            label="DragonShare boosts"
-            totalCents={dsBoosts?.totalCents ?? 0}
-            count={dsBoosts?.count ?? 0}
-            href="/dashboard/business/dragonshare"
-          />
-
-          <div data-tour="brief-generator">
-            <QuickActionButtons actions={businessActions} />
-          </div>
-        </DashboardHero>
-
-        {/* White body content */}
-        <div className="px-4 py-6 pb-24 md:pb-0">
-          <div className="max-w-2xl lg:max-w-4xl mx-auto space-y-6">
-
-            {hasActiveLocation && !isReady && (
-              <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3 mb-4">
-                <span className="text-2xl shrink-0">⚠️</span>
-                <div className="text-sm text-amber-900">
-                  <p className="font-semibold mb-1">Complete {locationName}'s setup to unlock features</p>
-                  <p>
-                    This location needs
-                    {missingStripe && ' a connected Stripe account'}
-                    {missingStripe && missingSocial && ' and'}
-                    {missingSocial && ' at least one social media account'}
-                    {' '}before you can create campaigns, promotions, or use DragonShare.
-                  </p>
-                  <button
-                    onClick={() => navigate('/dashboard/business/settings')}
-                    className="text-dc-teal font-semibold mt-2 hover:underline"
-                  >
-                    Go to Settings →
-                  </button>
-                </div>
-              </div>
-            )}
-
-            <PendingActionBanners />
-
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-bold uppercase tracking-wide text-dc-teal">
-                Your Campaigns
-              </p>
-              <div className="flex items-center gap-2">
-                {hasMore && (
-                  <Link
-                    to="/dashboard/business/campaigns"
-                    className="text-xs font-semibold text-dc-teal hover:underline flex items-center gap-0.5"
-                  >
-                    View all <ChevronRight className="w-3 h-3" />
-                  </Link>
-                )}
-                <button
-                  onClick={triggerTour}
-                  className="w-7 h-7 rounded-full bg-teal-400 flex items-center justify-center text-xs text-white"
-                  aria-label="Show tour"
-                >
-                  ?
-                </button>
+            {/* Greeting + the one loud CTA */}
+            <div className="space-y-6 lg:space-y-0 lg:grid lg:grid-cols-[1fr_auto] lg:items-center lg:gap-8">
+              <DashboardGreeting
+                roleLabel="Restaurant Dashboard"
+                userName={profile.full_name || 'there'}
+                badge={<LocationBadge />}
+              />
+              <div data-tour="brief-generator">
+                <HeroPrimaryAction
+                  label="Create a Campaign with Donny"
+                  to="/dashboard/business/campaigns/create"
+                  secondary={{ label: 'Browse Creators', to: '/dashboard/business/creators' }}
+                />
               </div>
             </div>
 
-            {campaignsLoading ? (
-              <div className="border-2 border-dc-teal rounded-2xl p-6 bg-white flex items-center justify-center">
-                <Loader2 className="w-5 h-5 text-dc-teal animate-spin" />
-              </div>
-            ) : recentCampaigns.length === 0 ? (
-              <div className="border-2 border-dc-teal rounded-2xl p-6 bg-white text-center">
-                <LocationEmptyState
-                  icon={Megaphone}
-                  titleTemplate="[Location] is ready for its first campaign"
-                  cta={{ label: 'Create Campaign', to: '/dashboard/business/campaigns/create' }}
+            {/* Everything that needs action, in one quiet frame */}
+            <NeedsAttentionSection>
+              {hasActiveLocation && !isReady && (
+                <div className="flex items-start gap-3 px-4 py-2.5 border-l-2 border-l-amber-400">
+                  <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                  <p className="text-sm text-dc-text flex-1 min-w-0">
+                    <span className="font-semibold">Complete {locationName}'s setup</span> — this location needs
+                    {missingStripe && ' a connected Stripe account'}
+                    {missingStripe && missingSocial && ' and'}
+                    {missingSocial && ' at least one social media account'}
+                    {' '}before you can create campaigns, promotions, or use DragonShare.{' '}
+                    <button
+                      onClick={() => navigate('/dashboard/business/settings')}
+                      className="font-semibold text-dc-teal-btn hover:underline"
+                    >
+                      Go to Settings →
+                    </button>
+                  </p>
+                </div>
+              )}
+              <PendingActionBanners />
+              <RatingPromptManager variant="row" />
+              <SponsorshipRatingPromptManager variant="row" />
+            </NeedsAttentionSection>
+
+            {/* Quiet stats + DragonShare tile */}
+            <section className="space-y-4 lg:space-y-0 lg:flex lg:items-center lg:justify-between lg:gap-8">
+              <StatsRow stats={businessStats} isLoading={campaignsLoading} />
+              <div className="lg:w-72 lg:shrink-0">
+                <DragonShareStatTile
+                  label="DragonShare boosts"
+                  totalCents={dsBoosts?.totalCents ?? 0}
+                  count={dsBoosts?.count ?? 0}
+                  href="/dashboard/business/dragonshare"
                 />
               </div>
-            ) : (
-              <div className="space-y-3">
-                {recentCampaigns.map((campaign) => (
-                  <ActivityFeedCard
-                    key={campaign.id}
-                    title={campaign.title}
-                    subtitle={`${campaign.creatorName ? `@${campaign.creatorName}` : 'Unassigned'} · Due ${formatDate(campaign.deadline)}`}
-                    status={campaign.displayStatus}
-                    onClick={() => navigate(`/dashboard/business/campaigns/${campaign.id}`)}
-                  />
-                ))}
-                {hasMore && (
-                  <Link
-                    to="/dashboard/business/campaigns"
-                    className="block text-center text-sm font-semibold text-dc-teal hover:underline pt-1"
-                  >
-                    View all campaigns
-                  </Link>
-                )}
-              </div>
-            )}
+            </section>
 
-            <DragonShareActivityCard
-              role="business"
-              items={dsActivity ?? []}
-              isLoading={dsActivityLoading}
+            {/* One framed activity zone instead of stacked feeds */}
+            <RecentActivitySection
+              groups={[
+                {
+                  id: 'campaigns',
+                  label: 'Campaigns',
+                  count: recentCampaigns.length,
+                  content: campaignsContent,
+                },
+                {
+                  id: 'dragonshare',
+                  label: 'DragonShare',
+                  content: (
+                    <DragonShareActivityCard
+                      role="business"
+                      items={dsActivity ?? []}
+                      isLoading={dsActivityLoading}
+                    />
+                  ),
+                },
+              ]}
+              action={
+                <>
+                  {hasMore && (
+                    <Link
+                      to="/dashboard/business/campaigns"
+                      className="text-xs font-semibold text-dc-teal-btn hover:underline flex items-center gap-0.5"
+                    >
+                      View all <ChevronRight className="w-3 h-3" />
+                    </Link>
+                  )}
+                  <TourButton onClick={triggerTour} />
+                </>
+              }
             />
 
             <UpcomingPostsWidget />

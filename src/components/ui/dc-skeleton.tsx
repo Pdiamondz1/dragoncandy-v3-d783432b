@@ -33,30 +33,3 @@ export function DCSkeleton({ variant, className, count = 1 }: DCSkeletonProps) {
     </>
   );
 }
-
-interface DCSkeletonGridProps {
-  columns?: number;
-  count?: number;
-  variant?: SkeletonVariant;
-  className?: string;
-}
-
-export function DCSkeletonGrid({
-  columns = 2,
-  count = 4,
-  variant = "stat",
-  className,
-}: DCSkeletonGridProps) {
-  const gridCols =
-    columns === 2
-      ? "grid-cols-2"
-      : columns === 3
-      ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
-      : "grid-cols-2 md:grid-cols-4";
-
-  return (
-    <div className={cn("grid gap-3", gridCols, className)}>
-      <DCSkeleton variant={variant} count={count} />
-    </div>
-  );
-}

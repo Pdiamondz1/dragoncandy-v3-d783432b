@@ -20,6 +20,8 @@ export interface CampaignApplication {
     avatar_url?: string;
     bio?: string;
     skills?: string[];
+    average_rating?: number | null;
+    total_reviews?: number | null;
   };
   campaign?: {
     title: string;

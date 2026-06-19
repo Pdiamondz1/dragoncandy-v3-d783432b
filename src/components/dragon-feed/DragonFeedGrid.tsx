@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useUniqueCreatorPortfolio } from '@/hooks/useUniqueCreatorPortfolio';
-import { DragonFeedCard } from './DragonFeedCard';
+import { FeedTile } from './FeedTile';
+import { FeedViewer } from './FeedViewer';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
@@ -12,6 +13,7 @@ export const DragonFeedGrid: React.FC = () => {
   const { portfolioMedia, loading, error } = useUniqueCreatorPortfolio();
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [viewerIndex, setViewerIndex] = useState<number | null>(null);
 
   const filteredMedia = portfolioMedia.filter((item) => {
     const matchesSearch = item.creatorName.toLowerCase().includes(searchTerm.toLowerCase());
@@ -31,9 +33,9 @@ export const DragonFeedGrid: React.FC = () => {
           <div className="h-10 bg-muted rounded-md flex-1 animate-pulse" />
           <div className="h-10 bg-muted rounded-md w-32 animate-pulse" />
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="aspect-square bg-muted rounded-lg animate-pulse" />
+        <div className="-mx-4 grid grid-cols-3 gap-0.5 lg:mx-0 lg:grid-cols-4 lg:gap-1 xl:grid-cols-5">
+          {Array.from({ length: 12 }).map((_, i) => (
+            <div key={i} className="aspect-square bg-muted animate-pulse" />
           ))}
         </div>
       </div>
@@ -132,11 +134,20 @@ export const DragonFeedGrid: React.FC = () => {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {filteredMedia.map((media) => (
-            <DragonFeedCard key={media.id} media={media} />
+        <div className="-mx-4 grid grid-cols-3 gap-0.5 lg:mx-0 lg:grid-cols-4 lg:gap-1 xl:grid-cols-5">
+          {filteredMedia.map((media, i) => (
+            <FeedTile key={media.id} media={media} onOpen={() => setViewerIndex(i)} />
           ))}
         </div>
+      )}
+
+      {viewerIndex !== null && filteredMedia[viewerIndex] && (
+        <FeedViewer
+          items={filteredMedia}
+          index={viewerIndex}
+          onIndexChange={setViewerIndex}
+          onClose={() => setViewerIndex(null)}
+        />
       )}
     </div>
   );

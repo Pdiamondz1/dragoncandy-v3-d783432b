@@ -29,7 +29,8 @@ export function useInspirationStrip(orgUnitId?: string | null) {
         .eq('event_type', 'dragon_feed_like');
 
       if (orgUnitId) {
-        query = query.eq('org_unit_id', orgUnitId);
+        // Include legacy likes recorded before org_unit_id was written on insert.
+        query = query.or(`org_unit_id.eq.${orgUnitId},org_unit_id.is.null`);
       }
 
       const { data: likeEvents } = await query.order('created_at', { ascending: false });

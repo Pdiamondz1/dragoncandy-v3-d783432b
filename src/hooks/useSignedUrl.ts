@@ -44,13 +44,24 @@ export function useSignedUrl(
   return url;
 }
 
-export function useResolvedStorageUrl(
+/**
+ * Resolve a `profile-assets` storage key to a public URL. Pass-through for values that are
+ * already absolute URLs. Pure/synchronous — safe to call in render or inside `.map()`
+ * (unlike the `use*`-prefixed wrappers, which lint as hooks).
+ */
+export function resolveProfileAssetUrl(
   path: string | null | undefined
 ): string | undefined {
   if (!path) return undefined;
   if (path.startsWith('http')) return path;
   const { data } = supabase.storage.from('profile-assets').getPublicUrl(path);
   return data?.publicUrl;
+}
+
+export function useResolvedStorageUrl(
+  path: string | null | undefined
+): string | undefined {
+  return resolveProfileAssetUrl(path);
 }
 
 export const useResolvedAvatarUrl = useResolvedStorageUrl;

@@ -8,11 +8,14 @@ import { RestaurantCard } from '@/components/dragonshare/RestaurantCard';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import type { RestaurantSearchResult } from '@/hooks/useRestaurantSearch';
+import { usePagedList } from '@/hooks/usePagedList';
+import { LoadMoreButton } from '@/components/shared/LoadMoreButton';
 
 const DragonShareBrowseRestaurants: React.FC = () => {
   const navigate = useNavigate();
   const { restaurants, cuisines, isLoading, filters, setSearch, setCuisine, resetFilters } =
     useRestaurantBrowse();
+  const { visible, hasMore, showing, total, loadMore } = usePagedList(restaurants, 12);
 
   function handleSelect(restaurant: RestaurantSearchResult) {
     navigate(`/dashboard/creator/dragonshare?restaurant=${restaurant.id}`);
@@ -68,14 +71,23 @@ const DragonShareBrowseRestaurants: React.FC = () => {
               </Button>
             </div>
           ) : (
-            <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-              {restaurants.map((restaurant) => (
-                <RestaurantCard
-                  key={restaurant.id}
-                  restaurant={restaurant}
-                  onSelect={handleSelect}
-                />
-              ))}
+            <div className="space-y-4">
+              <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+                {visible.map((restaurant) => (
+                  <RestaurantCard
+                    key={restaurant.id}
+                    restaurant={restaurant}
+                    onSelect={handleSelect}
+                  />
+                ))}
+              </div>
+              <LoadMoreButton
+                hasMore={hasMore}
+                showing={showing}
+                total={total}
+                onClick={loadMore}
+                noun="restaurants"
+              />
             </div>
           )}
         </div>

@@ -60,6 +60,24 @@ verify_jwt = false
 [functions.donny-chat]
 verify_jwt = false
 
+[functions.aios-report-ingest]
+verify_jwt = false
+
+[functions.google-workspace-proxy]
+verify_jwt = false
+
+# Browser-invoked from /internal/corrections; does its own admin check (auth.getUser
+# + user_roles role 'admin'), so the gateway JWT check must be off or it would reject
+# the unauthenticated CORS preflight.
+[functions.wiki-commit-pr]
+verify_jwt = false
+
+# Browser-invoked from /internal/donny; does its own admin check (auth.getUser
+# + user_roles role 'admin'), so the gateway JWT check must be off or it would
+# reject the unauthenticated CORS preflight. Same posture as wiki-commit-pr.
+[functions.wiki-save-answer]
+verify_jwt = false
+
 [functions.donny-campaign-generate]
 verify_jwt = false
 
@@ -87,6 +105,11 @@ verify_jwt = false
 [functions.auto-approve-content]
 verify_jwt = false
 
+# google-chat-donny verifies Google's OWN signed request JWT (chat@system.gserviceaccount.com),
+# not a Supabase JWT — so Supabase JWT verification must be off.
+[functions.google-chat-donny]
+verify_jwt = false
+
 # Webhook/redirect receivers called by external services (no Supabase JWT) — must skip JWT verification.
 [functions.stripe-webhook]
 verify_jwt = false
@@ -98,4 +121,10 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.outstand-webhook]
+verify_jwt = false
+
+[functions.content-performance-capture]
+verify_jwt = false
+
+[functions.content-strategy-recommend]
 verify_jwt = false

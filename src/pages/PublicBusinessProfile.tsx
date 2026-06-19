@@ -1,21 +1,24 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Star, MapPin, Building2, MessageSquare } from 'lucide-react';
+import { InlineRating } from '@/components/reviews/InlineRating';
 import { PublicProfileReviews } from '@/components/profiles/PublicProfileReviews';
 import logo from '@/assets/Transparent_DragonCandy_logo.webp';
 import { SEO } from '@/components/SEO';
 import { PublicPageHeader } from '@/components/PublicPageHeader';
-import { useResolvedLogoUrl } from '@/hooks/useSignedUrl';
+import { useResolvedLogoUrl, resolveProfileAssetUrl } from '@/hooks/useSignedUrl';
 
 interface BusinessProfile {
   id: string;
   user_id: string;
   business_name: string;
   industry: string;
+  average_rating?: number | null;
+  total_reviews?: number | null;
   website_url?: string;
   location?: string;
   description?: string;
@@ -42,6 +45,7 @@ const PublicBusinessProfile = () => {
   const [profile, setProfile] = useState<BusinessProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const reviewsRef = useRef<HTMLDivElement>(null);
   const resolvedLogoUrl = useResolvedLogoUrl(profile?.logo_url);
 
   useEffect(() => {
@@ -55,7 +59,7 @@ const PublicBusinessProfile = () => {
       try {
         const { data, error } = await supabase
           .from('business_profiles')
-          .select('id, user_id, business_name, industry, website_url, location, description, company_size, founded_year, employee_count_range, budget_range, preferred_collaboration_style, timezone, logo_url, instagram_url, facebook_url, linkedin_url, x_url, other_social_url, sample_content_urls, created_at')
+          .select('id, user_id, business_name, industry, average_rating, total_reviews, website_url, location, description, company_size, founded_year, employee_count_range, budget_range, preferred_collaboration_style, timezone, logo_url, instagram_url, facebook_url, linkedin_url, x_url, other_social_url, sample_content_urls, created_at')
           .eq('profile_slug', slug)
           .eq('profile_visibility', 'public')
           .single();
@@ -134,7 +138,9 @@ const PublicBusinessProfile = () => {
     );
   }
 
-  const heroImage = profile.sample_content_urls?.[0] || profile.logo_url;
+  // Resolve storage keys to public URLs — sample_content_urls and logo_url are stored as
+  // `profile-assets` keys, not displayable URLs.
+  const heroImage = resolveProfileAssetUrl(profile.sample_content_urls?.[0] || profile.logo_url);
   const sampleImages = profile.sample_content_urls ?? [];
 
   return (
@@ -144,13 +150,13 @@ const PublicBusinessProfile = () => {
         title={`${profile.business_name} - DragonCandy`}
         description={`View ${profile.business_name}'s profile, active campaigns, and creator collaborations on DragonCandy.`}
         path={`/business/${slug}`}
-        image={profile.logo_url || undefined}
+        image={resolveProfileAssetUrl(profile.logo_url) || undefined}
         type="profile"
         jsonLd={{
           "@context": "https://schema.org",
           "@type": "Organization",
           "name": profile.business_name,
-          "image": profile.logo_url,
+          "image": resolveProfileAssetUrl(profile.logo_url),
           "url": `https://dragoncandy.io/business/${slug}`,
         }}
       />
@@ -188,14 +194,18 @@ const PublicBusinessProfile = () => {
           <h1 className="text-lg font-bold text-gray-900 truncate">
             {profile.business_name}
           </h1>
-          {profile.industry && (
+          {(profile.total_reviews ?? 0) > 0 ? (
+            <InlineRating
+              averageRating={profile.average_rating}
+              totalReviews={profile.total_reviews}
+              onClick={() => reviewsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+            />
+          ) : profile.industry ? (
             <div className="flex items-center gap-1 text-sm text-dc-pink-accent">
               <Star className="h-3.5 w-3.5 fill-dc-pink-accent" />
-              <span className="font-medium uppercase">
-                {profile.industry.replace('_', ' ')}
-              </span>
+              <span className="font-medium uppercase">{profile.industry.replace('_', ' ')}</span>
             </div>
-          )}
+          ) : null}
           {profile.location && (
             <p className="text-xs text-gray-500 uppercase tracking-wide flex items-center gap-1">
               <MapPin className="h-3 w-3" />
@@ -243,7 +253,7 @@ const PublicBusinessProfile = () => {
             {sampleImages.slice(1).map((url, index) => (
               <div key={index} className="aspect-square rounded-xl overflow-hidden">
                 <img
-                  src={url}
+                  src={resolveProfileAssetUrl(url)}
                   alt={`${profile.business_name} content sample ${index + 2}`}
                   className="w-full h-full object-cover"
                   loading="lazy"
@@ -255,7 +265,7 @@ const PublicBusinessProfile = () => {
       )}
 
       {/* Reviews Section */}
-      <div className="px-4 pb-4">
+      <div ref={reviewsRef} className="px-4 pb-4 scroll-mt-4">
         <h2 className="text-lg font-bold text-center mb-3 text-gray-900">Reviews</h2>
         <PublicProfileReviews
           profileId={profile.user_id}

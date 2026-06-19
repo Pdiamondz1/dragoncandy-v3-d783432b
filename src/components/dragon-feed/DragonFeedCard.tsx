@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useQueryClient } from '@tanstack/react-query';
 import { Spinner } from '@/components/ui/spinner';
+import { sanitizeUrlForAnalytics } from '@/lib/analyticsUrl';
 
 interface PortfolioMedia {
   id: string;
@@ -50,7 +51,8 @@ export const DragonFeedCard: React.FC<DragonFeedCardProps> = ({ media }) => {
       await supabase.from('analytics_events').insert({
         event_type: 'dragon_feed_like',
         user_id: user.id,
-        page_url: window.location.href,
+        org_unit_id: activeOrgUnit?.id ?? null,
+        page_url: sanitizeUrlForAnalytics(window.location.href),
         user_agent: navigator.userAgent,
         event_data: {
           content_id: media.id,

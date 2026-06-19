@@ -1,5 +1,5 @@
 // src/hooks/useDragonShareSubmitForm.ts
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useSubmitDragonSharePost } from '@/hooks/useDragonShare';
 import { useDragonShareUpload } from '@/hooks/useDragonShareUpload';
 import { detectPlatformFromUrl } from '@/lib/detectPlatform';
@@ -8,17 +8,102 @@ import { toast } from 'sonner';
 import type { ContentType } from '@/types/dragonshare';
 import type { RestaurantSearchResult } from '@/hooks/useRestaurantSearch';
 
-export function useDragonShareSubmitForm() {
+// Persist the in-progress draft so the uploaded content survives navigation/remount
+// (e.g. opening "Browse all restaurants" and coming back). uploadedUrl is a durable
+// Supabase public storage URL — not a blob — so it's safe to restore from storage.
+const DRAFT_KEY = 'dragonshare-draft';
+
+interface DragonShareDraft {
+  uploadedUrl: string | null;
+  uploadedFileName: string | null;
+  uploadedFileType: string | null;
+  postUrl: string;
+  caption: string;
+}
+
+const EMPTY_DRAFT: DragonShareDraft = {
+  uploadedUrl: null,
+  uploadedFileName: null,
+  uploadedFileType: null,
+  postUrl: '',
+  caption: '',
+};
+
+function loadDraft(): DragonShareDraft {
+  try {
+    const raw = sessionStorage.getItem(DRAFT_KEY);
+    if (!raw) return EMPTY_DRAFT;
+    const parsed = JSON.parse(raw) as Partial<DragonShareDraft>;
+    return {
+      uploadedUrl: parsed.uploadedUrl ?? null,
+      uploadedFileName: parsed.uploadedFileName ?? null,
+      uploadedFileType: parsed.uploadedFileType ?? null,
+      postUrl: parsed.postUrl ?? '',
+      caption: parsed.caption ?? '',
+    };
+  } catch {
+    return EMPTY_DRAFT;
+  }
+}
+
+function clearDraft() {
+  try {
+    sessionStorage.removeItem(DRAFT_KEY);
+  } catch {
+    /* sessionStorage unavailable — ignore */
+  }
+}
+
+export function useDragonShareSubmitForm(
+  sourceBriefId?: string | null,
+  prefillCaption?: string | null,
+) {
   const submitMutation = useSubmitDragonSharePost();
   const { upload, uploading } = useDragonShareUpload();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [uploadedUrl, setUploadedUrl] = useState<string | null>(null);
-  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
-  const [uploadedFileType, setUploadedFileType] = useState<string | null>(null);
-  const [postUrl, setPostUrl] = useState('');
+  const initialDraft = loadDraft();
+  const [uploadedUrl, setUploadedUrl] = useState<string | null>(initialDraft.uploadedUrl);
+  const [uploadedFileName, setUploadedFileName] = useState<string | null>(initialDraft.uploadedFileName);
+  const [uploadedFileType, setUploadedFileType] = useState<string | null>(initialDraft.uploadedFileType);
+  const [postUrl, setPostUrl] = useState(initialDraft.postUrl);
+  const [caption, setCaption] = useState(initialDraft.caption);
   const [selectedOrg, setSelectedOrg] = useState<RestaurantSearchResult | null>(null);
   const [submittedOrgName, setSubmittedOrgName] = useState<string | null>(null);
+
+  // Capture the originating brief id when it first arrives — it must survive the
+  // page clearing the ?brief= URL param (same reason selectedOrg is captured).
+  const [capturedBriefId, setCapturedBriefId] = useState<string | null>(null);
+  useEffect(() => {
+    if (sourceBriefId) setCapturedBriefId(sourceBriefId);
+  }, [sourceBriefId]);
+
+  // Seed the caption from a brief prefill exactly once. Start "already seeded" if the restored
+  // draft already had a caption, so a from-brief prefill never overwrites text the creator typed
+  // before navigating away and back (restored draft wins).
+  const seededCaptionRef = useRef(!!initialDraft.caption.trim());
+  useEffect(() => {
+    if (prefillCaption && !seededCaptionRef.current) {
+      setCaption(prefillCaption);
+      seededCaptionRef.current = true;
+    }
+  }, [prefillCaption]);
+
+  // Keep the persisted draft in sync with the upload/link fields.
+  useEffect(() => {
+    if (!uploadedUrl && !postUrl.trim() && !caption.trim()) {
+      clearDraft();
+      return;
+    }
+    try {
+      sessionStorage.setItem(
+        DRAFT_KEY,
+        JSON.stringify({ uploadedUrl, uploadedFileName, uploadedFileType, postUrl, caption }),
+      );
+    } catch {
+      /* sessionStorage unavailable — ignore */
+    }
+  }, [uploadedUrl, uploadedFileName, uploadedFileType, postUrl, caption]);
 
   const detectedPlatform = postUrl ? detectPlatformFromUrl(postUrl) : null;
 
@@ -34,6 +119,8 @@ export function useDragonShareSubmitForm() {
     setUploadedFileType(null);
     setPostUrl('');
     setSelectedOrg(null);
+    setCapturedBriefId(null);
+    setCaption('');
   }
 
   async function ingestFile(file: File) {
@@ -75,6 +162,8 @@ export function useDragonShareSubmitForm() {
         post_url: postUrl.trim() || null,
         platform: detectedPlatform,
         content_file_path: uploadedUrl,
+        source_brief_id: capturedBriefId,
+        caption: caption.trim() || null,
       });
       reset();
       setSubmittedOrgName(orgName);
@@ -94,6 +183,8 @@ export function useDragonShareSubmitForm() {
     uploadedFileType,
     postUrl,
     setPostUrl,
+    caption,
+    setCaption,
     selectedOrg,
     setSelectedOrg,
     submittedOrgName,

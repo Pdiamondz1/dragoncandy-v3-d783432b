@@ -45,6 +45,39 @@ export default function PaymentsPage() {
     refetchInterval: 30000,
   });
 
+  // content_submitted is not written to payment_events, so the pending-review
+  // count comes from collaboration content_status like the rest of the app.
+  const { data: pendingReviewCount } = useQuery({
+    queryKey: ['payments-pending-review', user?.id, role],
+    queryFn: async (): Promise<number> => {
+      if (role === 'creator') {
+        const { count, error } = await supabase
+          .from('campaign_collaborations')
+          .select('id', { count: 'exact', head: true })
+          .eq('creator_id', user!.id)
+          .eq('content_status', 'submitted');
+        if (error) throw error;
+        return count ?? 0;
+      }
+      const { data: myCampaigns, error: campaignsError } = await supabase
+        .from('campaigns')
+        .select('id')
+        .eq('user_id', user!.id);
+      if (campaignsError) throw campaignsError;
+      if (!myCampaigns?.length) return 0;
+      const { count, error } = await supabase
+        .from('campaign_collaborations')
+        .select('id', { count: 'exact', head: true })
+        .in('campaign_id', myCampaigns.map(c => c.id))
+        .eq('content_status', 'submitted');
+      if (error) throw error;
+      return count ?? 0;
+    },
+    enabled: !!user?.id,
+    refetchOnWindowFocus: true,
+    refetchInterval: 30000,
+  });
+
   usePaymentNotifications(allEvents, role);
 
   // Group events by entity
@@ -89,7 +122,7 @@ export default function PaymentsPage() {
           </div>
         ) : (
           <>
-            <PaymentSummaryCards events={allEvents} userRole={role} />
+            <PaymentSummaryCards events={allEvents} userRole={role} pendingReviewCount={pendingReviewCount} />
 
             {/* Tabs */}
             <div className="flex gap-2">

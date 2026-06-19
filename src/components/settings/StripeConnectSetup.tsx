@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ExternalLink, AlertCircle, CheckCircle2, Clock, Wallet, LayoutDashboard, Loader2, Unplug, RefreshCw, Plus } from 'lucide-react';
@@ -73,6 +74,7 @@ export function StripeConnectSetup({ role }: StripeConnectSetupProps) {
   const [disconnecting, setDisconnecting] = useState(false);
   const [previousAccount, setPreviousAccount] = useState<PreviousAccount | null>(null);
 
+  const queryClient = useQueryClient();
   const config = ROLE_CONFIG[role];
   const isTestMode = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY?.startsWith('pk_test_');
 
@@ -84,12 +86,13 @@ export function StripeConnectSetup({ role }: StripeConnectSetupProps) {
       const { data, error } = await supabase.functions.invoke(`${config.statusFn}${params}`);
       if (error) throw error;
       setStatus(data);
+      queryClient.invalidateQueries({ queryKey: ['payout-status'] });
     } catch (err) {
       console.error('Failed to check payout status:', err);
     } finally {
       setLoading(false);
     }
-  }, [user, activeOrgUnit, config.statusFn]);
+  }, [user, activeOrgUnit, config.statusFn, queryClient]);
 
   useEffect(() => {
     checkStatus();

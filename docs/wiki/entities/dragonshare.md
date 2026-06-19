@@ -59,7 +59,11 @@ A dedicated notifications layer sits on top of the engine:
 - `dragonshare_posts` — creator posts. `post_url`/`platform` nullable (direct uploads);
   `content_file_path` is a **public URL** (see Known Issues); `flagged_at`/`flagged_by`
   and `declined_at`/`declined_by`; default status `verified`. Admin-queue and Donny-scoring
-  columns were removed.
+  columns were removed. `source_brief_id` (FK → `content_briefs`) and `caption` link a submission
+  back to the [[Content Engine]] brief that prompted it and carry the brief's pre-filled caption.
+  Once a boosted post is published, `social_post_log.dragonshare_post_id` references this post and a
+  trigger resolves `source_brief_id` onto the log row and the brief, closing the [[Content Engine]]
+  loop (Phase C).
 - `dragonshare_boosts` — boost payments (pending → transferred).
 - `dragonshare_payouts` — creator payouts (audit ledger, mirrors `payment_events`).
 - `dragonshare_events` — lifecycle events for the [[Data Flywheel]].
@@ -84,6 +88,8 @@ A dedicated notifications layer sits on top of the engine:
 ## See Also
 
 - [[DragonShare Flow]] — visual end-to-end flow diagrams
+- [[Content Engine]] — the brief → DragonShare submission path (`source_brief_id`, caption pre-fill)
+- [[Deep-Link Param Query Race]] — the `?restaurant=&brief=` pre-fill bug + fix
 - [[Trust-Then-Flag Model]]
 - [[Two-Path Boost Payment]]
 - [[Stripe Connect]]

@@ -66,7 +66,8 @@ export function useSubmitDragonSharePost() {
       post_url?: string | null;
       platform?: string | null;
       content_file_path?: string | null;
-      caption?: string;
+      caption?: string | null;
+      source_brief_id?: string | null;
       target_org_unit_id?: string;
       hashtags?: string[];
       mentions?: string[];
@@ -80,6 +81,7 @@ export function useSubmitDragonSharePost() {
           post_url: post.post_url ?? null,
           platform: post.platform ?? null,
           content_file_path: post.content_file_path ?? null,
+          source_brief_id: post.source_brief_id ?? null,
           caption: post.caption ?? null,
           status: 'verified',
           boost_status: 'available',

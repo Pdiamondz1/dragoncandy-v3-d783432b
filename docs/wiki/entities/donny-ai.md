@@ -2,8 +2,8 @@
 title: Donny AI
 type: entity
 created: 2026-05-23
-updated: 2026-06-07
-sources: [docs/PROJECT_CONTEXT.md, docs/DATABASE_SCHEMA.md, docs/STRIPE_PRICES.md, raw/sessions/2026-06-07-core-docs-recent-updates-sync.md]
+updated: 2026-06-13
+sources: [docs/PROJECT_CONTEXT.md, docs/DATABASE_SCHEMA.md, docs/STRIPE_PRICES.md, raw/sessions/2026-06-07-core-docs-recent-updates-sync.md, raw/sessions/2026-06-13-weekly-sync.md]
 tags: [ai, donny, intelligence-layer]
 ---
 
@@ -15,7 +15,7 @@ Donny powers [[DragonDash]]; DragonDash sells.
 
 ## Architecture
 
-- Backend-only via 73 Deno edge functions (one of them `dragonshare-notify`,
+- Backend-only via 80 Deno edge functions (one of them `dragonshare-notify`,
   which routes DragonShare notifications through Donny among other channels)
 - Model routing: Claude Sonnet 4 + Haiku with cost routing matrix
 - Shared utils: `_shared/model-routing`, `_shared/cost-ledger`,
@@ -54,6 +54,41 @@ Donny powers [[DragonDash]]; DragonDash sells.
   content approval Donny auto-generates a schedule into `donny_scheduled_posts`, grouped via
   `plan_group_id`, queued to Outstand. Static per-platform time rules avoid external API calls.
 
+## Google Workspace Export (2026-06-13)
+
+Donny gains three Workspace tools via the `google-workspace-proxy`:
+- **`compose_email_link`** — generates a prefilled Gmail compose URL (zero-scope,
+  no Gmail API required). Full API drafts unblock when the Workspace org exists.
+- **Export-to-Doc** — converts Donny answers, briefings, and strategy pages to Google Docs
+  via `create_doc_from_markdown`.
+- **Brief → Doc on publish** — auto-flow driven by the Monday brief agent.
+
+See [[Google Workspace]] for the full architecture.
+
+## Mobile UX Fixes (2026-06-12/13)
+
+- **Input-first mobile tray** (PR #94): Donny chat opens in a bottom tray with the input
+  field focused first; keyboard-safe (no viewport overlap).
+- **Empty-answer fix** (PR #105): specific question types (platform/revenue/scaling) fell
+  through the routing logic and returned empty strings — fixed.
+
+## Chat → Campaign-Builder Pre-fill (2026-06-18, PR #124)
+
+When a restaurant asks Donny to create a campaign, the chat hands a distilled **brief** to
+the Create-a-Campaign builder so it opens **pre-filled** (lands on the "Launchpad" with
+generated idea(s)) instead of a blank form.
+
+- In-app chat runs through **`donny-orchestrator`** (not `donny-chat`). New sub-agent tool
+  **`prepare_campaign`** builds a role-aware route
+  `/dashboard/{business,brand}/campaigns/create?brief=<encoded>` (brief encoded
+  server-side, never by the LLM); `campaign_agent` was scoped to *existing* campaigns only.
+- `useCampaignCreator` reacts to the `?brief=` param (deduped, also fires on same-route
+  navigation), strips it, and auto-runs the existing `submitInput` →
+  `donny-campaign-generate` → pre-filled Launchpad. No new tables/migrations.
+- Also fixed a latent broken route: the campaign-summary suggestion pointed at the
+  non-existent `/dashboard/brand/campaigns/new` → now the shared `…/campaigns/create`.
+- Serves the [[DragonCandy Platform]] North Star ("less typing = more margin").
+
 ## Key Decisions
 
 - Donny as service layer, not standalone AI tool (commoditization defense)
@@ -64,6 +99,7 @@ Donny powers [[DragonDash]]; DragonDash sells.
 
 - [[DragonDash]]
 - [[DragonCandy Platform]]
+- [[Google Workspace]]
 - [[Pricing Architecture]]
 - [[Donny Audit Phase 1 Session]]
 - [[Donny Audit Phase 2 Session]]

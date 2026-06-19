@@ -1,7 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Building2, MapPin, Star, ExternalLink, Globe, Instagram } from 'lucide-react';
+import { Building2, MapPin, ExternalLink, Globe, Instagram } from 'lucide-react';
+import { InlineRating } from '@/components/reviews/InlineRating';
 import { RestaurantProfile } from '@/hooks/useRestaurantProfile';
 import { Skeleton } from '@/components/ui/skeleton';
 import { safeUrl } from '@/lib/safeUrl';
@@ -77,17 +78,7 @@ export const RestaurantProfileCard = ({ restaurant, isLoading }: RestaurantProfi
               )}
             </div>
 
-            {restaurant.average_rating !== null && restaurant.total_reviews !== null && (
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1">
-                  <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                  <span className="text-sm font-medium">{restaurant.average_rating.toFixed(1)}</span>
-                </div>
-                <span className="text-xs text-muted-foreground">
-                  ({restaurant.total_reviews} {restaurant.total_reviews === 1 ? 'review' : 'reviews'})
-                </span>
-              </div>
-            )}
+            <InlineRating averageRating={restaurant.average_rating} totalReviews={restaurant.total_reviews} />
           </div>
         </div>
 

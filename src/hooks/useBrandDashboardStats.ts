@@ -4,7 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import type { DashboardSummary } from '@/types/dashboard';
 
 export interface BrandDashboardStats {
-  // Hybrid stats for DashboardStatsGrid
+  // Hybrid stats for the dashboard StatsRow
   activeCampaigns: number;    // own campaigns + active sponsorships
   totalSpend: number;          // sum of paid sponsorship amounts
   creatorsConnected: number;   // direct conversations count

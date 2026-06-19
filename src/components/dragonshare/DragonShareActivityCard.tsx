@@ -50,6 +50,7 @@ function pillFor(item: DSActivityItem, role: 'creator' | 'business') {
   }
 }
 
+/** Frameless feed — embedded in a dashboard section that provides its own chrome. */
 export function DragonShareActivityCard({ role, items, isLoading }: DragonShareActivityCardProps) {
   const basePath =
     role === 'creator' ? '/dashboard/creator/dragonshare' : '/dashboard/business/dragonshare';
@@ -60,13 +61,8 @@ export function DragonShareActivityCard({ role, items, isLoading }: DragonShareA
       : 'Creator posts about you will show up here';
 
   return (
-    <div className="border-2 border-dc-teal rounded-2xl bg-white overflow-hidden">
-      <div className="px-4 pt-4 pb-2">
-        <p className="font-sans text-sm font-bold uppercase tracking-wide text-dc-teal">
-          DragonShare Activity
-        </p>
-      </div>
-      <div className="px-4 pb-4">
+    <div>
+      <div>
         {isLoading ? (
           <div className="space-y-4">
             {[...Array(3)].map((_, i) => (

@@ -17,6 +17,8 @@ import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { VerifiedRoute } from '@/components/VerifiedRoute';
 import { BusinessRoute } from "@/components/BusinessRoute";
 import { BrandRoute } from "@/components/BrandRoute";
+import { InternalRoute } from "@/components/InternalRoute";
+import { isInternalHost, isAllowedOnInternalHost } from "@/lib/internalHost";
 import { Spinner } from "@/components/ui/spinner";
 
 import { SiteGateGuard } from "@/components/SiteGateGuard";
@@ -35,6 +37,7 @@ import { PageTransition } from "@/components/PageTransition";
 import type { UserRole } from "@/types/user";
 
 import LandingPage from "./pages/LandingPage";
+const PitchDeck = lazy(() => import("./pitch/PitchDeck"));
 const ProfileSetup = lazy(() => import("./pages/ProfileSetup"));
 const BusinessDashboard = lazy(() => import("./pages/BusinessDashboard"));
 const BrandDashboard = lazy(() => import("./pages/BrandDashboard"));
@@ -95,6 +98,18 @@ const TermsOfService = lazy(() => import("./pages/legal/TermsOfService"));
 const ContentCalendar = lazy(() => import("./pages/ContentCalendar"));
 const NotificationsPage = lazy(() => import("./pages/NotificationsPage"));
 const HelpBriefDrawer = lazy(() => import("./features/donny/HelpBriefDrawer").then(m => ({ default: m.HelpBriefDrawer })));
+const InternalLayout = lazy(() => import("./components/internal/InternalLayout").then(m => ({ default: m.InternalLayout })));
+const InternalOverview = lazy(() => import("./pages/internal/InternalOverview"));
+const InternalWeight = lazy(() => import("./pages/internal/InternalWeight"));
+const InternalExpenses = lazy(() => import("./pages/internal/InternalExpenses"));
+const InternalStrategy = lazy(() => import("./pages/internal/InternalStrategy"));
+const InternalDonny = lazy(() => import("./pages/internal/InternalDonny"));
+const InternalBriefings = lazy(() => import("./pages/internal/InternalBriefings"));
+const InternalFindings = lazy(() => import("./pages/internal/InternalFindings"));
+const InternalCorrections = lazy(() => import("./pages/internal/InternalCorrections"));
+const InternalAuth = lazy(() => import("./pages/internal/InternalAuth"));
+const InternalWorkspace = lazy(() => import("./pages/internal/InternalWorkspace"));
+const WorkspaceCallback = lazy(() => import("./pages/internal/WorkspaceCallback"));
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -143,6 +158,11 @@ function AnimatedRoutes() {
     }
   }, [location.pathname]);
 
+  // internal.dragoncandy.io serves only the AIOS surface (plus auth/email-verify).
+  if (isInternalHost() && !isAllowedOnInternalHost(location.pathname)) {
+    return <Navigate to="/internal" replace />;
+  }
+
   return (
     <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><Spinner /></div>}>
       <PageTransition locationKey={location.pathname}>
@@ -150,7 +170,8 @@ function AnimatedRoutes() {
           <Route path="/" element={<LandingPage />} />
           <Route path="/home" element={<LandingPage />} />
           <Route path="/landing" element={<LandingPage />} />
-          <Route path="/auth" element={<AuthPage />} />
+          {/* Internal host gets the founders-only login (no signup surface) */}
+          <Route path="/auth" element={isInternalHost() ? <InternalAuth /> : <AuthPage />} />
           <Route path="/verify-email" element={<VerifyEmail />} />
 
           <Route path="/promo/:promotionId" element={
@@ -307,6 +328,20 @@ function AnimatedRoutes() {
           <Route path="/restore-account" element={<ProtectedRoute><RestoreAccountPage /></ProtectedRoute>} />
           <Route path="/invite/accept" element={<InviteAcceptPage />} />
 
+          {/* Internal AIOS surface (internal.dragoncandy.io / /internal) */}
+          <Route path="/internal" element={<InternalRoute><InternalLayout /></InternalRoute>}>
+            <Route index element={<InternalOverview />} />
+            <Route path="weight" element={<InternalWeight />} />
+            <Route path="strategy" element={<InternalStrategy />} />
+            <Route path="briefings" element={<InternalBriefings />} />
+            <Route path="workspace" element={<InternalWorkspace />} />
+            <Route path="workspace/callback" element={<WorkspaceCallback />} />
+            <Route path="expenses" element={<InternalRoute tier="admin"><InternalExpenses /></InternalRoute>} />
+            <Route path="donny" element={<InternalRoute tier="admin"><InternalDonny /></InternalRoute>} />
+            <Route path="findings" element={<InternalRoute tier="admin"><InternalFindings /></InternalRoute>} />
+            <Route path="corrections" element={<InternalRoute tier="admin"><InternalCorrections /></InternalRoute>} />
+          </Route>
+
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
@@ -340,7 +375,7 @@ function AuthenticatedShell({ children }: { children: React.ReactNode }) {
 
 function AppShell() {
   const { pathname } = useLocation();
-  const showDonny = !PUBLIC_PATHS.has(pathname);
+  const showDonny = !PUBLIC_PATHS.has(pathname) && !pathname.startsWith('/internal');
 
   return (
     <div className="flex h-screen">
@@ -361,6 +396,22 @@ function AppLayout() {
   const { loading } = useAuth();
   const { pathname } = useLocation();
   const isPublic = PUBLIC_PATHS.has(pathname);
+
+  // Standalone, unlisted investor deck — no AppShell/nav/Donny/SiteGate/auth chrome.
+  // Still nested under ThemeProvider/QueryClient/LazyMotion/BrowserRouter (all above AppLayout).
+  if (pathname === "/pitch" || pathname.startsWith("/pitch/")) {
+    return (
+      <Suspense
+        fallback={
+          <div className="flex min-h-screen items-center justify-center bg-dc-dark">
+            <Spinner className="h-10 w-10 border-teal-400" />
+          </div>
+        }
+      >
+        <PitchDeck />
+      </Suspense>
+    );
+  }
 
   if (loading && isPublic && hasSessionHint()) {
     return (

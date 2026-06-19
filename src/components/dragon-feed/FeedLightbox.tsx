@@ -7,6 +7,8 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Heart, MessageSquare, X, ChevronLeft, ChevronRight, User, Play } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
+import { sanitizeUrlForAnalytics } from '@/lib/analyticsUrl';
 
 interface FeedLightboxProps {
   item: FeedMediaItem | null;
@@ -28,6 +30,7 @@ export const FeedLightbox: React.FC<FeedLightboxProps> = ({
   const videoRef = useRef<HTMLVideoElement>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { activeOrgUnit } = useAuth();
 
   // Hydrate liked state from database when item changes
   useEffect(() => {
@@ -81,7 +84,8 @@ export const FeedLightbox: React.FC<FeedLightboxProps> = ({
       await supabase.from('analytics_events').insert({
         event_type: 'dragon_feed_like',
         user_id: user.id,
-        page_url: window.location.href,
+        org_unit_id: activeOrgUnit?.id ?? null,
+        page_url: sanitizeUrlForAnalytics(window.location.href),
         user_agent: navigator.userAgent,
         event_data: {
           content_id: item?.id,

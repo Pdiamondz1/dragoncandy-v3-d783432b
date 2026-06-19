@@ -60,7 +60,7 @@ export const UpcomingPostsWidget: React.FC = () => {
   if (isLoading || !posts || posts.length === 0) return null;
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
+    <div className="bg-white rounded-2xl border border-dc-teal/15 shadow-dc-sm p-4">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <CalendarDays className="h-4 w-4 text-dc-teal" />
@@ -79,7 +79,7 @@ export const UpcomingPostsWidget: React.FC = () => {
         {posts.map((post) => (
           <div
             key={post.id}
-            className="flex items-center gap-3 p-2.5 rounded-xl bg-gray-50 border border-gray-100"
+            className="flex items-center gap-3 p-2.5 rounded-xl bg-dc-teal/5 border border-dc-teal/10"
           >
             {/* Thumbnail */}
             <div className="w-10 h-10 rounded-lg bg-gray-200 flex-shrink-0 overflow-hidden">

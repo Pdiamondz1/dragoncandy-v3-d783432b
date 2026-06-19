@@ -2,6 +2,7 @@
 
 import type { DeliveryTier } from '@/types/campaignMedia';
 import { TIER_LIMITS } from '@/types/campaignMedia';
+import { resolveProfileAssetUrl } from '@/hooks/useSignedUrl';
 
 /**
  * Maps raw DB delivery_type values to the type system DeliveryTier.
@@ -120,7 +121,9 @@ export function getCoverImageUrl(
   const aiPreview = mediaItems?.find(m => m.media_type === 'ai_preview');
   if (aiPreview && aiPreviewStatus === 'ready') return { url: aiPreview.file_url, type: 'ai_preview' };
 
-  if (businessLogoUrl) return { url: businessLogoUrl, type: 'logo' };
+  // The business logo is stored as a `profile-assets` storage key — resolve it to a
+  // public URL before it reaches an <img src> (reference/ai_preview are already URLs).
+  if (businessLogoUrl) return { url: resolveProfileAssetUrl(businessLogoUrl) ?? null, type: 'logo' };
 
   return { url: null, type: 'gradient' };
 }

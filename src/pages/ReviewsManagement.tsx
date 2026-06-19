@@ -9,13 +9,49 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ReviewsList } from '@/components/reviews/ReviewsList';
 import { RatingStats } from '@/components/reviews/RatingStats';
 import { ReviewsErrorBoundary } from '@/components/reviews/ReviewsErrorBoundary';
+import { StarRating } from '@/components/reviews/StarRating';
+import { useMyGivenReviews, type GivenReview } from '@/hooks/useMyGivenReviews';
 import { Search, Download } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
+
+const GivenReviewsList = ({ reviews, isLoading }: { reviews?: GivenReview[]; isLoading: boolean }) => {
+  if (isLoading) {
+    return <p className="text-sm text-dc-text-muted py-2">Loading…</p>;
+  }
+  if (!reviews || reviews.length === 0) {
+    return <p className="text-sm text-dc-text-muted py-2">No reviews given yet.</p>;
+  }
+  return (
+    <div className="space-y-3">
+      {reviews.map((review) => (
+        <div key={review.id} className="border border-dc-teal/40 rounded-xl p-3 space-y-1.5">
+          <div className="flex items-center gap-2 flex-wrap">
+            <StarRating rating={review.rating} readonly size="sm" />
+            {!review.is_revealed && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-dc-pink/30 text-dc-pink-accent text-[11px] font-semibold px-2 py-0.5">
+                ⏳ Hidden until they review back
+              </span>
+            )}
+          </div>
+          {review.review_text && (
+            <p className="text-sm text-dc-text leading-snug">{review.review_text}</p>
+          )}
+          <p className="text-[11px] text-dc-text-muted">
+            {new Date(review.created_at).toLocaleDateString()}
+          </p>
+        </div>
+      ))}
+    </div>
+  );
+};
 
 const ReviewsManagement = () => {
   const { user, profile } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'received' | 'given'>('all');
+
+  // Hooks must run before any early return (rules-of-hooks). The hook no-ops when userId is undefined.
+  const { data: givenReviews, isLoading: givenLoading } = useMyGivenReviews(user?.id);
 
   if (!user || !profile) {
     return null;
@@ -23,7 +59,6 @@ const ReviewsManagement = () => {
 
   const isCreator = profile.role === 'content_creator';
   const receivedReviewType = isCreator ? 'business_to_creator' : 'creator_to_business';
-  const givenReviewType = isCreator ? 'creator_to_business' : 'business_to_creator';
 
   return (
     <DashboardLayout userRole={profile.role}>
@@ -92,11 +127,7 @@ const ReviewsManagement = () => {
               </div>
               <div className="border-2 border-dc-teal rounded-2xl p-4">
                 <p className="font-sans text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">Reviews Given</p>
-                <ReviewsList
-                  revieweeId={user.id}
-                  reviewType={givenReviewType}
-                  limit={5}
-                />
+                <GivenReviewsList reviews={givenReviews} isLoading={givenLoading} />
               </div>
             </TabsContent>
 
@@ -111,10 +142,7 @@ const ReviewsManagement = () => {
 
             <TabsContent value="given" className="mt-4">
               <div className="border-2 border-dc-teal rounded-2xl p-4">
-                <ReviewsList
-                  revieweeId={user.id}
-                  reviewType={givenReviewType}
-                />
+                <GivenReviewsList reviews={givenReviews} isLoading={givenLoading} />
               </div>
             </TabsContent>
           </Tabs>

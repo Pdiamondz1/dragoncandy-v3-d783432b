@@ -41,6 +41,38 @@ accounts (previously placeholder/initial avatars).
 
 Spec: account recovery after billing wipe (`docs/superpowers/...`, 2026-06).
 
+## Analytics & measurability (2026-06-11 findings)
+
+The `content-performance-capture` cron reads per-post engagement from Outstand's
+`GET /posts/{id}/analytics`. Two limitations discovered while building the
+[[Content Engine]] read surface:
+
+- **No deletion/archival signal.** The analytics response
+  (`{ success, post{id,publishedAt,createdAt}, metrics_by_account[],
+  aggregated_metrics{total_*,average_engagement_rate} }`) has **no `status` /
+  `deleted_at` / `archived` field**. Per-account status is only
+  `pending | published | failed`. Webhooks document only `post.published` and
+  `post.error` — there is **no `deleted` event** (the marketing site name-drops
+  one, but no event/payload exists in the docs). So there is **no reliable way to
+  know a user deleted or archived a published post on the platform.**
+- **Empty `metrics_by_account` = "unmeasurable", and it's ambiguous.** When
+  Outstand returns `success:true` but an **empty `metrics_by_account[]`**, the
+  `aggregated_metrics` are all-zero as a *consequence of no per-account data* —
+  NOT a measured zero. An empty array is identical for a deleted post, an
+  archived post, a disconnected/revoked account, a never-truly-published post,
+  AND analytics-not-yet-populated. A genuinely live, measurable post returns
+  **≥1** per-account entry (even when its counts are 0).
+- **Observed:** the one captured prod post (`mJuDd`, YouTube) has had an **empty
+  `metrics_by_account` for 5+ days** across its 24h and 72h snapshots — past any
+  analytics lag, suggesting our published test posts are **fundamentally
+  unmeasurable** by Outstand today (connection scope / not truly published to a
+  live account), not merely unwatched. Open question for launch: *can the publish
+  pipeline ever produce a populated `metrics_by_account`?* (Settle with a real
+  post + an Outstand-side check.)
+
+Consequence: the Content Engine treats empty `metrics_by_account` as
+**"metrics unavailable"** rather than a measured 0 (see [[Content Engine]]).
+
 ## Integration Status
 
 - Phases 1–3 complete (account linking + delegated posting); phase 4 (analytics

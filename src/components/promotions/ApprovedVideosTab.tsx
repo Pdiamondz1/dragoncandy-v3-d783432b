@@ -15,6 +15,8 @@ import { format } from 'date-fns';
 import { PromotionSubmission } from '@/hooks/usePromotions';
 import { useVideoUrl } from '@/hooks/useVideoUrl';
 import { toast } from '@/hooks/use-toast';
+import { usePagedList } from '@/hooks/usePagedList';
+import { LoadMoreButton } from '@/components/shared/LoadMoreButton';
 
 const isImageUrl = (url: string | null | undefined): boolean => {
   if (!url) return false;
@@ -189,6 +191,9 @@ export const ApprovedVideosTab: React.FC<ApprovedVideosTabProps> = ({
   rejectedSubmissions,
   isLoading,
 }) => {
+  const approved = usePagedList(approvedSubmissions, 12);
+  const rejected = usePagedList(rejectedSubmissions, 12);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -239,10 +244,19 @@ export const ApprovedVideosTab: React.FC<ApprovedVideosTabProps> = ({
               </CardContent>
             </Card>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {approvedSubmissions.map((submission) => (
-                <VideoCard key={submission.id} submission={submission} />
-              ))}
+            <div className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {approved.visible.map((submission) => (
+                  <VideoCard key={submission.id} submission={submission} />
+                ))}
+              </div>
+              <LoadMoreButton
+                hasMore={approved.hasMore}
+                showing={approved.showing}
+                total={approved.total}
+                onClick={approved.loadMore}
+                noun="videos"
+              />
             </div>
           )}
         </TabsContent>
@@ -259,10 +273,19 @@ export const ApprovedVideosTab: React.FC<ApprovedVideosTabProps> = ({
               </CardContent>
             </Card>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {rejectedSubmissions.map((submission) => (
-                <VideoCard key={submission.id} submission={submission} />
-              ))}
+            <div className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {rejected.visible.map((submission) => (
+                  <VideoCard key={submission.id} submission={submission} />
+                ))}
+              </div>
+              <LoadMoreButton
+                hasMore={rejected.hasMore}
+                showing={rejected.showing}
+                total={rejected.total}
+                onClick={rejected.loadMore}
+                noun="videos"
+              />
             </div>
           )}
         </TabsContent>

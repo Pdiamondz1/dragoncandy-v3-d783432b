@@ -1,6 +1,6 @@
 // src/hooks/useCampaignCreator.ts
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
@@ -87,6 +87,13 @@ export function useCampaignCreator() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Donny chat handoff: a `?brief=` param means Donny scoped a campaign in chat.
+  // We react to the param (not just mount) so it also works when the user is
+  // already on the builder — same-route navigation keeps this component mounted.
+  // A ref dedupes so each distinct brief fires generation exactly once.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const lastBriefRef = useRef<string | null>(null);
 
   // Role
   const [userRole, setUserRole] = useState<'business_client' | 'brand' | null>(null);
@@ -276,6 +283,26 @@ export function useCampaignCreator() {
       setIsExtracting(false);
     }
   }, [userRole, user, inspirationRefs]);
+
+  // Donny chat handoff: when a `?brief=` param appears, auto-run generation from
+  // it, then strip the param. Waits for the user's role (so we send the correct
+  // one) and for any in-flight generation to settle before consuming the brief,
+  // and dedupes via lastBriefRef so each distinct brief fires exactly once — this
+  // also covers same-route navigation when the user is already on the builder.
+  useEffect(() => {
+    const brief = searchParams.get('brief');
+    if (!brief) return;
+    if (userRole === null) return;
+    if (isExtracting) return;
+    if (lastBriefRef.current === brief) return;
+    lastBriefRef.current = brief;
+
+    const next = new URLSearchParams(searchParams);
+    next.delete('brief');
+    setSearchParams(next, { replace: true });
+
+    void submitInput(brief, 'text');
+  }, [searchParams, userRole, isExtracting, submitInput, setSearchParams]);
 
   // Screen 2: Select idea
   const selectIdea = useCallback((ideaId: string) => {

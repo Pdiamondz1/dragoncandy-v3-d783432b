@@ -10,6 +10,8 @@ export interface RestaurantSearchResult {
   org_type: string;
   address: string | null;
   brand_category: string | null;
+  average_rating: number | null;
+  total_reviews: number | null;
 }
 
 export function useRestaurantSearch(searchTerm: string, enabled = true) {

@@ -17,8 +17,11 @@ import type { DragonSharePostWithRelations } from '@/types/dragonshare';
 import { deriveCreatorPostState } from '@/lib/dragonsharePostState';
 import { WatermarkedMedia } from '@/components/dragonshare/WatermarkedMedia';
 import { PrerequisiteGate } from '@/components/PrerequisiteGate';
+import { usePagedList } from '@/hooks/usePagedList';
+import { LoadMoreButton } from '@/components/shared/LoadMoreButton';
 import { useResolvedLogoUrl } from '@/hooks/useSignedUrl';
 import { supabase } from '@/integrations/supabase/client';
+import { composeCaption } from '@/lib/composeCaption';
 import { useQuery } from '@tanstack/react-query';
 import type { RestaurantSearchResult } from '@/hooks/useRestaurantSearch';
 
@@ -32,32 +35,69 @@ const statusConfig: Record<ActivePostStatus, { label: string; className: string;
   expired: { label: 'Expired', className: 'bg-dc-teal/10 text-dc-teal', icon: Clock },
 };
 
+type ContentBriefShape = { sample_caption?: string; hashtags?: string[] };
+
 function usePreselectedOrg() {
   const [searchParams, setSearchParams] = useSearchParams();
   const restaurantId = searchParams.get('restaurant');
+  // Capture BOTH params once so they survive the URL cleanup below. Without capturing the restaurant
+  // id, deleting ?restaurant= re-keys/disables the org query and `org` reverts to undefined before the
+  // brief query resolves — so the brief→org match (and therefore the caption pre-fill AND the Slice-2
+  // source_brief_id link) would never land.
+  const [capturedRestaurantId] = useState(() => searchParams.get('restaurant'));
+  const [briefId] = useState(() => searchParams.get('brief'));
 
   const { data: org } = useQuery({
-    queryKey: ['preselected-org', restaurantId],
+    queryKey: ['preselected-org', capturedRestaurantId],
     queryFn: async (): Promise<RestaurantSearchResult | null> => {
-      if (!restaurantId) return null;
+      if (!capturedRestaurantId) return null;
       const { data, error } = await supabase.rpc('get_restaurant_by_org_id', {
-        target_org_id: restaurantId,
+        target_org_id: capturedRestaurantId,
       });
       if (error || !data || data.length === 0) return null;
       return data[0] as RestaurantSearchResult;
     },
-    enabled: !!restaurantId,
+    enabled: !!capturedRestaurantId,
   });
+
+  // Validate the brief is the creator's own (RLS) AND targets the same org; also read the brief
+  // jsonb so we can pre-fill the caption.
+  const { data: briefRow } = useQuery({
+    queryKey: ['preselected-brief', briefId],
+    queryFn: async (): Promise<{ organization_id: string; brief: ContentBriefShape } | null> => {
+      if (!briefId) return null;
+      const { data, error } = await supabase
+        .from('content_briefs')
+        .select('organization_id, brief')
+        .eq('id', briefId)
+        .maybeSingle();
+      if (error || !data) return null;
+      return data as { organization_id: string; brief: ContentBriefShape };
+    },
+    enabled: !!briefId,
+  });
+
+  const briefOrgId = briefRow?.organization_id ?? null;
+  // get_restaurant_by_org_id returns organizations.id == the captured ?restaurant= id, so match the
+  // brief's organization_id against the stable captured id (not the async `org`, which may be mid-revert).
+  const sourceBriefId =
+    briefId && capturedRestaurantId && briefOrgId === capturedRestaurantId ? briefId : null;
+  // Only pre-fill when the link is valid (owned + org-matched), so a stale/hand-edited URL never injects text.
+  const prefillCaption =
+    sourceBriefId && briefRow
+      ? composeCaption(briefRow.brief?.sample_caption, briefRow.brief?.hashtags)
+      : null;
 
   useEffect(() => {
     if (restaurantId && org) {
       const next = new URLSearchParams(searchParams);
       next.delete('restaurant');
+      next.delete('brief');
       setSearchParams(next, { replace: true });
     }
   }, [org, restaurantId, searchParams, setSearchParams]);
 
-  return org ?? null;
+  return { org: org ?? null, sourceBriefId, prefillCaption: prefillCaption || null };
 }
 
 const CreatorDragonShare: React.FC = () => {
@@ -67,7 +107,7 @@ const CreatorDragonShare: React.FC = () => {
   const orgIds = (posts ?? []).map((p) => p.target_org_id);
   const { data: resolvedOrgs } = useResolveDragonShareOrgs(orgIds);
   const postsWithOrg = mergeResolvedOrgs(posts ?? [], resolvedOrgs ?? []);
-  const preselectedOrg = usePreselectedOrg();
+  const { org: preselectedOrg, sourceBriefId, prefillCaption } = usePreselectedOrg();
 
   useEffect(() => {
     if (preselectedOrg) {
@@ -81,6 +121,7 @@ const CreatorDragonShare: React.FC = () => {
     if (activeTab === 'boosted') return p.boost_status === 'boosted';
     return p.status === 'expired' || p.boost_status === 'expired';
   });
+  const { visible, hasMore, showing, total, loadMore } = usePagedList(filteredPosts, 12);
 
   const tabs: { key: Tab; label: string; count: number }[] = [
     { key: 'submitted', label: 'Submitted', count: postsWithOrg.filter((p) => p.status === 'verified').length },
@@ -113,7 +154,7 @@ const CreatorDragonShare: React.FC = () => {
           <div className="flex flex-col lg:flex-row lg:gap-6 lg:items-start">
             {/* Left: Inline form (desktop only) */}
             <div className="hidden lg:block lg:w-[440px] lg:flex-shrink-0">
-              <DragonShareInlineForm preselectedOrg={preselectedOrg} />
+              <DragonShareInlineForm preselectedOrg={preselectedOrg} sourceBriefId={sourceBriefId} prefillCaption={prefillCaption} />
             </div>
 
             {/* Right: Post history */}
@@ -152,10 +193,17 @@ const CreatorDragonShare: React.FC = () => {
                 <div className="space-y-4">
                   <DragonShareHowItWorks role="creator" />
                   <div className="grid gap-4 lg:grid-cols-2">
-                    {filteredPosts.map((post) => (
+                    {visible.map((post) => (
                       <CreatorPostCard key={post.id} post={post} />
                     ))}
                   </div>
+                  <LoadMoreButton
+                    hasMore={hasMore}
+                    showing={showing}
+                    total={total}
+                    onClick={loadMore}
+                    noun="posts"
+                  />
                 </div>
               )}
             </div>
@@ -164,7 +212,7 @@ const CreatorDragonShare: React.FC = () => {
 
         {/* Mobile-only: bottom sheet */}
         <div className="lg:hidden">
-          <DragonShareSubmitSheet open={submitOpen} onOpenChange={setSubmitOpen} />
+          <DragonShareSubmitSheet open={submitOpen} onOpenChange={setSubmitOpen} preselectedOrg={preselectedOrg} sourceBriefId={sourceBriefId} prefillCaption={prefillCaption} />
         </div>
       </PrerequisiteGate>
     </DashboardLayout>

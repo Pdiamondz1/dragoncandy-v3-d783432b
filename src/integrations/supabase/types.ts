@@ -1,4 +1,4 @@
-﻿export type Json =
+export type Json =
   | string
   | number
   | boolean
@@ -11,6 +11,31 @@ export type Database = {
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "14.5"
+  }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
   }
   public: {
     Tables: {
@@ -56,6 +81,177 @@ export type Database = {
           status?: string
           target_id?: string
           target_type?: string
+        }
+        Relationships: []
+      }
+      aios_briefings: {
+        Row: {
+          body_md: string
+          created_at: string
+          gdoc_id: string | null
+          gdoc_owner_user_id: string | null
+          generated_by: string
+          id: string
+          kpis: Json
+          published_at: string | null
+          title: string
+          updated_at: string
+          week_start: string
+        }
+        Insert: {
+          body_md: string
+          created_at?: string
+          gdoc_id?: string | null
+          gdoc_owner_user_id?: string | null
+          generated_by?: string
+          id?: string
+          kpis?: Json
+          published_at?: string | null
+          title: string
+          updated_at?: string
+          week_start: string
+        }
+        Update: {
+          body_md?: string
+          created_at?: string
+          gdoc_id?: string | null
+          gdoc_owner_user_id?: string | null
+          generated_by?: string
+          id?: string
+          kpis?: Json
+          published_at?: string | null
+          title?: string
+          updated_at?: string
+          week_start?: string
+        }
+        Relationships: []
+      }
+      aios_corrections: {
+        Row: {
+          applied_at: string | null
+          created_at: string
+          current_value: Json
+          id: string
+          proposed_by: string
+          proposed_by_user: string | null
+          proposed_value: Json
+          rationale_md: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          target_ref: string
+          target_type: string
+          title: string
+          updated_at: string
+          wiki_committed_at: string | null
+          wiki_pr_number: number | null
+          wiki_pr_url: string | null
+        }
+        Insert: {
+          applied_at?: string | null
+          created_at?: string
+          current_value: Json
+          id?: string
+          proposed_by?: string
+          proposed_by_user?: string | null
+          proposed_value: Json
+          rationale_md: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          target_ref: string
+          target_type: string
+          title: string
+          updated_at?: string
+          wiki_committed_at?: string | null
+          wiki_pr_number?: number | null
+          wiki_pr_url?: string | null
+        }
+        Update: {
+          applied_at?: string | null
+          created_at?: string
+          current_value?: Json
+          id?: string
+          proposed_by?: string
+          proposed_by_user?: string | null
+          proposed_value?: Json
+          rationale_md?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          target_ref?: string
+          target_type?: string
+          title?: string
+          updated_at?: string
+          wiki_committed_at?: string | null
+          wiki_pr_number?: number | null
+          wiki_pr_url?: string | null
+        }
+        Relationships: []
+      }
+      aios_dashboard_settings: {
+        Row: {
+          key: string
+          updated_at: string
+          updated_by: string | null
+          value: Json
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          updated_by?: string | null
+          value: Json
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: Json
+        }
+        Relationships: []
+      }
+      aios_findings: {
+        Row: {
+          created_at: string
+          evidence: Json
+          fingerprint: string | null
+          id: string
+          last_seen_at: string
+          occurrences: number
+          severity: string
+          source: string
+          status: string
+          summary_md: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          evidence?: Json
+          fingerprint?: string | null
+          id?: string
+          last_seen_at?: string
+          occurrences?: number
+          severity: string
+          source?: string
+          status?: string
+          summary_md: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          evidence?: Json
+          fingerprint?: string | null
+          id?: string
+          last_seen_at?: string
+          occurrences?: number
+          severity?: string
+          source?: string
+          status?: string
+          summary_md?: string
+          title?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -1053,6 +1249,59 @@ export type Database = {
           },
         ]
       }
+      campaign_skips: {
+        Row: {
+          campaign_id: string
+          id: string
+          restored: boolean
+          skipped_at: string
+          user_id: string
+        }
+        Insert: {
+          campaign_id: string
+          id?: string
+          restored?: boolean
+          skipped_at?: string
+          user_id: string
+        }
+        Update: {
+          campaign_id?: string
+          id?: string
+          restored?: boolean
+          skipped_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_skips_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_skips_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "message_participant_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_skips_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_skips_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "safe_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       campaign_social_hooks: {
         Row: {
           acted_at: string | null
@@ -1405,6 +1654,152 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "safe_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      content_briefs: {
+        Row: {
+          brief: Json
+          context_snapshot: Json
+          created_at: string
+          creator_id: string
+          id: string
+          model: string | null
+          organization_id: string
+          social_post_log_id: string | null
+          used_performance_data: boolean
+        }
+        Insert: {
+          brief: Json
+          context_snapshot?: Json
+          created_at?: string
+          creator_id: string
+          id?: string
+          model?: string | null
+          organization_id: string
+          social_post_log_id?: string | null
+          used_performance_data?: boolean
+        }
+        Update: {
+          brief?: Json
+          context_snapshot?: Json
+          created_at?: string
+          creator_id?: string
+          id?: string
+          model?: string | null
+          organization_id?: string
+          social_post_log_id?: string | null
+          used_performance_data?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_briefs_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "content_briefs_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "public_organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "content_briefs_social_post_log_id_fkey"
+            columns: ["social_post_log_id"]
+            isOneToOne: false
+            referencedRelation: "social_post_log"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      content_performance: {
+        Row: {
+          campaign_id: string | null
+          captured_at: string
+          comments: number | null
+          engagement_rate: number | null
+          id: string
+          is_settled: boolean
+          likes: number | null
+          milestone: string
+          outstand_post_id: string
+          platform: string
+          post_type: string
+          raw: Json
+          reach: number | null
+          saves: number | null
+          shares: number | null
+          social_post_log_id: string | null
+          source_brief_id: string | null
+          user_id: string
+          views: number | null
+        }
+        Insert: {
+          campaign_id?: string | null
+          captured_at?: string
+          comments?: number | null
+          engagement_rate?: number | null
+          id?: string
+          is_settled?: boolean
+          likes?: number | null
+          milestone: string
+          outstand_post_id: string
+          platform: string
+          post_type: string
+          raw?: Json
+          reach?: number | null
+          saves?: number | null
+          shares?: number | null
+          social_post_log_id?: string | null
+          source_brief_id?: string | null
+          user_id: string
+          views?: number | null
+        }
+        Update: {
+          campaign_id?: string | null
+          captured_at?: string
+          comments?: number | null
+          engagement_rate?: number | null
+          id?: string
+          is_settled?: boolean
+          likes?: number | null
+          milestone?: string
+          outstand_post_id?: string
+          platform?: string
+          post_type?: string
+          raw?: Json
+          reach?: number | null
+          saves?: number | null
+          shares?: number | null
+          social_post_log_id?: string | null
+          source_brief_id?: string | null
+          user_id?: string
+          views?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_performance_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "content_performance_social_post_log_id_fkey"
+            columns: ["social_post_log_id"]
+            isOneToOne: false
+            referencedRelation: "social_post_log"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "content_performance_source_brief_id_fkey"
+            columns: ["source_brief_id"]
+            isOneToOne: false
+            referencedRelation: "content_briefs"
             referencedColumns: ["id"]
           },
         ]
@@ -1959,6 +2354,45 @@ export type Database = {
           },
         ]
       }
+      donny_cost_ledger: {
+        Row: {
+          created_at: string
+          edge_function: string
+          estimated_cost_usd: number
+          fallback: boolean
+          id: string
+          input_tokens: number
+          model: string
+          output_tokens: number
+          tier: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          edge_function: string
+          estimated_cost_usd?: number
+          fallback?: boolean
+          id?: string
+          input_tokens?: number
+          model: string
+          output_tokens?: number
+          tier: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          edge_function?: string
+          estimated_cost_usd?: number
+          fallback?: boolean
+          id?: string
+          input_tokens?: number
+          model?: string
+          output_tokens?: number
+          tier?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       donny_help_logs: {
         Row: {
           agent_used: string | null
@@ -2008,6 +2442,7 @@ export type Database = {
           embedding: string | null
           id: string
           metadata: Json
+          scope: string | null
           search_vector: unknown
           source_type: string
           updated_at: string
@@ -2018,6 +2453,7 @@ export type Database = {
           embedding?: string | null
           id?: string
           metadata?: Json
+          scope?: string | null
           search_vector?: unknown
           source_type: string
           updated_at?: string
@@ -2028,6 +2464,7 @@ export type Database = {
           embedding?: string | null
           id?: string
           metadata?: Json
+          scope?: string | null
           search_vector?: unknown
           source_type?: string
           updated_at?: string
@@ -2423,6 +2860,36 @@ export type Database = {
           },
         ]
       }
+      donny_usage: {
+        Row: {
+          actions_budget: number
+          actions_used: number
+          current_stage: string
+          id: string
+          period_start: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          actions_budget?: number
+          actions_used?: number
+          current_stage?: string
+          id?: string
+          period_start: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          actions_budget?: number
+          actions_used?: number
+          current_stage?: string
+          id?: string
+          period_start?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       dragonshare_boosts: {
         Row: {
           amount_cents: number
@@ -2629,7 +3096,7 @@ export type Database = {
           {
             foreignKeyName: "dragonshare_payouts_boost_id_fkey"
             columns: ["boost_id"]
-            isOneToOne: false
+            isOneToOne: true
             referencedRelation: "dragonshare_boosts"
             referencedColumns: ["id"]
           },
@@ -2660,21 +3127,27 @@ export type Database = {
         Row: {
           boost_status: string
           caption: string | null
+          content_file_path: string | null
           content_type: string
           created_at: string
           creator_id: string
+          declined_at: string | null
+          declined_by: string | null
           donny_reach_estimate: number | null
           donny_recommended_tier: number | null
           donny_score: number | null
           expires_at: string
+          flagged_at: string | null
+          flagged_by: string | null
           hashtags: string[] | null
           id: string
           mentions: string[] | null
           monetization_type: string
-          platform: string
-          post_url: string
+          platform: string | null
+          post_url: string | null
           rejection_reason: string | null
           screenshot_url: string | null
+          source_brief_id: string | null
           status: string
           submitted_at: string
           target_org_id: string
@@ -2687,21 +3160,27 @@ export type Database = {
         Insert: {
           boost_status?: string
           caption?: string | null
+          content_file_path?: string | null
           content_type: string
           created_at?: string
           creator_id: string
+          declined_at?: string | null
+          declined_by?: string | null
           donny_reach_estimate?: number | null
           donny_recommended_tier?: number | null
           donny_score?: number | null
           expires_at?: string
+          flagged_at?: string | null
+          flagged_by?: string | null
           hashtags?: string[] | null
           id?: string
           mentions?: string[] | null
           monetization_type?: string
-          platform: string
-          post_url: string
+          platform?: string | null
+          post_url?: string | null
           rejection_reason?: string | null
           screenshot_url?: string | null
+          source_brief_id?: string | null
           status?: string
           submitted_at?: string
           target_org_id: string
@@ -2714,21 +3193,27 @@ export type Database = {
         Update: {
           boost_status?: string
           caption?: string | null
+          content_file_path?: string | null
           content_type?: string
           created_at?: string
           creator_id?: string
+          declined_at?: string | null
+          declined_by?: string | null
           donny_reach_estimate?: number | null
           donny_recommended_tier?: number | null
           donny_score?: number | null
           expires_at?: string
+          flagged_at?: string | null
+          flagged_by?: string | null
           hashtags?: string[] | null
           id?: string
           mentions?: string[] | null
           monetization_type?: string
-          platform?: string
-          post_url?: string
+          platform?: string | null
+          post_url?: string | null
           rejection_reason?: string | null
           screenshot_url?: string | null
+          source_brief_id?: string | null
           status?: string
           submitted_at?: string
           target_org_id?: string
@@ -2758,6 +3243,13 @@ export type Database = {
             columns: ["creator_id"]
             isOneToOne: false
             referencedRelation: "safe_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dragonshare_posts_source_brief_id_fkey"
+            columns: ["source_brief_id"]
+            isOneToOne: false
+            referencedRelation: "content_briefs"
             referencedColumns: ["id"]
           },
           {
@@ -3265,6 +3757,70 @@ export type Database = {
           },
         ]
       }
+      google_workspace_accounts: {
+        Row: {
+          access_token: string | null
+          access_token_expires_at: string | null
+          connected_at: string
+          dc_folder_id: string | null
+          google_email: string
+          id: string
+          refresh_token: string
+          scopes: string[]
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token?: string | null
+          access_token_expires_at?: string | null
+          connected_at?: string
+          dc_folder_id?: string | null
+          google_email: string
+          id?: string
+          refresh_token: string
+          scopes?: string[]
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token?: string | null
+          access_token_expires_at?: string | null
+          connected_at?: string
+          dc_folder_id?: string | null
+          google_email?: string
+          id?: string
+          refresh_token?: string
+          scopes?: string[]
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "google_workspace_accounts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "message_participant_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "google_workspace_accounts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "google_workspace_accounts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "safe_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       help_article_feedback: {
         Row: {
           article_id: string
@@ -3325,6 +3881,39 @@ export type Database = {
           roles?: string[]
           search_terms?: string[] | null
           slug?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      internal_docs: {
+        Row: {
+          content_md: string
+          created_at: string
+          id: string
+          path: string
+          source_hash: string | null
+          tags: string[]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          content_md: string
+          created_at?: string
+          id?: string
+          path: string
+          source_hash?: string | null
+          tags?: string[]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          content_md?: string
+          created_at?: string
+          id?: string
+          path?: string
+          source_hash?: string | null
+          tags?: string[]
           title?: string
           updated_at?: string
         }
@@ -3592,6 +4181,39 @@ export type Database = {
         }
         Relationships: []
       }
+      operating_expenses: {
+        Row: {
+          active: boolean
+          category: string
+          created_at: string
+          id: string
+          monthly_amount_cents: number
+          name: string
+          notes: string | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          category?: string
+          created_at?: string
+          id?: string
+          monthly_amount_cents: number
+          name: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          category?: string
+          created_at?: string
+          id?: string
+          monthly_amount_cents?: number
+          name?: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       org_members: {
         Row: {
           id: string
@@ -3808,6 +4430,33 @@ export type Database = {
         }
         Relationships: []
       }
+      outstand_webhook_events: {
+        Row: {
+          account_id: string | null
+          event: string
+          id: string
+          payload: Json | null
+          post_id: string | null
+          received_at: string
+        }
+        Insert: {
+          account_id?: string | null
+          event: string
+          id: string
+          payload?: Json | null
+          post_id?: string | null
+          received_at?: string
+        }
+        Update: {
+          account_id?: string | null
+          event?: string
+          id?: string
+          payload?: Json | null
+          post_id?: string | null
+          received_at?: string
+        }
+        Relationships: []
+      }
       payment_events: {
         Row: {
           actor_id: string | null
@@ -3881,6 +4530,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      platform_weight: {
+        Row: {
+          captured_at: string
+          db_bytes: number
+          id: string
+          row_counts: Json
+          storage_bytes: number
+          users_total: number
+        }
+        Insert: {
+          captured_at?: string
+          db_bytes: number
+          id?: string
+          row_counts?: Json
+          storage_bytes: number
+          users_total: number
+        }
+        Update: {
+          captured_at?: string
+          db_bytes?: number
+          id?: string
+          row_counts?: Json
+          storage_bytes?: number
+          users_total?: number
+        }
+        Relationships: []
       }
       pricing_funnel_events: {
         Row: {
@@ -4050,6 +4726,7 @@ export type Database = {
           professionalism_rating: number | null
           quality_rating: number | null
           rating: number
+          reveal_at: string | null
           review_text: string | null
           review_type: string
           reviewee_id: string
@@ -4067,6 +4744,7 @@ export type Database = {
           professionalism_rating?: number | null
           quality_rating?: number | null
           rating: number
+          reveal_at?: string | null
           review_text?: string | null
           review_type: string
           reviewee_id: string
@@ -4084,6 +4762,7 @@ export type Database = {
           professionalism_rating?: number | null
           quality_rating?: number | null
           rating?: number
+          reveal_at?: string | null
           review_text?: string | null
           review_type?: string
           reviewee_id?: string
@@ -4121,6 +4800,7 @@ export type Database = {
           rejection_reason: string | null
           reviewed_at: string | null
           reviewed_by: string | null
+          social_handles: Json | null
           status: string
           updated_at: string
           video_duration: number | null
@@ -4137,6 +4817,7 @@ export type Database = {
           rejection_reason?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
+          social_handles?: Json | null
           status?: string
           updated_at?: string
           video_duration?: number | null
@@ -4153,6 +4834,7 @@ export type Database = {
           rejection_reason?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
+          social_handles?: Json | null
           status?: string
           updated_at?: string
           video_duration?: number | null
@@ -4355,6 +5037,13 @@ export type Database = {
             referencedRelation: "project_reviews"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "review_responses_review_id_fkey"
+            columns: ["review_id"]
+            isOneToOne: false
+            referencedRelation: "public_project_reviews"
+            referencedColumns: ["id"]
+          },
         ]
       }
       rush_surcharge_log: {
@@ -4404,32 +5093,74 @@ export type Database = {
           },
         ]
       }
+      social_analytics_cache: {
+        Row: {
+          fetched_at: string
+          id: string
+          metric_type: string
+          metric_value: number
+          outstand_account_id: string
+          period_end: string
+          period_start: string
+          platform: string
+          user_id: string
+        }
+        Insert: {
+          fetched_at?: string
+          id?: string
+          metric_type: string
+          metric_value: number
+          outstand_account_id: string
+          period_end: string
+          period_start: string
+          platform: string
+          user_id: string
+        }
+        Update: {
+          fetched_at?: string
+          id?: string
+          metric_type?: string
+          metric_value?: number
+          outstand_account_id?: string
+          period_end?: string
+          period_start?: string
+          platform?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       social_post_log: {
         Row: {
           campaign_id: string | null
           created_at: string | null
+          dragonshare_post_id: string | null
           id: string
           outstand_post_id: string
           platform: string
           post_type: string
+          source_brief_id: string | null
           user_id: string
         }
         Insert: {
           campaign_id?: string | null
           created_at?: string | null
+          dragonshare_post_id?: string | null
           id?: string
           outstand_post_id: string
           platform: string
           post_type: string
+          source_brief_id?: string | null
           user_id: string
         }
         Update: {
           campaign_id?: string | null
           created_at?: string | null
+          dragonshare_post_id?: string | null
           id?: string
           outstand_post_id?: string
           platform?: string
           post_type?: string
+          source_brief_id?: string | null
           user_id?: string
         }
         Relationships: [
@@ -4438,6 +5169,20 @@ export type Database = {
             columns: ["campaign_id"]
             isOneToOne: false
             referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_post_log_dragonshare_post_id_fkey"
+            columns: ["dragonshare_post_id"]
+            isOneToOne: false
+            referencedRelation: "dragonshare_posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_post_log_source_brief_id_fkey"
+            columns: ["source_brief_id"]
+            isOneToOne: false
+            referencedRelation: "content_briefs"
             referencedColumns: ["id"]
           },
         ]
@@ -4516,6 +5261,70 @@ export type Database = {
           },
         ]
       }
+      user_blocks: {
+        Row: {
+          blocked_id: string
+          blocker_id: string
+          created_at: string
+          id: string
+        }
+        Insert: {
+          blocked_id: string
+          blocker_id: string
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          blocked_id?: string
+          blocker_id?: string
+          created_at?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_blocks_blocked_id_fkey"
+            columns: ["blocked_id"]
+            isOneToOne: false
+            referencedRelation: "message_participant_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_blocks_blocked_id_fkey"
+            columns: ["blocked_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_blocks_blocked_id_fkey"
+            columns: ["blocked_id"]
+            isOneToOne: false
+            referencedRelation: "safe_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_blocks_blocker_id_fkey"
+            columns: ["blocker_id"]
+            isOneToOne: false
+            referencedRelation: "message_participant_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_blocks_blocker_id_fkey"
+            columns: ["blocker_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_blocks_blocker_id_fkey"
+            columns: ["blocker_id"]
+            isOneToOne: false
+            referencedRelation: "safe_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_onboarding_progress: {
         Row: {
           completed_at: string | null
@@ -4577,6 +5386,76 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      user_reports: {
+        Row: {
+          conversation_id: string | null
+          created_at: string
+          id: string
+          reason: string | null
+          reported_id: string
+          reporter_id: string
+        }
+        Insert: {
+          conversation_id?: string | null
+          created_at?: string
+          id?: string
+          reason?: string | null
+          reported_id: string
+          reporter_id: string
+        }
+        Update: {
+          conversation_id?: string | null
+          created_at?: string
+          id?: string
+          reason?: string | null
+          reported_id?: string
+          reporter_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_reports_reported_id_fkey"
+            columns: ["reported_id"]
+            isOneToOne: false
+            referencedRelation: "message_participant_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_reports_reported_id_fkey"
+            columns: ["reported_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_reports_reported_id_fkey"
+            columns: ["reported_id"]
+            isOneToOne: false
+            referencedRelation: "safe_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_reports_reporter_id_fkey"
+            columns: ["reporter_id"]
+            isOneToOne: false
+            referencedRelation: "message_participant_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_reports_reporter_id_fkey"
+            columns: ["reporter_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_reports_reporter_id_fkey"
+            columns: ["reporter_id"]
+            isOneToOne: false
+            referencedRelation: "safe_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
@@ -4997,6 +5876,45 @@ export type Database = {
         }
         Relationships: []
       }
+      public_project_reviews: {
+        Row: {
+          collaboration_id: string | null
+          communication_rating: number | null
+          created_at: string | null
+          id: string | null
+          is_public: boolean | null
+          professionalism_rating: number | null
+          project_title: string | null
+          quality_rating: number | null
+          rating: number | null
+          reveal_at: string | null
+          review_text: string | null
+          review_type: string | null
+          reviewee_id: string | null
+          reviewer_avatar_url: string | null
+          reviewer_full_name: string | null
+          reviewer_id: string | null
+          sponsorship_id: string | null
+          timeliness_rating: number | null
+          updated_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_reviews_collaboration_id_fkey"
+            columns: ["collaboration_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_collaborations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_reviews_sponsorship_id_fkey"
+            columns: ["sponsorship_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_sponsorships"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       safe_profiles: {
         Row: {
           avatar_url: string | null
@@ -5033,6 +5951,13 @@ export type Database = {
         Args: { p_application_id: string }
         Returns: Json
       }
+      aios_corrections_apply: {
+        Args: { p_id: string; p_decision: string }
+        Returns: Json
+      }
+      aios_cost_stats: { Args: never; Returns: Json }
+      aios_platform_stats: { Args: never; Returns: Json }
+      aios_revenue_stats: { Args: never; Returns: Json }
       apply_to_campaign:
         | {
             Args: {
@@ -5062,6 +5987,7 @@ export type Database = {
         Args: { p_campaign_id: string; p_creator_id: string }
         Returns: boolean
       }
+      capture_platform_weight: { Args: never; Returns: undefined }
       check_prerequisite_status: { Args: { p_user_id: string }; Returns: Json }
       cleanup_expired_verification_tokens: { Args: never; Returns: undefined }
       create_boost: {
@@ -5098,6 +6024,15 @@ export type Database = {
           user_id: string
         }[]
       }
+      decline_dragonshare_post: {
+        Args: { p_post_id: string }
+        Returns: undefined
+      }
+      delete_promotion_cascade: {
+        Args: { p_promotion_id: string }
+        Returns: undefined
+      }
+      flag_dragonshare_post: { Args: { p_post_id: string }; Returns: undefined }
       force_gdpr_erasure: { Args: { p_user_id: string }; Returns: undefined }
       generate_profile_slug: {
         Args: { name: string; profile_type: string }
@@ -5129,7 +6064,40 @@ export type Database = {
           youtube_url: string
         }[]
       }
+      get_creator_brief_performance: {
+        Args: { result_limit?: number }
+        Returns: {
+          avg_engagement_rate: number
+          brief: Json
+          brief_id: string
+          created_at: string
+          is_posted: boolean
+          last_captured_at: string
+          measurable_post_count: number
+          organization_id: string
+          post_count: number
+          total_comments: number
+          total_likes: number
+          total_shares: number
+          total_views: number
+          used_performance_data: boolean
+        }[]
+      }
+      get_creator_connected_platforms: {
+        Args: { p_creator_id: string }
+        Returns: {
+          platform: string
+          platform_handle: string
+        }[]
+      }
       get_dashboard_summary: { Args: { p_user_id: string }; Returns: Json }
+      get_org_connected_platforms: {
+        Args: { p_org_id: string }
+        Returns: {
+          platform: string
+          platform_handle: string
+        }[]
+      }
       get_org_unit_financials: {
         Args: { p_unit_id: string }
         Returns: {
@@ -5143,6 +6111,17 @@ export type Database = {
         Returns: {
           email: string
           full_name: string
+        }[]
+      }
+      get_restaurant_by_org_id: {
+        Args: { target_org_id: string }
+        Returns: {
+          address: string
+          brand_category: string
+          id: string
+          logo_url: string
+          name: string
+          org_type: string
         }[]
       }
       get_unavailable_campaign_ids: {
@@ -5174,8 +6153,18 @@ export type Database = {
       }
       get_user_display_name: { Args: { user_uuid: string }; Returns: string }
       get_user_org_ids: { Args: never; Returns: string[] }
+      google_connection_status: { Args: never; Returns: Json }
       has_collaboration_on_campaign: {
         Args: { p_campaign_id: string; p_user_id: string }
+        Returns: boolean
+      }
+      has_counterpart_review: {
+        Args: {
+          p_collaboration: string
+          p_reviewee: string
+          p_reviewer: string
+          p_sponsorship: string
+        }
         Returns: boolean
       }
       has_role: {
@@ -5204,11 +6193,22 @@ export type Database = {
         Args: { conversation_uuid: string; user_uuid: string }
         Returns: boolean
       }
+      is_internal_user: { Args: never; Returns: boolean }
       is_org_owner_or_admin: { Args: { p_org_id: string }; Returns: boolean }
       is_platform_admin: { Args: never; Returns: boolean }
       is_user_blocked: { Args: { p_other_id: string }; Returns: boolean }
+      list_restaurant_cuisines: {
+        Args: never
+        Returns: {
+          cuisine: string
+        }[]
+      }
       match_donny_knowledge: {
-        Args: { match_count?: number; query_embedding: string }
+        Args: {
+          match_count?: number
+          query_embedding: string
+          scope_filter?: string
+        }
         Returns: {
           content: string
           id: string
@@ -5216,6 +6216,7 @@ export type Database = {
           similarity: number
         }[]
       }
+      recompute_profile_rating: { Args: { p_user: string }; Returns: undefined }
       report_user: {
         Args: {
           p_conversation_id?: string
@@ -5225,7 +6226,33 @@ export type Database = {
         Returns: undefined
       }
       request_org_deletion: { Args: { p_org_id: string }; Returns: undefined }
+      resolve_dragonshare_orgs: {
+        Args: { p_org_ids: string[] }
+        Returns: {
+          id: string
+          logo_url: string
+          name: string
+          org_type: string
+        }[]
+      }
       restore_org: { Args: { p_org_id: string }; Returns: undefined }
+      search_restaurants: {
+        Args: {
+          cuisine_filter?: string
+          result_limit?: number
+          search_term?: string
+        }
+        Returns: {
+          address: string
+          average_rating: number
+          brand_category: string
+          id: string
+          logo_url: string
+          name: string
+          org_type: string
+          total_reviews: number
+        }[]
+      }
       set_user_offline: { Args: { p_user_id: string }; Returns: undefined }
       unblock_user: { Args: { p_blocked_id: string }; Returns: undefined }
       user_in_conversation: {
@@ -5242,7 +6269,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "moderator"
+      app_role: "admin" | "moderator" | "stakeholder"
       application_status:
         | "pending"
         | "accepted"
@@ -5409,9 +6436,12 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
-      app_role: ["admin", "moderator"],
+      app_role: ["admin", "moderator", "stakeholder"],
       application_status: [
         "pending",
         "accepted",
@@ -5460,4 +6490,3 @@ export const Constants = {
     },
   },
 } as const
-

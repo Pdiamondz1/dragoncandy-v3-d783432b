@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { Loader2, Save } from 'lucide-react';
+import { SettingsSection } from '@/components/settings/SettingsSection';
 
 interface CGCPrefs {
   auto_post_enabled: boolean;
@@ -84,9 +85,12 @@ export function CGCPostingPreferences() {
   if (!loaded) return null;
 
   return (
-    <div className="bg-white rounded-2xl border border-dc-teal/10 p-6 space-y-5">
-      <h3 className="font-bold text-sm text-dc-text">CGC Auto-Post Preferences</h3>
-
+    <SettingsSection
+      value="cgc-autopost"
+      icon="📣"
+      title="CGC Auto-Post Preferences"
+      subtitle="How approved customer content gets posted"
+    >
       {/* Master toggle */}
       <div className="flex items-center justify-between">
         <Label className="text-sm text-dc-text">Auto-post on approval</Label>
@@ -183,6 +187,6 @@ export function CGCPostingPreferences() {
         {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
         Save Preferences
       </Button>
-    </div>
+    </SettingsSection>
   );
 }

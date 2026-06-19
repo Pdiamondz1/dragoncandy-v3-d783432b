@@ -12,6 +12,8 @@ interface RatingPromptProps {
   revieweeName: string;
   reviewType: 'business_to_creator' | 'creator_to_business' | 'brand_to_business' | 'business_to_brand';
   onDismiss: () => void;
+  /** 'row' renders a compact line for the dashboard attention section */
+  variant?: 'card' | 'row';
 }
 
 export const RatingPrompt: React.FC<RatingPromptProps> = ({
@@ -20,9 +22,50 @@ export const RatingPrompt: React.FC<RatingPromptProps> = ({
   revieweeId,
   revieweeName,
   reviewType,
-  onDismiss
+  onDismiss,
+  variant = 'card'
 }) => {
   const [showModal, setShowModal] = useState(false);
+
+  const modal = (
+    <RatingModal
+      isOpen={showModal}
+      onClose={() => setShowModal(false)}
+      collaborationId={collaborationId}
+      sponsorshipId={sponsorshipId}
+      revieweeId={revieweeId}
+      revieweeName={revieweeName}
+      reviewType={reviewType}
+    />
+  );
+
+  if (variant === 'row') {
+    return (
+      <>
+        <div className="flex items-center gap-3 px-4 py-2.5">
+          <span className="rounded-full bg-dc-pink/20 p-1.5 shrink-0">
+            <Star className="h-4 w-4 text-dc-pink-accent" />
+          </span>
+          <p className="text-sm text-dc-text flex-1 min-w-0">
+            How was working with <span className="font-semibold">{revieweeName}</span>?
+          </p>
+          <button
+            onClick={() => setShowModal(true)}
+            className="text-sm font-semibold text-dc-teal-btn hover:underline shrink-0"
+          >
+            Leave review
+          </button>
+          <button
+            onClick={onDismiss}
+            className="text-sm text-dc-text-muted hover:text-dc-text shrink-0"
+          >
+            Later
+          </button>
+        </div>
+        {modal}
+      </>
+    );
+  }
 
   return (
     <>
@@ -70,16 +113,7 @@ export const RatingPrompt: React.FC<RatingPromptProps> = ({
           </div>
         </CardContent>
       </Card>
-
-      <RatingModal
-        isOpen={showModal}
-        onClose={() => setShowModal(false)}
-        collaborationId={collaborationId}
-        sponsorshipId={sponsorshipId}
-        revieweeId={revieweeId}
-        revieweeName={revieweeName}
-        reviewType={reviewType}
-      />
+      {modal}
     </>
   );
 };

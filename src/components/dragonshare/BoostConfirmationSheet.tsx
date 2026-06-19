@@ -3,7 +3,8 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Clock } from 'lucide-react';
+import { useState } from 'react';
 import { DRAGONSHARE_FEE_RATE } from '@/types/dragonshare';
 import type { DragonSharePostWithRelations, BoostTierLabel } from '@/types/dragonshare';
 import { useAmplificationPreview } from '@/hooks/useAmplificationPreview';
@@ -23,6 +24,8 @@ export function BoostConfirmationSheet({ open, onOpenChange, post, amountCents, 
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { data: platforms } = useAmplificationPreview(creatorId, orgId);
+  const [boostQueued, setBoostQueued] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
 
   const platformFeeCents = Math.round(amountCents * DRAGONSHARE_FEE_RATE);
   const creatorPayoutCents = amountCents - platformFeeCents;
@@ -44,31 +47,23 @@ export function BoostConfirmationSheet({ open, onOpenChange, post, amountCents, 
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('Not authenticated');
 
-      // Pre-open a blank tab synchronously to dodge pop-up blockers (may be unused).
-      const checkoutTab = window.open('about:blank', '_blank');
-
       const res = await supabase.functions.invoke('boost-payment', {
         body: { post_id: post.id, amount_cents: amountCents, tier_label: tierLabel },
       });
-      if (res.error) {
-        checkoutTab?.close();
-        throw new Error(res.error.message);
-      }
-      return { data: res.data, checkoutTab };
+      if (res.error) throw new Error(res.error.message);
+      return res.data;
     },
-    onSuccess: ({ data, checkoutTab }) => {
+    onSuccess: (data) => {
       const outcome = resolveBoostOutcome(data);
       if (outcome.kind === 'checkout') {
-        if (checkoutTab) checkoutTab.location.href = outcome.url;
-        else window.open(outcome.url, '_blank');
-        toast({ title: 'Complete your payment', description: 'Finish the boost in the new tab.' });
-        onOpenChange(false);
+        // Same-tab redirect; Stripe's success/cancel URLs return to DragonShare.
+        setRedirecting(true);
+        window.location.assign(outcome.url);
         return;
       }
-      checkoutTab?.close();
       if (outcome.kind === 'queued') {
+        setBoostQueued(true);
         toast({ title: 'Boost queued', description: "We've notified the creator to finish setup. You won't be charged until it's processed." });
-        onOpenChange(false);
         return;
       }
       const paidCents = outcome.creatorPayoutCents ?? creatorPayoutCents;
@@ -82,8 +77,13 @@ export function BoostConfirmationSheet({ open, onOpenChange, post, amountCents, 
     },
   });
 
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen) setBoostQueued(false);
+    onOpenChange(nextOpen);
+  };
+
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
+    <Sheet open={open} onOpenChange={handleOpenChange}>
       <SheetContent side="bottom" className="rounded-t-3xl">
         <SheetHeader>
           <SheetTitle className="text-dc-text">
@@ -140,17 +140,38 @@ export function BoostConfirmationSheet({ open, onOpenChange, post, amountCents, 
             </div>
           </div>
 
-          <Button
-            className="w-full rounded-full bg-dc-teal-btn hover:bg-dc-teal-btn-hover text-white"
-            onClick={() => boostMutation.mutate()}
-            disabled={boostMutation.isPending}
-          >
-            {boostMutation.isPending ? (
-              <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Processing…</>
-            ) : (
-              'Confirm Boost'
-            )}
-          </Button>
+          {boostQueued ? (
+            <div className="rounded-2xl bg-dc-teal/10 border border-dc-teal/30 p-4 space-y-2">
+              <div className="flex items-center gap-2">
+                <Clock className="h-4 w-4 text-dc-teal flex-shrink-0" />
+                <p className="text-sm font-semibold text-dc-teal">Boost queued</p>
+              </div>
+              <p className="text-sm text-dc-text-muted leading-relaxed">
+                <span className="font-medium text-dc-text">{creatorName}</span> is finishing payout setup — your{' '}
+                <span className="font-medium text-dc-text">${(amountCents / 100).toFixed(0)} boost</span> is queued and
+                will be charged automatically once they're ready. You won't be charged until then.
+              </p>
+              <Button
+                variant="ghost"
+                className="w-full rounded-full text-dc-text-muted text-sm mt-1"
+                onClick={() => handleOpenChange(false)}
+              >
+                Got it
+              </Button>
+            </div>
+          ) : (
+            <Button
+              className="w-full rounded-full bg-dc-teal-btn hover:bg-dc-teal-btn-hover text-white"
+              onClick={() => boostMutation.mutate()}
+              disabled={boostMutation.isPending || redirecting}
+            >
+              {boostMutation.isPending || redirecting ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Processing…</>
+              ) : (
+                'Confirm Boost'
+              )}
+            </Button>
+          )}
         </div>
       </SheetContent>
     </Sheet>

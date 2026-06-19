@@ -4,17 +4,19 @@ import { useBrandDashboardStats } from '@/hooks/useBrandDashboardStats';
 import { useBrandActiveCampaigns } from '@/hooks/useBrandActiveCampaigns';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { DCTour } from '@/components/guidance/DCTour';
+import { TourButton } from '@/components/guidance/TourButton';
+import { SectionHeader } from '@/components/dashboard/SectionHeader';
 import { useTour } from '@/hooks/useTour';
 import { useFirstRunMissions } from '@/hooks/useFirstRunMissions';
 import { FirstRunDashboard } from '@/components/first-run/FirstRunDashboard';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { DashboardHero } from '@/components/dashboard/DashboardHero';
-import { DashboardStatsGrid, type StatItem } from '@/components/dashboard/DashboardStatsGrid';
-import { QuickActionButtons, type QuickAction } from '@/components/dashboard/QuickActionButtons';
+import { DashboardGreeting } from '@/components/dashboard/DashboardGreeting';
+import { HeroPrimaryAction } from '@/components/dashboard/HeroPrimaryAction';
+import { StatsRow, type StatItem } from '@/components/dashboard/StatsRow';
+import { RecentActivitySection } from '@/components/dashboard/RecentActivitySection';
 import { ActivityFeedCard } from '@/components/dashboard/ActivityFeedCard';
 import { ErrorState } from '@/components/ui/error-state';
-import { Rocket, DollarSign, Users, TrendingUp, Loader2, AlertCircle, Share2, ChevronRight } from 'lucide-react';
-import { DCSkeleton, DCSkeletonGrid } from '@/components/ui/dc-skeleton';
+import { Rocket, DollarSign, Users, TrendingUp, Loader2, Share2, ChevronRight } from 'lucide-react';
+import { DCSkeleton } from '@/components/ui/dc-skeleton';
 import { DragonShareStatTile } from '@/components/dragonshare/DragonShareStatTile';
 import { useOrgBoostStats } from '@/hooks/useDragonShare';
 import { useOrg } from '@/hooks/useOrgData';
@@ -61,15 +63,13 @@ const BrandDashboard = () => {
     return (
       <DashboardLayout userRole="brand">
         <div className="min-h-screen bg-white overflow-x-hidden">
-          <div className="bg-gradient-to-b from-dc-pink-bg to-pink-50 px-4 pt-6 pb-8">
-            <div className="max-w-2xl lg:max-w-4xl mx-auto space-y-4">
-              <DCSkeleton variant="text-block" className="h-4 w-32" />
-              <DCSkeleton variant="text-block" className="h-8 w-48" />
-              <DCSkeletonGrid columns={4} count={4} variant="stat" className="mt-4" />
-            </div>
-          </div>
-          <div className="px-4 py-6 pb-24 md:pb-0">
-            <div className="max-w-2xl lg:max-w-4xl mx-auto space-y-4">
+          <div className="px-4 lg:px-8 pt-8 lg:pt-12 pb-24 md:pb-12">
+            <div className="max-w-2xl lg:max-w-5xl mx-auto space-y-10">
+              <div className="space-y-3">
+                <DCSkeleton variant="text-block" className="h-3 w-32" />
+                <DCSkeleton variant="text-block" className="h-8 w-48" />
+              </div>
+              <DCSkeleton variant="text-block" className="h-12 w-full lg:w-72 rounded-full" />
               <DCSkeleton variant="list-row" count={3} />
             </div>
           </div>
@@ -85,155 +85,129 @@ const BrandDashboard = () => {
     { label: 'Avg. ROI', value: statsLoading ? '…' : `${stats?.avgROI ?? 0}%`, icon: TrendingUp, href: '/dashboard/analytics' },
   ];
 
-  const brandActions: [QuickAction, QuickAction] = [
-    { label: 'Create Sponsorship Campaign', to: '/dashboard/business/campaigns/create', variant: 'primary' },
-    { label: 'Browse & Sponsor', to: '/dashboard/brand/discover-campaigns', variant: 'secondary' },
+  const budgetStats: StatItem[] = [
+    {
+      label: 'Monthly',
+      value: `$${(stats?.monthlyBudget ?? 0).toLocaleString()}`,
+      subtitle: stats?.monthlyBudget ? 'Set in profile' : 'Not set',
+    },
+    {
+      label: 'Allocated',
+      value: `$${(stats?.allocatedBudget ?? 0).toLocaleString()}`,
+      subtitle: `${stats?.budgetPercentage || 0}% of budget`,
+    },
+    {
+      label: 'Available',
+      value: `$${(stats?.availableBudget ?? 0).toLocaleString()}`,
+      subtitle: 'Ready to allocate',
+    },
   ];
+
+  const campaignsContent = campaignsLoading ? (
+    <div className="flex items-center justify-center py-8">
+      <Loader2 className="w-5 h-5 text-dc-teal animate-spin" />
+    </div>
+  ) : !campaigns || campaigns.length === 0 ? (
+    <div className="py-6 text-center">
+      <p className="text-sm text-dc-text-muted">No active campaigns yet.</p>
+      <button
+        onClick={() => navigate('/dashboard/brand/campaigns/create')}
+        className="text-sm font-semibold text-dc-teal-btn hover:underline mt-1"
+      >
+        Let Donny help you create one
+      </button>
+    </div>
+  ) : (
+    <div>
+      {campaigns.map((campaign) => (
+        <ActivityFeedCard
+          key={campaign.id}
+          title={campaign.title}
+          subtitle={campaign.subtitle}
+          status={campaign.displayStatus}
+          onClick={() => navigate(
+            campaign.type === 'own'
+              ? `/dashboard/brand/campaigns/${campaign.id}`
+              : `/dashboard/brand/discover-campaigns`
+          )}
+        />
+      ))}
+    </div>
+  );
 
   return (
     <DashboardLayout userRole="brand">
       <div className="min-h-screen bg-white overflow-x-hidden">
-        {/* Unified gradient header */}
-        <DashboardHero
-          roleLabel="Brand Dashboard"
-          userName={profile.business_name || 'Brand Partner'}
-        >
-          <BrandFreeTrioHero orgId={org?.id} />
+        <div className="px-4 lg:px-8 pt-8 lg:pt-12 pb-24 md:pb-12">
+          <div className="max-w-2xl lg:max-w-5xl mx-auto space-y-10 lg:space-y-14">
 
-          <div data-tour="free-trio">
-            <DashboardStatsGrid stats={brandStats} isLoading={statsLoading} />
-          </div>
+            {/* Greeting + the one loud CTA */}
+            <div className="space-y-6 lg:space-y-0 lg:grid lg:grid-cols-[1fr_auto] lg:items-center lg:gap-8">
+              <DashboardGreeting
+                roleLabel="Brand Dashboard"
+                userName={profile.business_name || 'Brand Partner'}
+              />
+              <HeroPrimaryAction
+                label="Browse & Sponsor"
+                to="/dashboard/brand/discover-campaigns"
+                secondary={{ label: 'Create Sponsorship Campaign', to: '/dashboard/business/campaigns/create' }}
+              />
+            </div>
 
-          {/* DragonShare boosts tile */}
-          <div data-tour="dragonshare-inbox">
-            <DragonShareStatTile
-              label="DragonShare boosts"
-              totalCents={dsBoosts?.totalCents ?? 0}
-              count={dsBoosts?.count ?? 0}
-              href="/dashboard/brand/dragonshare"
+            {/* Quiet stats + budget line */}
+            <section className="space-y-8">
+              <StatsRow stats={brandStats} isLoading={statsLoading} />
+              <div>
+                <SectionHeader title="Marketing budget" />
+                <StatsRow stats={budgetStats} isLoading={statsLoading} />
+              </div>
+            </section>
+
+            {/* Free Donny tools */}
+            <section data-tour="free-trio">
+              <SectionHeader title="Free Donny tools" />
+              <BrandFreeTrioHero orgId={org?.id} />
+            </section>
+
+            {/* DragonShare + social, paired */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+              <div data-tour="dragonshare-inbox">
+                <DragonShareStatTile
+                  label="DragonShare boosts"
+                  totalCents={dsBoosts?.totalCents ?? 0}
+                  count={dsBoosts?.count ?? 0}
+                  href="/dashboard/brand/dragonshare"
+                />
+              </div>
+              <Link
+                to="/dashboard/brand/social"
+                className="block rounded-2xl border border-dc-teal/15 bg-white shadow-dc-sm p-4 hover:bg-dc-teal/[0.04] transition-colors"
+              >
+                <div className="flex items-center gap-3 h-full">
+                  <div className="w-10 h-10 bg-dc-teal/10 rounded-xl flex items-center justify-center shrink-0">
+                    <Share2 className="h-5 w-5 text-dc-teal" />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="font-bold text-dc-text text-sm">Social Media</h3>
+                    <p className="text-xs text-dc-text-muted">Manage your brand's social presence, amplify sponsored content</p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-dc-text-muted ml-auto shrink-0" />
+                </div>
+              </Link>
+            </div>
+
+            {/* Campaigns in one framed activity zone */}
+            <RecentActivitySection
+              groups={[
+                {
+                  id: 'campaigns',
+                  label: 'Campaigns',
+                  count: campaigns?.length,
+                  content: campaignsContent,
+                },
+              ]}
+              action={<TourButton onClick={triggerTour} />}
             />
-          </div>
-
-          <QuickActionButtons actions={brandActions} />
-        </DashboardHero>
-
-        {/* White body content */}
-        <div className="px-4 py-6 pb-24 md:pb-0">
-          <div className="max-w-2xl lg:max-w-4xl mx-auto space-y-6">
-
-            {/* Social Media Quick Action */}
-            <Link
-              to="/dashboard/brand/social"
-              className="block bg-white rounded-2xl p-4 border-2 border-dc-teal hover:shadow-md transition-shadow"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-dc-teal/10 rounded-xl flex items-center justify-center">
-                  <Share2 className="h-5 w-5 text-dc-teal" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-gray-900 text-sm">Social Media</h3>
-                  <p className="text-xs text-gray-500">Manage your brand's social presence, amplify sponsored content</p>
-                </div>
-                <ChevronRight className="h-4 w-4 text-gray-400 ml-auto" />
-              </div>
-            </Link>
-
-            {/* Active Campaigns Feed */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <p className="font-sans text-sm font-bold uppercase tracking-wide text-dc-teal">
-                  Your Campaigns
-                </p>
-                <button
-                  onClick={triggerTour}
-                  className="w-7 h-7 rounded-full bg-teal-400 flex items-center justify-center text-xs text-white"
-                  aria-label="Show tour"
-                >
-                  ?
-                </button>
-              </div>
-              {campaignsLoading ? (
-                <div className="border-2 border-dc-teal rounded-2xl p-6 bg-white flex items-center justify-center">
-                  <Loader2 className="w-5 h-5 text-dc-teal animate-spin" />
-                </div>
-              ) : !campaigns || campaigns.length === 0 ? (
-                <div className="border-2 border-dc-teal rounded-2xl p-6 bg-white text-center">
-                  <p className="text-sm text-gray-500">No active campaigns yet.</p>
-                  <button
-                    onClick={() => navigate('/dashboard/brand/campaigns/create')}
-                    className="text-sm font-semibold text-dc-teal hover:underline mt-1"
-                  >
-                    Let Donny help you create one
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {campaigns.map((campaign) => (
-                    <ActivityFeedCard
-                      key={campaign.id}
-                      title={campaign.title}
-                      subtitle={campaign.subtitle}
-                      status={campaign.displayStatus}
-                      onClick={() => navigate(
-                        campaign.type === 'own'
-                          ? `/dashboard/brand/campaigns/${campaign.id}`
-                          : `/dashboard/brand/discover-campaigns`
-                      )}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Budget Overview */}
-            <div className="border-2 border-dc-teal rounded-2xl bg-white overflow-hidden">
-              <div className="px-4 pt-4 pb-2 flex items-center gap-2">
-                <DollarSign className="h-5 w-5 text-dc-teal" />
-                <p className="font-sans text-sm font-bold uppercase tracking-wide text-dc-teal">
-                  Marketing Budget
-                </p>
-              </div>
-              <div className="px-4 pb-4">
-                {statsLoading ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="h-8 w-8 animate-spin text-dc-teal" />
-                  </div>
-                ) : statsError ? (
-                  <Alert variant="destructive">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>Unable to load budget data. Please refresh the page.</AlertDescription>
-                  </Alert>
-                ) : (
-                  <div className="grid grid-cols-3 gap-4">
-                    <div className="text-center">
-                      <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold mb-1">Monthly</p>
-                      <p className="text-3xl font-extrabold text-gray-900">
-                        ${(stats?.monthlyBudget ?? 0).toLocaleString()}
-                      </p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        {stats?.monthlyBudget ? 'Set in profile' : 'Not set'}
-                      </p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold mb-1">Allocated</p>
-                      <p className="text-3xl font-extrabold text-gray-900">
-                        ${(stats?.allocatedBudget ?? 0).toLocaleString()}
-                      </p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        {stats?.budgetPercentage || 0}% of budget
-                      </p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold mb-1">Available</p>
-                      <p className="text-3xl font-extrabold text-dc-teal">
-                        ${(stats?.availableBudget ?? 0).toLocaleString()}
-                      </p>
-                      <p className="text-xs text-gray-500 mt-1">Ready to allocate</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
 
             <UpcomingPostsWidget />
 

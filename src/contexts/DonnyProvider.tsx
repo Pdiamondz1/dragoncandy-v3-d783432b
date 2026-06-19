@@ -231,6 +231,10 @@ export function DonnyProvider({ children, userRole }: DonnyProviderProps) {
           outstand_post_id: String(outstandPostId),
           platform: draft.platform,
           post_type: postType,
+          dragonshare_post_id:
+            draftMetadata?.source === 'dragonshare_social_hook'
+              ? ((draftMetadata?.post_id as string) ?? null)
+              : null,
         });
         if (logError) console.error('[DonnyProvider] Failed to log social post:', logError);
       }

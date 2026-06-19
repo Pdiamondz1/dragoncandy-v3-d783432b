@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { getSignedProfileUrl } from '@/hooks/useSignedUrl';
 import { formatSkillLabel } from '@/lib/skillUtils';
@@ -38,6 +38,7 @@ import { PortfolioLightbox } from '@/components/creator-profile/PortfolioLightbo
 import { PublicProfileReviews } from '@/components/profiles/PublicProfileReviews';
 import { safeUrl } from '@/lib/safeUrl';
 import { getMediaType, type ResolvedPortfolioItem } from '@/lib/mediaUtils';
+import { InlineRating } from '@/components/reviews/InlineRating';
 
 interface CreatorProfile {
   id: string;
@@ -66,6 +67,8 @@ interface CreatorProfile {
   x_url?: string;
   other_social_url?: string;
   website_url?: string;
+  average_rating?: number | null;
+  total_reviews?: number | null;
 }
 
 interface CreatorProfileModalProps {
@@ -101,6 +104,7 @@ export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [avatarUrl, setAvatarUrl] = useState<string | undefined>();
+  const reviewsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const profile = fullProfile;
@@ -123,7 +127,7 @@ export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
       try {
         const { data, error } = await supabase
           .from('creator_profiles')
-          .select('id, user_id, creator_name, avatar_url, bio, skills, portfolio_urls, location, availability, base_rate_per_hour, years_of_experience, languages_spoken, timezone, response_time, min_project_budget, max_projects_per_month, preferred_project_duration, collaboration_preferences, instagram_url, tiktok_url, youtube_url, facebook_url, linkedin_url, x_url, other_social_url, website_url')
+          .select('id, user_id, creator_name, avatar_url, bio, skills, portfolio_urls, location, availability, base_rate_per_hour, years_of_experience, languages_spoken, timezone, response_time, min_project_budget, max_projects_per_month, preferred_project_duration, collaboration_preferences, instagram_url, tiktok_url, youtube_url, facebook_url, linkedin_url, x_url, other_social_url, website_url, average_rating, total_reviews')
           .eq('id', creator.id)
           .single();
 
@@ -271,6 +275,13 @@ export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
                 </div>
               </div>
             </div>
+
+            <InlineRating
+              averageRating={profile.average_rating}
+              totalReviews={profile.total_reviews}
+              size="md"
+              onClick={() => reviewsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+            />
 
             <Separator />
 
@@ -510,7 +521,7 @@ export const CreatorProfileModal: React.FC<CreatorProfileModalProps> = ({
             )}
 
             {/* Reviews */}
-            <div>
+            <div ref={reviewsRef} className="scroll-mt-4">
               <PublicProfileReviews
                 profileId={profile.user_id}
                 profileType="creator"

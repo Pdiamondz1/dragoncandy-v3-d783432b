@@ -14,6 +14,7 @@ import { useCounterOffers, useRespondToCounterOffer } from '@/hooks/useCounterOf
 import { useAuth } from '@/hooks/useAuth';
 import { useResolvedLogoUrl, useResolvedAvatarUrl } from '@/hooks/useSignedUrl';
 import { formatSkillLabel } from '@/lib/skillUtils';
+import { InlineRating } from '@/components/reviews/InlineRating';
 
 interface ApplicationCardProps {
   application: CampaignApplication;
@@ -121,6 +122,10 @@ const ApplicationCardComponent: React.FC<ApplicationCardProps> = ({
                 {application.creator_profile?.creator_name || 'Anonymous Creator'}
               </CardTitle>
               <ApplicationStatusBadge status={application.status} />
+              <InlineRating
+                averageRating={application.creator_profile?.average_rating}
+                totalReviews={application.creator_profile?.total_reviews}
+              />
             </div>
             <p className="text-sm text-muted-foreground">
               Applied on {formatDate(application.created_at)}

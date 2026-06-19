@@ -33,7 +33,7 @@ export const useCampaignApplications = (campaignId: string) => {
 
       const { data: creatorProfiles } = await supabase
         .from('creator_profiles')
-        .select('user_id, creator_name, avatar_url, bio, skills')
+        .select('user_id, creator_name, avatar_url, bio, skills, average_rating, total_reviews')
         .in('user_id', creatorIds);
 
       const profileMap = new Map(
@@ -45,6 +45,8 @@ export const useCampaignApplications = (campaignId: string) => {
         avatar_url: null,
         bio: null,
         skills: [] as string[],
+        average_rating: null,
+        total_reviews: null,
       };
 
       const enrichedApplications = applications.map(app => {
@@ -57,6 +59,8 @@ export const useCampaignApplications = (campaignId: string) => {
                 avatar_url: profile.avatar_url || null,
                 bio: profile.bio || null,
                 skills: profile.skills || [],
+                average_rating: profile.average_rating ?? null,
+                total_reviews: profile.total_reviews ?? null,
               }
             : fallbackProfile,
         };

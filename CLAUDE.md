@@ -23,7 +23,7 @@ npm run preview      # Preview production build locally
 
 ## Tech Stack
 
-React 18 + TypeScript (strict), Vite, Tailwind CSS, shadcn/ui (Radix). Supabase backend (Postgres, Auth, Edge Functions, Realtime, Storage). Stripe Connect (test mode). React Query for server state. Framer Motion (lazy-loaded). Outstand.so for social media integration (Instagram, TikTok, YouTube). Google Maps (geocoding). Claude API (Anthropic) for AI features — backend-only via 73 Deno edge functions. Hosted on Lovable.dev → dragoncandy.io. Fonts: Outfit (sans), Pacifico (script).
+React 18 + TypeScript (strict), Vite, Tailwind CSS, shadcn/ui (Radix). Supabase backend (Postgres, Auth, Edge Functions, Realtime, Storage). Stripe Connect (test mode). React Query for server state. Framer Motion (lazy-loaded). Outstand.so for social media integration (Instagram, TikTok, YouTube). Google Maps (geocoding). Claude API (Anthropic) for AI features — backend-only via 80 Deno edge functions. Hosted on Lovable.dev → dragoncandy.io. Fonts: Outfit (sans), Pacifico (script).
 
 ## Coding Conventions
 
@@ -85,7 +85,8 @@ ErrorBoundary → ThemeProvider → QueryClientProvider → LazyMotion → AuthP
 
 * **Supabase client**: single instance at `src/integrations/supabase/client.ts`
 * **Feature modules**: domain code in `src/features/` (donny, promotions, settings)
-* **Edge functions**: 73 Deno functions in `supabase/functions/`, shared utils in `_shared/` (cors, auth, model-routing, cost-ledger, platform-fee, anthropic-fetch, mcp-client)
+* **Edge functions**: 80 Deno functions in `supabase/functions/`, shared utils in `_shared/` (cors, auth, model-routing, cost-ledger, platform-fee, anthropic-fetch, mcp-client)
+* **Autoresearch + Donny RAG**: the `/autoresearch` skill (`.claude/skills/autoresearch/`) grows the wiki and, via `sync-donny`, syncs verified wiki pages into Donny's RAG store (`donny_knowledge`) through the `donny-knowledge-sync` edge function (OpenAI embeddings, idempotent). See `docs/wiki/concepts/self-improving-app.md`.
 * **Outstand integration**: `src/integrations/outstand/Provider.tsx` + 17 hooks in `src/hooks/outstand/` — social media account linking, delegated posting, analytics
 * **Auth system**: app-level loading guard in `AppLayout`, 3-hour global inactivity timeout in `AuthenticatedShell` (both defined in `src/App.tsx`)
 * **ErrorBoundary** levels: `'page'` (default), `'section'`, `'widget'`. Pass `fallback={null}` for silent widget errors.
@@ -107,6 +108,25 @@ After completing any implementation, review for:
 - Missing error handling on async operations
 
 Run /simplify before presenting code to the user.
+
+### Codex second review (required)
+
+Codex is a **mandatory independent second reviewer** of Claude's code. After Claude's
+own reviews pass (subagent spec + code-quality reviews, or `/code-review`) and before
+finishing a development branch / opening a PR, run an independent Codex pass and act
+on its findings:
+
+```bash
+codex review --base main --title "<short title>"   # run from the worktree
+```
+
+(Other modes: `--uncommitted` for staged/unstaged/untracked changes, `--commit <sha>`
+for a single commit.) If Codex flags real issues, Claude fixes them and Codex is
+re-run until clean. Relay Codex's summary verdict to the user. Codex's sandbox may
+reject some of its own shell commands ("blocked by policy") — it still completes a
+full diff pass; that is expected, not a failure. This complements, never replaces,
+Claude's own reviews — the point is two independent models. (Distinct from
+`/code-review ultra`, the user-triggered, billed multi-agent cloud review.)
 
 ## Important Rules
 
@@ -139,10 +159,13 @@ Work spanning multiple sessions uses handoff documents in `.claude/handoffs/`.
 
 **Creating:** Invoke `session-handoff` skill when completing a plan phase with more work remaining, switching workstreams, or ending a session with pending work. Skip for small self-contained fixes or fully completed work. After writing the handoff to `.claude/handoffs/`, also copy it to `docs/wiki/raw/sessions/` and run `/wiki-ops ingest` on the raw session file to synthesize it into the wiki.
 
+**Knowledge update on branch finish (required).** Finishing a worktree branch is not done until the knowledge layer reflects what shipped. As a standard step of `finishing-a-development-branch`, run the **`knowledge-sync`** skill: write a `docs/wiki/raw/sessions/` source, `/wiki-ops ingest` it, refresh the affected core docs (`PROJECT_CONTEXT.md`, plus `DATABASE_SCHEMA.md` / `DESIGN_SYSTEM.md` / this file only if schema / design / a workflow rule changed), include those changes in the PR (reviewed like any code, through the Codex second pass), and after merge sync Donny's RAG (`donny_knowledge`). Skip only for trivial mechanical changes (typo/format/dep bumps). The daily 3am AIOS `knowledge-freshness-agent` only *flags* misses on `/internal/findings` — it is not a substitute for doing this per session.
+
 | Layer | Purpose | Update cadence |
 |-------|---------|----------------|
 | Memory (`.claude/...memory/`) | Durable user/project facts, preferences | When new facts learned |
 | PROJECT_CONTEXT.md | Project identity, strategy, stack | Monthly or at milestones |
+| Wiki (`docs/wiki/`) + Donny RAG (`donny_knowledge`) | Synthesized knowledge for humans + retrieval | Per worktree session, via `knowledge-sync` |
 | Handoffs (`.claude/handoffs/`) | In-flight execution state, next steps | Per work session |
 | Git log | What changed and why | Per commit |
 
@@ -158,4 +181,30 @@ Never commit actual values. Reference `.env.local` locally.
 
 ## Deployment
 
-Push to `main` on GitHub → Lovable auto-deploys to dragoncandy.io. Test locally with `npm run dev` before pushing. No staging environment.
+Push to `main` on GitHub → Lovable auto-deploys to dragoncandy.io. Test locally with `npm run dev` before pushing.
+
+### Worktree workflow — refresh local main after every merge
+
+Work happens in **git worktrees** under `.claude/worktrees/` (30+ of them). A worktree is a
+**separate working directory** with its own branch; edits there reach `origin/main` only via PR
+merge. **The local `main` checkout (`C:\GIT\dragoncandy-v3-d783432b`) does NOT auto-update** — so the
+files you browse there go stale (they can drift 100+ commits behind `origin/main`). Lovable deploys
+from **GitHub `origin/main`**, not the local checkout, so prod stays current even when local main is stale.
+
+**After merging any PR, refresh the local main checkout** so its files match reality:
+
+```bash
+git -C "C:/GIT/dragoncandy-v3-d783432b" stash push -- README.md   # if it has local edits
+git -C "C:/GIT/dragoncandy-v3-d783432b" fetch origin
+git -C "C:/GIT/dragoncandy-v3-d783432b" merge --ff-only origin/main
+```
+
+If the fast-forward aborts on "untracked working tree files would be overwritten," move those
+untracked files aside first. Core files (`CLAUDE.md`, `docs/PROJECT_CONTEXT.md`, `docs/wiki/`) appearing
+stale in the local folder almost always means this refresh step was skipped — not that the change was lost.
+
+**Recurring worktree routines are skills — use them, don't re-derive:** `refresh-main` (the
+fast-forward above), `worktree-cleanup` (remove merged worktrees + branches, safety-gated),
+`codex-review` (the mandatory Codex second pass before a PR), `verify-prod` (post-deploy
+both-viewport + console-error check), and `knowledge-sync` (the per-session knowledge update
+described under Session Continuity).
