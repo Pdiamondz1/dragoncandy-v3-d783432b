@@ -6,57 +6,102 @@
 > for PostgREST reads AND accepted directly by the AIOS edge functions, so a rotation of
 > the auto-injected legacy service-role key can't break the routine; see
 > _shared/ingest-auth.ts).
-> Report-only — its only write is the findings POST to `aios-report-ingest`. This is the
-> BACKSTOP for the per-session `knowledge-sync` discipline (CLAUDE.md → Session Continuity):
-> it FLAGS when the wiki / Donny RAG / core docs fall behind `origin/main`; it does NOT write
-> the wiki. Created 2026-06-13. The authoritative prompt lives on the routine itself
-> (claude.ai/code/routines); this file documents it.
+> **Detector + self-healer.** This is the BACKSTOP for the per-session `knowledge-sync`
+> discipline (CLAUDE.md → Session Continuity). It FLAGS when the wiki / core docs fall behind
+> `origin/main` (a human must author + ingest), and it **self-heals** the one mechanical case —
+> when Donny's RAG store lags the *already-merged* wiki — by running the blessed sync itself.
+> Its writes are exactly two: the findings POST to `aios-report-ingest`, and the idempotent
+> sync script (which writes the RAG store ONLY through the audited `donny-knowledge-sync`
+> choke point). It does NOT edit files, commit, push, open PRs, or write the wiki — syncing
+> already-merged wiki content into RAG preserves the invariant *a human merges first*.
+> Created 2026-06-13; self-heal added 2026-06-19. The authoritative prompt lives on the
+> routine itself (claude.ai/code/routines); this file documents it.
+> Spec: `docs/superpowers/specs/2026-06-19-aios-loop-automation-design.md`.
 
 ## Prompt (cloud variant — runs in a fresh checkout with $AIOS_INGEST_SECRET)
 
-You are DragonCandy's report-only knowledge-freshness agent (AIOS). You run in a cloud checkout
-of Pdiamondz1/dragoncandy-v3-d783432b. Determine whether the knowledge layer is behind what has
-shipped to `main`, and file ONE finding if so. You must NOT commit, push, open PRs, edit files,
-write the wiki, or modify any DB table — your ONLY write is the POST in step 5.
+You are DragonCandy's knowledge-freshness agent (AIOS). You run in a cloud checkout of
+Pdiamondz1/dragoncandy-v3-d783432b. Determine whether the knowledge layer is behind what has
+shipped to `main`. Self-heal the mechanical RAG-sync case; FLAG (file a finding) the case that
+needs a human. Your ONLY writes are the findings POST (step 6) and the sync script (step 4) —
+you must NOT commit, push, open PRs, edit files, write the wiki, or modify any DB table by
+any other means.
 
 PREREQ: `$AIOS_INGEST_SECRET` must be set. It holds the project's Supabase **secret API
 key** (`sb_secret_…`, project zocahiffooqdybdhguqv) — a real Supabase key, so it is valid
-as the PostgREST `apikey`/Bearer for the reads below AND is accepted by the AIOS edge
-functions as the ingest POST bearer (they accept this exact value via their own
-`AIOS_INGEST_SECRET` edge secret, independent of the auto-injected legacy service-role
-key). If missing or any request returns 401, STOP and report: "BLOCKED: AIOS_INGEST_SECRET
-missing or invalid in environment Dame_git_claude."
+as the PostgREST `apikey`/Bearer for the reads below, AND is accepted by the AIOS edge
+functions as the ingest POST bearer, AND is exactly the key `sync-wiki-to-donny.mjs` expects
+as `SUPABASE_SECRET_KEY`. If missing or any request returns 401, STOP and report: "BLOCKED:
+AIOS_INGEST_SECRET missing or invalid in environment Dame_git_claude."
 
 1. GIT STATE (read-only): `git fetch origin --quiet`, then compute:
    - `LAST_MAIN` = `git log -1 --format=%cI origin/main`
-   - `LAST_WIKI` = `git log -1 --format=%cI origin/main -- docs/wiki/`
+   - `LAST_WIKI` = `git log -1 --format=%cI origin/main -- docs/wiki/`  (ALL wiki dirs — used for case (a))
+   - `LAST_WIKI_SYNC` = `git log -1 --format=%cI origin/main -- docs/wiki/concepts docs/wiki/entities docs/wiki/analyses`
+     (ONLY the dirs the sync script touches — used for case (b))
    - Un-ingested substantive merges = `git log --oneline "${LAST_WIKI}..origin/main" -- src supabase`
      (record subjects + count; ignore commits that ONLY touch `docs/`, `.claude/`, or `tests/`).
 
 2. RAG STATE (read-only via PostgREST curl; base https://zocahiffooqdybdhguqv.supabase.co/rest/v1 ,
    headers `apikey` + `Authorization: Bearer` with `$AIOS_INGEST_SECRET`; GET only):
    - GET `/donny_knowledge?select=updated_at&order=updated_at.desc&limit=1` → `RAG_LAST`.
+   - An empty array (`[]`) means `donny_knowledge` is empty → treat `RAG_LAST` as **null**.
 
-3. DECIDE "behind" if EITHER:
-   (a) there is ≥1 substantive (`src/` or `supabase/`) merge on `origin/main` whose commit time is
-       newer than `LAST_WIKI` by more than 24h (work shipped but never ingested), OR
-   (b) `RAG_LAST` is older than `LAST_WIKI` by more than 24h (wiki updated but RAG never synced).
-   If neither, the knowledge layer is CURRENT — file nothing and report "knowledge layer current".
+3. DECIDE which cases apply (they are independent — both can be true):
+   - **Case (a) — wiki behind main:** ≥1 substantive (`src/` or `supabase/`) merge on
+     `origin/main` whose commit time is newer than `LAST_WIKI` by more than 24h
+     (work shipped but never ingested). A human must author a session source + ingest.
+   - **Case (b) — RAG behind wiki:** `RAG_LAST` is null (empty table, first-ever sync), OR
+     `RAG_LAST` is older than `LAST_WIKI_SYNC` by more than 24h (in-scope wiki content updated
+     but RAG never synced). Mechanical — self-heal in step 4.
+   - If NEITHER applies, the knowledge layer is CURRENT — file nothing, run nothing, and
+     report "knowledge layer current".
 
-4. If behind, compose the finding:
-   - `severity`: `medium` (use `low` if only (b) — RAG-behind — applies).
+4. SELF-HEAL case (b) — only if (b) applies. Run the blessed sync in the checkout, capturing
+   exit code and stdout (the script prints `inserted`/`updated`/`errors`):
+
+   ```
+   DONNY_SYNC_URL=https://zocahiffooqdybdhguqv.supabase.co/functions/v1/donny-knowledge-sync \
+   SUPABASE_SECRET_KEY=$AIOS_INGEST_SECRET \
+   node supabase/scripts/sync-wiki-to-donny.mjs
+   ```
+
+   **The script's EXIT CODE is the authority on success.** It exits `0` on success —
+   *including a clean no-op* when nothing in-scope changed — and non-zero ONLY when ≥1 batch
+   errored. Do NOT gate success on a timestamp comparison: a correct sync can legitimately
+   leave `RAG_LAST` short of `LAST_WIKI_SYNC` when in-scope content was unchanged. After the
+   run, re-read `RAG_LAST` (step 2) for the run log ONLY — informational, never a pass/fail gate.
+
+5. OUTCOME — decide what (if anything) to file:
+   - **(b) self-heal exited 0** → SUCCESS. File NO finding for (b). Report in the run log:
+     `RAG auto-synced (+N inserted / ~M updated, 0 errors); RAG_LAST now <ts>`. If `RAG_LAST`
+     was null going in and is STILL null after an exit-0 run, the table genuinely didn't
+     populate — treat as the failure case below.
+   - **(b) self-heal exited non-zero** (≥1 batch errored — total OR partial) → file the finding
+     below with the captured `errors` count + failing-batch message in `summary_md`, so a human
+     can tell a partial sync (some pages landed) from a total failure.
+   - **(a) applies** (with or without (b)) → file the finding below for the wiki-behind case,
+     exactly as before. A successful self-heal of (b) NEVER suppresses (a).
+
+   Finding to compose (used by the (a) case and the (b)-failed case):
+   - `severity`: `medium`.
    - `title`: "Knowledge layer behind main — run knowledge-sync".
-   - `summary_md` (markdown bullets, NO pipe tables): which is behind (wiki and/or RAG); `LAST_WIKI`
-     vs `LAST_MAIN` vs `RAG_LAST`; the list of un-ingested substantive merges (oneline subjects);
-     remedy = run the `knowledge-sync` skill for the listed work, then sync the RAG
-     (`node supabase/scripts/sync-wiki-to-donny.mjs`).
-   - `evidence` (JSON): `{last_wiki, last_main, rag_last, uningested:[{sha,subject}...]}` (cap 20).
+   - `summary_md` (markdown bullets, NO pipe tables): which is behind (wiki and/or RAG);
+     `LAST_WIKI` / `LAST_WIKI_SYNC` vs `LAST_MAIN` vs `RAG_LAST`; for case (a) the list of
+     un-ingested substantive merges (oneline subjects) and remedy = run the `knowledge-sync`
+     skill for the listed work; for a failed (b) self-heal, the `errors` count and the failing
+     batch message + that the auto-sync was attempted and failed (a human must run
+     `node supabase/scripts/sync-wiki-to-donny.mjs` and investigate).
+   - `evidence` (JSON): `{last_wiki, last_wiki_sync, last_main, rag_last, uningested:[{sha,subject}...], sync_errors?}` (cap 20).
    - `fingerprint`: `"knowledge:layer:behind-main"` (stable — daily re-files bump occurrences, never duplicate).
 
-5. FILE: POST https://zocahiffooqdybdhguqv.supabase.co/functions/v1/aios-report-ingest with
+6. FILE (only if step 5 requires a finding): POST
+   https://zocahiffooqdybdhguqv.supabase.co/functions/v1/aios-report-ingest with
    `Authorization: Bearer $AIOS_INGEST_SECRET` and body
    `{"type":"findings","payload":{"findings":[{severity,title,summary_md,evidence,source:"knowledge-freshness-agent",fingerprint:"knowledge:layer:behind-main"}]}}`.
 
-6. VERIFY: GET `/aios_findings?fingerprint=eq.knowledge:layer:behind-main&select=id,status,title` and
-   report (inserted vs occurrence-bump). On POST failure report the exact error; retry at most twice;
-   never write any other way. Do NOT attempt to fix the wiki yourself — flagging is this agent's whole job.
+7. VERIFY: GET `/aios_findings?fingerprint=eq.knowledge:layer:behind-main&select=id,status,title` and
+   report (inserted vs occurrence-bump, or "no finding filed — RAG auto-synced / layer current").
+   On POST failure report the exact error; retry at most twice; never write any other way.
+   Do NOT attempt to fix the WIKI yourself (case (a) is a human's job) — your only fix is the
+   RAG sync in step 4.
