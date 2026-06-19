@@ -197,6 +197,26 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   Additive/backward-compatible; deployed via CLI + verified end-to-end. Set `AIOS_INGEST_SECRET`
   in three places: edge secret, cloud-routine env, Vault. (Don't disable the legacy JWT — it
   still backs every function's injected-key admin client.)
+- DragonCandy AIOS — automation loops (knowledge-sync self-heal + Loop Scout) — **shipped
+  (PR #130, 2026-06-19).** Prompted by a framework for ranking autonomous "loop candidates" —
+  the **4-Condition Test** (repeats? / can a rule judge done? / afford wasted runs? / has the
+  data + tools?). Two sequenced report-only loops. **Loop 1:** the daily 3am
+  `knowledge-freshness-agent` upgraded from *detector* → *detector + self-healer* — it now
+  auto-runs the blessed `sync-wiki-to-donny.mjs` when `donny_knowledge` lags the **already-merged**
+  wiki (case b, mechanical) and keeps *flagging* the human case (case a, substantive `src/`/`supabase/`
+  work shipped but un-ingested). Writes are exactly two (findings POST + idempotent sync); the
+  invariant *a human merges first* holds (propagates only merged content). Two timestamps separate
+  the cases (`LAST_WIKI` = all of `docs/wiki/`; `LAST_WIKI_SYNC` = only the synced
+  `concepts`/`entities`/`analyses` dirs), and the sync script's **exit code** is the success
+  authority (a timestamp compare would false-fail whenever a wiki commit touched only
+  `sources`/`index`/`log`). **Loop 2:** a new monthly **Loop Scout** routine (cron `0 8 1 * *`,
+  env `Dame_git_claude`) that reads existing schedules + cron jobs so it never re-proposes a live
+  loop, mines `git log`/handoffs for repeated work, runs the 4-Condition Test, and files the top
+  ~5 ranked candidates as `aios_findings` (`source:"loop-scout"`, `[loop]`-tagged, `severity` =
+  build priority) at `/internal/findings`. No schema/UI/RLS/edge-function change. Docs/prompts
+  only; two `spec-document-reviewer` rounds stood in for the Codex pass. Founder-run go-live:
+  update the live knowledge-freshness routine prompt + create the loop-scout routine via
+  `/schedule`. Spec: `docs/superpowers/specs/2026-06-19-aios-loop-automation-design.md`.
 
 **Workflow discipline**: Single Claude Code agent, one prompt at a time
 → `npm run build` → verify → push. Session handoffs at plan-phase
