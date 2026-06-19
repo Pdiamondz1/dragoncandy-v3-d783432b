@@ -1,5 +1,22 @@
 # Wiki Log
 
+## [2026-06-19] ingest | AIOS automation loops — knowledge-sync self-heal + Loop Scout
+
+Two sequenced AIOS loops shipped (PR #130), prompted by a screenshot framework for ranking
+automation "loop candidates" — the **4-Condition Test** (repeats? / rule judges done? / afford
+wasted runs? / has data + tools?). **Loop 1:** the daily knowledge-freshness agent upgraded from
+detector → detector + **self-healer** — it now auto-runs the blessed `sync-wiki-to-donny.mjs` when
+`donny_knowledge` lags the already-merged wiki (case b) and keeps flagging the human case (case a,
+substantive work shipped but un-ingested). Writes are exactly two (findings POST + idempotent sync);
+the invariant *a human merges first* holds (only propagates merged content). Two timestamps separate
+the cases (`LAST_WIKI` all dirs vs `LAST_WIKI_SYNC` concepts/entities/analyses); the script's exit
+code is the success authority (a timestamp compare would false-fail on sources/index/log-only
+commits). **Loop 2:** a new monthly **Loop Scout** routine (cron `0 8 1 * *`) that runs the
+4-Condition Test over repeated work + telemetry and files the top ~5 ranked candidates as
+`aios_findings` (`source:"loop-scout"`, `[loop]`-tagged, severity = build priority) at
+`/internal/findings`. No schema/UI change. Two spec-review rounds stood in for Codex (docs-only).
+Pages updated: [[Self-Improving App]].
+
 ## [2026-06-18] ingest | AIOS ingest-secret key rotation fix
 
 A new Supabase `sb_secret_…` key rotated prod's service-role credential, silently 401'ing

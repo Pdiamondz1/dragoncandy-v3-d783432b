@@ -2,9 +2,9 @@
 title: Self-Improving App
 type: concept
 created: 2026-06-10
-updated: 2026-06-18
-sources: [autoresearch/program.md, autoresearch/README.md, docs/PROJECT_CONTEXT.md, docs/superpowers/specs/2026-06-11-dragoncandy-aios-design.md, 2026-06-18-wiki-commit-pr.md, 2026-06-18-donny-answer-to-wiki.md, 2026-06-18-aios-ingest-secret-rotation.md]
-tags: [architecture, strategy, ai, moat, autoresearch, donny]
+updated: 2026-06-19
+sources: [autoresearch/program.md, autoresearch/README.md, docs/PROJECT_CONTEXT.md, docs/superpowers/specs/2026-06-11-dragoncandy-aios-design.md, 2026-06-18-wiki-commit-pr.md, 2026-06-18-donny-answer-to-wiki.md, 2026-06-18-aios-ingest-secret-rotation.md, 2026-06-19-aios-loop-automation.md]
+tags: [architecture, strategy, ai, moat, autoresearch, donny, automation]
 ---
 
 # Self-Improving App
@@ -93,6 +93,43 @@ cite its own un-vetted synthesis back as fact. Reuses the same `GITHUB_WIKI_TOKE
 secret. v1 uses deterministic client-side defaults (no AI metadata; a Haiku suggestion is a possible
 fast-follow).
 
+### The detector becomes a self-healer — and the app proposes its own next loops (2026-06-19)
+
+Two sequenced AIOS loops shipped (PR #130), prompted by a framework for deciding *which*
+repeated work is worth automating — the **4-Condition Test**: score each candidate on
+(1) does it **repeat** on a cadence, (2) can a **rule judge** when a run is done/correct,
+(3) can you **afford wasted runs** (report-only, idempotent, reversible), (4) does the AI
+already **have the data + tools** it needs. All four green = "build-first."
+
+- **Loop 1 — knowledge-freshness self-heal (scored 4/4).** The daily ~3am `knowledge-freshness-agent`
+  already *detected* two drift signals but only *flagged* both. It now **self-heals** the one
+  mechanical case — when `donny_knowledge` lags the *already-merged* wiki (**case b**), it runs
+  the blessed `sync-wiki-to-donny.mjs` itself (writing RAG only through the audited
+  `donny-knowledge-sync` choke point) — and keeps **flagging** the human case — when substantive
+  `src/`/`supabase/` work shipped to `main` but was never ingested (**case a**, needs a human to
+  author a session source). Its writes are now **exactly two**: the findings POST and the
+  idempotent sync script; it never edits files, commits, or writes the wiki. This preserves the
+  invariant **a human merges first** — it only propagates human-reviewed, already-merged content.
+  Two timestamps separate the cases: `LAST_WIKI` (ALL of `docs/wiki/`, drives case a) vs
+  `LAST_WIKI_SYNC` (only `concepts`/`entities`/`analyses`, the dirs the script reads, drives case
+  b). The script's **exit code is the success authority** (0 on a clean no-op, non-zero only on an
+  errored batch) — comparing timestamps would false-fail whenever a wiki commit touched only
+  `sources`/`index`/`log`, which `knowledge-sync` does routinely.
+- **Loop 2 — Loop Scout (monthly, report-only).** The auditing framework itself, built **into** the
+  AIOS as a monthly routine (cron `0 8 1 * *`). It reads `.claude/schedules/` + migration cron jobs
+  so it never re-proposes an existing loop, mines `git log` / handoffs / sessions for repeated work,
+  HEAD-probes PostgREST for data availability, runs the 4-Condition Test on each candidate, and files
+  the top ~5 as `aios_findings` (`source:"loop-scout"`, `fingerprint:"loop-candidate:<slug>"`,
+  `severity` = build priority, `title` prefixed `[loop]`) at `/internal/findings`. Stable
+  fingerprints mean a recurring candidate bumps occurrences = "still worth building after N months."
+  No schema/UI change — it reuses the [[AIOS]] findings surface (`source` is a free string).
+
+Together these close two gaps: the one place the knowledge backstop *detected* a problem a human
+had to *fix* now fixes itself, and the platform now proposes its own next automation loops instead
+of a human auditing by hand. Both are **report-only except the single blessed idempotent sync** —
+[[Musk's Algorithm]]'s "automate last" applied honestly.
+Spec: `docs/superpowers/specs/2026-06-19-aios-loop-automation-design.md`.
+
 ## Phased roadmap
 
 - **Phase 1 — knowledge research loop** *(built).* On-demand `/autoresearch <topic>` plus an
@@ -109,7 +146,10 @@ fast-follow).
   week's errors from `donny_tool_executions`/`analytics_events`/payment tables, reads repo source for
   suspected causes, and files fingerprint-deduplicated findings into `aios_findings` via the
   `aios-report-ingest` choke point (occurrence counting; a resolved finding that recurs auto-reopens).
-  Admins triage at `/internal/findings`. The wiki-signals variant remains future work.
+  Admins triage at `/internal/findings`. The wiki-signals variant remains future work. The daily
+  knowledge-freshness routine joined this report-only set and, as of 2026-06-19, **self-heals** the
+  mechanical RAG-sync case rather than only flagging it (see "The detector becomes a self-healer"
+  above); a **Loop Scout** routine (monthly) now files ranked automation-candidate findings here too.
 - **Phase 4 — fix proposals** *(future).* The loop writes verified-bug remediation specs / draft PRs,
   human-gated, never auto-merged — honoring "one change per prompt" and "never modify auth without
   confirming."
