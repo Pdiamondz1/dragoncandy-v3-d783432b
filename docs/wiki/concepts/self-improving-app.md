@@ -3,7 +3,7 @@ title: Self-Improving App
 type: concept
 created: 2026-06-10
 updated: 2026-06-18
-sources: [autoresearch/program.md, autoresearch/README.md, docs/PROJECT_CONTEXT.md, docs/superpowers/specs/2026-06-11-dragoncandy-aios-design.md, 2026-06-18-wiki-commit-pr.md, 2026-06-18-donny-answer-to-wiki.md]
+sources: [autoresearch/program.md, autoresearch/README.md, docs/PROJECT_CONTEXT.md, docs/superpowers/specs/2026-06-11-dragoncandy-aios-design.md, 2026-06-18-wiki-commit-pr.md, 2026-06-18-donny-answer-to-wiki.md, 2026-06-18-aios-ingest-secret-rotation.md]
 tags: [architecture, strategy, ai, moat, autoresearch, donny]
 ---
 
@@ -136,6 +136,27 @@ fast-follow).
   + "Post Now" publish happens, and engagement-side pipelines are still partial
   (`dragonshare_engagement` schema-only; Outstand Phase 4 analytics in scope), so the card is empty in
   prod today by data reality. See also [[Content Engine Data Audit]].
+
+### Ingest choke-point auth — surviving Supabase key rotation
+
+The AIOS routines all write through `aios-report-ingest` (and the content cron through
+`content-performance-capture`), which run `verify_jwt=false` and check the bearer
+themselves. Originally that check was an exact match against the function's auto-injected
+`SUPABASE_SERVICE_ROLE_KEY`. That coupling broke silently when a new Supabase **secret
+API key** (`sb_secret_…`) rotated prod's service-role credential (2026-06-11 → fixed
+2026-06-18): the *injected* copy updated automatically, but every place that stored a
+**manual copy** of the key — the `Dame_git_claude` cloud-routine env (the agents) and the
+Vault `content_capture_key` (the cron) — went stale and 401'd for a week, while internal
+callers that source the key from injection (e.g. [[Donny AI]]'s `propose_correction`) kept
+returning 200. The fix (shared `_shared/ingest-auth.ts`) accepts a bearer matching
+**either** the injected service-role key (internal calls untouched) **or** a stable,
+operator-set **`AIOS_INGEST_SECRET`** (the agents/cron). Its value is the `sb_secret_…`
+key itself, so each agent holds one credential that works for both its direct PostgREST
+reads and its ingest POST. Because the functions now accept a value the operator manages
+(set in the edge secret, the cloud env, and Vault), a Supabase-initiated key rotation can
+no longer silently kill the routines. (Disabling the legacy JWT entirely is out of scope —
+it would break every function's injected-key admin client.) See [[Supabase]] and
+[[AIOS Ingest-Secret Rotation Session]].
 
 ## Guardrails
 

@@ -12,6 +12,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { milestonesDue, normalizeAnalytics, type Milestone } from "./capture.ts";
+import { isAuthorizedIngest } from "../_shared/ingest-auth.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -26,9 +27,9 @@ function json(status: number, body: unknown): Response {
 serve(async (req: Request) => {
   if (req.method !== "POST") return json(405, { error: "method_not_allowed" });
 
-  // Auth gate — only the cron (service-role bearer) may invoke.
-  const auth = req.headers.get("Authorization");
-  if (auth !== `Bearer ${SERVICE_KEY}`) return json(401, { error: "unauthorized" });
+  // Auth gate — only the cron (service-role or AIOS_INGEST_SECRET bearer) may
+  // invoke. See _shared/ingest-auth.ts.
+  if (!isAuthorizedIngest(req)) return json(401, { error: "unauthorized" });
 
   const OUTSTAND_API_KEY = Deno.env.get("OUTSTAND_API_KEY");
   if (!OUTSTAND_API_KEY) return json(503, { error: "outstand_not_configured" });

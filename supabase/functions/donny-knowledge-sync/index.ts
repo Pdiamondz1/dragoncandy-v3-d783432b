@@ -21,6 +21,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 import { logEmbeddingCost } from "../_shared/cost-ledger.ts";
+import { isAuthorizedIngest } from "../_shared/ingest-auth.ts";
 
 const EMBED_MODEL = "text-embedding-3-small";
 const SYSTEM_USER_ID = "00000000-0000-0000-0000-000000000000"; // system sync, no end user
@@ -42,9 +43,10 @@ serve(async (req) => {
       headers: { ...corsHeaders(req), "Content-Type": "application/json" },
     });
 
-  // Service role only — exact match to prevent substring bypass.
+  // Service-role (internal callers) or AIOS_INGEST_SECRET (external/manual sync) —
+  // exact match to prevent substring bypass. See _shared/ingest-auth.ts.
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  if (req.headers.get("Authorization") !== `Bearer ${serviceRoleKey}`) {
+  if (!isAuthorizedIngest(req)) {
     return json({ error: "Unauthorized" }, 401);
   }
 

@@ -109,7 +109,14 @@ serve(async (req) => {
     const serviceKeyUsable =
       SUPABASE_SERVICE_ROLE_KEY.length > 20 &&
       SUPABASE_SERVICE_ROLE_KEY !== Deno.env.get("SUPABASE_ANON_KEY");
-    if (serviceKeyUsable && bearer === SUPABASE_SERVICE_ROLE_KEY) {
+    // The scheduled export agent authenticates with the stable AIOS_INGEST_SECRET
+    // (decoupled from Supabase API-key rotation); the injected service-role key is
+    // still accepted for internal/legacy callers. Same restricted service-mode either way.
+    const ingestSecret = Deno.env.get("AIOS_INGEST_SECRET");
+    const isServiceBearer =
+      (serviceKeyUsable && bearer === SUPABASE_SERVICE_ROLE_KEY) ||
+      (!!ingestSecret && bearer === ingestSecret);
+    if (isServiceBearer) {
       if (action !== "append_metrics_to_sheet") {
         return json(
           { error: "service mode permits only append_metrics_to_sheet", code: "forbidden_service_action" },

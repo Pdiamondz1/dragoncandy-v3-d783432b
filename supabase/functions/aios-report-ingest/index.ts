@@ -19,6 +19,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
+import { isAuthorizedIngest } from "../_shared/ingest-auth.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -108,8 +109,9 @@ serve(async (req) => {
       headers: { ...corsHeaders(req), "Content-Type": "application/json" },
     });
 
-  // Service role only — exact match to prevent substring bypass.
-  if (req.headers.get("Authorization") !== `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`) {
+  // Service-role (internal callers) or AIOS_INGEST_SECRET (external agents) —
+  // exact match to prevent substring bypass. See _shared/ingest-auth.ts.
+  if (!isAuthorizedIngest(req)) {
     return json({ error: "Unauthorized" }, 401);
   }
 

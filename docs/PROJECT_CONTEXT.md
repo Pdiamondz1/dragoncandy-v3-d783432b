@@ -183,6 +183,20 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   Specs: `docs/superpowers/specs/2026-06-17-donny-aios-corrections-design.md`,
   `docs/superpowers/specs/2026-06-18-wiki-commit-pr-design.md`,
   `docs/superpowers/specs/2026-06-18-donny-answer-to-wiki-design.md`.
+- DragonCandy AIOS — ingest-secret key rotation hardening — **shipped (PR #129,
+  2026-06-18).** A new Supabase `sb_secret_…` key rotated prod's service-role credential,
+  silently 401'ing the three daily 3am AIOS routines (knowledge-freshness, bug-sweep,
+  weekly-brief) **and** the `content-performance-capture` pg_cron since 2026-06-11 — every
+  endpoint that exact-matched the bearer against the auto-injected `SUPABASE_SERVICE_ROLE_KEY`
+  rejected the now-stale **stored copies** (the `Dame_git_claude` cloud-routine env, the
+  Vault `content_capture_key`), while injected-key callers (Donny) stayed green. Fix: a
+  shared `_shared/ingest-auth.ts` gate accepting the injected service-role key **or** a
+  stable, operator-set **`AIOS_INGEST_SECRET`** (value = the `sb_secret` key, so it doubles
+  as the agents' PostgREST `apikey`); applied to `aios-report-ingest`, `donny-knowledge-sync`,
+  `content-performance-capture`, and the `google-workspace-proxy` service-bearer path.
+  Additive/backward-compatible; deployed via CLI + verified end-to-end. Set `AIOS_INGEST_SECRET`
+  in three places: edge secret, cloud-routine env, Vault. (Don't disable the legacy JWT — it
+  still backs every function's injected-key admin client.)
 
 **Workflow discipline**: Single Claude Code agent, one prompt at a time
 → `npm run build` → verify → push. Session handoffs at plan-phase
