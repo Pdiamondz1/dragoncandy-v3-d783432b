@@ -171,23 +171,24 @@ export function useRunPlaybook() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (slug: string): Promise<RunPlaybookResult> => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('No active session');
-      const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/aios-playbook-run`,
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-            'Content-Type': 'application/json',
-            apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
-          },
-          body: JSON.stringify({ slug, trigger: 'manual' }),
-        },
+      // functions.invoke uses the configured client URL/anon-key (which carry the
+      // prod fallback when VITE_SUPABASE_URL is unset) and attaches the session
+      // token automatically — so this works in fallback-env builds too.
+      const { data, error } = await supabase.functions.invoke<RunPlaybookResult>(
+        'aios-playbook-run',
+        { body: { slug, trigger: 'manual' } },
       );
-      const data = (await res.json().catch(() => ({}))) as RunPlaybookResult;
-      if (!res.ok) throw new Error(data.error ?? `Run failed (${res.status})`);
-      return data;
+      if (error) {
+        // On a non-2xx the server's { error } body is in error.context (a Response).
+        let message = error.message;
+        const ctx = (error as { context?: Response }).context;
+        if (ctx && typeof ctx.json === 'function') {
+          const body = (await ctx.json().catch(() => null)) as RunPlaybookResult | null;
+          if (body?.error) message = body.error;
+        }
+        throw new Error(message);
+      }
+      return (data ?? {}) as RunPlaybookResult;
     },
     onSuccess: (_d, slug) => {
       queryClient.invalidateQueries({ queryKey: ['aios', 'playbooks'] });

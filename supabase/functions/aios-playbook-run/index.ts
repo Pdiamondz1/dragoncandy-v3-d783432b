@@ -30,7 +30,10 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 
-const STALE_RUN_MS = 5 * 60 * 1000;
+// Reap threshold for a stuck 'running' row. Kept safely ABOVE the platform's
+// hard edge-function wall-clock limit (~400s) so a still-executing run can never
+// be reaped mid-flight — a row older than this is definitively a dead/killed run.
+const STALE_RUN_MS = 15 * 60 * 1000;
 const MAX_TOOL_ROUNDS = 10;
 const TOKEN_SAFETY_NET = 300_000;
 const MODEL = "claude-sonnet-4-6";
@@ -422,6 +425,10 @@ serve(async (req) => {
     // check it: a failed write would otherwise leave the row stuck 'running'
     // (locking the playbook via the partial unique index) while we report success.
     // Throwing routes to the catch, which marks the run failed and returns 500.
+    // Filter on status='running' too: if this row was already reaped to 'failed'
+    // by a concurrent invocation, don't resurrect it to 'completed' (defense in
+    // depth on top of the >wall-clock STALE_RUN_MS, which already prevents reaping
+    // a live run).
     const { error: completeErr } = await admin
       .from("aios_playbook_runs")
       .update({
@@ -431,7 +438,8 @@ serve(async (req) => {
         correction_ids: correctionIds,
         finished_at: new Date().toISOString(),
       })
-      .eq("id", runId);
+      .eq("id", runId)
+      .eq("status", "running");
     if (completeErr) throw completeErr;
 
     return json({
@@ -446,10 +454,13 @@ serve(async (req) => {
     const message = err instanceof Error ? err.message : "playbook run failed";
     console.error("[aios-playbook-run]", message);
     if (runId) {
+      // Only fail it if it's still ours and running — never overwrite a row a
+      // reaper already marked failed.
       await admin
         .from("aios_playbook_runs")
         .update({ status: "failed", error_md: message, finished_at: new Date().toISOString() })
-        .eq("id", runId);
+        .eq("id", runId)
+        .eq("status", "running");
     }
     return json({ error: message, run_id: runId }, 500);
   }
