@@ -2,8 +2,8 @@
 title: Donny AI
 type: entity
 created: 2026-05-23
-updated: 2026-06-13
-sources: [docs/PROJECT_CONTEXT.md, docs/DATABASE_SCHEMA.md, docs/STRIPE_PRICES.md, raw/sessions/2026-06-07-core-docs-recent-updates-sync.md, raw/sessions/2026-06-13-weekly-sync.md]
+updated: 2026-06-20
+sources: [docs/PROJECT_CONTEXT.md, docs/DATABASE_SCHEMA.md, docs/STRIPE_PRICES.md, raw/sessions/2026-06-07-core-docs-recent-updates-sync.md, raw/sessions/2026-06-13-weekly-sync.md, raw/sessions/2026-06-20-donny-chat-input-timestamps.md]
 tags: [ai, donny, intelligence-layer]
 ---
 
@@ -89,6 +89,16 @@ generated idea(s)) instead of a blank form.
   non-existent `/dashboard/brand/campaigns/new` → now the shared `…/campaigns/create`.
 - Serves the [[DragonCandy Platform]] North Star ("less typing = more margin").
 
+## Chat Input & Timestamps (2026-06-20, PR #140)
+
+- **Expanding prompt input** — the shared `DonnyChatInput` single-line `<input>` (which
+  scrolled typed text off-screen) became an auto-growing `<textarea>` (Enter sends,
+  Shift+Enter newline). Reused the `MessageInputEnhanced` pattern.
+- **Message timestamps** — render the pre-existing `created_at`: a time *inside* each
+  bubble plus a teal date-divider chip between days. Shipped to both the consumer chat
+  panel and internal Donny; the time-inside-bubble + teal-chip choice is forced by the
+  two surfaces' opposite (light vs dark) backgrounds. See [[Donny Chat UX]].
+
 ## Key Decisions
 
 - Donny as service layer, not standalone AI tool (commoditization defense)
@@ -104,4 +114,6 @@ generated idea(s)) instead of a blank form.
 - [[Donny Audit Phase 1 Session]]
 - [[Donny Audit Phase 2 Session]]
 - [[Campaign Delivery, Scheduling & Notifications Session]]
+- [[Donny Chat UX]]
+- [[Donny Chat Input & Timestamps Session]]
 - [[Outstand]]
