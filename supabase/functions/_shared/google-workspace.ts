@@ -9,6 +9,8 @@
 
 // deno-lint-ignore-file no-explicit-any
 
+import { pickExportMode, capText } from "./drive-export.ts";
+
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 const GOOGLE_REVOKE_URL = "https://oauth2.googleapis.com/revoke";
 const DRIVE_FILES_URL = "https://www.googleapis.com/drive/v3/files";
@@ -331,6 +333,50 @@ export async function listDcFiles(token: string, folderId: string): Promise<any[
   });
   const data = await driveRequest(token, `${DRIVE_FILES_URL}?${params}`);
   return data.files ?? [];
+}
+
+const DRIVE_EXPORT_URL = "https://www.googleapis.com/drive/v3/files";
+
+/**
+ * Read the text of a file that lives in the caller's DragonCandy AIOS folder.
+ * Guards on parent === folderId (defense in depth over drive.file). Google Docs
+ * come back as markdown, Sheets as CSV, plain/markdown uploads as raw text;
+ * everything else is rejected. Output is capped (see EXPORT_CAP).
+ *
+ * KNOWN LIMITATION: the guard checks DIRECT parentage only — a file nested in a
+ * sub-folder of the AIOS folder would be rejected. That's acceptable today (the
+ * hub creates files at the folder root); a future "files in subfolders" case
+ * would need a recursive ancestor walk.
+ */
+export async function readDcFile(
+  token: string,
+  folderId: string,
+  fileId: string,
+): Promise<{ name: string; mimeType: string; text: string; truncated: boolean }> {
+  // 1. Metadata — name, mimeType, and parents for the folder guard.
+  const meta = await driveRequest(
+    token,
+    `${DRIVE_EXPORT_URL}/${fileId}?fields=id,name,mimeType,parents`,
+  );
+  if (!Array.isArray(meta.parents) || !meta.parents.includes(folderId)) {
+    throw new GoogleWorkspaceError("forbidden_file", "File is not in the DragonCandy AIOS folder", 403);
+  }
+  const strat = pickExportMode(meta.mimeType);
+  if (strat.mode === "unsupported") {
+    throw new GoogleWorkspaceError("unsupported_type", `Cannot read ${meta.mimeType} as text`, 400);
+  }
+  // 2. Export/media returns text (NOT json) — do a raw fetch, not driveRequest.
+  const url =
+    strat.mode === "export"
+      ? `${DRIVE_EXPORT_URL}/${fileId}/export?mimeType=${encodeURIComponent(strat.exportMime)}`
+      : `${DRIVE_EXPORT_URL}/${fileId}?alt=media`;
+  const resp = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  if (!resp.ok) {
+    console.error("[google-workspace] read export failed:", resp.status, (await resp.text()).slice(0, 200));
+    throw new GoogleWorkspaceError("google_api_error", `Could not read file (${resp.status})`, 502);
+  }
+  const { text, truncated } = capText(await resp.text());
+  return { name: meta.name, mimeType: meta.mimeType, text, truncated };
 }
 
 export async function createGoogleFile(
