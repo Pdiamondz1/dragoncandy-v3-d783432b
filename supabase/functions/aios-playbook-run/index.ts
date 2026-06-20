@@ -13,10 +13,11 @@
 // imports from donny-chat (which calls serve() at module load) and never
 // touches the live chat endpoint.
 //
-// Auth: the caller's Supabase session JWT — the runner builds the tool client
-// from it so the live-stats RPCs (which require auth.uid()) work and do NOT
-// degrade to the no-session stub. The acting user must be an admin. The service
-// role is used only to read the playbook and write the run row.
+// Auth: verify_jwt=false at the gateway (so the browser CORS OPTIONS preflight
+// reaches the handler); the function does its OWN auth — it builds the tool
+// client from the caller's session JWT so the live-stats RPCs (which require
+// auth.uid()) work and do NOT degrade to the no-session stub, and requires an
+// admin role. The service role is used only to read the playbook and write runs.
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";

@@ -63,6 +63,12 @@ verify_jwt = false
 [functions.aios-report-ingest]
 verify_jwt = false
 
+# Browser-invoked from /internal/playbooks; does its own session + admin check
+# (auth.getUser + user_roles) and handles the CORS preflight, so the gateway must
+# let the unauthenticated OPTIONS through.
+[functions.aios-playbook-run]
+verify_jwt = false
+
 [functions.google-workspace-proxy]
 verify_jwt = false
 
