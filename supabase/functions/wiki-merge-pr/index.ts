@@ -159,21 +159,30 @@ serve(async (req) => {
         );
         pages.push(buildSyncPage(path, raw));
       }
-      const syncRes = await fetch(`${SUPABASE_URL}/functions/v1/donny-knowledge-sync`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${SERVICE_ROLE_KEY}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ pages }),
-      });
-      const syncBody = await syncRes.json().catch(() => ({}));
-      // donny-knowledge-sync returns 200 even on per-page upsert failures — surface them.
-      // The response includes an aggregate `errors` count (see donny-knowledge-sync/index.ts line ~175).
-      const syncErrors = (syncBody as { errors?: number }).errors ?? 0;
-      if (!syncRes.ok || syncErrors > 0) {
-        // The PR is already merged (durable). Only the knowledge sync lagged — report it
-        // honestly instead of "merge failed". The nightly knowledge-freshness agent
-        // self-heals donny_knowledge/internal_docs lag, and re-invoking merge on this PR
-        // re-runs the sync idempotently.
-        const sync_error = !syncRes.ok ? `sync ${syncRes.status}` : `${syncErrors} page(s) failed to sync`;
+      // POST in batches — donny-knowledge-sync rejects pages.length > 100.
+      // Matches sync-internal-docs.mjs BATCH=20 (heavy full_content payloads).
+      // The PR is already merged (durable) before this loop runs; a failed batch
+      // reports merged:true/synced:false — the nightly knowledge-freshness agent
+      // self-heals donny_knowledge/internal_docs lag, and re-invoking merge on this
+      // PR re-runs the sync idempotently.
+      const SYNC_BATCH = 20;
+      let syncErrors = 0;
+      let syncTransportError: string | null = null;
+      for (let i = 0; i < pages.length; i += SYNC_BATCH) {
+        const batch = pages.slice(i, i + SYNC_BATCH);
+        const syncRes = await fetch(`${SUPABASE_URL}/functions/v1/donny-knowledge-sync`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${SERVICE_ROLE_KEY}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ pages: batch }),
+        });
+        const syncBody = await syncRes.json().catch(() => ({}));
+        if (!syncRes.ok) { syncTransportError = `sync ${syncRes.status}`; break; }
+        // donny-knowledge-sync returns 200 even on per-page upsert failures — surface them.
+        // The response includes an aggregate `errors` count (see donny-knowledge-sync/index.ts line ~175).
+        syncErrors += (syncBody as { errors?: number }).errors ?? 0;
+      }
+      if (syncTransportError || syncErrors > 0) {
+        const sync_error = syncTransportError ?? `${syncErrors} page(s) failed to sync`;
         return json({ merged: true, synced: false, sync_error });
       }
       return json({ merged: true, synced: true, synced_paths: paths });

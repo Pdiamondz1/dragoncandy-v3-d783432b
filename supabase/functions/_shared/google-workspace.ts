@@ -9,7 +9,7 @@
 
 // deno-lint-ignore-file no-explicit-any
 
-import { pickExportMode, capText } from "./drive-export.ts";
+import { pickExportMode, capText, EXPORT_CAP } from "./drive-export.ts";
 
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 const GOOGLE_REVOKE_URL = "https://oauth2.googleapis.com/revoke";
@@ -337,6 +337,26 @@ export async function listDcFiles(token: string, folderId: string): Promise<any[
 
 const DRIVE_EXPORT_URL = "https://www.googleapis.com/drive/v3/files";
 
+/** Read a response body as text, stopping once EXPORT_CAP chars are buffered. */
+async function readCappedText(resp: Response): Promise<{ text: string; truncated: boolean }> {
+  if (!resp.body) return capText(await resp.text()); // fallback: no stream available
+  const reader = resp.body.getReader();
+  const decoder = new TextDecoder();
+  let text = "";
+  let truncated = false;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      text += decoder.decode(value, { stream: true });
+      if (text.length >= EXPORT_CAP) { truncated = true; break; }
+    }
+  } finally {
+    await reader.cancel().catch(() => {});
+  }
+  return { text: text.slice(0, EXPORT_CAP), truncated };
+}
+
 /**
  * Read the text of a file that lives in the caller's DragonCandy AIOS folder.
  * Guards on parent === folderId (defense in depth over drive.file). Google Docs
@@ -375,7 +395,7 @@ export async function readDcFile(
     console.error("[google-workspace] read export failed:", resp.status, (await resp.text()).slice(0, 200));
     throw new GoogleWorkspaceError("google_api_error", `Could not read file (${resp.status})`, 502);
   }
-  const { text, truncated } = capText(await resp.text());
+  const { text, truncated } = await readCappedText(resp);
   return { name: meta.name, mimeType: meta.mimeType, text, truncated };
 }
 
