@@ -136,7 +136,11 @@ RLS helper functions — do not invent new ones.
 5. Founder reviews the run (report + done chip + linked proposals) and
    approves/rejects each proposal via the existing corrections queue + apply RPC.
 
-### 4.1 Runner seam — OPEN DECISION (corrected facts; recommend B)
+### 4.1 Runner seam — DECIDED: B (corrected facts)
+
+> **Decision (2026-06-19, Dame):** Option **B** — a thin new `aios-playbook-run`
+> edge function importing the exported internal pieces from `donny-chat`. The
+> options below are retained for rationale.
 
 The internal tools (`INTERNAL_TOOL_DEFINITIONS`), `buildInternalSystemPrompt`, and
 `executeTool` (with admin `internalCtx` gating and the `propose_correction` →
