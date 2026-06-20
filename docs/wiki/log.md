@@ -530,3 +530,16 @@ a bounded knowledge-sync verify→fix loop, and Loop Scout scoring condition-2 b
 presence. On its first real run the validator caught 2 pre-existing wiki orphans (Donny
 save-answer pages absent from index.md) and the loop closed them in 2 iterations.
 Pages created: [[Validator Skills → Loops Session]]. Pages updated: [[Validator Skills]], index.md.
+
+## [2026-06-20] ingest | AIOS Kill-switch Playbook + Loop-callable Playbooks Session
+Ingested the feat/aios-killswitch-playbook-loop session. A1: a report-only
+`kill-switch-watch` Founder Playbook (one idempotent seed migration) turning PROJECT_CONTEXT
+§3's four kill-switches into a repeatable green/watch/breach/not-yet-measurable check, honestly
+scoped as an armed-watch scaffold (three switches lack a data source — out of scope). A4 (the
+prompt's literal "so any loop can call it"): a `playbook-runner-agent` cloud-routine that makes
+any playbook loop-callable — it executes the playbook via Supabase MCP execute_sql + a capability
+map (sidestepping the auth.uid()-gated RPCs that bind the session-JWT runner) and surfaces a
+deduped finding on breach/watch only through aios-report-ingest (breach→critical, watch→medium;
+all-green posts nothing; no auto-resolve). No schema (beyond seed INSERT), edge-fn, secret, or
+auth change; Donny never writes directly. Codex-clean.
+Pages created: [[AIOS Kill-switch Playbook + Loop-callable Playbooks Session]]. Pages updated: [[Founder Playbooks]], [[Self-Improving App]], [[North Star & KPI Scorecard]], index.md.

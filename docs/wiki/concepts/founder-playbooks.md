@@ -3,17 +3,18 @@ title: Founder Playbooks
 type: concept
 created: 2026-06-20
 updated: 2026-06-20
-sources: [docs/superpowers/specs/2026-06-19-aios-founder-playbooks-design.md, 2026-06-19-aios-founder-playbooks.md]
+sources: [docs/superpowers/specs/2026-06-19-aios-founder-playbooks-design.md, 2026-06-19-aios-founder-playbooks.md, docs/superpowers/specs/2026-06-20-aios-playbook-killswitch-loop-design.md, 2026-06-20-aios-killswitch-playbook-loop.md]
 tags: [aios, donny, automation, internal, architecture]
 ---
 
 # Founder Playbooks
 
 A **Playbook** is a founder-authored, saved repeatable internal task that internal
-[[Donny AI]] runs on demand. It has four documented fields — `task`, `preferences`,
-`done-criteria`, and `allowed-proposals` — the literal embodiment of *"document the
-task, your preferences, and what counts as 'done' so any loop can call it."* Shipped
-in AIOS v1, PR #132 (2026-06-19/20), at `/internal/playbooks` (admin tier).
+[[Donny AI]] runs **on demand or unattended on a schedule** (see *Loop-callable*
+below). It has four documented fields — `task`, `preferences`, `done-criteria`, and
+`allowed-proposals` — the literal embodiment of *"document the task, your preferences,
+and what counts as 'done' so any loop can call it."* Shipped in AIOS v1, PR #132
+(2026-06-19/20), at `/internal/playbooks` (admin tier); made loop-callable 2026-06-20.
 
 **Status (closed out 2026-06-20):** shipped, merged, and **prod-verified** — the first
 real run of the *Weekly KPI variance check* seed completed in ~44s reporting **live**
@@ -88,14 +89,55 @@ failed/timed-out run is its own state. This makes "done" explicit and loop-check
 - `aios_playbook_runs` — `status`, `result_summary_md`, `done_check`, `correction_ids`,
   `error_md`, timestamps. Admin SELECT; the runner writes via service role.
 
-Three report-only seed playbooks ship: *Weekly KPI variance check*, *Scaling & capacity
-check*, *AI cost vs 15% cap* — each chosen to exercise the runner's available read tools.
+Seed report-only playbooks: *Weekly KPI variance check*, *Scaling & capacity check*,
+*AI cost vs 15% cap* (PR #132), and *Kill-switch guardrail watch* (2026-06-20) — each
+chosen to exercise the runner's available read tools.
+
+### Kill-switch guardrail watch (seed, 2026-06-20)
+
+`kill-switch-watch` turns [[North Star & KPI Scorecard]] §3's four kill-switches
+(churn >6%/mo, CAC payback >12mo, LTV:CAC <2:1, revenue-per-employee floor — a Y2–Y3
+gate, not a Y1 trigger) into a repeatable check reporting each **green / watch / breach
+/ not-yet-measurable**. Honestly scoped as an **armed-watch scaffold**: pre-revenue all
+four resolve to *not-yet-measurable* / *gate-inactive*, and three (churn, CAC-payback,
+LTV:CAC) have **no data source** — and won't even post-revenue until cohort /
+subscription / marketing-spend instrumentation exists (out of scope). Its value now is
+arming the guardrails and encoding the thresholds executably; switches light up *as
+their data sources are later built* (it does **not** auto-go-live the day revenue
+starts — a claim explicitly retracted in spec review).
+
+## Loop-callable (scheduling) — *"so any loop can call it"*
+
+The originating idea's final clause — *so any loop can call it* — shipped 2026-06-20 as
+**scheduling**, the prompt's literal "loop." A playbook can now run **unattended on a
+cron** via a new cloud-routine template `playbook-runner-agent.md` (modeled on the
+[[AIOS]] weekly-brief routine).
+
+- **Why a routine, not the runner:** the on-demand `aios-playbook-run` is **session-JWT
+  bound** (see Architecture below) — a **sessionless cron can't call it**. So the routine
+  *itself* executes the playbook: it loads the definition from `aios_playbooks` via
+  [[Supabase]] MCP `execute_sql`, and fulfills each read-tool the task names via a
+  **capability map** to direct table SELECTs (the same trick weekly-brief uses to
+  sidestep the `auth.uid()`-gated RPCs). The **playbook definition is the portable spec;
+  the loop is just another executor of it.**
+- **Output via `aios-report-ingest` only:** a **deduped finding on breach/watch only**
+  (`fingerprint:"playbook-breach:<slug>"`, `source:"playbook:<slug>"`; verdict→severity
+  map **breach→critical, watch→medium**); all-green posts nothing (lowest-noise, like the
+  bug-sweep routine). **No auto-resolve** — a cleared breach leaves the open finding
+  until a human triages it (matches bug-sweep / Loop Scout). The same invariant holds:
+  the only write is an informational finding (or, for a proposal-enabled playbook, a
+  gated correction) — **Donny never writes directly**.
+- The self-assessment JSON is **log-legibility only** on the scheduled path (no run row
+  is written). Founder go-live: `/schedule` a routine pinning `slug` + cron.
 
 ## Deferred
 
 Donny `list_playbooks` / `run_playbook` **conversational** tools (running a playbook by
-name mid-chat) were deferred to keep `donny-chat` untouched; the runner already accepts
-`trigger:'donny'` for when they land.
+name mid-chat) remain deferred to keep `donny-chat` untouched (it would redeploy the
+~100KB core); the runner already accepts `trigger:'donny'` for when they land. A
+**service-bearer mode** on the runner (so a cron could reuse the *runner* rather than the
+parallel routine executor) was also rejected — it would touch the `auth.uid()`-gated
+stats-RPC auth model.
 
 ## See Also
 

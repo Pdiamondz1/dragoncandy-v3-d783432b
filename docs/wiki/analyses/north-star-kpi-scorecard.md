@@ -89,9 +89,20 @@ The capture-now metrics — feeding the [[Data Flywheel]] — are the leading in
 
 Logging these from Day 1 is the same ledger-first discipline that makes the [[Data Flywheel]] defensible.
 
+## Operationalized as a guardrail playbook (2026-06-20)
+
+The §3 kill-switches are now an **executable, repeatable check**: the report-only
+`kill-switch-watch` [[Founder Playbooks]] playbook evaluates all four
+(green/watch/breach/not-yet-measurable) and, run on a schedule, files a finding only on
+a breach. Pre-revenue it is an armed-watch scaffold — consistent with this scorecard's
+finding that three thresholds are forward-looking and the rev/employee floor is a Y2–Y3
+gate. The three financial switches stay *not-yet-measurable* until the Day-1
+instrumentation above (cohort/activation/take-rate) matures into churn/CAC/LTV data.
+
 ## See Also
 
 - [[Self-Improving App]]
+- [[Founder Playbooks]]
 - [[Data Flywheel]]
 - [[Pricing Architecture]]
 - [[Take-Rate Ladder]]
