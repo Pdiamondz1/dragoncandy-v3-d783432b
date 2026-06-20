@@ -134,3 +134,8 @@ verify_jwt = false
 
 [functions.content-strategy-recommend]
 verify_jwt = false
+
+# Cleanup cron caller passes the opaque AIOS_INGEST_SECRET (sb_secret, not a JWT),
+# so the gateway must skip JWT verification; the function self-gates via isAuthorizedIngest.
+[functions.expire-social-hooks]
+verify_jwt = false

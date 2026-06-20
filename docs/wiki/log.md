@@ -1,5 +1,20 @@
 # Wiki Log
 
+## [2026-06-20] ingest | Loop Scout first run — triage + two cron builds
+
+Both AIOS automation loops went live and were validated (Loop 1 self-healed RAG then no-op'd;
+Loop 2 filed 5 fresh `[loop]` findings). All five triaged: **2 built, 2 wontfix, 1 acknowledged**.
+Built `expire-social-hooks` (PR #133 — dead cleanup control; daily Vault-backed pg_cron; auth
+hardened to the shared ingest gate; Codex caught a missing `verify_jwt=false` P1) and
+`expire-email-verification-tokens` (PR #134 — pure-SQL pg_cron; lossless security
+data-minimization). wontfix `donny-scheduled-posts-dispatch` (publishing is human-gated by design)
+and `donny-analytics-alerts-cron` (per-user request API, not a cron; Scout hallucinated an
+analytics_events job). acknowledged `donny-cost-rollup-cron` (real dead cost-cap control but the
+naive cron would flap — per-user vs platform `current_stage` writer conflict + ledger undercount).
+Fixed a stale `aios_ingest_key` Vault secret (held legacy JWT, not the sb_secret). Lesson:
+report-only is what makes an autonomous auditor safe — wrong candidates cost only a triage.
+Pages updated: [[Self-Improving App]]. New source: [[Loop Scout First Run]].
+
 ## [2026-06-19] ingest | AIOS automation loops — knowledge-sync self-heal + Loop Scout
 
 Two sequenced AIOS loops shipped (PR #130), prompted by a screenshot framework for ranking

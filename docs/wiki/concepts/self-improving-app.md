@@ -2,8 +2,8 @@
 title: Self-Improving App
 type: concept
 created: 2026-06-10
-updated: 2026-06-19
-sources: [autoresearch/program.md, autoresearch/README.md, docs/PROJECT_CONTEXT.md, docs/superpowers/specs/2026-06-11-dragoncandy-aios-design.md, 2026-06-18-wiki-commit-pr.md, 2026-06-18-donny-answer-to-wiki.md, 2026-06-18-aios-ingest-secret-rotation.md, 2026-06-19-aios-loop-automation.md]
+updated: 2026-06-20
+sources: [autoresearch/program.md, autoresearch/README.md, docs/PROJECT_CONTEXT.md, docs/superpowers/specs/2026-06-11-dragoncandy-aios-design.md, 2026-06-18-wiki-commit-pr.md, 2026-06-18-donny-answer-to-wiki.md, 2026-06-18-aios-ingest-secret-rotation.md, 2026-06-19-aios-loop-automation.md, 2026-06-20-loop-scout-first-run-builds.md]
 tags: [architecture, strategy, ai, moat, autoresearch, donny, automation]
 ---
 
@@ -129,6 +129,36 @@ had to *fix* now fixes itself, and the platform now proposes its own next automa
 of a human auditing by hand. Both are **report-only except the single blessed idempotent sync** —
 [[Musk's Algorithm]]'s "automate last" applied honestly.
 Spec: `docs/superpowers/specs/2026-06-19-aios-loop-automation-design.md`.
+
+#### Loop Scout's first run (2026-06-20) — the gate proves its worth
+
+Both loops went live and were validated by manual runs (Loop 1: self-healed RAG on run 1, no-op
+"layer current" on run 2; Loop 2: filed 5 fresh `[loop]` findings, none re-proposing an existing
+loop). All five were then **dug into and triaged** — read the named edge fn + live prod data before
+acting — yielding **2 built, 2 wontfix, 1 acknowledged**:
+
+- **Built:** `expire-social-hooks` (daily cron, PR #133 — a dead cleanup control: hooks never
+  expired, finished-campaign posting delegations never revoked; tightening-only so it's safe to
+  automate) and `expire-email-verification-tokens` (pure-SQL pg_cron, PR #134 — security
+  data-minimization, lossless because verification state lives on `profiles.email_verified`).
+- **wontfix:** `donny-scheduled-posts-dispatch` (publishing is human-gated by design — draft →
+  "Post Now" nudge → `outstand-proxy`; a dispatch cron would auto-post without consent) and
+  `donny-analytics-alerts-cron` (the Scout hallucinated an `analytics_events` anomaly job; the fn is
+  a per-user request-scoped read API that can't be cron-driven).
+- **acknowledged:** `donny-cost-rollup-cron` — a *real* dead control (the AI cost-cap kill-switch)
+  but the naive "add a cron" would flap: it bulk-writes the per-user `donny_usage.current_stage`
+  that `usage-tracker` overwrites on the next action, and the `donny_cost_ledger` undercounts true
+  spend (~$2 MTD vs ~$225/mo external billing). Correct fix is a separate platform stage +
+  spend-source-of-truth, not a cron.
+
+The lesson the run taught: **report-only is what makes an autonomous auditor safe.** Three of five
+candidates were wrong or mis-scoped, but each cost only a human triage — no bad cron ever shipped —
+while the two genuinely clean candidates became working infrastructure. The Codex second-review
+gate also caught a P1 on the built cron (a missing `verify_jwt=false` would have 401'd it forever).
+Both new cleanup crons are Vault-backed and auth-hardened to the [[Self-Improving App]]'s shared
+`ingest-auth` gate, so a Supabase key rotation can't silently kill them (the failure class from the
+[[AIOS Ingest-Secret Rotation Session]]); wiring them surfaced a stale-`aios_ingest_key` Vault
+landmine, since corrected. See [[Loop Scout First Run]].
 
 ## Phased roadmap
 

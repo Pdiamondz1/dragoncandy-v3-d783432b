@@ -217,6 +217,21 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   only; two `spec-document-reviewer` rounds stood in for the Codex pass. Founder-run go-live:
   update the live knowledge-freshness routine prompt + create the loop-scout routine via
   `/schedule`. Spec: `docs/superpowers/specs/2026-06-19-aios-loop-automation-design.md`.
+  **Both loops live + Loop Scout first run triaged (2026-06-20).** Loop 1 validated (self-healed
+  RAG on run 1, no-op "layer current" on run 2); Loop Scout filed 5 ranked findings, all triaged
+  to **2 built, 2 wontfix, 1 acknowledged**. **Built:** `expire-social-hooks` (PR #133 — daily
+  Vault-backed pg_cron, jobid 5; a dead cleanup control — hooks never expired, finished-campaign
+  posting delegations never revoked; auth hardened to the shared `_shared/ingest-auth.ts` gate +
+  `verify_jwt=false`, a Codex P1 catch) and `expire-email-verification-tokens` (PR #134 — pure-SQL
+  pg_cron, jobid 6; lossless security data-minimization since verification persists on
+  `profiles.email_verified`). **wontfix:** `donny-scheduled-posts-dispatch` (publishing is
+  human-gated by design — draft→"Post Now" nudge→`outstand-proxy`) and `donny-analytics-alerts-cron`
+  (per-user request API, structurally not cron-able). **acknowledged:** `donny-cost-rollup-cron`
+  (real dead AI cost-cap control, but a naive cron flaps — per-user vs platform `donny_usage.current_stage`
+  writer conflict + `donny_cost_ledger` undercount; needs a design fix). Wiring the crons surfaced
+  a stale `aios_ingest_key` Vault secret (held the legacy JWT, not the sb_secret), since corrected.
+  The report-only design proved its worth: 3 wrong/mis-scoped candidates each cost only a triage,
+  never a bad auto-built cron.
 - DragonCandy AIOS — Founder Playbooks — **shipped (PR #132, 2026-06-19/20).** The landing
   spot Loop Scout's candidates were missing: a **Playbook** is a founder-authored saved
   repeatable internal task (`task` · `preferences` · `done-criteria` · `allowed-proposals`)
