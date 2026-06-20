@@ -9,10 +9,12 @@ import { anthropicFetch } from "../_shared/anthropic-fetch.ts";
 import { embedQuery, retrieveContext } from "../donny-orchestrator/rag.ts";
 import {
   GoogleWorkspaceError,
+  assertDriveFileId,
   assertFileName,
   driveCtx,
   exportMarkdownToDoc,
   listDcFiles,
+  readDcFile,
 } from "../_shared/google-workspace.ts";
 
 /** Friendly tool answer when the caller has no usable Google connection. */
@@ -464,6 +466,16 @@ const INTERNAL_TOOL_DEFINITIONS = [
     description:
       "List the files in the user's DragonCandy AIOS Google Drive folder (docs, sheets, slides, uploads).",
     input_schema: { type: "object", properties: {} },
+  },
+  {
+    name: "workspace_read_file",
+    description:
+      "Read the text content of a file in the user's DragonCandy AIOS Drive folder. Call workspace_list_files FIRST to get the file id. Returns the document text (Google Docs as markdown, Sheets as CSV). Only files in the AIOS folder are readable.",
+    input_schema: {
+      type: "object",
+      properties: { file_id: { type: "string", description: "Drive file id from workspace_list_files" } },
+      required: ["file_id"],
+    },
   },
   {
     name: "compose_email_link",
@@ -1005,6 +1017,19 @@ async function executeTool(
             id: f.id, name: f.name, mimeType: f.mimeType, modified: f.modifiedTime, link: f.webViewLink,
           })),
         };
+      } catch (err) {
+        const friendly = workspaceNotConnectedMessage(err);
+        if (friendly) return { result: { message: friendly } };
+        throw err;
+      }
+    }
+
+    case "workspace_read_file": {
+      try {
+        const { token, folderId } = await driveCtx(supabaseAdmin, userId);
+        const fileId = assertDriveFileId(args.file_id);
+        const file = await readDcFile(token, folderId, fileId);
+        return { result: { name: file.name, text: file.text, truncated: file.truncated } };
       } catch (err) {
         const friendly = workspaceNotConnectedMessage(err);
         if (friendly) return { result: { message: friendly } };
