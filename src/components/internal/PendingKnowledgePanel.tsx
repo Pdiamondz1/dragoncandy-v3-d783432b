@@ -25,7 +25,11 @@ export const PendingKnowledgePanel = () => {
         if (data.state === 'not_mergeable_yet') return toast.message('Checks still running — try again in a moment.');
         if (data.state === 'not_mergeable') return toast.error(`GitHub says this PR is not mergeable${data.reason ? ` (${data.reason})` : ''}.`);
         if (data.error) return toast.error(data.error);
-        toast.success('Merged & synced into Donny’s knowledge.');
+        if (data.merged && data.synced === false) {
+          toast.message("Merged — but the knowledge sync didn’t finish. The nightly sync will reconcile it.");
+        } else {
+          toast.success("Merged & synced into Donny’s knowledge.");
+        }
         if (expanded === n) setExpanded(null);
       },
       onError: () => toast.error('Merge failed — try again.'),

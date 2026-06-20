@@ -29,6 +29,8 @@ const REPO = Deno.env.get("GITHUB_WIKI_REPO") ?? "Pdiamondz1/dragoncandy-v3-d783
 const BASE = Deno.env.get("GITHUB_WIKI_BASE") ?? "main";
 const GH = "https://api.github.com";
 
+const SYNCABLE_STATUSES = new Set(["added", "modified", "changed"]);
+
 function ghHeaders() {
   return {
     Authorization: `Bearer ${GITHUB_TOKEN}`,
@@ -63,17 +65,17 @@ serve(async (req) => {
   // expected; if open-PR volume ever grows, cache/paginate here.
   // Page through ALL changed files — the wiki-only guard is the merge safety gate,
   // so a >100-file PR must not slip non-wiki files past an unchecked first page.
-  async function prChangedPaths(n: number): Promise<string[]> {
-    const paths: string[] = [];
+  async function prChangedPaths(n: number): Promise<{ filename: string; status: string }[]> {
+    const files: { filename: string; status: string }[] = [];
     for (let page = 1; page <= 30; page++) { // cap 3000 files; knowledge PRs are tiny
       const r = await fetch(`${GH}/repos/${REPO}/pulls/${n}/files?per_page=100&page=${page}`, { headers: ghHeaders() });
       if (!r.ok) throw new Error(`github pr files ${r.status}`);
       const batch = await r.json();
       if (!Array.isArray(batch) || batch.length === 0) break;
-      paths.push(...batch.map((f: { filename: string }) => f.filename));
+      files.push(...batch.map((f: { filename: string; status: string }) => ({ filename: f.filename, status: f.status })));
       if (batch.length < 100) break;
     }
-    return paths;
+    return files;
   }
 
   try {
@@ -83,8 +85,10 @@ serve(async (req) => {
       const raw = await r.json();
       const rows = [];
       for (const pr of raw) {
-        const paths = await prChangedPaths(pr.number);
+        const files = await prChangedPaths(pr.number);
+        const paths = files.map((f) => f.filename);
         if (!assertAllWikiPaths(paths)) continue; // skip non-knowledge PRs
+        if (!files.every((f) => SYNCABLE_STATUSES.has(f.status))) continue; // skip PRs with deletions/renames
         rows.push({ number: pr.number, title: pr.title, html_url: pr.html_url, head_branch: pr.head.ref, paths });
       }
       return json({ prs: dedupeByHeadBranch(rows) });
@@ -96,7 +100,8 @@ serve(async (req) => {
       const prRes = await fetch(`${GH}/repos/${REPO}/pulls/${n}`, { headers: ghHeaders() });
       if (!prRes.ok) return json({ error: `github pr ${prRes.status}` }, 502);
       const pr = await prRes.json();
-      const paths = await prChangedPaths(n);
+      const files = await prChangedPaths(n);
+      const paths = files.map((f) => f.filename);
       const wikiPath = paths.find((p) => MERGE_PATH_RE.test(p));
       if (!wikiPath) return json({ error: "no_wiki_file" }, 400);
       const fileRes = await fetch(
@@ -119,8 +124,10 @@ serve(async (req) => {
       if (!prRes.ok) return json({ error: `github pr ${prRes.status}` }, 502);
       let pr = await prRes.json();
       if (pr.base.ref !== BASE) return json({ error: "wrong_base" }, 400);
-      const paths = await prChangedPaths(n);
+      const files = await prChangedPaths(n);
+      const paths = files.map((f) => f.filename);
       if (!assertAllWikiPaths(paths)) return json({ error: "non_wiki_paths" }, 400);
+      if (!files.every((f) => SYNCABLE_STATUSES.has(f.status))) return json({ error: "unsupported_file_status" }, 400);
 
       // 2. Merge unless already merged. GitHub computes `mergeable` async (null
       //    on first read) — re-poll once, then defer to the panel if still unknown.
@@ -158,16 +165,18 @@ serve(async (req) => {
         body: JSON.stringify({ pages }),
       });
       const syncBody = await syncRes.json().catch(() => ({}));
-      if (!syncRes.ok) {
-        return json({ error: `sync ${syncRes.status}`, details: JSON.stringify(syncBody).slice(0, 300) }, 502);
-      }
       // donny-knowledge-sync returns 200 even on per-page upsert failures — surface them.
       // The response includes an aggregate `errors` count (see donny-knowledge-sync/index.ts line ~175).
       const syncErrors = (syncBody as { errors?: number }).errors ?? 0;
-      if (syncErrors > 0) {
-        return json({ error: "sync_partial_failure", details: JSON.stringify(syncBody).slice(0, 300) }, 502);
+      if (!syncRes.ok || syncErrors > 0) {
+        // The PR is already merged (durable). Only the knowledge sync lagged — report it
+        // honestly instead of "merge failed". The nightly knowledge-freshness agent
+        // self-heals donny_knowledge/internal_docs lag, and re-invoking merge on this PR
+        // re-runs the sync idempotently.
+        const sync_error = !syncRes.ok ? `sync ${syncRes.status}` : `${syncErrors} page(s) failed to sync`;
+        return json({ merged: true, synced: false, sync_error });
       }
-      return json({ merged: true, synced: paths });
+      return json({ merged: true, synced: true, synced_paths: paths });
     }
 
     return json({ error: `unknown action "${action}"` }, 400);

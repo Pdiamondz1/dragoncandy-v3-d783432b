@@ -32,7 +32,9 @@ export function usePreviewKnowledgePr(prNumber: number | null) {
 
 export interface MergeResult {
   merged?: boolean;
-  synced?: string[];
+  synced?: boolean;
+  synced_paths?: string[];
+  sync_error?: string;
   state?: 'not_mergeable_yet' | 'not_mergeable';
   reason?: string;
   error?: string;
