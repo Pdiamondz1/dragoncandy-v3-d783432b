@@ -521,3 +521,12 @@ Added the Validator Skills concept page: the verdict-block contract (reusing the
 Playbooks done_check shape), the validator pattern (read-and-judge only, verdict block last),
 and the bounded generate→validate→fix loop. Foundation for the Knowledge loop.
 Pages created: [[Validator Skills]]
+
+## [2026-06-20] ingest | Validator Skills → Loops Session
+Ingested the validator-skills-loops session: one verdict-block contract (reusing the Founder
+Playbooks `done_check` shape, so `aios-playbook-run`'s parser reads it with no new code), the
+`verify-knowledge` validator (read-and-judge only; wiki-lint + RAG-freshness + index/log checks),
+a bounded knowledge-sync verify→fix loop, and Loop Scout scoring condition-2 by validator
+presence. On its first real run the validator caught 2 pre-existing wiki orphans (Donny
+save-answer pages absent from index.md) and the loop closed them in 2 iterations.
+Pages created: [[Validator Skills → Loops Session]]. Pages updated: [[Validator Skills]], index.md.

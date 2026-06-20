@@ -274,6 +274,29 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   yet stay traversal-proof). Founder follow-ups: deploy the 3 edge fns + redeploy donny-chat,
   sync the RAG, verify prod. Spec:
   `docs/superpowers/specs/2026-06-20-aios-workspace-knowledge-merge-design.md`.
+- DragonCandy AIOS — Validator Skills → closeable loops — **built (branch
+  `validator-skills-loops`, 2026-06-20).** Turns the project's prose-emitting "judge" skills
+  into a basis for autonomous loops by standardizing ONE machine-readable **verdict contract** —
+  the Founder Playbooks `done_check` block (`{done, checklist:[{criterion,met}], missing:[]}`),
+  reused verbatim so `aios-playbook-run`'s `parseDoneCheck` reads it with **no new code**; one
+  contract spans cloud playbooks and skill-level loops. A loop is `generate → validate → fix →
+  re-validate`, and a **validator** (read-and-judge only, emits the verdict block) is the
+  primitive that closes it — exactly condition #2 of the Loop Scout 4-Condition Test. Shipped:
+  the **`verify-knowledge`** validator skill (wiki-lint + RAG-freshness vs `LAST_WIKI_SYNC` with
+  the >24h window + exit-code-is-authority caveat carried from `knowledge-freshness-agent` +
+  index/log currency; the substantive "core docs reflect work" judgment is advisory-only so
+  `met` stays deterministic); **`knowledge-sync`** retrofitted to close a **bounded (N=3)**
+  verify→fix loop; **Loop Scout** now enumerates `.claude/skills/verify-*` and scores condition
+  #2 by validator presence ("blocked on: author a verify-* validator skill first" when none
+  exists). On its first real run the validator caught **2 genuine pre-existing wiki orphans**
+  (Donny save-answer pages on `origin/main` never added to `index.md`) and the loop closed them
+  in 2 iterations — a hint the wiki-save-answer flow doesn't update `index.md`. Skills + docs
+  only: **no schema, RLS, edge function, or secret.** Validators never write; the loop's only
+  write stays the idempotent RAG sync through `donny-knowledge-sync`; *a human merges wiki
+  first* holds. Six other judge-capable skills (verify-db-schema, verify-prod, codex-review,
+  autoresearch gate, …) are documented as ranked next-loops; a `make-validator` meta-skill is
+  the deferred *automate-last* step. Built via brainstorm→spec→plan→subagent-driven execution.
+  Spec: `docs/superpowers/specs/2026-06-20-validator-skills-loops-design.md`.
 
 **Workflow discipline**: Single Claude Code agent, one prompt at a time
 → `npm run build` → verify → push. Session handoffs at plan-phase
