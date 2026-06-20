@@ -1,8 +1,10 @@
-import { useEffect, useRef } from 'react';
+import { Fragment, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { DonnyChatHeader } from './DonnyChatHeader';
 import { DonnyChatInput } from './DonnyChatInput';
 import { DonnyMessage } from './DonnyMessage';
+import { DonnyDateDivider } from './DonnyDateDivider';
+import { startsNewDayGroup } from './donnyTime';
 import { DonnyTypingIndicator } from './DonnyTypingIndicator';
 import { DonnyQuickChips } from './DonnyQuickChips';
 import { DonnyAvatar } from './DonnyAvatar';
@@ -59,15 +61,17 @@ export function DonnyChatView() {
           </div>
         )}
         {messages.map((msg, i) => (
-          <DonnyMessage
-            key={msg.id ?? i}
-            message={msg}
-            avatarState={avatarState}
-            isLatestAssistant={
-              msg.role === 'assistant' &&
-              (() => { const idx = messages.length - 1 - [...messages].reverse().findIndex((m) => m.role === 'assistant'); return idx >= 0 && idx < messages.length && i === idx; })()
-            }
-          />
+          <Fragment key={msg.id ?? i}>
+            {startsNewDayGroup(messages, i) && <DonnyDateDivider iso={msg.created_at} />}
+            <DonnyMessage
+              message={msg}
+              avatarState={avatarState}
+              isLatestAssistant={
+                msg.role === 'assistant' &&
+                (() => { const idx = messages.length - 1 - [...messages].reverse().findIndex((m) => m.role === 'assistant'); return idx >= 0 && idx < messages.length && i === idx; })()
+              }
+            />
+          </Fragment>
         ))}
         {isStreaming && !streamingContent && <DonnyTypingIndicator />}
         {isStreaming && streamingContent && (

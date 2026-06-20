@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import { DonnyAvatar } from './DonnyAvatar';
 import { DonnyRichCard } from './DonnyRichCard';
+import { formatBubbleTime } from './donnyTime';
 import { parseAndDispatchDeepLink } from '@/features/donny/deepLinks';
 import { safeUrl } from '@/lib/safeUrl';
 import type { DonnyMessage as DonnyMessageType, DonnyAvatarState } from '@/types/donny';
@@ -26,6 +27,9 @@ export function DonnyMessage({ message, avatarState = 'idle', isLatestAssistant 
       <div className="flex justify-end">
         <div className="bg-dc-teal rounded-2xl rounded-br-sm px-3.5 py-2.5 max-w-[75%]">
           <p className="text-sm text-white leading-relaxed">{message.content}</p>
+          <span className="block text-right text-[10px] text-white/60 mt-0.5">
+            {formatBubbleTime(message.created_at)}
+          </span>
         </div>
       </div>
     );
@@ -82,6 +86,9 @@ export function DonnyMessage({ message, avatarState = 'idle', isLatestAssistant 
                 {message.content}
               </ReactMarkdown>
             </div>
+            <span className="block text-[10px] text-dc-text/50 mt-0.5">
+              {formatBubbleTime(message.created_at)}
+            </span>
           </div>
         )}
         {message.rich_card && <DonnyRichCard card={message.rich_card} />}
