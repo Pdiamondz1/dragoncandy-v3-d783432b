@@ -61,10 +61,19 @@ serve(async (req) => {
 
   // One files-fetch per open PR (N+1). Fine for the handful of open knowledge PRs
   // expected; if open-PR volume ever grows, cache/paginate here.
+  // Page through ALL changed files — the wiki-only guard is the merge safety gate,
+  // so a >100-file PR must not slip non-wiki files past an unchecked first page.
   async function prChangedPaths(n: number): Promise<string[]> {
-    const r = await fetch(`${GH}/repos/${REPO}/pulls/${n}/files?per_page=100`, { headers: ghHeaders() });
-    if (!r.ok) throw new Error(`github pr files ${r.status}`);
-    return (await r.json()).map((f: { filename: string }) => f.filename);
+    const paths: string[] = [];
+    for (let page = 1; page <= 30; page++) { // cap 3000 files; knowledge PRs are tiny
+      const r = await fetch(`${GH}/repos/${REPO}/pulls/${n}/files?per_page=100&page=${page}`, { headers: ghHeaders() });
+      if (!r.ok) throw new Error(`github pr files ${r.status}`);
+      const batch = await r.json();
+      if (!Array.isArray(batch) || batch.length === 0) break;
+      paths.push(...batch.map((f: { filename: string }) => f.filename));
+      if (batch.length < 100) break;
+    }
+    return paths;
   }
 
   try {
@@ -148,7 +157,16 @@ serve(async (req) => {
         headers: { Authorization: `Bearer ${SERVICE_ROLE_KEY}`, "Content-Type": "application/json" },
         body: JSON.stringify({ pages }),
       });
-      if (!syncRes.ok) return json({ error: `sync ${syncRes.status}`, details: (await syncRes.text()).slice(0, 300) }, 502);
+      const syncBody = await syncRes.json().catch(() => ({}));
+      if (!syncRes.ok) {
+        return json({ error: `sync ${syncRes.status}`, details: JSON.stringify(syncBody).slice(0, 300) }, 502);
+      }
+      // donny-knowledge-sync returns 200 even on per-page upsert failures — surface them.
+      // The response includes an aggregate `errors` count (see donny-knowledge-sync/index.ts line ~175).
+      const syncErrors = (syncBody as { errors?: number }).errors ?? 0;
+      if (syncErrors > 0) {
+        return json({ error: "sync_partial_failure", details: JSON.stringify(syncBody).slice(0, 300) }, 502);
+      }
       return json({ merged: true, synced: paths });
     }
 
