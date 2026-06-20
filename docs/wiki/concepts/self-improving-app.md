@@ -3,7 +3,7 @@ title: Self-Improving App
 type: concept
 created: 2026-06-10
 updated: 2026-06-20
-sources: [autoresearch/program.md, autoresearch/README.md, docs/PROJECT_CONTEXT.md, docs/superpowers/specs/2026-06-11-dragoncandy-aios-design.md, 2026-06-18-wiki-commit-pr.md, 2026-06-18-donny-answer-to-wiki.md, 2026-06-18-aios-ingest-secret-rotation.md, 2026-06-19-aios-loop-automation.md, 2026-06-20-loop-scout-first-run-builds.md]
+sources: [autoresearch/program.md, autoresearch/README.md, docs/PROJECT_CONTEXT.md, docs/superpowers/specs/2026-06-11-dragoncandy-aios-design.md, 2026-06-18-wiki-commit-pr.md, 2026-06-18-donny-answer-to-wiki.md, 2026-06-18-aios-ingest-secret-rotation.md, 2026-06-19-aios-loop-automation.md, 2026-06-20-loop-scout-first-run-builds.md, 2026-06-19-aios-founder-playbooks.md]
 tags: [architecture, strategy, ai, moat, autoresearch, donny, automation]
 ---
 
@@ -160,6 +160,24 @@ Both new cleanup crons are Vault-backed and auth-hardened to the [[Self-Improvin
 [[AIOS Ingest-Secret Rotation Session]]); wiring them surfaced a stale-`aios_ingest_key` Vault
 landmine, since corrected. See [[Loop Scout First Run]].
 
+#### Loop Scout's candidates get a home — Founder Playbooks (2026-06-20)
+
+Loop Scout *surfaces and ranks* recurring-work candidates but explicitly does **not**
+build loops, so its findings had nowhere to land. **[[Founder Playbooks]]** (AIOS v1,
+PR #132) is that destination: a founder-authored saved repeatable task
+(`task` · `preferences` · `done-criteria` · `allowed-proposals`) that internal
+[[Donny AI]] runs on demand at `/internal/playbooks` — **report-only + propose**, so a
+run produces a report and may *propose* a correction through the same
+`/internal/corrections` gate, but **nothing auto-applies**. A "Promote to playbook"
+action on a `loop-scout` finding pre-fills the create form, closing the loop
+**surface → land → run**. It is the conversational/on-demand sibling of the scheduled
+loops above — same report-only-except-gated-proposal discipline, same *a human approves
+first* invariant — and the literal embodiment of the originating idea: *document the
+task, your preferences, and what counts as "done" so any loop can call it.* The runner
+(`aios-playbook-run`) is self-contained (it can't import `donny-chat`, which `serve()`s
+at load) and runs under the caller's session JWT so the `auth.uid()`-gated live-stats
+RPCs return real data. See [[Founder Playbooks]].
+
 ## Phased roadmap
 
 - **Phase 1 — knowledge research loop** *(built).* On-demand `/autoresearch <topic>` plus an
@@ -264,6 +282,7 @@ code and money changes human-gated.
 - [[Data Flywheel]]
 - [[Donny AI]]
 - [[DragonCandy Platform]]
+- [[Founder Playbooks]]
 - [[Karpathy LLM Wiki Schema]]
 - [[Musk's Algorithm]]
 - [[Migration Replay Drift]]

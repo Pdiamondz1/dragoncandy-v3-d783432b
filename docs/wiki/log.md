@@ -1,5 +1,20 @@
 # Wiki Log
 
+## [2026-06-20] ingest | AIOS Founder Playbooks v1 (+ verify-db-schema skill)
+
+Ingested the Founder Playbooks session (PR #132). A Playbook is a founder-authored saved repeatable
+internal task (task · preferences · done-criteria · allowed-proposals) that internal Donny runs on
+demand **report-only + propose** — it reports and may *propose* a correction through the existing
+/internal/corrections gate; nothing auto-applies. It is the landing spot the Self-Improving App's Loop
+Scout candidates were missing (surface → land → run, via a "Promote to playbook" action). Key
+architecture: self-contained runner (can't import donny-chat, which serve()s at load), runs under the
+caller's session JWT so the auth.uid()-gated live-stats RPCs return real data, verify_jwt=false for the
+browser preflight, concurrency guard + stale-reap + 3-state done-check chip. Verified end-to-end in prod
+(the first run reported real live stats, not the no-session stub). Also captured the verify-db-schema dev
+skill.
+Pages created: [[Founder Playbooks]].
+Pages updated: [[Self-Improving App]], [[Wiki Index]].
+
 ## [2026-06-20] ingest | Loop Scout first run — triage + two cron builds
 
 Both AIOS automation loops went live and were validated (Loop 1 self-healed RAG then no-op'd;
