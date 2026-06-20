@@ -38,12 +38,23 @@ Three founder-reported gaps in the AIOS:
   It populates `donny_knowledge` (internal RAG) keyed on `metadata.source_id`, **and**
   additionally upserts `internal_docs` (Strategy library viewer) keyed `onConflict:
   "path"` — but the `internal_docs` write fires **only when the page payload carries
-  both `scope: "internal"` and `full_content: true`** (and the validator *rejects*
-  `full_content` unless `scope: "internal"` is also set). So any merge→sync POST that
-  wants a doc to appear in the library, not just the RAG, MUST send
-  `scope: "internal"` + `full_content: true` + a `metadata.path` of the canonical wiki
-  form `docs/wiki/<folder>/<slug>.md`. So a correctly-synced Strategy-library doc is
-  *also* a doc in Donny's brain.
+  both `scope: "internal"` and a truthy `full_content`** (and the validator *rejects*
+  `full_content` unless `scope: "internal"` is also set). **`full_content` is the FULL
+  raw markdown string** (it becomes `internal_docs.content_md`), **not** a boolean.
+  The exact per-wiki-page payload the nightly `sync-internal-docs.mjs` sends — which a
+  merge→sync POST MUST replicate so the cron re-sync updates the same rows instead of
+  duplicating them — is:
+  ```
+  {
+    source_id: `internal-<folder>:<slug>`,        // folder ∈ concepts|analyses|entities
+    content: `${title}\n\n${body}`.slice(0, 24000), // body = markdown after frontmatter; embedded
+    metadata: { title, type: fm.type ?? "internal_doc",
+                path: "docs/wiki/<folder>/<slug>.md", tags: fm.tags ?? "" },
+    scope: "internal",
+    full_content: <the full raw file markdown, including frontmatter>,
+  }
+  ```
+  So a correctly-synced Strategy-library doc is *also* a doc in Donny's brain.
 - **PR plumbing already exists.** `wiki-save-answer` and `wiki-commit-pr` open PRs using
   the fine-grained **`GITHUB_WIKI_TOKEN`** edge secret (single repo; Contents + Pull
   Requests R/W). Merge requires exactly those same permissions — **no new secret.**
@@ -109,14 +120,15 @@ shippable.
     `mergeable`. (2) If not yet mergeable (CI pending), return
     `{ state: "not_mergeable_yet" }` (no error). (3) `PUT .../pulls/{n}/merge` (squash).
     (4) For each changed file, fetch merged content from GitHub raw and POST to
-    `donny-knowledge-sync` with the **full payload required for the dual write**:
-    `{ source_id, content, metadata: { title, type, path, tags }, scope: "internal",
-    full_content: true }` where `path` is the canonical `docs/wiki/<folder>/<slug>.md`
-    — without `scope: "internal"` + `full_content: true` the doc would update the RAG
-    but **never appear in the Strategy library** (and `full_content` without `scope`
-    is rejected 400). Parse `title`/`type`/`tags` from the file's frontmatter; derive
-    `source_id` the same way the sync script does (stable per path). (5) Return
-    `{ merged: true, synced: [...] }`.
+    `donny-knowledge-sync` with the **exact dual-write payload `sync-internal-docs.mjs`
+    uses** (see §2): `source_id: "internal-<folder>:<slug>"`, `content:
+    "${title}\n\n${body}".slice(0,24000)`, `metadata:{ title, type, path:
+    "docs/wiki/<folder>/<slug>.md", tags }`, `scope:"internal"`, and `full_content:`
+    the full raw markdown. Without `scope:"internal"` + a truthy `full_content` the doc
+    updates the RAG but **never appears in the Strategy library** (and `full_content`
+    without `scope` is rejected 400). Parse `title`/`type`/`tags`/`body` from the
+    frontmatter exactly as the sync script does, so the `source_id` and `path` match and
+    the nightly re-sync hits the same rows. (5) Return `{ merged: true, synced: [...] }`.
   - **Path allow-list (defense in depth):** the changed-files assertion above refuses to
     merge a PR that touches anything outside the three wiki folders — these are
     knowledge PRs only, never code.
