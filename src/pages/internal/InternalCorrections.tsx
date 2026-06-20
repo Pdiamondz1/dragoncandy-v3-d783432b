@@ -15,6 +15,7 @@ import { normalizeForCompare } from '@/lib/internal/normalizeForCompare';
 import { ErrorCard } from '@/components/internal/stats';
 import { MarkdownProse } from '@/components/internal/MarkdownProse';
 import { Spinner } from '@/components/ui/spinner';
+import { PendingKnowledgePanel } from '@/components/internal/PendingKnowledgePanel';
 
 /** A just-applied strategy-doc correction the founder still needs to commit to the wiki. */
 interface CommitTarget {
@@ -389,6 +390,10 @@ const InternalCorrections = () => {
         Fixes Donny proposes to dashboard settings and strategy docs. Donny never applies them — you
         approve here, then the change takes effect.
       </p>
+
+      <div className="mt-4">
+        <PendingKnowledgePanel />
+      </div>
 
       {commitTarget && (
         <CommitToWikiPanel

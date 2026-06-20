@@ -84,6 +84,14 @@ verify_jwt = false
 [functions.wiki-save-answer]
 verify_jwt = false
 
+# Browser-invoked from /internal; does its own admin check (see wiki-save-answer).
+[functions.wiki-merge-pr]
+verify_jwt = false
+
+# Browser-invoked from /internal; does its own admin check (see wiki-save-answer).
+[functions.wiki-import-doc]
+verify_jwt = false
+
 [functions.donny-campaign-generate]
 verify_jwt = false
 

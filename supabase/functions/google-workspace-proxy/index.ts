@@ -29,6 +29,7 @@ import {
   initResumableUpload,
   listDcFiles,
   parseIdToken,
+  readDcFile,
   redirectUriFor,
   renameDriveFile,
   revokeToken,
@@ -261,6 +262,12 @@ serve(async (req) => {
       case "list_files": {
         const { token, folderId } = await driveCtx(supabaseAdmin, user.id);
         return json({ files: await listDcFiles(token, folderId) });
+      }
+
+      case "read_file": {
+        const fileId = assertDriveFileId(body.file_id);
+        const { token, folderId } = await driveCtx(supabaseAdmin, user.id);
+        return json({ file: await readDcFile(token, folderId, fileId) });
       }
 
       case "create_file": {

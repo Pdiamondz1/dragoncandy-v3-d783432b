@@ -499,3 +499,19 @@ Toast is a formal Integration Partner Application (compliance/privacy/security/l
 agreement → sandbox → certification → GA), longest lead, start first. Updated the status table (X row,
 YouTube/TikTok lead times) and Sources.
 Pages updated: [[Platform API Registration Plan]].
+
+## [2026-06-20] ingest | AIOS Workspace reading, Strategy-library import & in-UI knowledge merge
+Ingested the `feat/aios-workspace-knowledge-merge` session (3 slices, 26 commits, Codex-clean after
+4 fix waves). Slice A: internal Donny can READ AIOS-folder Drive docs (pure drive-export.ts +
+guarded/streamed readDcFile + read_file proxy action + internal-only workspace_read_file tool). Slice B
+(keystone): the in-UI approve-&-merge pipeline — wiki-merge-pr edge function (list/preview/merge → GitHub
+squash-merge → batched donny-knowledge-sync) + a self-hiding PendingKnowledgePanel on /internal/corrections;
+deletes the GitHub trip AND the Lovable deploy from every knowledge capture. Slice C: import an AIOS Doc
+into the Strategy library (wiki-import-doc reads server-side, opens a donny-wiki-import/ PR riding the
+Slice-B panel). Invariants held: a human merges first; merge surface is wiki-paths-only; no schema/secret/
+scope change. Gotchas captured: verify_jwt=false required for browser-invoked edge fns; donny-knowledge-sync
+returns 200 even on per-page errors and caps pages at 100 (batch at 20); buildSyncPage must match
+sync-internal-docs.mjs exactly to avoid duplicate RAG rows; merge gate path regex must match the producer
+contract yet stay traversal-proof.
+Pages created: [[In-UI Knowledge Merge]]. Pages updated: [[Google Workspace]], [[Self-Improving App]],
+[[Donny AI]], index.md.

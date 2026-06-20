@@ -23,6 +23,7 @@ import {
   type WorkspaceFile,
   type WorkspaceFileKind,
 } from '@/hooks/internal/useGoogleWorkspace';
+import { ImportToLibraryDialog } from './ImportToLibraryDialog';
 import { NameDialog } from './NameDialog';
 import { WorkspaceFileGrid } from './WorkspaceFileGrid';
 import { WorkspacePreviewPane } from './WorkspacePreviewPane';
@@ -50,6 +51,7 @@ export const WorkspaceHub = () => {
   const [createEntry, setCreateEntry] = useState<CreateKind | null>(null);
   const [renaming, setRenaming] = useState<WorkspaceFile | null>(null);
   const [trashing, setTrashing] = useState<WorkspaceFile | null>(null);
+  const [importing, setImporting] = useState<WorkspaceFile | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const fileList = files.data ?? [];
@@ -60,6 +62,7 @@ export const WorkspaceHub = () => {
       onSelect: (file: WorkspaceFile) => setSelectedId(file.id),
       onRename: setRenaming,
       onTrash: setTrashing,
+      onImport: setImporting,
     }),
     []
   );
@@ -162,6 +165,12 @@ export const WorkspaceHub = () => {
             }
           );
         }}
+      />
+
+      <ImportToLibraryDialog
+        file={importing}
+        open={importing !== null}
+        onOpenChange={(isOpen) => !isOpen && setImporting(null)}
       />
 
       <AlertDialog open={trashing !== null} onOpenChange={(isOpen) => !isOpen && setTrashing(null)}>
