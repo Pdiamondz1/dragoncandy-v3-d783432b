@@ -106,10 +106,15 @@ serve(async (req) => {
   if (!GITHUB_TOKEN) return json({ error: "github_not_configured" }, 200);
 
   // --- Read the Doc server-side (never trust client markdown) ---
-  const fileId = assertDriveFileId(body.file_id);
-  const { token, folderId } = await driveCtx(admin, user.id);
+  let fileId: string;
+  try {
+    fileId = assertDriveFileId(body.file_id);
+  } catch {
+    return json({ error: "bad_file_id" }, 400);
+  }
   let read: { name: string; mimeType: string; text: string; truncated: boolean };
   try {
+    const { token, folderId } = await driveCtx(admin, user.id);
     read = await readDcFile(token, folderId, fileId);
   } catch (e) {
     return json({ error: (e as { code?: string }).code ?? "read_failed" }, 200);
