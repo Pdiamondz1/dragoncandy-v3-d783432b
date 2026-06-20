@@ -54,8 +54,22 @@ hook — it must be run by the agent. Related: [[wiki-ops]], [[autoresearch]].
    `donny-knowledge-sync` (OpenAI embeddings), and upserts by `source_id` — idempotent, safe
    to re-run. Verify: `select count(*), max(updated_at) from donny_knowledge` advanced.
 
-## Done when
+## Close the loop (verify → fix → re-verify)
 
-- New/updated wiki pages exist on `main` for the shipped work, `index.md`/`log.md` updated.
-- Relevant core docs reflect the change.
-- `donny_knowledge.max(updated_at)` is current with the merge.
+This skill is the *generate*/fix half of the knowledge loop; [[verify-knowledge]] is the
+*validate* half (contract: `docs/wiki/concepts/validator-skills.md`). After step 6, close the loop:
+
+1. Run the [[verify-knowledge]] validator. Read its fenced verdict block (the LAST fenced JSON
+   block in its output).
+2. If `done:true` → the knowledge layer is current. Report and finish.
+3. If `done:false` → apply the fixes named in `missing[]`:
+   - RAG behind → run `node supabase/scripts/sync-wiki-to-donny.mjs` (the step-6 command).
+   - Page missing from `index.md`/`log.md` → add it.
+   - Wiki lint critical → fix the contradiction / broken wikilink.
+   Then re-run [[verify-knowledge]].
+4. **Cap at 3 iterations.** If still `done:false` after 3, STOP and surface the residual
+   `missing[]` to the user. Never loop unbounded; never claim `done:true` the validator did not return.
+
+The old "Done when" bullets — index/log updated, core docs current,
+`donny_knowledge.max(updated_at)` current — are exactly the checks [[verify-knowledge]] now
+judges mechanically and returns as the verdict block.

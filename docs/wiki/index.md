@@ -27,6 +27,7 @@
 - [[Loop Scout First Run]](raw/sessions/2026-06-20-loop-scout-first-run-builds.md) — AIOS Loop Scout's first batch triaged 2 built / 2 wontfix / 1 acknowledged; shipped expire-social-hooks + expire-email-verification-tokens crons; Codex caught a verify_jwt P1; aios_ingest_key Vault landmine fixed (2026-06-20)
 - [[Founder Playbooks Session]](raw/sessions/2026-06-19-aios-founder-playbooks.md) — AIOS Founder Playbooks v1: saved repeatable internal tasks Donny runs on demand (report-only + propose); self-contained aios-playbook-run under the caller session JWT; the landing spot for Loop Scout candidates; + the verify-db-schema dev skill; PR #132 (2026-06-19/20)
 - [[AIOS Workspace Knowledge-Merge Session]](raw/sessions/2026-06-20-aios-workspace-knowledge-merge.md) — Donny reads AIOS docs (read_file/workspace_read_file), import a Workspace doc → Strategy library, and in-UI approve+merge of wiki PRs (wiki-merge-pr) into RAG + library — no GitHub/Lovable trip; 3 slices, Codex-clean after 4 fix waves (2026-06-20)
+- [[Validator Skills → Loops Session]](raw/sessions/2026-06-20-validator-skills-loops.md) — standardized one verdict-block contract (reuses Founder Playbooks done_check), added the verify-knowledge validator + a bounded knowledge-sync loop, taught Loop Scout to score condition-2 by validator presence; the validator caught 2 real pre-existing wiki orphans on its first run (2026-06-20)
 - [[Project Context]](sources/project-context.md) — Project identity, strategy, and operating instructions (2026-05-23)
 - [[QA Staging Supabase (Plan B) Session]](sources/qa-staging-supabase-planb-session.md) — Isolated staging Supabase for the CI/CD gate; 213-migration replay, secrets, Stripe sandbox alignment (2026-06-02)
 - [[Realtime Edge Cases Session]](sources/realtime-edge-cases-session.md) — Race conditions, presence ghost state, keepalive, single-slot triggers (2026-05-06)
@@ -69,6 +70,7 @@
 - [[Trust-Then-Flag Model]](concepts/trust-then-flag-model.md) — DragonShare moderation: post live immediately, flag post-hoc (no admin queue)
 - [[Two-Path Boost Payment]](concepts/boost-payment-two-path.md) — Hosted checkout first, off-session repeat, idempotent fulfillment
 - [[TypeScript Patterns]](concepts/typescript-patterns.md) — Strict mode, type safety, export conventions
+- [[Validator Skills]](concepts/validator-skills.md) — skills that emit a machine-readable verdict block to close generate→validate loops
 
 ## Flow Diagrams
 
@@ -84,5 +86,7 @@
 ## Analyses
 
 - [[Content Engine Data Audit]](analyses/content-engine-data-audit.md) — what signal data exists in prod for the Donny content engine; context live, performance dark, Toast/social-cache tables missing from prod; foundation-first plan
+- [[DragonCandy Tech & Infrastructure Cost Breakdown]](analyses/here-s-the-exported-doc-dragoncandy-tech-infrastructure-cost-breakdown-nyc-media.md) — Donny-captured analysis: NYC-median tech & infrastructure cost breakdown for the capital raise
+- [[Human Marketing Team (Part 1)]](analyses/part-1-the-human-marketing-team.md) — Donny-captured analysis: the human marketing team (part 1)
 - [[North Star & KPI Scorecard]](analyses/north-star-kpi-scorecard.md) — Three-year targets + kill-switches operationalized and validated against 2025 SMB-SaaS benchmarks; flags churn-unit ambiguity and a mis-scoped rev/employee gate
 - [[Platform API Registration Plan]](analyses/platform-api-registration-plan.md) — running checklist to swap Outstand for direct Meta/X/TikTok/YouTube + Toast access; per-platform requirements, lead times, Meta deep-dive; unblocks the dark Content Engine signal
