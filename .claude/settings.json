@@ -18,7 +18,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "powershell -NoProfile -Command \"$root = if ($env:CLAUDE_PROJECT_DIR) { $env:CLAUDE_PROJECT_DIR } else { '.' }; & (Join-Path $root '.claude/scripts/session-context.ps1')\"",
+            "command": "$root = if ($env:CLAUDE_PROJECT_DIR) { $env:CLAUDE_PROJECT_DIR } else { '.' }; & (Join-Path $root '.claude/scripts/session-context.ps1')",
             "shell": "powershell",
             "timeout": 10,
             "statusMessage": "Recovering session context..."
