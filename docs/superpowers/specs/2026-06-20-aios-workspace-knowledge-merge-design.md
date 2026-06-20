@@ -17,8 +17,10 @@ Three founder-reported gaps in the AIOS:
    (sees file names/ids) and `workspace_export_doc` (writes a Doc), but no way to
    read the *contents* of a Doc back. He can list the Drive but not read it.
 2. **No path from a Workspace doc into the Strategy library.** The Strategy library
-   (`internal_docs`) is populated *only* by `supabase/scripts/sync-internal-docs.mjs`,
-   which reads repo files. An arbitrary Google Doc cannot land there.
+   (`internal_docs`) is populated via `supabase/scripts/sync-internal-docs.mjs`, which
+   reads repo files and **POSTs them to `donny-knowledge-sync`** — the edge function
+   that actually writes `internal_docs` (and `donny_knowledge`). An arbitrary Google
+   Doc cannot land there.
 3. **The knowledge-save round-trip leaves the app twice.** Today: *Save to knowledge
    → `wiki-save-answer` opens a GitHub PR → founder merges on GitHub → founder deploys
    on Lovable → next sync ingests into Donny's RAG.* The pain is the two app exits
@@ -32,11 +34,16 @@ Three founder-reported gaps in the AIOS:
   hand-authored Doc elsewhere in the founder's Drive is invisible under this scope.
   Reaching the whole Drive would require a *restricted* scope (`drive.readonly`) and a
   Google CASA security assessment — explicitly **out of scope**.
-- **The knowledge sync is upsert-only, no prune** (`donny-knowledge-sync/index.ts`:
-  `internal_docs` upsert `onConflict: "path"`; `donny_knowledge` upsert on
-  `source_id`). It populates **both** `internal_docs` (Strategy library viewer) **and**
-  `donny_knowledge` (internal RAG) from the same `full_content` payload. So a Strategy-
-  library doc is *also* a doc in Donny's brain.
+- **The knowledge sync is upsert-only, no prune** (`donny-knowledge-sync/index.ts`).
+  It populates `donny_knowledge` (internal RAG) keyed on `metadata.source_id`, **and**
+  additionally upserts `internal_docs` (Strategy library viewer) keyed `onConflict:
+  "path"` — but the `internal_docs` write fires **only when the page payload carries
+  both `scope: "internal"` and `full_content: true`** (and the validator *rejects*
+  `full_content` unless `scope: "internal"` is also set). So any merge→sync POST that
+  wants a doc to appear in the library, not just the RAG, MUST send
+  `scope: "internal"` + `full_content: true` + a `metadata.path` of the canonical wiki
+  form `docs/wiki/<folder>/<slug>.md`. So a correctly-synced Strategy-library doc is
+  *also* a doc in Donny's brain.
 - **PR plumbing already exists.** `wiki-save-answer` and `wiki-commit-pr` open PRs using
   the fine-grained **`GITHUB_WIKI_TOKEN`** edge secret (single repo; Contents + Pull
   Requests R/W). Merge requires exactly those same permissions — **no new secret.**
@@ -65,23 +72,28 @@ shippable.
 
 ### Slice A — Donny reads AIOS docs (#1)
 
-- **New proxy action `read_file`** in `google-workspace-proxy`:
-  - Input: `{ action: "read_file", file_id }`.
-  - **Guard:** verify the file's `parents` includes the caller's "DragonCandy AIOS"
-    folder id (resolve via the existing `driveCtx`). Reject anything else — we never
-    read files outside the app's own folder, even though `drive.file` already limits
-    the token.
-  - Export by mime type via Drive: Google Docs → `text/markdown`; Google Sheets →
-    `text/csv`; uploaded text/markdown → raw bytes. Reject binary/unsupported types
+- **New shared helper `readDcFile` in `_shared/google-workspace.ts`.** This is the
+  single source of truth for both callers below (matching the existing pattern:
+  `donny-chat` imports `driveCtx`/`listDcFiles`/`exportMarkdownToDoc` from this shared
+  module and calls them directly — it does **not** HTTP-proxy to
+  `google-workspace-proxy`). The helper takes `(token, folderId, fileId)`, and:
+  - **Guard:** verifies the file's `parents` includes the "DragonCandy AIOS" folder id.
+    Reject anything else — we never read files outside the app's own folder, even though
+    `drive.file` already limits the token.
+  - Exports by mime type via Drive: Google Docs → `text/markdown`; Google Sheets →
+    `text/csv`; uploaded text/markdown → raw bytes. Rejects binary/unsupported types
     with a clear `code`.
-  - **Cap output** at ~50 KB (truncate with an explicit `truncated: true` flag) to
-    protect Donny's context window.
-  - Runs through the existing caller-session path (no service mode).
+  - **Caps output** at ~50 KB (returns `{ text, truncated }`) to protect Donny's
+    context window.
+- **New proxy action `read_file`** in `google-workspace-proxy`: `{ action: "read_file",
+  file_id }` → resolves `driveCtx` (caller-session, no service mode) → calls
+  `readDcFile`. Used by the Slice C import dialog.
 - **New Donny internal tool `workspace_read_file`** in `donny-chat`:
   - `input_schema`: `{ file_id: string }`, required.
   - Description steers Donny to call `workspace_list_files` first to obtain the id.
-  - Handler proxies to the new `read_file` action under the caller's session (same
-    mechanism as `workspace_list_files` / `workspace_export_doc`).
+  - Handler resolves `driveCtx` for the caller and calls `readDcFile` **directly**
+    (same direct-import mechanism as the existing `workspace_list_files` /
+    `workspace_export_doc` handlers — not an HTTP call to the proxy).
   - **Internal tool set only** (never exposed to consumer Donny).
 - **Deploy note:** `donny-chat` calls `serve()` at import, so this is a `donny-chat`
   redeploy — founder-run, per existing convention. `google-workspace-proxy` redeploys
@@ -91,19 +103,30 @@ shippable.
 
 - **New edge function `wiki-merge-pr`** (admin-gated; reuses `GITHUB_WIKI_TOKEN`):
   - Trusts only `{ pr_number }`. Re-derives everything else server-side.
-  - Steps: (1) `GET .../pulls/{n}` — confirm it targets `main`, touches only
-    `docs/wiki/**`, and is `mergeable`. (2) If not yet mergeable (CI pending),
-    return `{ state: "not_mergeable_yet" }` (no error). (3) `PUT .../pulls/{n}/merge`
-    (squash). (4) For each changed file, fetch merged content from GitHub raw and POST
-    to `donny-knowledge-sync` (existing idempotent upsert → `donny_knowledge` +
-    `internal_docs`). (5) Return `{ merged: true, synced: [...] }`.
-  - **Path allow-list:** refuse to merge a PR that touches anything outside
-    `docs/wiki/**` (defense in depth — these are knowledge PRs only, never code).
+  - Steps: (1) `GET .../pulls/{n}` + changed-files — confirm it targets `main` and that
+    **every** changed path matches `^docs/wiki/(concepts|entities|analyses)/[a-z0-9-]+\.md$`
+    (the exact folders `donny-knowledge-sync` can round-trip), and that the PR is
+    `mergeable`. (2) If not yet mergeable (CI pending), return
+    `{ state: "not_mergeable_yet" }` (no error). (3) `PUT .../pulls/{n}/merge` (squash).
+    (4) For each changed file, fetch merged content from GitHub raw and POST to
+    `donny-knowledge-sync` with the **full payload required for the dual write**:
+    `{ source_id, content, metadata: { title, type, path, tags }, scope: "internal",
+    full_content: true }` where `path` is the canonical `docs/wiki/<folder>/<slug>.md`
+    — without `scope: "internal"` + `full_content: true` the doc would update the RAG
+    but **never appear in the Strategy library** (and `full_content` without `scope`
+    is rejected 400). Parse `title`/`type`/`tags` from the file's frontmatter; derive
+    `source_id` the same way the sync script does (stable per path). (5) Return
+    `{ merged: true, synced: [...] }`.
+  - **Path allow-list (defense in depth):** the changed-files assertion above refuses to
+    merge a PR that touches anything outside the three wiki folders — these are
+    knowledge PRs only, never code.
   - Idempotent: re-invoking on an already-merged PR returns success and re-syncs.
 - **New "Pending knowledge" panel** (UI), placed on `/internal/corrections` (or a small
   shared card reused on `/internal/strategy`):
   - Lists open PRs touching `docs/wiki/**` via the GitHub list API (new read action,
-    same token).
+    same token). **De-dupe by head branch** — `wiki-save-answer`/`wiki-commit-pr` reuse
+    a deterministic branch name per page/correction, so a re-opened PR for the same slug
+    can exist; show one row per head branch so the panel never displays stale duplicates.
   - Each row: PR title, rendered-markdown **preview** (reuse `MarkdownProse`), a
     **Merge & sync** button (calls `wiki-merge-pr`), and a plain "View diff on GitHub"
     link for the founder who *wants* it.
@@ -127,10 +150,14 @@ Built on A (reader) and B (merge surface):
   optional tags.
 - Flow: read the Doc as markdown via the Slice A `read_file` action → **new
   `wiki-import-doc` edge function** (sibling of `wiki-save-answer`: admin gate, 2-folder
-  whitelist, kebab filename, server-built YAML-safe frontmatter recording
-  `source: workspace`, the originating Doc id, and import date for provenance) → opens a
-  PR to `docs/wiki/<concepts|analyses>/<slug>.md` → appears in the **Pending knowledge
-  panel** → founder Merge & syncs → lands in library + RAG.
+  whitelist, kebab filename, server-built YAML-safe frontmatter) → opens a PR to
+  `docs/wiki/<concepts|analyses>/<slug>.md` → appears in the **Pending knowledge panel**
+  → founder Merge & syncs → lands in library + RAG.
+- **Provenance lives in the frontmatter / body** (`source: workspace`, originating Doc
+  id, import date) — **not** in the `path` column. The `path` must stay the canonical
+  wiki path `docs/wiki/<folder>/<slug>.md`, because that is the `internal_docs`
+  `onConflict` upsert key; this also keeps a later `sync-internal-docs.mjs` re-sync
+  idempotent (updates the same row instead of duplicating it).
 - Google Docs export to `text/markdown` (Drive native) gives clean markdown; the
   function strips/normalizes any existing frontmatter and writes its own.
 
