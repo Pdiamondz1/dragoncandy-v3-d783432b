@@ -187,6 +187,11 @@ const DRIVE_EXPORT_URL = "https://www.googleapis.com/drive/v3/files";
  * Guards on parent === folderId (defense in depth over drive.file). Google Docs
  * come back as markdown, Sheets as CSV, plain/markdown uploads as raw text;
  * everything else is rejected. Output is capped (see EXPORT_CAP).
+ *
+ * KNOWN LIMITATION: the guard checks DIRECT parentage only — a file nested in a
+ * sub-folder of the AIOS folder would be rejected. That's acceptable today (the
+ * hub creates files at the folder root); a future "files in subfolders" case
+ * would need a recursive ancestor walk.
  */
 export async function readDcFile(
   token: string,
@@ -317,12 +322,16 @@ and `assertDriveFileId` are imported from `../_shared/google-workspace.ts` in do
     }
 ```
 
-- [ ] **Step 3: Add to the internal-tool allowlist**
+- [ ] **Step 3: Verify the tool joins the internal set (no separate allowlist exists)**
 
-Find where internal Donny's tool set is assembled (the comment "Internal surface gets
-ONLY the internal tool set", ~line 1972). Add `"workspace_read_file"` wherever
-`"workspace_list_files"` appears in that allowlist so the internal surface exposes it.
-Verify it is NOT added to any consumer tool set.
+There is **no name-based allowlist** to edit: `INTERNAL_TOOL_DEFINITIONS` is a single
+array (~lines 383-498), `allowedTools = INTERNAL_TOOL_DEFINITIONS` directly (~line 1973),
+and `INTERNAL_TOOL_NAMES` is *derived* from that array (~line 500). So **Step 1 (adding
+the def into `INTERNAL_TOOL_DEFINITIONS`) is the whole job.** Confirm:
+(a) the new `workspace_read_file` def sits inside `INTERNAL_TOOL_DEFINITIONS` so it
+auto-joins `INTERNAL_TOOL_NAMES`; and
+(b) it is NOT added to `TOOL_DEFINITIONS` / `TOOLS_BY_ROLE` (the consumer-facing maps) —
+internal-only, never exposed to consumer Donny.
 
 - [ ] **Step 4: Note founder-run redeploy**
 
@@ -356,6 +365,12 @@ required status checks (which would gate the merge). Record the finding in the
 `wiki-merge-pr` header comment. If checks DO run on docs PRs, the `not_mergeable_yet`
 path (Task B3) is the expected transient state; if they don't, merges are immediate.
 No code in this step — it sizes B3's retry behavior.
+
+**Known outcome (verified during plan review):** `ci.yml` runs build/typecheck/lint/test
+on **every** `pull_request` to `main` with **no path filter** — so docs-only wiki PRs
+**do** trigger required checks, and `not_mergeable_yet` is the expected transient until
+they pass. (`e2e.yml` runs on Vercel `deployment_status`, not as a PR check, so it does
+not gate the merge.) Confirm this still holds, then record it in the header comment.
 
 ---
 
@@ -637,8 +652,9 @@ serve(async (req) => {
   let body: Record<string, unknown>;
   try { body = await req.json(); } catch { return json({ error: "invalid JSON body" }, 400); }
   const action = String(body.action ?? "");
-  const owner = REPO.split("/")[0];
 
+  // One files-fetch per open PR (N+1). Fine for the handful of open knowledge PRs
+  // expected; if open-PR volume ever grows, cache/paginate here.
   async function prChangedPaths(n: number): Promise<string[]> {
     const r = await fetch(`${GH}/repos/${REPO}/pulls/${n}/files?per_page=100`, { headers: ghHeaders() });
     if (!r.ok) throw new Error(`github pr files ${r.status}`);
@@ -854,7 +870,7 @@ export const PendingKnowledgePanel = () => {
   const preview = usePreviewKnowledgePr(expanded);
   const merge = useMergeKnowledgePr();
 
-  if (prs.isLoading) return <div className="flex justify-center py-6"><Spinner className="h-6 w-6 border-teal-400" /></div>;
+  if (prs.isLoading) return <div className="flex justify-center py-6"><Spinner className="h-6 w-6" /></div>;
   if (prs.isError) return <p className="text-sm text-dc-pink-accent">Could not load pending knowledge PRs.</p>;
   if (!prs.data?.length) return null; // nothing pending → no clutter
 
@@ -1235,9 +1251,24 @@ export function useImportDocToLibrary() {
   mirroring `SaveToKnowledgeButton`'s dialog body (title / folder select / filename /
   tags), prefilled via `deriveImportDefaults(file.name)`, validated with
   `validateImportInput`. On submit call `useImportDocToLibrary`. On success: if
-  `data.error` show a mapped toast (`file_exists`, `doc_too_large`, `unsupported_type`,
-  `forbidden_file`, `github_not_configured`) and keep the dialog open; else
+  `data.error` show a mapped toast and keep the dialog open; else
   `toast.success('Import PR opened — review & merge under Pending knowledge.', { action: { label: 'Review', onClick: () => navigate('/internal/corrections') } })` and close.
+
+  Use this error map (covers `readDcFile`/`driveCtx` throws AND the PR-level typed 200s),
+  with a generic fallback so no raw code ever reaches the founder:
+
+```ts
+const IMPORT_ERRORS: Record<string, string> = {
+  file_exists: 'A wiki page with that filename already exists — rename it.',
+  doc_too_large: 'That doc is too large to import (over 50 KB of text).',
+  unsupported_type: 'Only Google Docs, Sheets, and text files can be imported.',
+  forbidden_file: 'That file is not in your DragonCandy AIOS folder.',
+  not_connected: 'Connect Google Workspace first (/internal/workspace).',
+  needs_reconnect: 'Your Google connection expired — reconnect at /internal/workspace.',
+  github_not_configured: 'GitHub wiki token is not configured — ask an admin.',
+};
+const msg = IMPORT_ERRORS[data.error] ?? 'Import failed — try again.';
+```
 
 - [ ] **Step 3: Build check.** `npm run build` → PASS.
 
