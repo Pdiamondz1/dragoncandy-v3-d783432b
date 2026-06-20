@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
+import { isAuthorizedIngest } from '../_shared/ingest-auth.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -11,8 +12,11 @@ serve(async (req) => {
   }
 
   try {
-    const authHeader = req.headers.get('Authorization');
-    if (authHeader !== `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`) {
+    // Accept the platform-injected service-role key (internal callers) OR the
+    // operator-set AIOS_INGEST_SECRET that the Vault-driven pg_cron job passes,
+    // so a Supabase-initiated service-role rotation can't silently 401 this cron.
+    // See _shared/ingest-auth.ts and the 2026-06-18 ingest-secret hardening (PR #129).
+    if (!isAuthorizedIngest(req)) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
         headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
