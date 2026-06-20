@@ -20,7 +20,7 @@ if (Test-Path $handoffDir) {
         foreach ($h in $recent) {
             $ts = Get-Date $h.LastWriteTime -Format "yyyy-MM-dd HH:mm"
             $output += "- $($h.Name) ($ts)"
-            $lines = Get-Content $h.FullName -TotalCount 15 -ErrorAction SilentlyContinue
+            $lines = Get-Content $h.FullName -TotalCount 15 -Encoding UTF8 -ErrorAction SilentlyContinue
             foreach ($line in $lines) {
                 if ($line -match "^##\s+(.+)") {
                     $output += "  Summary: $($Matches[1])"
@@ -39,7 +39,7 @@ $output += ""
 
 # --- Recent Wiki Activity ---
 if (Test-Path $wikiLog) {
-    $logLines = Get-Content $wikiLog -ErrorAction SilentlyContinue
+    $logLines = Get-Content $wikiLog -Encoding UTF8 -ErrorAction SilentlyContinue
     $entries = @()
     $currentEntry = $null
 
