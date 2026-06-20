@@ -69,6 +69,7 @@
 - [[Trust-Then-Flag Model]](concepts/trust-then-flag-model.md) — DragonShare moderation: post live immediately, flag post-hoc (no admin queue)
 - [[Two-Path Boost Payment]](concepts/boost-payment-two-path.md) — Hosted checkout first, off-session repeat, idempotent fulfillment
 - [[TypeScript Patterns]](concepts/typescript-patterns.md) — Strict mode, type safety, export conventions
+- [[Validator Skills]](concepts/validator-skills.md) — skills that emit a machine-readable verdict block to close generate→validate loops
 
 ## Flow Diagrams
 

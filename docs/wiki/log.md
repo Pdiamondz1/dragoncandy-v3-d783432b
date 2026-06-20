@@ -515,3 +515,9 @@ sync-internal-docs.mjs exactly to avoid duplicate RAG rows; merge gate path rege
 contract yet stay traversal-proof.
 Pages created: [[In-UI Knowledge Merge]]. Pages updated: [[Google Workspace]], [[Self-Improving App]],
 [[Donny AI]], index.md.
+
+## [2026-06-20] update | Validator Skills concept
+Added the Validator Skills concept page: the verdict-block contract (reusing the Founder
+Playbooks done_check shape), the validator pattern (read-and-judge only, verdict block last),
+and the bounded generate→validate→fix loop. Foundation for the Knowledge loop.
+Pages created: [[Validator Skills]]
