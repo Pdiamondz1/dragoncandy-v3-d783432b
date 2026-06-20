@@ -7,6 +7,7 @@ import { getUserUsageStage, incrementUsage, getUserSubscriptionTier, checkQuotaO
 import { corsHeaders } from "../_shared/cors.ts";
 import { anthropicFetch } from "../_shared/anthropic-fetch.ts";
 import { embedQuery, retrieveContext } from "../donny-orchestrator/rag.ts";
+import { reconstructHistory } from "./history.ts";
 import {
   GoogleWorkspaceError,
   assertDriveFileId,
@@ -764,114 +765,13 @@ async function getConversationHistory(
     return { messages: [], contextSummary };
   }
 
-  // Reconstruct into Anthropic message format
-  const anthropicMessages: any[] = [];
-
-  for (const msg of history) {
-    if (msg.role === "user") {
-      anthropicMessages.push({
-        role: "user",
-        content: msg.content ?? "",
-      });
-    } else if (msg.role === "assistant") {
-      // Check if this message has tool calls
-      if (msg.tool_calls && Array.isArray(msg.tool_calls)) {
-        // Detect format: OpenAI (has `function` key) vs Anthropic (has `type: "tool_use"`)
-        const isOpenAIFormat = msg.tool_calls.length > 0 && msg.tool_calls[0]?.function;
-
-        if (isOpenAIFormat) {
-          // Convert OpenAI tool_calls to Anthropic content blocks
-          const contentBlocks: any[] = [];
-          if (msg.content) {
-            contentBlocks.push({ type: "text", text: msg.content });
-          }
-          for (const tc of msg.tool_calls) {
-            contentBlocks.push({
-              type: "tool_use",
-              id: tc.id,
-              name: tc.function.name,
-              input: JSON.parse(tc.function.arguments),
-            });
-          }
-          anthropicMessages.push({ role: "assistant", content: contentBlocks });
-        } else {
-          // Already Anthropic format — stored as content array
-          anthropicMessages.push({ role: "assistant", content: msg.tool_calls });
-        }
-      } else {
-        // Plain text assistant message
-        anthropicMessages.push({
-          role: "assistant",
-          content: msg.content ?? "",
-        });
-      }
-    } else if (msg.role === "tool" && msg.tool_result) {
-      // Tool results become user messages with tool_result content blocks
-      // msg.content stores the tool_use_id (or tool_call_id for OpenAI-era messages)
-      const toolResultBlock = {
-        type: "tool_result",
-        tool_use_id: msg.content ?? "unknown",
-        content: JSON.stringify(msg.tool_result),
-      };
-
-      // If the previous message is also a user tool_result, merge into it
-      const prev = anthropicMessages[anthropicMessages.length - 1];
-      if (prev?.role === "user" && Array.isArray(prev.content) && prev.content[0]?.type === "tool_result") {
-        prev.content.push(toolResultBlock);
-      } else {
-        anthropicMessages.push({
-          role: "user",
-          content: [toolResultBlock],
-        });
-      }
-    }
-    // Skip 'system' role messages — Anthropic uses top-level system param
-  }
-
-  // Sanitize: merge consecutive same-role messages (Anthropic requires alternating roles)
-  const sanitized: any[] = [];
-  for (const msg of anthropicMessages) {
-    const prev = sanitized[sanitized.length - 1];
-    if (prev && prev.role === msg.role) {
-      // Merge into previous message
-      if (msg.role === "user") {
-        // Concatenate user text messages, or merge tool_result arrays
-        if (typeof prev.content === "string" && typeof msg.content === "string") {
-          prev.content = prev.content + "\n\n" + msg.content;
-        } else if (Array.isArray(prev.content) && Array.isArray(msg.content)) {
-          prev.content.push(...msg.content);
-        } else if (typeof prev.content === "string" && Array.isArray(msg.content)) {
-          // Previous is text, current is tool_result — wrap previous as text block
-          prev.content = [{ type: "text", text: prev.content }, ...msg.content];
-        } else if (Array.isArray(prev.content) && typeof msg.content === "string") {
-          prev.content.push({ type: "text", text: msg.content });
-        }
-      } else if (msg.role === "assistant") {
-        // Concatenate assistant text
-        if (typeof prev.content === "string" && typeof msg.content === "string") {
-          prev.content = prev.content + "\n\n" + msg.content;
-        }
-        // If either has tool_use blocks, keep the later message (more recent state)
-      }
-    } else {
-      sanitized.push(msg);
-    }
-  }
-
-  // Ensure history starts with a plain user message (Anthropic requirement).
-  // A user message headed by tool_result blocks is not a valid start either:
-  // dropping a leading assistant tool_use turn orphans its results, and the
-  // API rejects tool_result blocks with no matching tool_use in the previous
-  // message.
-  while (
-    sanitized.length > 0 &&
-    (sanitized[0].role !== "user" ||
-      (Array.isArray(sanitized[0].content) && sanitized[0].content[0]?.type === "tool_result"))
-  ) {
-    sanitized.shift();
-  }
-
-  return { messages: sanitized, contextSummary };
+  // Replay stored rows into a valid Anthropic message array. reconstructHistory
+  // maps roles, merges consecutive turns, and runs a final integrity pass that
+  // guarantees the tool_use/tool_result pairing invariant — so a window that
+  // cuts a tool pair, a tool-result row that failed to insert, or created_at
+  // ties can never produce the "unexpected tool_use_id" 400. See history.ts.
+  const messages = reconstructHistory(history);
+  return { messages, contextSummary };
 }
 
 
