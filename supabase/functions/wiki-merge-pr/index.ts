@@ -18,7 +18,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
-import { buildSyncPage } from "../_shared/wiki-sync-payload.ts";
+import { buildSyncPage, SyncPage } from "../_shared/wiki-sync-payload.ts";
 import { assertAllWikiPaths, dedupeByHeadBranch, MERGE_PATH_RE } from "../_shared/wiki-merge-guard.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -119,6 +119,7 @@ serve(async (req) => {
         if (pr.mergeable === null) {
           await new Promise((r) => setTimeout(r, 1500));
           prRes = await fetch(`${GH}/repos/${REPO}/pulls/${n}`, { headers: ghHeaders() });
+          if (!prRes.ok) return json({ error: `github re-poll ${prRes.status}` }, 502);
           pr = await prRes.json();
         }
         if (pr.mergeable === null) return json({ state: "not_mergeable_yet" });
@@ -133,7 +134,7 @@ serve(async (req) => {
       }
 
       // 3. Sync each merged file (from the now-updated base) into RAG + library.
-      const pages = [];
+      const pages: SyncPage[] = [];
       for (const path of paths) {
         const fr = await fetch(`${GH}/repos/${REPO}/contents/${path}?ref=${encodeURIComponent(BASE)}`, { headers: ghHeaders() });
         if (!fr.ok) return json({ error: `github merged-contents ${fr.status}` }, 502);
