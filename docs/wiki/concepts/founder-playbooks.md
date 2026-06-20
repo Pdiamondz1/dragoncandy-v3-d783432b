@@ -15,6 +15,12 @@ A **Playbook** is a founder-authored, saved repeatable internal task that intern
 task, your preferences, and what counts as 'done' so any loop can call it."* Shipped
 in AIOS v1, PR #132 (2026-06-19/20), at `/internal/playbooks` (admin tier).
 
+**Status (closed out 2026-06-20):** shipped, merged, and **prod-verified** — the first
+real run of the *Weekly KPI variance check* seed completed in ~44s reporting **live**
+platform stats (proving the session-JWT path, not the no-session stub), `done_check`
+parsed to done, and zero corrections (report-only honored). Knowledge synced: this page
+is in [[Donny AI]]'s RAG (`donny_knowledge`).
+
 It is the **landing spot the [[Self-Improving App]]'s Loop Scout was missing**. Loop
 Scout *proposes and ranks* recurring-work candidates (`source:"loop-scout"` findings)
 but explicitly does **not** build loops; a Playbook is where a ranked candidate

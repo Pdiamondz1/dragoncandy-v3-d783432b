@@ -1,5 +1,13 @@
 # Wiki Log
 
+## [2026-06-20] update | Founder Playbooks — session close-out
+Closed out the Founder Playbooks session: PR #132 (feature) and #137 (wiki ingest) merged,
+the runner deployed (v5), and the first prod run of the Weekly KPI variance seed verified
+end-to-end (real live stats via the session-JWT path, done_check parsed, report-only honored).
+Donny RAG synced (sync-wiki-to-donny: +1 inserted / 32 updated / 0 errors) so
+[[Founder Playbooks]] is now retrievable. Added a Status block to the page.
+Pages updated: [[Founder Playbooks]].
+
 ## [2026-06-20] ingest | AIOS Founder Playbooks v1 (+ verify-db-schema skill)
 
 Ingested the Founder Playbooks session (PR #132). A Playbook is a founder-authored saved repeatable
