@@ -99,7 +99,8 @@ generated idea(s)) instead of a blank form.
 
 - [[DragonDash]]
 - [[DragonCandy Platform]]
-- [[Google Workspace]]
+- [[Google Workspace]] (Donny's `workspace_read_file` / Drive read path)
+- [[In-UI Knowledge Merge]] (admin-merged knowledge into Donny's RAG)
 - [[Pricing Architecture]]
 - [[Donny Audit Phase 1 Session]]
 - [[Donny Audit Phase 2 Session]]

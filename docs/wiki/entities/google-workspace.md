@@ -2,8 +2,8 @@
 title: Google Workspace
 type: entity
 created: 2026-06-13
-updated: 2026-06-13
-sources: [raw/sessions/2026-06-13-weekly-sync.md, docs/superpowers/specs/2026-06-11-google-workspace-connections-design.md]
+updated: 2026-06-20
+sources: [raw/sessions/2026-06-13-weekly-sync.md, raw/sessions/2026-06-20-aios-workspace-knowledge-merge.md, docs/superpowers/specs/2026-06-11-google-workspace-connections-design.md, docs/superpowers/specs/2026-06-20-aios-workspace-knowledge-merge-design.md]
 tags: [aios, google, workspace, oauth, drive, connections]
 ---
 
@@ -46,7 +46,8 @@ Single audited gateway for all Google API traffic.
   user's roles verified server-side. Used only by scheduled agents (Monday brief → Sheet).
 - **Actions**: `auth_url`, `oauth_callback`, `status`, `disconnect`,
   `list_files`, `create_file`, `rename_file`, `trash_file`, `upload_file`,
-  `create_doc_from_markdown`, `export_metrics_to_sheet`, `compose_email_link`.
+  `create_doc_from_markdown`, `export_metrics_to_sheet`, `compose_email_link`,
+  `read_file` (2026-06-20 — guarded text read of an AIOS-folder file).
 
 ### Scopes
 
@@ -73,6 +74,23 @@ offers `exportLinks` (Doc → .docx/.pdf). Binary uploads use `webContentLink` f
 "Brief → Doc on publish" auto-flow (Monday brief routine).
 Uses `create_doc_from_markdown` proxy action.
 
+### Donny Reads AIOS Docs (2026-06-20)
+
+Internal Donny can now READ the text of files in the AIOS folder, not just list them.
+Pure `_shared/drive-export.ts` maps mime → read strategy (Google Docs → `text/markdown`,
+Sheets → `text/csv`, text uploads → media, Slides/binary → unsupported); `readDcFile` in
+`_shared/google-workspace.ts` guards on direct parentage of the AIOS folder and **streams**
+the export, stopping at a 50 KB cap (bounded memory). Exposed as the `read_file` proxy
+action and the internal-only `workspace_read_file` Donny tool (in `INTERNAL_TOOL_DEFINITIONS`
+— never on the consumer surface). See [[In-UI Knowledge Merge]].
+
+### Import an AIOS Doc into the Strategy Library (2026-06-20)
+
+"Add to Strategy library" on importable Drive files (`WorkspaceFileGrid` → `WorkspaceHub`)
+→ `wiki-import-doc` edge function reads the Doc server-side via `readDcFile` (content never
+client-trusted), then opens a wiki PR (`donny-wiki-import/` branch) that lands in both the
+library and Donny's RAG once merged through the [[In-UI Knowledge Merge]] panel.
+
 ### Gmail Compose Deep-Link
 
 `compose_email_link` Donny tool generates a prefilled Gmail URL (to/subject/body).
@@ -98,6 +116,8 @@ service path. **Returns 503** until `GOOGLE_CHAT_PROJECT_NUMBER` secret is set.
 |------|--------|
 | Per-user OAuth + proxy | Shipped |
 | Drive file hub | Shipped |
+| Donny reads AIOS docs (`read_file` / `workspace_read_file`) | Shipped 2026-06-20 (deploy founder-run) |
+| Import AIOS doc → Strategy library (`wiki-import-doc`) | Shipped 2026-06-20 (deploy founder-run) |
 | Ops-deck dark restyle | Shipped |
 | Donny Workspace export | Shipped |
 | Gmail compose deep-link | Shipped |
@@ -124,7 +144,10 @@ service path. **Returns 503** until `GOOGLE_CHAT_PROJECT_NUMBER` secret is set.
 
 ## See Also
 
-- [[Donny AI]] (Workspace export tools)
+- [[Donny AI]] (Workspace export + read tools)
+- [[In-UI Knowledge Merge]] (the import path's merge surface)
+- [[Self-Improving App]] (knowledge flow into Donny's RAG)
 - [[Supabase]] (proxy edge function, `google_workspace_accounts` table)
 - [[Outstand]] (same single-proxy pattern)
 - [[Google Workspace Connections Session]] (source)
+- [[AIOS Workspace Knowledge-Merge Session]] (source)

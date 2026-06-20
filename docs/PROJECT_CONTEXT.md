@@ -250,6 +250,30 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   AI cost vs cap). Deferred: Donny `list_playbooks`/`run_playbook` conversational tools (would
   redeploy donny-chat). Codex-clean (1 P1 + 5 P2 resolved). Live agentic run is post-merge founder
   verification. Spec: `docs/superpowers/specs/2026-06-19-aios-founder-playbooks-design.md`.
+- DragonCandy AIOS — Workspace reading, Strategy-library import & in-UI knowledge merge —
+  **built (branch `feat/aios-workspace-knowledge-merge`, 2026-06-20; edge-fn deploys
+  founder-run).** Three founder asks, three slices. **(A)** Internal Donny can now READ
+  AIOS-folder Drive docs, not just list them: a pure `drive-export` mime→read-strategy helper,
+  a parent-guarded + **streamed-to-50KB** `readDcFile`, a `read_file` proxy action, and an
+  internal-only `workspace_read_file` Donny tool. **(B, keystone)** an **in-UI approve-&-merge**
+  pipeline — the `wiki-merge-pr` edge function (admin-gated, reuses `GITHUB_WIKI_TOKEN`;
+  `list`/`preview`/`merge` → GitHub squash-merge → **batched** `donny-knowledge-sync`) plus a
+  self-hiding "Pending knowledge" panel on `/internal/corrections` — that **deletes the GitHub
+  trip AND the Lovable deploy** from every knowledge capture (the deploy was never needed:
+  Donny's brain is a DB table, not the frontend bundle). The Save-to-knowledge toast now
+  deep-links to the panel. **(C)** "Add to Strategy library" on AIOS Drive files →
+  `wiki-import-doc` (reads the Doc server-side, opens a `donny-wiki-import/` PR riding the
+  Slice-B panel into both the library and Donny's RAG). Invariants held: **a human merges
+  first** (Donny gained only a READ tool; nothing auto-merges), merge surface is wiki-paths-only
+  (allow-list re-asserted before the merge PUT), **no schema migration, no new secret, no new
+  OAuth scope**. Built via brainstorm→spec→plan→subagent-driven execution (7 units, per-unit
+  review) → opus whole-branch review → **Codex second review clean after 4 fix waves** (the
+  catches: `verify_jwt=false` config for browser-invoked fns; paginate the PR-file guard; parse
+  `donny-knowledge-sync`'s 200-with-`errors` body and batch ≤100/req; reject delete/rename PRs +
+  honest `merged:true,synced:false` state; broaden the merge path regex to the producer contract
+  yet stay traversal-proof). Founder follow-ups: deploy the 3 edge fns + redeploy donny-chat,
+  sync the RAG, verify prod. Spec:
+  `docs/superpowers/specs/2026-06-20-aios-workspace-knowledge-merge-design.md`.
 
 **Workflow discipline**: Single Claude Code agent, one prompt at a time
 → `npm run build` → verify → push. Session handoffs at plan-phase

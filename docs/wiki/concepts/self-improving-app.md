@@ -283,6 +283,7 @@ code and money changes human-gated.
 - [[Donny AI]]
 - [[DragonCandy Platform]]
 - [[Founder Playbooks]]
+- [[In-UI Knowledge Merge]] (how knowledge PRs reach Donny's RAG without leaving the app)
 - [[Karpathy LLM Wiki Schema]]
 - [[Musk's Algorithm]]
 - [[Migration Replay Drift]]

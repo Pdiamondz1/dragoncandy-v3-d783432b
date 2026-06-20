@@ -25,6 +25,7 @@
 - [[DragonShare Amplification Engine Session]](sources/dragonshare-amplification-engine-session.md) — Upload-first submit, trust-then-flag, watermark, two-path boost payment, 80/20 split (2026-06-01)
 - [[Loop Scout First Run]](raw/sessions/2026-06-20-loop-scout-first-run-builds.md) — AIOS Loop Scout's first batch triaged 2 built / 2 wontfix / 1 acknowledged; shipped expire-social-hooks + expire-email-verification-tokens crons; Codex caught a verify_jwt P1; aios_ingest_key Vault landmine fixed (2026-06-20)
 - [[Founder Playbooks Session]](raw/sessions/2026-06-19-aios-founder-playbooks.md) — AIOS Founder Playbooks v1: saved repeatable internal tasks Donny runs on demand (report-only + propose); self-contained aios-playbook-run under the caller session JWT; the landing spot for Loop Scout candidates; + the verify-db-schema dev skill; PR #132 (2026-06-19/20)
+- [[AIOS Workspace Knowledge-Merge Session]](raw/sessions/2026-06-20-aios-workspace-knowledge-merge.md) — Donny reads AIOS docs (read_file/workspace_read_file), import a Workspace doc → Strategy library, and in-UI approve+merge of wiki PRs (wiki-merge-pr) into RAG + library — no GitHub/Lovable trip; 3 slices, Codex-clean after 4 fix waves (2026-06-20)
 - [[Project Context]](sources/project-context.md) — Project identity, strategy, and operating instructions (2026-05-23)
 - [[QA Staging Supabase (Plan B) Session]](sources/qa-staging-supabase-planb-session.md) — Isolated staging Supabase for the CI/CD gate; 213-migration replay, secrets, Stripe sandbox alignment (2026-06-02)
 - [[Realtime Edge Cases Session]](sources/realtime-edge-cases-session.md) — Race conditions, presence ghost state, keepalive, single-slot triggers (2026-05-06)
@@ -54,6 +55,7 @@
 - [[Deep-Link Param Query Race]](concepts/deep-link-param-query-race.md) — Capture deep-link URL params at mount; URL-cleanup tears down queries mid-flight
 - [[Error Handling Patterns]](concepts/error-handling-patterns.md) — ErrorBoundary levels, QueryClient throwOnError, async patterns
 - [[Founder Playbooks]](concepts/founder-playbooks.md) — Saved repeatable internal tasks Donny runs on demand (report-only + propose); the landing spot for Loop Scout candidates; self-contained runner under the caller session JWT
+- [[In-UI Knowledge Merge]](concepts/in-ui-knowledge-merge.md) — Review + merge wiki knowledge PRs inside /internal (wiki-merge-pr), syncing into Donny's RAG + Strategy library — no GitHub visit, no Lovable deploy; preserves the human-merge gate; unifies Save-to-knowledge, corrections, and Workspace-doc import
 - [[Investor Pitch Deck & Capital Raise]](concepts/investor-pitch-deck.md) — Brand-faithful /pitch deck + ~$3M cost model (50/30/20); fixed 1280×720 canvas, gitignored PDF, prod-build-only; Donny super-agent Vision
 - [[Migration Replay Drift]](concepts/migration-replay-drift.md) — Prod schema diverged from migration files; 7 defect classes when replaying onto a clean DB
 - [[Musk's Algorithm]](concepts/musks-algorithm.md) — Question → Delete → Simplify → Accelerate → Automate
