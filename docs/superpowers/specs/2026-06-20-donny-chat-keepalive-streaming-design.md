@@ -84,7 +84,7 @@ Anthropic call does the function branch:
 
 ### 4.2 Server flow (internal path)
 
-1. Create a `ReadableStream`; return `new Response(stream, { headers: ndjson + cors })` immediately.
+1. Create a `ReadableStream`; return `new Response(stream, { headers: ndjson + cors })` immediately, and **write one event at stream open before the first Anthropic call** (an initial `status` such as "Thinking…", flushed immediately). Defeating the 150s idle timeout depends on an early first byte — do not let the first byte wait on the first Anthropic delta. Verify the Supabase Edge runtime flushes this write promptly rather than buffering it.
 2. Run the **existing tool loop, unchanged in structure** (`MAX_TOOL_ROUNDS = 10`, token safety net), with three additions:
    - Each Anthropic call uses `stream: true`; its `response.body` is fed through the accumulator (§4.3).
    - `text` deltas from the accumulator are forwarded to the client as `text` events.
@@ -95,7 +95,13 @@ Anthropic call does the function branch:
    `donny_tool_executions` / `donny_actions` audit rows and `logCost` /
    `incrementUsage`, exactly as today. The DB remains the source of truth;
    streaming is additive.
-4. On loop completion → emit `done` (with the final `content` + `rich_card`), close.
+4. On loop completion → emit `done`, close. **`done.content` is the persisted
+   `displayContent`** — i.e. the final text *after* the existing `rich_card`
+   regex strip — not the raw concatenation of streamed `text` deltas. For the
+   internal surface no rich card is emitted (internal tools don't produce them,
+   §2), so `displayContent === finalContent` and the streamed live text already
+   matches `done.content`; emitting `displayContent` keeps them reconciled even
+   if that ever changes. `done.rich_card` is `null` for internal.
 5. On any thrown error after the stream opened → emit `error`, close.
 6. A 15s **fallback heartbeat timer** writes a `heartbeat` if no event has been
    written in the interval; it is cleared on completion/error. Anthropic's own
@@ -121,8 +127,12 @@ it is fully testable with vitest.
   - the **fully assembled message** — an array of content blocks: `text` blocks
     and `tool_use` blocks whose `input` is reconstructed by concatenating the
     block's `input_json_delta.partial_json` fragments and `JSON.parse`-ing at
-    `content_block_stop`; plus `stop_reason` and `usage` from `message_delta` /
-    `message_start`.
+    `content_block_stop`; plus `stop_reason` and `usage`.
+  - **`usage` is assembled from two events:** `input_tokens` and the cache
+    fields arrive on `message_start`; `output_tokens` arrives on
+    `message_delta`. The accumulator must merge both — dropping `output_tokens`
+    would under-report `logCost` and `tokens_used` (cost-ledger accounting is a
+    listed invariant, §9).
 - The assembled message is structurally identical to today's non-streaming
   `result` object, so the rest of the loop (tool execution, persistence,
   `claudeMessages` building) is unchanged.
