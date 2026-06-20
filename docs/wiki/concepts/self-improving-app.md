@@ -178,6 +178,15 @@ task, your preferences, and what counts as "done" so any loop can call it.* The 
 at load) and runs under the caller's session JWT so the `auth.uid()`-gated live-stats
 RPCs return real data. See [[Founder Playbooks]].
 
+**Loop-callable as of 2026-06-20.** The "so any loop can call it" clause is now literal,
+not aspirational: a `playbook-runner-agent` cloud-routine runs any playbook **unattended
+on a cron**. Because the session-JWT-bound runner can't be called by a sessionless cron,
+the routine executes the playbook itself (Supabase MCP `execute_sql` + a capability map
+to direct table SELECTs) and surfaces a **deduped finding on breach/watch only** through
+`aios-report-ingest`. The first scheduled playbook is the report-only `kill-switch-watch`
+(the [[North Star & KPI Scorecard]] guardrails as an executable check). See
+[[Founder Playbooks]].
+
 ## Phased roadmap
 
 - **Phase 1 — knowledge research loop** *(built).* On-demand `/autoresearch <topic>` plus an
