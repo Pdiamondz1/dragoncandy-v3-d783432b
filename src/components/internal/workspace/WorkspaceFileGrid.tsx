@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { Download, ExternalLink, MoreVertical, Pencil, Trash2 } from 'lucide-react';
+import { BookPlus, Download, ExternalLink, MoreVertical, Pencil, Trash2 } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -8,12 +8,14 @@ import {
 } from '@/components/ui/dropdown-menu';
 import type { WorkspaceFile } from '@/hooks/internal/useGoogleWorkspace';
 import { getRelativeTime } from '@/lib/campaignUtils';
+import { isImportable } from '@/lib/internal/wikiImport';
 import { fileMeta } from './fileMeta';
 
 export interface FileActions {
   onSelect: (file: WorkspaceFile) => void;
   onRename: (file: WorkspaceFile) => void;
   onTrash: (file: WorkspaceFile) => void;
+  onImport: (file: WorkspaceFile) => void;
 }
 
 interface WorkspaceFileGridProps {
@@ -61,6 +63,11 @@ const FileCard = memo(({ file, selected, actions }: { file: WorkspaceFile; selec
           {file.webContentLink && (
             <DropdownMenuItem onClick={() => window.open(file.webContentLink, '_blank', 'noopener')}>
               <Download className="mr-2 h-4 w-4" /> Download
+            </DropdownMenuItem>
+          )}
+          {isImportable(file.mimeType) && (
+            <DropdownMenuItem onClick={() => actions.onImport(file)}>
+              <BookPlus className="mr-2 h-4 w-4" /> Add to Strategy library
             </DropdownMenuItem>
           )}
           <DropdownMenuItem onClick={() => actions.onRename(file)}>
