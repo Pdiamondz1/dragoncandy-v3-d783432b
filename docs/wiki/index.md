@@ -21,6 +21,7 @@
 - [[Donny Audit Phase 1 Session]](sources/donny-audit-phase1-session.md) — Role-based tool filtering, prompt injection defense, tier-based token clamping (2026-05-06)
 - [[Donny Audit Phase 2 Session]](sources/donny-audit-phase2-session.md) — Quota enforcement, SSE streaming, dual auth, upgrade CTAs (2026-05-06)
 - [[Donny Campaign Pre-fill Session]](raw/sessions/2026-06-18-donny-campaign-prefill.md) — Donny chat hands a brief to the Create-a-Campaign builder via ?brief= → opens pre-filled on the Launchpad; new prepare_campaign tool; broken /campaigns/new route fixed; PR #124 (2026-06-18)
+- [[Donny Chat Input & Timestamps Session]](sources/donny-chat-input-timestamps-session.md) — expanding `<textarea>` prompt (was single-line, scrolled text off-screen) + per-message timestamps & teal date dividers; shared across consumer + internal Donny; light-vs-dark forced time-inside-bubble; Codex caught a tool-row day-grouping bug; PR #140 (2026-06-20)
 - [[Investor Pitch Deck & Cost Model Session]](sources/investor-pitch-deck-cost-model-session.md) — /pitch deck (15 slides) + sourced ~$3M capital-raise cost model; brands woven in; Donny super-agent Vision slide (2026-06-17)
 - [[DragonShare Amplification Engine Session]](sources/dragonshare-amplification-engine-session.md) — Upload-first submit, trust-then-flag, watermark, two-path boost payment, 80/20 split (2026-06-01)
 - [[Loop Scout First Run]](raw/sessions/2026-06-20-loop-scout-first-run-builds.md) — AIOS Loop Scout's first batch triaged 2 built / 2 wontfix / 1 acknowledged; shipped expire-social-hooks + expire-email-verification-tokens crons; Codex caught a verify_jwt P1; aios_ingest_key Vault landmine fixed (2026-06-20)
@@ -52,6 +53,7 @@
 - [[Content Engine]](concepts/content-engine.md) — Live-signal loop: brief → DragonShare action → performance; Phases A+B+C+D built (loop closed + surfaced to creators, verified prod)
 - [[Data Flywheel]](concepts/data-flywheel.md) — Primary competitive moat via accumulated match data
 - [[Deep-Link Param Query Race]](concepts/deep-link-param-query-race.md) — Capture deep-link URL params at mount; URL-cleanup tears down queries mid-flight
+- [[Donny Chat UX]](concepts/donny-chat-ux.md) — Shared chat components on two opposite-theme surfaces (light consumer / dark internal); the light-vs-dark rule (time inside bubbles, teal divider chip), expanding-textarea input, hidden-tool-row day-grouping, tray-vs-chat input split
 - [[Error Handling Patterns]](concepts/error-handling-patterns.md) — ErrorBoundary levels, QueryClient throwOnError, async patterns
 - [[Founder Playbooks]](concepts/founder-playbooks.md) — Saved repeatable internal tasks Donny runs on demand (report-only + propose); the landing spot for Loop Scout candidates; self-contained runner under the caller session JWT
 - [[Investor Pitch Deck & Capital Raise]](concepts/investor-pitch-deck.md) — Brand-faithful /pitch deck + ~$3M cost model (50/30/20); fixed 1280×720 canvas, gitignored PDF, prod-build-only; Donny super-agent Vision
