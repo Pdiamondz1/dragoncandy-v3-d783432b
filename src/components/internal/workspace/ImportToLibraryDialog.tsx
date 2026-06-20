@@ -83,7 +83,7 @@ export const ImportToLibraryDialog = ({ file, open, onOpenChange }: ImportToLibr
         <div className="space-y-3">
           <label className="block text-xs font-semibold text-dc-text-muted">
             Title
-            <Input value={title} maxLength={120} onChange={(e) => setTitle(e.target.value)} className="mt-1" />
+            <Input value={title} maxLength={200} onChange={(e) => setTitle(e.target.value)} className="mt-1" />
           </label>
 
           <label className="block text-xs font-semibold text-dc-text-muted">

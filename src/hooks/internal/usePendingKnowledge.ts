@@ -34,6 +34,7 @@ export interface MergeResult {
   merged?: boolean;
   synced?: string[];
   state?: 'not_mergeable_yet' | 'not_mergeable';
+  reason?: string;
   error?: string;
 }
 
