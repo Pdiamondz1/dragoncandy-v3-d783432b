@@ -320,6 +320,26 @@ proposals can be enabled per-playbook later.)
   offered `propose_correction`.
 - Codex second-review pass clean; then run `knowledge-sync` to capture the session.
 
+## 10b. v1 implementation notes (deltas from the design above)
+
+Three scope tightenings made during implementation, all preserving the invariants:
+
+- **Donny `list_playbooks` / `run_playbook` tools (§6) DEFERRED** to a follow-up.
+  They would edit + founder-redeploy the core `donny-chat` endpoint; the user
+  chose to minimize `donny-chat` blast radius (the self-contained-runner decision,
+  §4.1). The UI **Run** button delivers on-demand running; conversational invoke
+  is a clean later add. The runner already accepts `trigger: 'donny'` for when it
+  lands.
+- **Runner omits `search_internal_knowledge`** (semantic search) in v1 to avoid
+  the cross-dir embeddings import (`donny-orchestrator/rag.ts`), keeping the edge
+  bundle all-`_shared` and the deploy reliable. `get_internal_doc` (list + fetch)
+  covers finding the right strategy doc.
+- **Seeds (§8) revised to match the runner's tools** — the original
+  "RLS/schema-drift audit" and "stale-finding sweep" need tools the runner
+  doesn't have (SQL introspection / a findings reader). Shipped seeds, all
+  report-only: *Weekly KPI variance check*, *Scaling & capacity check*,
+  *AI cost vs 15% cap*.
+
 ## 11. Build Order (slices)
 
 1. This spec → `spec-document-reviewer` loop → **user sign-off (incl. §4.1 runner

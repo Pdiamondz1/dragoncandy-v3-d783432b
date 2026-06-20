@@ -107,6 +107,8 @@ const InternalDonny = lazy(() => import("./pages/internal/InternalDonny"));
 const InternalBriefings = lazy(() => import("./pages/internal/InternalBriefings"));
 const InternalFindings = lazy(() => import("./pages/internal/InternalFindings"));
 const InternalCorrections = lazy(() => import("./pages/internal/InternalCorrections"));
+const InternalPlaybooks = lazy(() => import("./pages/internal/InternalPlaybooks"));
+const InternalPlaybookDetail = lazy(() => import("./pages/internal/InternalPlaybookDetail"));
 const InternalAuth = lazy(() => import("./pages/internal/InternalAuth"));
 const InternalWorkspace = lazy(() => import("./pages/internal/InternalWorkspace"));
 const WorkspaceCallback = lazy(() => import("./pages/internal/WorkspaceCallback"));
@@ -340,6 +342,8 @@ function AnimatedRoutes() {
             <Route path="donny" element={<InternalRoute tier="admin"><InternalDonny /></InternalRoute>} />
             <Route path="findings" element={<InternalRoute tier="admin"><InternalFindings /></InternalRoute>} />
             <Route path="corrections" element={<InternalRoute tier="admin"><InternalCorrections /></InternalRoute>} />
+            <Route path="playbooks" element={<InternalRoute tier="admin"><InternalPlaybooks /></InternalRoute>} />
+            <Route path="playbooks/:slug" element={<InternalRoute tier="admin"><InternalPlaybookDetail /></InternalRoute>} />
           </Route>
 
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
