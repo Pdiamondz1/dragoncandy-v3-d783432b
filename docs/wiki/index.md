@@ -85,5 +85,7 @@
 ## Analyses
 
 - [[Content Engine Data Audit]](analyses/content-engine-data-audit.md) — what signal data exists in prod for the Donny content engine; context live, performance dark, Toast/social-cache tables missing from prod; foundation-first plan
+- [[DragonCandy Tech & Infrastructure Cost Breakdown]](analyses/here-s-the-exported-doc-dragoncandy-tech-infrastructure-cost-breakdown-nyc-media.md) — Donny-captured analysis: NYC-median tech & infrastructure cost breakdown for the capital raise
+- [[Human Marketing Team (Part 1)]](analyses/part-1-the-human-marketing-team.md) — Donny-captured analysis: the human marketing team (part 1)
 - [[North Star & KPI Scorecard]](analyses/north-star-kpi-scorecard.md) — Three-year targets + kill-switches operationalized and validated against 2025 SMB-SaaS benchmarks; flags churn-unit ambiguity and a mis-scoped rev/employee gate
 - [[Platform API Registration Plan]](analyses/platform-api-registration-plan.md) — running checklist to swap Outstand for direct Meta/X/TikTok/YouTube + Toast access; per-platform requirements, lead times, Meta deep-dive; unblocks the dark Content Engine signal
