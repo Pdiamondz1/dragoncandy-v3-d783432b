@@ -217,6 +217,24 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   only; two `spec-document-reviewer` rounds stood in for the Codex pass. Founder-run go-live:
   update the live knowledge-freshness routine prompt + create the loop-scout routine via
   `/schedule`. Spec: `docs/superpowers/specs/2026-06-19-aios-loop-automation-design.md`.
+- DragonCandy AIOS — Founder Playbooks — **shipped (PR #132, 2026-06-19/20).** The landing
+  spot Loop Scout's candidates were missing: a **Playbook** is a founder-authored saved
+  repeatable internal task (`task` · `preferences` · `done-criteria` · `allowed-proposals`)
+  that runs on demand **report-only + propose** — the `aios-playbook-run` edge function reads
+  internal data with internal Donny's READ tools, composes a report, self-assesses against the
+  done-criteria, and (only if the playbook allows it) **proposes** corrections through the
+  existing `aios-report-ingest` → `/internal/corrections` gate. Nothing auto-applies; the
+  invariant *Donny never writes directly — a human approves* holds. Closes the Loop-Scout loop
+  (surface → land → run) via a **"Promote to playbook"** action on `loop-scout` findings.
+  Tables `aios_playbooks` + `aios_playbook_runs` (admin RLS; partial unique index = one
+  in-flight run). The runner is **self-contained** (donny-chat calls `serve()` at import, so its
+  internal tools can't be imported — it carries its own compact copy; keeps the core endpoint
+  untouched), runs under the **caller's session JWT** so the `auth.uid()`-gated live-stats RPCs
+  work, and is `verify_jwt=false` so the browser CORS preflight reaches it. UI `/internal/playbooks`
+  (+ `/:slug` detail), admin tier. 3 report-only seed playbooks (KPI variance, scaling capacity,
+  AI cost vs cap). Deferred: Donny `list_playbooks`/`run_playbook` conversational tools (would
+  redeploy donny-chat). Codex-clean (1 P1 + 5 P2 resolved). Live agentic run is post-merge founder
+  verification. Spec: `docs/superpowers/specs/2026-06-19-aios-founder-playbooks-design.md`.
 
 **Workflow discipline**: Single Claude Code agent, one prompt at a time
 → `npm run build` → verify → push. Session handoffs at plan-phase
