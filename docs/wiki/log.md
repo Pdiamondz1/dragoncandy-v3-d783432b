@@ -1,5 +1,17 @@
 # Wiki Log
 
+## [2026-06-20] ingest | Donny Chat Input & Timestamps (PR #140)
+Ingested the Donny chat UX session. Shared `DonnyChatInput` single-line `<input>` → auto-growing
+`<textarea>` (Enter sends / Shift+Enter newline) so a long prompt stays readable instead of
+scrolling off-screen; added per-message timestamps (time inside each bubble) + teal date dividers,
+rendering the pre-existing `created_at`. Shipped to both the consumer chat panel and internal Donny;
+the two surfaces' opposite (light vs dark) backgrounds forced the time-inside-bubble + teal-chip
+choice. Codex (required second review) caught a P2: day-divider grouping must compare against the
+previous *visible* message, since hidden `role:'tool'` rows would suppress a real day boundary —
+fixed via `startsNewDayGroup`. Prod-verified on dragoncandy.io (both viewports, 0 console errors).
+Pages created: [[Donny Chat Input & Timestamps Session]], [[Donny Chat UX]].
+Pages updated: [[Donny AI]], [[Wiki Index]].
+
 ## [2026-06-20] update | Founder Playbooks — session close-out
 Closed out the Founder Playbooks session: PR #132 (feature) and #137 (wiki ingest) merged,
 the runner deployed (v5), and the first prod run of the Weekly KPI variance seed verified
