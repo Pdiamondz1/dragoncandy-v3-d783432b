@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { BookPlus } from 'lucide-react';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -15,6 +16,7 @@ interface SaveToKnowledgeButtonProps {
 
 /** "Save to knowledge" — opens a GitHub PR creating a new docs/wiki/ page. */
 export const SaveToKnowledgeButton = ({ markdown, question }: SaveToKnowledgeButtonProps) => {
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState('');
   const [folder, setFolder] = useState<WikiFolder>('analyses');
@@ -52,10 +54,8 @@ export const SaveToKnowledgeButton = ({ markdown, question }: SaveToKnowledgeBut
             toast.error(saveErrorMessage(data.error));
             return;
           }
-          toast.success('Wiki PR opened', {
-            action: data.url
-              ? { label: 'Open PR', onClick: () => window.open(data.url, '_blank', 'noopener') }
-              : undefined,
+          toast.success('Wiki PR opened — review & merge it under Pending knowledge.', {
+            action: { label: 'Review', onClick: () => navigate('/internal/corrections') },
           });
           setOpen(false);
         },
