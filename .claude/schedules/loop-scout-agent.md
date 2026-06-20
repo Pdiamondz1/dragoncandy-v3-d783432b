@@ -43,6 +43,9 @@ AIOS_INGEST_SECRET missing or invalid in environment Dame_git_claude."
    bug sweep, daily knowledge-freshness self-heal, the Loop Scout itself, platform-weight
    capture, content-performance capture, analytics-events purge, promotion expiry, Toast token
    refresh. A candidate that is already covered here is OUT.
+   Also enumerate `.claude/skills/verify-*` — the existing VALIDATOR skills (e.g. verify-prod,
+   verify-db-schema, verify-knowledge) that already emit a deterministic done-verdict. Record
+   which exist; this feeds condition 2 below.
 
 2. REPEATED-WORK SIGNALS (read-only):
    - `git log --since="90 days ago" --pretty="%s"` — cluster commit subjects by recurring
@@ -59,7 +62,12 @@ AIOS_INGEST_SECRET missing or invalid in environment Dame_git_claude."
    or tools don't exist yet scores low on condition 4 (still worth filing as "blocked on X").
 
 4. SCORE + RANK: for each candidate run the 4-Condition Test (pass/partial/fail per condition),
-   then rank. Map the overall result to a build priority used as `severity`:
+   then rank. For **condition 2 (rule judges done?)**, use the validator inventory from step 1
+   as the concrete signal: a candidate whose done-check maps onto an existing `.claude/skills/verify-*`
+   validator (or that has one purpose-built) passes condition 2; one with no validator and no
+   deterministic rule is at most `partial` on condition 2 and its build recommendation should be
+   "blocked on: author a verify-* validator skill first." Map the overall result to a build
+   priority used as `severity`:
    - `high` = passes all 4 (build-first), `medium` = passes 3, `low` = passes ≤2 / blocked.
    Keep only the top ~5 candidates.
 
