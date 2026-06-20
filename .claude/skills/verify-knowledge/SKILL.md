@@ -14,9 +14,13 @@ for the contract, and the scheduled, self-healing cloud twin
 
 ## Checks (all deterministic — same state in, same verdict out)
 
-1. **Wiki lint (a).** Run the [[wiki-ops]] lint checks (contradictions, broken/missing
-   `[[wikilinks]]`, orphan pages, index completeness). `met` = **0 critical** findings.
-   Advisory nits (thin coverage, style) do NOT flip `met`.
+1. **Wiki lint (a).** Run the [[wiki-ops]] lint checks. `met` = **0 CRITICAL** findings, where
+   **critical** = a contradiction between pages OR index-incompleteness (a page on disk under
+   `docs/wiki/{concepts,entities,analyses}` that is not linked in `index.md`). **ADVISORY — do
+   NOT flip `met`:** missing-page `[[wikilinks]]` (this wiki *intentionally allows* forward links
+   to pages not yet written — see `docs/KNOWLEDGE_WIKI.md`), orphan pages, thin coverage, and
+   style. Gating only on the deterministic critical set keeps `met` reproducible and stops the
+   validator from tripping on intentional forward links (including its own).
 
 2. **RAG freshness (b).** Compare Donny's RAG to the in-scope wiki, exactly as
    `knowledge-freshness-agent` case (b):

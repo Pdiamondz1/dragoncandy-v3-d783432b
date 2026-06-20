@@ -94,7 +94,7 @@ verdict block:
 
 | Check | Source of the rule | `met` when |
 |-------|--------------------|-----------|
-| (a) Wiki lint | `wiki-ops lint` critical findings | 0 critical findings (contradictions, broken/missing wikilinks, index gaps) |
+| (a) Wiki lint | `wiki-ops lint` critical findings | 0 critical findings — critical = contradictions OR index-incompleteness (page on disk not in `index.md`). Missing-page `[[wikilinks]]` are **advisory** (this wiki allows forward links per `KNOWLEDGE_WIKI.md`), so the validator never self-trips on intentional forward links |
 | (b) RAG freshness | `knowledge-freshness-agent` git/RAG comparison | `donny_knowledge.max(updated_at)` not behind `LAST_WIKI_SYNC` (concepts/entities/analyses) by >24h, and table non-empty |
 | (c) Index/log currency | `knowledge-sync` "Done when" gate | `index.md` lists the session's new/updated pages and `log.md` has the matching entry — both **deterministic** disk-vs-index checks |
 

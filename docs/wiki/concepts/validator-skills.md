@@ -11,7 +11,8 @@ tags: [skills, loops, validators, aios, verification]
 A **validator skill** is a skill that READS some state, JUDGES it against deterministic rules,
 and ends its output with a machine-readable **verdict block** a loop can branch on. Validators
 are the primitive that **closes a loop**: `generate → validate → (fail?) → fix → re-validate`.
-This is condition #2 of the [[Loop Scout]] 4-Condition Test ("can a rule decide when it's done?").
+This is condition #2 of the 4-Condition Test ("can a rule decide when it's done?") that the
+Loop Scout routine uses (see [[Self-Improving App]]).
 
 ## The Verdict Contract
 
@@ -53,11 +54,13 @@ A loop pairs a generator with a validator:
 - it is **bounded** (a max-iteration cap) so a stuck loop stops instead of spinning — condition
   #3 of the 4-Condition Test (afford wasted runs).
 
-First reference loop: the **Knowledge loop** — [[Knowledge Sync]] (generate) + [[Verify
-Knowledge]] (validate). [[Loop Scout]] scores a candidate higher on condition #2 when a matching
-`verify-*` validator skill exists.
+First reference loop: the **Knowledge loop** — the `knowledge-sync` skill (generate) + the
+`verify-knowledge` validator (validate). The Loop Scout routine scores a candidate higher on
+condition #2 when a matching `verify-*` validator skill exists.
 
 ## See Also
-- [[Loop Automation]] — the 4-Condition Test, knowledge-freshness self-heal, Loop Scout
+- [[Self-Improving App]] — the 4-Condition Test, knowledge-freshness self-heal, and the Loop
+  Scout routine that ranks loop candidates
 - [[Founder Playbooks]] — origin of the `done_check` verdict shape
-- [[Knowledge Sync]] · [[Verify Knowledge]] · [[Loop Scout]]
+- Skills/routines (not wiki pages): the `knowledge-sync` and `verify-knowledge` skills, and the
+  `.claude/schedules/loop-scout-agent.md` routine
