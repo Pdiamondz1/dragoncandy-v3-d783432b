@@ -417,6 +417,12 @@ serve(async (req) => {
         totalTokens += (finalResult.usage?.input_tokens ?? 0) + (finalResult.usage?.output_tokens ?? 0);
         await logCost(admin, { userId, edgeFunction: "aios-playbook-run", model: MODEL, tier: "T3", inputTokens: finalResult.usage?.input_tokens ?? 0, outputTokens: finalResult.usage?.output_tokens ?? 0 });
       }
+      // If the fallback also produced nothing (HTTP error or empty text), the run
+      // has no usable report — fail it rather than persisting an empty 'completed'
+      // row that the UI would show as a successful run.
+      if (!reportText.trim()) {
+        throw new Error("playbook run produced no report (model returned no text)");
+      }
     }
 
     const doneCheck = parseDoneCheck(reportText);
