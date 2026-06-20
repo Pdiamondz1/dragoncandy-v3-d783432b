@@ -297,6 +297,25 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   autoresearch gate, …) are documented as ranked next-loops; a `make-validator` meta-skill is
   the deferred *automate-last* step. Built via brainstorm→spec→plan→subagent-driven execution.
   Spec: `docs/superpowers/specs/2026-06-20-validator-skills-loops-design.md`.
+- DragonCandy AIOS — Kill-switch playbook + loop-callable playbooks — **built (branch
+  `feat/aios-killswitch-playbook-loop`, 2026-06-20; founder-run go-live).** Two small
+  slices applying the "saved skill file" idea where it had untapped leverage. **(A1)** a
+  report-only `kill-switch-watch` Founder Playbook that turns PROJECT_CONTEXT §3's four
+  kill-switches into a repeatable check (green/watch/breach/not-yet-measurable); honestly
+  scoped — pre-revenue it is an **armed-watch scaffold** (churn/CAC/LTV:CAC have no data
+  source yet and stay not-yet-measurable until cohort/CAC instrumentation exists, out of
+  scope). Runs immediately on the existing `aios-playbook-run` runner. **(A4, the prompt's
+  literal "so any loop can call it")** a `playbook-runner-agent` cloud-routine template
+  that makes any playbook loop-callable: it loads the definition from `aios_playbooks`,
+  executes it via `execute_sql` + repo reads (a capability map sidesteps the
+  `auth.uid()`-gated stats RPCs the session-bound runner needs), and posts a **deduped
+  finding on breach/watch only** through `aios-report-ingest` (`breach→critical`,
+  `watch→medium`; all-green posts nothing; no auto-resolve). Deliberately NOT done:
+  Donny-mid-chat invocation and a service-bearer runner mode (both defer touching the chat
+  core / stats-RPC auth). No edge-function, schema (beyond a seed INSERT), secret, or auth
+  change; invariant held — Donny never writes directly, a human triages. Founder go-live:
+  apply the seed migration, then `/schedule` the runner pinning `slug='kill-switch-watch'`.
+  Spec: `docs/superpowers/specs/2026-06-20-aios-playbook-killswitch-loop-design.md`.
 
 **Workflow discipline**: Single Claude Code agent, one prompt at a time
 → `npm run build` → verify → push. Session handoffs at plan-phase
