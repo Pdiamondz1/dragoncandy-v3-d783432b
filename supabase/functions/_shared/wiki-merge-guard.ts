@@ -1,8 +1,13 @@
 // supabase/functions/_shared/wiki-merge-guard.ts
 // Pure guards for the in-UI merge surface. Dependency-free → Vitest in CI.
 
-// The three folders donny-knowledge-sync can round-trip (matches sync-internal-docs WIKI_DIRS).
-export const MERGE_PATH_RE = /^docs\/wiki\/(concepts|analyses|entities)\/[a-z0-9][a-z0-9-]*\.md$/;
+// Accept the producer/syncable wiki path contract (wiki-save-answer kebab, plus
+// wiki-commit-pr's broader correction slugs: underscores, dots, mixed case).
+// Deliberately NO '/' in the filename segment — unlike wiki-commit-pr (which
+// re-derives paths from trusted correction rows), this guard is fed by PR numbers,
+// so staying single-segment keeps it traversal-proof while the folder anchor
+// (concepts|analyses|entities) keeps merges inside the syncable wiki dirs.
+export const MERGE_PATH_RE = /^docs\/wiki\/(concepts|analyses|entities)\/[A-Za-z0-9][A-Za-z0-9._-]*\.md$/;
 
 /** True only if the PR's changed files are ALL wiki pages (and there is at least one). */
 export function assertAllWikiPaths(paths: string[]): boolean {

@@ -13,6 +13,15 @@ describe('MERGE_PATH_RE', () => {
     expect(MERGE_PATH_RE.test('docs/wiki/sources/x.md')).toBe(false);
     expect(MERGE_PATH_RE.test('docs/wiki/concepts/../../../etc.md')).toBe(false);
   });
+  it('accepts correction-style slugs (underscore, dot, mixed case)', () => {
+    expect(MERGE_PATH_RE.test('docs/wiki/entities/foo_bar.md')).toBe(true);
+    expect(MERGE_PATH_RE.test('docs/wiki/concepts/Some.Dotted.Name.md')).toBe(true);
+    expect(MERGE_PATH_RE.test('docs/wiki/analyses/North-Star_KPI.md')).toBe(true);
+  });
+  it('still rejects path traversal and subdir slashes (no / in the file segment)', () => {
+    expect(MERGE_PATH_RE.test('docs/wiki/concepts/../../../etc.md')).toBe(false);
+    expect(MERGE_PATH_RE.test('docs/wiki/concepts/sub/page.md')).toBe(false);
+  });
 });
 
 describe('assertAllWikiPaths', () => {
