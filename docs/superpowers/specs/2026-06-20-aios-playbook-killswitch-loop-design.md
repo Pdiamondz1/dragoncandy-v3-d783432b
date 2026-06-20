@@ -88,23 +88,35 @@ threshold and its scoping note. Call out any breach first.
 
 **`preferences_md`** — Honor the §3 scoping notes verbatim: churn unit is **%/month**;
 do **not** trigger revenue/employee in Y1 (the Y1 plan is structurally below the floor
-by design). Aggregate dollars only; convert cents→dollars; never invent a number a
-tool didn't return. Pre-revenue ($0 paying customers), churn / CAC-payback / LTV:CAC
-have **no data source** — report them as *"not yet measurable (pre-revenue) — armed;
-activates at first paying cohort"*, never as green or breach.
+by design — report it as *"gate inactive in Y1 (Y2–Y3 maturity gate)"*). Aggregate
+dollars only; convert cents→dollars; never invent a number a tool didn't return. Churn
+/ CAC-payback / LTV:CAC have **no data source today** (no cohort, subscription, or
+marketing-spend tables exist) — report them as *"not yet measurable — armed; needs
+cohort/CAC instrumentation"*, never as green or breach.
 
 **`done_criteria_md`** — All four kill-switches are listed, each with a value-or-status,
 its threshold, and a verdict; any breach is called out first; no kill-switch is
 silently omitted.
 
+### Scope reality (important — do not overstate)
+
+A1 is, in this slice, an **armed-watch scaffold**, not a live financial monitor.
+Pre-revenue, all four switches resolve to *not-yet-measurable* or *gate-inactive*.
+**Three of the four (churn, CAC-payback, LTV:CAC) cannot be computed even after revenue
+starts** — they require cohort/subscription/marketing-spend instrumentation that does
+**not** exist and is **out of scope** for this slice (future work). The capability map
+(below) can compute aggregate revenue, AI cost, and headcount-derived ratios, but not
+those three. The value A1 delivers now is concrete and honest: it confirms the
+guardrails are armed, encodes the thresholds + scoping notes in executable form, and
+turns each switch on automatically *as its data source is later built* — it does **not**
+"go live the day revenue starts."
+
 ### Rationale
 
 Distinct from the existing `weekly-kpi-variance` playbook (which tracks KPIs against
 targets) — A1 is strictly the *pause-the-business* trigger set with binary breach
-semantics. Pre-revenue it confirms the guardrails are armed and encodes the thresholds
-+ scoping notes in executable form; it auto-evaluates the day revenue starts. It is
-**immediately runnable** on the existing `aios-playbook-run` runner once seeded — no
-new code for on-demand use.
+semantics. It is **immediately runnable** on the existing `aios-playbook-run` runner
+once seeded — no new code for on-demand use.
 
 ---
 
@@ -142,19 +154,40 @@ routine from it, pinning a `<slug>` and a cron.
    `{"done": <bool>, "checklist": [{"criterion": "...", "met": <bool>}], "missing": [...]}`
    so the loop has a machine verdict.
 4. **Surface output via `aios-report-ingest` only** (`Authorization: Bearer
-   $AIOS_INGEST_SECRET` — the env-secret service-bearer path the other routines use):
-   - **On breach / at-risk:** POST `type:"finding"`, deduped on
-     `fingerprint:"playbook-breach:<slug>"`, with `source:"playbook:<slug>"`, title
-     `[playbook] <playbook title> — <n> guardrail(s) tripped`, `severity` = the worst
-     verdict, evidence = the per-check results + the report body. A repeat run bumps
-     the finding's occurrence count rather than duplicating (existing ingest dedup).
-   - **All-green:** post nothing (lowest-noise; matches the bug-sweep routine).
+   $AIOS_INGEST_SECRET` — the env-secret service-bearer path the other routines use).
+   The finding payload MUST match the ingest contract exactly (verified against
+   `aios-report-ingest/index.ts`): `POST type:"finding"` with `payload` =
+   ```json
+   {
+     "severity": "critical|high|medium|low",
+     "title": "[playbook] <playbook title> — <n> guardrail(s) tripped",
+     "summary_md": "<the report body: each tripped check, its value, threshold, verdict>",
+     "evidence": { "checks": [ { "name": "...", "verdict": "...", "value": "...", "threshold": "..." } ] },
+     "source": "playbook:<slug>",
+     "fingerprint": "playbook-breach:<slug>"
+   }
+   ```
+   - **Verdict → severity map** (required — ingest 400s on any other severity):
+     `breach → critical`, `watch → medium`. `green` and `not-yet-measurable` are
+     **never** breach conditions.
+   - **Post a finding only when at least one check is `breach` or `watch`.** Severity
+     is the worst present (`critical` if any breach, else `medium`). The single shared
+     `fingerprint` means a repeat run **bumps the existing finding's occurrence count**
+     (and reopens it if it had been resolved) rather than duplicating.
+   - **All-green / all not-yet-measurable:** post nothing (lowest-noise; matches the
+     bug-sweep routine).
+   - **No auto-resolve:** if a previously-breaching switch clears, the routine posts
+     nothing, so the open finding **lingers at `/internal/findings` until a human
+     triages it**. This is intentional and matches bug-sweep / loop-scout (neither
+     auto-resolves); note it so a stale breach finding isn't surprising.
    - **Corrections:** only if the playbook's `allowed_proposals` is non-empty → POST
      `type:"correction"`. A1 is report-only, so this path is **dormant** in this slice;
      full `acting_user_id` wiring for unattended proposals is deferred until a
      proposal-enabled playbook is actually scheduled.
 5. **No writes** other than the ingest POST. Never write `aios_playbooks`,
-   `aios_playbook_runs`, or any target table directly.
+   `aios_playbook_runs`, or any target table directly. The step-3 self-assessment JSON
+   is for human/log legibility in the routine's output **only** — nothing consumes it
+   on the A4 path (no run row is written, per Non-goals); do not wire it to a gate.
 
 ### Founder go-live (run-mode)
 
