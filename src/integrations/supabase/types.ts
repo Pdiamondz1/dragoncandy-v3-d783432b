@@ -255,6 +255,109 @@ export type Database = {
         }
         Relationships: []
       }
+      aios_playbook_runs: {
+        Row: {
+          correction_ids: Json
+          done_check: Json | null
+          error_md: string | null
+          finished_at: string | null
+          id: string
+          playbook_id: string
+          result_summary_md: string | null
+          started_at: string
+          status: string
+          trigger: string
+          triggered_by: string | null
+        }
+        Insert: {
+          correction_ids?: Json
+          done_check?: Json | null
+          error_md?: string | null
+          finished_at?: string | null
+          id?: string
+          playbook_id: string
+          result_summary_md?: string | null
+          started_at?: string
+          status?: string
+          trigger?: string
+          triggered_by?: string | null
+        }
+        Update: {
+          correction_ids?: Json
+          done_check?: Json | null
+          error_md?: string | null
+          finished_at?: string | null
+          id?: string
+          playbook_id?: string
+          result_summary_md?: string | null
+          started_at?: string
+          status?: string
+          trigger?: string
+          triggered_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "aios_playbook_runs_playbook_id_fkey"
+            columns: ["playbook_id"]
+            isOneToOne: false
+            referencedRelation: "aios_playbooks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      aios_playbooks: {
+        Row: {
+          allowed_proposals: Json
+          created_at: string
+          created_by: string | null
+          done_criteria_md: string
+          id: string
+          preferences_md: string
+          slug: string
+          source_finding_id: string | null
+          status: string
+          task_md: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          allowed_proposals?: Json
+          created_at?: string
+          created_by?: string | null
+          done_criteria_md?: string
+          id?: string
+          preferences_md?: string
+          slug: string
+          source_finding_id?: string | null
+          status?: string
+          task_md: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          allowed_proposals?: Json
+          created_at?: string
+          created_by?: string | null
+          done_criteria_md?: string
+          id?: string
+          preferences_md?: string
+          slug?: string
+          source_finding_id?: string | null
+          status?: string
+          task_md?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "aios_playbooks_source_finding_id_fkey"
+            columns: ["source_finding_id"]
+            isOneToOne: false
+            referencedRelation: "aios_findings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       analytics_events: {
         Row: {
           created_at: string

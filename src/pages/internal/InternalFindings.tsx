@@ -1,4 +1,6 @@
 import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Sparkles } from 'lucide-react';
 import {
   useFindings,
   useUpdateFindingStatus,
@@ -27,7 +29,23 @@ const STATUS_LABELS: Record<FindingStatus, string> = {
 
 const FindingCard = ({ finding }: { finding: Finding }) => {
   const updateStatus = useUpdateFindingStatus();
+  const navigate = useNavigate();
   const [expanded, setExpanded] = useState(false);
+
+  // Loop Scout files loop-candidate findings (source 'loop-scout', '[loop]'
+  // titles). They are the destination-less candidates Playbooks gives a home —
+  // "Promote to playbook" pre-fills the create form from the finding.
+  const isLoopCandidate = finding.source === 'loop-scout';
+  const promote = () =>
+    navigate('/internal/playbooks', {
+      state: {
+        promoteDraft: {
+          title: finding.title.replace(/^\[loop\]\s*/i, '').trim(),
+          task_md: finding.summary_md,
+          source_finding_id: finding.id,
+        },
+      },
+    });
 
   return (
     <div className="rounded-2xl border border-dc-teal/25 bg-white/[0.04] p-4 backdrop-blur-sm">
@@ -46,7 +64,16 @@ const FindingCard = ({ finding }: { finding: Finding }) => {
             {new Date(finding.last_seen_at).toLocaleString()}
           </p>
         </div>
-        <div className="flex shrink-0 gap-1">
+        <div className="flex shrink-0 flex-wrap items-center gap-1">
+          {isLoopCandidate && (
+            <button
+              type="button"
+              onClick={promote}
+              className="flex items-center gap-1 rounded-full bg-dc-pink px-3 py-1 text-xs font-bold text-dc-dark transition-colors hover:bg-dc-pink/80"
+            >
+              <Sparkles className="h-3 w-3" /> Promote to playbook
+            </button>
+          )}
           {STATUSES.map((s) => (
             <button
               key={s}
