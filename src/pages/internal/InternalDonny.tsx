@@ -1,8 +1,10 @@
 import { useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { DonnyMessage } from '@/components/donny/DonnyMessage';
+import { DonnyDateDivider } from '@/components/donny/DonnyDateDivider';
 import { DonnyTypingIndicator } from '@/components/donny/DonnyTypingIndicator';
 import { DonnyChatInput } from '@/components/donny/DonnyChatInput';
+import { startsNewDayGroup } from '@/components/donny/donnyTime';
 import { DonnyQuickChips } from '@/components/donny/DonnyQuickChips';
 import { ExportToDocButton } from '@/components/internal/ExportToDocButton';
 import { SaveToKnowledgeButton } from '@/components/internal/SaveToKnowledgeButton';
@@ -72,6 +74,7 @@ const InternalDonny = () => {
           )}
           {messages.map((msg, i) => (
             <div key={msg.id ?? i}>
+              {startsNewDayGroup(messages, i) && <DonnyDateDivider iso={msg.created_at} />}
               <DonnyMessage message={msg} />
               {msg.role === 'assistant' && msg.content && (
                 <div className="mt-1 flex justify-start gap-2 pl-2">
