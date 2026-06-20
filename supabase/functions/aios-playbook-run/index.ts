@@ -418,7 +418,11 @@ serve(async (req) => {
 
     const doneCheck = parseDoneCheck(reportText);
 
-    await admin
+    // Persist completion. supabase-js returns { error } instead of throwing, so
+    // check it: a failed write would otherwise leave the row stuck 'running'
+    // (locking the playbook via the partial unique index) while we report success.
+    // Throwing routes to the catch, which marks the run failed and returns 500.
+    const { error: completeErr } = await admin
       .from("aios_playbook_runs")
       .update({
         status: "completed",
@@ -428,6 +432,7 @@ serve(async (req) => {
         finished_at: new Date().toISOString(),
       })
       .eq("id", runId);
+    if (completeErr) throw completeErr;
 
     return json({
       success: true,
