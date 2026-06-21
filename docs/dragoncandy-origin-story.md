@@ -120,3 +120,30 @@ restaurants, creators, and brands. The bet behind DragonCandy is simple: in the
 next era of marketing, the winners won't be the ones who post the most or type
 the fastest. They'll be the ones who simply ask Donny — and let him handle the
 rest.
+
+---
+
+## Taglines & one-liners
+
+For homepage heroes, pitch cold-opens, footers, and swag. Lead pick first.
+
+**Homepage hero (primary):**
+> Don't run your social media. Just ask Donny.
+
+**Hero alternates:**
+- Less typing. More customers. Meet Donny.  *(benefit-forward)*
+- From idea to paid campaign in 60 seconds.  *(speed-forward)*
+- The AI that runs your restaurant's social media — so you don't have to.  *(plain-spoken)*
+- Stop posting. Start asking.  *(bold / vision)*
+
+**Hero subhead (pairs under the primary):**
+> Donny is the AI super agent that creates your campaigns, finds your creators,
+> and posts across every channel — for restaurants, creators, and brands.
+
+**Pitch cold-open (the origin in one breath):**
+> A Hoboken restaurateur was drowning in social media. So we built Donny — an AI
+> super agent that runs it for him, and for every restaurant, creator, and brand
+> like him.
+
+**Three-word brand line (swag, footers, logo lockup):**
+> Just ask Donny.
