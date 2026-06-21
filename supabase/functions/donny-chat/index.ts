@@ -6,6 +6,7 @@ import { logCost } from "../_shared/cost-ledger.ts";
 import { getUserUsageStage, incrementUsage, getUserSubscriptionTier, checkQuotaOrBlock, checkHourlyRateLimit } from "../_shared/usage-tracker.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 import { anthropicFetch } from "../_shared/anthropic-fetch.ts";
+import { parseSseLines, StreamAccumulator, toolStatusLabel } from "./stream-accumulator.ts";
 import { embedQuery, retrieveContext } from "../donny-orchestrator/rag.ts";
 import { reconstructHistory } from "./history.ts";
 import {
@@ -2009,28 +2010,64 @@ serve(async (req) => {
     if (!ANTHROPIC_API_KEY) {
       throw new Error("ANTHROPIC_API_KEY is not configured — please set it in Supabase Edge Function secrets");
     }
-    let response = await anthropicFetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "x-api-key": ANTHROPIC_API_KEY!,
-        "anthropic-version": "2023-06-01",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
+
+    // One model call. stream=false → non-streaming JSON (consumer, unchanged behavior).
+    // stream=true → SSE; forward text deltas via emit and return the assembled message.
+    // Returns { content, stop_reason, usage } in both modes.
+    async function callModel(
+      messages: any[],
+      opts: { stream: boolean; withTools: boolean; emit?: (ev: any) => void },
+    ): Promise<{ content: any[]; stop_reason: string | null; usage: any }> {
+      const body: Record<string, any> = {
         model: modelConfig.model,
         max_tokens: clampedMaxTokens,
         system: systemBlocks,
-        messages: withHistoryCacheBreakpoint(claudeMessages),
-        tools: allowedTools,
-      }),
-    });
+        messages: withHistoryCacheBreakpoint(messages),
+      };
+      if (opts.withTools) body.tools = allowedTools;
+      if (opts.stream) body.stream = true;
 
-    if (!response.ok) {
-      const errorBody = await response.text();
-      throw new Error(`Anthropic API error: ${response.status} ${errorBody}`);
+      const response = await anthropicFetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "x-api-key": ANTHROPIC_API_KEY!,
+          "anthropic-version": "2023-06-01",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      });
+      if (!response.ok) {
+        const errorBody = await response.text();
+        throw new Error(`Anthropic API error: ${response.status} ${errorBody}`);
+      }
+
+      if (!opts.stream) {
+        const json = await response.json();
+        return { content: json.content, stop_reason: json.stop_reason, usage: json.usage };
+      }
+
+      // Streaming: read SSE, forward text deltas, assemble the message.
+      const acc = new StreamAccumulator();
+      const reader = response.body!.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      for (;;) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        const { events, rest } = parseSseLines(buffer, decoder.decode(value, { stream: true }));
+        buffer = rest;
+        for (const ev of events) {
+          if (ev.type === "error") {
+            throw new Error(`Anthropic stream error: ${JSON.stringify(ev.error ?? ev)}`);
+          }
+          const { textDelta } = acc.push(ev); // may throw on malformed tool json → caught by caller
+          if (textDelta && opts.emit) opts.emit({ type: "text", delta: textDelta });
+        }
+      }
+      return acc.finalize();
     }
 
-    let result = await response.json();
+    let result = await callModel(claudeMessages, { stream: false, withTools: true });
     let totalTokens = (result.usage?.input_tokens ?? 0) + (result.usage?.output_tokens ?? 0);
     // Prompt-cache visibility (verify in prod via edge logs): on turn 2+ of a
     // conversation cache_read should be > 0 as the tools+stable-system prefix is
@@ -2161,28 +2198,7 @@ serve(async (req) => {
       claudeMessages.push({ role: "user", content: toolResultBlocks });
 
       // Call Claude again with tool results
-      response = await anthropicFetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: {
-          "x-api-key": ANTHROPIC_API_KEY!,
-          "anthropic-version": "2023-06-01",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: modelConfig.model,
-          max_tokens: clampedMaxTokens,
-          system: systemBlocks,
-          messages: withHistoryCacheBreakpoint(claudeMessages),
-          tools: allowedTools,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorBody = await response.text();
-        throw new Error(`Anthropic API error: ${response.status} ${errorBody}`);
-      }
-
-      result = await response.json();
+      result = await callModel(claudeMessages, { stream: false, withTools: true });
       totalTokens += (result.usage?.input_tokens ?? 0) + (result.usage?.output_tokens ?? 0);
       await logCost(supabaseAdmin, {
         userId,
@@ -2215,26 +2231,9 @@ serve(async (req) => {
             })),
           });
         }
-        const finalResp = await anthropicFetch("https://api.anthropic.com/v1/messages", {
-          method: "POST",
-          headers: {
-            "x-api-key": ANTHROPIC_API_KEY!,
-            "anthropic-version": "2023-06-01",
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model: modelConfig.model,
-            max_tokens: clampedMaxTokens,
-            system: systemBlocks,
-            messages: withHistoryCacheBreakpoint(claudeMessages),
-            // no tools — force a text answer
-          }),
-        });
-        if (finalResp.ok) {
-          const finalResult = await finalResp.json();
-          finalContent = extractText(finalResult.content);
-          totalTokens += (finalResult.usage?.input_tokens ?? 0) + (finalResult.usage?.output_tokens ?? 0);
-        }
+        const finalResult = await callModel(claudeMessages, { stream: false, withTools: false });
+        finalContent = extractText(finalResult.content);
+        totalTokens += (finalResult.usage?.input_tokens ?? 0) + (finalResult.usage?.output_tokens ?? 0);
       } catch (e) {
         console.error("[donny-chat] final summary call failed:", e instanceof Error ? e.message : e);
       }
