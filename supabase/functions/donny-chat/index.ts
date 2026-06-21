@@ -2067,139 +2067,20 @@ serve(async (req) => {
       return acc.finalize();
     }
 
-    let result = await callModel(claudeMessages, { stream: false, withTools: true });
-    let totalTokens = (result.usage?.input_tokens ?? 0) + (result.usage?.output_tokens ?? 0);
-    // Prompt-cache visibility (verify in prod via edge logs): on turn 2+ of a
-    // conversation cache_read should be > 0 as the tools+stable-system prefix is
-    // served from cache; turn 1 writes it (cache_creation > 0).
-    console.log(
-      `[donny-chat] cache read=${result.usage?.cache_read_input_tokens ?? 0} ` +
-        `write=${result.usage?.cache_creation_input_tokens ?? 0} ` +
-        `uncached_input=${result.usage?.input_tokens ?? 0} surface=${internalMode ? "internal" : "web"}`,
-    );
-    await logCost(supabaseAdmin, {
-      userId,
-      edgeFunction: "donny-chat",
-      model: modelConfig.model,
-      tier: modelConfig.tier,
-      inputTokens: result.usage?.input_tokens ?? 0,
-      outputTokens: result.usage?.output_tokens ?? 0,
-    });
-
-    // Tool execution loop — Claude may request tool use. Bounded by ROUND
-    // COUNT, not a cumulative-token ceiling: every call re-sends the whole
-    // growing conversation, so a single large internal tool result (platform
-    // stats, a 30-day weight trend) inflates the running token total and a
-    // low ceiling would break the loop mid-tool-call — surfacing as EMPTY
-    // replies to platform/revenue/scaling questions. The token figure is kept
-    // only as a far-off true-runaway backstop.
-    const MAX_TOOL_ROUNDS = 10;
-    const TOKEN_SAFETY_NET = 300_000;
-    let toolRounds = 0;
-    while (result.stop_reason === "tool_use") {
-      if (toolRounds >= MAX_TOOL_ROUNDS || totalTokens > TOKEN_SAFETY_NET) {
-        console.warn(`[donny-chat] tool loop stop — rounds=${toolRounds}, tokens=${totalTokens}`);
-        break;
-      }
-      toolRounds++;
-      const assistantContent = result.content;
-      const callTokens = (result.usage?.input_tokens ?? 0) + (result.usage?.output_tokens ?? 0);
-
-      // Save assistant message with tool calls (per-call tokens)
-      const { data: savedAssistantMsg } = await supabaseAdmin
-        .from("donny_messages")
-        .insert({
-          conversation_id,
-          role: "assistant",
-          content: extractText(assistantContent),
-          tool_calls: assistantContent,
-          model: modelConfig.model,
-          tokens_used: callTokens,
-        })
-        .select()
-        .single();
-
-      // Execute each tool use block
-      const toolResultBlocks: any[] = [];
-
-      for (const toolUse of getToolUseBlocks(assistantContent)) {
-        let toolResult: any;
-        let status = "completed";
-
-        try {
-          const execution = await executeTool(
-            toolUse.name,
-            toolUse.input,
-            userId,
-            profile.role,
-            supabaseAdmin,
-            requestContext,
-            internalMode
-              ? { userClient: supabaseUser ?? supabaseAdmin, serviceMode: serviceActed }
-              : undefined
-          );
-          toolResult = execution.result;
-        } catch (err: any) {
-          toolResult = { error: err.message };
-          status = "failed";
-        }
-
-        // Audit logging — non-critical, don't crash if these fail.
-        // Internal tool OUTPUTS are redacted: these tables are owner-readable
-        // forever, while internal data must require CURRENT admin status
-        // (donny_messages carries the real results behind surface-gated RLS).
-        const auditOutput = internalMode
-          ? { internal: true, redacted: true }
-          : toolResult;
-        try {
-          await supabaseAdmin.from("donny_tool_executions").insert({
-            message_id: savedAssistantMsg?.id ?? null,
-            user_id: userId,
-            tool_name: toolUse.name,
-            input: toolUse.input,
-            output: auditOutput,
-            status: status === "completed" ? "success" : "error",
-          });
-
-          await supabaseAdmin.from("donny_actions").insert({
-            conversation_id,
-            user_id: userId,
-            action_type: toolUse.name,
-            action_payload: { input: toolUse.input, output: auditOutput },
-            status,
-          });
-        } catch (logErr: any) {
-          console.error(`[donny-chat] audit log failed for tool ${toolUse.name}:`, logErr.message);
-        }
-
-        // Save tool result as message
-        try {
-          await supabaseAdmin.from("donny_messages").insert({
-            conversation_id,
-            role: "tool",
-            content: toolUse.id,
-            tool_result: toolResult,
-            model: modelConfig.model,
-          });
-        } catch (msgErr: any) {
-          console.error(`[donny-chat] tool message insert failed:`, msgErr.message);
-        }
-
-        // Build tool result block for next Claude call
-        toolResultBlocks.push({
-          type: "tool_result",
-          tool_use_id: toolUse.id,
-          content: JSON.stringify(toolResult),
-        });
-      }
-
-      // Add assistant message and tool results to conversation for next call
-      claudeMessages.push({ role: "assistant", content: assistantContent });
-      claudeMessages.push({ role: "user", content: toolResultBlocks });
-
-      // Call Claude again with tool results
-      result = await callModel(claudeMessages, { stream: false, withTools: true });
-      totalTokens += (result.usage?.input_tokens ?? 0) + (result.usage?.output_tokens ?? 0);
+    // Runs the full turn: tool loop → final text → persist. When emit is provided
+    // (internal/streaming), forwards status before each tool and the final text is
+    // already streamed via callModel's emit. Returns { displayContent, richCard }.
+    async function runTurn(emit?: (ev: any) => void): Promise<{ displayContent: string; richCard: any }> {
+      let result = await callModel(claudeMessages, { stream: !!emit, withTools: true, emit });
+      let totalTokens = (result.usage?.input_tokens ?? 0) + (result.usage?.output_tokens ?? 0);
+      // Prompt-cache visibility (verify in prod via edge logs): on turn 2+ of a
+      // conversation cache_read should be > 0 as the tools+stable-system prefix is
+      // served from cache; turn 1 writes it (cache_creation > 0).
+      console.log(
+        `[donny-chat] cache read=${result.usage?.cache_read_input_tokens ?? 0} ` +
+          `write=${result.usage?.cache_creation_input_tokens ?? 0} ` +
+          `uncached_input=${result.usage?.input_tokens ?? 0} surface=${internalMode ? "internal" : "web"}`,
+      );
       await logCost(supabaseAdmin, {
         userId,
         edgeFunction: "donny-chat",
@@ -2208,76 +2089,232 @@ serve(async (req) => {
         inputTokens: result.usage?.input_tokens ?? 0,
         outputTokens: result.usage?.output_tokens ?? 0,
       });
-    }
-    // Increment usage once after the full tool-use loop completes
-    await incrementUsage(supabaseAdmin, userId, modelConfig.actionCost);
 
-    // Extract final text response
-    let finalContent = extractText(result.content);
+      // Tool execution loop — Claude may request tool use. Bounded by ROUND
+      // COUNT, not a cumulative-token ceiling: every call re-sends the whole
+      // growing conversation, so a single large internal tool result (platform
+      // stats, a 30-day weight trend) inflates the running token total and a
+      // low ceiling would break the loop mid-tool-call — surfacing as EMPTY
+      // replies to platform/revenue/scaling questions. The token figure is kept
+      // only as a far-off true-runaway backstop.
+      const MAX_TOOL_ROUNDS = 10;
+      const TOKEN_SAFETY_NET = 300_000;
+      let toolRounds = 0;
+      while (result.stop_reason === "tool_use") {
+        if (toolRounds >= MAX_TOOL_ROUNDS || totalTokens > TOKEN_SAFETY_NET) {
+          console.warn(`[donny-chat] tool loop stop — rounds=${toolRounds}, tokens=${totalTokens}`);
+          break;
+        }
+        toolRounds++;
+        const assistantContent = result.content;
+        const callTokens = (result.usage?.input_tokens ?? 0) + (result.usage?.output_tokens ?? 0);
 
-    // Safety net: if we stopped on a pending tool_use (round cap) or the model
-    // returned no text, do ONE final no-tools turn so the user always gets an
-    // answer instead of a blank bubble.
-    if (!finalContent.trim()) {
-      try {
-        if (result.stop_reason === "tool_use") {
-          claudeMessages.push({ role: "assistant", content: result.content });
-          claudeMessages.push({
-            role: "user",
-            content: getToolUseBlocks(result.content).map((t: any) => ({
-              type: "tool_result",
-              tool_use_id: t.id,
-              content: "Tool budget reached — answer the user now from the data you already have.",
-            })),
+        // Save assistant message with tool calls (per-call tokens)
+        const { data: savedAssistantMsg } = await supabaseAdmin
+          .from("donny_messages")
+          .insert({
+            conversation_id,
+            role: "assistant",
+            content: extractText(assistantContent),
+            tool_calls: assistantContent,
+            model: modelConfig.model,
+            tokens_used: callTokens,
+          })
+          .select()
+          .single();
+
+        // Execute each tool use block
+        const toolResultBlocks: any[] = [];
+
+        for (const toolUse of getToolUseBlocks(assistantContent)) {
+          emit?.({ type: "status", label: toolStatusLabel(toolUse.name), tool: toolUse.name });
+          let toolResult: any;
+          let status = "completed";
+
+          try {
+            const execution = await executeTool(
+              toolUse.name,
+              toolUse.input,
+              userId,
+              profile.role,
+              supabaseAdmin,
+              requestContext,
+              internalMode
+                ? { userClient: supabaseUser ?? supabaseAdmin, serviceMode: serviceActed }
+                : undefined
+            );
+            toolResult = execution.result;
+          } catch (err: any) {
+            toolResult = { error: err.message };
+            status = "failed";
+          }
+
+          // Audit logging — non-critical, don't crash if these fail.
+          // Internal tool OUTPUTS are redacted: these tables are owner-readable
+          // forever, while internal data must require CURRENT admin status
+          // (donny_messages carries the real results behind surface-gated RLS).
+          const auditOutput = internalMode
+            ? { internal: true, redacted: true }
+            : toolResult;
+          try {
+            await supabaseAdmin.from("donny_tool_executions").insert({
+              message_id: savedAssistantMsg?.id ?? null,
+              user_id: userId,
+              tool_name: toolUse.name,
+              input: toolUse.input,
+              output: auditOutput,
+              status: status === "completed" ? "success" : "error",
+            });
+
+            await supabaseAdmin.from("donny_actions").insert({
+              conversation_id,
+              user_id: userId,
+              action_type: toolUse.name,
+              action_payload: { input: toolUse.input, output: auditOutput },
+              status,
+            });
+          } catch (logErr: any) {
+            console.error(`[donny-chat] audit log failed for tool ${toolUse.name}:`, logErr.message);
+          }
+
+          // Save tool result as message
+          try {
+            await supabaseAdmin.from("donny_messages").insert({
+              conversation_id,
+              role: "tool",
+              content: toolUse.id,
+              tool_result: toolResult,
+              model: modelConfig.model,
+            });
+          } catch (msgErr: any) {
+            console.error(`[donny-chat] tool message insert failed:`, msgErr.message);
+          }
+
+          // Build tool result block for next Claude call
+          toolResultBlocks.push({
+            type: "tool_result",
+            tool_use_id: toolUse.id,
+            content: JSON.stringify(toolResult),
           });
         }
-        const finalResult = await callModel(claudeMessages, { stream: false, withTools: false });
-        finalContent = extractText(finalResult.content);
-        totalTokens += (finalResult.usage?.input_tokens ?? 0) + (finalResult.usage?.output_tokens ?? 0);
-      } catch (e) {
-        console.error("[donny-chat] final summary call failed:", e instanceof Error ? e.message : e);
+
+        // Add assistant message and tool results to conversation for next call
+        claudeMessages.push({ role: "assistant", content: assistantContent });
+        claudeMessages.push({ role: "user", content: toolResultBlocks });
+
+        // Call Claude again with tool results
+        result = await callModel(claudeMessages, { stream: !!emit, withTools: true, emit });
+        totalTokens += (result.usage?.input_tokens ?? 0) + (result.usage?.output_tokens ?? 0);
+        await logCost(supabaseAdmin, {
+          userId,
+          edgeFunction: "donny-chat",
+          model: modelConfig.model,
+          tier: modelConfig.tier,
+          inputTokens: result.usage?.input_tokens ?? 0,
+          outputTokens: result.usage?.output_tokens ?? 0,
+        });
       }
+      // Increment usage once after the full tool-use loop completes
+      await incrementUsage(supabaseAdmin, userId, modelConfig.actionCost);
+
+      // Extract final text response
+      let finalContent = extractText(result.content);
+
+      // Safety net: if we stopped on a pending tool_use (round cap) or the model
+      // returned no text, do ONE final no-tools turn so the user always gets an
+      // answer instead of a blank bubble.
       if (!finalContent.trim()) {
-        finalContent =
-          "I pulled the data but ran out of room composing the answer. Ask me again — more specifically if you can — and I'll summarize it directly.";
+        try {
+          if (result.stop_reason === "tool_use") {
+            claudeMessages.push({ role: "assistant", content: result.content });
+            claudeMessages.push({
+              role: "user",
+              content: getToolUseBlocks(result.content).map((t: any) => ({
+                type: "tool_result",
+                tool_use_id: t.id,
+                content: "Tool budget reached — answer the user now from the data you already have.",
+              })),
+            });
+          }
+          const finalResult = await callModel(claudeMessages, { stream: !!emit, withTools: false, emit });
+          finalContent = extractText(finalResult.content);
+          totalTokens += (finalResult.usage?.input_tokens ?? 0) + (finalResult.usage?.output_tokens ?? 0);
+        } catch (e) {
+          console.error("[donny-chat] final summary call failed:", e instanceof Error ? e.message : e);
+        }
+        if (!finalContent.trim()) {
+          finalContent =
+            "I pulled the data but ran out of room composing the answer. Ask me again — more specifically if you can — and I'll summarize it directly.";
+        }
       }
+
+      // Try to extract rich_card from response if present
+      let richCard = null;
+      let displayContent = finalContent;
+      const richCardMatch = finalContent.match(
+        /```json\s*\n(\{[\s\S]*?"type":\s*"(creator_profile|campaign_summary|payment_confirmation|application_summary)"[\s\S]*?\})\s*\n```/
+      );
+      if (richCardMatch) {
+        try {
+          richCard = JSON.parse(richCardMatch[1]);
+          displayContent = finalContent.replace(richCardMatch[0], "").trim();
+        } catch {
+          // Ignore parse errors — just show as text
+        }
+      }
+
+      // Save final assistant response
+      await supabaseAdmin.from("donny_messages").insert({
+        conversation_id,
+        role: "assistant",
+        content: displayContent,
+        rich_card: richCard,
+        model: modelConfig.model,
+        tokens_used: (result.usage?.input_tokens ?? 0) + (result.usage?.output_tokens ?? 0),
+      });
+
+      // Update conversation last_message_at
+      await supabaseAdmin
+        .from("donny_conversations")
+        .update({ last_message_at: new Date().toISOString() })
+        .eq("id", conversation_id);
+
+      return { displayContent, richCard };
     }
 
-    // Try to extract rich_card from response if present
-    let richCard = null;
-    let displayContent = finalContent;
-    const richCardMatch = finalContent.match(
-      /```json\s*\n(\{[\s\S]*?"type":\s*"(creator_profile|campaign_summary|payment_confirmation|application_summary)"[\s\S]*?\})\s*\n```/
-    );
-    if (richCardMatch) {
-      try {
-        richCard = JSON.parse(richCardMatch[1]);
-        displayContent = finalContent.replace(richCardMatch[0], "").trim();
-      } catch {
-        // Ignore parse errors — just show as text
-      }
+    // Consumer path: call runTurn() and return JSON (unchanged behavior).
+    if (!internalMode) {
+      const { displayContent, richCard } = await runTurn();
+      return new Response(
+        JSON.stringify({ success: true, content: displayContent, rich_card: richCard }),
+        { headers: { ...corsHeaders(req), "Content-Type": "application/json" } }
+      );
     }
 
-    // Save final assistant response
-    await supabaseAdmin.from("donny_messages").insert({
-      conversation_id,
-      role: "assistant",
-      content: displayContent,
-      rich_card: richCard,
-      model: modelConfig.model,
-      tokens_used: (result.usage?.input_tokens ?? 0) + (result.usage?.output_tokens ?? 0),
+    // internalMode: stream NDJSON. Validation already passed above this point.
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({
+      async start(controller) {
+        let closed = false;
+        const send = (ev: any) => { if (!closed) controller.enqueue(encoder.encode(JSON.stringify(ev) + "\n")); };
+        // Flush a first byte immediately so the 150s idle timeout never fires.
+        send({ type: "status", label: "Thinking…", tool: "" });
+        const heartbeat = setInterval(() => send({ type: "heartbeat" }), 15_000);
+        try {
+          const { displayContent, richCard } = await runTurn(send);
+          send({ type: "done", content: displayContent, rich_card: richCard ?? null });
+        } catch (err: any) {
+          send({ type: "error", message: err?.message ?? "Donny hit an error" });
+        } finally {
+          clearInterval(heartbeat);
+          closed = true;
+          controller.close();
+        }
+      },
     });
-
-    // Update conversation last_message_at
-    await supabaseAdmin
-      .from("donny_conversations")
-      .update({ last_message_at: new Date().toISOString() })
-      .eq("id", conversation_id);
-
-    return new Response(
-      JSON.stringify({ success: true, content: displayContent, rich_card: richCard }),
-      { headers: { ...corsHeaders(req), "Content-Type": "application/json" } }
-    );
+    return new Response(stream, {
+      headers: { ...corsHeaders(req), "Content-Type": "application/x-ndjson", "Cache-Control": "no-cache" },
+    });
   } catch (err: any) {
     const msg = err.message || "Internal error";
     const isAuthError = msg.includes("Unauthorized") || msg.includes("authorization") || msg.includes("scope");
