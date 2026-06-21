@@ -316,6 +316,29 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   change; invariant held — Donny never writes directly, a human triages. Founder go-live:
   apply the seed migration, then `/schedule` the runner pinning `slug='kill-switch-watch'`.
   Spec: `docs/superpowers/specs/2026-06-20-aios-playbook-killswitch-loop-design.md`.
+- DragonCandy AIOS — Internal Donny reliability: tool-pairing replay fix + keepalive
+  streaming — **shipped + deployed (PRs #146, #148, 2026-06-20).** Two fixes to the
+  `donny-chat` edge function for internal AIOS Donny on long conversations (Strategy-doc
+  edits). **#146 (400 fix):** `getConversationHistory`'s 50-message replay could emit a
+  `tool_result` with no matching `tool_use` (`messages.N.content.0: unexpected tool_use_id`),
+  from a merge step dropping a tool-bearing assistant turn + no integrity check. Extracted
+  replay into pure `donny-chat/history.ts` (`reconstructHistory` + `enforceToolPairing` drops
+  orphaned tool_result / unanswered tool_use); 8 vitest cases. **#148 (504 fix):** the 504s
+  were Supabase's **150s request idle timeout**, not the **400s Pro wall-clock** — the
+  function was fully non-streaming (zero bytes until done). The **internal surface now streams
+  NDJSON** (`status`/`text`/`heartbeat`/`done`/`error`) with an early first byte, via a pure
+  unit-tested `donny-chat/stream-accumulator.ts` (SSE parse + `tool_use` reconstruction from
+  `input_json_delta` + `usage` merge from `message_start`+`message_delta`) and a unified
+  `callModel({stream,emit})`/`runTurn(emit?)` that keeps the **consumer JSON path unchanged**.
+  Frontend `useInternalDonny` reads the stream into a transient bubble, reconciles with the
+  persisted DB message, and **falls back to JSON** on version skew; old-frontend-vs-new-edge-fn
+  also degrades gracefully (final message still renders via the `donny_messages` refetch).
+  Client-disconnect handled (`ReadableStream.cancel` + guarded close — Codex P2). Both
+  deployed via `npm run deploy:fn -- donny-chat`. No schema/RLS/secret/OAuth change. Deferred:
+  `AbortController` thread-through so a cancelled run aborts server-side (Deno doesn't abort
+  in-flight async); patch-based corrections if a single generation ever nears 400s. Pattern:
+  `docs/wiki/concepts/edge-function-streaming.md`. Spec:
+  `docs/superpowers/specs/2026-06-20-donny-chat-keepalive-streaming-design.md`.
 
 **Workflow discipline**: Single Claude Code agent, one prompt at a time
 → `npm run build` → verify → push. Session handoffs at plan-phase

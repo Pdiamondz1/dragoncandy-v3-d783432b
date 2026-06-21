@@ -57,6 +57,7 @@
 - [[Data Flywheel]](concepts/data-flywheel.md) — Primary competitive moat via accumulated match data
 - [[Deep-Link Param Query Race]](concepts/deep-link-param-query-race.md) — Capture deep-link URL params at mount; URL-cleanup tears down queries mid-flight
 - [[Donny Chat UX]](concepts/donny-chat-ux.md) — Shared chat components on two opposite-theme surfaces (light consumer / dark internal); the light-vs-dark rule (time inside bubbles, teal divider chip), expanding-textarea input, hidden-tool-row day-grouping, tray-vs-chat input split
+- [[Edge Function Streaming]](concepts/edge-function-streaming.md) — Keepalive NDJSON streaming to beat Supabase's 150s request idle timeout (Pro = 400s wall-clock); early first byte, pure SSE accumulator, unified callModel/runTurn, client-cancel handling, graceful version skew
 - [[Error Handling Patterns]](concepts/error-handling-patterns.md) — ErrorBoundary levels, QueryClient throwOnError, async patterns
 - [[Founder Playbooks]](concepts/founder-playbooks.md) — Saved repeatable internal tasks Donny runs on demand (report-only + propose); the landing spot for Loop Scout candidates; self-contained runner under the caller session JWT
 - [[In-UI Knowledge Merge]](concepts/in-ui-knowledge-merge.md) — Review + merge wiki knowledge PRs inside /internal (wiki-merge-pr), syncing into Donny's RAG + Strategy library — no GitHub visit, no Lovable deploy; preserves the human-merge gate; unifies Save-to-knowledge, corrections, and Workspace-doc import
