@@ -100,3 +100,22 @@ export class StreamAccumulator {
     return { content: this.blocks.filter(Boolean), stop_reason: this.stopReason, usage: this.usage };
   }
 }
+
+const TOOL_STATUS_LABELS: Record<string, string> = {
+  search_internal_knowledge: "Searching the strategy library…",
+  get_internal_doc: "Reading the strategy library…",
+  get_platform_stats: "Pulling platform stats…",
+  get_revenue_stats: "Pulling revenue…",
+  get_cost_stats: "Pulling AI spend…",
+  get_platform_weight_trend: "Reading the scaling trend…",
+  get_latest_briefing: "Reading the latest brief…",
+  workspace_export_doc: "Exporting to a Google Doc…",
+  workspace_list_files: "Listing your Drive folder…",
+  workspace_read_file: "Reading the Drive file…",
+  compose_email_link: "Drafting the email…",
+  propose_correction: "Queuing the correction…",
+};
+
+export function toolStatusLabel(toolName: string): string {
+  return TOOL_STATUS_LABELS[toolName] ?? `Working on ${toolName.replace(/_/g, " ")}…`;
+}

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseSseLines, StreamAccumulator } from './stream-accumulator';
+import { parseSseLines, StreamAccumulator, toolStatusLabel } from './stream-accumulator';
 
 describe('parseSseLines', () => {
   it('parses a complete data line and ignores event/blank lines', () => {
@@ -76,5 +76,16 @@ describe('StreamAccumulator', () => {
     const acc = new StreamAccumulator();
     expect(acc.push({ type: 'ping' })).toEqual({});
     expect(acc.push({ type: 'content_block_delta', index: 0, delta: { type: 'input_json_delta', partial_json: '{}' } })).toEqual({});
+  });
+});
+
+describe('toolStatusLabel', () => {
+  it('maps known internal tools to friendly labels', () => {
+    expect(toolStatusLabel('get_internal_doc')).toBe('Reading the strategy library…');
+    expect(toolStatusLabel('propose_correction')).toBe('Queuing the correction…');
+    expect(toolStatusLabel('get_platform_stats')).toBe('Pulling platform stats…');
+  });
+  it('humanizes unknown tools', () => {
+    expect(toolStatusLabel('some_new_tool')).toBe('Working on some new tool…');
   });
 });
