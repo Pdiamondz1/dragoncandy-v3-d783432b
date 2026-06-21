@@ -605,7 +605,11 @@ async function runTurn(emit?: (ev: any) => void): Promise<{ displayContent: stri
 }
 ```
 
-> Keep the audit-insert and tool-result-insert bodies byte-for-byte from the current loop; only the wrapping changed. This is a mechanical extraction — diff carefully against the original to confirm no logic dropped.
+> Keep the audit-insert and tool-result-insert bodies byte-for-byte from the current loop; only the wrapping changed. This is a mechanical extraction — diff carefully against the original to confirm no logic dropped. Specifically, **do not drop these existing pieces** when lifting them into `runTurn`:
+> - the prompt-cache visibility `console.log(...)` after the initial call (index.ts ~lines 2038–2042) — keep it;
+> - the in-loop `logCost(...)` (index.ts ~lines 2187–2194) — the `/* same as today */` above stands for that exact block;
+> - the full safety-net "no text → one no-tools turn" block (index.ts ~lines 2202–2245), with its final call switched to `callModel(claudeMessages, { stream: !!emit, withTools: false, emit })`;
+> - the rich-card regex extraction (index.ts ~lines 2247–2260) producing `richCard` + `displayContent`.
 
 - [ ] **Step 2: Consumer path — call `runTurn()` and return JSON (unchanged behavior)**
 
@@ -668,7 +672,7 @@ Read the NDJSON stream, drive a transient in-flight assistant message, reconcile
 
 - [ ] **Step 1: Add transient streaming state**
 
-Add hook state for the in-flight message: `const [streaming, setStreaming] = useState<{ text: string; status: string } | null>(null);` and expose it from the hook return so the page can render it.
+Add hook state for the in-flight message: `const [streaming, setStreaming] = useState<{ text: string; status: string } | null>(null);` and **add `streaming` to the hook's returned object** (alongside the existing `isThinking`/`error`/etc.) so the page can render it. Note Task 8 must then add `streaming` to `InternalDonny.tsx`'s destructure of the hook.
 
 - [ ] **Step 2: Replace the response handling in the mutation**
 
@@ -743,7 +747,7 @@ git commit -m "feat(donny): stream internal Donny responses in useInternalDonny"
 
 - [ ] **Step 1: Render the streaming bubble + status**
 
-Consume `streaming` from the hook. While non-null, render an assistant bubble showing `streaming.text` (typing) with a small muted status line `streaming.status` beneath it (use existing dc tokens / message-bubble components; no gray — use a brand-adjacent muted tone per the design system). Place it after the persisted messages and before the input. Ensure it disappears when `streaming` becomes null (the persisted message has loaded).
+Add `streaming` to the existing `useInternalDonny()` destructure, then consume it. While non-null, render an assistant bubble showing `streaming.text` (typing) with a small muted status line `streaming.status` beneath it (use existing dc tokens / message-bubble components; no gray — use a brand-adjacent muted tone per the design system). Place it after the persisted messages and before the input. Ensure it disappears when `streaming` becomes null (the persisted message has loaded).
 
 - [ ] **Step 2: Verify both viewports**
 
