@@ -89,14 +89,17 @@ deploy separately).
 
 Streaming defeats the **idle** timeout but not the **400s wall-clock** — a single run over
 400s would still die. In `donny-chat` the long generation is the `propose_correction`
-full-doc tool input; if that ever approaches 400s, a patch/diff-based correction contract
-(emit only the changed section) would cut the volume. Also: `ReadableStream.cancel()` stops
+full-doc tool input; **this residual was resolved** by [[Patch-Based Corrections]] (PRs
+#151/#152) — Donny now emits small find/replace edits and the server reconstructs the doc, so
+the heavy-correction turn dropped from ~130s to seconds (which also stopped the mobile
+streamed-`fetch` "Load failed" on long turns). Also: `ReadableStream.cancel()` stops
 the heartbeat, but Deno doesn't abort in-flight `await`s, so `runTurn` may still finish
 server-side after a client disconnect (work persists correctly); an `AbortController`
 thread-through is the deferred fix.
 
 ## See Also
 
+- [[Patch-Based Corrections]] — the follow-up that cut the correction turn itself (output volume), resolving the residual above
 - [[Donny Chat UX]] — the consumer/internal shared chat components and how the transient streaming bubble renders
 - [[Donny AI]]
 - [[Lovable Edge-Function Deploy Gap]]
