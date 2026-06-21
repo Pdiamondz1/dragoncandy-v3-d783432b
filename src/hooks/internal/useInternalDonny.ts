@@ -108,21 +108,27 @@ export function useInternalDonny() {
       let buffer = '';
       let acc = '';
       setStreaming({ text: '', status: 'Thinking…' });
-      for (;;) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        const { events, rest } = parseNdjsonChunk(buffer, decoder.decode(value, { stream: true }));
-        buffer = rest;
-        for (const ev of events) {
-          if (ev.type === 'status') setStreaming((s) => ({ text: s?.text ?? acc, status: ev.label }));
-          else if (ev.type === 'text') { acc += ev.delta; setStreaming((s) => ({ text: acc, status: s?.status ?? '' })); }
-          else if (ev.type === 'done') return { success: true, content: ev.content, rich_card: ev.rich_card };
-          else if (ev.type === 'error') throw new Error(ev.message || 'Donny hit an error');
-          // heartbeat: ignore
+      try {
+        for (;;) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          const { events, rest } = parseNdjsonChunk(buffer, decoder.decode(value, { stream: true }));
+          buffer = rest;
+          for (const ev of events) {
+            if (ev.type === 'status') setStreaming((s) => ({ text: s?.text ?? acc, status: ev.label }));
+            else if (ev.type === 'text') { acc += ev.delta; setStreaming((s) => ({ text: acc, status: s?.status ?? '' })); }
+            else if (ev.type === 'done') return { success: true, content: ev.content, rich_card: ev.rich_card };
+            else if (ev.type === 'error') throw new Error(ev.message || 'Donny hit an error');
+            // heartbeat: ignore
+          }
         }
+        // Stream closed without `done` → cut off (e.g. 400s wall-clock).
+        throw new Error("Donny's response was cut off — please try again.");
+      } finally {
+        // Best-effort: release the reader lock and close the body on all exits
+        // (normal done return, thrown error, or mutation cancellation).
+        reader.cancel().catch(() => {});
       }
-      // Stream closed without `done` → cut off (e.g. 400s wall-clock).
-      throw new Error('Donny’s response was cut off — please try again.');
     },
     onSettled: async () => {
       await queryClient.invalidateQueries({ queryKey: ['aios', 'donny-messages', conversation?.id] });

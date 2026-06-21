@@ -96,7 +96,7 @@ const InternalDonny = () => {
           {isThinking && !streaming && <DonnyTypingIndicator />}
           {streaming && (
             <div className="flex gap-2 items-end">
-              <DonnyAvatar size="sm" state="thinking" />
+              <DonnyAvatar size="sm" state="thinking" aria-label="Donny" />
               <div className="max-w-[80%]">
                 <div className="bg-dc-pink rounded-2xl rounded-bl-sm px-3.5 py-2.5">
                   <p className="text-sm text-dc-text leading-relaxed whitespace-pre-wrap">

@@ -2293,23 +2293,39 @@ serve(async (req) => {
 
     // internalMode: stream NDJSON. Validation already passed above this point.
     const encoder = new TextEncoder();
+    // Shared state between start() and cancel() — hoisted so cancel() can flip
+    // the flag and stop the heartbeat when the client disconnects mid-stream.
+    let streamClosed = false;
+    let heartbeatHandle: ReturnType<typeof setInterval> | undefined;
     const stream = new ReadableStream({
       async start(controller) {
-        let closed = false;
-        const send = (ev: any) => { if (!closed) controller.enqueue(encoder.encode(JSON.stringify(ev) + "\n")); };
+        const send = (ev: any) => {
+          if (streamClosed) return;
+          try {
+            controller.enqueue(encoder.encode(JSON.stringify(ev) + "\n"));
+          } catch {
+            // Enqueue after cancel — swallow to keep the heartbeat callback safe.
+          }
+        };
         // Flush a first byte immediately so the 150s idle timeout never fires.
         send({ type: "status", label: "Thinking…", tool: "" });
-        const heartbeat = setInterval(() => send({ type: "heartbeat" }), 15_000);
+        heartbeatHandle = setInterval(() => send({ type: "heartbeat" }), 15_000);
         try {
           const { displayContent, richCard } = await runTurn(send);
           send({ type: "done", content: displayContent, rich_card: richCard ?? null });
         } catch (err: any) {
           send({ type: "error", message: err?.message ?? "Donny hit an error" });
         } finally {
-          clearInterval(heartbeat);
-          closed = true;
+          clearInterval(heartbeatHandle);
+          streamClosed = true;
           controller.close();
         }
+      },
+      cancel() {
+        // Client disconnected — stop heartbeat and mark closed so start() teardown
+        // (if still running) skips the enqueue after cancel.
+        streamClosed = true;
+        clearInterval(heartbeatHandle);
       },
     });
     return new Response(stream, {

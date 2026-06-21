@@ -8,6 +8,7 @@ interface DonnyAvatarProps {
   badgeCount?: number;
   glow?: boolean;
   className?: string;
+  'aria-label'?: string;
 }
 
 const sizeClasses = {
@@ -38,9 +39,10 @@ export function DonnyAvatar({
   badgeCount,
   glow = false,
   className,
+  'aria-label': ariaLabel,
 }: DonnyAvatarProps) {
   return (
-    <div className={cn('relative inline-flex flex-shrink-0', className)}>
+    <div className={cn('relative inline-flex flex-shrink-0', className)} aria-label={ariaLabel}>
       <div
         className={cn(
           sizeClasses[size],
