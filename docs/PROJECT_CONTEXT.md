@@ -339,6 +339,26 @@ Instagram, TikTok, YouTube), Google Maps (geocoding), Claude Sonnet 4 + Haiku
   in-flight async); patch-based corrections if a single generation ever nears 400s. Pattern:
   `docs/wiki/concepts/edge-function-streaming.md`. Spec:
   `docs/superpowers/specs/2026-06-20-donny-chat-keepalive-streaming-design.md`.
+- DragonCandy AIOS — Internal Donny: patch-based strategy-doc corrections — **shipped +
+  deployed (PRs #151, #152, 2026-06-21).** Follow-up to the keepalive-streaming work: streaming
+  fixed the server 504, but a heavy correction still ran ~130s because turn length is dominated
+  by Donny's **output-token generation** of the whole 5–50KB doc — and a 130s streamed `fetch`
+  drops on mobile Safari ("Load failed"). Donny now proposes a `strategy_doc` correction as
+  small find/replace **`edits`** (`{old_string,new_string,replace_all?}`, the `Edit`-tool
+  contract); the `propose_correction` handler re-reads the current `internal_docs.content_md`,
+  applies them server-side via the pure unit-tested `donny-chat/doc-edits.ts`, and POSTs the
+  **reconstructed full** `proposed_value` — so `aios-report-ingest`, the `aios_corrections` row,
+  the drift-checked `aios_corrections_apply` RPC, and `wiki-commit-pr` are **byte-for-byte
+  unchanged**, and *a human approves at /internal/corrections* holds. Output shrinks to a few
+  lines → turn drops to seconds → no more mobile "Load failed". A full-`proposed_value` fallback
+  is kept for a genuine top-to-bottom rewrite; a bad edit block (not found / not unique) errors
+  back to Donny, which retries in-turn. **#152 (hotfix):** backticks used for inline-code
+  emphasis inside the backtick-delimited system-prompt template literal broke the Deno bundle —
+  caught only at `supabase functions deploy` (the real edge-fn parse check), not `npm run build`
+  (frontend only). `donny-chat` only: no schema/RLS/secret/edge-fn/frontend change. 11 new unit
+  tests; Codex second review clean; deployed to prod. Concept:
+  `docs/wiki/concepts/patch-based-corrections.md`. Spec:
+  `docs/superpowers/specs/2026-06-21-patch-based-corrections-design.md`.
 
 **Workflow discipline**: Single Claude Code agent, one prompt at a time
 → `npm run build` → verify → push. Session handoffs at plan-phase
